@@ -9,7 +9,7 @@ import random
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
 from netaddr import IPAddress
-from testtools.matchers import Equals, HasLength, MatchesStructure
+from testtools.matchers import HasLength, MatchesStructure
 from testtools.testcase import ExpectedException
 
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
@@ -498,7 +498,7 @@ class TestRenderRRData(MAASServerTestCase):
         factory.make_DNSData(name=name1, domain=domain, rrtype="MX")
         rrdata_list = domain.render_json_for_related_rrdata(as_dict=False)
         rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
-        self.assertThat(rrdata_dict[name1], Equals([rrdata_list[0]]))
+        self.assertEqual([rrdata_list[0]], rrdata_dict[name1])
         self.assertThat(rrdata_dict[name1], HasLength(1))
         factory.make_DNSData(name=name1, domain=domain, rrtype="MX")
         factory.make_DNSData(name=name2, domain=domain, rrtype="NS")

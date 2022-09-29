@@ -20,7 +20,6 @@ from testtools.matchers import (
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
-    Not,
 )
 
 from maasserver.enum import (
@@ -189,13 +188,13 @@ class TestInterfaceManager(MAASServerTestCase):
         node2 = factory.make_Node()
         node2_eth0 = factory.make_Interface(node=node2, name="eth0")
         node2_eth1 = factory.make_Interface(node=node2, name="eth1")
-        self.assertThat(
+        self.assertEqual(
+            {"eth0": node1_eth0, "eth1": node1_eth1},
             Interface.objects.get_interface_dict_for_node(node1),
-            Equals({"eth0": node1_eth0, "eth1": node1_eth1}),
         )
-        self.assertThat(
+        self.assertEqual(
+            {"eth0": node2_eth0, "eth1": node2_eth1},
             Interface.objects.get_interface_dict_for_node(node2),
-            Equals({"eth0": node2_eth0, "eth1": node2_eth1}),
         )
 
     def test_get_interface_dict_for_node__by_names(self):
@@ -1292,7 +1291,7 @@ class TestInterface(MAASServerTestCase):
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100]
         )
-        self.assertThat(br0.get_ancestors(), Equals({eth0, eth0_100}))
+        self.assertEqual({eth0, eth0_100}, br0.get_ancestors())
 
     def test_get_successors_includes_grandchildren(self):
         node = factory.make_Node()
@@ -1303,7 +1302,7 @@ class TestInterface(MAASServerTestCase):
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100]
         )
-        self.assertThat(eth0.get_successors(), Equals({eth0_100, br0}))
+        self.assertEqual({eth0_100, br0}, eth0.get_successors())
 
     def test_get_all_related_interafces_includes_all_related(self):
         node = factory.make_Node()
@@ -1317,9 +1316,9 @@ class TestInterface(MAASServerTestCase):
         br0 = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, node=node, parents=[eth0_100]
         )
-        self.assertThat(
+        self.assertEqual(
+            {eth0, eth0_100, eth0_101, br0},
             eth0_100.get_all_related_interfaces(),
-            Equals({eth0, eth0_100, eth0_101, br0}),
         )
 
     def test_add_tag_adds_new_tag(self):
@@ -1429,7 +1428,7 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
     def test_adds_new_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.update_neighbour(**self.make_neighbour_json())
-        self.assertThat(Neighbour.objects.count(), Equals(1))
+        self.assertEqual(1, Neighbour.objects.count())
 
     def test_updates_existing_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1440,20 +1439,20 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
         neighbour.save(_updated=yesterday, update_fields=["updated"])
         neighbour = reload_object(neighbour)
-        self.assertThat(
+        self.assertEqual(
+            int(yesterday.timestamp()),
             int(neighbour.updated.timestamp()),
-            Equals(int(yesterday.timestamp())),
         )
         json["time"] += 1
         iface.update_neighbour(**json)
         neighbour = reload_object(neighbour)
-        self.assertThat(Neighbour.objects.count(), Equals(1))
-        self.assertThat(neighbour.time, Equals(json["time"]))
+        self.assertEqual(1, Neighbour.objects.count())
+        self.assertEqual(json["time"], neighbour.time)
         # This is the second time we saw this neighbour.
         neighbour = reload_object(neighbour)
-        self.assertThat(neighbour.count, Equals(2))
+        self.assertEqual(2, neighbour.count)
         # Make sure the "last seen" time is correct.
-        self.assertThat(neighbour.updated, Not(Equals(yesterday)))
+        self.assertNotEqual(yesterday, neighbour.updated)
 
     def test_replaces_obsolete_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1463,13 +1462,13 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         json["time"] += 1
         json["mac"] = factory.make_mac_address()
         iface.update_neighbour(**json)
-        self.assertThat(Neighbour.objects.count(), Equals(1))
-        self.assertThat(
-            list(Neighbour.objects.all())[0].mac_address, Equals(json["mac"])
+        self.assertEqual(1, Neighbour.objects.count())
+        self.assertEqual(
+            json["mac"], list(Neighbour.objects.all())[0].mac_address
         )
         # This is the first time we saw this neighbour, because the original
         # binding was deleted.
-        self.assertThat(list(Neighbour.objects.all())[0].count, Equals(1))
+        self.assertEqual(1, list(Neighbour.objects.all())[0].count)
 
     def test_logs_new_binding(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1510,13 +1509,13 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
     def test_ignores_updates_if_mdns_discovery_state_is_false(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.update_mdns_entry(self.make_mdns_entry_json())
-        self.assertThat(MDNS.objects.count(), Equals(0))
+        self.assertEqual(0, MDNS.objects.count())
 
     def test_adds_new_entry_if_mdns_discovery_state_is_true(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.mdns_discovery_state = True
         iface.update_mdns_entry(self.make_mdns_entry_json())
-        self.assertThat(MDNS.objects.count(), Equals(1))
+        self.assertEqual(1, MDNS.objects.count())
 
     def test_updates_existing_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1527,20 +1526,20 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         mdns_entry = get_one(MDNS.objects.all())
         mdns_entry.save(_updated=yesterday, update_fields=["updated"])
         mdns_entry = reload_object(mdns_entry)
-        self.assertThat(
+        self.assertEqual(
+            int(yesterday.timestamp()),
             int(mdns_entry.updated.timestamp()),
-            Equals(int(yesterday.timestamp())),
         )
         # First time we saw the entry.
-        self.assertThat(mdns_entry.count, Equals(1))
-        self.assertThat(MDNS.objects.count(), Equals(1))
+        self.assertEqual(1, mdns_entry.count)
+        self.assertEqual(1, MDNS.objects.count())
         iface.update_mdns_entry(json)
         mdns_entry = reload_object(mdns_entry)
-        self.assertThat(mdns_entry.ip, Equals(json["address"]))
-        self.assertThat(mdns_entry.hostname, Equals(json["hostname"]))
+        self.assertEqual(json["address"], mdns_entry.ip)
+        self.assertEqual(json["hostname"], mdns_entry.hostname)
         # This is the second time we saw this entry.
-        self.assertThat(mdns_entry.count, Equals(2))
-        self.assertThat(mdns_entry.updated, Not(Equals(yesterday)))
+        self.assertEqual(2, mdns_entry.count)
+        self.assertNotEqual(yesterday, mdns_entry.updated)
 
     def test_replaces_obsolete_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1550,11 +1549,11 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         # Have a different IP address claim ownership of the hostname.
         json["address"] = factory.make_ip_address(ipv6=False)
         iface.update_mdns_entry(json)
-        self.assertThat(MDNS.objects.count(), Equals(1))
-        self.assertThat(MDNS.objects.first().ip, Equals(json["address"]))
+        self.assertEqual(1, MDNS.objects.count())
+        self.assertEqual(json["address"], MDNS.objects.first().ip)
         # This is the first time we saw this neighbour, because the original
         # binding was deleted.
-        self.assertThat(MDNS.objects.count(), Equals(1))
+        self.assertEqual(1, MDNS.objects.count())
 
     def test_logs_new_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2583,9 +2582,9 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         interface1.update_ip_addresses([subnet1.cidr])
         interface2.update_ip_addresses([subnet2.cidr])
         interface3.update_ip_addresses([subnet3.cidr])
-        self.assertThat(interface1.vlan, Equals(vlan1))
-        self.assertThat(interface2.vlan, Equals(vlan2))
-        self.assertThat(interface3.vlan, Equals(vlan3))
+        self.assertEqual(vlan1, interface1.vlan)
+        self.assertEqual(vlan2, interface2.vlan)
+        self.assertEqual(vlan3, interface3.vlan)
         self.assertThat(
             maaslog.info,
             MockCallsMatch(
@@ -2912,7 +2911,7 @@ class TestLinkSubnet(MAASTransactionServerTestCase):
         interface.save()
         interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
         interface = reload_object(interface)
-        self.assertThat(interface.vlan, Equals(subnet.vlan))
+        self.assertEqual(subnet.vlan, interface.vlan)
 
     def test_STATIC_not_allowed_if_ip_address_in_dynamic_range(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3737,9 +3736,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Should have 1 AUTO IP addresses with an IP address assigned.",
         )
         self.assertEqual(subnet, observed[0].subnet)
-        self.assertThat(
-            subnet.get_dynamic_range_for_ip(observed[0].ip), Equals(None)
-        )
+        self.assertIsNone(subnet.get_dynamic_range_for_ip(observed[0].ip))
         self.assertTrue(subnet.is_valid_static_ip(observed[0].ip))
 
     def test_claims_ip_address_in_static_ip_range_skips_gateway_ip(self):
@@ -4077,10 +4074,8 @@ class TestInterfaceGetDiscoveryState(MAASServerTestCase):
         iface.neighbour_discovery_state = random.choice([True, False])
         iface.mdns_discovery_state = random.choice([True, False])
         state = iface.get_discovery_state()
-        self.assertThat(
-            state["neighbour"], Equals(iface.neighbour_discovery_state)
-        )
-        self.assertThat(state["mdns"], Equals(iface.mdns_discovery_state))
+        self.assertEqual(iface.neighbour_discovery_state, state["neighbour"])
+        self.assertEqual(iface.mdns_discovery_state, state["mdns"])
 
 
 class TestReportVID(MAASServerTestCase):
@@ -4151,7 +4146,7 @@ class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):
         interface = factory.make_Interface()
         for ifname, expected_bridge_name in self.expected_bridge_names.items():
             interface.name = ifname
-            self.assertThat(
+            self.assertEqual(
+                expected_bridge_name,
                 interface.get_default_bridge_name(),
-                Equals(expected_bridge_name),
             )

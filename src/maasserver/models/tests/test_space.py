@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from testtools.matchers import Equals, MatchesStructure
+from testtools.matchers import MatchesStructure
 
 from maasserver.models.space import DEFAULT_SPACE_NAME, Space
 from maasserver.permissions import NodePermission
@@ -203,4 +203,4 @@ class TestSpace(MAASServerTestCase):
         subnet = factory.make_Subnet(space=space)
         space.delete()
         subnet = reload_object(subnet)
-        self.assertThat(subnet.vlan.space, Equals(None))
+        self.assertIsNone(subnet.vlan.space)

@@ -91,13 +91,13 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
     def test_create_new_notification_without_context(self):
         notification = self.makeNotification()
         self.assertNotification(notification, ident=None)
-        self.assertThat(notification.context, Equals({}))
+        self.assertEqual({}, notification.context)
 
     def test_create_new_notification_with_context(self):
         context = {factory.make_name("key"): factory.make_name("value")}
         notification = self.makeNotification(context=context)
         self.assertNotification(notification, ident=None)
-        self.assertThat(notification.context, Equals(context))
+        self.assertEqual(context, notification.context)
 
     def test_create_new_notification_with_ident(self):
         ident = factory.make_name("ident")
@@ -110,7 +110,7 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
         n1 = self.makeNotification(ident=ident)
         n2 = self.makeNotification(ident=ident)
         n1.refresh_from_db()  # Get current value of `ident`.
-        self.assertThat(n2, Not(Equals(n1)))
+        self.assertNotEqual(n1, n2)
         self.assertNotification(n1, ident=None)
         self.assertNotification(n2, ident=ident)
         self.assertThat(Notification.objects.filter(ident=ident), HasLength(1))
@@ -203,19 +203,17 @@ class TestNotification(MAASServerTestCase):
         message = "<foo>{bar}</foo>"
         context = {"bar": "<BAR>"}
         notification = Notification(message=message, context=context)
-        self.assertThat(
-            notification.render(), Equals("<foo>&lt;BAR&gt;</foo>")
-        )
+        self.assertEqual("<foo>&lt;BAR&gt;</foo>", notification.render())
 
     def test_save_checks_that_rendering_works(self):
         message = "Dude, where's my {thing}?"
         notification = Notification(message=message)
         error = self.assertRaises(ValidationError, notification.save)
-        self.assertThat(
+        self.assertEqual(
+            {"__all__": ["Notification cannot be rendered."]},
             error.message_dict,
-            Equals({"__all__": ["Notification cannot be rendered."]}),
         )
-        self.assertThat(notification.id, Is(None))
+        self.assertIsNone(notification.id)
         self.assertThat(Notification.objects.all(), HasLength(0))
 
     def test_is_relevant_to_user(self):

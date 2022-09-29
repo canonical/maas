@@ -9,7 +9,7 @@ from uuid import uuid4
 from django.core.exceptions import ValidationError
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
+from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -330,9 +330,9 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
     def test_can_create_mountable_filesystem(self):
         substrate = self.make_substrate()
         filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
-        self.assertThat(filesystem, IsInstance(Filesystem))
-        self.assertThat(filesystem.fstype, Equals(self.fstype))
-        self.assertThat(filesystem.is_mountable, Is(True))
+        self.assertIsInstance(filesystem, Filesystem)
+        self.assertEqual(self.fstype, filesystem.fstype)
+        self.assertTrue(filesystem.is_mountable)
         self.assertThat(filesystem, MatchesStructure.byEquality(**substrate))
 
     def test_cannot_mount_two_filesystems_at_same_point(self):
@@ -359,14 +359,14 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
                 ),
             )
         else:
-            self.assertThat(filesystem2.save(), Is(None))
+            self.assertIsNone(filesystem2.save())
 
     def test_can_mount_unacquired_and_acquired_filesystem_at_same_point(self):
         substrate = self.make_substrate()
         filesystem = factory.make_Filesystem(fstype=self.fstype, **substrate)
         filesystem.id = None
         filesystem.acquired = True
-        self.assertThat(filesystem.save(), Is(None))
+        self.assertIsNone(filesystem.save())
 
     def test_mount_point_is_none_for_filesystems_that_do_not_use_one(self):
         substrate = self.make_substrate()
@@ -375,9 +375,9 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
             fstype=self.fstype, mount_point=mount_point, **substrate
         )
         if filesystem.uses_mount_point:
-            self.assertThat(filesystem.mount_point, Equals(mount_point))
+            self.assertEqual(mount_point, filesystem.mount_point)
         else:
-            self.assertThat(filesystem.mount_point, Equals("none"))
+            self.assertEqual("none", filesystem.mount_point)
 
     def test_filesystem_is_mounted_when_mount_point_is_set(self):
         substrate = self.make_substrate()
@@ -386,17 +386,17 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
             # Some filesystems can be unmounted. By default that's how the
             # factory makes them, so we need to set mount_point to see how
             # is_mounted behaves.
-            self.assertThat(filesystem.is_mounted, Is(False))
+            self.assertFalse(filesystem.is_mounted)
             filesystem.mount_point = factory.make_name("path")
-            self.assertThat(filesystem.is_mounted, Is(True))
+            self.assertTrue(filesystem.is_mounted)
         else:
             # Some filesystems cannot be unmounted, and the factory ensures
             # that they're always created with a mount point. We can unset
             # mount_point and observe a change in is_mounted, but we'll be
             # prevented from saving the amended filesystem.
-            self.assertThat(filesystem.is_mounted, Is(True))
+            self.assertTrue(filesystem.is_mounted)
             filesystem.mount_point = None
-            self.assertThat(filesystem.is_mounted, Is(False))
+            self.assertFalse(filesystem.is_mounted)
             error = self.assertRaises(ValidationError, filesystem.save)
             self.assertEqual(
                 error.messages,
@@ -414,9 +414,7 @@ class TestFilesystemsUsingMountPoints(MAASServerTestCase):
 
     def test_uses_mount_point_is_true_for_real_filesystems(self):
         filesystem = factory.make_Filesystem(fstype=self.fstype)
-        self.assertThat(
-            filesystem.uses_mount_point, Equals(self.mounts_at_path)
-        )
+        self.assertEqual(self.mounts_at_path, filesystem.uses_mount_point)
 
 
 class TestFilesystemsUsingStorage(MAASServerTestCase):
@@ -437,6 +435,6 @@ class TestFilesystemsUsingStorage(MAASServerTestCase):
 
     def test_uses_mount_point_is_true_for_real_filesystems(self):
         filesystem = factory.make_Filesystem(fstype=self.fstype)
-        self.assertThat(
-            filesystem.uses_storage, Equals(self.mounts_device_or_partition)
+        self.assertEqual(
+            self.mounts_device_or_partition, filesystem.uses_storage
         )

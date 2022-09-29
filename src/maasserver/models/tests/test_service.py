@@ -53,17 +53,17 @@ class TestServiceManager(MAASServerTestCase):
         controller.save()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
-        self.assertThat(
+        self.assertEqual(
+            REGION_SERVICES | RACK_SERVICES,
             {service.name for service in services},
-            Equals(REGION_SERVICES | RACK_SERVICES),
         )
 
     def test_create_services_removes_services(self):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(REGION_SERVICES)
+        self.assertEqual(
+            REGION_SERVICES, {service.name for service in services}
         )
 
         controller.node_type = NODE_TYPE.MACHINE
@@ -76,17 +76,15 @@ class TestServiceManager(MAASServerTestCase):
         controller = factory.make_RegionController()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(REGION_SERVICES)
+        self.assertEqual(
+            REGION_SERVICES, {service.name for service in services}
         )
 
         controller.node_type = NODE_TYPE.RACK_CONTROLLER
         controller.save()
         Service.objects.create_services_for(controller)
         services = Service.objects.filter(node=controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(RACK_SERVICES)
-        )
+        self.assertEqual(RACK_SERVICES, {service.name for service in services})
 
     def test_update_service_for_updates_service_status_and_info(self):
         controller = factory.make_RegionController()

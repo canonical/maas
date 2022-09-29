@@ -59,7 +59,7 @@ class TestEventType(MAASServerTestCase):
         level2 = levels.pop()
         event_type2 = EventType.objects.register(name, desc2, level2)
 
-        self.assertThat(event_type2, Equals(event_type1))
+        self.assertEqual(event_type1, event_type2)
         self.assertThat(
             event_type2,
             MatchesStructure.byEquality(

@@ -4,7 +4,7 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
-from testtools.matchers import Contains, StartsWith
+from testtools.matchers import StartsWith
 
 from maasserver.models import SSLKey
 from maasserver.models import sslkey as sslkey_module
@@ -46,7 +46,7 @@ class TestGetHTMLDisplayForKey(MAASServerTestCase):
         subject = cert.get_subject()
         cn = find_ssl_common_name(subject)
         display = get_html_display_for_key(key_string)
-        self.assertThat(display, Contains(cn))
+        self.assertIn(cn, display)
 
     def test_decode_md5_as_ascii(self):
         # the key MD5 is correctly printed (and not repr'd)

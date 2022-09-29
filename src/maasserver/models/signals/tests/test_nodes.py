@@ -4,7 +4,7 @@
 
 import random
 
-from testtools.matchers import Equals, HasLength, Is, MatchesStructure, Not
+from testtools.matchers import HasLength, MatchesStructure
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -124,13 +124,13 @@ class TestNodeKeyPolicy(MAASServerTestCase):
         node.save()
         # Ensure there's a token.
         token = NodeKey.objects.get_token_for_node(node)
-        self.assertThat(token, Not(Is(None)))
+        self.assertIsNotNone(token)
         # Change the owner.
         node.owner = factory.make_User()
         node.save()
         # The token has been deleted.
         token = reload_object(token)
-        self.assertThat(token, Is(None))
+        self.assertIsNone(token)
 
     def test_clearing_owner_clears_node_key(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -139,13 +139,13 @@ class TestNodeKeyPolicy(MAASServerTestCase):
         node.save()
         # Ensure there's a token.
         token = NodeKey.objects.get_token_for_node(node)
-        self.assertThat(token, Not(Is(None)))
+        self.assertIsNotNone(token)
         # Remove the owner.
         node.owner = None
         node.save()
         # The token has been deleted.
         token = reload_object(token)
-        self.assertThat(token, Is(None))
+        self.assertIsNone(token)
 
     def test_setting_owner_clears_node_key(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -154,13 +154,13 @@ class TestNodeKeyPolicy(MAASServerTestCase):
         node.save()
         # Ensure there's a token.
         token = NodeKey.objects.get_token_for_node(node)
-        self.assertThat(token, Not(Is(None)))
+        self.assertIsNotNone(token)
         # Set the owner.
         node.owner = factory.make_User()
         node.save()
         # The token has been deleted.
         token = reload_object(token)
-        self.assertThat(token, Is(None))
+        self.assertIsNone(token)
 
 
 class TestNodeCreateServices(MAASServerTestCase):
@@ -181,15 +181,13 @@ class TestNodeCreateServices(MAASServerTestCase):
     def test_creates_services_for_rack_controller(self):
         rack_controller = factory.make_RackController()
         services = Service.objects.filter(node=rack_controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(RACK_SERVICES)
-        )
+        self.assertEqual(RACK_SERVICES, {service.name for service in services})
 
     def test_creates_services_for_region_controller(self):
         region_controller = factory.make_RegionController()
         services = Service.objects.filter(node=region_controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(REGION_SERVICES)
+        self.assertEqual(
+            REGION_SERVICES, {service.name for service in services}
         )
 
     def test_creates_services_when_region_converts_to_region_rack(self):
@@ -197,9 +195,9 @@ class TestNodeCreateServices(MAASServerTestCase):
         controller.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
         controller.save()
         services = Service.objects.filter(node=controller)
-        self.assertThat(
+        self.assertEqual(
+            REGION_SERVICES | RACK_SERVICES,
             {service.name for service in services},
-            Equals(REGION_SERVICES | RACK_SERVICES),
         )
 
     def test_creates_services_when_rack_controller_becomes_just_region(self):
@@ -207,8 +205,8 @@ class TestNodeCreateServices(MAASServerTestCase):
         controller.node_type = NODE_TYPE.REGION_CONTROLLER
         controller.save()
         services = Service.objects.filter(node=controller)
-        self.assertThat(
-            {service.name for service in services}, Equals(REGION_SERVICES)
+        self.assertEqual(
+            REGION_SERVICES, {service.name for service in services}
         )
 
 

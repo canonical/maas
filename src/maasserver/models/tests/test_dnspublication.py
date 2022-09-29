@@ -159,7 +159,7 @@ class TestDNSPublicationManager(MAASServerTestCase):
             return {now - pub.created for pub in pubs}
 
         deltas = set(publications)
-        self.assertThat(get_ages(), Equals(deltas))
+        self.assertEqual(deltas, get_ages())
 
         one_second = timedelta(seconds=1)
         # Work from oldest to youngest again, collecting garbage each time.
@@ -167,14 +167,14 @@ class TestDNSPublicationManager(MAASServerTestCase):
             delta = max(deltas)
             # Publications of exactly the specified age are not deleted.
             DNSPublication.objects.collect_garbage(now - delta)
-            self.assertThat(get_ages(), Equals(deltas))
+            self.assertEqual(deltas, get_ages())
             # Publications of just a second over are deleted.
             DNSPublication.objects.collect_garbage(now - delta + one_second)
-            self.assertThat(get_ages(), Equals(deltas - {delta}))
+            self.assertEqual(deltas - {delta}, get_ages())
             # We're done with this one.
             deltas.discard(delta)
 
         # The most recent publication will never be deleted.
         DNSPublication.objects.collect_garbage()
-        self.assertThat(get_ages(), Equals(deltas))
+        self.assertEqual(deltas, get_ages())
         self.assertThat(deltas, HasLength(1))

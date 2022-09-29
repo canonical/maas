@@ -7,7 +7,7 @@ import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from testtools import ExpectedException
-from testtools.matchers import Contains, Equals, Is, MatchesStructure, Not
+from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
@@ -266,7 +266,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         hostname = factory.make_name().lower()
         DNSResource.objects.update_dynamic_hostname(sip, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
+        self.assertIn(sip, dnsrr.ip_addresses.all())
 
     def test_coerces_to_valid_hostname(self):
         sip = factory.make_StaticIPAddress(
@@ -275,7 +275,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         hostname = "no tea"
         DNSResource.objects.update_dynamic_hostname(sip, hostname)
         dnsrr = DNSResource.objects.get(name="no-tea")
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
+        self.assertIn(sip, dnsrr.ip_addresses.all())
 
     def test_does_not_modify_existing_non_dynamic_records(self):
         sip_reserved = factory.make_StaticIPAddress(
@@ -288,8 +288,8 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         )
         DNSResource.objects.update_dynamic_hostname(sip_dynamic, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_reserved))
-        self.assertThat(dnsrr.ip_addresses.all(), Not(Contains(sip_dynamic)))
+        self.assertIn(sip_reserved, dnsrr.ip_addresses.all())
+        self.assertNotIn(sip_dynamic, dnsrr.ip_addresses.all())
 
     def test_updates_existing_dynamic_record(self):
         sip_before = factory.make_StaticIPAddress(
@@ -302,8 +302,8 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         )
         DNSResource.objects.update_dynamic_hostname(sip_after, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_after))
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_before))
+        self.assertIn(sip_after, dnsrr.ip_addresses.all())
+        self.assertIn(sip_before, dnsrr.ip_addresses.all())
 
     def test_skips_updating_already_added_ip(self):
         sip1 = factory.make_StaticIPAddress(
@@ -322,14 +322,14 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         )
         dnsrr.save(_created=before, _updated=before, force_update=True)
         dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertThat(dnsrr.updated, Equals(before))
-        self.assertThat(dnsrr.created, Equals(before))
+        self.assertEqual(before, dnsrr.updated)
+        self.assertEqual(before, dnsrr.created)
         # Test that the timestamps weren't updated after updating again.
         DNSResource.objects.update_dynamic_hostname(sip1, hostname)
         DNSResource.objects.update_dynamic_hostname(sip2, hostname)
         dnsrr = DNSResource.objects.get(name=hostname)
-        self.assertThat(dnsrr.updated, Equals(before))
-        self.assertThat(dnsrr.created, Equals(before))
+        self.assertEqual(before, dnsrr.updated)
+        self.assertEqual(before, dnsrr.created)
 
     def test_update_releases_obsolete_hostnames(self):
         sip = factory.make_StaticIPAddress(
@@ -340,7 +340,7 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         hostname_new = factory.make_name().lower()
         DNSResource.objects.update_dynamic_hostname(sip, hostname_new)
         dnsrr = DNSResource.objects.get(name=hostname_new)
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
+        self.assertIn(sip, dnsrr.ip_addresses.all())
         self.assertThat(
             DNSResource.objects.filter(name=hostname_old).first(), Equals(None)
         )
@@ -354,9 +354,7 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         hostname = factory.make_name().lower()
         DNSResource.objects.update_dynamic_hostname(sip, hostname)
         DNSResource.objects.release_dynamic_hostname(sip)
-        self.assertThat(
-            DNSResource.objects.filter(name=hostname).first(), Equals(None)
-        )
+        self.assertIsNone(DNSResource.objects.filter(name=hostname).first())
 
     def test_releases_dynamic_hostname_keep_others(self):
         sip1 = factory.make_StaticIPAddress(
@@ -404,8 +402,8 @@ class TestReleaseDynamicHostname(MAASServerTestCase):
         dnsrr.ip_addresses.add(sip_reserved)
         DNSResource.objects.release_dynamic_hostname(sip)
         dnsrr = reload_object(dnsrr)
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip_reserved))
-        self.assertThat(dnsrr.ip_addresses.all(), Not(Contains(sip)))
+        self.assertIn(sip_reserved, dnsrr.ip_addresses.all())
+        self.assertNotIn(sip, dnsrr.ip_addresses.all())
 
 
 class TestStaticIPAddressSignals(MAASServerTestCase):
@@ -415,7 +413,7 @@ class TestStaticIPAddressSignals(MAASServerTestCase):
         dnsrr = factory.make_DNSResource()
         StaticIPAddress.objects.all().delete()
         dnsrr = reload_object(dnsrr)
-        self.assertThat(dnsrr, Is(None))
+        self.assertIsNone(dnsrr)
 
     def test_non_orphaned_record_not_deleted(self):
         dnsrr = factory.make_DNSResource(ip_addresses=["8.8.8.8", "8.8.4.4"])
@@ -423,4 +421,4 @@ class TestStaticIPAddressSignals(MAASServerTestCase):
         sip.delete()
         dnsrr = reload_object(dnsrr)
         sip = StaticIPAddress.objects.get(ip="8.8.8.8")
-        self.assertThat(dnsrr.ip_addresses.all(), Contains(sip))
+        self.assertIn(sip, dnsrr.ip_addresses.all())

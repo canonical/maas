@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 from django.core.exceptions import ValidationError
 from testtools import ExpectedException
-from testtools.matchers import Equals, GreaterThan, Is, Not
+from testtools.matchers import GreaterThan
 
 from maasserver.models import RDNS
 from maasserver.testing.factory import factory
@@ -22,7 +22,7 @@ class TestRDNSModel(MAASServerTestCase):
         rdns = factory.make_RDNS(hostname="Game room")
         # Expect no exception. We don't trust reverse DNS to always return
         # something that is valid.
-        self.assertThat(rdns.hostname, Equals("Game room"))
+        self.assertEqual("Game room", rdns.hostname)
 
 
 class TestRDNSManager(MAASServerTestCase):
@@ -33,12 +33,12 @@ class TestRDNSManager(MAASServerTestCase):
         region = factory.make_RegionController()
         rdns = factory.make_RDNS(ip="10.0.0.1", hostname="test.maas")
         result = RDNS.objects.get_current_entry("10.0.0.1", region)
-        self.assertThat(rdns.hostname, Equals(result.hostname))
+        self.assertEqual(result.hostname, rdns.hostname)
 
     def test_get_current_entry__returns_none_if_not_found(self):
         region = factory.make_RegionController()
         result = RDNS.objects.get_current_entry("10.0.0.1", region)
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)
 
     def test_allows_separate_observations_per_region(self):
         r1 = factory.make_RegionController()
@@ -47,9 +47,9 @@ class TestRDNSManager(MAASServerTestCase):
         rdns2 = factory.make_RDNS("10.0.0.1", "test.maasr2", r2)
         result1 = RDNS.objects.get_current_entry("10.0.0.1", r1)
         result2 = RDNS.objects.get_current_entry("10.0.0.1", r2)
-        self.assertThat(rdns1.id, Equals(result1.id))
-        self.assertThat(rdns2.id, Equals(result2.id))
-        self.assertThat(rdns1.id, Not(Equals(rdns2.id)))
+        self.assertEqual(result1.id, rdns1.id)
+        self.assertEqual(result2.id, rdns2.id)
+        self.assertNotEqual(rdns2.id, rdns1.id)
 
     def test_forbids_duplicate_observation_on_single_region(self):
         region = factory.make_RegionController()
@@ -64,9 +64,9 @@ class TestRDNSManager(MAASServerTestCase):
         with TwistedLoggerFixture() as logger:
             RDNS.objects.set_current_entry(ip, [hostname], region)
         result = RDNS.objects.first()
-        self.assertThat(result.ip, Equals(ip))
-        self.assertThat(result.hostname, Equals(hostname))
-        self.assertThat(result.hostnames, Equals([hostname]))
+        self.assertEqual(ip, result.ip)
+        self.assertEqual(hostname, result.hostname)
+        self.assertEqual([hostname], result.hostnames)
         self.assertThat(
             logger.output,
             DocTestMatches("New reverse DNS entry...resolves to..."),
@@ -82,8 +82,8 @@ class TestRDNSManager(MAASServerTestCase):
         with TwistedLoggerFixture() as logger:
             RDNS.objects.set_current_entry(ip, [hostname], region)
         result = RDNS.objects.first()
-        self.assertThat(result.ip, Equals(ip))
-        self.assertThat(result.hostname, Equals(hostname))
+        self.assertEqual(ip, result.ip)
+        self.assertEqual(hostname, result.hostname)
         self.assertThat(
             logger.output,
             DocTestMatches("Reverse DNS entry updated...resolves to..."),
@@ -100,9 +100,9 @@ class TestRDNSManager(MAASServerTestCase):
         # Then expect this function replaces it.
         RDNS.objects.set_current_entry(ip, [h1, h2, h3], region)
         result = RDNS.objects.first()
-        self.assertThat(result.ip, Equals(ip))
-        self.assertThat(result.hostname, Equals(h1))
-        self.assertThat(result.hostnames, Equals([h1, h2, h3]))
+        self.assertEqual(ip, result.ip)
+        self.assertEqual(h1, result.hostname)
+        self.assertEqual([h1, h2, h3], result.hostnames)
 
     def test_set_current_entry_updates_updated_time(self):
         region = factory.make_RegionController()
@@ -127,7 +127,7 @@ class TestRDNSManager(MAASServerTestCase):
         ip = factory.make_ip_address()
         with TwistedLoggerFixture() as logger:
             RDNS.objects.delete_current_entry(ip, region)
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
     def test_delete_current_entry_deletes_and_logs_if_entry_deleted(self):
         region = factory.make_RegionController()

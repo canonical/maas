@@ -29,8 +29,8 @@ class TagTest(MAASServerTestCase):
         self.assertEqual("//node[@id=display]", tag.definition)
         self.assertEqual("", tag.comment)
         self.assertEqual(tag.kernel_opts, "")
-        self.assertIsNot(None, tag.updated)
-        self.assertIsNot(None, tag.created)
+        self.assertIsNotNone(tag.updated)
+        self.assertIsNotNone(tag.created)
 
     def test_factory_make_Tag_with_hardware_details(self):
         tag = factory.make_Tag("a-tag", "true", kernel_opts="console=ttyS0")
@@ -38,8 +38,8 @@ class TagTest(MAASServerTestCase):
         self.assertEqual("true", tag.definition)
         self.assertEqual("", tag.comment)
         self.assertEqual("console=ttyS0", tag.kernel_opts)
-        self.assertIsNot(None, tag.updated)
-        self.assertIsNot(None, tag.created)
+        self.assertIsNotNone(tag.updated)
+        self.assertIsNotNone(tag.created)
 
     def test_add_tag_to_node(self):
         node = factory.make_Node()

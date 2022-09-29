@@ -10,14 +10,7 @@ from hypothesis import given, settings
 from hypothesis.strategies import integers
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 from testtools import ExpectedException
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    MatchesStructure,
-    Not,
-)
+from testtools.matchers import Equals, HasLength, Is, MatchesStructure
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -483,7 +476,7 @@ class TestSubnet(MAASServerTestCase):
             break
         else:
             subnet = None
-        self.assertThat(subnet, Equals(expected))
+        self.assertEqual(expected, subnet)
 
     def test_can_create_update_and_delete_subnet_with_attached_range(self):
         subnet = factory.make_Subnet(
@@ -757,7 +750,7 @@ class TestSubnet(MAASServerTestCase):
 
     def test_get_smallest_enclosing_sane_subnet_returns_none_when_none(self):
         subnet = factory.make_Subnet()
-        self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+        self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
 
     @settings(deadline=None)
     @given(integers(25, 29), integers(2, 5))
@@ -767,7 +760,7 @@ class TestSubnet(MAASServerTestCase):
         with rollback():  # Needed when using `hypothesis`.
             subnet = factory.make_Subnet(cidr="192.168.0.0/%d" % subnet_mask)
             net = IPNetwork(subnet.cidr)
-            self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+            self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
             parent = self.make_random_parent(net, bits=parent_bits)
             parent = factory.make_Subnet(cidr=parent.cidr)
             self.assertEqual(
@@ -782,7 +775,7 @@ class TestSubnet(MAASServerTestCase):
         with rollback():  # Needed when using `hypothesis`.
             subnet = factory.make_Subnet(cidr="2001:db8::d0/%d" % subnet_mask)
             net = IPNetwork(subnet.cidr)
-            self.assertEqual(None, subnet.get_smallest_enclosing_sane_subnet())
+            self.assertIsNone(subnet.get_smallest_enclosing_sane_subnet())
             parent = self.make_random_parent(net, bits=parent_bits)
             parent = factory.make_Subnet(cidr=parent.cidr)
             self.assertEqual(
@@ -829,24 +822,22 @@ class TestSubnetLabel(MAASServerTestCase):
     def test_returns_cidr_for_null_name(self):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name=None, cidr=network)
-        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+        self.assertEqual(str(subnet.cidr), subnet.label)
 
     def test_returns_cidr_for_empty_name(self):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name="", cidr=network)
-        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+        self.assertEqual(str(subnet.cidr), subnet.label)
 
     def test_returns_cidr_if_name_is_cidr(self):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name=str(network), cidr=network)
-        self.assertThat(subnet.label, Equals(str(subnet.cidr)))
+        self.assertEqual(str(subnet.cidr), subnet.label)
 
     def test_returns_name_and_cidr_if_name_is_different(self):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name=factory.make_string(prefix="net"), cidr=network)
-        self.assertThat(
-            subnet.label, Equals(f"{subnet.name} ({str(subnet.cidr)})")
-        )
+        self.assertEqual(f"{subnet.name} ({str(subnet.cidr)})", subnet.label)
 
 
 class TestSubnetIPRange(MAASServerTestCase):
@@ -861,8 +852,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
         s = subnet.get_ipranges_in_use()
-        self.assertThat(s, Contains(static_range_low))
-        self.assertThat(s, Not(Contains(static_range_high)))
+        self.assertIn(static_range_low, s)
+        self.assertNotIn(static_range_high, s)
 
     def test_finds_used_ranges_includes_discovered_ip(self):
         subnet = factory.make_Subnet(
@@ -875,8 +866,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
         s = subnet.get_ipranges_in_use()
-        self.assertThat(s, Contains(static_range_low))
-        self.assertThat(s, Not(Contains(static_range_high)))
+        self.assertIn(static_range_low, s)
+        self.assertNotIn(static_range_high, s)
 
     def test_finds_used_ranges_ignores_discovered_ip(self):
         subnet = factory.make_Subnet(
@@ -889,8 +880,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
         s = subnet.get_ipranges_in_use(ignore_discovered_ips=True)
-        self.assertThat(s, Not(Contains(static_range_low)))
-        self.assertThat(s, Not(Contains(static_range_high)))
+        self.assertNotIn(static_range_low, s)
+        self.assertNotIn(static_range_high, s)
 
     def test_get_ipranges_not_in_use_includes_free_ips(self):
         subnet = factory.make_Subnet(
@@ -903,8 +894,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
         s = subnet.get_ipranges_not_in_use()
-        self.assertThat(s, Not(Contains(static_range_low)))
-        self.assertThat(s, Contains(static_range_high))
+        self.assertNotIn(static_range_low, s)
+        self.assertIn(static_range_high, s)
 
     def test_get_ipranges_not_in_use_includes_discovered_ip(self):
         subnet = factory.make_Subnet(
@@ -917,8 +908,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
         s = subnet.get_ipranges_not_in_use()
-        self.assertThat(s, Not(Contains(static_range_low)))
-        self.assertThat(s, Contains(static_range_high))
+        self.assertNotIn(static_range_low, s)
+        self.assertIn(static_range_high, s)
 
     def test_get_ipranges_not_in_use_ignores_discovered_ip(self):
         subnet = factory.make_Subnet(
@@ -931,8 +922,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
         s = subnet.get_ipranges_not_in_use(ignore_discovered_ips=True)
-        self.assertThat(s, Contains(static_range_low))
-        self.assertThat(s, Contains(static_range_high))
+        self.assertIn(static_range_low, s)
+        self.assertIn(static_range_high, s)
 
     def test_get_ipranges_not_in_use_excludes_ip_range(self):
         subnet = factory.make_Subnet(
@@ -950,8 +941,8 @@ class TestSubnetIPRange(MAASServerTestCase):
         s = subnet.get_ipranges_not_in_use(
             ignore_discovered_ips=True, exclude_ip_ranges=[ip_range]
         )
-        self.assertThat(s, Contains(static_range_low))
-        self.assertThat(s, Contains(static_range_high))
+        self.assertIn(static_range_low, s)
+        self.assertIn(static_range_high, s)
 
     def test_get_iprange_usage_includes_used_and_unused_ips(self):
         subnet = factory.make_Subnet(
@@ -964,8 +955,8 @@ class TestSubnetIPRange(MAASServerTestCase):
             ip=static_range_low, alloc_type=IPADDRESS_TYPE.USER_RESERVED
         )
         s = subnet.get_iprange_usage()
-        self.assertThat(s, Contains(static_range_low))
-        self.assertThat(s, Contains(static_range_high))
+        self.assertIn(static_range_low, s)
+        self.assertIn(static_range_high, s)
 
     def test_get_iprange_usage_includes_static_route_gateway_ip(self):
         subnet = factory.make_Subnet(
@@ -978,8 +969,8 @@ class TestSubnetIPRange(MAASServerTestCase):
         factory.make_StaticRoute(source=subnet, gateway_ip=gateway_ip_1)
         factory.make_StaticRoute(source=subnet, gateway_ip=gateway_ip_2)
         s = subnet.get_iprange_usage()
-        self.assertThat(s, Contains(gateway_ip_1))
-        self.assertThat(s, Contains(gateway_ip_2))
+        self.assertIn(gateway_ip_1, s)
+        self.assertIn(gateway_ip_2, s)
 
     def get__get_iprange_usage_includes_neighbours_on_request(self):
         subnet = factory.make_Subnet(
@@ -988,9 +979,7 @@ class TestSubnetIPRange(MAASServerTestCase):
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
         iprange = subnet.get_iprange_usage(with_neighbours=True)
-        self.assertThat(
-            iprange, Contains(MAASIPRange("10.0.0.1", purpose="neighbour"))
-        )
+        self.assertIn(MAASIPRange("10.0.0.1", purpose="neighbour"), iprange)
 
     def get__get_iprange_usage_excludes_neighbours_by_default(self):
         subnet = factory.make_Subnet(
@@ -999,9 +988,9 @@ class TestSubnetIPRange(MAASServerTestCase):
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
         iprange = subnet.get_iprange_usage(with_neighbours=True)
-        self.assertThat(
+        self.assertNotIn(
+            MAASIPRange("10.0.0.1", purpose="neighbour"),
             iprange,
-            Not(Contains(MAASIPRange("10.0.0.1", purpose="neighbour"))),
         )
 
 
@@ -1038,10 +1027,10 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips(
             with_username=True, with_summary=True
         )
-        self.assertThat(type(json), Equals(list))
-        self.assertThat(
+        self.assertEqual(list, type(json))
+        self.assertEqual(
+            ip.render_json(with_username=True, with_summary=True),
             json[0],
-            Equals(ip.render_json(with_username=True, with_summary=True)),
         )
 
     def test_includes_node_summary(self):
@@ -1056,22 +1045,16 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips(
             with_username=True, with_summary=True
         )
-        self.assertThat(type(json), Equals(list))
+        self.assertEqual(list, type(json))
         for result in json:
             if result["ip"] == ip.ip:
-                self.assertThat(type(result["node_summary"]), Equals(dict))
+                self.assertEqual(dict, type(result["node_summary"]))
                 node_summary = result["node_summary"]
-                self.assertThat(node_summary["fqdn"], Equals(node.fqdn))
-                self.assertThat(node_summary["via"], Equals(iface.name))
-                self.assertThat(
-                    node_summary["system_id"], Equals(node.system_id)
-                )
-                self.assertThat(
-                    node_summary["node_type"], Equals(node.node_type)
-                )
-                self.assertThat(
-                    node_summary["hostname"], Equals(node.hostname)
-                )
+                self.assertEqual(node.fqdn, node_summary["fqdn"])
+                self.assertEqual(iface.name, node_summary["via"])
+                self.assertEqual(node.system_id, node_summary["system_id"])
+                self.assertEqual(node.node_type, node_summary["node_type"])
+                self.assertEqual(node.hostname, node_summary["hostname"])
                 return
         self.assertFalse(True, "Could not find IP address in output.")
 
@@ -1093,18 +1076,18 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips(
             with_username=True, with_summary=True
         )
-        self.assertThat(type(json), Equals(list))
+        self.assertEqual(list, type(json))
         for result in json:
             if result["ip"] == ip.ip:
-                self.assertThat(type(result["bmcs"]), Equals(list))
+                self.assertEqual(list, type(result["bmcs"]))
                 bmc_json = result["bmcs"][0]
-                self.assertThat(bmc_json["id"], Equals(bmc.id))
-                self.assertThat(bmc_json["power_type"], Equals(bmc.power_type))
-                self.assertThat(
-                    bmc_json["nodes"][0]["hostname"], Equals(node.hostname)
+                self.assertEqual(bmc.id, bmc_json["id"])
+                self.assertEqual(bmc.power_type, bmc_json["power_type"])
+                self.assertEqual(
+                    node.hostname, bmc_json["nodes"][0]["hostname"]
                 )
-                self.assertThat(
-                    bmc_json["nodes"][0]["system_id"], Equals(node.system_id)
+                self.assertEqual(
+                    node.system_id, bmc_json["nodes"][0]["system_id"]
                 )
                 return
         self.assertFalse(True, "Could not find IP address in output.")
@@ -1120,16 +1103,14 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips(
             with_username=True, with_summary=True
         )
-        self.assertThat(type(json), Equals(list))
+        self.assertEqual(list, type(json))
         for result in json:
             if result["ip"] == ip.ip:
-                self.assertThat(type(result["dns_records"]), Equals(list))
+                self.assertEqual(list, type(result["dns_records"]))
                 dns_json = result["dns_records"][0]
-                self.assertThat(dns_json["id"], Equals(dnsresource.id))
-                self.assertThat(dns_json["name"], Equals(dnsresource.name))
-                self.assertThat(
-                    dns_json["domain"], Equals(dnsresource.domain.name)
-                )
+                self.assertEqual(dnsresource.id, dns_json["id"])
+                self.assertEqual(dnsresource.name, dns_json["name"])
+                self.assertEqual(dnsresource.domain.name, dns_json["domain"])
                 return
         self.assertFalse(True, "Could not find IP address in output.")
 
@@ -1189,7 +1170,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
         self.assertThat(ranges, HasLength(1))
-        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.DYNAMIC))
+        self.assertEqual(IPRANGE_TYPE.DYNAMIC, ranges[0].type)
 
     def test_get_dynamic_ranges_returns_unmanaged_dynamic_range_filter(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -1198,7 +1179,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
         self.assertThat(ranges, HasLength(1))
-        self.assertThat(ranges[0].type, Equals(IPRANGE_TYPE.DYNAMIC))
+        self.assertEqual(IPRANGE_TYPE.DYNAMIC, ranges[0].type)
 
     def test_get_dynamic_range_for_ip(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -1216,15 +1197,15 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
                 )
             )
         )
-        self.assertThat(subnet.get_dynamic_range_for_ip("0.0.0.0"), Is(None))
-        self.assertThat(
-            subnet.get_dynamic_range_for_ip(start_ip), Equals(dynamic_range)
+        self.assertIsNone(subnet.get_dynamic_range_for_ip("0.0.0.0"))
+        self.assertEqual(
+            dynamic_range, subnet.get_dynamic_range_for_ip(start_ip)
         )
-        self.assertThat(
-            subnet.get_dynamic_range_for_ip(end_ip), Equals(dynamic_range)
+        self.assertEqual(
+            dynamic_range, subnet.get_dynamic_range_for_ip(end_ip)
         )
-        self.assertThat(
-            subnet.get_dynamic_range_for_ip(random_ip), Equals(dynamic_range)
+        self.assertEqual(
+            dynamic_range, subnet.get_dynamic_range_for_ip(random_ip)
         )
 
 
@@ -1236,8 +1217,8 @@ class TestSubnetGetMAASIPSetForNeighbours(MAASServerTestCase):
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
         ipset = subnet.get_maasipset_for_neighbours()
-        self.assertThat(ipset, Contains("10.0.0.1"))
-        self.assertThat(ipset, Not(Contains("10.0.0.2")))
+        self.assertIn("10.0.0.1", ipset)
+        self.assertNotIn("10.0.0.2", ipset)
 
     def test_excludes_neighbours_with_static_ip_addresses(self):
         subnet = factory.make_Subnet(
@@ -1247,8 +1228,8 @@ class TestSubnetGetMAASIPSetForNeighbours(MAASServerTestCase):
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
         factory.make_StaticIPAddress(ip="10.0.0.1", cidr="10.0.0.0/30")
         ipset = subnet.get_maasipset_for_neighbours()
-        self.assertThat(ipset, Not(Contains("10.0.0.1")))
-        self.assertThat(ipset, Not(Contains("10.0.0.2")))
+        self.assertNotIn("10.0.0.1", ipset)
+        self.assertNotIn("10.0.0.2", ipset)
 
 
 class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
@@ -1265,7 +1246,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             ip="10.0.0.2", interface=rackif, updated=yesterday
         )
         discovery = subnet.get_least_recently_seen_unknown_neighbour()
-        self.assertThat(discovery.ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", discovery.ip)
 
     def test_returns_least_recently_seen_neighbour_excludes_in_use(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1286,7 +1267,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
         discovery = subnet.get_least_recently_seen_unknown_neighbour()
-        self.assertThat(discovery.ip, Equals("10.0.0.1"))
+        self.assertEqual("10.0.0.1", discovery.ip)
 
     def test_returns_least_recently_seen_neighbour_handles_unmanaged(self):
         # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
@@ -1314,7 +1295,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
         discovery = subnet.get_least_recently_seen_unknown_neighbour()
-        self.assertThat(discovery.ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", discovery.ip)
 
     def test_returns_none_if_no_neighbours(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1322,7 +1303,7 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
         ip = subnet.get_least_recently_seen_unknown_neighbour()
-        self.assertThat(ip, Is(None))
+        self.assertIsNone(ip)
 
 
 class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
@@ -1371,7 +1352,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.1"))
+        self.assertEqual("10.0.0.1", ip)
 
     def test_avoids_gateway_ip(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1379,7 +1360,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=None
         )
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", ip)
 
     def test_avoids_excluded_addresses(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1387,7 +1368,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
         ip = subnet.get_next_ip_for_allocation(exclude_addresses=["10.0.0.1"])
-        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", ip)
 
     def test_avoids_dns_servers(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1395,7 +1376,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=["10.0.0.1"]
         )
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", ip)
 
     def test_avoids_observed_neighbours(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1405,7 +1386,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", ip)
 
     def test_logs_if_suggests_previously_observed_neighbour(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
@@ -1421,7 +1402,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         )
         logger = self.useFixture(FakeLogger("maas"))
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", ip)
         self.assertThat(
             logger.output,
             DocTestMatches("Next IP address...observed previously..."),
@@ -1437,7 +1418,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         # available range.
         factory.make_StaticIPAddress(ip="10.0.0.4", cidr="10.0.0.0/29")
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.5"))
+        self.assertEqual("10.0.0.5", ip)
 
 
 class TestUnmanagedSubnets(MAASServerTestCase):
@@ -1457,7 +1438,7 @@ class TestUnmanagedSubnets(MAASServerTestCase):
         )
         subnet = reload_object(subnet)
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.1"))
+        self.assertEqual("10.0.0.1", ip)
         range1.delete()
         factory.make_IPRange(
             subnet,
@@ -1467,7 +1448,7 @@ class TestUnmanagedSubnets(MAASServerTestCase):
         )
         subnet = reload_object(subnet)
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.6"))
+        self.assertEqual("10.0.0.6", ip)
 
     def test_allocation_uses_multiple_reserved_ranges(self):
         # Note: 10.0.0.0/29 --> 10.0.0.1 through 10.0.0.0.6 are usable.
@@ -1485,10 +1466,10 @@ class TestUnmanagedSubnets(MAASServerTestCase):
         )
         subnet = reload_object(subnet)
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.3"))
+        self.assertEqual("10.0.0.3", ip)
         factory.make_StaticIPAddress(ip)
         ip = subnet.get_next_ip_for_allocation()
-        self.assertThat(ip, Equals("10.0.0.4"))
+        self.assertEqual("10.0.0.4", ip)
         factory.make_StaticIPAddress(ip)
         with ExpectedException(
             StaticIPAddressExhaustion,
@@ -1657,7 +1638,7 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         notification_exists = notification is not None
         # By now, the notification should never have been created. (If so,
         # it was created too early.)
-        self.assertThat(notification_exists, Equals(False))
+        self.assertFalse(notification_exists)
         factory.make_StaticIPAddress(
             ip=str(IPAddress(range_end + 1)),
             subnet=self.subnet,
@@ -1667,9 +1648,7 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         notification_exists = notification is not None
         # ... but creating another single IP address in the subnet should push
         # it over the edge.
-        self.assertThat(
-            notification_exists, Equals(self.expected_notification)
-        )
+        self.assertEqual(self.expected_notification, notification_exists)
 
     def test_notification_when_range_saved(self):
         # Calculate a range size large enough to push us over the threshold.
@@ -1689,9 +1668,7 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         ident = "ip_exhaustion__subnet_%d" % self.subnet.id
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(
-            notification_exists, Equals(self.expected_notification)
-        )
+        self.assertEqual(self.expected_notification, notification_exists)
 
     def test_notification_cleared_when_range_deleted(self):
         # Calculate a range size large enough to push us over the threshold.
@@ -1711,13 +1688,11 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         ident = "ip_exhaustion__subnet_%d" % self.subnet.id
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(
-            notification_exists, Equals(self.expected_notification)
-        )
+        self.assertEqual(self.expected_notification, notification_exists)
         range.delete()
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(notification_exists, Equals(False))
+        self.assertFalse(notification_exists)
 
     def test_notification_cleared_on_next_save_if_threshold_changes(self):
         # Calculate a range size large enough to push us over the threshold.
@@ -1737,14 +1712,12 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         ident = "ip_exhaustion__subnet_%d" % self.subnet.id
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(
-            notification_exists, Equals(self.expected_notification)
-        )
+        self.assertEqual(self.expected_notification, notification_exists)
         Config.objects.set_config("subnet_ip_exhaustion_threshold_count", 0)
         range.save(force_update=True)
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(notification_exists, Equals(False))
+        self.assertFalse(notification_exists)
 
     def test_notification_cleared_when_ip_deleted(self):
         # Create an IP range to fill ip most of the subnet, but not enough
@@ -1774,7 +1747,7 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         notification_exists = notification is not None
         # By now, the notification should never have been created. (If so,
         # it was created too early.)
-        self.assertThat(notification_exists, Equals(False))
+        self.assertFalse(notification_exists)
         ip = factory.make_StaticIPAddress(
             ip=str(IPAddress(range_end + 1)),
             subnet=self.subnet,
@@ -1784,13 +1757,11 @@ class TestSubnetIPExhaustionNotifications(MAASServerTestCase):
         notification_exists = notification is not None
         # ... but creating another single IP address in the subnet should push
         # it over the edge.
-        self.assertThat(
-            notification_exists, Equals(self.expected_notification)
-        )
+        self.assertEqual(self.expected_notification, notification_exists)
         ip.delete()
         notification = get_one(Notification.objects.filter(ident=ident))
         notification_exists = notification is not None
-        self.assertThat(notification_exists, Equals(False))
+        self.assertFalse(notification_exists)
 
 
 class TestGetAllocatedIps(MAASServerTestCase):

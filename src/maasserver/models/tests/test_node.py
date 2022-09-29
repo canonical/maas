@@ -222,9 +222,9 @@ class TestGenerateNodeSystemID(MAASServerTestCase):
         used_system_num = znums.to_int(used_system_id)
         randrange = self.patch_autospec(random, "randrange")
         randrange.side_effect = [used_system_num, used_system_num + 1]
-        self.assertThat(
+        self.assertEqual(
+            znums.from_int(used_system_num + 1),
             generate_node_system_id(),
-            Equals(znums.from_int(used_system_num + 1)),
         )
 
     def test_crashes_after_1000_iterations(self):
@@ -262,7 +262,7 @@ class TestTypeCastToNodeType(MAASServerTestCase):
             NODE_TYPE.REGION_AND_RACK_CONTROLLER: RackController,
             NODE_TYPE.REGION_CONTROLLER: RegionController,
         }
-        self.assertThat(casts.keys(), Equals(node_types))
+        self.assertEqual(node_types, casts.keys())
         for node_type, cast_type in casts.items():
             node.node_type = node_type
             node_as_self = node.as_self()
@@ -547,8 +547,8 @@ class TestRackControllerManager(MAASServerTestCase):
         rack = factory.make_RackController()
         self.useFixture(MAASIDFixture(rack.system_id))
         rack_running = RackController.objects.get_running_controller()
-        self.assertThat(rack_running, Equals(rack))
-        self.assertThat(rack_running, IsInstance(RackController))
+        self.assertEqual(rack, rack_running)
+        self.assertIsInstance(rack_running, RackController)
 
     def test_filter_by_url_accessible_finds_correct_racks(self):
         accessible_subnet = factory.make_Subnet()
@@ -692,8 +692,8 @@ class TestRegionControllerManager(MAASServerTestCase):
         region = factory.make_RegionController()
         self.useFixture(MAASIDFixture(region.system_id))
         region_running = RegionController.objects.get_running_controller()
-        self.assertThat(region_running, IsInstance(RegionController))
-        self.assertThat(region_running, Equals(region))
+        self.assertIsInstance(region_running, RegionController)
+        self.assertEqual(region, region_running)
 
     def test_get_running_controller_crashes_when_maas_id_is_not_set(self):
         self.useFixture(MAASIDFixture(None))
@@ -831,7 +831,7 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         region = self.get_or_create_running_controller()
 
         # The type returned is always RegionController.
-        self.assertThat(region, IsInstance(RegionController))
+        self.assertIsInstance(region, RegionController)
         # The MAAS ID always matches the controller's.
         self.assertEqual(MAAS_ID.get(), region.system_id)
 
@@ -864,12 +864,12 @@ class TestRegionControllerManagerGetOrCreateRunningController(
 
     def assertControllerDiscovered(self, region, host, owner):
         # The controller discovered is the original host.
-        self.assertThat(region.id, Equals(host.id))
+        self.assertEqual(host.id, region.id)
         # When the discovered host record is not owned the worker user is
         # used, otherwise existing ownership remains intact.
-        self.assertThat(
+        self.assertEqual(
+            get_worker_user() if owner is None else region.owner,
             region.owner,
-            Equals(get_worker_user() if owner is None else region.owner),
         )
         # The host has been upgraded to the expected type.
         self.assertThat(
@@ -885,9 +885,9 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         # A controller is created and it is always a region controller.
         self.assertEqual(NODE_TYPE.REGION_CONTROLLER, region.node_type)
         # It's new; the primary key differs from the host we planted.
-        self.assertThat(region.id, Not(Equals(host.id)))
+        self.assertNotEqual(host.id, region.id)
         # It's a fresh controller so the worker user is always owner.
-        self.assertThat(region.owner, Equals(get_worker_user()))
+        self.assertEqual(get_worker_user(), region.owner)
 
 
 class TestDeviceManager(MAASServerTestCase):
@@ -899,7 +899,7 @@ class TestDeviceManager(MAASServerTestCase):
 
     def test_empty_architecture_accepted_for_type_device(self):
         device = factory.make_Device(architecture="")
-        self.assertThat(device, IsInstance(Device))
+        self.assertIsInstance(device, Device)
         self.assertEqual("", device.architecture)
 
 
@@ -2189,9 +2189,9 @@ class TestNode(MAASServerTestCase):
         user_data = node_start.call_args[0][1]
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
         user_data_script = parsed_data.get_payload()[0]
-        self.assertThat(
+        self.assertIn(
+            b"maas-wipe --secure-erase --quick-erase",
             base64.b64decode(user_data_script.get_payload()),
-            Contains(b"maas-wipe --secure-erase --quick-erase"),
         )
 
     def test_start_disk_erasing_uses_passed_values(self):
@@ -2211,9 +2211,9 @@ class TestNode(MAASServerTestCase):
         user_data = node_start.call_args[0][1]
         parsed_data = email.message_from_string(user_data.decode("utf-8"))
         user_data_script = parsed_data.get_payload()[0]
-        self.assertThat(
+        self.assertIn(
+            b"maas-wipe --secure-erase --quick-erase",
             base64.b64decode(user_data_script.get_payload()),
-            Contains(b"maas-wipe --secure-erase --quick-erase"),
         )
 
     def test_start_disk_erasing_changes_state_and_starts_node(self):
@@ -3978,7 +3978,7 @@ class TestNode(MAASServerTestCase):
             node._set_status,
             MockCalledOnceWith(node.system_id, status=NODE_STATUS.NEW),
         )
-        self.assertThat(node.owner, Is(None))
+        self.assertIsNone(node.owner)
 
     def test_start_testing_mode_raises_PermissionDenied_if_no_edit(self):
         user = factory.make_User()
@@ -4677,7 +4677,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED
         )
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_update_power_state_clear_status_expires_if_releasing(self):
         node = factory.make_Node(
@@ -4702,7 +4702,7 @@ class TestNode(MAASServerTestCase):
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED
         )
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_update_power_state_release_interface_config_if_releasing(self):
         node = factory.make_Node(
@@ -4740,7 +4740,7 @@ class TestNode(MAASServerTestCase):
             previous_status=previous_status,
         )
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.status, Equals(previous_status))
+        self.assertEqual(previous_status, node.status)
 
     def test_update_power_state_sets_status_to_deployed(self):
         node = factory.make_Node(
@@ -4748,7 +4748,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED,
         )
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
     def test_update_power_state_fails_exiting_rescue_mode_for_ready(self):
         node = factory.make_Node(
@@ -4756,9 +4756,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.READY,
         )
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(
-            node.status, Equals(NODE_STATUS.FAILED_EXITING_RESCUE_MODE)
-        )
+        self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
 
     def test_update_power_state_fails_exiting_rescue_mode_for_broken(self):
         node = factory.make_Node(
@@ -4766,9 +4764,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.BROKEN,
         )
         node.update_power_state(POWER_STATE.ON)
-        self.assertThat(
-            node.status, Equals(NODE_STATUS.FAILED_EXITING_RESCUE_MODE)
-        )
+        self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
 
     def test_update_power_state_fails_exiting_rescue_mode_for_deployed(self):
         node = factory.make_Node(
@@ -4776,9 +4772,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED,
         )
         node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(
-            node.status, Equals(NODE_STATUS.FAILED_EXITING_RESCUE_MODE)
-        )
+        self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
 
     def test_update_power_state_fails_exiting_rescue_mode_status_msg(self):
         node = factory.make_Node(
@@ -4798,7 +4792,7 @@ class TestNode(MAASServerTestCase):
         )
         node.update_power_state(POWER_STATE.ON)
         event = Event.objects.get(node=node)
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertEqual(event.type.name, EVENT_TYPES.EXITED_RESCUE_MODE)
 
     def test_update_power_state_creates_status_message_for_non_deployed(self):
@@ -4808,7 +4802,7 @@ class TestNode(MAASServerTestCase):
         )
         node.update_power_state(POWER_STATE.OFF)
         event = Event.objects.get(node=node)
-        self.assertThat(node.status, Equals(NODE_STATUS.READY))
+        self.assertEqual(NODE_STATUS.READY, node.status)
         self.assertEqual(event.type.name, EVENT_TYPES.EXITED_RESCUE_MODE)
 
     def test_end_deployment_changes_state_and_creates_sts_msg(self):
@@ -4934,7 +4928,7 @@ class TestNode(MAASServerTestCase):
         )
         node.save()
         node.boot_interface.delete()
-        self.assertThat(reload_object(node), Not(Is(None)))
+        self.assertIsNotNone(reload_object(node))
 
     def test_get_pxe_mac_vendor_returns_vendor(self):
         node = factory.make_Node()
@@ -6400,7 +6394,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("virsh", parameters)
         node.save()
         self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(None, node.bmc.ip_address)
+        self.assertIsNone(node.bmc.ip_address)
 
     def test_power_parameters_blank_ip_address_tolerated(self):
         node = factory.make_Node()
@@ -6408,7 +6402,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("hmc", parameters)
         node.save()
         self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(None, node.bmc.ip_address)
+        self.assertIsNone(node.bmc.ip_address)
 
     def test_power_parameters_ip_address_reset(self):
         node = factory.make_Node()
@@ -6433,7 +6427,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("hmc", parameters)
         node.save()
         self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(None, node.bmc.ip_address)
+        self.assertIsNone(node.bmc.ip_address)
 
         # StaticIPAddress can be changed after being made None.
         ip_address = factory.make_ipv4_address()
@@ -7899,10 +7893,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         expected_gateways = DefaultGateways(
             nic0_gw, nic1_gw, [nic0_gw, nic1_gw]
         )
-        self.assertThat(node.get_default_gateways(), Equals(expected_gateways))
+        self.assertEqual(expected_gateways, node.get_default_gateways())
         node._clear_networking_configuration()
-        self.assertThat(node.gateway_link_ipv4, Equals(None))
-        self.assertThat(node.gateway_link_ipv6, Equals(None))
+        self.assertIsNone(node.gateway_link_ipv4)
+        self.assertIsNone(node.gateway_link_ipv6)
 
     def test_get_default_gateways_returns_priority_and_complete_list(self):
         node = factory.make_Node()
@@ -7955,7 +7949,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         expected_gateways = DefaultGateways(
             nic0_gw, nic1_gw, [nic0_gw, nic2_gw, nic1_gw]
         )
-        self.assertThat(node.get_default_gateways(), Equals(expected_gateways))
+        self.assertEqual(expected_gateways, node.get_default_gateways())
 
     def test_set_initial_net_config_does_nothing_if_skip_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(skip_networking=True)
@@ -8755,7 +8749,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+        self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_rack_ipv4_if_ipv4_only_with_no_gateway_v4_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
@@ -8766,7 +8760,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_gateway=False,
             ipv4_subnet_dns=[ipv4_subnet_dns],
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+        self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_rack_ipv6_if_ipv6_only_with_no_gateway_v6_dns(self):
         ipv6_subnet_dns = factory.make_ip_address(ipv6=True)
@@ -8777,35 +8771,31 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6_gateway=False,
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+        self.assertEqual([rack_v6], node.get_default_dns_servers())
 
     def test_uses_rack_ipv6_if_dual_stack_with_no_gateway_and_told(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
-        self.assertThat(
-            node.get_default_dns_servers(ipv4=False), Equals([rack_v6])
-        )
+        self.assertEqual([rack_v6], node.get_default_dns_servers(ipv4=False))
 
     def test_uses_rack_ipv6_if_dual_stack_with_dual_gateway_and_told(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=True
         )
-        self.assertThat(
-            node.get_default_dns_servers(ipv4=False), Equals([rack_v6])
-        )
+        self.assertEqual([rack_v6], node.get_default_dns_servers(ipv4=False))
 
     def test_uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+        self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_rack_ipv4_if_dual_stack_with_ipv4_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=True, ipv6_gateway=False
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+        self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_subnet_ipv4_if_dual_stack_with_ipv4_gateway_with_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
@@ -8818,15 +8808,15 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4_subnet_dns=[ipv4_subnet_dns],
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
-        self.assertThat(
-            node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
+        self.assertEqual(
+            [rack_v4, ipv4_subnet_dns], node.get_default_dns_servers()
         )
 
     def test_uses_rack_ipv6_if_dual_stack_with_ipv6_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=True
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+        self.assertEqual([rack_v6], node.get_default_dns_servers())
 
     def test_uses_subnet_ipv6_if_dual_stack_with_ipv6_gateway(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
@@ -8839,15 +8829,15 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4_subnet_dns=[ipv4_subnet_dns],
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
-        self.assertThat(
-            node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
+        self.assertEqual(
+            [rack_v6, ipv6_subnet_dns], node.get_default_dns_servers()
         )
 
     def test_uses_rack_ipv4_if_ipv4_with_ipv4_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=True, ipv6=False, ipv6_gateway=False
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v4]))
+        self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_subnet_ipv4_if_ipv4_stack_with_ipv4_gateway_and_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
@@ -8860,15 +8850,15 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4_subnet_dns=[ipv4_subnet_dns],
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
-        self.assertThat(
-            node.get_default_dns_servers(), Equals([rack_v4, ipv4_subnet_dns])
+        self.assertEqual(
+            [rack_v4, ipv4_subnet_dns], node.get_default_dns_servers()
         )
 
     def test_uses_rack_ipv6_if_ipv6_with_ipv6_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=False, ipv4_gateway=False, ipv6=True, ipv6_gateway=True
         )
-        self.assertThat(node.get_default_dns_servers(), Equals([rack_v6]))
+        self.assertEqual([rack_v6], node.get_default_dns_servers())
 
     def test_uses_subnet_ipv6_if_ipv6_with_ipv6_gateway_and_dns(self):
         ipv4_subnet_dns = factory.make_ip_address(ipv6=False)
@@ -8881,8 +8871,8 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4_subnet_dns=[ipv4_subnet_dns],
             ipv6_subnet_dns=[ipv6_subnet_dns],
         )
-        self.assertThat(
-            node.get_default_dns_servers(), Equals([rack_v6, ipv6_subnet_dns])
+        self.assertEqual(
+            [rack_v6, ipv6_subnet_dns], node.get_default_dns_servers()
         )
 
     def test_uses_other_routeable_rack_controllers_ipv4(self):
@@ -8929,7 +8919,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         # Regression test for LP:1847537
         rack_v4, rack_v6, node = self.make_Node_with_RackController()
         Subnet.objects.update(allow_dns=False)
-        self.assertThat(node.get_default_dns_servers(), Equals([]))
+        self.assertEqual([], node.get_default_dns_servers())
 
     def test_uses_subnet_ipv4_dns_only(self):
         # Regression test for LP:1847537
@@ -9362,8 +9352,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         interface = node.get_boot_interface()
         [ip] = interface.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.AUTO)
-        self.assertThat(ip.ip, Not(Is(None)))
-        self.assertThat(ip.temp_expires_on, Is(None))
+        self.assertIsNotNone(ip.ip)
+        self.assertIsNone(ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_skips_used_ip_from_rack(self):
         user = factory.make_User()
@@ -9452,8 +9442,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertThat(auto_ip.ip, Equals(third_ip.ip))
-        self.assertThat(auto_ip.temp_expires_on, Is(None))
+        self.assertEqual(third_ip.ip, auto_ip.ip)
+        self.assertIsNone(auto_ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_skips_used_ip_discovery_disabled(self):
         user = factory.make_User()
@@ -9517,8 +9507,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertThat(auto_ip.ip, Equals(ip2))
-        self.assertThat(auto_ip.temp_expires_on, Is(None))
+        self.assertEqual(ip2, auto_ip.ip)
+        self.assertIsNone(auto_ip.temp_expires_on)
         self.assertCountEqual(
             [ip1], Neighbour.objects.values_list("ip", flat=True)
         )
@@ -9570,8 +9560,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertThat(auto_ip.ip, Equals(first_ip.ip))
-        self.assertThat(auto_ip.temp_expires_on, Is(None))
+        self.assertEqual(first_ip.ip, auto_ip.ip)
+        self.assertIsNone(auto_ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_fails_on_three_failures(self):
         user = factory.make_User()
@@ -9619,8 +9609,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertThat(auto_ip.ip, Equals(first_ip.ip))
-        self.assertThat(auto_ip.temp_expires_on, Is(None))
+        self.assertEqual(first_ip.ip, auto_ip.ip)
+        self.assertIsNone(auto_ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_eventually_succeds_with_many_used(self):
         user = factory.make_User()
@@ -9794,7 +9784,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
 
         # Now DEPLOYING.
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYING))
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
         # Calls _claim_auto_ips.
         self.assertThat(mock_claim_auto_ips, MockCalledOnce())
@@ -11446,7 +11436,7 @@ class TestRackController(MAASTransactionServerTestCase):
     def test_list_boot_images_when_disconnected(self):
         rack_controller = factory.make_RackController()
         images = rack_controller.list_boot_images()
-        self.assertEqual(False, images["connected"])
+        self.assertFalse(images["connected"])
         self.assertCountEqual([], images["images"])
         self.assertEqual("unknown", images["status"])
         self.assertEqual("unknown", rack_controller.get_image_sync_status())
@@ -11457,7 +11447,7 @@ class TestRackController(MAASTransactionServerTestCase):
             boot_images, "get_boot_images"
         ).side_effect = ConnectionClosed()
         images = rack_controller.list_boot_images()
-        self.assertEqual(False, images["connected"])
+        self.assertFalse(images["connected"])
         self.assertCountEqual([], images["images"])
         self.assertEqual("unknown", images["status"])
         self.assertEqual("unknown", rack_controller.get_image_sync_status())
@@ -11585,33 +11575,31 @@ class TestControllerGetDiscoveryState(MAASServerTestCase):
         eth1 = factory.make_Interface(node=rack, name="eth1")
         factory.make_Interface(node=rack, name="eth2")
         monitoring_state = rack.get_discovery_state()
-        self.assertThat(monitoring_state, Contains("eth0"))
-        self.assertThat(monitoring_state, Contains("eth1"))
-        self.assertThat(monitoring_state, Contains("eth2"))
-        self.assertThat(
-            monitoring_state["eth1"], Equals(eth1.get_discovery_state())
-        )
+        self.assertIn("eth0", monitoring_state)
+        self.assertIn("eth1", monitoring_state)
+        self.assertIn("eth2", monitoring_state)
+        self.assertEqual(eth1.get_discovery_state(), monitoring_state["eth1"])
 
 
 class TestNodeGetHostedPods(MAASServerTestCase):
     def test_returns_queryset(self):
         node = factory.make_Node()
         pods = node.get_hosted_pods()
-        self.assertThat(pods, IsInstance(QuerySet))
+        self.assertIsInstance(pods, QuerySet)
 
     def test_returns_related_pods_by_ip(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         ip = factory.make_StaticIPAddress(interface=node.boot_interface)
         pod = factory.make_Pod(ip_address=ip)
         pods = node.get_hosted_pods()
-        self.assertThat(pods, Contains(pod))
+        self.assertIn(pod, pods)
 
     def test_returns_related_pods_by_association(self):
         pod = factory.make_Pod()
         node = factory.make_Node()
         pod.hints.nodes.add(node)
         pods = node.get_hosted_pods()
-        self.assertThat(pods, Contains(pod))
+        self.assertIn(pod, pods)
 
 
 class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):

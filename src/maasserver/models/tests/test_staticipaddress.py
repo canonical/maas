@@ -283,9 +283,9 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 subnet=factory.make_managed_Subnet(),
             )
             # Aquisition of `address_allocation` is pending.
-            self.assertThat(
+            self.assertEqual(
+                [locks.address_allocation],
                 list(orm.retry_context.stack._cm_pending),
-                Equals([locks.address_allocation]),
             )
 
     def test_allocate_new_propagates_other_integrity_errors(self):
@@ -1718,7 +1718,7 @@ class TestRenderJSON(MAASServerTestCase):
             json["updated"], Equals(dehydrate_datetime(ip.updated))
         )
         self.expectThat(json["user"], Equals(user.username))
-        self.assertThat(json, Contains("node_summary"))
+        self.assertIn("node_summary", json)
         node_summary = json["node_summary"]
         self.expectThat(node_summary["system_id"], Equals(node.system_id))
         self.expectThat(node_summary["node_type"], Equals(node.node_type))
@@ -1727,15 +1727,15 @@ class TestRenderJSON(MAASServerTestCase):
 class TestAllocTypeName(MAASServerTestCase):
     def test_provides_human_readable_values_for_known_types(self):
         ip = factory.make_StaticIPAddress()
-        self.assertThat(
+        self.assertEqual(
+            IPADDRESS_TYPE_CHOICES_DICT[ip.alloc_type],
             ip.alloc_type_name,
-            Equals(IPADDRESS_TYPE_CHOICES_DICT[ip.alloc_type]),
         )
 
     def test_returns_empty_string_for_unknown_types(self):
         ip = factory.make_StaticIPAddress()
         ip.alloc_type = randint(2**16, 2**32)
-        self.assertThat(ip.alloc_type_name, Equals(""))
+        self.assertEqual("", ip.alloc_type_name)
 
 
 class TestUniqueConstraints(MAASServerTestCase):
@@ -1783,6 +1783,6 @@ class TestUniqueConstraints(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.STICKY
         )
-        self.assertThat(
-            StaticIPAddress.objects.filter(ip="10.0.0.1").count(), Equals(2)
+        self.assertEqual(
+            2, StaticIPAddress.objects.filter(ip="10.0.0.1").count()
         )

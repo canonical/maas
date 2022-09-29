@@ -196,7 +196,7 @@ class TestVMCluster(MAASServerTestCase):
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.storage.allocated, storage_allocated)
         for pool in resources.storage_pools.values():
-            self.assertEqual(pool.shared, False)
+            self.assertFalse(pool.shared)
 
         self.assertEqual(
             resources.storage.free, storage_total - storage_allocated
@@ -246,7 +246,7 @@ class TestVMCluster(MAASServerTestCase):
         self.assertEqual(resources.memory.hugepages.free, 0)
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.storage.allocated, storage_allocated)
-        self.assertEqual(resources.storage_pools[pool_name].shared, True)
+        self.assertTrue(resources.storage_pools[pool_name].shared)
         self.assertEqual(
             resources.storage_pools[pool_name].allocated, storage_allocated
         )
@@ -439,7 +439,7 @@ class TestVMCluster(MAASServerTestCase):
             storage_nonshared_allocated += disk_size
 
         cluster_pools = cluster.storage_pools()
-        self.assertEqual(cluster_pools[pool_nonshared_name].shared, False)
+        self.assertFalse(cluster_pools[pool_nonshared_name].shared)
         self.assertEqual(cluster_pools[pool_nonshared_name].path, "/")
         self.assertEqual(cluster_pools[pool_nonshared_name].backend, "lvm")
         self.assertEqual(
@@ -450,7 +450,7 @@ class TestVMCluster(MAASServerTestCase):
             cluster_pools[pool_nonshared_name].total,
             storage_nonshared_total,
         )
-        self.assertEqual(cluster_pools[pool_shared_name].shared, True)
+        self.assertTrue(cluster_pools[pool_shared_name].shared)
         self.assertEqual(cluster_pools[pool_shared_name].path, "/shared")
         self.assertEqual(cluster_pools[pool_shared_name].backend, "ceph")
         self.assertEqual(

@@ -415,22 +415,22 @@ class TestBMC(MAASServerTestCase):
 
     def test_bmc_extract_ip_address_empty_power_type_gives_none(self):
         power_parameters = {"power_address": "192.168.1.1"}
-        self.assertEqual(None, BMC.extract_ip_address("", power_parameters))
-        self.assertEqual(None, BMC.extract_ip_address(None, power_parameters))
+        self.assertIsNone(BMC.extract_ip_address("", power_parameters))
+        self.assertIsNone(BMC.extract_ip_address(None, power_parameters))
 
     def test_bmc_extract_ip_address_blank_gives_none(self):
-        self.assertEqual(None, BMC.extract_ip_address("hmc", None))
-        self.assertEqual(None, BMC.extract_ip_address("hmc", {}))
+        self.assertIsNone(BMC.extract_ip_address("hmc", None))
+        self.assertIsNone(BMC.extract_ip_address("hmc", {}))
 
         power_parameters = {"power_address": ""}
-        self.assertEqual(None, BMC.extract_ip_address("hmc", power_parameters))
+        self.assertIsNone(BMC.extract_ip_address("hmc", power_parameters))
 
         power_parameters = {"power_address": None}
-        self.assertEqual(None, BMC.extract_ip_address("hmc", power_parameters))
+        self.assertIsNone(BMC.extract_ip_address("hmc", power_parameters))
 
     def test_bmc_extract_ip_address_from_url_blank_gives_none(self):
-        self.assertEqual(None, BMC.extract_ip_address("virsh", None))
-        self.assertEqual(None, BMC.extract_ip_address("virsh", {}))
+        self.assertIsNone(BMC.extract_ip_address("virsh", None))
+        self.assertIsNone(BMC.extract_ip_address("virsh", {}))
 
         power_parameters = {"power_address": ""}
         self.assertEqual(
@@ -1240,10 +1240,10 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             parameters={"default_storage_pool": discovered_default.name}
         )
         pod.sync(discovered, factory.make_User())
-        self.assertThat(
-            pod.default_storage_pool.name, Equals(discovered_default.name)
+        self.assertEqual(
+            discovered_default.name, pod.default_storage_pool.name
         )
-        self.assertThat(pod.power_parameters, Equals({}))
+        self.assertEqual({}, pod.power_parameters)
 
     def test_sync_pod_sets_default_numanode(self):
         discovered_bdev = self.make_discovered_block_device()
@@ -1719,13 +1719,13 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             interface.name: interface
             for interface in machine.current_config.interface_set.all()
         }
-        self.assertThat(interfaces["eth0"].vlan, Equals(vlan))
-        self.assertThat(interfaces["eth1"].vlan, Equals(vlan2))
-        self.assertThat(interfaces["eth2"].vlan, Equals(vlan3))
+        self.assertEqual(vlan, interfaces["eth0"].vlan)
+        self.assertEqual(vlan2, interfaces["eth1"].vlan)
+        self.assertEqual(vlan3, interfaces["eth2"].vlan)
         # Make sure all interfaces also have a subnet link.
-        self.assertThat(interfaces["eth0"].ip_addresses.count(), Equals(1))
-        self.assertThat(interfaces["eth1"].ip_addresses.count(), Equals(1))
-        self.assertThat(interfaces["eth2"].ip_addresses.count(), Equals(1))
+        self.assertEqual(1, interfaces["eth0"].ip_addresses.count())
+        self.assertEqual(1, interfaces["eth1"].ip_addresses.count())
+        self.assertEqual(1, interfaces["eth2"].ip_addresses.count())
 
     def test_create_machine_sriov_vlan(self):
         self.patch(Machine, "set_default_storage_layout")
@@ -2135,7 +2135,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
-        self.assertThat(machine.bmc.id, Equals(pod.id))
+        self.assertEqual(pod.id, machine.bmc.id)
 
     def test_sync_keeps_rack_controller_pod_nodes(self):
         pod = factory.make_Pod()
@@ -2151,9 +2151,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         pod.sync(discovered_pod, factory.make_User())
         controller = reload_object(controller)
-        self.assertThat(
-            controller.node_type, Equals(NODE_TYPE.RACK_CONTROLLER)
-        )
+        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, controller.node_type)
 
     def test_sync_updates_machine_properties_for_dynamic(self):
         pod = factory.make_Pod()
@@ -2313,7 +2311,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine = reload_object(machine)
         old_bmc = reload_object(old_bmc)
         self.assertIsNone(old_bmc)
-        self.assertThat(machine.bmc, Equals(pod))
+        self.assertEqual(pod, machine.bmc)
 
     def test_sync_updates_machine_bmc_keeps_old_bmc(self):
         pod = factory.make_Pod()
@@ -2347,7 +2345,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine = reload_object(machine)
         old_bmc = reload_object(old_bmc)
         self.assertIsNotNone(old_bmc)
-        self.assertThat(machine.bmc.as_self(), Equals(pod))
+        self.assertEqual(pod, machine.bmc.as_self())
 
     def test_sync_updates_existing_machine_block_devices_for_dynamic(self):
         pod = factory.make_Pod()
@@ -3293,16 +3291,16 @@ class TestPodDefaultMACVlanMode(MAASServerTestCase):
         )
         pod.default_macvlan_mode = default_macvlan_mode
         pod.save()
-        self.assertThat(pod.default_macvlan_mode, Equals(default_macvlan_mode))
+        self.assertEqual(default_macvlan_mode, pod.default_macvlan_mode)
 
     def test_default_default_macvlan_mode_is_None(self):
         pod = factory.make_Pod()
-        self.assertThat(pod.default_macvlan_mode, Equals(None))
+        self.assertIsNone(pod.default_macvlan_mode)
 
 
 class TestGetRequestedIPs(MAASServerTestCase):
     def test_returns_empty_dict_if_no_requested_machine(self):
-        self.assertThat(get_requested_ips(None), Equals({}))
+        self.assertEqual({}, get_requested_ips(None))
 
     def test_returns_empty_dict_if_no_interfaces_are_named(self):
         interface = RequestedMachineInterface()
@@ -3311,7 +3309,7 @@ class TestGetRequestedIPs(MAASServerTestCase):
         requested_machine = RequestedMachine(
             factory.make_hostname(), "amd64", 1, 1024, [], interfaces
         )
-        self.assertThat(get_requested_ips(requested_machine), Equals({}))
+        self.assertEqual({}, get_requested_ips(requested_machine))
 
     def test_returns_ifname_to_ip_list_dict_if_specified(self):
         interface = RequestedMachineInterface(
@@ -3343,7 +3341,7 @@ class TestGetRequestedIPs(MAASServerTestCase):
         requested_machine = RequestedMachine(
             factory.make_hostname(), "amd64", 1, 1024, [], interfaces
         )
-        self.assertThat(
+        self.assertEqual(
+            {"eth0": ["10.0.0.1", "2001:db8::1"]},
             get_requested_ips(requested_machine),
-            Equals({"eth0": ["10.0.0.1", "2001:db8::1"]}),
         )

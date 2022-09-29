@@ -3,9 +3,6 @@
 
 """Tests for the Template model."""
 
-
-from testtools.matchers import Equals
-
 from maasserver.models import VersionedTextFile
 from maasserver.models.template import Template
 from maasserver.testing.testcase import MAASServerTestCase
@@ -20,21 +17,21 @@ class TemplateTest(MAASServerTestCase):
         )
         template.save()
         from_db = Template.objects.get(id=template.id)
-        self.assertThat(from_db.default_version.data, Equals("foo"))
+        self.assertEqual("foo", from_db.default_version.data)
 
     def test_creates_or_update_default_creates_new(self):
         Template.objects.create_or_update_default("foo", "bar")
         from_db = Template.objects.get(filename="foo")
-        self.assertThat(from_db.value, Equals("bar"))
+        self.assertEqual("bar", from_db.value)
 
     def test_creates_or_update_default_updates_existing(self):
         Template.objects.create_or_update_default("foo", "bar")
         Template.objects.create_or_update_default("foo", "bar2")
         from_db = Template.objects.get(filename="foo")
-        self.assertThat(from_db.value, Equals("bar2"))
+        self.assertEqual("bar2", from_db.value)
 
     def test_delete_related_versionedtextfile_deletes_template(self):
         Template.objects.create_or_update_default("foo", "bar")
-        self.assertThat(Template.objects.count(), Equals(1))
+        self.assertEqual(1, Template.objects.count())
         VersionedTextFile.objects.all().delete()
-        self.assertThat(Template.objects.count(), Equals(0))
+        self.assertEqual(0, Template.objects.count())

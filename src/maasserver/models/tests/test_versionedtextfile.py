@@ -6,7 +6,6 @@ from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
 from testtools import ExpectedException
-from testtools.matchers import Equals, Is
 
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.testing.factory import factory
@@ -44,24 +43,24 @@ class TestVersionedTextFile(MAASServerTestCase):
         textfile.save()
         textfile2 = textfile.update(SAMPLE_TEXT + " 2")
         from_db = VersionedTextFile.objects.get(id=textfile2.id)
-        self.assertThat(from_db.data, Equals(SAMPLE_TEXT + " 2"))
-        self.assertThat(from_db.previous_version, Equals(textfile))
+        self.assertEqual(SAMPLE_TEXT + " 2", from_db.data)
+        self.assertEqual(textfile, from_db.previous_version)
 
     def test_update_with_no_changes_returns_current_vision(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
         textfile.save()
         textfile2 = textfile.update(SAMPLE_TEXT)
         from_db = VersionedTextFile.objects.get(id=textfile2.id)
-        self.assertThat(from_db.data, Equals(SAMPLE_TEXT))
-        self.assertThat(from_db.previous_version, Is(None))
+        self.assertEqual(SAMPLE_TEXT, from_db.data)
+        self.assertIsNone(from_db.previous_version)
 
     def test_deletes_upstream_revisions(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
         textfile.save()
         textfile.update(SAMPLE_TEXT + " 2")
-        self.assertThat(VersionedTextFile.objects.count(), Equals(2))
+        self.assertEqual(2, VersionedTextFile.objects.count())
         textfile.delete()
-        self.assertThat(VersionedTextFile.objects.count(), Equals(0))
+        self.assertEqual(0, VersionedTextFile.objects.count())
 
     def test_deletes_all_upstream_revisions_from_oldest_parent(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
@@ -71,9 +70,9 @@ class TestVersionedTextFile(MAASServerTestCase):
         # Create a text file with multiple children.
         textfile2.update(SAMPLE_TEXT + " 20")
         textfile2.update(SAMPLE_TEXT + " 21")
-        self.assertThat(VersionedTextFile.objects.count(), Equals(5))
+        self.assertEqual(5, VersionedTextFile.objects.count())
         textfile3.get_oldest_version().delete()
-        self.assertThat(VersionedTextFile.objects.count(), Equals(0))
+        self.assertEqual(0, VersionedTextFile.objects.count())
 
     def test_previous_versions(self):
         textfile = VersionedTextFile(data=factory.make_string())
