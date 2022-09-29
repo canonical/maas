@@ -112,18 +112,6 @@ class VaultConfigurator:
         """
     )
 
-    # common policies for the roles (to allow managing own tokens)
-    COMMON_POLICY_HCL = dedent(
-        """
-        path "auth/token/lookup-self" {
-          capabilities = ["read"]
-        }
-        path "auth/token/renew-self" {
-          capabilities = ["update"]
-        }
-        """
-    )
-
     TOKEN_TTL = "5m"
 
     def __init__(
@@ -157,7 +145,6 @@ class VaultConfigurator:
                 policy_template.format(
                     maas_uuid=self.maas_uuid, secrets_mount=self.secrets_mount
                 )
-                + self.COMMON_POLICY_HCL
             ).strip()
             self._client.sys.create_or_update_policy(
                 name=name, policy=policy_hcl
@@ -177,7 +164,7 @@ class VaultConfigurator:
             role_name += f"-{name_suffix}"
         approle_cli.create_or_update_approle(
             role_name=role_name,
-            token_policies=[policy],
+            token_policies=["default", policy],
             token_ttl=self.TOKEN_TTL,
             token_max_ttl=self.TOKEN_TTL,
         )

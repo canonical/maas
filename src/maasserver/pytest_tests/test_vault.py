@@ -206,7 +206,7 @@ class TestVaultConfigurator:
         )
         mock_hvac_client.auth.approle.create_or_update_approle.assert_called_once_with(
             role_name=policy,
-            token_policies=[policy],
+            token_policies=["default", policy],
             token_ttl="5m",
             token_max_ttl="5m",
         )
@@ -226,7 +226,7 @@ class TestVaultConfigurator:
         configurator.get_approle_with_secret(policy, name_suffix=suffix)
         mock_hvac_client.auth.approle.create_or_update_approle.assert_called_once_with(
             role_name=f"{policy}-{suffix}",
-            token_policies=[policy],
+            token_policies=["default", policy],
             token_ttl="5m",
             token_max_ttl="5m",
         )
