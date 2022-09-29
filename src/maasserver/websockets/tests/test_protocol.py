@@ -100,8 +100,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         # Be sure the request field is populated by the time that
         # processMessages() is called.
         processMessages_mock = self.patch_autospec(protocol, "processMessages")
-        processMessages_mock.side_effect = lambda: self.assertThat(
-            protocol.request.user, Equals(protocol.user)
+        processMessages_mock.side_effect = lambda: self.assertEqual(
+            protocol.user, protocol.request.user
         )
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
         protocol.connectionMade()
@@ -142,7 +142,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
         protocol.connectionMade()
         self.addCleanup(protocol.connectionLost, "")
-        self.assertThat(protocol.user, Is(sentinel.user))
+        self.assertIs(protocol.user, sentinel.user)
         self.assertThat(protocol.processMessages, MockCalledOnceWith())
 
     def test_connectionMade_adds_self_to_factory_if_auth_succeeds(self):
@@ -264,7 +264,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.client.login(user=maas_factory.make_User())
         session_id = maas_factory.make_name("sessionid")
         protocol, factory = self.make_protocol()
-        self.assertIs(None, protocol.getUserFromSessionId(session_id))
+        self.assertIsNone(protocol.getUserFromSessionId(session_id))
 
     @wait_for_reactor
     @inlineCallbacks

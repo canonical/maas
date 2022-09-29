@@ -5,7 +5,6 @@
 
 
 from testtools import ExpectedException
-from testtools.matchers import Equals
 
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
@@ -75,7 +74,7 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
         space = factory.make_Space()
         handler.delete({"id": space.id})
         space = reload_object(space)
-        self.assertThat(space, Equals(None))
+        self.assertIsNone(space)
 
     def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()

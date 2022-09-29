@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 import time
 
 from testtools import ExpectedException
-from testtools.matchers import Equals
 
 from maasserver.models import MDNS
 from maasserver.models.discovery import Discovery
@@ -119,7 +118,7 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         with ExpectedException(HandlerPermissionError):
             handler.clear()
 
@@ -128,10 +127,10 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         handler.clear()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(0))
+        self.assertEqual(0, num_discoveries)
 
     def test_clears_mdns_only_upon_request(self):
         user = factory.make_admin()
@@ -139,13 +138,13 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         factory.make_Discovery(hostname="useful-towel")
         num_discoveries = Discovery.objects.count()
         num_mdns = MDNS.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
-        self.assertThat(num_mdns, Equals(1))
+        self.assertEqual(1, num_discoveries)
+        self.assertEqual(1, num_mdns)
         handler.clear({"mdns": True})
         num_discoveries = Discovery.objects.count()
         num_mdns = MDNS.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
-        self.assertThat(num_mdns, Equals(0))
+        self.assertEqual(1, num_discoveries)
+        self.assertEqual(0, num_mdns)
 
 
 class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
@@ -154,7 +153,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         with ExpectedException(HandlerPermissionError):
             handler.delete_by_mac_and_ip(
                 dict(ip=disco.ip, mac=disco.mac_address)
@@ -165,7 +164,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         with ExpectedException(HandlerPermissionError):
             handler.delete_by_mac_and_ip(dict(mac=disco.mac_address))
 
@@ -174,7 +173,7 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         with ExpectedException(HandlerPermissionError):
             handler.delete_by_mac_and_ip(dict(ip=disco.ip))
 
@@ -183,10 +182,10 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         handler = DiscoveryHandler(user, {}, None)
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(1))
+        self.assertEqual(1, num_discoveries)
         result = handler.delete_by_mac_and_ip(
             dict(ip=disco.ip, mac=disco.mac_address)
         )
         num_discoveries = Discovery.objects.count()
-        self.assertThat(num_discoveries, Equals(0))
-        self.assertThat(result, Equals(1))
+        self.assertEqual(0, num_discoveries)
+        self.assertEqual(1, result)

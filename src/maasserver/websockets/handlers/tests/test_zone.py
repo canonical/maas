@@ -9,7 +9,6 @@ from collections import defaultdict
 from django.core.exceptions import ValidationError
 from django.db.models import Count
 from testtools import ExpectedException
-from testtools.matchers import Equals
 
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import Zone
@@ -94,7 +93,7 @@ class TestZoneHandlerDelete(MAASServerTestCase):
         zone = factory.make_Zone()
         handler.delete({"id": zone.id})
         zone = reload_object(zone)
-        self.assertThat(zone, Equals(None))
+        self.assertIsNone(zone)
 
     def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()

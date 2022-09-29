@@ -7,7 +7,7 @@ from unittest.mock import sentinel
 from fixtures import FakeLogger
 from netaddr import IPNetwork
 from testtools import ExpectedException
-from testtools.matchers import Equals, MatchesRegex
+from testtools.matchers import MatchesRegex
 
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
@@ -64,7 +64,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet = factory.make_Subnet()
         expected_data = self.dehydrate_subnet(subnet)
         result = handler.get({"id": subnet.id})
-        self.assertThat(result, Equals(expected_data))
+        self.assertEqual(expected_data, result)
 
     def test_get_handles_null_dns_servers(self):
         user = factory.make_User()
@@ -74,7 +74,7 @@ class TestSubnetHandler(MAASServerTestCase):
         subnet.save()
         expected_data = self.dehydrate_subnet(subnet)
         result = handler.get({"id": subnet.id})
-        self.assertThat(result, Equals(expected_data))
+        self.assertEqual(expected_data, result)
 
     def test_get_uses_consistent_queries(self):
         user = factory.make_User()
@@ -131,7 +131,7 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         subnet = factory.make_Subnet()
         handler.delete({"id": subnet.id})
         subnet = reload_object(subnet)
-        self.assertThat(subnet, Equals(None))
+        self.assertIsNone(subnet)
 
     def test_delete_as_non_admin_asserts(self):
         user = factory.make_User()
@@ -157,7 +157,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         vlan = factory.make_VLAN()
         result = handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
         subnet = Subnet.objects.get(id=result["id"])
-        self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
+        self.assertEqual("192.168.0.0/24", subnet.cidr)
 
     def test_create_as_admin_succeeds_even_with_a_specified_space(self):
         user = factory.make_admin()
@@ -168,7 +168,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
             {"vlan": vlan.id, "cidr": "192.168.0.0/24", "space": space.id}
         )
         subnet = Subnet.objects.get(id=result["id"])
-        self.assertThat(subnet.cidr, Equals("192.168.0.0/24"))
+        self.assertEqual("192.168.0.0/24", subnet.cidr)
 
     def test_create_as_non_admin_asserts(self):
         user = factory.make_User()
@@ -195,7 +195,7 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         new_description = "does anyone use this field?"
         handler.update({"id": subnet.id, "description": new_description})
         subnet = reload_object(subnet)
-        self.assertThat(subnet.description, Equals(new_description))
+        self.assertEqual(new_description, subnet.description)
 
     def test_update_as_admin_succeeds_even_with_a_specified_space(self):
         user = factory.make_admin()
@@ -211,7 +211,7 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
             }
         )
         subnet = reload_object(subnet)
-        self.assertThat(subnet.description, Equals(new_description))
+        self.assertEqual(new_description, subnet.description)
 
     def test_update_as_non_admin_asserts(self):
         user = factory.make_User()
@@ -250,7 +250,7 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         factory.make_Interface(node=rack, subnet=subnet)
         cidr = subnet.get_ipnetwork()
         result = handler.scan({"id": subnet.id})
-        self.assertThat(result, Equals(sentinel.result))
+        self.assertEqual(sentinel.result, result)
         self.assertThat(
             self.scan_all_rack_networks, MockCalledOnceWith(cidrs=[cidr])
         )

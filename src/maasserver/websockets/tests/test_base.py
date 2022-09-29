@@ -468,7 +468,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         params = {"system_id": factory.make_name("system_id")}
         self.patch(base, "deferToDatabase").return_value = sentinel.thing
         result = handler.execute("get", params).wait(TIMEOUT)
-        self.assertThat(result, Is(sentinel.thing))
+        self.assertIs(result, sentinel.thing)
         self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
 
     def test_execute_track_latency(self):

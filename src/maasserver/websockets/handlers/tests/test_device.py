@@ -453,9 +453,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.create, params
         )
-        self.assertThat(
+        self.assertEqual(
+            {"mac_addresses": ["This field is required."]},
             error.message_dict,
-            Equals({"mac_addresses": ["This field is required."]}),
         )
 
     @transactional
@@ -714,7 +714,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 ],
             }
         )
-        self.assertThat(created_device["primary_mac"], Equals(mac))
+        self.assertEqual(mac, created_device["primary_mac"])
 
     @transactional
     def test_create_copes_with_mac_addresses_of_different_forms(self):
@@ -735,7 +735,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 ],
             }
         )
-        self.assertThat(created_device["primary_mac"], Equals(mac))
+        self.assertEqual(mac, created_device["primary_mac"])
 
     @transactional
     def test_create_interface_raises_validation_error_for_missing_macs(self):

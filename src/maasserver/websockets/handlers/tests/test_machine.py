@@ -20,7 +20,6 @@ from testtools.content import text_content
 from testtools.matchers import (
     ContainsDict,
     Equals,
-    Is,
     MatchesDict,
     MatchesException,
     MatchesListwise,
@@ -1644,8 +1643,8 @@ class TestMachineHandler(MAASServerTestCase):
         )
         bond_json = handler.dehydrate_interface(bond0, node)
         bridge_json = handler.dehydrate_interface(br_bond0, node)
-        self.assertThat(bond_json["params"], Equals(bond_params))
-        self.assertThat(bridge_json["params"], Equals(bridge_params))
+        self.assertEqual(bond_params, bond_json["params"])
+        self.assertEqual(bridge_params, bridge_json["params"])
 
     def test_dehydrate_interface_for_rescue_mode_node(self):
         owner = factory.make_User()
@@ -4981,7 +4980,7 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
             "mount_point": mount_point,
             "mount_options": mount_options,
         }
-        self.assertThat(handler.mount_special(params), Is(None))
+        self.assertIsNone(handler.mount_special(params))
         self.assertThat(
             list(machine.current_config.special_filesystems),
             MatchesListwise(
@@ -5059,8 +5058,8 @@ class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.unmount_special, params
         )
-        self.assertThat(
-            dict(error), Equals({"mount_point": ["This field is required."]})
+        self.assertEqual(
+            {"mount_point": ["This field is required."]}, dict(error)
         )
 
     def test_mount_point_must_be_absolute(self):
@@ -5424,7 +5423,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
                 "mount_point": None,
             }
         )
-        self.assertEqual(None, block_device.get_effective_filesystem())
+        self.assertIsNone(block_device.get_effective_filesystem())
 
     def test_delete_partition_filesystem(self):
         user = factory.make_admin()
@@ -5444,7 +5443,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
                 "mount_point": None,
             }
         )
-        self.assertEqual(None, partition.get_effective_filesystem())
+        self.assertIsNone(partition.get_effective_filesystem())
 
     def test_sets_tags(self):
         user = factory.make_admin()

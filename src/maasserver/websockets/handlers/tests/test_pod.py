@@ -5,7 +5,6 @@
 import random
 from unittest.mock import MagicMock
 
-from testtools.matchers import Equals
 from twisted.internet.defer import succeed
 from twisted.internet.threads import deferToThread
 
@@ -268,9 +267,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
             },
         ]
         result = handler.get({"id": pod.id})
-        self.assertThat(result["host"], Equals(node.system_id))
-        self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
-        self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
+        self.assertEqual(node.system_id, result["host"])
+        self.assertEqual([subnet.vlan_id], result["attached_vlans"])
+        self.assertEqual([subnet.vlan_id], result["boot_vlans"])
         resources = result["resources"]
         self.assertEqual(
             resources["cores"],
@@ -582,9 +581,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertEqual(expected_data.keys(), result.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], result[key], key)
-        self.assertThat(result, Equals(expected_data))
-        self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
-        self.assertThat(result["boot_vlans"], Equals([]))
+        self.assertEqual(expected_data, result)
+        self.assertEqual([subnet.vlan_id], result["attached_vlans"])
+        self.assertEqual([], result["boot_vlans"])
 
     def test_get_with_certificate_info(self):
         sample_cert = get_sample_cert()
@@ -623,7 +622,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = self.make_pod_with_hints()
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
-        self.assertThat(result, Equals(expected_data))
+        self.assertEqual(expected_data, result)
 
     def test_get_permissions(self):
         admin = factory.make_admin()
@@ -638,7 +637,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = self.make_pod_with_hints()
         expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
-        self.assertThat(result, Equals(expected_data))
+        self.assertEqual(expected_data, result)
 
     def test_full_dehydrate_for_list_no_details(self):
         admin = factory.make_admin()
