@@ -52,7 +52,7 @@ class TestHelpers(APITestCase.ForUser):
         self.assertEqual(rfile.filetype, dict_representation["filetype"])
         self.assertEqual(rfile.largefile.sha256, dict_representation["sha256"])
         self.assertEqual(total_size, dict_representation["size"])
-        self.assertEqual(False, dict_representation["complete"])
+        self.assertFalse(dict_representation["complete"])
         self.assertEqual(
             rfile.largefile.progress, dict_representation["progress"]
         )
@@ -75,7 +75,7 @@ class TestHelpers(APITestCase.ForUser):
         self.assertEqual(resource_set.version, dict_representation["version"])
         self.assertEqual(resource_set.label, dict_representation["label"])
         self.assertEqual(resource_set.total_size, dict_representation["size"])
-        self.assertEqual(False, dict_representation["complete"])
+        self.assertFalse(dict_representation["complete"])
         self.assertEqual(
             resource_set.progress, dict_representation["progress"]
         )

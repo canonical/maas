@@ -100,9 +100,9 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
             self.assertEqual(
                 http.client.FORBIDDEN, response.status_code, response.content
             )
-            self.assertThat(
+            self.assertEqual(
+                "Listing all IP addresses requires admin privileges.",
                 response.content.decode("utf-8"),
-                Equals("Listing all IP addresses requires admin privileges."),
             )
 
     def test_GET_returns_other_user_addresses_if_admin_and_user_specified(
@@ -129,12 +129,9 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
             self.assertEqual(
                 http.client.FORBIDDEN, response.status_code, response.content
             )
-            self.assertThat(
+            self.assertEqual(
+                "Listing another user's IP addresses requires admin privileges.",
                 response.content.decode("utf-8"),
-                Equals(
-                    "Listing another user's IP addresses requires admin "
-                    "privileges."
-                ),
             )
 
     def test_GET_returns_other_users_ip_address_for_admin_with_all_with_ip(
@@ -162,9 +159,9 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
             self.assertEqual(
                 http.client.FORBIDDEN, response.status_code, response.content
             )
-            self.assertThat(
+            self.assertEqual(
+                "Listing all IP addresses requires admin privileges.",
                 response.content.decode("utf-8"),
-                Equals("Listing all IP addresses requires admin privileges."),
             )
 
     def test_GET_with_all_for_admin_returns_non_user_reserved_types(self):
@@ -183,9 +180,9 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
             self.assertEqual(
                 http.client.FORBIDDEN, response.status_code, response.content
             )
-            self.assertThat(
+            self.assertEqual(
+                "Listing all IP addresses requires admin privileges.",
                 response.content.decode("utf-8"),
-                Equals("Listing all IP addresses requires admin privileges."),
             )
 
     def test_GET_returns_own_ip_address_with_ip(self):
@@ -302,7 +299,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
             )
         else:
             self.assertEqual(http.client.NO_CONTENT, response.status_code)
-            self.assertThat(response.content.decode("utf-8"), Equals(""))
+            self.assertEqual("", response.content.decode("utf-8"))
 
     @transactional
     def test_POST_release_allows_admin_to_release_sticky_ip(self):
@@ -325,7 +322,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
             )
         else:
             self.assertEqual(http.client.NO_CONTENT, response.status_code)
-            self.assertThat(response.content.decode("utf-8"), Equals(""))
+            self.assertEqual("", response.content.decode("utf-8"))
 
     @transactional
     def test_POST_release_allows_admin_to_release_discovered_ip(self):
@@ -350,7 +347,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
             )
         else:
             self.assertEqual(http.client.NO_CONTENT, response.status_code)
-            self.assertThat(response.content.decode("utf-8"), Equals(""))
+            self.assertEqual("", response.content.decode("utf-8"))
 
     @transactional
     def test_POST_release_allows_admin_to_release_discovered_ip_with_interface(
@@ -380,7 +377,7 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
             )
         else:
             self.assertEqual(http.client.NO_CONTENT, response.status_code)
-            self.assertThat(response.content.decode("utf-8"), Equals(""))
+            self.assertEqual("", response.content.decode("utf-8"))
 
     @transactional
     def test_POST_release_deallocates_address(self):

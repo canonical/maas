@@ -40,15 +40,15 @@ def get_notification_uri(notification):
 
 class TestURIs(MAASServerTestCase):
     def test_notifications_handler_path(self):
-        self.assertThat(
-            get_notifications_uri(), Equals("/MAAS/api/2.0/notifications/")
+        self.assertEqual(
+            "/MAAS/api/2.0/notifications/", get_notifications_uri()
         )
 
     def test_notification_handler_path(self):
         notification = factory.make_Notification()
-        self.assertThat(
+        self.assertEqual(
+            "/MAAS/api/2.0/notifications/%s/" % notification.id,
             get_notification_uri(notification),
-            Equals("/MAAS/api/2.0/notifications/%s/" % notification.id),
         )
 
 
@@ -229,7 +229,7 @@ class TestNotificationAPI(APITestCase.ForUserAndAdmin):
         if self.user.is_superuser:
             self.assertThat(response, HasStatusCode(http.client.OK))
             notification = reload_object(notification)
-            self.assertThat(notification.message, Equals(message_new))
+            self.assertEqual(message_new, notification.message)
             self.assertThat(
                 json_load_bytes(response.content),
                 MatchesNotification(notification),
@@ -243,7 +243,7 @@ class TestNotificationAPI(APITestCase.ForUserAndAdmin):
         response = self.client.delete(uri)
         if self.user.is_superuser:
             self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
-            self.assertThat(reload_object(notification), Is(None))
+            self.assertIsNone(reload_object(notification))
         else:
             self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 

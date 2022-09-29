@@ -2000,12 +2000,12 @@ class TestMachinesAPI(APITestCase.ForUser):
             self.machines_url,
             {"op": "allocate", "subnets": "space:foo"},
         )
-        self.assertThat(response.status_code, Equals(http.client.CONFLICT))
+        self.assertEqual(http.client.CONFLICT, response.status_code)
         expected_response = (
             "No available machine matches constraints: [('subnets', "
             "['space:foo'])] (resolved to \"subnets=%d,%d\")" % (s1.pk, s2.pk)
         ).encode(settings.DEFAULT_CHARSET)
-        self.assertThat(response.content, Equals(expected_response))
+        self.assertEqual(expected_response, response.content)
 
     def test_POST_allocate_machine_by_interfaces_dry_run_with_verbose(self):
         """Interface label is returned alongside machine data"""
@@ -3616,7 +3616,7 @@ class TestPowerState(APITransactionTestCase.ForUser):
         dbtasks.syncTask().wait(
             timeout=5
         )  # Wait for all pending tasks to run.
-        self.assertThat(reload_object(machine).power_state, Equals(state))
+        self.assertEqual(state, reload_object(machine).power_state)
 
     def test_returns_actual_state(self):
         machine = factory.make_Node_with_Interface_on_Subnet(power_type="ipmi")
@@ -3656,7 +3656,7 @@ class TestGetAllocationOptions(MAASTestCase):
             ephemeral_deploy=False,
             enable_hw_sync=False,
         )
-        self.assertThat(options, Equals(expected_options))
+        self.assertEqual(expected_options, options)
 
     def test_sets_bridge_all_if_install_kvm(self):
         request = factory.make_fake_request(
@@ -3676,7 +3676,7 @@ class TestGetAllocationOptions(MAASTestCase):
             ephemeral_deploy=False,
             enable_hw_sync=False,
         )
-        self.assertThat(options, Equals(expected_options))
+        self.assertEqual(expected_options, options)
 
     def test_sets_bridge_all_if_register_vmhost(self):
         request = factory.make_fake_request(
@@ -3732,4 +3732,4 @@ class TestGetAllocationOptions(MAASTestCase):
             ephemeral_deploy=True,
             enable_hw_sync=True,
         )
-        self.assertThat(options, Equals(expected_options))
+        self.assertEqual(expected_options, options)

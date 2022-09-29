@@ -11,7 +11,7 @@ from unittest.mock import ANY
 from django.conf import settings
 from django.urls import reverse
 from netaddr import IPNetwork
-from testtools.matchers import Equals, HasLength
+from testtools.matchers import HasLength
 from twisted.python.failure import Failure
 
 from maasserver.api import discoveries as discoveries_module
@@ -117,46 +117,46 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
         results = self.get_api_results({"op": "by_unknown_mac"})
-        self.assertThat(len(results), Equals(1))
+        self.assertEqual(1, len(results))
         factory.make_Interface(mac_address=discovery.mac_address)
         # Now that we have a known interface with the same MAC, the discovery
         # should disappear from this query.
         results = self.get_api_results({"op": "by_unknown_mac"})
-        self.assertThat(len(results), Equals(0))
+        self.assertEqual(0, len(results))
 
     def test_by_unknown_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         results = self.get_api_results({"op": "by_unknown_ip"})
-        self.assertThat(len(results), Equals(1))
+        self.assertEqual(1, len(results))
         factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
         # Now that we have a known IP address that matches, the discovery
         # should disappear from this query.
         results = self.get_api_results({"op": "by_unknown_ip"})
-        self.assertThat(len(results), Equals(0))
+        self.assertEqual(0, len(results))
 
     def test_by_unknown_ip_and_mac__known_ip(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface, ip="10.0.0.1")
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
-        self.assertThat(len(results), Equals(1))
+        self.assertEqual(1, len(results))
         factory.make_StaticIPAddress(ip=discovery.ip, cidr="10.0.0.0/8")
         # Known IP address, unexpected MAC.
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
-        self.assertThat(len(results), Equals(0))
+        self.assertEqual(0, len(results))
 
     def test_by_unknown_ip_and_mac__known_mac(self):
         rack = factory.make_RackController()
         iface = factory.make_Interface(node=rack)
         discovery = factory.make_Discovery(interface=iface)
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
-        self.assertThat(len(results), Equals(1))
+        self.assertEqual(1, len(results))
         # Known MAC, unknown IP.
         factory.make_Interface(mac_address=discovery.mac_address)
         results = self.get_api_results({"op": "by_unknown_ip_and_mac"})
-        self.assertThat(len(results), Equals(0))
+        self.assertEqual(0, len(results))
 
 
 class TestDiscoveriesScanAPI(APITestCase.ForUser):
@@ -193,8 +193,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
 
     def test_scan__calls_scan_all_networks_with_scan_all_if_forced(self):
-        result = self.post_api_results({"op": "scan", "force": "true"})
-        self.assertThat(result, Equals(result))
+        self.post_api_results({"op": "scan", "force": "true"})
         self.assertThat(
             self.scan_all_rack_networks_mock,
             MockCalledOnceWith(
@@ -203,10 +202,9 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         )
 
     def test_scan__passes_ping(self):
-        result = self.post_api_results(
+        self.post_api_results(
             {"op": "scan", "force": "true", "always_use_ping": "true"}
         )
-        self.assertThat(result, Equals(result))
         self.assertThat(
             self.scan_all_rack_networks_mock,
             MockCalledOnceWith(
@@ -215,10 +213,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         )
 
     def test_scan__passes_slow(self):
-        result = self.post_api_results(
-            {"op": "scan", "force": "true", "slow": "true"}
-        )
-        self.assertThat(result, Equals(result))
+        self.post_api_results({"op": "scan", "force": "true", "slow": "true"})
         self.assertThat(
             self.scan_all_rack_networks_mock,
             MockCalledOnceWith(
@@ -227,10 +222,9 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         )
 
     def test_scan__passes_threads(self):
-        result = self.post_api_results(
+        self.post_api_results(
             {"op": "scan", "force": "true", "threads": "3.14"}
         )
-        self.assertThat(result, Equals(result))
         self.assertThat(
             self.scan_all_rack_networks_mock,
             MockCalledOnceWith(
@@ -239,14 +233,13 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
         )
 
     def test_scan__calls_scan_all_networks_with_specified_cidrs(self):
-        result = self.post_api_results(
+        self.post_api_results(
             {
                 "op": "scan",
                 "force": "true",
                 "cidr": ["192.168.0.0/24", "192.168.1.0/24"],
             }
         )
-        self.assertThat(result, Equals(result))
         self.assertThat(
             self.scan_all_rack_networks_mock,
             MockCalledOnceWith(
@@ -394,22 +387,16 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Spot check expected values in the results
-        self.assertThat(
-            result["resource_uri"], Equals(get_discovery_uri(discovery))
-        )
-        self.assertThat(
-            result["observer"]["system_id"], Equals(rack.system_id)
-        )
-        self.assertThat(result["observer"]["hostname"], Equals(rack.hostname))
-        self.assertThat(
-            result["observer"]["interface_name"], Equals(iface.name)
-        )
-        self.assertThat(result["observer"]["interface_id"], Equals(iface.id))
-        self.assertThat(result["ip"], Equals(discovery.ip))
-        self.assertThat(result["mac_address"], Equals(discovery.mac_address))
-        self.assertThat(result["hostname"], Equals(discovery.hostname))
-        self.assertThat(
-            result["last_seen"], Equals(timestamp_format(discovery.last_seen))
+        self.assertEqual(get_discovery_uri(discovery), result["resource_uri"])
+        self.assertEqual(rack.system_id, result["observer"]["system_id"])
+        self.assertEqual(rack.hostname, result["observer"]["hostname"])
+        self.assertEqual(iface.name, result["observer"]["interface_name"])
+        self.assertEqual(iface.id, result["observer"]["interface_id"])
+        self.assertEqual(discovery.ip, result["ip"])
+        self.assertEqual(discovery.mac_address, result["mac_address"])
+        self.assertEqual(discovery.hostname, result["hostname"])
+        self.assertEqual(
+            timestamp_format(discovery.last_seen), result["last_seen"]
         )
 
     def test_read_by_specifiers(self):
@@ -420,7 +407,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         response = self.client.get(uri)
         self.assertThat(response, HasStatusCode(http.client.OK))
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(result["ip"], Equals(discovery.ip))
+        self.assertEqual(discovery.ip, result["ip"])
 
     def test_read_404_when_bad_id(self):
         uri = reverse("discovery_handler", args=[random.randint(10000, 20000)])
@@ -549,31 +536,27 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
 
     def test_populates_results_correctly(self):
         result = user_friendly_scan_results(scan_all_rack_networks())
-        self.assertThat(
+        self.assertEquals(
+            {
+                "result": self.result,
+                "scan_started_on": get_controller_summary(self.started),
+                "scan_failed_on": get_controller_summary(self.failed),
+                "scan_attempted_on": get_controller_summary(self.available),
+                "failed_to_connect_to": get_controller_summary(
+                    self.unavailable
+                ),
+                "rpc_call_timed_out_on": get_controller_summary(
+                    self.timed_out
+                ),
+                "failures": get_failure_summary(self.failures),
+            },
             result,
-            Equals(
-                {
-                    "result": self.result,
-                    "scan_started_on": get_controller_summary(self.started),
-                    "scan_failed_on": get_controller_summary(self.failed),
-                    "scan_attempted_on": get_controller_summary(
-                        self.available
-                    ),
-                    "failed_to_connect_to": get_controller_summary(
-                        self.unavailable
-                    ),
-                    "rpc_call_timed_out_on": get_controller_summary(
-                        self.timed_out
-                    ),
-                    "failures": get_failure_summary(self.failures),
-                }
-            ),
         )
 
     def test_results_can_be_converted_to_json_and_back(self):
         result = user_friendly_scan_results(scan_all_rack_networks())
         json_result = json.dumps(result)
-        self.assertThat(json.loads(json_result), Equals(result))
+        self.assertEqual(result, json.loads(json_result))
 
     def test_calls_racks_synchronously(self):
         scan_all_rack_networks()

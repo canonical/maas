@@ -6,8 +6,6 @@
 
 import os
 
-from testtools.matchers import Contains, Not
-
 from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.templates import APITemplateRenderer
 from maasserver.testing.api import APITestCase
@@ -715,4 +713,4 @@ class TestAPIAnnotations(APITestCase.ForUser):
 
         result = template.apply_template(template_path, api_docstring_parser)
 
-        self.assertThat(result, Not(Contains("API_WARNING")))
+        self.assertNotIn("API_WARNING", result)

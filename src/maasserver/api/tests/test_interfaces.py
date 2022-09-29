@@ -7,13 +7,11 @@ import random
 
 from django.urls import reverse
 from testtools.matchers import (
-    Contains,
     ContainsDict,
     Equals,
     MatchesDict,
     MatchesListwise,
     MatchesSetwise,
-    Not,
 )
 
 from maasserver import middleware
@@ -838,7 +836,7 @@ class TestInterfacesAPIForControllers(APITestCase.ForUser):
         result_ids = [nic["id"] for nic in output_content]
         self.assertCountEqual(expected_ids, result_ids)
         for nic in output_content:
-            self.assertThat(nic, Contains("links"))
+            self.assertIn("links", nic)
 
     def test_create_physical_is_forbidden(self):
         self.become_admin()
@@ -1453,8 +1451,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_response["links"][0],
             ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
         )
-        self.assertThat(
-            parsed_response["links"][0]["subnet"]["id"], Equals(subnet.id)
+        self.assertEqual(
+            subnet.id, parsed_response["links"][0]["subnet"]["id"]
         )
 
     def test_link_subnet_allows_link_up_subnet_to_be_cleared(self):
@@ -1484,7 +1482,7 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_response["links"][0],
             ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
         )
-        self.assertThat(parsed_response["links"][0], Not(Contains("subnet")))
+        self.assertNotIn("subnet", parsed_response["links"][0])
 
     def test_link_subnet_allows_link_up_subnet_to_be_changed(self):
         self.become_admin()
@@ -1519,8 +1517,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_response["links"][0],
             ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
         )
-        self.assertThat(
-            parsed_response["links"][0]["subnet"]["id"], Equals(subnet2.id)
+        self.assertEqual(
+            subnet2.id, parsed_response["links"][0]["subnet"]["id"]
         )
 
     def test_link_subnet_disallows_subnets_on_another_vlan(self):
@@ -1588,8 +1586,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_response["links"][0],
             ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
         )
-        self.assertThat(
-            parsed_response["links"][0]["subnet"]["id"], Equals(subnet2.id)
+        self.assertEqual(
+            subnet2.id, parsed_response["links"][0]["subnet"]["id"]
         )
 
     def test_link_subnet_force_link_up_deletes_existing_links(self):
@@ -1627,8 +1625,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             parsed_response["links"][0],
             ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
         )
-        self.assertThat(
-            parsed_response["links"][0]["subnet"]["id"], Equals(subnet2.id)
+        self.assertEqual(
+            subnet2.id, parsed_response["links"][0]["subnet"]["id"]
         )
 
     def test_link_subnet_without_force_link_up_returns_bad_request(self):

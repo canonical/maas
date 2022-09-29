@@ -10,7 +10,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import Equals, Is, Not
 
 from maasserver.models import Space, VLAN
 from maasserver.testing.api import APITestCase
@@ -411,7 +410,7 @@ class TestVlanAPI(APITestCase.ForUser):
         self.become_admin()
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric, space=RANDOM)
-        self.assertThat(vlan.space, Not(Is(None)))
+        self.assertIsNotNone(vlan.space)
         uri = get_vlan_uri(vlan, fabric)
         response = self.client.put(uri, {"space": ""})
         self.assertEqual(
@@ -421,14 +420,14 @@ class TestVlanAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         vlan = reload_object(vlan)
-        self.assertThat(vlan.space, Is(None))
-        self.assertThat(parsed_vlan["space"], Equals(Space.UNDEFINED))
+        self.assertIsNone(vlan.space)
+        self.assertEqual(Space.UNDEFINED, parsed_vlan["space"])
 
     def test_update_with_undefined_space_clears_space(self):
         self.become_admin()
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric, space=RANDOM)
-        self.assertThat(vlan.space, Not(Is(None)))
+        self.assertIsNotNone(vlan.space)
         uri = get_vlan_uri(vlan, fabric)
         response = self.client.put(uri, {"space": Space.UNDEFINED})
         self.assertEqual(
@@ -438,8 +437,8 @@ class TestVlanAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         vlan = reload_object(vlan)
-        self.assertThat(vlan.space, Is(None))
-        self.assertThat(parsed_vlan["space"], Equals(Space.UNDEFINED))
+        self.assertIsNone(vlan.space)
+        self.assertEqual(Space.UNDEFINED, parsed_vlan["space"])
 
     def test_update_admin_only(self):
         fabric = factory.make_Fabric()

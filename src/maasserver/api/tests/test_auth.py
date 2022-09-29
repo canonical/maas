@@ -9,7 +9,6 @@ from unittest import mock
 
 from django.contrib.auth.models import AnonymousUser
 from piston3 import oauth
-from testtools.matchers import Contains
 
 from maasserver.api import auth as api_auth
 from maasserver.api.auth import MAASAPIAuthentication, OAuthUnauthorized
@@ -145,9 +144,9 @@ class TestOAuthUnauthorized(MAASTestCase):
         error_msg = factory.make_name("error-message")
         original_exception = oauth.OAuthError(error_msg)
         maas_exception = OAuthUnauthorized(original_exception)
-        self.assertThat(
+        self.assertIn(
+            "Authorization Error: %r" % error_msg,
             str(maas_exception),
-            Contains("Authorization Error: %r" % error_msg),
         )
 
     def test_exception_unicode_includes_user_friendly_message(self):
@@ -155,7 +154,7 @@ class TestOAuthUnauthorized(MAASTestCase):
         # user-friendly than the default 'Invalid consumer.'.
         original_exception = oauth.OAuthError("Invalid consumer.")
         maas_exception = OAuthUnauthorized(original_exception)
-        self.assertThat(
+        self.assertIn(
+            "Authorization Error: Invalid API key.",
             str(maas_exception),
-            Contains("Authorization Error: Invalid API key."),
         )

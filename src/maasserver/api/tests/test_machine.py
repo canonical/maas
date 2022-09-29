@@ -321,7 +321,7 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(None, parsed_result["owner"])
+        self.assertIsNone(parsed_result["owner"])
 
     def test_GET_returns_physical_block_devices(self):
         machine = factory.make_Node(with_boot_disk=False)
@@ -357,8 +357,8 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(None, parsed_result["min_hwe_kernel"])
-        self.assertEqual(None, parsed_result["hwe_kernel"])
+        self.assertIsNone(parsed_result["min_hwe_kernel"])
+        self.assertIsNone(parsed_result["hwe_kernel"])
 
     def test_GET_returns_min_hwe_kernel(self):
         machine = factory.make_Node(min_hwe_kernel="hwe-v")
@@ -1049,7 +1049,7 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.post(self.get_machine_uri(machine), request)
         self.assertEqual(http.client.OK, response.status_code)
         machine = reload_object(machine)
-        self.assertThat(machine.agent_name, Equals(request["agent_name"]))
+        self.assertEqual(request["agent_name"], machine.agent_name)
 
     def test_POST_deploy_passes_comment_on_acquire(self):
         self.patch(node_module.Node, "_start")
@@ -1662,7 +1662,7 @@ class TestMachineAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(machine).status)
-        self.assertEqual(None, reload_object(machine).hwe_kernel)
+        self.assertIsNone(reload_object(machine).hwe_kernel)
 
     def test_POST_release_passes_comment(self):
         machine = factory.make_Node(
@@ -2449,7 +2449,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.OK, response.status_code)
         machine = reload_object(machine)
-        self.assertEqual(None, machine.zone)
+        self.assertIsNone(machine.zone)
 
     def test_PUT_without_zone_leaves_zone_unchanged(self):
         self.become_admin()
@@ -2867,15 +2867,13 @@ class TestMountSpecial(APITestCase.ForUser):
         response = self.client.post(
             self.get_machine_uri(machine), {"op": "mount_special"}
         )
-        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.assertThat(
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {
+                "fstype": ["This field is required."],
+                "mount_point": ["This field is required."],
+            },
             json_load_bytes(response.content),
-            Equals(
-                {
-                    "fstype": ["This field is required."],
-                    "mount_point": ["This field is required."],
-                }
-            ),
         )
 
     def test_fstype_must_be_a_non_storage_type(self):
@@ -2891,9 +2889,7 @@ class TestMountSpecial(APITestCase.ForUser):
                     "mount_point": factory.make_absolute_path(),
                 },
             )
-            self.assertThat(
-                response.status_code, Equals(http.client.BAD_REQUEST)
-            )
+            self.assertEqual(http.client.BAD_REQUEST, response.status_code)
             self.expectThat(
                 json_load_bytes(response.content),
                 ContainsDict(
@@ -2918,7 +2914,7 @@ class TestMountSpecial(APITestCase.ForUser):
                 "mount_point": factory.make_name("path"),
             },
         )
-        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertThat(
             json_load_bytes(response.content),
             ContainsDict(
@@ -3167,10 +3163,10 @@ class TestUnmountSpecial(APITestCase.ForUser):
         response = self.client.post(
             self.get_machine_uri(machine), {"op": "unmount_special"}
         )
-        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.assertThat(
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            {"mount_point": ["This field is required."]},
             json_load_bytes(response.content),
-            Equals({"mount_point": ["This field is required."]}),
         )
 
     def test_mount_point_must_be_absolute(self):
@@ -3184,7 +3180,7 @@ class TestUnmountSpecial(APITestCase.ForUser):
                 "mount_point": factory.make_name("path"),
             },
         )
-        self.assertThat(response.status_code, Equals(http.client.BAD_REQUEST))
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertThat(
             json_load_bytes(response.content),
             ContainsDict(
@@ -3378,14 +3374,12 @@ class TestDefaultGateways(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         response = json_load_bytes(response.content)
-        self.assertThat(
+        self.assertEqual(
+            {
+                "ipv4": {"link_id": None, "gateway_ip": None},
+                "ipv6": {"link_id": None, "gateway_ip": None},
+            },
             response["default_gateways"],
-            Equals(
-                {
-                    "ipv4": {"link_id": None, "gateway_ip": None},
-                    "ipv6": {"link_id": None, "gateway_ip": None},
-                }
-            ),
         )
 
     def test_returns_effective_gateway_if_no_explicit_gateway_set(self):
@@ -3420,20 +3414,18 @@ class TestDefaultGateways(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         response = json_load_bytes(response.content)
-        self.assertThat(
+        self.assertEqual(
+            {
+                "ipv4": {
+                    "link_id": None,
+                    "gateway_ip": str(subnet_v4.gateway_ip),
+                },
+                "ipv6": {
+                    "link_id": None,
+                    "gateway_ip": str(subnet_v6.gateway_ip),
+                },
+            },
             response["default_gateways"],
-            Equals(
-                {
-                    "ipv4": {
-                        "link_id": None,
-                        "gateway_ip": str(subnet_v4.gateway_ip),
-                    },
-                    "ipv6": {
-                        "link_id": None,
-                        "gateway_ip": str(subnet_v6.gateway_ip),
-                    },
-                }
-            ),
         )
 
     def test_returns_links_if_set(self):
@@ -3471,20 +3463,18 @@ class TestDefaultGateways(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         response = json_load_bytes(response.content)
-        self.assertThat(
+        self.assertEqual(
+            {
+                "ipv4": {
+                    "link_id": link_v4.id,
+                    "gateway_ip": str(subnet_v4.gateway_ip),
+                },
+                "ipv6": {
+                    "link_id": link_v6.id,
+                    "gateway_ip": str(subnet_v6.gateway_ip),
+                },
+            },
             response["default_gateways"],
-            Equals(
-                {
-                    "ipv4": {
-                        "link_id": link_v4.id,
-                        "gateway_ip": str(subnet_v4.gateway_ip),
-                    },
-                    "ipv6": {
-                        "link_id": link_v6.id,
-                        "gateway_ip": str(subnet_v6.gateway_ip),
-                    },
-                }
-            ),
         )
 
 

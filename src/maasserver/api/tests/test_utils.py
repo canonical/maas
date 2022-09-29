@@ -35,10 +35,10 @@ class TestExtractBool(MAASTestCase):
         self.assertRaises(AssertionError, extract_bool, 0)
 
     def test_0_means_False(self):
-        self.assertEqual(extract_bool("0"), False)
+        self.assertFalse(extract_bool("0"))
 
     def test_1_means_True(self):
-        self.assertEqual(extract_bool("1"), True)
+        self.assertTrue(extract_bool("1"))
 
     def test_rejects_other_numeric_strings(self):
         self.assertRaises(ValueError, extract_bool, "00")
@@ -139,7 +139,7 @@ class TestOAuthHelpers(MAASTestCase):
         )
 
     def test_extract_oauth_key_from_auth_header_returns_None_if_missing(self):
-        self.assertIs(None, extract_oauth_key_from_auth_header(""))
+        self.assertIsNone(extract_oauth_key_from_auth_header(""))
 
     def test_extract_oauth_key_raises_Unauthorized_if_no_auth_header(self):
         self.assertRaises(

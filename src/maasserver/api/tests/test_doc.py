@@ -14,7 +14,6 @@ from piston3.resource import Resource
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
-    Contains,
     ContainsAll,
     Equals,
     Is,
@@ -240,18 +239,18 @@ class TestHandlers(MAASTestCase):
     def test_does_not_contain_documentation_warnings_syntax_errors(self):
         # We don't want any of these strings in the rendered docs ever.
         doc = render_api_docs()
-        self.assertThat(
+        self.assertNotIn(
+            "API_WARNING",
             doc,
-            Not(Contains("API_WARNING")),
             """
             The rendered API doc contains an API_WARNING flag. To fix this,
             render the doc using `bin/maas-region generate_api_doc`, and
             search for the API_WARNING flag to find the inline warning.
         """,
         )
-        self.assertThat(
+        self.assertNotIn(
+            "API_SYNTAX_ERROR",
             doc,
-            Not(Contains("API_SYNTAX_ERROR")),
             """
             The rendered API doc contains an API_SYNTAX_ERROR flag. To fix
             this, render the doc using `bin/maas-region generate_api_doc`,
@@ -519,7 +518,7 @@ class TestDescribeCanonical(MAASTestCase):
 
     def test_passes_unicode_strings_through(self):
         string = factory.make_string()
-        self.assertThat(string, IsInstance(str))
+        self.assertIsInstance(string, str)
         self.expectThat(_describe_canonical(string), Is(string))
 
     def test_decodes_byte_strings(self):

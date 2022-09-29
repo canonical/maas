@@ -9,7 +9,6 @@ from unittest.mock import call, Mock, sentinel
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from piston3.authentication import NoAuthentication
-from testtools.matchers import Equals, Is
 
 from maasserver.api.doc import get_api_description
 from maasserver.api.support import (
@@ -90,23 +89,23 @@ class TestOperationsResource(APITestCase.ForUser):
 
     def test_authenticated_is_False_when_no_authentication_provided(self):
         resource = OperationsResource(StubHandler)
-        self.assertThat(resource.is_authentication_attempted, Is(False))
+        self.assertFalse(resource.is_authentication_attempted)
 
     def test_authenticated_is_False_when_authentication_is_empty(self):
         resource = OperationsResource(StubHandler, authentication=[])
-        self.assertThat(resource.is_authentication_attempted, Is(False))
+        self.assertFalse(resource.is_authentication_attempted)
 
     def test_authenticated_is_False_when_authentication_is_NoAuthn(self):
         resource = OperationsResource(
             StubHandler, authentication=NoAuthentication()
         )
-        self.assertThat(resource.is_authentication_attempted, Is(False))
+        self.assertFalse(resource.is_authentication_attempted)
 
     def test_authenticated_is_True_when_authentication_is_provided(self):
         resource = OperationsResource(
             StubHandler, authentication=sentinel.authentication
         )
-        self.assertThat(resource.is_authentication_attempted, Is(True))
+        self.assertTrue(resource.is_authentication_attempted)
 
 
 class TestRestrictedResources(MAASTestCase):
@@ -124,17 +123,13 @@ class TestRestrictedResources(MAASTestCase):
             StubHandler,
             authentication=None,
         )
-        self.assertThat(
-            str(error), Equals("Authentication must be attempted.")
-        )
+        self.assertEqual("Authentication must be attempted.", str(error))
 
     def test_authentication_must_be_non_empty(self):
         error = self.assertRaises(
             AssertionError, self.resource_type, StubHandler, authentication=[]
         )
-        self.assertThat(
-            str(error), Equals("Authentication must be attempted.")
-        )
+        self.assertEqual("Authentication must be attempted.", str(error))
 
     def test_authentication_must_be_meaningful(self):
         error = self.assertRaises(
@@ -143,15 +138,13 @@ class TestRestrictedResources(MAASTestCase):
             StubHandler,
             authentication=NoAuthentication(),
         )
-        self.assertThat(
-            str(error), Equals("Authentication must be attempted.")
-        )
+        self.assertEqual("Authentication must be attempted.", str(error))
 
     def test_authentication_is_okay(self):
         resource = self.resource_type(
             StubHandler, authentication=sentinel.authentication
         )
-        self.assertThat(resource.is_authentication_attempted, Is(True))
+        self.assertTrue(resource.is_authentication_attempted)
 
 
 class TestAdminMethodDecorator(MAASServerTestCase):

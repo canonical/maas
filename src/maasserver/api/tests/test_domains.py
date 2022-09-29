@@ -235,7 +235,7 @@ class TestDomainAPI(APITestCase.ForUser):
     def test_set_default(self):
         self.become_admin()
         domain = factory.make_Domain()
-        self.assertEqual(False, domain.is_default())
+        self.assertFalse(domain.is_default())
         uri = get_domain_uri(domain)
         response = self.client.post(uri, {"op": "set_default"})
         self.assertEqual(
@@ -243,8 +243,8 @@ class TestDomainAPI(APITestCase.ForUser):
         )
         ret = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         domain = reload_object(domain)
-        self.assertEqual(True, ret["is_default"])
-        self.assertEqual(True, domain.is_default())
+        self.assertTrue(ret["is_default"])
+        self.assertTrue(domain.is_default())
 
     def test_set_default_admin_only(self):
         domain = factory.make_Domain()

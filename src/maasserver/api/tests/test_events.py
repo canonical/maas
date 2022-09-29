@@ -17,10 +17,8 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
     HasLength,
-    Is,
     MatchesDict,
     MatchesStructure,
-    Not,
 )
 
 from maasserver.api import events as events_module
@@ -769,14 +767,14 @@ class TestEventsURIs(APITestCase.ForUser):
         prev_uri = urlparse(parsed_result["prev_uri"])
         prev_uri_params = dict(parse_qsl(prev_uri.query))
         self.assertThat(prev_uri_params, Contains("before"), prev_uri)
-        self.assertThat(prev_uri_params["before"], Equals(str(before)))
-        self.assertThat(prev_uri_params, Not(Contains("after")))
+        self.assertEqual(str(before), prev_uri_params["before"])
+        self.assertNotIn("after", prev_uri_params)
 
         next_uri = urlparse(parsed_result["next_uri"])
         next_uri_params = dict(parse_qsl(next_uri.query))
         self.assertThat(next_uri_params, Contains("after"), next_uri)
-        self.assertThat(next_uri_params["after"], Equals(str(after)))
-        self.assertThat(next_uri_params, Not(Contains("before")))
+        self.assertEqual(str(after), next_uri_params["after"])
+        self.assertNotIn("before", next_uri_params)
 
         return prev_uri_params, next_uri_params
 
@@ -953,4 +951,4 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
             # Because we have not created any actual test events AND the
             # search window was not limited by `after`, we can be certain that
             # no older matching events exist, hence prev_uri is not provided.
-            self.assertThat(parsed_result["prev_uri"], Is(None))
+            self.assertIsNone(parsed_result["prev_uri"])

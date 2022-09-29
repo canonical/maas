@@ -10,7 +10,7 @@ import json
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.urls import reverse
-from testtools.matchers import ContainsAll, Equals
+from testtools.matchers import ContainsAll
 
 import maasserver.api.auth
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
@@ -259,7 +259,7 @@ class TestUsers(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(result["username"], Equals(self.user.username))
+        self.assertEqual(self.user.username, result["username"])
 
     def test_whoami_returns_forbidden_if_not_logged_in(self):
         self.client.logout()

@@ -221,9 +221,7 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 )
             ),
         )
-        self.assertThat(
-            Config.objects.get_config("ntp_servers"), Equals(ntp_servers)
-        )
+        self.assertEqual(ntp_servers, Config.objects.get_config("ntp_servers"))
 
     def test_get_main_archive_overrides_to_package_repository(self):
         PackageRepository.objects.all().delete()
@@ -303,8 +301,8 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 )
             ),
         )
-        self.assertThat(
-            PackageRepository.get_main_archive().url, Equals(main_archive)
+        self.assertEqual(
+            main_archive, PackageRepository.get_main_archive().url
         )
 
     def test_set_ports_archive_overrides_to_package_repository(self):
@@ -327,8 +325,8 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 )
             ),
         )
-        self.assertThat(
-            PackageRepository.get_ports_archive().url, Equals(ports_archive)
+        self.assertEqual(
+            ports_archive, PackageRepository.get_ports_archive().url
         )
 
     def test_set_config_use_peer_proxy(self):

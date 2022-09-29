@@ -7,7 +7,7 @@
 import http.client
 
 from django.urls import reverse
-from testtools.matchers import Contains, MatchesStructure, Not
+from testtools.matchers import MatchesStructure
 
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
@@ -64,9 +64,7 @@ class TestBootSourceAPI(APITestCase.ForUser):
         self.assertThat(
             boot_source, MatchesStructure.byEquality(**returned_boot_source)
         )
-        self.assertThat(
-            returned_boot_source["keyring_data"], Not(Contains("<memory at"))
-        )
+        self.assertNotIn(b"<memory at", returned_boot_source["keyring_data"])
 
     def test_GET_requires_admin(self):
         boot_source = factory.make_BootSource()

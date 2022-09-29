@@ -70,9 +70,9 @@ class TestIPRangesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(data["start_ip"], Equals("10.0.0.10"))
-        self.assertThat(data["end_ip"], Equals("10.0.0.20"))
-        self.assertThat(data["subnet"]["id"], Equals(subnet.id))
+        self.assertEqual("10.0.0.10", data["start_ip"])
+        self.assertEqual("10.0.0.20", data["end_ip"])
+        self.assertEqual(subnet.id, data["subnet"]["id"])
 
     def test_create_dynamic_encoded(self):
         """
@@ -104,9 +104,9 @@ class TestIPRangesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(data["start_ip"], Equals("10.0.0.10"))
-        self.assertThat(data["end_ip"], Equals("10.0.0.20"))
-        self.assertThat(data["subnet"]["id"], Equals(subnet.id))
+        self.assertEqual("10.0.0.10", data["start_ip"])
+        self.assertEqual("10.0.0.20", data["end_ip"])
+        self.assertEqual(subnet.id, data["subnet"]["id"])
 
     def test_create_dynamic_requires_admin(self):
         uri = get_ipranges_uri()
@@ -139,9 +139,9 @@ class TestIPRangesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(data["start_ip"], Equals("10.0.0.10"))
-        self.assertThat(data["end_ip"], Equals("10.0.0.20"))
-        self.assertThat(data["subnet"]["id"], Equals(subnet.id))
+        self.assertEqual("10.0.0.10", data["start_ip"])
+        self.assertEqual("10.0.0.20", data["end_ip"])
+        self.assertEqual(subnet.id, data["subnet"]["id"])
 
     def test_create_requires_type_and_reports_simple_error_if_missing(self):
         uri = get_ipranges_uri()
@@ -152,8 +152,8 @@ class TestIPRangesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
         )
-        self.assertThat(
-            response.content, Equals(b'{"type": ["This field is required."]}')
+        self.assertEqual(
+            b'{"type": ["This field is required."]}', response.content
         )
 
     def test_create_sets_user_to_authenticated_user(self):
@@ -171,7 +171,7 @@ class TestIPRangesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         data = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(data["user"]["username"], Equals(self.user.username))
+        self.assertEqual(self.user.username, data["user"]["username"])
 
 
 class TestIPRangeAPI(APITestCase.ForUser):
