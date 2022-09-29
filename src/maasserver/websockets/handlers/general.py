@@ -8,6 +8,7 @@ from collections import OrderedDict
 
 import petname
 
+from maasserver.certificates import get_maas_certificate
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.enum import (
     BOND_LACP_RATE_CHOICES,
@@ -39,7 +40,6 @@ from maasserver.utils.osystems import (
 )
 from maasserver.websockets.base import dehydrate_datetime, Handler
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.certificates import Certificate
 
 
 class GeneralHandler(Handler):
@@ -270,13 +270,9 @@ class GeneralHandler(Handler):
         All requests to MAAS API are proxied via HTTP reverse proxy.
         If TLS is enabled, then HTTPS used for communication.
         """
-
-        configs = Config.objects.get_configs(["tls_key", "tls_cert"])
-
-        if not all((configs["tls_key"], configs["tls_cert"])):
+        cert = get_maas_certificate()
+        if cert is None:
             return None
-
-        cert = Certificate.from_pem(configs["tls_key"], configs["tls_cert"])
         return {
             "CN": cert.cn(),
             "certificate": cert.certificate_pem(),

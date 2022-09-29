@@ -5,11 +5,10 @@ from datetime import datetime, timedelta
 
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.models import Config
-from maasserver.models.notification import Notification
+from maasserver.certificates import get_maas_certificate
+from maasserver.models import Config, Notification
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.certificates import Certificate
 from provisioningserver.utils.services import SingleInstanceService
 
 REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT = "regiond-reverse-proxy-cert-expire"
@@ -29,22 +28,16 @@ def clear_tls_notifications():
 def check_tls_certificate():
     config = Config.objects.get_configs(
         [
-            "tls_key",
-            "tls_cert",
             "tls_cert_expiration_notification_enabled",
             "tls_cert_expiration_notification_interval",
         ]
     )
-
     if not config["tls_cert_expiration_notification_enabled"]:
         clear_tls_notifications()
         return
 
-    if not config["tls_key"] and not config["tls_cert"]:
-        return
-
-    cert = Certificate.from_pem(config["tls_key"], config["tls_cert"])
-    if not cert.expiration:
+    cert = get_maas_certificate()
+    if not cert or not cert.expiration():
         return
 
     interval = config["tls_cert_expiration_notification_interval"]

@@ -5,7 +5,6 @@
 from unittest.mock import sentinel
 
 from distro_info import UbuntuDistroInfo
-from django.db import transaction
 import petname
 
 from maasserver.enum import (
@@ -18,6 +17,7 @@ from maasserver.enum import (
 from maasserver.models import Config, ControllerInfo, PackageRepository
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import ACTIONS_DICT
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
@@ -405,9 +405,13 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_tls_certificate(self):
         cert = get_sample_cert()
-        with transaction.atomic():
-            Config.objects.set_config("tls_key", cert.private_key_pem)
-            Config.objects.set_config("tls_cert", cert.certificate_pem)
+        SecretManager().set_composite_secret(
+            "tls",
+            {
+                "key": cert.private_key_pem(),
+                "cert": cert.certificate_pem(),
+            },
+        )
         handler = GeneralHandler(factory.make_User(), {}, None)
         result = handler.tls_certificate({})
 
@@ -423,9 +427,6 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertCountEqual(result.keys(), allowed_keys)
 
     def test_tls_certificate_tls_disabled(self):
-        with transaction.atomic():
-            Config.objects.set_config("tls_key", None)
-            Config.objects.set_config("tls_cert", None)
         handler = GeneralHandler(factory.make_User(), {}, None)
         result = handler.tls_certificate({})
 

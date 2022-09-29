@@ -3,7 +3,6 @@
 
 from datetime import timedelta
 
-from django.db import transaction
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -14,6 +13,7 @@ from maasserver.regiondservices.certificate_expiration_check import (
     REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
     REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
 )
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
@@ -25,15 +25,19 @@ wait_for_reactor = wait_for()
 
 class TestCertificateExpirationCheckService(MAASTransactionServerTestCase):
     def set_config(self, cert, enabled=True, interval=10):
-        with transaction.atomic():
-            Config.objects.set_config("tls_key", cert.private_key_pem())
-            Config.objects.set_config("tls_cert", cert.certificate_pem())
-            Config.objects.set_config(
-                "tls_cert_expiration_notification_enabled", enabled
-            )
-            Config.objects.set_config(
-                "tls_cert_expiration_notification_interval", interval
-            )
+        SecretManager().set_composite_secret(
+            "tls",
+            {
+                "key": cert.private_key_pem(),
+                "cert": cert.certificate_pem(),
+            },
+        )
+        Config.objects.set_config(
+            "tls_cert_expiration_notification_enabled", enabled
+        )
+        Config.objects.set_config(
+            "tls_cert_expiration_notification_interval", interval
+        )
 
     def get_notifications(self):
         notifications = Notification.objects.filter(

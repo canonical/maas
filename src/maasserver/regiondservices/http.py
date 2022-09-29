@@ -11,6 +11,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver.certificates import get_maas_certificate
 from maasserver.listener import PostgresListenerService
 from maasserver.models.config import Config
 from maasserver.regiondservices import certificate_expiration_check
@@ -49,15 +50,9 @@ class RegionHTTPService(Service):
         return super().stopService()
 
     def _getConfiguration(self):
-        configs = Config.objects.get_configs(
-            ("tls_key", "tls_cert", "tls_cacert", "tls_port")
-        )
-        return _Configuration(
-            key=configs["tls_key"],
-            cert=configs["tls_cert"],
-            cacert=configs["tls_cacert"],
-            port=configs["tls_port"],
-        )
+        cert = get_maas_certificate()
+        port = Config.objects.get_config("tls_port")
+        return _Configuration(cert=cert, port=port)
 
     def _configure(self, configuration):
         """Update the HTTP configuration for the region proxy service."""
@@ -68,7 +63,7 @@ class RegionHTTPService(Service):
         )
 
         if configuration.tls_enabled:
-            key_path, cert_path = self._create_cert_files(configuration)
+            key_path, cert_path = self._create_cert_files(configuration.cert)
         else:
             key_path, cert_path = "", ""
         environ = {
@@ -85,13 +80,7 @@ class RegionHTTPService(Service):
         target_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(rendered, target_path, overwrite=True, mode=0o644)
 
-    def _create_cert_files(self, configuration):
-        cert = Certificate.from_pem(
-            configuration.key,
-            configuration.cert,
-            ca_certs_material=configuration.cacert or "",
-        )
-
+    def _create_cert_files(self, cert):
         certs_dir = Path(get_http_config_dir()) / "certs"
         certs_dir.mkdir(parents=True, exist_ok=True)
         cert_path = certs_dir / "regiond-proxy.pem"
@@ -131,11 +120,9 @@ class RegionHTTPService(Service):
 class _Configuration:
     """Configuration for the region's nginx reverse proxy service."""
 
-    key: Optional[str] = None
-    cert: Optional[str] = None
-    cacert: Optional[str] = None
+    cert: Optional[Certificate] = None
     port: Optional[int] = None
 
     @property
     def tls_enabled(self) -> bool:
-        return all((self.port, self.key, self.cert))
+        return bool(self.cert and self.port)

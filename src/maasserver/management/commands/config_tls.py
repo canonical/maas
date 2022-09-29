@@ -6,15 +6,17 @@
 import argparse
 
 from django.core.management.base import BaseCommand
-from django.db import DEFAULT_DB_ALIAS, transaction
+from django.db import DEFAULT_DB_ALIAS
 
 from maascli.init import read_input
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
+from maasserver.listener import notify
 from maasserver.models import Config
 from maasserver.regiondservices.certificate_expiration_check import (
     clear_tls_notifications,
 )
+from maasserver.secrets import SecretManager
 from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_TYPES
 
@@ -22,21 +24,27 @@ from provisioningserver.events import EVENT_TYPES
 def _update_tls_config(
     config_manager, key=None, cert=None, cacert=None, port=None
 ):
-    config = {
-        "tls_key": key,
-        "tls_cert": cert,
-        "tls_cacert": cacert,
-        "tls_port": port,
+    secrets = {
+        "key": key,
+        "cert": cert,
+        "cacert": cacert,
     }
-    with transaction.atomic():
-        for key, value in config.items():
-            config_manager.set_config(key, value)
-            create_audit_event(
-                EVENT_TYPES.SETTINGS,
-                ENDPOINT.CLI,
-                description=f"Updated configuration setting '{key}'.",
-            )
-        clear_tls_notifications()
+    secret_manager = SecretManager()
+    if any(secrets.values()):
+        secret_manager.set_composite_secret("tls", secrets)
+    else:
+        secret_manager.delete_secret("tls")
+
+    config_manager.set_config("tls_port", port)
+
+    create_audit_event(
+        EVENT_TYPES.SETTINGS,
+        ENDPOINT.CLI,
+        description="Updated TLS configuration settings",
+    )
+    clear_tls_notifications()
+    # send a notification about the config change
+    notify("sys_reverse_proxy")
 
 
 class Command(BaseCommand):

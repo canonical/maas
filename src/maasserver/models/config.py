@@ -148,9 +148,6 @@ def get_default_config():
         # Hardware Sync options
         "hardware_sync_interval": "15m",
         # TLS certificate options
-        "tls_key": None,
-        "tls_cert": None,
-        "tls_cacert": None,
         "tls_port": None,
         "tls_cert_expiration_notification_enabled": False,
         "tls_cert_expiration_notification_interval": 30,

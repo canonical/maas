@@ -1947,25 +1947,6 @@ RBAC_CONFIG_UPDATE = dedent(
 )
 
 
-# Triggered when the HTTP reverse proxy settings are changed.
-# Notifies that HTTP Service needs to be synced.
-REVERSE_PROXY_CONFIG_TEMPLATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION {name}()
-    RETURNS trigger as $$
-    BEGIN
-      IF (NEW.name = 'tls_port' OR
-          NEW.name = 'tls_key' OR
-          NEW.name = 'tls_cert') THEN
-        PERFORM pg_notify('sys_reverse_proxy', '');
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 def render_sys_proxy_procedure(proc_name, on_delete=False):
     """Render a database procedure with name `proc_name` that notifies that a
     proxy update is needed.
@@ -2234,22 +2215,3 @@ def register_system_triggers():
     register_trigger("maasserver_config", "sys_rbac_config_insert", "insert")
     register_procedure(RBAC_CONFIG_UPDATE)
     register_trigger("maasserver_config", "sys_rbac_config_update", "update")
-
-    # - Config (HTTP reverse proxy)
-    register_procedure(
-        REVERSE_PROXY_CONFIG_TEMPLATE.format(
-            name="sys_reverse_proxy_config_insert"
-        )
-    )
-
-    register_trigger(
-        "maasserver_config", "sys_reverse_proxy_config_insert", "insert"
-    )
-    register_procedure(
-        REVERSE_PROXY_CONFIG_TEMPLATE.format(
-            name="sys_reverse_proxy_config_update"
-        )
-    )
-    register_trigger(
-        "maasserver_config", "sys_reverse_proxy_config_update", "update"
-    )

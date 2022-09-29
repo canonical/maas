@@ -18,6 +18,7 @@ from django.db.models import Case, Count, F, Max, When
 import requests
 from twisted.application.internet import TimerService
 
+from maasserver.certificates import get_maas_certificate
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -45,7 +46,6 @@ from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
@@ -394,12 +394,9 @@ def get_storage_layouts_stats():
 
 
 def get_tls_configuration_stats():
-    configs = Config.objects.get_configs(["tls_key", "tls_cert"])
-
-    if not all((configs["tls_key"], configs["tls_cert"])):
+    cert = get_maas_certificate()
+    if not cert:
         return {"tls_enabled": False, "tls_cert_validity_days": None}
-
-    cert = Certificate.from_pem(configs["tls_key"], configs["tls_cert"])
 
     validity_days = None
     expiration = cert.expiration()

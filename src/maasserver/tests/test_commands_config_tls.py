@@ -16,6 +16,7 @@ from maasserver.regiondservices.certificate_expiration_check import (
     REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
     REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
 )
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
@@ -39,8 +40,9 @@ class TestConfigTLSCommand(MAASServerTestCase):
             yield key_file.name
 
     def _get_config(self):
-        return Config.objects.get_configs(
-            ("tls_key", "tls_cert", "tls_cacert", "tls_port")
+        return (
+            SecretManager().get_composite_secret("tls", default=None),
+            Config.objects.get_config("tls_port"),
         )
 
     def get_notifications(self):
@@ -54,15 +56,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
 
     def test_config_tls_disable(self):
         call_command("config_tls", "disable")
-        self.assertEqual(
-            {
-                "tls_port": None,
-                "tls_key": None,
-                "tls_cert": None,
-                "tls_cacert": None,
-            },
-            self._get_config(),
-        )
+        self.assertEqual(self._get_config(), (None, None))
 
     def test_config_tls_enable_skip_confirm(self):
         sample_cert = get_sample_cert()
@@ -74,13 +68,15 @@ class TestConfigTLSCommand(MAASServerTestCase):
         # the command is not interactive
         self.read_input.assert_not_called()
         self.assertEqual(
-            {
-                "tls_port": 5234,
-                "tls_key": sample_cert.private_key_pem(),
-                "tls_cert": sample_cert.certificate_pem(),
-                "tls_cacert": "",
-            },
             self._get_config(),
+            (
+                {
+                    "key": sample_cert.private_key_pem(),
+                    "cert": sample_cert.certificate_pem(),
+                    "cacert": "",
+                },
+                5234,
+            ),
         )
 
     def test_config_tls_enable(self):
@@ -89,15 +85,16 @@ class TestConfigTLSCommand(MAASServerTestCase):
 
         self.read_input.return_value = "y"
         call_command("config_tls", "enable", key_path, cert_path, "-p=5234")
-
         self.assertEqual(
-            {
-                "tls_port": 5234,
-                "tls_key": sample_cert.private_key_pem(),
-                "tls_cert": sample_cert.certificate_pem(),
-                "tls_cacert": "",
-            },
             self._get_config(),
+            (
+                {
+                    "key": sample_cert.private_key_pem(),
+                    "cert": sample_cert.certificate_pem(),
+                    "cacert": "",
+                },
+                5234,
+            ),
         )
 
     def test_config_tls_enable_with_cacert(self):
@@ -119,12 +116,14 @@ class TestConfigTLSCommand(MAASServerTestCase):
         )
         self.assertEqual(
             self._get_config(),
-            {
-                "tls_port": 5234,
-                "tls_key": sample_cert.private_key_pem(),
-                "tls_cert": sample_cert.certificate_pem(),
-                "tls_cacert": sample_cert.ca_certificates_pem(),
-            },
+            (
+                {
+                    "key": sample_cert.private_key_pem(),
+                    "cert": sample_cert.certificate_pem(),
+                    "cacert": sample_cert.ca_certificates_pem(),
+                },
+                5234,
+            ),
         )
 
     def test_config_tls_enable_break(self):
@@ -147,13 +146,15 @@ class TestConfigTLSCommand(MAASServerTestCase):
         call_command("config_tls", "enable", key_path, cert_path)
 
         self.assertEqual(
-            {
-                "tls_port": 5443,
-                "tls_key": sample_cert.private_key_pem(),
-                "tls_cert": sample_cert.certificate_pem(),
-                "tls_cacert": "",
-            },
             self._get_config(),
+            (
+                {
+                    "key": sample_cert.private_key_pem(),
+                    "cert": sample_cert.certificate_pem(),
+                    "cacert": "",
+                },
+                5443,
+            ),
         )
 
     def test_config_tls_enable_with_incorrect_key(self):
@@ -196,22 +197,22 @@ class TestConfigTLSCommand(MAASServerTestCase):
         call_command("config_tls", "enable", key_path, cert_path)
 
         self.assertEqual(
-            {
-                "tls_port": 5443,
-                "tls_key": sample_cert.private_key_pem(),
-                "tls_cert": sample_cert.certificate_pem(),
-                "tls_cacert": "",
-            },
             self._get_config(),
+            (
+                {
+                    "key": sample_cert.private_key_pem(),
+                    "cert": sample_cert.certificate_pem(),
+                    "cacert": "",
+                },
+                5443,
+            ),
         )
-        events = list(Event.objects.filter(type__level=AUDIT))
-        self.assertEqual(4, len(events))
-        config = ("tls_key", "tls_cert", "tls_cacert", "tls_port")
-
-        for key, event in zip(config, events):
-            self.assertEqual(EVENT_TYPES.SETTINGS, event.type.name)
-            self.assertEqual(ENDPOINT.CLI, event.endpoint)
-            self.assertIn(key, event.description)
+        [event] = Event.objects.filter(type__level=AUDIT)
+        self.assertEqual(EVENT_TYPES.SETTINGS, event.type.name)
+        self.assertEqual(ENDPOINT.CLI, event.endpoint)
+        self.assertEqual(
+            event.description, "Updated TLS configuration settings"
+        )
 
     def test_config_tls_disable_removes_tls_notifications(self):
         factory.make_Notification(

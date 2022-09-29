@@ -31,6 +31,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.secrets import SecretManager
 from maasserver.stats import (
     get_bmc_stats,
     get_brownfield_stats,
@@ -769,10 +770,13 @@ class TestMAASStats(MAASServerTestCase):
 
     def test_get_tls_configuration_stats(self):
         cert = get_sample_cert()
-        with transaction.atomic():
-            Config.objects.set_config("tls_key", cert.private_key_pem())
-            Config.objects.set_config("tls_cert", cert.certificate_pem())
-
+        SecretManager().set_composite_secret(
+            "tls",
+            {
+                "key": cert.private_key_pem(),
+                "cert": cert.certificate_pem(),
+            },
+        )
         self.assertEqual(
             {
                 "tls_cert_validity_days": 3650,

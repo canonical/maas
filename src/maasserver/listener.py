@@ -6,6 +6,7 @@
 
 from collections import defaultdict, deque
 from errno import ENOENT
+import json
 import threading
 from typing import Any
 
@@ -513,5 +514,10 @@ class PostgresListenerService(Service):
 
 def notify_action(target: str, action: str, identifier: Any):
     """Send a notification for an action on a target."""
+    notify(f"{target}_{action}", identifier)
+
+
+def notify(channel: str, payload: Any = None):
+    """Send a NOTIFY on the specified channel."""
     with connection.cursor() as cursor:
-        cursor.execute(f"NOTIFY {target}_{action}, %s", [str(identifier)])
+        cursor.execute(f"NOTIFY {channel}, %s", [json.dumps(payload)])

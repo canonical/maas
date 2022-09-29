@@ -45,9 +45,6 @@ FORBIDDEN_NAMES = {
     "omapi_key",
     "rbac_url",
     "rpc_shared_secret",
-    "tls_cacert",
-    "tls_cert",
-    "tls_key",
     "tls_port",
     "uuid",
 }

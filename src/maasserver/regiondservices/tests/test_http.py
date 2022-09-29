@@ -3,12 +3,15 @@
 
 import os
 from pathlib import Path
-from unittest.mock import call, Mock
+from unittest.mock import Mock
 
+from fixtures import EnvironmentVariable
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.models.config import Config
+from maasserver.listener import notify
+from maasserver.models import Config
 from maasserver.regiondservices import certificate_expiration_check, http
+from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.threads import deferToDatabase
@@ -23,14 +26,23 @@ wait_for_reactor = wait_for()
 class TestRegionHTTPService(
     TransactionalHelpersMixin, MAASTransactionServerTestCase
 ):
-    """Tests for `RegionHTTPService`."""
+    def setUp(self):
+        super().setUp()
+        self.cert = get_sample_cert_with_cacerts()
 
     def create_tls_config(self):
         def _create_config_in_db():
-            """Should be deferToDatabase'd"""
-            self.create_config("tls_key", "maas-key")
-            self.create_config("tls_cert", "maas-cert")
-            self.create_config("tls_port", 5443)
+            Config.objects.set_config("tls_port", 5443)
+            SecretManager().set_composite_secret(
+                "tls",
+                {
+                    "key": self.cert.private_key_pem(),
+                    "cert": self.cert.certificate_pem(),
+                    "cacert": self.cert.ca_certificates_pem(),
+                },
+            )
+            # manually send a notification to emulate what TLS config does
+            notify("sys_reverse_proxy")
 
         yield deferToDatabase(_create_config_in_db)
 
@@ -44,31 +56,17 @@ class TestRegionHTTPService(
             certificate_expiration_check, "check_tls_certificate"
         )
 
-        m = Mock()
-        m.attach_mock(mock_reloadService, "mock_reloadService")
-        m.attach_mock(mock_configure, "mock_configure")
-        m.attach_mock(mock_cert_check, "mock_cert_check")
-
         yield from self.create_tls_config()
         yield service.startService()
-
-        expected_calls = [
-            call.mock_configure(
-                http._Configuration(
-                    key="maas-key", cert="maas-cert", port=5443
-                )
-            ),
-            call.mock_reloadService("reverse_proxy"),
-            call.mock_cert_check(),
-        ]
         yield service.stopService()
-        self.assertEqual(m.mock_calls, expected_calls)
+        mock_configure.assert_called_once()
+        mock_reloadService.assert_called_once_with("reverse_proxy")
+        mock_cert_check.assert_called_once_with()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_configure_and_reload_in_snap(self):
-        self.patch(os, "environ", {"SNAP": "true"})
-
+        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
         service = http.RegionHTTPService()
         mock_restartService = self.patch(
             http.service_monitor, "restartService"
@@ -78,25 +76,13 @@ class TestRegionHTTPService(
             certificate_expiration_check, "check_tls_certificate"
         )
 
-        m = Mock()
-        m.attach_mock(mock_restartService, "mock_restartService")
-        m.attach_mock(mock_configure, "mock_configure")
-        m.attach_mock(mock_cert_check, "mock_cert_check")
-
         yield from self.create_tls_config()
         yield service.startService()
 
-        expected_calls = [
-            call.mock_configure(
-                http._Configuration(
-                    key="maas-key", cert="maas-cert", port=5443
-                )
-            ),
-            call.mock_restartService("reverse_proxy"),
-            call.mock_cert_check(),
-        ]
         yield service.stopService()
-        self.assertEqual(m.mock_calls, expected_calls)
+        mock_configure.assert_called_once()
+        mock_restartService.assert_called_once_with("reverse_proxy")
+        mock_cert_check.assert_called_once_with()
 
     def test_configure_not_snap(self):
         tempdir = self.make_dir()
@@ -109,9 +95,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(
-            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
-        )
+        service._configure(http._Configuration(self.cert, port=5443))
 
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
@@ -142,9 +126,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(
-            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
-        )
+        service._configure(http._Configuration(cert=self.cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
         self.assertIn(
@@ -168,9 +150,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(
-            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
-        )
+        service._configure(http._Configuration(cert=self.cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
         self.assertIn("listen 5443 ssl http2;", nginx_config)
@@ -178,27 +158,20 @@ class TestRegionHTTPService(
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
     def test_create_cert_files_writes_full_chain(self):
-        sample_cert = get_sample_cert_with_cacerts()
         tempdir = Path(self.make_dir())
         certs_dir = tempdir / "certs"
         certs_dir.mkdir()
         self.patch(http, "get_http_config_dir").return_value = tempdir
 
-        config = http._Configuration(
-            key=sample_cert.private_key_pem(),
-            cert=sample_cert.certificate_pem(),
-            cacert=sample_cert.ca_certificates_pem(),
-            port=5443,
-        )
         service = http.RegionHTTPService()
-        service._create_cert_files(config)
+        service._create_cert_files(self.cert)
         self.assertEqual(
             (certs_dir / "regiond-proxy.pem").read_text(),
-            sample_cert.fullchain_pem(),
+            self.cert.fullchain_pem(),
         )
         self.assertEqual(
             (certs_dir / "regiond-proxy-key.pem").read_text(),
-            sample_cert.private_key_pem(),
+            self.cert.private_key_pem(),
         )
 
     @wait_for_reactor
@@ -233,7 +206,7 @@ class TestRegionHTTPService(
         yield listener.startService()
         yield from self.create_tls_config()
         try:
-            self.assertEqual(capture, ["sys_reverse_proxy"] * 3)
+            self.assertEqual(capture, ["sys_reverse_proxy"])
         finally:
             yield listener.stopService()
 
@@ -251,18 +224,22 @@ class TestRegionHTTPService(
         yield listener.startService()
         yield from self.create_tls_config()
         try:
-            self.assertEqual(capture, ["sys_reverse_proxy"] * 3)
+            self.assertEqual(capture, ["sys_reverse_proxy"])
         finally:
             yield listener.stopService()
 
         def get_config():
-            return Config.objects.get_configs(
-                ["tls_key", "tls_cert", "tls_port"]
-            )
+            tls_port = Config.objects.get_config("tls_port")
+            tls_secrets = SecretManager().get_composite_secret("tls")
+            return tls_port, tls_secrets
 
-        config = yield deferToDatabase(get_config)
-
+        tls_port, tls_secrets = yield deferToDatabase(get_config)
+        self.assertEqual(tls_port, 5443)
         self.assertEqual(
-            {"tls_key": "maas-key", "tls_cert": "maas-cert", "tls_port": 5443},
-            config,
+            tls_secrets,
+            {
+                "key": self.cert.private_key_pem(),
+                "cert": self.cert.certificate_pem(),
+                "cacert": self.cert.ca_certificates_pem(),
+            },
         )

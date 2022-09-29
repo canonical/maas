@@ -231,8 +231,8 @@ class TestConfigHandler(MAASServerTestCase):
     def test_on_listen_returns_None_if_excluded(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        Config.objects.set_config("tls_cert", "ABCDE")
-        self.assertIsNone(handler.on_listen("config", "create", "tls_cert"))
+        Config.objects.set_config("tls_port", 5443)
+        self.assertIsNone(handler.on_listen("config", "create", "tls_port"))
 
     def test_on_listen_returns_create_for_not_loaded(self):
         user = factory.make_User()
