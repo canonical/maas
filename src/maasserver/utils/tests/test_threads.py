@@ -8,7 +8,7 @@ import random
 from unittest.mock import sentinel
 
 from django.db import connection
-from testtools.matchers import Equals, Is, IsInstance
+from testtools.matchers import Is
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredSemaphore, inlineCallbacks
 
@@ -26,47 +26,45 @@ class TestMakeFunctions(MAASTestCase):
 
     def test_make_default_pool_creates_disconnected_pool(self):
         pool = threads.make_default_pool()
-        self.assertThat(pool, IsInstance(ThreadPool))
+        self.assertIsInstance(pool, ThreadPool)
         self.assertThat(
             pool.context.contextFactory, Is(orm.TotallyDisconnected)
         )
-        self.assertThat(pool.max, Equals(threads.max_threads_for_default_pool))
-        self.assertThat(pool.min, Equals(0))
+        self.assertEqual(threads.max_threads_for_default_pool, pool.max)
+        self.assertEqual(0, pool.min)
 
     def test_make_default_pool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_default_pool(maxthreads)
-        self.assertThat(pool.max, Equals(maxthreads))
-        self.assertThat(pool.min, Equals(0))
+        self.assertEqual(maxthreads, pool.max)
+        self.assertEqual(0, pool.min)
 
     def test_make_database_pool_creates_connected_pool(self):
         pool = threads.make_database_pool()
-        self.assertThat(pool, IsInstance(ThreadPool))
-        self.assertThat(pool.context.contextFactory, Is(orm.FullyConnected))
-        self.assertThat(
-            pool.max, Equals(threads.max_threads_for_database_pool)
-        )
-        self.assertThat(pool.min, Equals(0))
+        self.assertIsInstance(pool, ThreadPool)
+        self.assertIs(pool.context.contextFactory, orm.FullyConnected)
+        self.assertEqual(threads.max_threads_for_database_pool, pool.max)
+        self.assertEqual(0, pool.min)
 
     def test_make_database_pool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_database_pool(maxthreads)
-        self.assertThat(pool.max, Equals(maxthreads))
-        self.assertThat(pool.min, Equals(0))
+        self.assertEqual(maxthreads, pool.max)
+        self.assertEqual(0, pool.min)
 
     def test_make_database_unpool_creates_unpool(self):
         pool = threads.make_database_unpool()
-        self.assertThat(pool, IsInstance(ThreadUnpool))
-        self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
-        self.assertThat(pool.lock, IsInstance(DeferredSemaphore))
-        self.assertThat(
-            pool.lock.limit, Equals(threads.max_threads_for_database_pool)
+        self.assertIsInstance(pool, ThreadUnpool)
+        self.assertIs(pool.contextFactory, orm.ExclusivelyConnected)
+        self.assertIsInstance(pool.lock, DeferredSemaphore)
+        self.assertEqual(
+            threads.max_threads_for_database_pool, pool.lock.limit
         )
 
     def test_make_database_unpool_accepts_max_threads_setting(self):
         maxthreads = random.randint(1, 1000)
         pool = threads.make_database_unpool(maxthreads)
-        self.assertThat(pool.lock.limit, Equals(maxthreads))
+        self.assertEqual(maxthreads, pool.lock.limit)
 
 
 class TestInstallFunctions(MAASTestCase):
@@ -78,11 +76,11 @@ class TestInstallFunctions(MAASTestCase):
 
     def test_default_pool_is_disconnected_pool(self):
         pool = reactor.threadpool
-        self.assertThat(pool, IsInstance(ThreadPool))
+        self.assertIsInstance(pool, ThreadPool)
         self.assertThat(
             pool.context.contextFactory, Is(orm.TotallyDisconnected)
         )
-        self.assertThat(pool.min, Equals(0))
+        self.assertEqual(0, pool.min)
 
     def test_install_database_pool_will_not_work_now(self):
         error = self.assertRaises(
@@ -92,8 +90,8 @@ class TestInstallFunctions(MAASTestCase):
 
     def test_database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase
-        self.assertThat(pool, IsInstance(ThreadUnpool))
-        self.assertThat(pool.contextFactory, Is(orm.ExclusivelyConnected))
+        self.assertIsInstance(pool, ThreadUnpool)
+        self.assertIs(pool.contextFactory, orm.ExclusivelyConnected)
 
 
 class TestDeferToDatabase(MAASServerTestCase):
@@ -108,9 +106,7 @@ class TestDeferToDatabase(MAASServerTestCase):
         result = yield threads.deferToDatabase(
             call_in_database_thread, sentinel.a, b=sentinel.b
         )
-        self.assertThat(
-            result, Equals((sentinel.called, sentinel.a, sentinel.b))
-        )
+        self.assertEqual((sentinel.called, sentinel.a, sentinel.b), result)
 
 
 class TestCallOutToDatabase(MAASServerTestCase):
@@ -125,4 +121,4 @@ class TestCallOutToDatabase(MAASServerTestCase):
         result = yield threads.callOutToDatabase(
             sentinel.foo, call_in_database_thread, sentinel.a, b=sentinel.b
         )
-        self.assertThat(result, Is(sentinel.foo))
+        self.assertIs(result, sentinel.foo)

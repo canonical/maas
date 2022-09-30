@@ -11,7 +11,6 @@ from unittest.mock import sentinel
 from testtools.matchers import (
     Equals,
     HasLength,
-    Is,
     IsInstance,
     MatchesAll,
     MatchesAny,
@@ -114,9 +113,9 @@ class TestDatabaseTaskService(MAASTestCase):
             result = service.deferTask(
                 return_args, sentinel.arg, kw=sentinel.kw
             ).wait(TIMEOUT)
-            self.assertThat(
+            self.assertEqual(
+                (sentinel.here, (sentinel.arg,), {"kw": sentinel.kw}),
                 result,
-                Equals((sentinel.here, (sentinel.arg,), {"kw": sentinel.kw})),
             )
         finally:
             service.stopService()
@@ -159,7 +158,7 @@ class TestDatabaseTaskService(MAASTestCase):
             event.set()
             yield service.stopService()
 
-        self.assertThat(things, Equals([]))
+        self.assertEqual([], things)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -194,13 +193,13 @@ class TestDatabaseTaskService(MAASTestCase):
             event.set()
             yield service.stopService()
 
-        self.assertThat(things, Equals([]))
+        self.assertEqual([], things)
 
     def test_sync_task_fires_with_service(self):
         service = DatabaseTasksService()
         service.startService()
         try:
-            self.assertThat(service.syncTask().wait(TIMEOUT), Is(service))
+            self.assertIs(service.syncTask().wait(TIMEOUT), service)
         finally:
             service.stopService()
 
@@ -222,7 +221,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-        self.assertThat(things, Equals([1, 2]))
+        self.assertEqual([1, 2], things)
 
     def test_failure_in_added_task_does_not_crash_service(self):
         things = []  # This will be populated by tasks.
@@ -240,7 +239,7 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-        self.assertThat(things, Equals([1, 2]))
+        self.assertEqual([1, 2], things)
 
     def test_failure_in_task_is_logged(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -276,6 +275,6 @@ class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
         service.startService()
         try:
             result = service.deferTask(database_task).wait(TIMEOUT)
-            self.assertThat(result, Is(sentinel.beenhere))
+            self.assertIs(result, sentinel.beenhere)
         finally:
             service.stopService()

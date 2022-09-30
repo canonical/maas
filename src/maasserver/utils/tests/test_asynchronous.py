@@ -10,14 +10,7 @@ import threading
 from time import time
 from unittest.mock import call, Mock, sentinel
 
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    LessThan,
-)
+from testtools.matchers import Equals, HasLength, LessThan
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred
@@ -45,7 +38,7 @@ class TestGather(MAASTestCase):
         time_before = time()
         results = list(asynchronous.gather([], timeout=10))
         time_after = time()
-        self.assertThat(results, Equals([]))
+        self.assertEqual([], results)
         # gather() should return well within 9 seconds; this shows
         # that the call is not timing out.
         self.assertThat(time_after - time_before, LessThan(9))
@@ -86,12 +79,12 @@ class TestGatherScenarios(MAASTestCase):
         calls = [self.wrap(call) for call in calls]
         results = list(asynchronous.gather(calls))
 
-        self.assertThat(results, Contains(sentinel.okay))
+        self.assertIn(sentinel.okay, results)
         results.remove(sentinel.okay)
         self.assertThat(results, HasLength(1))
         failure = results[0]
-        self.assertThat(failure, IsInstance(Failure))
-        self.assertThat(failure.type, Is(ZeroDivisionError))
+        self.assertIsInstance(failure, Failure)
+        self.assertIs(failure.type, ZeroDivisionError)
 
     def test_gatherCallResults_yields_call_result_tuples(self):
         values = [self.getUniqueInteger(), self.getUniqueString()]
@@ -214,7 +207,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         dhooks.add(d)
         dhooks.reset()
         self.assertThat(dhooks.hooks, HasLength(0))
-        self.assertThat(extract_result(d), Is(None))
+        self.assertIsNone(extract_result(d))
         self.assertEqual("", logger.output)
 
     def test_logs_failures_from_cancellers(self):

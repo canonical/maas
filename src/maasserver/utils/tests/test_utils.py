@@ -8,7 +8,7 @@ from urllib.parse import urlencode, urljoin
 from django.http import HttpRequest
 from django.test.client import RequestFactory
 from django.urls import reverse
-from testtools.matchers import Contains, Equals, Not
+from testtools.matchers import Contains, Not
 
 from maasserver.models import Config
 from maasserver.testing.config import RegionConfigurationFixture
@@ -247,7 +247,7 @@ class TestGetMAASUserAgent(MAASServerTestCase):
     def test_get_maas_user_agent_without_uuid(self):
         user_agent = get_maas_user_agent()
         uuid = Config.objects.get_config("uuid")
-        self.assertEqual(uuid, None)
+        self.assertIsNone(uuid)
         self.assertThat(user_agent, IsNonEmptyString)
         self.assertThat(user_agent, Not(Contains(uuid)))
 
@@ -272,29 +272,27 @@ class TestGetHostWithoutPort(MAASTestCase):
     )
 
     def test_returns_expected_results(self):
-        self.assertThat(
-            get_host_without_port(self.host), Equals(self.expected)
-        )
+        self.assertEqual(self.expected, get_host_without_port(self.host))
 
 
 class TestGetDefaultRegionIP(MAASServerTestCase):
     def test_returns_source_ip_based_on_remote_ip_if_no_Host_header(self):
         # Note: the source IP should resolve to the loopback interface here.
-        self.assertThat(
+        self.assertEqual(
+            "127.0.0.1",
             get_default_region_ip(make_request("127.0.0.2")),
-            Equals("127.0.0.1"),
         )
 
     def test_returns_Host_header_if_available(self):
-        self.assertThat(
+        self.assertEqual(
+            "localhost",
             get_default_region_ip(make_request("127.0.0.1", "localhost")),
-            Equals("localhost"),
         )
 
     def test_returns_Host_header_if_available_and_strips_port(self):
-        self.assertThat(
+        self.assertEqual(
+            "localhost",
             get_default_region_ip(make_request("127.0.0.1", "localhost:5240")),
-            Equals("localhost"),
         )
 
 

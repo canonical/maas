@@ -263,8 +263,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             exc_info=exc_info,
             reraise=False,
         )
-        self.assertThat(
-            response.status_code, Equals(http.client.INTERNAL_SERVER_ERROR)
+        self.assertEqual(
+            http.client.INTERNAL_SERVER_ERROR, response.status_code
         )
 
     def test_get_response_catches_serialization_failures(self):
@@ -279,7 +279,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         response = handler.get_response(request)
 
         self.assertThat(get_response, MockCalledOnceWith(request))
-        self.assertThat(response, IsInstance(HttpResponseConflict))
+        self.assertIsInstance(response, HttpResponseConflict)
 
     def test_get_response_catches_deadlock_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
@@ -291,7 +291,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         response = handler.get_response(request)
 
         self.assertThat(get_response, MockCalledOnceWith(request))
-        self.assertThat(response, IsInstance(HttpResponseConflict))
+        self.assertIsInstance(response, HttpResponseConflict)
 
     def test_get_response_sends_signal_on_serialization_failures(self):
         get_response = self.patch(WSGIHandler, "get_response")
@@ -346,7 +346,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         observed_response = handler.get_response(request)
 
         self.assertThat(get_response, MockCalledOnceWith(request))
-        self.assertThat(observed_response, Is(response))
+        self.assertIs(observed_response, response)
 
     def test_get_response_tries_multiple_times(self):
         handler = views.WebApplicationHandler(3)
@@ -381,7 +381,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             get_response,
             MockCallsMatch(call(request), call(request), call(request)),
         )
-        self.assertThat(response, IsInstance(HttpResponseConflict))
+        self.assertIsInstance(response, HttpResponseConflict)
         self.expectThat(response.status_code, Equals(http.client.CONFLICT))
         self.expectThat(
             response.reason_phrase,
@@ -510,7 +510,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         handler = views.WebApplicationHandler(2)
 
         def check_retry_context_active(request):
-            self.assertThat(retry_context.active, Is(True))
+            self.assertTrue(retry_context.active)
 
         get_response = self.patch(WSGIHandler, "get_response")
         get_response.side_effect = check_retry_context_active
@@ -518,9 +518,9 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request = make_request()
         request.path = factory.make_name("path")
 
-        self.assertThat(retry_context.active, Is(False))
+        self.assertFalse(retry_context.active)
         handler.get_response(request)
-        self.assertThat(retry_context.active, Is(False))
+        self.assertFalse(retry_context.active)
         self.assertThat(get_response, MockCalledOnceWith(request))
 
     def test_get_response_restores_files_across_requests(self):
@@ -614,19 +614,19 @@ class TestWebApplicationHandlerAtomicViews(MAASServerTestCase):
                 connection.savepoint_ids, HasLength(savepoint_level + 1)
             )
             # Post-commit hooks have been saved.
-            self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+            self.assertIsNot(post_commit_hooks.hooks, hooks)
             # Return the args we were given.
             return args, kwargs
 
         handler = views.WebApplicationHandler()
         view_atomic = handler.make_view_atomic(view)
 
-        self.assertThat(post_commit_hooks.hooks, Is(hooks))
-        self.assertThat(
+        self.assertIs(post_commit_hooks.hooks, hooks)
+        self.assertEqual(
+            ((sentinel.arg,), {"kwarg": sentinel.kwarg}),
             view_atomic(sentinel.arg, kwarg=sentinel.kwarg),
-            Equals(((sentinel.arg,), {"kwarg": sentinel.kwarg})),
         )
-        self.assertThat(post_commit_hooks.hooks, Is(hooks))
+        self.assertIs(post_commit_hooks.hooks, hooks)
 
 
 class TestRequestHeaders(MAASTestCase):

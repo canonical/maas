@@ -8,9 +8,7 @@ from unittest.mock import call, Mock, sentinel
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
-    Equals,
     HasLength,
-    Is,
     MatchesAll,
 )
 from twisted.python.reflect import namedObject
@@ -229,9 +227,9 @@ class TestSignalsManager(MAASServerTestCase):
             sentinel.callback, sentinel.model, sentinel.fields, sentinel.delete
         )
 
-        self.assertThat(
+        self.assertEqual(
+            {Signal(sentinel.connect, sentinel.disconnect)},
             manager._signals,
-            Equals({Signal(sentinel.connect, sentinel.disconnect)}),
         )
         self.assertThat(
             connect_to_field_change,
@@ -307,8 +305,8 @@ class TestSignalsManager(MAASServerTestCase):
     def test_add_adds_the_signal(self):
         manager = SignalsManager()
         signal = self.make_Signal()
-        self.assertThat(manager.add(signal), Is(signal))
-        self.assertThat(manager._signals, Equals({signal}))
+        self.assertIs(manager.add(signal), signal)
+        self.assertEqual({signal}, manager._signals)
         # The manager is in its "new" state, neither enabled nor disabled, so
         # the signal is not asked to connect or disconnect yet.
         self.assertThat(signal.connect, MockNotCalled())

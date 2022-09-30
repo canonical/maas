@@ -668,7 +668,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 e.message,
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kernel_fails_with_missing_hwe_kernel(self):
         exception_raised = False
@@ -685,7 +685,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 e.message,
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kernel_fails_with_old_kernel_and_newer_release(self):
         exception_raised = False
@@ -701,7 +701,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 "hwe-t is too old to use on ubuntu/vivid.", e.message
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kern_fails_with_old_kern_and_new_min_hwe_kern(self):
         exception_raised = False
@@ -718,7 +718,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 e.message,
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kernel_fails_with_no_avalible_kernels(self):
         exception_raised = False
@@ -735,7 +735,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 e.message,
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kern_fails_with_old_release_and_newer_hwe_kern(self):
         exception_raised = False
@@ -750,7 +750,7 @@ class TestValidateHweKernel(MAASServerTestCase):
                 e.message,
             )
             exception_raised = True
-        self.assertEqual(True, exception_raised)
+        self.assertTrue(exception_raised)
 
     def test_validate_hwe_kern_always_sets_kern_with_commissionable_os(self):
         self.patch(

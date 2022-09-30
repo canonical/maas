@@ -8,7 +8,6 @@ from contextlib import closing, contextmanager
 import sys
 
 from django.db import connection, reset_queries, transaction
-from testtools.matchers import Equals
 
 from maasserver.testing.dblocks import lock_held_in_other_thread
 from maasserver.testing.testcase import (
@@ -217,7 +216,7 @@ class TestDatabaseLockVariations(MAASServerTestCase):
 
     def test_try_variation(self):
         lock = dblocks.DatabaseLock(get_objid())
-        self.assertThat(lock.TRY, Equals(lock))
+        self.assertEqual(lock, lock.TRY)
         self.assertDocTestMatches(
             """\
             SELECT pg_try_advisory_lock(...)
@@ -229,7 +228,7 @@ class TestDatabaseLockVariations(MAASServerTestCase):
 
     def test_shared_variation(self):
         lock = dblocks.DatabaseLock(get_objid())
-        self.assertThat(lock.SHARED, Equals(lock))
+        self.assertEqual(lock, lock.SHARED)
         self.assertDocTestMatches(
             """\
             SELECT pg_advisory_lock_shared(...)
@@ -241,7 +240,7 @@ class TestDatabaseLockVariations(MAASServerTestCase):
 
     def test_try_shared_variation(self):
         lock = dblocks.DatabaseLock(get_objid())
-        self.assertThat(lock.TRY.SHARED, Equals(lock))
+        self.assertEqual(lock, lock.TRY.SHARED)
         self.assertDocTestMatches(
             """\
             SELECT pg_try_advisory_lock_shared(...)
@@ -335,7 +334,7 @@ class TestDatabaseXactLockVariations(MAASServerTestCase):
 
     def test_try_variation(self):
         lock = dblocks.DatabaseXactLock(get_objid())
-        self.assertThat(lock.TRY, Equals(lock))
+        self.assertEqual(lock, lock.TRY)
         self.assertDocTestMatches(
             "SELECT pg_try_advisory_xact_lock(...)",
             capture_queries_while_holding_lock(lock.TRY),
@@ -343,7 +342,7 @@ class TestDatabaseXactLockVariations(MAASServerTestCase):
 
     def test_shared_variation(self):
         lock = dblocks.DatabaseXactLock(get_objid())
-        self.assertThat(lock.SHARED, Equals(lock))
+        self.assertEqual(lock, lock.SHARED)
         self.assertDocTestMatches(
             "SELECT pg_advisory_xact_lock_shared(...)",
             capture_queries_while_holding_lock(lock.SHARED),
@@ -351,7 +350,7 @@ class TestDatabaseXactLockVariations(MAASServerTestCase):
 
     def test_try_shared_variation(self):
         lock = dblocks.DatabaseXactLock(get_objid())
-        self.assertThat(lock.TRY.SHARED, Equals(lock))
+        self.assertEqual(lock, lock.TRY.SHARED)
         self.assertDocTestMatches(
             "SELECT pg_try_advisory_xact_lock_shared(...)",
             capture_queries_while_holding_lock(lock.TRY.SHARED),

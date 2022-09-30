@@ -23,14 +23,7 @@ from psycopg2.errorcodes import (
     UNIQUE_VIOLATION,
 )
 from testtools import ExpectedException
-from testtools.matchers import (
-    AllMatch,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesPredicate,
-    Not,
-)
+from testtools.matchers import AllMatch, Is, MatchesPredicate, Not
 from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
@@ -641,11 +634,11 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
     def test_uses_retry_context(self):
         @retry_on_retryable_failure
         def function_that_will_be_retried():
-            self.assertThat(orm.retry_context.active, Is(True))
+            self.assertTrue(orm.retry_context.active)
 
-        self.assertThat(orm.retry_context.active, Is(False))
+        self.assertFalse(orm.retry_context.active)
         function_that_will_be_retried()
-        self.assertThat(orm.retry_context.active, Is(False))
+        self.assertFalse(orm.retry_context.active)
 
     def test_retry_contexts_accumulate(self):
         accumulated, entered, exited = [], [], []
@@ -673,9 +666,9 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         # `entered` and `exited` will contain all but the highest element in
         # `accumulated` because the final context is not entered nor exited.
         expected = accumulated[:-1]
-        self.assertThat(entered, Equals(expected))
+        self.assertEqual(expected, entered)
         expected.reverse()
-        self.assertThat(exited, Equals(expected))
+        self.assertEqual(expected, exited)
 
 
 class TestMakeSerializationFailure(MAASTestCase):
@@ -778,13 +771,13 @@ class TestRetryStack(MAASTestCase):
                 ]
             )
             # These contexts haven't been entered yet.
-            self.assertThat(names, Equals([]))
+            self.assertEqual([], names)
             # They're entered when `enter_pending_contexts` is called.
             stack.enter_pending_contexts()
             # The contexts are entered in the order specified.
-            self.assertThat(names, Equals(["alice", "bob", "carol"]))
+            self.assertEqual(["alice", "bob", "carol"], names)
         # These contexts have been exited again.
-        self.assertThat(names, Equals([]))
+        self.assertEqual([], names)
 
     def test_each_context_entered_only_once_even_if_added_twice(self):
         names = []
@@ -793,9 +786,9 @@ class TestRetryStack(MAASTestCase):
             stack.add_pending_contexts([dave, dave])
             stack.enter_pending_contexts()
             # The `dave` context is entered only once.
-            self.assertThat(names, Equals(["dave"]))
+            self.assertEqual(["dave"], names)
         # The `dave` context has been exited.
-        self.assertThat(names, Equals([]))
+        self.assertEqual([], names)
 
     def test_each_context_entered_only_once_even_if_enter_called_twice(self):
         names = []
@@ -805,9 +798,9 @@ class TestRetryStack(MAASTestCase):
             stack.enter_pending_contexts()
             stack.enter_pending_contexts()
             # The `dave` context is entered only once.
-            self.assertThat(names, Equals(["dave"]))
+            self.assertEqual(["dave"], names)
         # The `dave` context has been exited.
-        self.assertThat(names, Equals([]))
+        self.assertEqual([], names)
 
     def test_crash_entering_context_is_propagated(self):
         with orm.RetryStack() as stack:
@@ -827,14 +820,14 @@ class TestRetryContext(MAASTestCase):
 
     def test_starts_off_with_nothing(self):
         context = orm.RetryContext()
-        self.assertThat(context.active, Is(False))
-        self.assertThat(context.stack, Is(None))
+        self.assertFalse(context.active)
+        self.assertIsNone(context.stack)
 
     def test_creates_stack_on_entry(self):
         context = orm.RetryContext()
         with context:
-            self.assertThat(context.active, Is(True))
-            self.assertThat(context.stack, IsInstance(orm.RetryStack))
+            self.assertTrue(context.active)
+            self.assertIsInstance(context.stack, orm.RetryStack)
 
     def test_prepare_enters_pending_contexts(self):
         context = orm.RetryContext()
@@ -846,7 +839,7 @@ class TestRetryContext(MAASTestCase):
         names = []
         context = orm.RetryContext()
         with context:
-            self.assertThat(context.active, Is(True))
+            self.assertTrue(context.active)
             context.stack.add_pending_contexts(
                 [
                     PopulateContext(names, "alice"),
@@ -854,10 +847,10 @@ class TestRetryContext(MAASTestCase):
                 ]
             )
             context.prepare()
-            self.assertThat(names, Equals(["alice", "bob"]))
-        self.assertThat(context.active, Is(False))
-        self.assertThat(context.stack, Is(None))
-        self.assertThat(names, Equals([]))
+            self.assertEqual(["alice", "bob"], names)
+        self.assertFalse(context.active)
+        self.assertIsNone(context.stack)
+        self.assertEqual([], names)
 
     def test_destroys_stack_on_exit_even_when_there_is_a_crash(self):
         names = []
@@ -872,10 +865,10 @@ class TestRetryContext(MAASTestCase):
                     ]
                 )
                 context.prepare()
-                self.assertThat(names, Equals(["alice", "bob"]))
-        self.assertThat(context.active, Is(False))
-        self.assertThat(context.stack, Is(None))
-        self.assertThat(names, Equals([]))
+                self.assertEqual(["alice", "bob"], names)
+        self.assertFalse(context.active)
+        self.assertIsNone(context.stack)
+        self.assertEqual([], names)
 
 
 class TestRequestTransactionRetry(MAASTestCase):
@@ -896,14 +889,14 @@ class TestRequestTransactionRetry(MAASTestCase):
                 PopulateContext(contexts, "carol"),
             )
             # These contexts are added as "pending"...
-            self.assertThat(contexts, Equals([]))
+            self.assertEqual([], contexts)
             # They're entered when `prepare` is called (which is done by the
             # retry machinery; normal application code doesn't do this).
             orm.retry_context.prepare()
             # The contexts are entered in the order specified.
-            self.assertThat(contexts, Equals(["alice", "bob", "carol"]))
+            self.assertEqual(["alice", "bob", "carol"], contexts)
         # The contexts are exited in the order specified.
-        self.assertThat(contexts, Equals([]))
+        self.assertEqual([], contexts)
 
 
 class TestGenRetryIntervals(MAASTestCase):
@@ -921,9 +914,9 @@ class TestGenRetryIntervals(MAASTestCase):
         # Convert from seconds to milliseconds, and round.
         intervals = [int(interval * 1000) for interval in intervals]
         # They start off small, but grow rapidly to the maximum.
-        self.assertThat(
+        self.assertEqual(
+            [25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000],
             intervals,
-            Equals([25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000]),
         )
 
     def test_pulls_from_exponential_series_until_maximum_is_reached(self):
@@ -933,7 +926,7 @@ class TestGenRetryIntervals(MAASTestCase):
         repeat.return_value = [sentinel.end]
         maximum = randint(10, 100)
         intervals = list(orm.gen_retry_intervals(maximum=maximum))
-        self.assertThat(intervals[-1], Is(sentinel.end))
+        self.assertIs(intervals[-1], sentinel.end)
         self.assertThat(intervals[:-1], AllMatch(LessThanOrEqual(maximum)))
 
 
@@ -985,12 +978,12 @@ class TestPostCommit(MAASTestCase):
         hook = Deferred()
         hook_added = post_commit(hook)
         self.assertEqual([hook], list(post_commit_hooks.hooks))
-        self.assertThat(hook_added, Is(hook))
+        self.assertIs(hook_added, hook)
 
     def test_adds_new_Deferred_as_hook_when_called_without_args(self):
         hook_added = post_commit()
         self.assertEqual([hook_added], list(post_commit_hooks.hooks))
-        self.assertThat(hook_added, IsInstance(Deferred))
+        self.assertIsInstance(hook_added, Deferred)
 
     def test_adds_callable_as_hook(self):
         def hook(arg):
@@ -998,7 +991,7 @@ class TestPostCommit(MAASTestCase):
 
         hook_added = post_commit(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
-        self.assertThat(hook_added, IsInstance(Deferred))
+        self.assertIsInstance(hook_added, Deferred)
 
     def test_fire_calls_back_with_None_to_Deferred_hook(self):
         hook = Deferred()
@@ -1042,8 +1035,8 @@ class TestPostCommit(MAASTestCase):
         post_commit_hooks.reset()
         self.assertThat(hook, MockCalledOnceWith(ANY))
         arg = hook.call_args[0][0]
-        self.assertThat(arg, IsInstance(Failure))
-        self.assertThat(arg.value, IsInstance(CancelledError))
+        self.assertIsInstance(arg, Failure)
+        self.assertIsInstance(arg.value, CancelledError)
 
     def test_rejects_other_hook_types(self):
         self.assertRaises(AssertionError, post_commit, sentinel.hook)
@@ -1099,24 +1092,24 @@ class TestConnected(MAASTransactionServerTestCase):
 
     def test_ensures_connection(self):
         with orm.connected():
-            self.assertThat(connection.connection, Not(Is(None)))
+            self.assertIsNotNone(connection.connection)
 
     def test_opens_and_closes_connection_when_no_preexisting_connection(self):
         connection.close()
 
-        self.assertThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
         with orm.connected():
-            self.assertThat(connection.connection, Not(Is(None)))
-        self.assertThat(connection.connection, Is(None))
+            self.assertIsNotNone(connection.connection)
+        self.assertIsNone(connection.connection)
 
     def test_leaves_preexisting_connections_alone(self):
         connection.ensure_connection()
         preexisting_connection = connection.connection
 
-        self.assertThat(connection.connection, Not(Is(None)))
+        self.assertIsNotNone(connection.connection)
         with orm.connected():
-            self.assertThat(connection.connection, Is(preexisting_connection))
-        self.assertThat(connection.connection, Is(preexisting_connection))
+            self.assertIs(connection.connection, preexisting_connection)
+        self.assertIs(connection.connection, preexisting_connection)
 
     def test_disconnects_and_reconnects_if_not_usable(self):
         connection.ensure_connection()
@@ -1125,15 +1118,15 @@ class TestConnected(MAASTransactionServerTestCase):
         connection.errors_occurred = True
         self.patch(connection, "is_usable").return_value = False
 
-        self.assertThat(connection.connection, Not(Is(None)))
+        self.assertIsNotNone(connection.connection)
         with orm.connected():
             self.assertThat(
                 connection.connection, Not(Is(preexisting_connection))
             )
-            self.assertThat(connection.connection, Not(Is(None)))
+            self.assertIsNotNone(connection.connection)
 
-        self.assertThat(connection.connection, Not(Is(preexisting_connection)))
-        self.assertThat(connection.connection, Not(Is(None)))
+        self.assertIsNot(connection.connection, preexisting_connection)
+        self.assertIsNotNone(connection.connection)
 
 
 class TestWithConnection(MAASTransactionServerTestCase):
@@ -1141,15 +1134,15 @@ class TestWithConnection(MAASTransactionServerTestCase):
 
     def test_exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
-        self.assertThat(orm.with_connection(function).func, Is(function))
+        self.assertIs(orm.with_connection(function).func, function)
 
     def test_ensures_function_is_called_within_connected_context(self):
         context = self.patch(orm, "connected").return_value = StubContext()
 
         @orm.with_connection
         def function(arg, kwarg):
-            self.assertThat(arg, Is(sentinel.arg))
-            self.assertThat(kwarg, Is(sentinel.kwarg))
+            self.assertIs(arg, sentinel.arg)
+            self.assertIs(kwarg, sentinel.kwarg)
             self.assertTrue(context.active)
             return sentinel.result
 
@@ -1163,7 +1156,7 @@ class TestWithConnection(MAASTransactionServerTestCase):
 class TestTransactional(MAASTransactionServerTestCase):
     def test_exposes_original_function(self):
         function = Mock(__name__=self.getUniqueString())
-        self.assertThat(orm.transactional(function).func, Is(function))
+        self.assertIs(orm.transactional(function).func, function)
 
     def test_calls_function_within_transaction_then_closes_connections(self):
         # Close the database connection to begin with.
@@ -1262,13 +1255,13 @@ class TestTransactional(MAASTransactionServerTestCase):
         @orm.transactional
         def inner():
             # We're inside a savepoint context here.
-            self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+            self.assertIsNot(post_commit_hooks.hooks, hooks)
             return "inner"
 
         @orm.transactional
         def outer():
             # We're inside a transaction here, but not yet a savepoint.
-            self.assertThat(post_commit_hooks.hooks, Is(hooks))
+            self.assertIs(post_commit_hooks.hooks, hooks)
             return "outer > " + inner()
 
         self.assertEqual("outer > inner", outer())
@@ -1316,7 +1309,7 @@ class TestSavepoint(MAASTransactionServerTestCase):
                 # We're one savepoint in.
                 self.assertThat(connection.savepoint_ids, HasLength(1))
                 # Post-commit hooks have been saved.
-                self.assertThat(post_commit_hooks.hooks, Not(Is(hooks)))
+                self.assertIsNot(post_commit_hooks.hooks, hooks)
             self.expectThat(connection.savepoint_ids, HasLength(0))
 
 
@@ -1364,9 +1357,7 @@ class TestPsqlArray(MAASTestCase):
 class TestDisablingDatabaseConnections(MAASTransactionServerTestCase):
     def assertConnectionsEnabled(self):
         for alias in connections:
-            self.assertThat(
-                connections[alias], IsInstance(BaseDatabaseWrapper)
-            )
+            self.assertIsInstance(connections[alias], BaseDatabaseWrapper)
 
     def assertConnectionsDisabled(self):
         for alias in connections:
@@ -1437,20 +1428,20 @@ class TestExclusivelyConnected(MAASTransactionServerTestCase):
     def test_exit_closes_open_connections(self):
         self.addCleanup(connection.close)
         connection.ensure_connection()
-        self.assertThat(connection.connection, Not(Is(None)))
+        self.assertIsNotNone(connection.connection)
         context = ExclusivelyConnected()
         context.__exit__()
-        self.assertThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
 
 
 class TestFullyConnected(MAASTransactionServerTestCase):
     """Tests for `FullyConnected`."""
 
     def assertOpen(self, alias):
-        self.assertThat(connections[alias].connection, Not(Is(None)))
+        self.assertIsNotNone(connections[alias].connection)
 
     def assertClosed(self, alias):
-        self.assertThat(connections[alias].connection, Is(None))
+        self.assertIsNone(connections[alias].connection)
 
     def test_opens_and_closes_connections(self):
         for alias in connections:
@@ -1477,15 +1468,13 @@ class TestFullyConnected(MAASTransactionServerTestCase):
 
 class TestGetModelObjectName(MAASServerTestCase):
     def test_gets_model_object_name_from_manager(self):
-        self.assertThat(get_model_object_name(Node.objects), Equals("Node"))
+        self.assertEqual("Node", get_model_object_name(Node.objects))
 
     def test_gets_model_object_name_from_queryset(self):
-        self.assertThat(
-            get_model_object_name(Node.objects.all()), Equals("Node")
-        )
+        self.assertEqual("Node", get_model_object_name(Node.objects.all()))
 
     def test_gets_model_object_name_returns_none_if_not_found(self):
-        self.assertThat(get_model_object_name("crazytalk"), Is(None))
+        self.assertIsNone(get_model_object_name("crazytalk"))
 
 
 class TestCountQueries(MAASServerTestCase):
