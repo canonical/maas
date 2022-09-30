@@ -1,0 +1,44 @@
+# The name of the new LXD project. This can't exist already.
+LXD_PROJECT=maas-test-1
+
+# The name of the default LXD bridge and storage pool.
+LXD_BRIDGE=lxdbr0
+LXD_POOL=default
+
+# Which snap channel to use for MAAS and maas-test-db
+MAAS_SNAP_CHANNEL=3.2/stable
+
+# Which SSH key to import for the admin user
+SSH_IMPORT_ID=lp:bjornt
+
+# The name of the "infra" and "edge" network interfaces.
+# These can't exist already.
+INFRA_NAME=infra1
+EDGE_NAME=edge1
+
+# Internal helper variables to define the "infra" and "edge"
+# subnets. These assume that a /24 network is used. If you need
+# any other type of subnet, you can remove these variables and
+# and define everything manually.
+INFRA_PREFIX=10.5.141
+EDGE_PREFIX=10.5.151
+
+# The address and subnet info for the "infra" network.
+INFRA_ADDR=${INFRA_PREFIX}.1
+INFRA_SLASH=24
+INFRA_CIDR=${INFRA_PREFIX}.0/${INFRA_SLASH}
+INFRA_DYNAMIC_START=${INFRA_PREFIX}.100
+INFRA_DYNAMIC_END=${INFRA_PREFIX}.200
+
+# The address and subnet info for the "edge" network.
+EDGE_ADDR=${EDGE_PREFIX}.1
+EDGE_SLASH=24
+EDGE_CIDR=${EDGE_PREFIX}.0/${EDGE_SLASH}
+EDGE_DYNAMIC_START=${EDGE_PREFIX}.100
+EDGE_DYNAMIC_END=${EDGE_PREFIX}.200
+EDGE_VLAN=151 # This can be any number 1-4096
+
+# The IPs the region and relay containers should get
+REGION_ADDR=${INFRA_PREFIX}.2
+RELAY_ADDR=${EDGE_PREFIX}.2
+

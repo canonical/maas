@@ -194,6 +194,7 @@ lint-shell: bin/shellcheck
 		utilities/connect-snap-interfaces \
 		utilities/gen-db-schema-svg \
 		utilities/ldap-setup \
+		utilities/maas-lxd-environment \
 		utilities/package-version \
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \

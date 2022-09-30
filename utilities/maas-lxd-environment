@@ -1,0 +1,210 @@
+#!/bin/bash -e
+
+read -r -d '' HELP << EOM || true
+This script creates a MAAS deployment using LXD containers and networks.
+
+You will have two networks to launch VMs on:
+
+  lxc launch --vm --empty --profile infra vm1
+  lxc launch --vm --empty --profile edge vm2
+
+The infra network has DHCP served directly from the rack controller.
+The edge network uses a DHCP relay agent to relay DHCP requests to
+the infra network.
+
+Everything is set up in a new LXD project. The LXD project shouldn't exist
+when you run this script.
+
+Two containers are created. The "region1" container contains the MAAS
+deployment and has an interface on the "infra" network. The "edge-relay"
+container has an DHCP relay agent and has an interface on the "edge"
+network. Both containers uses the default LXD bridge for internet access.
+
+Usage: $0 <config_file>
+
+See ${0}.config.sample for an example config file.
+EOM
+
+if [ "$1" == "-h" ] || [ "$1" == "--help" ] || [ "$1" == "" ]; then
+    echo "$HELP"
+    exit 0
+fi
+
+CONFIG_FILE=$1
+
+# shellcheck source=utilities/maas-lxd-environment.config.sample
+. "$CONFIG_FILE"
+
+set -x
+
+lxc project create "$LXD_PROJECT"
+lxc network create "$INFRA_NAME" --type=bridge \
+    ipv4.address="$INFRA_ADDR/$INFRA_SLASH" ipv4.dhcp=false ipv4.nat=false \
+    ipv6.address=none
+lxc network create "$EDGE_NAME" --type=bridge \
+    ipv4.address="$EDGE_ADDR/$EDGE_SLASH" ipv4.dhcp=false ipv4.nat=false \
+    ipv6.address=none
+
+
+lxc --project "$LXD_PROJECT" profile edit default << EOF
+config: {}
+description: Default LXD profile for project $LXD_PROJECT
+devices:
+  eth0:
+    name: eth0
+    network: $LXD_BRIDGE
+    type: nic
+  root:
+    path: /
+    pool: $LXD_POOL
+    type: disk
+name: default
+EOF
+
+lxc --project "$LXD_PROJECT" profile create infra
+lxc --project "$LXD_PROJECT" profile edit infra << EOF
+config:
+  limits.cpu: "2"
+  limits.memory: 4GiB
+description: MAAS VMs on infra network
+devices:
+  eth0:
+    boot.priority: "10"
+    name: eth0
+    network: $INFRA_NAME
+    type: nic
+  root:
+    path: /
+    pool: $LXD_POOL
+    type: disk
+name: vm-infra
+EOF
+
+lxc --project "$LXD_PROJECT" profile create edge
+
+lxc --project "$LXD_PROJECT" profile edit edge << EOF
+config:
+  limits.cpu: "2"
+  limits.memory: 4GiB
+description: MAAS VMs on edge network
+devices:
+  eth0:
+    boot.priority: "10"
+    name: eth0
+    network: $EDGE_NAME
+    type: nic
+  root:
+    path: /
+    pool: $LXD_POOL
+    type: disk
+name: vm-infra
+EOF
+
+
+lxc --project "$LXD_PROJECT" launch ubuntu:22.04 region1
+lxc --project "$LXD_PROJECT" config device add region1 eth1 nic name=eth1 \
+    network="$INFRA_NAME"
+lxc --project "$LXD_PROJECT" launch ubuntu:22.04 edge-relay
+lxc --project "$LXD_PROJECT" config device add edge-relay eth1 nic name=eth1 \
+    network="$EDGE_NAME"
+
+lxc --project "$LXD_PROJECT" exec region1 -- cloud-init status --wait
+lxc --project "$LXD_PROJECT" exec region1 -- \
+    tee /etc/netplan/99-maas-deployment.yaml << EOF
+network:
+    version: 2
+    ethernets:
+        eth1:
+          addresses: [$REGION_ADDR/$INFRA_SLASH]
+          routes:
+            - to: $EDGE_CIDR
+              via: $INFRA_ADDR
+          nameservers:
+            addresses: [$INFRA_ADDR]
+EOF
+lxc --project "$LXD_PROJECT" exec region1 -- netplan apply
+lxc --project "$LXD_PROJECT" exec region1 -- snap install \
+    --channel "$MAAS_SNAP_CHANNEL" maas-test-db
+lxc --project "$LXD_PROJECT" exec region1 -- snap install \
+    --channel "$MAAS_SNAP_CHANNEL" maas
+lxc --project "$LXD_PROJECT" exec region1 -- maas init region+rack \
+    --maas-url "http://$REGION_ADDR:5240/MAAS" --database-uri maas-test-db:///
+lxc --project "$LXD_PROJECT" exec region1 -- maas createadmin --username admin \
+    --password test --email maas@example.com --ssh-import "$SSH_IMPORT_ID"
+
+lxc --project "$LXD_PROJECT" exec edge-relay -- cloud-init status --wait
+lxc --project "$LXD_PROJECT" exec edge-relay -- \
+    tee /etc/netplan/99-maas-deployment.yaml << EOF
+network:
+    version: 2
+    ethernets:
+        eth1:
+          addresses: [$RELAY_ADDR/$EDGE_SLASH]
+          nameservers:
+            addresses: [$EDGE_ADDR]
+EOF
+lxc --project "$LXD_PROJECT" exec edge-relay -- netplan apply
+lxc --project "$LXD_PROJECT" exec edge-relay -- apt update
+lxc --project "$LXD_PROJECT" exec --env DEBIAN_FRONTEND=noninteractive \
+    edge-relay -- apt install -y isc-dhcp-relay
+lxc --project "$LXD_PROJECT" exec edge-relay -- \
+    tee /etc/default/isc-dhcp-relay << EOF
+SERVERS=$REGION_ADDR
+INTERFACES=eth1
+OPTIONS=""
+EOF
+
+lxc --project "$LXD_PROJECT" exec --env DEBIAN_FRONTEND=noninteractive \
+    edge-relay -- dpkg-reconfigure isc-dhcp-relay
+
+MAAS_API_TOKEN=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas apikey --username admin)
+
+lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas login local "http://$REGION_ADDR:5240/MAAS" "$MAAS_API_TOKEN"
+RACK=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local rack-controllers read | \
+    jq -c ".[] | select(.hostname == \"region1\") | .system_id" | tr -d '"')
+INFRA_SUBNET_ID=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local subnets read | \
+    jq -c ".[] | select(.cidr == \"$INFRA_CIDR\") | .id ")
+FABRIC_ID=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local subnets read | \
+    jq -c ".[] | select(.cidr == \"$INFRA_CIDR\") | .vlan.fabric_id ")
+INFRA_VLAN_ID=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local subnets read | \
+    jq -c ".[] | select(.cidr == \"$INFRA_CIDR\") | .vlan.id ")
+lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local vlans create "$FABRIC_ID" vid="$EDGE_VLAN" | jq -c '.id'
+lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local subnets create fabric=1 vid="$EDGE_VLAN" cidr="$EDGE_CIDR" \
+    gateway_ip="$EDGE_ADDR"
+EDGE_SUBNET_ID=$(lxc --project "$LXD_PROJECT" exec region1 -- \
+    maas local subnets read | \
+    jq -c ".[] | select(.cidr == \"$EDGE_CIDR\") | .id ")
+
+# Enable DHCP
+
+lxc --project "$LXD_PROJECT" exec region1 -- \
+  maas local ipranges create type=dynamic start_ip="$INFRA_DYNAMIC_START" \
+  end_ip="$INFRA_DYNAMIC_END" subnet="$INFRA_SUBNET_ID"
+lxc --project "$LXD_PROJECT" exec region1 -- \
+  maas local ipranges create type=dynamic start_ip="$EDGE_DYNAMIC_START" \
+  end_ip="$EDGE_DYNAMIC_END" subnet="$EDGE_SUBNET_ID"
+lxc --project "$LXD_PROJECT" exec region1 -- \
+  maas local vlan update "$FABRIC_ID" 0 dhcp_on=true primary_rack="$RACK"
+lxc --project "$LXD_PROJECT" exec region1 -- \
+  maas local vlan update "$FABRIC_ID" "$EDGE_VLAN" relay_vlan="$INFRA_VLAN_ID"
+
+
+set +x
+
+echo ""
+echo "You can now log in as admin/test at http://${REGION_ADDR}:5240/MAAS"
+echo ""
+echo "A new LXD project has been created: ${LXD_PROJECT}"
+echo ""
+echo "You can launch new VMs on the \"infra\" and \"edge\" networks:"
+echo ""
+echo "  lxc --project ${LXD_PROJECT} launch --vm --empty --profile infra vm1"
+echo "  lxc --project ${LXD_PROJECT} launch --vm --empty --profile edge vm2"
