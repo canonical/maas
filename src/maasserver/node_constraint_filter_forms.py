@@ -922,12 +922,14 @@ class FilterNodeForm(forms.Form):
         label="Power State",
         choices=POWER_STATE_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     not_power_state = ConstrainedMultipleChoiceField(
         label="Power State",
         choices=POWER_STATE_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     ignore_unknown_constraints = False
@@ -1361,24 +1363,28 @@ class ReadNodesForm(FilterNodeForm):
         label="Only includes nodes with the specified status",
         choices=NODE_STATUS_SHORT_LABEL_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     not_status = ConstrainedMultipleChoiceField(
         label="Exclude nodes with the specified status",
         choices=NODE_STATUS_SHORT_LABEL_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     simple_status = ConstrainedMultipleChoiceField(
         label="Only includes nodes with the specified simplified status",
         choices=SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     not_simple_status = ConstrainedMultipleChoiceField(
         label="Exclude nodes with the specified simplified status",
         choices=SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
         required=False,
+        clean_prefix="=",
     )
 
     READ_CONDs = {

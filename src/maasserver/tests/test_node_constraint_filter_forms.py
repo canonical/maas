@@ -2400,6 +2400,13 @@ class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertConstrainedNodes([node1, node3], {"status": "new"})
         self.assertConstrainedNodes([node2], {"status": "deploying"})
 
+    def test_status_with_prefix(self):
+        node1 = factory.make_Node(status=NODE_STATUS.NEW)
+        node2 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node3 = factory.make_Node(status=NODE_STATUS.NEW)
+        self.assertConstrainedNodes([node1, node3], {"status": "=new"})
+        self.assertConstrainedNodes([node2], {"status": "=deploying"})
+
 
 class TestGetFieldArgumentType(MAASServerTestCase):
     def test_get_IntegerField_type(self):

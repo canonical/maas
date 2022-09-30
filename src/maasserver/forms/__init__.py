@@ -70,6 +70,7 @@ __all__ = [
 from itertools import chain
 import json
 import re
+from typing import Optional
 
 from django import forms
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
@@ -1983,12 +1984,21 @@ class TagForm(MAASModelForm):
 class ConstrainedMultipleChoiceField(MultipleChoiceField):
     """A MultipleChoiceField which also accepts a single value as input."""
 
+    def __init__(self, clean_prefix: Optional[str] = None, **kwargs):
+        self._clean_prefix = clean_prefix
+        super().__init__(**kwargs)
+
+    def _clean_value(self, val: str) -> str:
+        if self._clean_prefix is not None:
+            val = val.removeprefix(self._clean_prefix)
+        return val
+
     def to_python(self, value):
         if not value:
             return []
         elif not isinstance(value, (list, tuple)):
-            return [str(value)]
-        return [str(val) for val in value]
+            return [self._clean_value(str(value))]
+        return [self._clean_value(str(val)) for val in value]
 
 
 class UnconstrainedTypedMultipleChoiceField(TypedMultipleChoiceField):
