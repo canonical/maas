@@ -12,7 +12,7 @@ import textwrap
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from testtools.matchers import Contains, Equals, FileContains, Not
+from testtools.matchers import Equals, FileContains
 
 from maasserver.models import Config
 from maasserver.testing.factory import factory
@@ -133,7 +133,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
 
         options = read_isc_file(options_file)
-        self.assertThat(make_isc_string(options), Not(Contains("forwarders")))
+        self.assertNotIn("forwarders", make_isc_string(options))
 
     def test_removes_existing_forwarders_config_if_migrate_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_FORWARDERS)
@@ -147,7 +147,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         # Check that the file was re-written without forwarders (since
         # that's now in the included file).
         options = read_isc_file(options_file)
-        self.assertThat(make_isc_string(options), Not(Contains("forwarders")))
+        self.assertNotIn("forwarders", make_isc_string(options))
 
     def test_removes_existing_dnssec_validation_config(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
@@ -158,9 +158,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         # Check that the file was re-written without dnssec-validation (since
         # that's now in the included file).
         options = read_isc_file(options_file)
-        self.assertThat(
-            make_isc_string(options), Not(Contains("dnssec-validation"))
-        )
+        self.assertNotIn("dnssec-validation", make_isc_string(options))
 
     def test_removes_existing_dnssec_validation_config_if_migration_set(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
@@ -174,9 +172,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         # Check that the file was re-written without dnssec-validation (since
         # that's now in the included file).
         options = read_isc_file(options_file)
-        self.assertThat(
-            make_isc_string(options), Not(Contains("dnssec-validation"))
-        )
+        self.assertNotIn("dnssec-validation", make_isc_string(options))
 
     def test_normal_operation(self):
         options_file = self.make_file(contents=OPTIONS_FILE)
@@ -191,8 +187,8 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
 
         # Check that the file was re-written with the include statement.
         options = read_isc_file(options_file)
-        self.assertThat(
-            make_isc_string(options), Contains('include "%s";' % expected_path)
+        self.assertIn(
+            'include "%s";' % expected_path, make_isc_string(options)
         )
 
         # Check that the backup was made.
@@ -216,15 +212,15 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
 
         upstream_dns = get_one(Config.objects.filter(name="upstream_dns"))
-        self.assertThat(
+        self.assertEqual(
             {"192.168.1.1", "192.168.1.2"},
-            Equals(set(upstream_dns.value.split())),
+            set(upstream_dns.value.split()),
         )
 
         dnssec_validation = get_one(
             Config.objects.filter(name="dnssec_validation")
         )
-        self.assertThat("no", Equals(dnssec_validation.value))
+        self.assertEqual(dnssec_validation.value, "no")
 
     def test_migrate_combines_with_existing_forwarders(self):
         options_file = self.make_file(
@@ -238,15 +234,15 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
 
         upstream_dns = get_one(Config.objects.filter(name="upstream_dns"))
-        self.assertThat(
+        self.assertEqual(
             OrderedDict.fromkeys(["192.168.1.1", "192.168.1.2"]),
-            Equals(OrderedDict.fromkeys(upstream_dns.value.split())),
+            OrderedDict.fromkeys(upstream_dns.value.split()),
         )
 
         dnssec_validation = get_one(
             Config.objects.filter(name="dnssec_validation")
         )
-        self.assertThat("no", Equals(dnssec_validation.value))
+        self.assertEqual(dnssec_validation.value, "no")
 
         options_file = self.make_file(
             contents=OPTIONS_FILE_WITH_EXTRA_AND_DUP_FORWARDER

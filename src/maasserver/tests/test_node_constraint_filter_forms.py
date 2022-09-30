@@ -6,12 +6,10 @@ import random
 
 from django import forms
 from testtools.matchers import (
-    Contains,
     ContainsAll,
     Equals,
     MatchesDict,
     MatchesListwise,
-    Not,
     StartsWith,
 )
 
@@ -145,7 +143,7 @@ class TestUtils(MAASServerTestCase):
         )
 
     def test_get_storage_constraints_from_string_returns_None_for_empty(self):
-        self.assertEqual(None, get_storage_constraints_from_string(""))
+        self.assertIsNone(get_storage_constraints_from_string(""))
 
     def test_get_storage_constraints_from_string_None_for_empty_tags(self):
         self.assertEqual(
@@ -180,7 +178,7 @@ class TestUtils(MAASServerTestCase):
         )
 
     def test_nodes_by_storage_returns_None_when_storage_string_is_empty(self):
-        self.assertEqual(None, nodes_by_storage(""))
+        self.assertIsNone(nodes_by_storage(""))
 
 
 class FilterConstraintsMixin:
@@ -338,33 +336,33 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def test_fails_validation_for_no_matching_vlans(self):
         form = FilterNodeForm(data={"vlans": ["space:foo"]})
-        self.assertThat(form.is_valid(), Equals(False))
-        self.assertThat(
-            dict(form.errors)["vlans"], Equals(["No matching VLANs found."])
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["No matching VLANs found."], dict(form.errors)["vlans"]
         )
 
     def test_fails_validation_for_no_matching_not_vlans(self):
         form = FilterNodeForm(data={"not_vlans": ["space:foo"]})
-        self.assertThat(form.is_valid(), Equals(False))
-        self.assertThat(
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["No matching VLANs found."],
             dict(form.errors)["not_vlans"],
-            Equals(["No matching VLANs found."]),
         )
 
     def test_fails_validation_for_no_matching_subnets(self):
         form = FilterNodeForm(data={"subnets": ["foo"]})
-        self.assertThat(form.is_valid(), Equals(False))
-        self.assertThat(
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["No matching subnets found."],
             dict(form.errors)["subnets"],
-            Equals(["No matching subnets found."]),
         )
 
     def test_fails_validation_for_no_matching_not_subnets(self):
         form = FilterNodeForm(data={"not_subnets": ["foo"]})
-        self.assertThat(form.is_valid(), Equals(False))
-        self.assertThat(
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["No matching subnets found."],
             dict(form.errors)["not_subnets"],
-            Equals(["No matching subnets found."]),
         )
 
     def test_subnets_filters_by_ip(self):
@@ -1252,7 +1250,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         factory.make_Node_with_Interface_on_Subnet()
         form = FilterNodeForm({"interfaces": "label:x"})
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(form.errors, Contains("interfaces"))
+        self.assertIn("interfaces", form.errors)
 
     def test_interfaces_constraint_rejected_if_key_is_invalid(self):
         factory.make_Node_with_Interface_on_Subnet()
@@ -1260,7 +1258,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             {"interfaces": "label:chirp_chirp_thing=silenced"}
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(form.errors, Contains("interfaces"))
+        self.assertIn("interfaces", form.errors)
 
     def test_interfaces_constraint_validated(self):
         factory.make_Node_with_Interface_on_Subnet()
@@ -1302,9 +1300,9 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         ip = factory.make_StaticIPAddress(interface=iface)
         lcm = LabeledConstraintMap("eth0:ip=%s,mode=unconfigured" % str(ip.ip))
         result = nodes_by_interface(lcm, preconfigured=False)
-        self.assertThat(result.ip_modes["eth0"], Equals("unconfigured"))
+        self.assertEqual("unconfigured", result.ip_modes["eth0"])
         # The mode should have been removed after being placed in the result.
-        self.assertThat(lcm, Not(Contains("mode")))
+        self.assertNotIn("mode", lcm)
 
     def test_interfaces_constraint_with_multiple_labels_and_values_validated(
         self,

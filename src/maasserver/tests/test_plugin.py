@@ -13,7 +13,6 @@ from django.db import connections
 from django.db.backends.base.base import BaseDatabaseWrapper
 from fixtures import EnvironmentVariableFixture
 from testtools import monkey
-from testtools.matchers import IsInstance
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 
@@ -80,9 +79,7 @@ class TestServiceMaker(MAASTestCase):
 
     def assertConnectionsEnabled(self):
         for alias in connections:
-            self.assertThat(
-                connections[alias], IsInstance(BaseDatabaseWrapper)
-            )
+            self.assertIsInstance(connections[alias], BaseDatabaseWrapper)
 
     def assertConnectionsDisabled(self):
         for alias in connections:
@@ -191,7 +188,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             service_maker = RegionWorkerServiceMaker("Harry", "Hill")
             service_maker.makeService(Options())
             threadpool = reactor.getThreadPool()
-            self.assertThat(threadpool, IsInstance(ThreadPool))
+            self.assertIsInstance(threadpool, ThreadPool)
         finally:
             patcher.restore()
 
@@ -311,7 +308,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             self.patch_autospec(service_maker, "_ensureConnection")
             service_maker.makeService(Options())
             threadpool = reactor.getThreadPool()
-            self.assertThat(threadpool, IsInstance(ThreadPool))
+            self.assertIsInstance(threadpool, ThreadPool)
         finally:
             patcher.restore()
 
@@ -417,7 +414,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             self.patch_autospec(service_maker, "_ensureConnection")
             service_maker.makeService(Options())
             threadpool = reactor.getThreadPool()
-            self.assertThat(threadpool, IsInstance(ThreadPool))
+            self.assertIsInstance(threadpool, ThreadPool)
         finally:
             patcher.restore()
 

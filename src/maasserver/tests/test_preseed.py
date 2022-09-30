@@ -977,9 +977,9 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                 }
             }
         }
-        self.assertThat(
+        self.assertIn(
+            "#cloud-config",
             config["cloudconfig"]["maas-cloud-config"]["content"],
-            Contains("#cloud-config"),
         )
         self.assertThat(
             yaml.safe_load(
@@ -987,23 +987,23 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             ),
             Equals(ds_config),
         )
-        self.assertThat(
+        self.assertIn(
+            "#cloud-config",
             config["cloudconfig"]["maas-ubuntu-sso"]["content"],
-            Contains("#cloud-config"),
         )
-        self.assertThat(
+        self.assertEqual(
+            snap_config,
             yaml.safe_load(
                 config["cloudconfig"]["maas-ubuntu-sso"]["content"]
             ),
-            Equals(snap_config),
         )
-        self.assertThat(
+        self.assertIn(
+            "#cloud-config",
             config["cloudconfig"]["maas-reporting"]["content"],
-            Contains("#cloud-config"),
         )
-        self.assertThat(
+        self.assertEqual(
+            reporting_config,
             yaml.safe_load(config["cloudconfig"]["maas-reporting"]["content"]),
-            Equals(reporting_config),
         )
 
     def test_get_curtin_cloud_config_uses_rack_metadata_url(self):
@@ -1050,7 +1050,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
 class TestComposeCurtinSwapSpace(MAASServerTestCase):
     def test_returns_null_swap_size(self):
         node = factory.make_Node()
-        self.assertEqual(node.swap_size, None)
+        self.assertIsNone(node.swap_size)
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(swap_preseed, [])
 
@@ -1090,7 +1090,7 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
 class TestComposeCurtinKernel(MAASServerTestCase):
     def test_returns_null_kernel(self):
         node = factory.make_Node()
-        self.assertEqual(node.hwe_kernel, None)
+        self.assertIsNone(node.hwe_kernel)
         kernel_preseed = compose_curtin_kernel_preseed(node)
         self.assertEqual(kernel_preseed, [])
 
@@ -1128,31 +1128,31 @@ class TestGetNetworkYAMLSettings(MAASServerTestCase):
     def test_forces_v1_if_config_option_set(self):
         Config.objects.set_config("force_v1_network_yaml", True)
         yaml_settings = get_network_yaml_settings("ubuntu", "bionic")
-        self.assertThat(yaml_settings.version, Equals(1))
+        self.assertEqual(1, yaml_settings.version)
 
     def test_returns_v1_for_trusty(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "trusty")
-        self.assertThat(yaml_settings.version, Equals(1))
+        self.assertEqual(1, yaml_settings.version)
 
     def test_returns_v2_with_no_source_routing_for_xenial(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "xenial")
-        self.assertThat(yaml_settings.version, Equals(2))
-        self.assertThat(yaml_settings.source_routing, Equals(False))
+        self.assertEqual(2, yaml_settings.version)
+        self.assertFalse(yaml_settings.source_routing)
 
     def test_returns_v2_with_source_routing_for_bionic(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "bionic")
-        self.assertThat(yaml_settings.version, Equals(2))
-        self.assertThat(yaml_settings.source_routing, Equals(True))
+        self.assertEqual(2, yaml_settings.version)
+        self.assertTrue(yaml_settings.source_routing)
 
     def test_returns_v2_with_source_routing_for_cosmic(self):
         yaml_settings = get_network_yaml_settings("ubuntu", "cosmic")
-        self.assertThat(yaml_settings.version, Equals(2))
-        self.assertThat(yaml_settings.source_routing, Equals(True))
+        self.assertEqual(2, yaml_settings.version)
+        self.assertTrue(yaml_settings.source_routing)
 
     def test_returns_v1_with_no_source_routing_for_esxi(self):
         yaml_settings = get_network_yaml_settings("esxi", "")
-        self.assertThat(yaml_settings.version, Equals(1))
-        self.assertThat(yaml_settings.source_routing, Equals(False))
+        self.assertEqual(1, yaml_settings.version)
+        self.assertFalse(yaml_settings.source_routing)
 
 
 class TestGetCurtinMergedConfig(MAASServerTestCase):
@@ -1344,28 +1344,18 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
         get_third_party_driver.return_value = self.driver
         curtin_config_text = get_curtin_config(make_HttpRequest(), node)
         config = yaml.safe_load(curtin_config_text)
-        self.assertThat(
-            config["early_commands"], Contains("driver_00_get_key")
-        )
-        self.assertThat(
-            config["early_commands"], Contains("driver_01_add_key")
-        )
-        self.assertThat(config["early_commands"], Contains("driver_02_add"))
-        self.assertThat(
-            config["early_commands"], Contains("driver_03_update_install")
-        )
-        self.assertThat(config["early_commands"], Contains("driver_04_load"))
-        self.assertThat(config["late_commands"], Contains("driver_00_key_get"))
-        self.assertThat(config["late_commands"], Contains("driver_02_key_add"))
-        self.assertThat(config["late_commands"], Contains("driver_03_add"))
-        self.assertThat(
-            config["late_commands"], Contains("driver_04_update_install")
-        )
-        self.assertThat(config["late_commands"], Contains("driver_05_install"))
-        self.assertThat(config["late_commands"], Contains("driver_06_depmod"))
-        self.assertThat(
-            config["late_commands"], Contains("driver_07_update_initramfs")
-        )
+        self.assertIn("driver_00_get_key", config["early_commands"])
+        self.assertIn("driver_01_add_key", config["early_commands"])
+        self.assertIn("driver_02_add", config["early_commands"])
+        self.assertIn("driver_03_update_install", config["early_commands"])
+        self.assertIn("driver_04_load", config["early_commands"])
+        self.assertIn("driver_00_key_get", config["late_commands"])
+        self.assertIn("driver_02_key_add", config["late_commands"])
+        self.assertIn("driver_03_add", config["late_commands"])
+        self.assertIn("driver_04_update_install", config["late_commands"])
+        self.assertIn("driver_05_install", config["late_commands"])
+        self.assertIn("driver_06_depmod", config["late_commands"])
+        self.assertIn("driver_07_update_initramfs", config["late_commands"])
 
 
 class TestGetCurtinUserDataOS(
@@ -1449,8 +1439,8 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, "xinstall")
         request = make_HttpRequest()
         config = get_curtin_config(request, node)
-        self.assertThat(config, Contains("debconf_selections:"))
-        self.assertThat(config, Not(Contains("mode: reboot")))
+        self.assertIn("debconf_selections:", config)
+        self.assertNotIn("mode: reboot", config)
 
     def test_get_curtin_config_removes_power_state(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1468,7 +1458,7 @@ class TestCurtinUtilities(
             power_state_template,
         )
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(config, Not(Contains("mode: reboot")))
+        self.assertNotIn("mode: reboot", config)
 
     def test_get_curtin_config_removes_apt_mirrors(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1487,8 +1477,8 @@ class TestCurtinUtilities(
             apt_mirrors_template,
         )
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(config, Not(Contains("ubuntu_archive")))
-        self.assertThat(config, Not(Contains("ubuntu_security")))
+        self.assertNotIn("ubuntu_archive", config)
+        self.assertNotIn("ubuntu_security", config)
 
     def test_get_curtin_config_removes_apt_proxy(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1505,7 +1495,7 @@ class TestCurtinUtilities(
             apt_proxy_template,
         )
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(config, Not(Contains("127.0.0.1")))
+        self.assertNotIn("127.0.0.1", config)
 
     def test_get_curtin_config_contains_reboot_for_precise(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1515,7 +1505,7 @@ class TestCurtinUtilities(
         node.save()
         self.configure_get_boot_images_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(config, Contains("mode: reboot"))
+        self.assertIn("mode: reboot", config)
 
     def test_get_curtin_config_with_request_url(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1538,9 +1528,9 @@ class TestCurtinUtilities(
         node.save()
         self.configure_get_boot_images_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(
+        self.assertIn(
+            "grub2: grub2   grub2/update_nvram  boolean false",
             config,
-            Contains("grub2: grub2   grub2/update_nvram  boolean false"),
         )
 
     def test_get_curtin_config_has_s390x_local_boot_late_command(self):
@@ -1566,7 +1556,7 @@ class TestCurtinUtilities(
         )
         self.configure_get_boot_images_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(config, Contains("proxy="))
+        self.assertIn("proxy=", config)
 
     def test_get_curtin_config_custom_osystem_will_validate_dependencies(self):
         boot_resource = factory.make_BootResource(

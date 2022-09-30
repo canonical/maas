@@ -42,7 +42,7 @@ class AssertStorageConfigMixin:
         return config
 
     def assertStorageConfig(self, expected, observed, strip_uuids=False):
-        self.assertThat(observed, IsInstance(list))
+        self.assertIsInstance(observed, list)
         self.assertThat(observed, HasLength(1))
         observed = observed[0]
         observed = yaml.safe_load(observed)
@@ -1598,8 +1598,8 @@ class TestMountOrdering(MAASServerTestCase):
         [config] = compose_curtin_storage_config(node)
         devices = yaml.safe_load(config)["storage"]["config"]
         mounts = [element for element in devices if element["type"] == "mount"]
-        self.assertThat(
-            [mount["path"] for mount in mounts], Equals(["/"] + mount_points)
+        self.assertEqual(
+            ["/"] + mount_points, [mount["path"] for mount in mounts]
         )
 
 

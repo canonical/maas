@@ -7,7 +7,6 @@
 from unittest.mock import ANY, call, Mock, sentinel
 
 from django.db import connections
-from testtools.matchers import Equals, IsInstance
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
@@ -67,7 +66,7 @@ class TestMAASServices(MAASServerTestCase):
             services.addService(service)
         yield services.startService()
         self.assertThat(calls, MockCallsMatch(call()))
-        self.assertThat(services.running, Equals(1))
+        self.assertEqual(1, services.running)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -82,7 +81,7 @@ class TestMAASServices(MAASServerTestCase):
             services.addService(service)
         yield services.startService()
         self.assertThat(calls, MockCallsMatch(call(), call()))
-        self.assertThat(services.running, Equals(1))
+        self.assertEqual(1, services.running)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -330,7 +329,7 @@ class TestRegionEventLoop(MAASTestCase):
 class TestFactories(MAASServerTestCase):
     def test_make_DatabaseTaskService(self):
         service = eventloop.make_DatabaseTaskService()
-        self.assertThat(service, IsInstance(dbtasks.DatabaseTasksService))
+        self.assertIsInstance(service, dbtasks.DatabaseTasksService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_DatabaseTaskService,
@@ -344,8 +343,8 @@ class TestFactories(MAASServerTestCase):
         service = eventloop.make_RegionControllerService(
             sentinel.postgresListener
         )
-        self.assertThat(
-            service, IsInstance(region_controller.RegionControllerService)
+        self.assertIsInstance(
+            service, region_controller.RegionControllerService
         )
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
@@ -358,7 +357,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_RegionService(self):
         service = eventloop.make_RegionService(sentinel.ipcWorker)
-        self.assertThat(service, IsInstance(regionservice.RegionService))
+        self.assertIsInstance(service, regionservice.RegionService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_RegionService,
@@ -371,9 +370,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_NonceCleanupService(self):
         service = eventloop.make_NonceCleanupService()
-        self.assertThat(
-            service, IsInstance(nonces_cleanup.NonceCleanupService)
-        )
+        self.assertIsInstance(service, nonces_cleanup.NonceCleanupService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_NonceCleanupService,
@@ -385,9 +382,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_StatusMonitorService(self):
         service = eventloop.make_StatusMonitorService()
-        self.assertThat(
-            service, IsInstance(status_monitor.StatusMonitorService)
-        )
+        self.assertIsInstance(service, status_monitor.StatusMonitorService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_StatusMonitorService,
@@ -399,7 +394,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_StatsService(self):
         service = eventloop.make_StatsService()
-        self.assertThat(service, IsInstance(stats.StatsService))
+        self.assertIsInstance(service, stats.StatsService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_StatsService,
@@ -409,7 +404,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_PrometheusService(self):
         service = eventloop.make_PrometheusService()
-        self.assertThat(service, IsInstance(PrometheusService))
+        self.assertIsInstance(service, PrometheusService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_PrometheusService,
@@ -421,9 +416,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_ImportResourcesService(self):
         service = eventloop.make_ImportResourcesService()
-        self.assertThat(
-            service, IsInstance(bootresources.ImportResourcesService)
-        )
+        self.assertIsInstance(service, bootresources.ImportResourcesService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_ImportResourcesService,
@@ -438,8 +431,8 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_ImportResourcesProgressService(self):
         service = eventloop.make_ImportResourcesProgressService()
-        self.assertThat(
-            service, IsInstance(bootresources.ImportResourcesProgressService)
+        self.assertIsInstance(
+            service, bootresources.ImportResourcesProgressService
         )
         # It is registered as a factory in RegionEventLoop.
         factories = eventloop.loop.factories
@@ -458,7 +451,7 @@ class TestFactories(MAASServerTestCase):
         service = eventloop.make_WebApplicationService(
             FakePostgresListenerService(), sentinel.status_worker
         )
-        self.assertThat(service, IsInstance(webapp.WebApplicationService))
+        self.assertIsInstance(service, webapp.WebApplicationService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_WebApplicationService,
@@ -483,9 +476,7 @@ class TestFactories(MAASServerTestCase):
         service = eventloop.make_RackControllerService(
             FakePostgresListenerService(), sentinel.rpc_advertise
         )
-        self.assertThat(
-            service, IsInstance(rack_controller.RackControllerService)
-        )
+        self.assertIsInstance(service, rack_controller.RackControllerService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_RackControllerService,
@@ -502,8 +493,8 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_ServiceMonitorService(self):
         service = eventloop.make_ServiceMonitorService()
-        self.assertThat(
-            service, IsInstance(service_monitor_service.ServiceMonitorService)
+        self.assertIsInstance(
+            service, service_monitor_service.ServiceMonitorService
         )
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
@@ -519,7 +510,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_StatusWorkerService(self):
         service = eventloop.make_StatusWorkerService(sentinel.dbtasks)
-        self.assertThat(service, IsInstance(api_twisted.StatusWorkerService))
+        self.assertIsInstance(service, api_twisted.StatusWorkerService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_StatusWorkerService,
@@ -536,9 +527,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_NetworkTimeProtocolService(self):
         service = eventloop.make_NetworkTimeProtocolService()
-        self.assertThat(
-            service, IsInstance(ntp.RegionNetworkTimeProtocolService)
-        )
+        self.assertIsInstance(service, ntp.RegionNetworkTimeProtocolService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_NetworkTimeProtocolService,
@@ -550,7 +539,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_SyslogService(self):
         service = eventloop.make_SyslogService()
-        self.assertThat(service, IsInstance(syslog.RegionSyslogService))
+        self.assertIsInstance(service, syslog.RegionSyslogService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_SyslogService,
@@ -562,7 +551,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_WorkersService(self):
         service = eventloop.make_WorkersService()
-        self.assertThat(service, IsInstance(workers.WorkersService))
+        self.assertIsInstance(service, workers.WorkersService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_WorkersService,
@@ -575,7 +564,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_IPCMasterService(self):
         service = eventloop.make_IPCMasterService()
-        self.assertThat(service, IsInstance(ipc.IPCMasterService))
+        self.assertIsInstance(service, ipc.IPCMasterService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_IPCMasterService,
@@ -595,7 +584,7 @@ class TestFactories(MAASServerTestCase):
 
     def test_make_IPCWorkerService(self):
         service = eventloop.make_IPCWorkerService()
-        self.assertThat(service, IsInstance(ipc.IPCWorkerService))
+        self.assertIsInstance(service, ipc.IPCWorkerService)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_IPCWorkerService,

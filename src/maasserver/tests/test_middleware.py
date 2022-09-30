@@ -13,7 +13,7 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 from fixtures import FakeLogger
-from testtools.matchers import Contains, Equals, Not
+from testtools.matchers import Equals
 
 from maasserver import middleware as middleware_module
 from maasserver.components import (
@@ -210,7 +210,7 @@ class TestExceptionMiddleware(MAASServerTestCase):
         exception = MAASAPIException(error_text)
         request = self.make_fake_request()
         self.process_exception(request, exception)
-        self.assertThat(logger.output, Contains(error_text))
+        self.assertIn(error_text, logger.output)
 
     def test_generic_500_error_is_logged(self):
         logger = self.useFixture(FakeLogger("maasserver"))
@@ -218,7 +218,7 @@ class TestExceptionMiddleware(MAASServerTestCase):
         exception = Exception(error_text)
         request = self.make_fake_request()
         self.process_exception(request, exception)
-        self.assertThat(logger.output, Contains(error_text))
+        self.assertIn(error_text, logger.output)
 
     def test_reports_ExternalProcessError_as_ServiceUnavailable(self):
         error_text = factory.make_string()
@@ -284,7 +284,7 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
         )
         self.process_request(request, response)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertThat(logger.output, Not(Contains(debug_output)))
+        self.assertNotIn(debug_output, logger.output)
 
     def test_debugging_logger_does_not_log_response_if_no_debug_http(self):
         logger = self.useFixture(FakeLogger("maasserver", logging.DEBUG))
@@ -294,7 +294,7 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
         )
         self.process_request(request, response)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertThat(logger.output, Not(Contains(debug_output)))
+        self.assertNotIn(debug_output, logger.output)
 
     def test_debugging_logger_logs_request(self):
         self.patch(settings, "DEBUG_HTTP", True)
@@ -303,7 +303,7 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
         request.content = "test content"
         self.process_request(request)
         debug_output = DebuggingLoggerMiddleware._build_request_repr(request)
-        self.assertThat(logger.output, Contains(debug_output))
+        self.assertIn(debug_output, logger.output)
 
     def test_debugging_logger_logs_response(self):
         self.patch(settings, "DEBUG_HTTP", True)
@@ -313,9 +313,9 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
             content="test content", content_type=b"text/plain; charset=utf-8"
         )
         self.process_request(request, response)
-        self.assertThat(
+        self.assertIn(
+            response.content.decode(settings.DEFAULT_CHARSET),
             logger.output,
-            Contains(response.content.decode(settings.DEFAULT_CHARSET)),
         )
 
     def test_debugging_logger_logs_binary_response(self):
@@ -327,7 +327,7 @@ class TestDebuggingLoggerMiddleware(MAASServerTestCase):
             content_type=b"application/octet-stream",
         )
         self.process_request(request, response)
-        self.assertThat(logger.output, Contains("non-utf-8 (binary?) content"))
+        self.assertIn("non-utf-8 (binary?) content", logger.output)
 
 
 class TestRPCErrorsMiddleware(MAASServerTestCase):

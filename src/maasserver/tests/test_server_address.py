@@ -236,9 +236,9 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
-        self.assertThat(
+        self.assertEqual(
+            [IPAddress("192.168.0.2"), IPAddress("192.168.0.1")],
             region_ips,
-            Equals([IPAddress("192.168.0.2"), IPAddress("192.168.0.1")]),
         )
 
     def test_alternates_include_one_ip_address_per_region_and_maas_url(self):

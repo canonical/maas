@@ -433,7 +433,7 @@ class TestLargeObjectField(MAASLegacyServerTestCase):
 
     def test_get_db_prep_value_returns_None_when_value_None(self):
         field = LargeObjectField()
-        self.assertEqual(None, field.get_db_prep_value(None))
+        self.assertIsNone(field.get_db_prep_value(None))
 
     def test_get_db_prep_value_returns_oid_when_value_LargeObjectFile(self):
         oid = randint(1, 100)
@@ -457,7 +457,7 @@ class TestLargeObjectField(MAASLegacyServerTestCase):
 
     def test_to_python_returns_None_when_value_None(self):
         field = LargeObjectField()
-        self.assertEqual(None, field.to_python(None))
+        self.assertIsNone(field.to_python(None))
 
     def test_to_python_returns_value_when_value_LargeObjectFile(self):
         field = LargeObjectField()
@@ -645,9 +645,9 @@ class TestHostListFormField(MAASTestCase):
         error = self.assertRaises(
             ValidationError, HostListFormField().clean, input
         )
-        self.assertThat(
+        self.assertEqual(
+            "Failed to detect a valid IP address from '12.34.56.999'.",
             error.message,
-            Equals("Failed to detect a valid IP address from '12.34.56.999'."),
         )
 
     def test_rejects_invalid_ipv6_address(self):
@@ -655,9 +655,9 @@ class TestHostListFormField(MAASTestCase):
         error = self.assertRaises(
             ValidationError, HostListFormField().clean, input
         )
-        self.assertThat(
+        self.assertEqual(
+            "Failed to detect a valid IP address from 'fe80::abcde'.",
             error.message,
-            Equals("Failed to detect a valid IP address from 'fe80::abcde'."),
         )
 
     def test_rejects_invalid_hostname(self):
@@ -789,34 +789,28 @@ class TestSubnetListFormField(MAASTestCase):
         error = self.assertRaises(
             ValidationError, SubnetListFormField().clean, input
         )
-        self.assertThat(
-            error.message, Equals("Invalid IP address: 12.34.56.999.")
-        )
+        self.assertEqual("Invalid IP address: 12.34.56.999.", error.message)
 
     def test_rejects_invalid_ipv6_address(self):
         input = "%s fe80::abcde" % factory.make_hostname()
         error = self.assertRaises(
             ValidationError, SubnetListFormField().clean, input
         )
-        self.assertThat(
-            error.message, Equals("Invalid IP address: fe80::abcde.")
-        )
+        self.assertEqual("Invalid IP address: fe80::abcde.", error.message)
 
     def test_rejects_invalid_ipv4_subnet(self):
         input = "%s 10.10.10.300/24" % factory.make_ipv4_network()
         error = self.assertRaises(
             ValidationError, SubnetListFormField().clean, input
         )
-        self.assertThat(
-            error.message, Equals("Invalid network: 10.10.10.300/24.")
-        )
+        self.assertEqual("Invalid network: 10.10.10.300/24.", error.message)
 
     def test_rejects_invalid_ipv6_subnet(self):
         input = "%s 100::/300" % factory.make_ipv6_network()
         error = self.assertRaises(
             ValidationError, SubnetListFormField().clean, input
         )
-        self.assertThat(error.message, Equals("Invalid network: 100::/300."))
+        self.assertEqual("Invalid network: 100::/300.", error.message)
 
     def test_rejects_invalid_hostname(self):
         input = "%s abc-.foo" % factory.make_hostname()
@@ -893,18 +887,18 @@ class TestURLOrPPAValidator(MAASServerTestCase):
         validator = URLOrPPAValidator()
         bad_url = factory.make_name("bad_url")
         error = self.assertRaises(ValidationError, validator, bad_url)
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.message,
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAValidator_catches_bad_scheme(self):
         validator = URLOrPPAValidator()
         bad_url = factory.make_url(scheme="bad_scheme")
         error = self.assertRaises(ValidationError, validator, bad_url)
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.message,
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAValidator_validates_PPA(self):
@@ -919,9 +913,9 @@ class TestURLOrPPAValidator(MAASServerTestCase):
         validator = URLOrPPAValidator()
         bad_ppa = "ppa:%s" % factory.make_hostname()
         error = self.assertRaises(ValidationError, validator, bad_ppa)
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.message,
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAValidator_catches_bad_PPA_hostname(self):
@@ -931,9 +925,9 @@ class TestURLOrPPAValidator(MAASServerTestCase):
             factory.make_hostname(),
         )
         error = self.assertRaises(ValidationError, validator, bad_ppa)
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.message,
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
 
@@ -942,7 +936,7 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, URLOrPPAFormField().clean, None
         )
-        self.assertThat(error.message, Equals("This field is required."))
+        self.assertEqual("This field is required.", error.message)
 
     def test_URLOrPPAFormField_validates_URL(self):
         url = factory.make_url(scheme="http")
@@ -953,9 +947,9 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, URLOrPPAFormField().clean, bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAFormField_catches_bad_scheme(self):
@@ -963,9 +957,9 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, URLOrPPAFormField().clean, bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAFormField_validates_PPA(self):
@@ -977,9 +971,9 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, URLOrPPAFormField().clean, bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_URLOrPPAFormField_catches_bad_PPA_hostname(self):
@@ -990,9 +984,9 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, URLOrPPAFormField().clean, bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
 
@@ -1016,9 +1010,9 @@ class TestURLOrPPAField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, factory.make_PackageRepository, url=bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
     def test_cannot_create_package_repository_bad_ppa(self):
@@ -1027,9 +1021,9 @@ class TestURLOrPPAField(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, factory.make_PackageRepository, url=bad_url
         )
-        self.assertThat(
+        self.assertEqual(
+            "Enter a valid repository URL or PPA location.",
             error.messages[0],
-            Equals("Enter a valid repository URL or PPA location."),
         )
 
 

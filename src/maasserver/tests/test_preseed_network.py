@@ -2013,7 +2013,7 @@ class TestGetNextRoutingTableId(MAASServerTestCase):
         node = factory.make_Node()
         generator = NodeNetworkConfiguration(node)
         table_id = generator.get_next_routing_table_id()
-        self.assertThat(table_id, Equals(1))
+        self.assertEqual(1, table_id)
 
     def test_raises_IndexError_for_too_many_tables(self):
         node = factory.make_Node()

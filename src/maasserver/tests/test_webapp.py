@@ -6,7 +6,7 @@ import random
 from unittest.mock import sentinel
 
 from django.core.handlers.wsgi import WSGIHandler
-from testtools.matchers import Is, IsInstance, MatchesStructure, Not
+from testtools.matchers import Is, IsInstance, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.web.error import UnsupportedMethod
@@ -71,14 +71,14 @@ class TestOverlaySite(MAASTestCase):
     def test_init__(self):
         root = Resource()
         site = OverlaySite(root)
-        self.assertThat(site, IsInstance(Site))
+        self.assertIsInstance(site, Site)
 
     def test_getResourceFor_returns_no_resource_wo_underlay(self):
         root = Resource()
         site = OverlaySite(root)
         request = DummyRequest([b"MAAS"])
         resource = site.getResourceFor(request)
-        self.assertThat(resource, IsInstance(NoResource))
+        self.assertIsInstance(resource, NoResource)
 
     def test_getResourceFor_wraps_render_wo_underlay(self):
         root = Resource()
@@ -88,8 +88,8 @@ class TestOverlaySite(MAASTestCase):
         site = OverlaySite(root)
         request = DummyRequest([b"MAAS"])
         resource = site.getResourceFor(request)
-        self.assertThat(resource, Is(maas))
-        self.assertThat(resource.render, Not(Is(mock_render)))
+        self.assertIs(resource, maas)
+        self.assertIsNot(resource.render, mock_render)
         resource.render(request)
         self.assertThat(mock_render, MockCalledOnceWith(request))
 
@@ -100,7 +100,7 @@ class TestOverlaySite(MAASTestCase):
         site = OverlaySite(root)
         request = DummyRequest([b"MAAS"])
         resource = site.getResourceFor(request)
-        self.assertThat(resource, Is(maas))
+        self.assertIs(resource, maas)
         self.assertRaises(UnsupportedMethod, resource.render, request)
 
     def test_getResourceFor_returns_resource_from_underlay(self):
@@ -112,7 +112,7 @@ class TestOverlaySite(MAASTestCase):
         site.underlay = Site(underlay_root)
         request = DummyRequest([b"MAAS"])
         resource = site.getResourceFor(request)
-        self.assertThat(resource, Is(underlay_maas))
+        self.assertIs(resource, underlay_maas)
 
     def test_getResourceFor_calls_render_on_underlay_when_no_method(self):
         underlay_root = Resource()
@@ -161,12 +161,12 @@ class TestResourceOverlay(MAASTestCase):
 
     def test_init__(self):
         resource = self.make_resourceoverlay()
-        self.assertThat(resource, IsInstance(Resource))
+        self.assertIsInstance(resource, Resource)
 
     def test_getChild(self):
         resource = self.make_resourceoverlay()
-        self.assertThat(resource, IsInstance(webapp.ResourceOverlay))
-        self.assertThat(resource.basis, IsInstance(Resource))
+        self.assertIsInstance(resource, webapp.ResourceOverlay)
+        self.assertIsInstance(resource.basis, Resource)
 
 
 class TestWebApplicationService(MAASTestCase):
@@ -190,7 +190,7 @@ class TestWebApplicationService(MAASTestCase):
 
     def test_init_creates_site(self):
         service = self.make_webapp()
-        self.assertThat(service.site, IsInstance(Site))
+        self.assertIsInstance(service.site, Site)
         self.assertThat(
             service.site,
             MatchesStructure(
@@ -199,7 +199,7 @@ class TestWebApplicationService(MAASTestCase):
                 timeOut=Is(None),
             ),
         )
-        self.assertThat(service.websocket, IsInstance(WebSocketFactory))
+        self.assertIsInstance(service.websocket, WebSocketFactory)
 
     def test_start_and_stop_the_service(self):
         service = self.make_webapp()
@@ -224,23 +224,21 @@ class TestWebApplicationService(MAASTestCase):
 
         # Overlay
         site = service.site
-        self.assertThat(site, IsInstance(OverlaySite))
+        self.assertIsInstance(site, OverlaySite)
         resource = service.site.resource
-        self.assertThat(resource, IsInstance(Resource))
+        self.assertIsInstance(resource, Resource)
         overlay_resource = resource.getChildWithDefault(b"MAAS", request=None)
-        self.assertThat(overlay_resource, IsInstance(Resource))
+        self.assertIsInstance(overlay_resource, Resource)
 
         # Underlay
         site = service.site.underlay
-        self.assertThat(site, IsInstance(Site))
+        self.assertIsInstance(site, Site)
         underlay_resource = site.resource
-        self.assertThat(underlay_resource, IsInstance(Resource))
+        self.assertIsInstance(underlay_resource, Resource)
         underlay_maas_resource = underlay_resource.getChildWithDefault(
             b"MAAS", request=None
         )
-        self.assertThat(
-            underlay_maas_resource, IsInstance(webapp.ResourceOverlay)
-        )
+        self.assertIsInstance(underlay_maas_resource, webapp.ResourceOverlay)
         self.assertThat(
             underlay_maas_resource.basis,
             MatchesStructure(

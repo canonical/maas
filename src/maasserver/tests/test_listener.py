@@ -11,14 +11,7 @@ from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 from django.db import connection
 from psycopg2 import OperationalError
 from testtools import ExpectedException
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    Not,
-)
+from testtools.matchers import ContainsDict, Equals, HasLength
 from twisted.internet import error, reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -284,7 +277,7 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         result = yield listener.tryConnection()
 
-        self.assertThat(result, Is(sentinel.retry))
+        self.assertIs(result, sentinel.retry)
         self.assertThat(deferLater, MockCalledWith(reactor, 3, ANY))
 
     @wait_for_reactor
@@ -340,16 +333,16 @@ class TestPostgresListenerService(MAASServerTestCase):
         stopping = listener.stopService()
 
         # Both `starting` and `stopping` have callbacks yet to fire.
-        self.assertThat(starting.callbacks, Not(Equals([])))
-        self.assertThat(stopping.callbacks, Not(Equals([])))
+        self.assertNotEqual([], starting.callbacks)
+        self.assertNotEqual([], stopping.callbacks)
 
         # Wait for the listener to stop.
         yield stopping
 
         # Neither `starting` nor `stopping` have callbacks. This is because
         # `stopping` chained itself onto the end of `starting`.
-        self.assertThat(starting.callbacks, Equals([]))
-        self.assertThat(stopping.callbacks, Equals([]))
+        self.assertEqual([], starting.callbacks)
+        self.assertEqual([], stopping.callbacks)
 
         # Confirmation that `starting` was cancelled.
         with ExpectedException(CancelledError):
@@ -358,13 +351,13 @@ class TestPostgresListenerService(MAASServerTestCase):
     @wait_for_reactor
     def test_multiple_starts_return_same_Deferred(self):
         listener = PostgresListenerService()
-        self.assertThat(listener.startService(), Is(listener.startService()))
+        self.assertIs(listener.startService(), listener.startService())
         return listener.stopService()
 
     @wait_for_reactor
     def test_multiple_stops_return_same_Deferred(self):
         listener = PostgresListenerService()
-        self.assertThat(listener.stopService(), Is(listener.stopService()))
+        self.assertIs(listener.stopService(), listener.stopService())
         return listener.stopService()
 
     @wait_for_reactor
@@ -393,7 +386,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         with ExpectedException(exc_type):
             yield listener.tryConnection()
 
-        self.assertThat(listener.connection, Is(None))
+        self.assertIsNone(listener.connection)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -403,9 +396,9 @@ class TestPostgresListenerService(MAASServerTestCase):
         with TwistedLoggerFixture() as logger:
             yield listener.tryConnection()
             try:
-                self.assertThat(
+                self.assertEqual(
+                    "Listening for database notifications.",
                     logger.output,
-                    Equals("Listening for database notifications."),
                 )
             finally:
                 yield listener.stopService()
@@ -490,10 +483,10 @@ class TestPostgresListenerService(MAASServerTestCase):
 
         # No failure is returned; see the comment in
         # PostgresListenerService.doRead() that explains why we don't do that.
-        self.assertThat(failure, Is(None))
+        self.assertIsNone(failure)
 
         # The listener has begun disconnecting.
-        self.assertThat(listener.disconnecting, IsInstance(Deferred))
+        self.assertIsInstance(listener.disconnecting, Deferred)
         # Wait for disconnection to complete.
         yield listener.disconnecting
         # The listener has removed itself from the reactor.
@@ -501,8 +494,8 @@ class TestPostgresListenerService(MAASServerTestCase):
         # connectionLost() has been called with a simple ConnectionLost.
         self.assertThat(listener.connectionLost, MockCalledOnceWith(ANY))
         [failure] = listener.connectionLost.call_args[0]
-        self.assertThat(failure, IsInstance(Failure))
-        self.assertThat(failure.value, IsInstance(error.ConnectionLost))
+        self.assertIsInstance(failure, Failure)
+        self.assertIsInstance(failure.value, error.ConnectionLost)
 
     def test_doRead_adds_notifies_to_notifications(self):
         listener = PostgresListenerService()

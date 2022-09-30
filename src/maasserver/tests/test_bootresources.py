@@ -22,7 +22,7 @@ from django.db import connections, transaction
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from fixtures import FakeLogger, Fixture
-from testtools.matchers import Contains, ContainsAll, Equals, HasLength, Not
+from testtools.matchers import ContainsAll, Equals, HasLength, Not
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 
@@ -1170,17 +1170,17 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         mock_save_later = self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
         brs = resource.get_latest_set()
-        self.assertThat(
+        self.assertEqual(
+            0,
             brs.files.filter(
                 filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
             ).count(),
-            Equals(0),
         )
-        self.assertThat(
+        self.assertEqual(
+            1,
             brs.files.filter(
                 filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
             ).count(),
-            Equals(1),
         )
         self.assertThat(mock_save_later, MockNotCalled())
 
@@ -1301,7 +1301,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             simplestreams_content = simplestreams_response.content.decode(
                 settings.DEFAULT_CHARSET
             )
-            self.assertThat(simplestreams_content, Contains(release_name))
+            self.assertIn(release_name, simplestreams_content)
         product["sha256"] = factory.make_string(size=64)
         product["size"] = randint(1024, 2048)
         store = BootResourceStore()

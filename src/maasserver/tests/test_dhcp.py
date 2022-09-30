@@ -18,7 +18,6 @@ from testtools.matchers import (
     IsInstance,
     MatchesAll,
     MatchesStructure,
-    Not,
 )
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
@@ -887,9 +886,7 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
 
     def test_returns_empty_dict_for_unconnected_rack(self):
         rack = factory.make_RackController()
-        self.assertThat(
-            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({})
-        )
+        self.assertEqual({}, dhcp.get_ntp_server_addresses_for_rack(rack))
 
     def test_returns_dict_with_rack_addresses(self):
         rack = factory.make_RackController()
@@ -902,9 +899,9 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
 
-        self.assertThat(
+        self.assertEqual(
+            {(space.id, subnet.get_ipnetwork().version): address.ip},
             dhcp.get_ntp_server_addresses_for_rack(rack),
-            Equals({(space.id, subnet.get_ipnetwork().version): address.ip}),
         )
 
     def test_handles_blank_subnet(self):
@@ -915,9 +912,7 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             interface=interface, alloc_type=IPADDRESS_TYPE.USER_RESERVED, ip=ip
         )
 
-        self.assertThat(
-            dhcp.get_ntp_server_addresses_for_rack(rack), Equals({})
-        )
+        self.assertEqual({}, dhcp.get_ntp_server_addresses_for_rack(rack))
 
     def test_returns_dict_grouped_by_space_and_address_family(self):
         rack = factory.make_RackController()
@@ -1017,8 +1012,8 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
         count, result = count_queries(
             dhcp.get_ntp_server_addresses_for_rack, rack
         )
-        self.assertThat(count, Equals(1))
-        self.assertThat(result, Equals({}))
+        self.assertEqual(1, count)
+        self.assertEqual({}, result)
 
         for _ in (1, 2):
             space = factory.make_Space()
@@ -1035,8 +1030,8 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
         count, result = count_queries(
             dhcp.get_ntp_server_addresses_for_rack, rack
         )
-        self.assertThat(count, Equals(1))
-        self.assertThat(result, Not(Equals({})))
+        self.assertEqual(1, count)
+        self.assertNotEqual({}, result)
 
 
 class TestGetDefaultDNSServers(MAASServerTestCase):
@@ -1049,7 +1044,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack_controller = factory.make_RackController(interface=False, url="")
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         servers = get_default_dns_servers(rack_controller, subnet)
-        self.assertThat(servers, Equals([IPAddress("10.0.0.1")]))
+        self.assertEqual([IPAddress("10.0.0.1")], servers)
 
     def test_returns_address_from_region_url_if_url_specified(self):
         mock_get_source_address = self.patch(dhcp, "get_source_address")
@@ -1060,7 +1055,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         servers = get_default_dns_servers(rack_controller, subnet)
-        self.assertThat(servers, Equals([IPAddress("192.168.0.1")]))
+        self.assertEqual([IPAddress("192.168.0.1")], servers)
 
     def test_chooses_alternate_from_known_reachable_subnet_no_proxy(self):
         mock_get_source_address = self.patch(dhcp, "get_source_address")
@@ -1081,8 +1076,8 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
         servers = get_default_dns_servers(r1, subnet, False)
-        self.assertThat(
-            servers, Equals([IPAddress(address.ip), IPAddress("10.0.0.1")])
+        self.assertEqual(
+            [IPAddress(address.ip), IPAddress("10.0.0.1")], servers
         )
 
     def test_racks_on_subnet_comes_before_region(self):
@@ -1135,7 +1130,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
 
         servers = get_default_dns_servers(rack, subnet)
-        self.assertThat(servers, Equals([IPAddress("192.168.200.1")]))
+        self.assertEqual([IPAddress("192.168.200.1")], servers)
 
     def test_no_default_region_ip(self):
         self.patch(dhcp, "get_source_address").return_value = None
@@ -1201,7 +1196,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+        self.assertEqual([maas_dns], config["dns_servers"])
 
     def test_sets_ipv6_dns_from_arguments(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1216,7 +1211,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+        self.assertEqual([maas_dns], config["dns_servers"])
 
     def test_sets_ntp_from_list_argument(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1314,9 +1309,9 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(
+        self.assertEqual(
+            [maas_dns, IPAddress("8.8.8.8"), IPAddress("8.8.4.4")],
             config["dns_servers"],
-            Equals([maas_dns, IPAddress("8.8.8.8"), IPAddress("8.8.4.4")]),
         )
 
     def test_ipv4_rack_dns_from_subnet(self):
@@ -1332,7 +1327,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+        self.assertEqual([maas_dns], config["dns_servers"])
 
     def test_ipv4_user_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1352,9 +1347,9 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(
+        self.assertEqual(
+            [IPAddress("8.8.8.8"), IPAddress("8.8.4.4")],
             config["dns_servers"],
-            Equals([IPAddress("8.8.8.8"), IPAddress("8.8.4.4")]),
         )
 
     def test_ipv4_no_dns_from_subnet(self):
@@ -1372,7 +1367,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([]))
+        self.assertEqual([], config["dns_servers"])
 
     def test_ipv6_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1409,7 +1404,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([maas_dns]))
+        self.assertEqual([maas_dns], config["dns_servers"])
 
     def test_ipv6_user_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1429,9 +1424,9 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(
+        self.assertEqual(
+            [IPAddress("2001:db8::1"), IPAddress("2001:db8::2")],
             config["dns_servers"],
-            Equals([IPAddress("2001:db8::1"), IPAddress("2001:db8::2")]),
         )
 
     def test_ipv6_no_dns_from_subnet(self):
@@ -1449,7 +1444,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(config["dns_servers"], Equals([]))
+        self.assertEqual([], config["dns_servers"])
 
     def test_sets_domain_name_from_passed_domain(self):
         rack_controller = factory.make_RackController(interface=False)
