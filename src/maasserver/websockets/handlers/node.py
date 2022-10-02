@@ -1282,7 +1282,7 @@ class NodeHandler(TimestampedModelHandler):
         elif key == "simple_status":
             return SIMPLIFIED_NODE_STATUS_CHOICES_DICT[value]
         else:
-            return value
+            return super()._get_group_label(key, value)
 
     def _get_group_value(self, key, value):
         """Get grouping expression for key"""

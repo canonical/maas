@@ -1149,7 +1149,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "num_pages": 1,
             "groups": [
                 {
-                    "name": None,
+                    "name": "None",
                     "value": None,
                     "count": 3,
                     "collapsed": False,

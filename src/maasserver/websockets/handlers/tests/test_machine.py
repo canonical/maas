@@ -6857,8 +6857,12 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             result["groups"][0]["count"],
         )
         self.assertEqual(
-            None,
+            "None",
             result["groups"][1]["name"],
+        )
+        self.assertEqual(
+            None,
+            result["groups"][1]["value"],
         )
         self.assertEqual(
             1,

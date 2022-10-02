@@ -517,7 +517,10 @@ class Handler(metaclass=HandlerMetaclass):
 
     def _get_group_label(self, key, value):
         """Get group label for value"""
-        return value
+        if value is None:
+            return "None"
+        else:
+            return value
 
     def _get_group_value(self, key, value):
         """Get form value for DB value"""
