@@ -23,7 +23,7 @@ from maasserver.macaroon_auth import (
     _candid_login,
     _get_authentication_caveat,
     _get_bakery_client,
-    _get_macaroon_oven_key,
+    _get_macaroon_private_key,
     _IDClient,
     APIError,
     CandidClient,
@@ -36,6 +36,7 @@ from maasserver.macaroon_auth import (
 )
 from maasserver.middleware import ExternalAuthInfo, ExternalAuthInfoMiddleware
 from maasserver.models import Config, RootKey
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
@@ -663,17 +664,17 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         )
 
 
-class TestMacaroonOvenKey(MAASServerTestCase):
-    def test_get_macaroon_oven_key(self):
-        key = _get_macaroon_oven_key()
+class TestGetMacaroonPrivateKey(MAASServerTestCase):
+    def test_get_macaroon_private_key(self):
+        key = _get_macaroon_private_key()
         self.assertEqual(
-            Config.objects.get_config("macaroon_private_key"),
+            SecretManager().get_simple_secret("macaroon-key"),
             key.serialize().decode("ascii"),
         )
 
-    def test_get_macaroon_oven_key_existing(self):
-        key = _get_macaroon_oven_key()
-        self.assertEqual(_get_macaroon_oven_key(), key)
+    def test_get_macaroon_private_key_existing(self):
+        key = _get_macaroon_private_key()
+        self.assertEqual(_get_macaroon_private_key(), key)
 
 
 class TestKeyStore(MAASServerTestCase):

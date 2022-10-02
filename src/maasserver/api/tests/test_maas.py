@@ -41,7 +41,6 @@ FORBIDDEN_NAMES = {
     "external_auth_url",
     "external_auth_user",
     "maas_url",
-    "macaroon_private_key",
     "omapi_key",
     "rbac_url",
     "rpc_shared_secret",

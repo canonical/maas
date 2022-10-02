@@ -121,7 +121,6 @@ def get_default_config():
         "external_auth_key": "",
         "external_auth_domain": "",
         "external_auth_admin_group": "",
-        "macaroon_private_key": None,
         "rbac_url": "",
         # MAAS Architecture.
         "use_rack_proxy": True,
@@ -165,6 +164,7 @@ CONFIG_SECRETS = {
     "rpc_shared_secret": "rpc-shared",
     "omapi_key": "omapi-key",
     "maas_auto_ipmi_k_g_bmc_key": "ipmi-k_g-key",
+    "vcenter_password": "vcenter-password",
 }
 
 # Encapsulates the possible states for network discovery

@@ -614,11 +614,14 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         vcenter = {
             "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
             "vcenter_server": factory.make_name("vcenter_server"),
-            "vcenter_password": factory.make_name("vcenter_password"),
             "vcenter_username": factory.make_name("vcenter_username"),
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
+        # add the password too
+        vcenter_password = factory.make_name("vcenter_password")
+        SecretManager().set_simple_secret("vcenter-password", vcenter_password)
+        vcenter["vcenter_password"] = vcenter_password
         config = get_vendor_data(node, None)
         self.assertEqual(
             config["write_files"],

@@ -3,13 +3,6 @@
 
 """Backend for Macaroon-based authentication."""
 
-__all__ = [
-    "MacaroonAPIAuthentication",
-    "MacaroonAuthorizationBackend",
-    "MacaroonDischargeRequest",
-    "UserDetails",
-    "validate_user_external_auth",
-]
 
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -32,6 +25,7 @@ import requests
 
 from maasserver.models import Config, MAASAuthorizationBackend, RootKey
 from maasserver.models.user import SYSTEM_USERS
+from maasserver.secrets import SecretManager
 from maasserver.utils.views import request_headers
 
 MACAROON_LIFESPAN = timedelta(days=1)
@@ -492,7 +486,7 @@ def _get_bakery(request):
     auth_endpoint = request.external_auth_info.url
     auth_domain = request.external_auth_info.domain
     return bakery.Bakery(
-        key=_get_macaroon_oven_key(),
+        key=_get_macaroon_private_key(),
         root_key_store=KeyStore(MACAROON_LIFESPAN),
         location=request.build_absolute_uri("/"),
         locator=httpbakery.ThirdPartyLocator(
@@ -529,21 +523,19 @@ def _authorization_request(
     return response
 
 
-def _get_macaroon_oven_key():
+def _get_macaroon_private_key() -> bakery.PrivateKey:
     """Return a private key to use for macaroon caveats signing.
 
-    The key is read from the Config if found, otherwise a new one is created
-    and saved.
-
+    The key is read from secrets if found, otherwise a new one is created and
+    saved.
     """
-    material = Config.objects.get_config("macaroon_private_key")
+    manager = SecretManager()
+    material = manager.get_simple_secret("macaroon-key", default=None)
     if material:
         return bakery.PrivateKey.deserialize(material)
 
     key = bakery.generate_key()
-    Config.objects.set_config(
-        "macaroon_private_key", key.serialize().decode("ascii")
-    )
+    manager.set_simple_secret("macaroon-key", key.serialize().decode("ascii"))
     return key
 
 

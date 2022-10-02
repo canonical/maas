@@ -363,12 +363,16 @@ def generate_vcenter_configuration(node):
             [
                 "vcenter_server",
                 "vcenter_username",
-                "vcenter_password",
                 "vcenter_datacenter",
             ]
         ).items()
         if value
     }
+    vcenter_password = SecretManager().get_simple_secret(
+        "vcenter-password", default=None
+    )
+    if vcenter_password:
+        configs["vcenter_password"] = vcenter_password
     if configs:
         yield "write_files", [
             {
