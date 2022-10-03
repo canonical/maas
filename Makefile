@@ -62,7 +62,6 @@ build: \
   .run \
   $(VENV) \
   $(BIN_SCRIPTS) \
-  bin/shellcheck \
   bin/py
 .PHONY: build
 
@@ -103,10 +102,6 @@ bin/py: $(VENV) bin
 
 bin/database: bin/postgresfixture
 	ln -sf $(notdir $<) $@
-
-bin/shellcheck: URL := "https://github.com/koalaman/shellcheck/releases/download/stable/shellcheck-stable.linux.x86_64.tar.xz"
-bin/shellcheck:
-	curl -s -L --output - $(URL) | tar xJ --strip=1 -C bin shellcheck-stable/shellcheck
 
 ui: $(UI_BUILD)
 .PHONY: ui
@@ -178,8 +173,8 @@ lint-go:
 	@test ! -s /tmp/gofmt.lint
 .PHONY: lint-go
 
-lint-shell: bin/shellcheck
-	@bin/shellcheck -x \
+lint-shell:
+	@shellcheck -x \
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \

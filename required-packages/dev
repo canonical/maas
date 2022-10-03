@@ -12,5 +12,6 @@ python3-nose-exclude
 python3-packaging
 python3-prometheus-client
 python3-wheel
+shellcheck
 socat
 tox
