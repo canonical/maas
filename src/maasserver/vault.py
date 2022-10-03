@@ -95,6 +95,10 @@ class VaultConfigurator:
         """
         path "auth/approle/role/maas-{maas_uuid}-*" {{
           capabilities = ["read", "create", "update", "delete"]
+          allowed_parameters = {{
+            "token_policies" = ["default,maas-{maas_uuid}-region"]
+            "*" = []
+          }}
         }}
         """
     )
