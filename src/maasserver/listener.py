@@ -514,7 +514,8 @@ class PostgresListenerService(Service):
 
 def notify_action(target: str, action: str, identifier: Any):
     """Send a notification for an action on a target."""
-    notify(f"{target}_{action}", identifier)
+    with connection.cursor() as cursor:
+        cursor.execute(f"NOTIFY {target}_{action}, %s", [str(identifier)])
 
 
 def notify(channel: str, payload: Any = None):
