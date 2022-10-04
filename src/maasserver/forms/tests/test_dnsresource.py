@@ -185,3 +185,39 @@ class TestDNSResourceForm(MAASServerTestCase):
             request=request,
         )
         self.assertFalse(form.is_valid())
+
+    def test_create_atsign(self):
+        name = "@"
+        domain = factory.make_Domain()
+        ip = factory.make_ip_address()
+        request = Mock()
+        request.user = factory.make_User()
+        form = DNSResourceForm(
+            {
+                "name": name,
+                "domain": domain.id,
+                "ip_addresses": ip,
+            },
+            request=request,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        self.assertEqual(name, dnsresource.name)
+
+    def test_create_wildcard(self):
+        name = "*"
+        domain = factory.make_Domain()
+        ip = factory.make_ip_address()
+        request = Mock()
+        request.user = factory.make_User()
+        form = DNSResourceForm(
+            {
+                "name": name,
+                "domain": domain.id,
+                "ip_addresses": ip,
+            },
+            request=request,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        dnsresource = form.save()
+        self.assertEqual(name, dnsresource.name)

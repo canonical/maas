@@ -6,8 +6,6 @@ from datetime import datetime, timedelta
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from testtools import ExpectedException
-from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import StaticIPAddress
@@ -147,21 +145,28 @@ class TestDNSResource(MAASServerTestCase):
         name = factory.make_name("name")
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
+        # Should work without issue
         dnsresource.save()
-        dnsresource_from_db = DNSResource.objects.get(name=name)
-        self.assertThat(
-            dnsresource_from_db, MatchesStructure.byEquality(name=name)
-        )
 
     def test_allows_atsign(self):
         name = "@"
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
         dnsresource.save()
-        dnsresource_from_db = DNSResource.objects.get(name=name)
-        self.assertThat(
-            dnsresource_from_db, MatchesStructure.byEquality(name=name)
-        )
+        ip = factory.make_StaticIPAddress()
+        dnsresource.ip_addresses.add(ip)
+        # Should work without issue
+        dnsresource.save()
+
+    def test_allows_wildcard(self):
+        name = "*"
+        domain = factory.make_Domain()
+        dnsresource = DNSResource(name=name, domain=domain)
+        dnsresource.save()
+        ip = factory.make_StaticIPAddress()
+        dnsresource.ip_addresses.add(ip)
+        # Should work without issue
+        dnsresource.save()
 
     def test_fqdn_returns_correctly_for_atsign(self):
         name = "@"
@@ -176,11 +181,8 @@ class TestDNSResource(MAASServerTestCase):
         name = factory.make_name("n_me")
         domain = factory.make_Domain()
         dnsresource = DNSResource(name=name, domain=domain)
+        # Should work without issue
         dnsresource.save()
-        dnsresource_from_db = DNSResource.objects.get(name=name)
-        self.assertThat(
-            dnsresource_from_db, MatchesStructure.byEquality(name=name)
-        )
 
     def test_rejects_addresses_if_underscore_in_name(self):
         name = factory.make_name("n_me")
@@ -189,11 +191,12 @@ class TestDNSResource(MAASServerTestCase):
         dnsresource.save()
         sip = factory.make_StaticIPAddress()
         dnsresource.ip_addresses.add(sip)
-        with ExpectedException(
+        self.assertRaisesRegex(
             ValidationError,
             re.escape(f"{{'__all__': ['Invalid dnsresource name: {name}."),
-        ):
-            dnsresource.save(force_update=True)
+            dnsresource.save,
+            force_update=True,
+        )
 
     def test_rejects_multiple_dnsresource_with_same_name(self):
         name = factory.make_name("name")
@@ -201,22 +204,24 @@ class TestDNSResource(MAASServerTestCase):
         dnsresource = DNSResource(name=name, domain=domain)
         dnsresource.save()
         dnsresource2 = DNSResource(name=name, domain=domain)
-        with ExpectedException(
+        self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': " "['Labels must be unique within their zone.']"
             ),
-        ):
-            dnsresource2.save(force_update=True)
+            dnsresource2.save,
+            force_update=True,
+        )
 
     def test_invalid_name_raises_exception(self):
-        with ExpectedException(
+        self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': " "['Invalid dnsresource name: invalid*name.']"
             ),
-        ):
-            factory.make_DNSResource(name="invalid*name")
+            factory.make_DNSResource,
+            name="invalid*name",
+        )
 
     def test_underscore_label_raises_exception(self):
         self.assertRaises(
@@ -232,11 +237,12 @@ class TestDNSResource(MAASServerTestCase):
         ipaddress = factory.make_StaticIPAddress()
         dnsrr = dnsdata.dnsresource
         dnsrr.ip_addresses.add(ipaddress)
-        with ExpectedException(
+        self.assertRaisesRegex(
             ValidationError,
             re.escape("{'__all__': " "['Cannot add address: CNAME present.']"),
-        ):
-            dnsrr.save(force_update=True)
+            dnsrr.save,
+            force_update=True,
+        )
 
     def test_get_addresses_returns_addresses(self):
         # Verify that the return includes node addresses, and
@@ -341,8 +347,8 @@ class TestUpdateDynamicHostname(MAASServerTestCase):
         DNSResource.objects.update_dynamic_hostname(sip, hostname_new)
         dnsrr = DNSResource.objects.get(name=hostname_new)
         self.assertIn(sip, dnsrr.ip_addresses.all())
-        self.assertThat(
-            DNSResource.objects.filter(name=hostname_old).first(), Equals(None)
+        self.assertIsNone(
+            DNSResource.objects.filter(name=hostname_old).first()
         )
 
 

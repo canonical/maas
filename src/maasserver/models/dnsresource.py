@@ -46,6 +46,7 @@ SRV_LHS = f"{SRV_LABEL}.{SRV_LABEL}(.{LABEL})?"
 NAMESPEC = r"%s" % LABEL
 NAME_VALIDATOR = RegexValidator(NAMESPEC)
 DEFAULT_DNS_TTL = 30
+SPECIAL_NAMES = ("", "@", "*")
 
 
 def get_default_domain():
@@ -55,7 +56,7 @@ def get_default_domain():
 
 def validate_dnsresource_name(value, rrtype):
     """Django validator: `value` must be a valid DNS Zone name."""
-    if value is not None and value != "" and value != "@":
+    if value is not None and value not in SPECIAL_NAMES:
         if rrtype == "SRV":
             namespec = re.compile("^%s$" % SRV_LHS)
         else:
@@ -75,7 +76,7 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
     Returns (name, domain) where name is appropriate for the resource record in
     the domain.
     """
-    if fqdn is None or fqdn == "" or fqdn == "@":
+    if fqdn is None or fqdn in SPECIAL_NAMES:
         return (fqdn, None)
     if domainname is not None:
         if domainname == fqdn:
