@@ -5,6 +5,7 @@
 from datetime import timedelta
 import random
 from unittest.mock import ANY, call, MagicMock
+from uuid import uuid4
 
 import crochet
 from django.core.exceptions import ValidationError
@@ -66,6 +67,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 from provisioningserver.testing.certificates import get_sample_cert
+from provisioningserver.utils.env import MAAS_UUID
 
 wait_for_reactor = wait_for()
 
@@ -110,6 +112,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         super().setUp()
         self.request = MagicMock()
         self.request.user = factory.make_User()
+        if MAAS_UUID.get() is None:
+            MAAS_UUID.set(str(uuid4()))
 
     def make_pod_info(self, pod_type="virsh", **extra_power_parameters):
         assert pod_type in ["virsh", "lxd"], "Unsupported pod type"

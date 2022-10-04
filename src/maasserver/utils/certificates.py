@@ -15,7 +15,7 @@ def get_maas_client_cn(object_name):
     """
     maas_name = Config.objects.get_config("maas_name")
     if object_name:
-        # since the total length of the CN is 64, truncete the object name if
+        # since the total length of the CN is 64, truncate the object name if
         # needed leaving the maas name intact
         object_name = object_name[: 63 - len(maas_name)]
     return f"{object_name}@{maas_name}" if object_name else maas_name
@@ -29,10 +29,12 @@ def generate_certificate(cn) -> Certificate:
     """
     # Set O and OU so that we can identify that a certificate was
     # created from this MAAS deployment.
+    maas_uuid = MAAS_UUID.get()
+    assert maas_uuid is not None, "MAAS_UUID not configured, ensure it is set."
     return Certificate.generate(
         cn,
         organization_name="MAAS",
-        organizational_unit_name=MAAS_UUID.get(),
+        organizational_unit_name=maas_uuid,
     )
 
 

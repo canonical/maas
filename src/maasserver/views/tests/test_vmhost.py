@@ -7,12 +7,12 @@ from django.urls import reverse
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.certificates import generate_certificate
+from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestVMHostCertificateHandler(MAASServerTestCase):
     def test_certificate_pem(self):
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         name = factory.make_name()
         factory.make_Pod(
             name=name,

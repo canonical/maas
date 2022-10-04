@@ -21,7 +21,6 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.certificates import generate_certificate
 from maasserver.websockets.base import DATETIME_FORMAT, dehydrate_datetime
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
@@ -368,33 +367,23 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_generate_certificate_no_name(self):
         Config.objects.set_config("maas_name", "mymaas")
         handler = GeneralHandler(factory.make_User(), {}, None)
-        result = handler.generate_client_certificate({})
-        self.assertEqual(result["CN"], "mymaas")
-        self.assertTrue(
-            result["certificate"].startswith("-----BEGIN CERTIFICATE-----"),
-            result["certificate"],
+        mock_generate_certificate = self.patch_autospec(
+            general, "generate_certificate"
         )
-        self.assertTrue(
-            result["private_key"].startswith("-----BEGIN PRIVATE KEY-----"),
-            result["private_key"],
-        )
+        handler.generate_client_certificate({})
+        mock_generate_certificate.assert_called_once_with("mymaas")
 
     def test_generate_certificate_with_name(self):
         Config.objects.set_config("maas_name", "mymaas")
         handler = GeneralHandler(factory.make_User(), {}, None)
-        result = handler.generate_client_certificate({"object_name": "mypod"})
-        self.assertEqual(result["CN"], "mypod@mymaas")
-        self.assertTrue(
-            result["certificate"].startswith("-----BEGIN CERTIFICATE-----"),
-            result["certificate"],
+        mock_generate_certificate = self.patch_autospec(
+            general, "generate_certificate"
         )
-        self.assertTrue(
-            result["private_key"].startswith("-----BEGIN PRIVATE KEY-----"),
-            result["private_key"],
-        )
+        handler.generate_client_certificate({"object_name": "mypod"})
+        mock_generate_certificate.assert_called_once_with("mypod@mymaas")
 
     def test_generate_certificate_metadata(self):
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch(general, "generate_certificate").return_value = cert
         result = handler.generate_client_certificate({})

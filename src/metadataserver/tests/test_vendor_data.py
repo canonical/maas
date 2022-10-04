@@ -42,6 +42,7 @@ from metadataserver.vendor_data import (
     VIRSH_PASSWORD_METADATA_KEY,
 )
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
+from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestGetVendorData(MAASServerTestCase):
@@ -398,7 +399,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         self.assertIsNone(reload_object(cred_lxd))
 
     def test_yields_configuration_when_machine_register_vmhost_true(self):
-        cert = vendor_data.generate_certificate("maas")
+        cert = get_sample_cert()
         self.patch(vendor_data, "generate_certificate").return_value = cert
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
@@ -457,6 +458,8 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         password = "123secure"
+        cert = get_sample_cert()
+        self.patch(vendor_data, "generate_certificate").return_value = cert
         self.patch(vendor_data, "_generate_password").return_value = password
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
@@ -490,6 +493,8 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
 
     def test_enables_vnic_characteristics_on_s390x(self):
         password = "123secure"
+        cert = get_sample_cert()
+        self.patch(vendor_data, "generate_certificate").return_value = cert
         self.patch(vendor_data, "_generate_password").return_value = password
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,

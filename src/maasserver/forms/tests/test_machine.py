@@ -14,7 +14,6 @@ from maasserver.forms import (
     MachineForm,
     pick_default_architecture,
 )
-from maasserver.models import Config
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -32,6 +31,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
 )
+from provisioningserver.testing.certificates import get_sample_cert
 from provisioningserver.testing.os import make_osystem
 
 
@@ -621,6 +621,10 @@ class TestAdminMachineForm(MAASServerTestCase):
 
 class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
     def test_generate_certs_for_lxd_power_type(self):
+        sample_cert = get_sample_cert()
+        self.patch_autospec(
+            forms, "generate_certificate"
+        ).return_value = sample_cert
         hostname = factory.make_string()
         form = AdminMachineWithMACAddressesForm(
             data={
@@ -642,7 +646,7 @@ class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
         cert = Certificate.from_pem(
             power_params["certificate"], power_params["key"]
         )
-        self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
+        self.assertEqual(cert.cn(), sample_cert.cn())
         # cert/key are not per-instance parameters
         self.assertNotIn("certificate", machine.instance_power_parameters)
         self.assertNotIn("key", machine.instance_power_parameters)

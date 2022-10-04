@@ -1,11 +1,11 @@
-from datetime import datetime, timedelta
-from uuid import uuid1
+from uuid import uuid4
 
 from OpenSSL import crypto
 
 from maasserver.models import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+import maasserver.utils.certificates as certificates
 from maasserver.utils.certificates import (
     certificate_generated_by_this_maas,
     generate_certificate,
@@ -35,46 +35,39 @@ class TestGetMAASClientCN(MAASServerTestCase):
 
 
 class TestGenerateCertificate(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        MAAS_UUID.set(str(uuid1()))
-
     def test_generate_certificate(self):
-        cert = generate_certificate("maas")
-        self.assertIsInstance(cert.cert, crypto.X509)
-        self.assertIsInstance(cert.key, crypto.PKey)
-        self.assertEqual(cert.cert.get_subject().CN, "maas")
-        self.assertEqual(
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
+        mock_cert = self.patch_autospec(certificates, "Certificate")
+        maas_uuid = MAAS_UUID.get()
+        if maas_uuid is None:
+            MAAS_UUID.set(str(uuid4()))
+        generate_certificate("maas")
+        mock_cert.generate.assert_called_once_with(
+            "maas",
+            organization_name="MAAS",
+            organizational_unit_name=MAAS_UUID.get(),
         )
-        self.assertEqual(cert.key.bits(), 4096)
-        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
-        self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=3650),
-            cert.expiration(),
-        )
-
-    def test_generate_certificate_issuer(self):
-        cert = generate_certificate("maas")
-        issuer = cert.cert.get_issuer()
-        self.assertEqual("MAAS", issuer.O)
-        self.assertEqual(MAAS_UUID.get(), issuer.OU)
 
 
 class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        if MAAS_UUID.get() is None:
+            MAAS_UUID.set(str(uuid4()))
+        ssl_cert = crypto.X509()
+        self._issuer = ssl_cert.get_issuer()
+        self._cert = Certificate(None, ssl_cert, ())
+
     def test_generate_certificate(self):
-        maas_cert = generate_certificate("mycn")
-        self.assertTrue(certificate_generated_by_this_maas(maas_cert))
+        self._issuer.organizationName = "MAAS"
+        self._issuer.organizationalUnitName = MAAS_UUID.get()
+
+        self.assertTrue(certificate_generated_by_this_maas(self._cert))
 
     def test_non_maas_certificate_no_o_ou(self):
-        non_maas_cert = Certificate.generate("mycn")
-        self.assertFalse(certificate_generated_by_this_maas(non_maas_cert))
+        self.assertFalse(certificate_generated_by_this_maas(self._cert))
 
     def test_non_maas_certificate_with_o_ou(self):
-        non_maas_cert = Certificate.generate(
-            "mycn",
-            organization_name="MAAS",
-            organizational_unit_name="not-this-maas",
-        )
-        self.assertFalse(certificate_generated_by_this_maas(non_maas_cert))
+        self._issuer.organizationName = "MAAS"
+        self._issuer.organizationalUnitName = "not-this-maas"
+
+        self.assertFalse(certificate_generated_by_this_maas(self._cert))

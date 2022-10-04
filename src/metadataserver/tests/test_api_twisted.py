@@ -29,7 +29,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.orm import (
     reload_object,
     transactional,
@@ -54,6 +53,7 @@ from metadataserver.api_twisted import (
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
+from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
 
@@ -1126,7 +1126,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             register_vmhost=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         password_meta = NodeMetadata.objects.create(
             node=node,
             key="lxd_certificate",
@@ -1169,7 +1169,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         virsh_password_meta = NodeMetadata.objects.create(
             node=node, key="virsh_password", value="xyz123"
         )
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         lxd_cert_meta = NodeMetadata.objects.create(
             node=node,
             key="lxd_certificate",
@@ -1282,7 +1282,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         virsh_password_meta = NodeMetadata.objects.create(
             node=node, key="virsh_password", value="xyz123"
         )
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         lxd_cert_meta = NodeMetadata.objects.create(
             node=node,
             key="lxd_certificate",
@@ -1315,7 +1315,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         virsh_password_meta = NodeMetadata.objects.create(
             node=node, key="virsh_password", value="xyz123"
         )
-        cert = generate_certificate("maas")
+        cert = get_sample_cert()
         lxd_cert_meta = NodeMetadata.objects.create(
             node=node,
             key="lxd_certificate",
