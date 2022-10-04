@@ -331,7 +331,7 @@ class DebuggingLoggerMiddleware:
         response = self.get_response(request)
         if settings.DEBUG_HTTP and logger.isEnabledFor(self.log_level):
             header = " Response dump ".center(79, "#")
-            content = getattr(response, "content", "{no content}")
+            content = getattr(response, "content", b"{no content}")
             try:
                 decoded_content = content.decode("utf-8")
             except UnicodeDecodeError:
