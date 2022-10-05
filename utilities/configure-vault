@@ -1,0 +1,112 @@
+#!/bin/bash -e
+#
+# Helper script to configure Vault for MAAS.
+#
+# The VAULT_URL and VAULT_TOKEN variables might need to be set (depending on
+# how the vault CLI is configured)
+#
+
+set -o pipefail
+
+# override if the KV store is set elsewhere
+SECRETS_MOUNT="${SECRETS_MOUNT:-secret}"
+SECRETS_PATH="${SECRETS_PATH:-maas}"
+MAAS_POLICY="${MAAS_POLICY:-maas-controller}"
+TOKEN_TTL="${TOKEN_TTL:-5m}"
+
+# ensure no trailer slashes are present in paths
+SECRETS_MOUNT="${SECRETS_MOUNT%/}"
+SECRETS_PATH="${SECRETS_PATH%/}"
+
+
+usage() {
+    local script
+    script="$(basename "$0")"
+    cat <<EOF
+usage:
+  $script setup                   - setup Vault and policies
+  $script create-approle <name>   - create approle with specified name
+EOF
+}
+
+message() {
+    echo "-> $*"
+}
+
+error_exit() {
+    echo "$@"
+    exit 2
+}
+
+ensure_vars() {
+    local var
+    for var in "$@"; do
+        if [ -z "${!var}" ]; then
+            error_exit "please set the $var variable"
+        fi
+    done
+}
+
+setup() {
+    message "ensure approle engine is enabled"
+    if ! vault auth list | grep -q approle/; then
+        vault auth enable approle
+    fi
+
+    message "ensure KV store at $SECRETS_MOUNT is using v2"
+    vault kv enable-versioning "$SECRETS_MOUNT"
+
+    message "configure policy for MAAS: $MAAS_POLICY"
+    vault policy write "$MAAS_POLICY" - <<EOF
+path "$SECRETS_MOUNT/metadata/$SECRETS_PATH/" {
+  capabilities = ["list"]
+}
+
+path "$SECRETS_MOUNT/metadata/$SECRETS_PATH/*" {
+  capabilities = ["read", "update", "delete", "list"]
+}
+
+path "$SECRETS_MOUNT/data/${SECRETS_PATH}/*" {
+  capabilities = ["read", "create", "update", "delete"]
+}
+EOF
+}
+
+create_approle() {
+    local role_name="$1"
+    if [ -z "$role_name" ]; then
+        error_exit "Missing role name"
+    fi
+
+    vault write "auth/approle/role/$role_name" policies="$MAAS_POLICY" token_ttl="$TOKEN_TTL"
+
+    local role_id wrapped_token
+    role_id=$(vault read --format=json "auth/approle/role/$role_name/role-id" | jq -r .data.role_id)
+    wrapped_token=$(vault write --format=json -f -wrap-ttl="${TOKEN_TTL}" "auth/approle/role/$role_name/secret-id" | jq -r .wrap_info.token)
+
+    cat <<EOF
+
+approle details
+  name:          $role_name
+  role_id:       $role_id
+  wrapped token: $wrapped_token
+  token TTL:     $TOKEN_TTL
+
+EOF
+}
+
+# main
+ensure_vars VAULT_ADDR VAULT_TOKEN
+
+case "$1" in
+    setup)
+        setup
+        ;;
+    create-approle)
+        create_approle "$2"
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

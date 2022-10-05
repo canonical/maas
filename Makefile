@@ -186,6 +186,7 @@ lint-shell:
 		src/provisioningserver/refresh/maas-support-info \
 		utilities/build_custom_ubuntu_image \
 		utilities/build_custom_ubuntu_image_no_kernel \
+		utilities/configure-vault \
 		utilities/connect-snap-interfaces \
 		utilities/gen-db-schema-svg \
 		utilities/ldap-setup \
