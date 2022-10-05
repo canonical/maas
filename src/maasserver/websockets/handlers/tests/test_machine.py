@@ -79,6 +79,7 @@ import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.rbac import FakeRBACClient, rbac
+from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
     MIN_BOOT_PARTITION_SIZE,
@@ -2562,7 +2563,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
 
     def test_get_object_returns_error_if_not_allowed(self):
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         rbac._store.client = FakeRBACClient()
         rbac._store.cleared = False  # Prevent re-creation of the client.
         user = factory.make_User()

@@ -7,9 +7,9 @@
 from django.core.exceptions import ValidationError
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models.config import Config
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.rbac import ALL_RESOURCES, FakeRBACClient, rbac
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -23,7 +23,9 @@ from maasserver.websockets.handlers.resourcepool import ResourcePoolHandler
 
 class TestResourcePoolHandler(MAASServerTestCase):
     def enable_rbac(self):
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         client = FakeRBACClient()
         rbac._store.client = client
         rbac._store.cleared = False  # Prevent re-creation of the client

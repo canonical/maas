@@ -1,9 +1,6 @@
 # Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver account views."""
-
-
 from http import HTTPStatus
 import http.client
 
@@ -12,9 +9,9 @@ from django.contrib.auth import SESSION_KEY
 from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
-from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
@@ -74,7 +71,9 @@ class TestLogin(MAASServerTestCase):
 
     def test_login_GET_returns_external_auth_url(self):
         auth_url = "http://candid.example.com"
-        Config.objects.set_config("external_auth_url", auth_url)
+        SecretManager().set_composite_secret(
+            "external-auth", {"url": auth_url}
+        )
         response = self.client.get(reverse("login"))
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(

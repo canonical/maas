@@ -122,6 +122,7 @@ from maasserver.forms.settings import (
     INVALID_SETTING_MSG_TEMPLATE,
     validate_missing_boot_images,
 )
+from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.models import (
     Bcache,
     BlockDevice,
@@ -1582,7 +1583,7 @@ class NewUserCreationForm(UserCreationForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.external_auth_enabled = Config.objects.is_external_auth_enabled()
+        self.external_auth_enabled = external_auth_enabled()
         if self.external_auth_enabled:
             del self.fields["password1"]
             del self.fields["password2"]

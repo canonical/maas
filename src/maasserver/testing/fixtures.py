@@ -10,9 +10,9 @@ import logging
 from django.db import connection
 import fixtures
 
-from maasserver.models import user
-from maasserver.models.config import Config
+from maasserver.models import Config, user
 from maasserver.rbac import FakeRBACClient, rbac
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 
 
@@ -112,13 +112,14 @@ class RBACEnabled(fixtures.Fixture):
         # Must be called inside a transaction.
         assert connection.in_atomic_block
 
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
-        )
-        Config.objects.set_config("external_auth_user", "user@candid")
-        Config.objects.set_config(
-            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+                "rbac-url": "http://rbac.example.com",
+            },
         )
 
         client = FakeRBACClient()

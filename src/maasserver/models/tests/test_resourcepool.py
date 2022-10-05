@@ -5,7 +5,6 @@
 
 from django.core.exceptions import PermissionDenied, ValidationError
 
-from maasserver.models.config import Config
 from maasserver.models.resourcepool import (
     DEFAULT_RESOURCEPOOL_DESCRIPTION,
     DEFAULT_RESOURCEPOOL_NAME,
@@ -13,6 +12,7 @@ from maasserver.models.resourcepool import (
 )
 from maasserver.permissions import ResourcePoolPermission
 from maasserver.rbac import FakeRBACClient, rbac
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -115,7 +115,9 @@ class TestResourcePoolManagerGetResourcePoolOr404(MAASServerTestCase):
 
 class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
     def enable_rbac(self):
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         client = FakeRBACClient()
         rbac._store.client = client
         rbac._store.cleared = False  # Prevent re-creation of the client

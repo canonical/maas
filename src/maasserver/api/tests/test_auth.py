@@ -13,7 +13,7 @@ from piston3 import oauth
 from maasserver.api import auth as api_auth
 from maasserver.api.auth import MAASAPIAuthentication, OAuthUnauthorized
 from maasserver.middleware import ExternalAuthInfo
-from maasserver.models import Config
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
@@ -23,17 +23,23 @@ from metadataserver.nodeinituser import get_node_init_user
 class TestMAASAPIAuthentication(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("external_auth_url", "https://example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"url": "https://example.com"}
+        )
 
     def make_request(self, user=None):
         request = factory.make_fake_request("/")
         request.user = user or AnonymousUser()
 
-        auth_url = Config.objects.get_config("external_auth_url")
+        auth_url = (
+            SecretManager()
+            .get_composite_secret("external-auth", default={})
+            .get("url", "")
+        )
         if auth_url:
             request.external_auth_info = ExternalAuthInfo(
                 type="candid",
-                url="https://example.com",
+                url=auth_url,
                 domain="domain",
                 admin_group="admins",
             )
@@ -42,7 +48,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         return request
 
     def test_is_authenticated(self):
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         user = factory.make_User()
         request = self.make_request(user=user)
         auth = MAASAPIAuthentication()
@@ -127,7 +133,7 @@ class TestMAASAPIAuthentication(MAASServerTestCase):
         mock_validate.assert_not_called()
 
     def test_is_authenticated_false_external_user_no_external_auth(self):
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         user = factory.make_User()
         user.userprofile.is_local = False
         user.userprofile.save()

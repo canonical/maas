@@ -14,7 +14,6 @@ __all__ = [
 from piston3.models import Consumer, Token
 
 from maasserver import worker_user
-from maasserver.models import Config
 from metadataserver import nodeinituser
 
 # Special users internal to MAAS.
@@ -80,14 +79,16 @@ def get_auth_tokens(user):
 # When a user is created: create the related profile, and the default
 # consumer/token. Also add the user to the default group.
 def create_user(sender, instance, created, **kwargs):
-    # Avoid circular imports.
+    from maasserver.macaroon_auth import external_auth_enabled
     from maasserver.models.userprofile import UserProfile
 
     # System users do not have profiles.
     if created and instance.username not in SYSTEM_USERS:
-        is_local = not Config.objects.is_external_auth_enabled()
         # Create related UserProfile.
-        profile = UserProfile.objects.create(user=instance, is_local=is_local)
+        profile = UserProfile.objects.create(
+            user=instance,
+            is_local=not external_auth_enabled(),
+        )
 
         # Create initial authorisation token.
         if not SKIP_CREATE_AUTHORISATION_TOKEN:

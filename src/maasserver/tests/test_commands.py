@@ -17,10 +17,10 @@ from testtools.matchers import AfterPreprocessing, HasLength
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.management.commands import changepasswords, createadmin
-from maasserver.models.config import Config
 import maasserver.models.keysource as keysource_module
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.user import get_creds_tuple
+from maasserver.secrets import SecretManager
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -91,8 +91,9 @@ class TestCommands(MAASServerTestCase):
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_not_prompts_for_password_if_ext_auth(self):
-        Config.objects.set_config("external_auth_url", "http://example.com/")
-
+        SecretManager().set_composite_secret(
+            "external-auth", {"url": "https://example.com"}
+        )
         stderr = StringIO()
         stdout = StringIO()
         username = factory.make_name("user")

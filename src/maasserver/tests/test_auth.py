@@ -8,13 +8,14 @@ from django.urls import reverse
 
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.middleware import ExternalAuthInfoMiddleware
-from maasserver.models import Config, MAASAuthorizationBackend, Node
+from maasserver.models import MAASAuthorizationBackend, Node
 from maasserver.permissions import (
     NodePermission,
     PodPermission,
     ResourcePoolPermission,
 )
 from maasserver.rbac import ALL_RESOURCES, FakeRBACClient, rbac
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import get_node_init_user
@@ -67,7 +68,9 @@ def make_allocated_node(owner=None):
 
 class EnableRBACMixin:
     def enable_rbac(self):
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "https://rbac.example.com"}
+        )
         client = FakeRBACClient()
         rbac._store.client = client
         rbac._store.cleared = False  # Prevent re-creation of the client
@@ -809,7 +812,9 @@ class TestMAASAuthorizationBackend(MAASServerTestCase, EnableRBACMixin):
         )
 
     def test_authenticate_username_password_external_auth(self):
-        Config.objects.set_config("external_auth_url", "https://example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"url": "https://example.com"}
+        )
         password = factory.make_string()
         user = factory.make_User(password=password)
         backend = MAASAuthorizationBackend()

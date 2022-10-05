@@ -4,13 +4,12 @@
 """Django command: configure the authentication source."""
 
 
+from dataclasses import dataclass
 import json
 
-import attr
 from django.contrib.sessions.models import Session
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
-from django.db import DEFAULT_DB_ALIAS
 from macaroonbakery.bakery import generate_key
 
 from maascli.init import (
@@ -20,21 +19,21 @@ from maascli.init import (
     read_input,
 )
 from maasserver.macaroon_auth import APIError
-from maasserver.models import Config
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.rbac import RBACUserClient
+from maasserver.secrets import SecretManager
 from maasserver.utils.dns import validate_url
 
 
-@attr.s
-class AuthDetails:
+@dataclass
+class _AuthDetails:
 
-    url = attr.ib(default=None)
-    domain = attr.ib(default="")
-    user = attr.ib(default="")
-    key = attr.ib(default="")
-    admin_group = attr.ib(default="")
-    rbac_url = attr.ib(default="")
+    url: str = ""
+    domain: str = ""
+    user: str = ""
+    key: str = ""
+    admin_group: str = ""
+    rbac_url: str = ""
 
 
 class InvalidURLError(CommandError):
@@ -64,9 +63,9 @@ def update_auth_details_from_agent_file(agent_file_name, auth_details):
     except IndexError:
         raise CommandError("No agent users found in agent file")
     # update the passed auth details
-    auth_details.url = agent_details.get("url")
-    auth_details.user = agent_details.get("username")
-    auth_details.key = details.get("key", {}).get("private")
+    auth_details.url = agent_details.get("url", "")
+    auth_details.user = agent_details.get("username", "")
+    auth_details.key = details.get("key", {}).get("private", "")
 
 
 def update_auth_details_from_rbac_registration(auth_details, service_name):
@@ -139,27 +138,31 @@ def is_valid_url(auth_url):
     return True
 
 
-def get_auth_config(config_manager):
-    config_keys = [
-        "external_auth_url",
-        "external_auth_domain",
-        "external_auth_user",
-        "external_auth_key",
-        "external_auth_admin_group",
-        "rbac_url",
-    ]
-    return {key: config_manager.get_config(key) for key in config_keys}
+def get_auth_config(secret_manager):
+    secret = secret_manager.get_composite_secret("external-auth", default={})
+    keys_map = {
+        "external_auth_url": "url",
+        "external_auth_domain": "domain",
+        "external_auth_user": "user",
+        "external_auth_key": "key",
+        "external_auth_admin_group": "admin-group",
+        "rbac_url": "rbac-url",
+    }
+    return {key: secret.get(value, "") for key, value in keys_map.items()}
 
 
-def set_auth_config(config_manager, auth_details):
-    config_manager.set_config("external_auth_url", auth_details.url or "")
-    config_manager.set_config("external_auth_domain", auth_details.domain)
-    config_manager.set_config("external_auth_user", auth_details.user)
-    config_manager.set_config("external_auth_key", auth_details.key)
-    config_manager.set_config(
-        "external_auth_admin_group", auth_details.admin_group
+def set_auth_config(secret_manager, auth_details: _AuthDetails):
+    secret_manager.set_composite_secret(
+        "external-auth",
+        {
+            "url": auth_details.url,
+            "domain": auth_details.domain,
+            "user": auth_details.user,
+            "key": auth_details.key,
+            "admin-group": auth_details.admin_group,
+            "rbac-url": auth_details.rbac_url,
+        },
     )
-    config_manager.set_config("rbac_url", auth_details.rbac_url)
 
     # Clear the last sync, so if a new sync needs to occur it will do a full
     # sync with the RBAC service.
@@ -198,13 +201,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        config_manager = Config.objects.db_manager(DEFAULT_DB_ALIAS)
+        secret_manager = SecretManager()
 
         if options.get("json"):
-            print(json.dumps(get_auth_config(config_manager)))
+            print(json.dumps(get_auth_config(secret_manager)))
             return
 
-        auth_details = AuthDetails()
+        auth_details = _AuthDetails()
 
         auth_details.rbac_url = _get_or_prompt(
             options,
@@ -250,7 +253,7 @@ class Command(BaseCommand):
                         "(leave blank for empty): ",
                     )
 
-        set_auth_config(config_manager, auth_details)
+        set_auth_config(secret_manager, auth_details)
         clear_user_sessions()
 
 

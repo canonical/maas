@@ -14,7 +14,8 @@ from maasserver.macaroon_auth import (
     MacaroonClient,
     UserDetails,
 )
-from maasserver.models import Config, ResourcePool
+from maasserver.models import ResourcePool
+from maasserver.secrets import SecretManager
 
 
 class SyncConflictError(Exception):
@@ -49,7 +50,7 @@ class RBACClient(MacaroonClient):
 
     def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
-            url = Config.objects.get_config("rbac_url")
+            url = _get_rbac_url_from_secrets()
         if auth_info is None:
             auth_info = get_auth_info()
         super().__init__(auth_info=auth_info, url=url)
@@ -180,7 +181,7 @@ class FakeRBACClient(RBACClient):
 
     def __init__(self, url: str = None, auth_info: AuthInfo = None):
         if url is None:
-            url = Config.objects.get_config("rbac_url")
+            url = _get_rbac_url_from_secrets()
         self._url = url
         self._auth_info = auth_info
         self.store = FakeResourceStore()
@@ -230,7 +231,7 @@ class RBACWrapper:
 
     def _get_rbac_url(self):
         """Return the configured RBAC url."""
-        return Config.objects.get_config("rbac_url")
+        return _get_rbac_url_from_secrets()
 
     @property
     def client(self):
@@ -464,3 +465,8 @@ class FakeRBACUserClient(RBACUserClient):
             "url": "http://auth.example.com",
             "username": f"u-{len(self.registered_services)}",
         }
+
+
+def _get_rbac_url_from_secrets() -> str:
+    secret = SecretManager().get_composite_secret("external-auth", default={})
+    return secret.get("rbac-url", "")

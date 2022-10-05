@@ -4,6 +4,7 @@
 """Access middleware."""
 
 
+from dataclasses import dataclass
 import http.client
 import json
 import logging
@@ -11,7 +12,6 @@ from pprint import pformat
 import sys
 import traceback
 
-import attr
 from crochet import TimeoutError
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -35,10 +35,10 @@ from maasserver.components import (
 )
 from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
-from maasserver.models.config import Config
 from maasserver.models.node import RackController
 from maasserver.rbac import rbac
 from maasserver.rpc import getAllClients
+from maasserver.secrets import SecretManager
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -444,14 +444,14 @@ class CSRFHelperMiddleware:
         return self.get_response(request)
 
 
-@attr.s
+@dataclass
 class ExternalAuthInfo:
     """Hold information about external authentication."""
 
-    type = attr.ib()
-    url = attr.ib()
-    domain = attr.ib(default="")
-    admin_group = attr.ib(default="")
+    type: str
+    url: str
+    domain: str = ""
+    admin_group: str = ""
 
 
 class ExternalAuthInfoMiddleware:
@@ -467,38 +467,37 @@ class ExternalAuthInfoMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        configs = Config.objects.get_configs(
-            [
-                "external_auth_url",
-                "external_auth_domain",
-                "external_auth_admin_group",
-                "rbac_url",
-            ]
+        request.external_auth_info = self._get_external_auth_info(request)
+        return self.get_response(request)
+
+    def _get_external_auth_info(self, request):
+        config = SecretManager().get_composite_secret(
+            "external-auth", default={}
         )
-        rbac_endpoint = configs.get("rbac_url")
-        candid_endpoint = configs.get("external_auth_url")
-        auth_endpoint, auth_domain, auth_admin_group = "", "", ""
+        candid_endpoint = config.get("url", "")
+        rbac_endpoint = config.get("rbac-url", "")
+        auth_domain = config.get("domain", "")
+        auth_admin_group = config.get("admin-group", "")
         if rbac_endpoint:
             auth_type = "rbac"
             auth_endpoint = rbac_endpoint.rstrip("/") + "/auth"
+            # not used, ensure they're unset
+            auth_domain = ""
+            auth_admin_group = ""
         elif candid_endpoint:
             auth_type = "candid"
             auth_endpoint = candid_endpoint
-            auth_domain = configs.get("external_auth_domain")
-            auth_admin_group = configs.get("external_auth_admin_group")
+        else:
+            return None
 
-        auth_info = None
-        if auth_endpoint:
-            # strip trailing slashes as js-bakery ends up using double slashes
-            # in the URL otherwise
-            auth_info = ExternalAuthInfo(
-                type=auth_type,
-                url=auth_endpoint.rstrip("/"),
-                domain=auth_domain,
-                admin_group=auth_admin_group,
-            )
-        request.external_auth_info = auth_info
-        return self.get_response(request)
+        # strip trailing slashes as otherwise js-bakery ends up using double
+        # slashes in the URL
+        return ExternalAuthInfo(
+            type=auth_type,
+            url=auth_endpoint.rstrip("/"),
+            domain=auth_domain,
+            admin_group=auth_admin_group,
+        )
 
 
 class RBACMiddleware:

@@ -1901,52 +1901,6 @@ RBAC_RPOOL_DELETE = dedent(
 )
 
 
-# Triggered when the Candid/RBAC settings are inserted. Notifies that RBAC
-# needs to be synced.
-RBAC_CONFIG_INSERT = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_rbac_config_insert()
-    RETURNS trigger as $$
-    BEGIN
-      IF (NEW.name = 'external_auth_url' OR
-          NEW.name = 'external_auth_user' OR
-          NEW.name = 'external_auth_key' OR
-          NEW.name = 'rbac_url') THEN
-        PERFORM sys_rbac_sync_update(
-          'configuration ' || NEW.name || ' set to ' ||
-          COALESCE(NEW.value, 'NULL'));
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
-# Triggered when the Candid/RBAC settings are updated. Notifies that RBAC
-# needs to be synced. The external_auth_* keys are included that way if
-# the agent account that MAAS uses to update RBAC is updated in MAAS, MAAS will
-# ensure that a full sync of data is performed.
-RBAC_CONFIG_UPDATE = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_rbac_config_update()
-    RETURNS trigger as $$
-    BEGIN
-      IF (OLD.value != NEW.value AND (
-          NEW.name = 'external_auth_url' OR
-          NEW.name = 'external_auth_user' OR
-          NEW.name = 'external_auth_key' OR
-          NEW.name = 'rbac_url')) THEN
-        PERFORM sys_rbac_sync_update(
-          'configuration ' || NEW.name || ' changed to ' || NEW.value);
-      END IF;
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
-
-
 def render_sys_proxy_procedure(proc_name, on_delete=False):
     """Render a database procedure with name `proc_name` that notifies that a
     proxy update is needed.
@@ -2209,9 +2163,3 @@ def register_system_triggers():
     register_trigger(
         "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
     )
-
-    # - Config (Candid/RBAC)
-    register_procedure(RBAC_CONFIG_INSERT)
-    register_trigger("maasserver_config", "sys_rbac_config_insert", "insert")
-    register_procedure(RBAC_CONFIG_UPDATE)
-    register_trigger("maasserver_config", "sys_rbac_config_update", "update")

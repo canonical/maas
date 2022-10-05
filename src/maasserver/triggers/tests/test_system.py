@@ -61,8 +61,6 @@ class TestTriggers(MAASServerTestCase):
             "resourcepool_sys_rbac_rpool_insert",
             "resourcepool_sys_rbac_rpool_update",
             "resourcepool_sys_rbac_rpool_delete",
-            "config_sys_rbac_config_insert",
-            "config_sys_rbac_config_update",
         ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:

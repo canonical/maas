@@ -8,7 +8,7 @@ from macaroonbakery.bakery import PrivateKey
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
 import requests
 
-from maasserver.models import Config, ResourcePool
+from maasserver.models import ResourcePool
 from maasserver.rbac import (
     ALL_RESOURCES,
     FakeRBACClient,
@@ -19,6 +19,7 @@ from maasserver.rbac import (
     Resource,
     SyncConflictError,
 )
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -41,14 +42,15 @@ class TestRBACClient(MAASServerTestCase):
         self.mock_request = self.patch(requests, "request")
         self.client = RBACClient(url=url, auth_info=auth_info)
 
-    def test_default_config_from_settings(self):
-        Config.objects.set_config("rbac_url", "https://rbac.example.com")
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
-        )
-        Config.objects.set_config("external_auth_user", "user@candid")
-        Config.objects.set_config(
-            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
+    def test_default_config_from_secrets(self):
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "rbac-url": "https://rbac.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
         )
         client = RBACClient()
         self.assertEqual(client._url, "https://rbac.example.com")
@@ -245,30 +247,42 @@ class TestRBACClient(MAASServerTestCase):
 
 
 class TestRBACWrapperIsEnabled(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        Config.objects.set_config("external_auth_user", "user@candid")
-        Config.objects.set_config(
-            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
-        )
-
     def test_local_disabled(self):
-        Config.objects.set_config("external_auth_url", "")
-        Config.objects.set_config("rbac_url", "")
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "",
+                "rbac-url": "",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
+        )
         rbac = RBACWrapper()
         self.assertFalse(rbac.is_enabled())
 
-    def test_candid_disabled(self):
-        Config.objects.set_config(
-            "external_auth_url", "http://candid.example.com"
+    def test_rbac_disabled(self):
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://candid.example.com",
+                "rbac-url": "",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
         )
-        Config.objects.set_config("rbac_url", "")
         rbac = RBACWrapper()
         self.assertFalse(rbac.is_enabled())
 
     def test_rbac_enabled(self):
-        Config.objects.set_config("external_auth_url", "")
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "",
+                "rbac-url": "https://rbac.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
+        )
         rbac = RBACWrapper()
         self.assertTrue(rbac.is_enabled())
 
@@ -276,7 +290,12 @@ class TestRBACWrapperIsEnabled(MAASServerTestCase):
 class TestRBACWrapperGetResourcePools(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "rbac-url": "https://rbac.example.com",
+            },
+        )
         self.rbac = RBACWrapper(client_class=FakeRBACClient)
         self.client = self.rbac.client
         self.store = self.client.store
@@ -375,13 +394,14 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
 class TestRBACWrapperClient(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
-        Config.objects.set_config(
-            "external_auth_url", "http://candid.example.com"
-        )
-        Config.objects.set_config("external_auth_user", "user@candid")
-        Config.objects.set_config(
-            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://candid.example.com",
+                "rbac-url": "https://rbac.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
         )
 
     def test_same_client(self):
@@ -395,14 +415,28 @@ class TestRBACWrapperClient(MAASServerTestCase):
     def test_clear_new_url_creates_new_client(self):
         rbac1 = rbac.client
         rbac.clear()
-        Config.objects.set_config("rbac_url", "http://rbac-other.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://candid.example.com",
+                "rbac-url": "http://rbac-other.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
+        )
         self.assertIsNot(rbac1, rbac.client)
 
     def test_clear_new_auth_url_creates_new_client(self):
         rbac1 = rbac.client
         rbac.clear()
-        Config.objects.set_config(
-            "external_auth_url", "http://candid-other.example.com"
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://candid-other.example.com",
+                "rbac-url": "https://rbac.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
         )
         self.assertIsNot(rbac1, rbac.client)
 
@@ -418,7 +452,6 @@ class TestRBACWrapperNoClient(MAASServerTestCase):
 
 class TestRBACWrapperClientThreads(MAASTransactionServerTestCase):
     def test_different_clients_per_threads(self):
-
         # Commit the settings to the database so the created threads have
         # access to the same data. Each thread will start its own transaction
         # so the settings must be committed.
@@ -427,14 +460,14 @@ class TestRBACWrapperClientThreads(MAASTransactionServerTestCase):
         # `MAASTransactionServerTestCase` is used to reset the database to
         # a clean state after this test.
         with transaction.atomic():
-            Config.objects.set_config("rbac_url", "http://rbac.example.com")
-            Config.objects.set_config(
-                "external_auth_url", "http://candid.example.com"
-            )
-            Config.objects.set_config("external_auth_user", "user@candid")
-            Config.objects.set_config(
-                "external_auth_key",
-                "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            SecretManager().set_composite_secret(
+                "external-auth",
+                {
+                    "url": "https://candid.example.com",
+                    "rbac-url": "https://rbac.example.com",
+                    "user": "user@candid",
+                    "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+                },
             )
 
         queue = Queue()

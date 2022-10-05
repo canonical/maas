@@ -14,9 +14,9 @@ from django.core.management import call_command
 from django.core.management.base import CommandError
 
 from maasserver.management.commands import configauth
-from maasserver.models import Config
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.rbac import FakeRBACUserClient
+from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASServerTestCase
 
 
@@ -56,17 +56,29 @@ class TestConfigAuthCommand(MAASServerTestCase):
         return "\n".join(prints)
 
     def test_configauth_changes_empty_string(self):
-        Config.objects.set_config(
-            "external_auth_url", "http://example.com/candid"
+        manager = SecretManager()
+        manager.set_composite_secret(
+            "external-auth", {"url": "http://example.com/candid"}
         )
         call_command("configauth", candid_agent_file="")
-        self.assertEqual("", Config.objects.get_config("external_auth_url"))
+        self.assertEqual(
+            manager.get_composite_secret("external-auth")["url"], ""
+        )
 
     def test_configauth_changes_auth_prompt_default(self):
         self.read_input.return_value = ""
         call_command("configauth")
-        self.assertEqual("", Config.objects.get_config("rbac_url"))
-        self.assertEqual("", Config.objects.get_config("external_auth_url"))
+        self.assertEqual(
+            SecretManager().get_composite_secret("external-auth"),
+            {
+                "url": "",
+                "domain": "",
+                "user": "",
+                "key": "",
+                "admin-group": "",
+                "rbac-url": "",
+            },
+        )
 
     def test_configauth_changes_auth_invalid_rbac_url(self):
         self.assertRaises(
@@ -86,7 +98,7 @@ class TestConfigAuthCommand(MAASServerTestCase):
         self.assertFalse(Session.objects.all().exists())
 
     def test_update_auth_details(self):
-        auth_details = configauth.AuthDetails()
+        auth_details = configauth._AuthDetails()
         with self.agent_file() as agent_file_name:
             configauth.update_auth_details_from_agent_file(
                 agent_file_name, auth_details
@@ -104,22 +116,16 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "admins",
             ]
             call_command("configauth")
-        self.assertEqual("", Config.objects.get_config("rbac_url"))
         self.assertEqual(
-            "http://example.com:1234",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual(
-            "mydomain", Config.objects.get_config("external_auth_domain")
-        )
-        self.assertEqual(
-            "user@admin", Config.objects.get_config("external_auth_user")
-        )
-        self.assertEqual(
-            "private-key", Config.objects.get_config("external_auth_key")
-        )
-        self.assertEqual(
-            "admins", Config.objects.get_config("external_auth_admin_group")
+            SecretManager().get_composite_secret("external-auth"),
+            {
+                "url": "http://example.com:1234",
+                "domain": "mydomain",
+                "user": "user@admin",
+                "key": "private-key",
+                "admin-group": "admins",
+                "rbac-url": "",
+            },
         )
 
     def test_configauth_interactive_domain(self):
@@ -129,17 +135,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "configauth", rbac_url="", candid_agent_file=agent_file_name
             )
         self.assertEqual(
-            "http://example.com:1234",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual(
-            "mydomain", Config.objects.get_config("external_auth_domain")
-        )
-        self.assertEqual(
-            "user@admin", Config.objects.get_config("external_auth_user")
-        )
-        self.assertEqual(
-            "private-key", Config.objects.get_config("external_auth_key")
+            SecretManager().get_composite_secret("external-auth")["domain"],
+            "mydomain",
         )
 
     def test_configauth_interactive_domain_empty(self):
@@ -149,15 +146,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 "configauth", rbac_url="", candid_agent_file=agent_file_name
             )
         self.assertEqual(
-            "http://example.com:1234",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual("", Config.objects.get_config("external_auth_domain"))
-        self.assertEqual(
-            "user@admin", Config.objects.get_config("external_auth_user")
-        )
-        self.assertEqual(
-            "private-key", Config.objects.get_config("external_auth_key")
+            SecretManager().get_composite_secret("external-auth")["domain"],
+            "",
         )
 
     def test_configauth_interactive_key(self):
@@ -170,17 +160,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 candid_domain="mydomain",
             )
         self.assertEqual(
-            "http://example.com:1234",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual(
-            "mydomain", Config.objects.get_config("external_auth_domain")
-        )
-        self.assertEqual(
-            "user@admin", Config.objects.get_config("external_auth_user")
-        )
-        self.assertEqual(
-            "private-key", Config.objects.get_config("external_auth_key")
+            SecretManager().get_composite_secret("external-auth")["key"],
+            "private-key",
         )
 
     def test_configauth_not_interactive(self):
@@ -192,22 +173,16 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 candid_domain="mydomain",
                 candid_admin_group="admins",
             )
-        self.assertEqual("", Config.objects.get_config("rbac_url"))
         self.assertEqual(
-            "http://example.com:1234",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual(
-            "mydomain", Config.objects.get_config("external_auth_domain")
-        )
-        self.assertEqual(
-            "user@admin", Config.objects.get_config("external_auth_user")
-        )
-        self.assertEqual(
-            "private-key", Config.objects.get_config("external_auth_key")
-        )
-        self.assertEqual(
-            "admins", Config.objects.get_config("external_auth_admin_group")
+            SecretManager().get_composite_secret("external-auth"),
+            {
+                "url": "http://example.com:1234",
+                "domain": "mydomain",
+                "user": "user@admin",
+                "key": "private-key",
+                "admin-group": "admins",
+                "rbac-url": "",
+            },
         )
         self.read_input.assert_not_called()
 
@@ -231,7 +206,9 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 candid_agent_file=agent_file_name,
                 candid_domain="none",
             )
-        self.assertEqual("", Config.objects.get_config("external_auth_domain"))
+        self.assertEqual(
+            SecretManager().get_composite_secret("external-auth")["domain"], ""
+        )
 
     def test_configauth_json_empty(self):
         call_command("configauth", json=True)
@@ -252,14 +229,18 @@ class TestConfigAuthCommand(MAASServerTestCase):
         )
 
     def test_configauth_json_full(self):
-        Config.objects.set_config(
-            "external_auth_url", "http://candid.example.com/"
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "external-auth",
+            {
+                "url": "http://candid.example.com/",
+                "domain": "mydomain",
+                "user": "maas",
+                "key": "secret maas key",
+                "admin-group": "admins",
+                "rbac-url": "http://rbac.example.com/",
+            },
         )
-        Config.objects.set_config("external_auth_domain", "mydomain")
-        Config.objects.set_config("external_auth_user", "maas")
-        Config.objects.set_config("external_auth_key", "secret maas key")
-        Config.objects.set_config("external_auth_admin_group", "admins")
-        Config.objects.set_config("rbac_url", "http://rbac.example.com/")
         mock_print = self.patch(configauth, "print")
         call_command("configauth", json=True)
         self.read_input.assert_not_called()
@@ -294,7 +275,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
         )
         self.read_input.assert_not_called()
         self.assertEqual(
-            "http://rbac.example.com", Config.objects.get_config("rbac_url")
+            SecretManager().get_composite_secret("external-auth")["rbac-url"],
+            "http://rbac.example.com",
         )
         self.assertEqual(
             self.rbac_user_client.registered_services,
@@ -311,7 +293,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
         )
         patch_prompt.assert_called_once()
         self.assertEqual(
-            "http://rbac.example.com", Config.objects.get_config("rbac_url")
+            SecretManager().get_composite_secret("external-auth")["rbac-url"],
+            "http://rbac.example.com",
         )
         self.assertEqual(
             self.rbac_user_client.registered_services,
@@ -330,7 +313,11 @@ class TestConfigAuthCommand(MAASServerTestCase):
         )
         self.assertEqual(str(error), "Registration with RBAC service canceled")
         patch_prompt.assert_called_once()
-        self.assertEqual(Config.objects.get_config("rbac_url"), "")
+        self.assertIsNone(
+            SecretManager().get_composite_secret(
+                "external-auth", default=None
+            ),
+        )
         self.assertEqual(self.rbac_user_client.registered_services, [])
 
     def test_configauth_rbac_registration_list(self):
@@ -351,21 +338,13 @@ class TestConfigAuthCommand(MAASServerTestCase):
         # The index of the service to register is prompted
         self.read_input.side_effect = ["2"]
         call_command("configauth", rbac_url="http://rbac.example.com")
-        self.assertEqual(
-            "http://rbac.example.com", Config.objects.get_config("rbac_url")
-        )
-        self.assertEqual(
-            "http://auth.example.com",
-            Config.objects.get_config("external_auth_url"),
-        )
-        self.assertEqual(
-            "u-1", Config.objects.get_config("external_auth_user")
-        )
-        self.assertNotEqual("", Config.objects.get_config("external_auth_key"))
-        self.assertEqual("", Config.objects.get_config("external_auth_domain"))
-        self.assertEqual(
-            "", Config.objects.get_config("external_auth_admin_group")
-        )
+        secret = SecretManager().get_composite_secret("external-auth")
+        self.assertEqual(secret["rbac-url"], "http://rbac.example.com")
+        self.assertEqual(secret["url"], "http://auth.example.com")
+        self.assertEqual(secret["user"], "u-1")
+        self.assertNotEqual(secret["key"], "")
+        self.assertEqual(secret["domain"], "")
+        self.assertEqual(secret["admin-group"], "")
         prints = self.printout()
         self.assertIn("1 - mymaas", prints)
         self.assertIn("2 - mymaas2 (pending)", prints)
@@ -411,13 +390,19 @@ class TestConfigAuthCommand(MAASServerTestCase):
                 candid_admin_group="admins",
             )
         self.read_input.assert_not_called()
-        self.assertEqual("", Config.objects.get_config("rbac_url"))
+        self.assertEqual(
+            SecretManager().get_composite_secret("external-auth")["rbac-url"],
+            "",
+        )
 
     def test_configauth_rbac_url_none_clears_lastsync_and_sync(self):
         RBACLastSync.objects.create(resource_type="resource-pool", sync_id=0)
         RBACSync.objects.create(resource_type="")
         call_command("configauth", rbac_url="none", candid_agent_file="none")
-        self.assertEqual("", Config.objects.get_config("rbac_url"))
+        self.assertEqual(
+            SecretManager().get_composite_secret("external-auth")["rbac-url"],
+            "",
+        )
         self.assertFalse(RBACLastSync.objects.all().exists())
         self.assertFalse(RBACSync.objects.all().exists())
 
@@ -438,7 +423,8 @@ class TestConfigAuthCommand(MAASServerTestCase):
         )
         self.read_input.assert_not_called()
         self.assertEqual(
-            "http://rbac.example.com", Config.objects.get_config("rbac_url")
+            SecretManager().get_composite_secret("external-auth")["rbac-url"],
+            "http://rbac.example.com",
         )
         self.assertFalse(RBACLastSync.objects.all().exists())
         latest = RBACSync.objects.order_by("-id").first()

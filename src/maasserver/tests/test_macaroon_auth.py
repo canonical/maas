@@ -27,6 +27,7 @@ from maasserver.macaroon_auth import (
     _IDClient,
     APIError,
     CandidClient,
+    external_auth_enabled,
     EXTERNAL_USER_CHECK_INTERVAL,
     KeyStore,
     MacaroonAPIAuthentication,
@@ -35,13 +36,32 @@ from maasserver.macaroon_auth import (
     validate_user_external_auth,
 )
 from maasserver.middleware import ExternalAuthInfo, ExternalAuthInfoMiddleware
-from maasserver.models import Config, RootKey
+from maasserver.models import RootKey
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import get_node_init_user
+
+
+class TestExternalAuthEnabled(MAASServerTestCase):
+    def test_false(self):
+        self.assertFalse(external_auth_enabled())
+
+    def test_true_url(self):
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {"url": "http://auth.example.com"},
+        )
+        self.assertTrue(external_auth_enabled())
+
+    def test_true_rbac_url(self):
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {"rbac-url": "http://rbac.example.com"},
+        )
+        self.assertTrue(external_auth_enabled())
 
 
 class TestIDClient(MAASServerTestCase):
@@ -76,12 +96,13 @@ class TestIDClient(MAASServerTestCase):
 class TestCandidClient(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
-        )
-        Config.objects.set_config("external_auth_user", "user@candid")
-        Config.objects.set_config(
-            "external_auth_key", "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY="
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "user": "user@candid",
+                "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
+            },
         )
 
     @mock.patch("requests.request")
@@ -482,10 +503,13 @@ class TestMacaroonAPIAuthentication(
 ):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "admin-group": "admins",
+            },
         )
-        Config.objects.set_config("external_auth_admin_group", "admins")
         self.auth = MacaroonAPIAuthentication()
         self.mock_service_key_request()
         self.mock_validate = self.patch(
@@ -502,7 +526,7 @@ class TestMacaroonAPIAuthentication(
         # authentication details are provided
         self.mock_auth_info(username=factory.make_string())
         # ... but external auth is disabled
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_is_authenticated_no_auth_details(self):
@@ -551,7 +575,7 @@ class TestMacaroonAPIAuthentication(
         self.assertFalse(self.auth.is_authenticated(self.get_request()))
 
     def test_challenge_no_external_auth(self):
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         response = self.auth.challenge(self.get_request())
         self.assertEqual(response.status_code, 401)
 
@@ -573,10 +597,13 @@ class TestMacaroonAPIAuthentication(
 class TestMacaroonAuthorizationBackend(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "admin-group": "admins",
+            },
         )
-        Config.objects.set_config("external_auth_admin_group", "admins")
         self.backend = MacaroonAuthorizationBackend()
         self.mock_validate = self.patch(
             maasserver.macaroon_auth, "validate_user_external_auth"
@@ -631,7 +658,7 @@ class TestMacaroonAuthorizationBackend(MAASServerTestCase):
         )
 
     def test_authenticate_external_auth_not_enabled(self):
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         username = factory.make_string()
         identity = SimpleIdentity(user=username)
         self.assertIsNone(
@@ -764,10 +791,13 @@ class TestMacaroonDischargeRequest(
 ):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com"
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {
+                "url": "https://auth.example.com",
+                "admin-group": "admins",
+            },
         )
-        Config.objects.set_config("external_auth_admin_group", "admins")
         self.mock_service_key_request()
         self.mock_validate = self.patch(
             maasserver.macaroon_auth, "validate_user_external_auth"
@@ -808,8 +838,8 @@ class TestMacaroonDischargeRequest(
         )
 
     def test_discharge_request_strip_url_trailing_slash(self):
-        Config.objects.set_config(
-            "external_auth_url", "https://auth.example.com:1234/"
+        SecretManager().set_composite_secret(
+            "external-auth", {"url": "https://auth.example.com:1234/"}
         )
         response = self.client.get("/accounts/discharge-request/")
         macaroon = response.json()["Info"]["Macaroon"]
@@ -819,7 +849,7 @@ class TestMacaroonDischargeRequest(
         self.assertEqual(third_party_urls, ["https://auth.example.com:1234"])
 
     def test_discharge_request_no_external_auth(self):
-        Config.objects.set_config("external_auth_url", "")
+        SecretManager().delete_secret("external-auth")
         response = self.client.get("/accounts/discharge-request/")
         self.assertEqual(response.status_code, 404)
 

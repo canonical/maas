@@ -16,7 +16,7 @@ import functools
 from django.contrib.auth.models import AnonymousUser
 from testscenarios import multiply_scenarios
 
-from maasserver.models import Config
+from maasserver.macaroon_auth import external_auth_enabled
 from maasserver.models.user import create_auth_token
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -180,9 +180,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.assertFalse(
             self.user.is_anonymous, "Cannot promote anonymous user to admin."
         )
-        if Config.objects.get_config(
-            "external_auth_url"
-        ) or Config.objects.get_config("rbac_url"):
+        if external_auth_enabled():
             # if external auth is enabled, mark the user as remote, otherwise
             # he wouldn't be able to authenticate
             self.user.userprofile.is_local = False
@@ -193,9 +191,7 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     @transactional
     def become_non_local(self):
         """Promote `self.user` to non local."""
-        if Config.objects.get_config(
-            "external_auth_url"
-        ) or Config.objects.get_config("rbac_url"):
+        if external_auth_enabled():
             # if external auth is enabled, mark the user as remote, otherwise
             # he wouldn't be able to authenticate
             self.user.userprofile.is_local = False

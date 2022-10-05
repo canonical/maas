@@ -136,6 +136,7 @@ from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import (
     MIN_BOOT_PARTITION_SIZE,
     StorageLayoutError,
@@ -7222,7 +7223,9 @@ class TestNodeManager(MAASServerTestCase):
 class TestNodeManagerGetNodesRBAC(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         self.client = FakeRBACClient()
         rbac._store.client = self.client
         rbac._store.cleared = False  # Prevent re-creation of the client.

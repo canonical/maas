@@ -115,13 +115,6 @@ def get_default_config():
         # Notifications.
         "subnet_ip_exhaustion_threshold_count": 16,
         "release_notifications": True,
-        # Authentication.
-        "external_auth_url": "",
-        "external_auth_user": "",
-        "external_auth_key": "",
-        "external_auth_domain": "",
-        "external_auth_admin_group": "",
-        "rbac_url": "",
         # MAAS Architecture.
         "use_rack_proxy": True,
         "node_timeout": 30,
@@ -317,10 +310,6 @@ class ConfigManager(Manager):
         return self.get_network_discovery_config_from_value(
             self.get_config("network_discovery")
         )
-
-    def is_external_auth_enabled(self):
-        """Return whether external authentication is enabled."""
-        return bool(self.get_config("external_auth_url"))
 
 
 class Config(Model):

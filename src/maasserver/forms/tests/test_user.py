@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from testtools.matchers import MatchesRegex
 
 from maasserver.forms import EditUserForm, NewUserCreationForm, ProfileForm
-from maasserver.models import Config
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -128,8 +128,9 @@ class TestNewUserCreationForm(MAASServerTestCase):
         )
 
     def test_password_not_required_with_external_auth(self):
-        Config.objects.set_config(
-            "external_auth_url", "http://auth.example.com"
+        SecretManager().set_composite_secret(
+            "external-auth",
+            {"url": "http://auth.example.com"},
         )
         form = NewUserCreationForm()
         params = {

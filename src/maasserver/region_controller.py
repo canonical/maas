@@ -37,12 +37,12 @@ from twisted.names.client import Resolver
 from maasserver import locks
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
-from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.proxyconfig import proxy_update_config
 from maasserver.rbac import RBACClient, Resource, SyncConflictError
+from maasserver.secrets import SecretManager
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
@@ -308,7 +308,11 @@ class RegionControllerService(Service):
         This tries to use an already held client when initialized because the
         cookiejar will be updated with the already authenticated macaroon.
         """
-        url = Config.objects.get_config("rbac_url")
+        url = (
+            SecretManager()
+            .get_composite_secret("external-auth", default={})
+            .get("rbac-url")
+        )
         if not url:
             # RBAC is not enabled (or no longer enabled).
             self.rbacClient = None

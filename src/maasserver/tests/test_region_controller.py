@@ -15,7 +15,6 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.names.dns import A, Record_SOA, RRHeader, SOA
 
 from maasserver import region_controller
-from maasserver.models.config import Config
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.models.resourcepool import ResourcePool
@@ -24,6 +23,7 @@ from maasserver.region_controller import (
     DNSReloadError,
     RegionControllerService,
 )
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -482,13 +482,15 @@ class TestRegionControllerService(MAASServerTestCase):
     def test_getRBACClient_returns_None_when_no_url(self):
         service = self.make_service(sentinel.listener)
         service.rbacClient = sentinel.client
-        Config.objects.set_config("rbac_url", "")
+        SecretManager().delete_secret("external-auth")
         self.assertIsNone(service._getRBACClient())
         self.assertIsNone(service.rbacClient)
 
     def test_getRBACClient_creates_new_client_and_uses_it_again(self):
         self.patch(region_controller, "get_auth_info")
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         service = self.make_service(sentinel.listener)
         client = service._getRBACClient()
         self.assertIsNotNone(client)
@@ -497,10 +499,14 @@ class TestRegionControllerService(MAASServerTestCase):
 
     def test_getRBACClient_creates_new_client_when_url_changes(self):
         self.patch(region_controller, "get_auth_info")
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         service = self.make_service(sentinel.listener)
         client = service._getRBACClient()
-        Config.objects.set_config("rbac_url", "http://other.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://other.example.com"}
+        )
         new_client = service._getRBACClient()
         self.assertIsNotNone(new_client)
         self.assertIsNot(new_client, client)
@@ -508,7 +514,9 @@ class TestRegionControllerService(MAASServerTestCase):
 
     def test_getRBACClient_creates_new_client_when_auth_info_changes(self):
         mock_get_auth_info = self.patch(region_controller, "get_auth_info")
-        Config.objects.set_config("rbac_url", "http://rbac.example.com")
+        SecretManager().set_composite_secret(
+            "external-auth", {"rbac-url": "http://rbac.example.com"}
+        )
         service = self.make_service(sentinel.listener)
         client = service._getRBACClient()
         mock_get_auth_info.return_value = MagicMock()

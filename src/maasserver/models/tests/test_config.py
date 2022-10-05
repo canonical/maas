@@ -212,15 +212,6 @@ class TestConfig(MAASServerTestCase):
 
         self.assertEqual([], recorder.calls)
 
-    def test_manager_is_external_auth_enabled_false(self):
-        self.assertFalse(Config.objects.is_external_auth_enabled())
-
-    def test_manager_is_external_auth_enabled_true(self):
-        Config.objects.set_config(
-            "external_auth_url", "http://auth.example.com"
-        )
-        self.assertTrue(Config.objects.is_external_auth_enabled())
-
 
 class TestSettingConfig(MAASServerTestCase):
     """Testing of the :class:`Config` model and setting each option."""

@@ -23,14 +23,21 @@ from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
 from piston3.utils import rc
 import requests
 
-from maasserver.models import Config, MAASAuthorizationBackend, RootKey
+from maasserver.models import MAASAuthorizationBackend, RootKey
 from maasserver.models.user import SYSTEM_USERS
-from maasserver.secrets import SecretManager
 from maasserver.utils.views import request_headers
 
 MACAROON_LIFESPAN = timedelta(days=1)
 
 EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
+
+
+def external_auth_enabled() -> bool:
+    """Return whether external auth is enabled."""
+    from maasserver.secrets import SecretManager
+
+    config = SecretManager().get_composite_secret("external-auth", default={})
+    return bool(config.get("url") or config.get("rbac-url"))
 
 
 class MacaroonAuthorizationBackend(MAASAuthorizationBackend):
@@ -238,13 +245,17 @@ class KeyStore:
 
 def get_auth_info():
     """Return the `AuthInfo` to authentication with Candid."""
-    configs = Config.objects.get_configs(
-        ["external_auth_key", "external_auth_user", "external_auth_url"]
+    from maasserver.secrets import SecretManager
+
+    config = SecretManager().get_composite_secret(
+        "external-auth", default=None
     )
-    key = bakery.PrivateKey.deserialize(configs["external_auth_key"])
+    if config is None:
+        return None
+    key = bakery.PrivateKey.deserialize(config["key"])
     agent = Agent(
-        url=configs["external_auth_url"],
-        username=configs["external_auth_user"],
+        url=config["url"],
+        username=config["user"],
     )
     return AuthInfo(key=key, agents=[agent])
 
@@ -529,6 +540,8 @@ def _get_macaroon_private_key() -> bakery.PrivateKey:
     The key is read from secrets if found, otherwise a new one is created and
     saved.
     """
+    from maasserver.secrets import SecretManager
+
     manager = SecretManager()
     material = manager.get_simple_secret("macaroon-key", default=None)
     if material:
