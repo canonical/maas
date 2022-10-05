@@ -7,8 +7,8 @@
 
 #### script setup ######
 export TEMP_D
-TMPDIR=${SNAP_COMMON:-/var/local}
-TEMP_D=$(mktemp -d "${TMPDIR}/maas/${0##*/}.XXXXXX")
+TMPDIR=${MAAS_DATA:-/var/lib/maas}
+TEMP_D=$(mktemp -d "${TMPDIR}/${0##*/}.XXXXXX")
 export BIN_D="${TEMP_D}/bin"
 export PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
