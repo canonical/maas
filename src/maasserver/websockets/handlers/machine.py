@@ -1030,18 +1030,25 @@ class MachineHandler(NodeHandler):
             )
         return action.execute(**extra_params)
 
-    def _bulk_action(self, filter_params, action_name, extra_params):
+    def _bulk_action(
+        self, filter_params, action_name, extra_params
+    ) -> tuple[int, list[str]]:
+        """Find nodes that match the filter, then apply the given action to them."""
         machines = self._filter(self._meta.queryset, None, filter_params)
         success_count = 0
+        failed_system_ids = []
         for machine in machines:
             try:
                 self._action(machine, action_name, extra_params)
             except NodeActionError as e:
-                log.error(f"Bulk action for {machine.system_id} failed: {e}")
+                failed_system_ids.append(machine.system_id)
+                log.error(
+                    f"Bulk action ({action_name}) for {machine.system_id} failed: {e}"
+                )
             else:
                 success_count += 1
 
-        return success_count
+        return success_count, failed_system_ids
 
     def action(self, params):
         """Perform the action on the object."""
@@ -1050,9 +1057,13 @@ class MachineHandler(NodeHandler):
         action_name = params.get("action")
         extra_params = params.get("extra", {})
         if "filter" in params:
-            return self._bulk_action(
+            success_count, failed_system_ids = self._bulk_action(
                 params["filter"], action_name, extra_params
             )
+            return {
+                "success_count": success_count,
+                "failed_system_ids": failed_system_ids,
+            }
         obj = self.get_object(params)
         return self._action(obj, action_name, extra_params)
 

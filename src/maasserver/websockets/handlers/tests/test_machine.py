@@ -123,6 +123,7 @@ from maasserver.websockets.handlers.node_result import NodeResultHandler
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
+from maastesting.twisted import TwistedLoggerFixture
 from metadataserver.enum import (
     HARDWARE_TYPE,
     HARDWARE_TYPE_CHOICES,
@@ -5974,6 +5975,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         )
 
     def test_filter_bulk_action(self):
+        logger_twisted = self.useFixture(TwistedLoggerFixture())
         user = factory.make_admin()
         zone1 = factory.make_Zone()
         zone2 = factory.make_Zone()
@@ -5981,6 +5983,11 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             factory.make_Machine(status=NODE_STATUS.READY, zone=zone1)
             for _ in range(2)
         ]
+        # You can't acquire a deployed machine, check it is reported as failed
+        deployed_zone1_machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED, zone=zone1
+        )
+        zone1_machines.append(deployed_zone1_machine)
         zone2_machines = [
             factory.make_Machine(status=NODE_STATUS.READY, zone=zone2)
             for _ in range(2)
@@ -5991,18 +5998,25 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             "extra": {},
             "filter": {"zone": zone1},
         }
-        success_count = handler.action(params)
+        response = handler.action(params)
         self.assertEqual(
-            len(zone1_machines),
-            success_count,
+            response,
+            {
+                "success_count": 2,
+                "failed_system_ids": [deployed_zone1_machine.system_id],
+            },
         )
-        machines = zone1_machines + zone2_machines
-        for machine in machines:
+        self.assertIn(
+            f"Bulk action (acquire) for {deployed_zone1_machine.system_id} failed: acquire action is not available for this node",
+            logger_twisted.output,
+        )
+        # Skip the deployed zone1 machine
+        for machine in zone1_machines[:-1]:
             machine.refresh_from_db()
-            if machine.zone == zone1:
-                self.assertEqual(machine.status, NODE_STATUS.ALLOCATED)
-            else:
-                self.assertEqual(machine.status, NODE_STATUS.READY)
+            self.assertEqual(machine.status, NODE_STATUS.ALLOCATED)
+        for machine in zone2_machines:
+            machine.refresh_from_db()
+            self.assertEqual(machine.status, NODE_STATUS.READY)
 
     def test_filter_groups(self):
         self.maxDiff = None
