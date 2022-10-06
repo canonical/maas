@@ -9,6 +9,7 @@ import logging
 import random
 import re
 from textwrap import dedent
+from typing import Set
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 import crochet
@@ -6063,7 +6064,7 @@ class TestNode(MAASServerTestCase):
             factory.make_RackController(owner=admin) for _ in range(2)
         ]
         for rack_controller in rack_controllers:
-            ip = subnet.get_next_ip_for_allocation()
+            ip = subnet.get_next_ip_for_allocation()[0]
             factory.make_Interface(node=rack_controller, ip=ip)
 
         clients = [Mock() for _ in rack_controllers]
@@ -6073,7 +6074,7 @@ class TestNode(MAASServerTestCase):
         mock_getAllClients = self.patch(node_module, "getAllClients")
         mock_getAllClients.return_value = clients
 
-        ip = subnet.get_next_ip_for_allocation()
+        ip = subnet.get_next_ip_for_allocation()[0]
         ip_address = factory.make_StaticIPAddress(ip=ip)
         bmc = factory.make_BMC(ip_address=ip_address)
         node = factory.make_Node(bmc=bmc)
@@ -6095,7 +6096,7 @@ class TestNode(MAASServerTestCase):
             factory.make_RackController(owner=admin) for _ in range(2)
         ]
         for rack_controller in rack_controllers:
-            ip = subnet1.get_next_ip_for_allocation()
+            ip = subnet1.get_next_ip_for_allocation()[0]
             factory.make_Interface(node=rack_controller, ip=ip)
 
         clients = [Mock() for _ in rack_controllers]
@@ -6107,7 +6108,7 @@ class TestNode(MAASServerTestCase):
         mock_getAllClients_bmc = self.patch(bmc_module, "getAllClients")
         mock_getAllClients_bmc.return_value = clients
 
-        ip = subnet2.get_next_ip_for_allocation()
+        ip = subnet2.get_next_ip_for_allocation()[0]
         ip_address = factory.make_StaticIPAddress(ip=ip, subnet=subnet2)
         bmc = factory.make_BMC(ip_address=ip_address)
         node = factory.make_Node(bmc=bmc)
@@ -8968,6 +8969,8 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
 
 
 class TestNode_Start(MAASTransactionServerTestCase):
+    used_nets: Set[IPNetwork] = set()
+
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
@@ -8987,9 +8990,10 @@ class TestNode_Start(MAASTransactionServerTestCase):
         if network is None:
             # can't use a link-local network as MAAS server IPs for those are
             # not reported
-            network = factory.make_ip4_or_6_network()
+            network = factory.make_ip4_or_6_network(but_not=self.used_nets)
+            self.used_nets.add(network)
             while network.is_link_local():
-                network = factory.make_ip4_or_6_network()
+                network = factory.make_ip4_or_6_network(but_not=self.used_nets)
 
         cidr = str(network.cidr)
         # Make sure that the maas_server address is of the same addr family.
@@ -9550,12 +9554,13 @@ class TestNode_Start(MAASTransactionServerTestCase):
             )
             first_ip.temp_expires_on = datetime.utcnow() - timedelta(minutes=5)
             first_ip.save()
+        last_ip = str(first_ip.get_ipaddress())
 
         client.side_effect = [
             defer.fail(Exception()),
             defer.fail(Exception()),
             defer.succeed(
-                {"ip_addresses": [{"ip_address": first_ip.ip, "used": False}]}
+                {"ip_addresses": [{"ip_address": last_ip, "used": False}]}
             ),
         ]
 
@@ -9563,7 +9568,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertEqual(first_ip.ip, auto_ip.ip)
+        self.assertEqual(last_ip, auto_ip.ip)
         self.assertIsNone(auto_ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_fails_on_three_failures(self):
@@ -9612,7 +9617,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 node.start(user)
 
         auto_ip = reload_object(auto_ip)
-        self.assertEqual(first_ip.ip, auto_ip.ip)
+        last_ip = str(first_ip.get_ipaddress())
+        self.assertEqual(last_ip, auto_ip.ip)
         self.assertIsNone(auto_ip.temp_expires_on)
 
     def test_claims_auto_ip_addresses_eventually_succeds_with_many_used(self):
@@ -10955,7 +10961,7 @@ class TestReportNeighbours(MAASServerTestCase):
         neighbours = [
             {
                 "interface": "eth0",
-                "ip": subnet2.get_next_ip_for_allocation(),
+                "ip": subnet2.get_next_ip_for_allocation()[0],
                 "time": datetime.now(),
                 "mac": iface2.mac_address,
                 "vid": observed_vlan.vid,

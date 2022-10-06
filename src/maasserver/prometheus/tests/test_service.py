@@ -32,13 +32,13 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
         factory.make_Interface(
             node=region_controller,
             subnet=subnet,
-            ip=subnet.get_next_ip_for_allocation(),
+            ip=subnet.get_next_ip_for_allocation()[0],
         )
         rack_controller = factory.make_RackController()
         factory.make_Interface(
             node=rack_controller,
             subnet=subnet,
-            ip=subnet.get_next_ip_for_allocation(),
+            ip=subnet.get_next_ip_for_allocation()[0],
         )
         discovery_response = self.client.get(reverse("metrics_endpoints"))
         discovered = json.loads(discovery_response.content)
@@ -79,13 +79,13 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
         factory.make_Interface(
             node=region_rack_controller,
             subnet=subnet,
-            ip=subnet.get_next_ip_for_allocation(),
+            ip=subnet.get_next_ip_for_allocation()[0],
         )
         rack_controller = factory.make_RackController()
         factory.make_Interface(
             node=rack_controller,
             subnet=subnet,
-            ip=subnet.get_next_ip_for_allocation(),
+            ip=subnet.get_next_ip_for_allocation()[0],
         )
         discovery_response = self.client.get(reverse("metrics_endpoints"))
         discovered = json.loads(discovery_response.content)
@@ -131,7 +131,7 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
                 factory.make_Interface(
                     node=controller,
                     subnet=subnet,
-                    ip=subnet.get_next_ip_for_allocation(),
+                    ip=subnet.get_next_ip_for_allocation()[0],
                 )
                 bucketed_controllers[
                     (

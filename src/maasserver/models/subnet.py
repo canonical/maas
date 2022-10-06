@@ -465,12 +465,15 @@ class Subnet(CleanSave, TimestampedModel):
         self.validate_gateway_ip()
 
     def delete(self, *args, **kwargs):
+        from maasserver.models.staticipaddress import FreeIPAddress
+
         # Check if DHCP is enabled on the VLAN this subnet is attached to.
         if self.vlan.dhcp_on and self.get_dynamic_ranges().exists():
             raise ValidationError(
                 "Cannot delete a subnet that is actively servicing a dynamic "
                 "IP range. (Delete the dynamic range or disable DHCP first.)"
             )
+        FreeIPAddress.remove_cache(self)
         super().delete(*args, **kwargs)
 
     def get_allocated_ips(self):
@@ -774,7 +777,8 @@ class Subnet(CleanSave, TimestampedModel):
         self,
         exclude_addresses: Optional[Iterable] = None,
         avoid_observed_neighbours: bool = True,
-    ):
+        count: int = 1,
+    ) -> Iterable[MaybeIPAddress]:
         """Heuristic to return the "best" address from this subnet to use next.
 
         :param exclude_addresses: Optional list of addresses to exclude.
@@ -821,14 +825,23 @@ class Subnet(CleanSave, TimestampedModel):
                         discovery.last_seen,
                     )
                 )
-                return str(discovery.ip)
+                return [str(discovery.ip)]
         # The purpose of this is to that we ensure we always get an IP address
         # from the *smallest* free contiguous range. This way, larger ranges
         # can be preserved in case they need to be used for applications
         # requiring them. If two ranges have the same number of IPs, choose the
         # lowest one.
-        free_range = min(free_ranges, key=attrgetter("num_addresses", "first"))
-        return str(IPAddress(free_range.first))
+        free_ips = []
+        while count > 0 and len(free_ranges) > 0:
+            free_range = min(
+                free_ranges, key=attrgetter("num_addresses", "first")
+            )
+            avail = min(count, free_range.num_addresses)
+            for i in range(avail):
+                free_ips.append(str(IPAddress(free_range.first + i)))
+            free_ranges.discard(free_range)
+            count -= avail
+        return free_ips
 
     def render_json_for_related_ips(
         self, with_username=True, with_summary=True

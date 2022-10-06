@@ -9,9 +9,11 @@ blocks which will tie MACs into a specific IP.  The IPs are separate
 from the dynamic range that the DHCP server itself allocates to unknown
 clients.
 """
-
-
 from collections import defaultdict, namedtuple
+from dataclasses import dataclass, field
+from queue import Empty, Queue
+import threading
+from typing import Dict, Iterable, Optional, Set, TypeVar
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -52,6 +54,8 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import orm
 from maasserver.utils.dns import get_ip_based_hostname
 from provisioningserver.utils.enum import map_enum_reverse
+
+StaticIPAddress = TypeVar("StaticIPAddress")
 
 _mapping_base_fields = (
     "fqdn",
@@ -129,6 +133,86 @@ def convert_leases_to_dict(leases):
     return ip_leases
 
 
+@dataclass
+class SubnetAllocationQueue:
+    pool: Queue[str] = field(default_factory=Queue)
+    reserved: Set[str] = field(default_factory=set)
+    pending: int = 0
+
+    def get(self) -> str:
+        return self.pool.get_nowait()
+
+    def fill(self, addresses: Iterable[str]):
+        for addr in addresses:
+            self.pool.put(addr)
+
+    def reserve(self, address: str):
+        self.reserved.add(address)
+
+    def free(self, address: str):
+        self.reserved.remove(address)
+
+    def get_reserved(self, extra: Iterable[str]) -> Iterable[str]:
+        return self.reserved.union(extra)
+
+
+class FreeIPAddress:
+    pool: Dict[str, SubnetAllocationQueue] = {}
+    counter_lock = threading.Lock()
+    pool_lock = threading.Lock()
+
+    def __init__(self, subnet: Subnet, exclude: Optional[Iterable] = None):
+        self._subnet = subnet
+        self._free_ip = None
+        self._exclude = exclude or []
+        with FreeIPAddress.pool_lock:
+            self.queue = FreeIPAddress.pool.setdefault(
+                str(subnet), SubnetAllocationQueue()
+            )
+
+    def __enter__(self) -> str:
+        while self._free_ip is None:
+            try:
+                ip = self.queue.get()
+            except Empty:
+                self._fill_pool()
+            else:
+                if ip not in self._exclude:
+                    self._free_ip = ip
+        self.queue.reserve(self._free_ip)
+        return self._free_ip
+
+    def __exit__(self, *_):
+        self.queue.free(self._free_ip)
+
+    def _update_counter(self, adj: int):
+        with FreeIPAddress.counter_lock:
+            self.queue.pending += adj
+
+    def _fill_pool(self):
+        self._update_counter(1)
+        with FreeIPAddress.pool_lock:
+            pending = self.queue.pending
+            assert pending >= 0
+            if pending > 0:
+                excl = self.queue.get_reserved(self._exclude)
+                addresses = self._subnet.get_next_ip_for_allocation(
+                    excl, count=pending
+                )
+                self.queue.fill(addresses)
+                self._update_counter(-len(addresses))
+
+    @classmethod
+    def clean_cache(cls, subnet: Subnet):
+        pass
+
+    @classmethod
+    def remove_cache(cls, subnet: Subnet):
+        """Remove cache for this subnet"""
+        with cls.pool_lock:
+            cls.pool.pop(str(subnet), None)
+
+
 class StaticIPAddressManager(Manager):
     """A utility to manage collections of IPAddresses."""
 
@@ -161,7 +245,7 @@ class StaticIPAddressManager(Manager):
 
     def _attempt_allocation(
         self, requested_address, alloc_type, user=None, subnet=None
-    ):
+    ) -> StaticIPAddress:
         """Attempt to allocate `requested_address`.
 
         All parameters must have been checked first.  This method relies on
@@ -203,7 +287,7 @@ class StaticIPAddressManager(Manager):
 
     def _attempt_allocation_of_free_address(
         self, requested_address, alloc_type, user=None, subnet=None
-    ):
+    ) -> StaticIPAddress:
         """Attempt to allocate `requested_address`, which is known to be free.
 
         It is known to be free *in this transaction*, so this could still
@@ -258,7 +342,7 @@ class StaticIPAddressManager(Manager):
         user=None,
         requested_address=None,
         exclude_addresses=None,
-    ):
+    ) -> StaticIPAddress:
         """Return a new StaticIPAddress.
 
         :param subnet: The subnet from which to allocate the address.
@@ -290,12 +374,14 @@ class StaticIPAddressManager(Manager):
                 )
 
         if requested_address is None:
-            requested_address = subnet.get_next_ip_for_allocation(
-                exclude_addresses=exclude_addresses
-            )
-            return self._attempt_allocation_of_free_address(
-                requested_address, alloc_type, user=user, subnet=subnet
-            )
+            with FreeIPAddress(subnet, exclude_addresses) as free_address:
+                ip = self._attempt_allocation_of_free_address(
+                    free_address,
+                    alloc_type,
+                    user=user,
+                    subnet=subnet,
+                )
+            return ip
         else:
             requested_address = IPAddress(requested_address)
             from maasserver.models import StaticIPAddress

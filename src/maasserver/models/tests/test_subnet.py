@@ -1351,7 +1351,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.1", ip)
 
     def test_avoids_gateway_ip(self):
@@ -1359,7 +1359,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=None
         )
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.2", ip)
 
     def test_avoids_excluded_addresses(self):
@@ -1367,15 +1367,29 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=None
         )
-        ip = subnet.get_next_ip_for_allocation(exclude_addresses=["10.0.0.1"])
+        [ip] = subnet.get_next_ip_for_allocation(
+            exclude_addresses=["10.0.0.1"]
+        )
         self.assertEqual("10.0.0.2", ip)
+
+    def test_avoids_excluded_addresses_count(self):
+        # Note: 10.0.0.0/29 --> 10.0.0.1 and 10.0.0.0.6 are usable.
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/29", gateway_ip=None, dns_servers=None
+        )
+        ips = subnet.get_next_ip_for_allocation(
+            exclude_addresses=["10.0.0.3"], count=6
+        )
+        self.assertCountEqual(
+            ips, ["10.0.0.1", "10.0.0.2", "10.0.0.4", "10.0.0.5", "10.0.0.6"]
+        )
 
     def test_avoids_dns_servers(self):
         # Note: 10.0.0.0/30 --> 10.0.0.1 and 10.0.0.0.2 are usable.
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip=None, dns_servers=["10.0.0.1"]
         )
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.2", ip)
 
     def test_avoids_observed_neighbours(self):
@@ -1385,7 +1399,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         )
         rackif = factory.make_Interface(vlan=subnet.vlan)
         factory.make_Discovery(ip="10.0.0.1", interface=rackif)
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.2", ip)
 
     def test_logs_if_suggests_previously_observed_neighbour(self):
@@ -1401,7 +1415,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
             ip="10.0.0.2", interface=rackif, updated=yesterday
         )
         logger = self.useFixture(FakeLogger("maas"))
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.2", ip)
         self.assertThat(
             logger.output,
@@ -1417,7 +1431,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         # select 10.0.0.5, since that is the first address in the smallest
         # available range.
         factory.make_StaticIPAddress(ip="10.0.0.4", cidr="10.0.0.0/29")
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.5", ip)
 
 
@@ -1437,7 +1451,7 @@ class TestUnmanagedSubnets(MAASServerTestCase):
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
         subnet = reload_object(subnet)
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.1", ip)
         range1.delete()
         factory.make_IPRange(
@@ -1447,7 +1461,7 @@ class TestUnmanagedSubnets(MAASServerTestCase):
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
         subnet = reload_object(subnet)
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.6", ip)
 
     def test_allocation_uses_multiple_reserved_ranges(self):
@@ -1465,10 +1479,10 @@ class TestUnmanagedSubnets(MAASServerTestCase):
             alloc_type=IPRANGE_TYPE.RESERVED,
         )
         subnet = reload_object(subnet)
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.3", ip)
         factory.make_StaticIPAddress(ip)
-        ip = subnet.get_next_ip_for_allocation()
+        [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.4", ip)
         factory.make_StaticIPAddress(ip)
         with ExpectedException(

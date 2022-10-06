@@ -4120,7 +4120,7 @@ class TestReportVID(MAASServerTestCase):
         subnet2 = factory.make_Subnet(vlan=neighbour_vlan)
         iface = factory.make_Interface(subnet=subnet1)
         iface.report_vid(
-            neighbour_vlan.vid, ip=subnet2.get_next_ip_for_allocation()
+            neighbour_vlan.vid, ip=subnet2.get_next_ip_for_allocation()[0]
         )
         neighbour_vlan.refresh_from_db()
         self.assertEqual(observing_vlan.fabric, fabric1)

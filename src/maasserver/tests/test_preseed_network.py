@@ -536,7 +536,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         )
         # Interface with sticky IP.
         factory.make_Interface(
-            node=node, subnet=subnet, ip=subnet.get_next_ip_for_allocation()
+            node=node, subnet=subnet, ip=subnet.get_next_ip_for_allocation()[0]
         )
         # Patch resolve_hostname() to return the appropriate network version
         # IP address for MAAS hostname.

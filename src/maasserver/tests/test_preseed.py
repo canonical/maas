@@ -880,14 +880,14 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         subnet2 = factory.make_Subnet()
         region_rack_controller = factory.make_RegionRackController()
         factory.make_Interface(
-            ip=subnet1.get_next_ip_for_allocation(),
+            ip=subnet1.get_next_ip_for_allocation()[0],
             node=region_rack_controller,
         )
         rack_controller = factory.make_RackController()
         factory.make_Interface(
-            ip=subnet1.get_next_ip_for_allocation(), node=rack_controller
+            ip=subnet1.get_next_ip_for_allocation()[0], node=rack_controller
         )
-        rack_ip = subnet2.get_next_ip_for_allocation()
+        rack_ip = subnet2.get_next_ip_for_allocation()[0]
         factory.make_Interface(ip=rack_ip, node=rack_controller)
         machine = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet2, primary_rack=rack_controller
@@ -1011,14 +1011,14 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
         subnet2 = factory.make_Subnet()
         region_rack_controller = factory.make_RegionRackController()
         factory.make_Interface(
-            ip=subnet1.get_next_ip_for_allocation(),
+            ip=subnet1.get_next_ip_for_allocation()[0],
             node=region_rack_controller,
         )
         rack_controller = factory.make_RackController()
         factory.make_Interface(
-            ip=subnet1.get_next_ip_for_allocation(), node=rack_controller
+            ip=subnet1.get_next_ip_for_allocation()[0], node=rack_controller
         )
-        rack_ip = subnet2.get_next_ip_for_allocation()
+        rack_ip = subnet2.get_next_ip_for_allocation()[0]
         factory.make_Interface(ip=rack_ip, node=rack_controller)
         machine = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet2, primary_rack=rack_controller
