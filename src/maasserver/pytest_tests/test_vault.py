@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from hvac.exceptions import VaultError
 import pytest
 
 from maasserver import vault
@@ -10,6 +11,7 @@ from maasserver.vault import (
     hvac,
     VaultClient,
     VaultConfigurator,
+    WrappedSecretError,
 )
 from provisioningserver.utils.env import MAAS_UUID
 
@@ -153,6 +155,40 @@ class TestGetRegionVaultClient:
         vault_regionconfig["vault_secrets_mount"] = "other/secrets"
         client = _get_region_vault_client()
         assert client._secrets_mount == "other/secrets"
+
+
+class TestUnwrapSecret:
+    def test_unwrap_secret_success(self, factory, mocker, mock_hvac_client):
+        secret_id = factory.make_name("uuid")
+        mock_hvac_client.sys.unwrap.return_value = {
+            "data": {"secret_id": secret_id}
+        }
+        assert vault.unwrap_secret("http://vault:8200", "token") == secret_id
+
+    def test_unwrap_secret_no_secret_id_wrapped(
+        self, mocker, mock_hvac_client
+    ):
+        mock_hvac_client.sys.unwrap.return_value = {
+            "data": {"something_thats_not_secret_id": "is wrapped"}
+        }
+        with pytest.raises(WrappedSecretError):
+            vault.unwrap_secret("http://vault:8200", "token")
+
+    def test_unwrap_secret_no_data_wrapped(self, mocker, mock_hvac_client):
+        mock_hvac_client.sys.unwrap.return_value = {
+            "not data": {"something_thats_not_secret_id": "is wrapped"}
+        }
+        with pytest.raises(WrappedSecretError):
+            vault.unwrap_secret("http://vault:8200", "token")
+
+    def test_unwrap_secret_reraises_hvac_exceptions(
+        self, mocker, mock_hvac_client
+    ):
+        mocker.patch.object(
+            mock_hvac_client.sys, "unwrap"
+        ).side_effect = VaultError("Test")
+        with pytest.raises(VaultError):
+            vault.unwrap_secret("http://vault:8200", "token")
 
 
 class TestVaultConfigurator:

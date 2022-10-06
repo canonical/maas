@@ -16,6 +16,21 @@ TOKEN_BEFORE_EXPIRY_LIMIT = timedelta(seconds=10)
 SecretValue = dict[str, Any]
 
 
+class WrappedSecretError(Exception):
+    """Raised when the provided token could not be used to obtain secret_id by unwrapping"""
+
+
+def unwrap_secret(url: str, wrapped_token: str) -> str:
+    """Helper function to unwrap approle secret id from wrapped token"""
+    client = hvac.Client(url=url, token=wrapped_token)
+    try:
+        return client.sys.unwrap()["data"]["secret_id"]
+    except KeyError:
+        raise WrappedSecretError(
+            "Unable to unwrap Secret ID with given token."
+        )
+
+
 class VaultClient:
     """Wrapper for the Vault client."""
 
