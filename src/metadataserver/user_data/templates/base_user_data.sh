@@ -7,12 +7,10 @@
 
 #### script setup ######
 export TEMP_D
-TMPDIR=${MAAS_DATA:-/var/lib/maas}
-TEMP_D=$(mktemp -d "${TMPDIR}/${0##*/}.XXXXXX")
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
 export BIN_D="${TEMP_D}/bin"
 export PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-trap "rm -rf $TEMP_D" EXIT
 mkdir -p "$BIN_D"
 
 # Ensure that invocations of apt-get are not interactive by default,
