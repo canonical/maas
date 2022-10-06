@@ -18,7 +18,7 @@ class TestNodeKeyManager(MAASServerTestCase):
     def test_get_token_for_node_registers_node_key(self):
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
-        nodekey = NodeKey.objects.get(node=node, key=token.key)
+        nodekey = NodeKey.objects.get(node=node)
         self.assertIsNotNone(nodekey)
         self.assertEqual(token, nodekey.token)
 

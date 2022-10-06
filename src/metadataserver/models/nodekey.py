@@ -4,8 +4,8 @@
 """:class:`NodeKey` model."""
 
 
-from django.db.models import CASCADE, CharField, Manager, Model, OneToOneField
-from piston3.models import KEY_SIZE, Token
+from django.db.models import CASCADE, Manager, Model, OneToOneField
+from piston3.models import Token
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
@@ -44,7 +44,7 @@ class NodeKeyManager(Manager):
         :rtype: piston3.models.Token
         """
         token = create_auth_token(get_node_init_user())
-        self.create(node=node, token=token, key=token.key)
+        self.create(node=node, token=token)
         return token
 
     def get_token_for_node(self, node):
@@ -52,10 +52,6 @@ class NodeKeyManager(Manager):
 
         This implicitly grants cloud-init (running on the node) access to the
         metadata service.
-
-        Barring exceptions, this will always hold:
-
-            get_node_for_key(get_token_for_node(node).key) == node
 
         :param node: The node that needs an oauth token for access to the
             metadata service.
@@ -89,16 +85,12 @@ class NodeKeyManager(Manager):
     def get_node_for_key(self, key):
         """Find the Node that `key` was created for.
 
-        Barring exceptions, this will always hold:
-
-            get_token_for_node(get_node_for_key(key)).key == key
-
         :param key: The key part of a node's OAuth token.
         :type key: unicode
         :raise NodeKey.DoesNotExist: if `key` is not associated with any
             node.
         """
-        return self.get(key=key).node
+        return self.get(token__key=key).node
 
 
 class NodeKey(CleanSave, Model):
@@ -115,6 +107,3 @@ class NodeKey(CleanSave, Model):
         "maasserver.Node", null=False, editable=False, on_delete=CASCADE
     )
     token = OneToOneField(Token, null=False, editable=False, on_delete=CASCADE)
-    key = CharField(
-        max_length=KEY_SIZE, null=False, editable=False, unique=True
-    )

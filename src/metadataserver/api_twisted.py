@@ -301,9 +301,9 @@ class StatusWorkerService(TimerService):
         from its authorisation.
         """
         keys = NodeKey.objects.filter(
-            key__in=list(queue.keys())
-        ).select_related("node")
-        return [(key.node, queue[key.key]) for key in keys]
+            token__key__in=list(queue.keys())
+        ).select_related("node", "token")
+        return [(key.node, queue[key.token.key]) for key in keys]
 
     def _processMessagesLater(self, tasks):
         # Move all messages on the queue off onto the database tasks queue.
