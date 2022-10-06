@@ -10,6 +10,7 @@ import tempfile
 import urllib
 
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh.maas_api_helper import (
     capture_script_output,
     Credentials,
@@ -59,7 +60,9 @@ def refresh(
         if config["run_on_controller"]
     }
 
-    with tempfile.TemporaryDirectory(prefix="maas-commission-") as tmpdir:
+    with tempfile.TemporaryDirectory(
+        prefix="maas-commission-", dir=get_maas_data_path("")
+    ) as tmpdir:
         failed_scripts = runscripts(
             scripts,
             url,
@@ -121,6 +124,7 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
                 "OUTPUT_STDOUT_PATH": stdout_path,
                 "OUTPUT_STDERR_PATH": stderr_path,
                 "RESULT_PATH": result_path,
+                "TMPDIR": tmpdir,
             }
         )
         timeout = 60

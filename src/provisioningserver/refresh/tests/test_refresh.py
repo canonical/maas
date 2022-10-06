@@ -5,17 +5,17 @@ from collections import OrderedDict
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 from textwrap import dedent
 from unittest.mock import ANY, patch, sentinel
 
-from testtools.matchers import Contains, DirExists, Not
+from testtools.matchers import Contains, Not
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh import maas_api_helper
 from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
@@ -387,19 +387,16 @@ class TestRefresh(MAASTestCase):
         ScriptsBroken = factory.make_exception_type()
 
         def find_temporary_directories():
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmpdir = Path(tmpdir).absolute()
-                return {
-                    str(entry)
-                    for entry in tmpdir.parent.iterdir()
-                    if entry.is_dir() and entry != tmpdir
-                }
+            maas_data = Path(get_maas_data_path(""))
+            return {
+                str(entry) for entry in maas_data.iterdir() if entry.is_dir()
+            }
 
         tmpdirs_during = set()
         tmpdir_during = None
 
         def runscripts(*args, tmpdir, **kwargs):
-            self.assertThat(tmpdir, DirExists())
+            self.assertTrue(Path(tmpdir).exists())
             nonlocal tmpdirs_during, tmpdir_during
             tmpdirs_during |= find_temporary_directories()
             tmpdir_during = tmpdir
