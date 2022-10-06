@@ -208,11 +208,15 @@ def update_boot_interface(node, output, exit_status):
 
     try:
         node.boot_interface = node.current_config.interface_set.get(
-            mac_address=boot_mac
+            type="physical", mac_address=boot_mac
         )
     except Interface.DoesNotExist:
         logger.error(
-            f"'BOOTIF interface {boot_mac} doesn't exist for " f"{node.fqdn}"
+            f"BOOTIF interface {boot_mac} doesn't exist for {node.fqdn}"
+        )
+    except Interface.MultipleObjectsReturned:
+        logger.error(
+            f"Multiple physical interfaces found with {boot_mac} for {node.fqdn}"
         )
     else:
         node.save(update_fields=["boot_interface"])

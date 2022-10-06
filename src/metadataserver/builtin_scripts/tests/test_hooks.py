@@ -4680,12 +4680,12 @@ class TestUpdateBootInterface(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.hook = NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]["hook"]
+        self.node = factory.make_Node(with_boot_disk=False)
 
     def test_sets_boot_interface_bootif(self):
-        node = factory.make_Node()
-        Interface.objects.filter(node_config=node.current_config).delete()
-        nic1 = factory.make_Interface(node=node)
-        nic2 = factory.make_Interface(node=node)
+        Interface.objects.filter(node_config=self.node.current_config).delete()
+        nic1 = factory.make_Interface(node=self.node)
+        nic2 = factory.make_Interface(node=self.node)
         kernel_cmdline1 = KERNEL_CMDLINE_OUTPUT.format(
             mac_address=str(nic1.mac_address).replace(":", "-")
         )
@@ -4693,55 +4693,78 @@ class TestUpdateBootInterface(MAASServerTestCase):
             mac_address=str(nic2.mac_address).replace(":", "-")
         )
 
-        self.hook(node, kernel_cmdline1.encode("utf-8"), 0)
-        node = reload_object(node)
-        self.assertEqual(nic1, node.boot_interface)
+        self.hook(self.node, kernel_cmdline1.encode("utf-8"), 0)
+        self.node = reload_object(self.node)
+        self.assertEqual(nic1, self.node.boot_interface)
 
-        self.hook(node, kernel_cmdline2.encode("utf-8"), 0)
-        node = reload_object(node)
-        self.assertEqual(nic2, node.boot_interface)
+        self.hook(self.node, kernel_cmdline2.encode("utf-8"), 0)
+        self.node = reload_object(self.node)
+        self.assertEqual(nic2, self.node.boot_interface)
 
     def test_boot_interface_bootif_no_such_mac(self):
-        node = factory.make_Node()
-        Interface.objects.filter(node_config=node.current_config).delete()
+        Interface.objects.filter(node_config=self.node.current_config).delete()
         kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
             mac_address="11-22-33-44-55-66"
         )
         logger = self.useFixture(FakeLogger())
 
-        self.hook(node, kernel_cmdline.encode("utf-8"), 0)
-        node = reload_object(node)
+        self.hook(self.node, kernel_cmdline.encode("utf-8"), 0)
+        self.node = reload_object(self.node)
 
         self.assertIn(
             "BOOTIF interface 11:22:33:44:55:66 doesn't exist", logger.output
         )
 
+    def test_boot_interface_bootif_bonded_interfaces(self):
+        mac_address = factory.make_MAC()
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=self.node, mac_address=mac_address
+        )
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=self.node,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            parents=[parent, parent2],
+            node=self.node,
+            mac_address=mac_address,
+        )
+        kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
+            mac_address=str(mac_address).replace(":", "-")
+        )
+        logger = self.useFixture(FakeLogger())
+
+        self.hook(self.node, kernel_cmdline.encode("utf-8"), 0)
+        self.node = reload_object(self.node)
+
+        self.assertEqual(parent, self.node.boot_interface)
+        self.assertEqual("", logger.output)
+
     def test_no_bootif(self):
-        node = factory.make_Node()
-        Interface.objects.filter(node_config=node.current_config).delete()
-        nic = factory.make_Interface(node=node)
-        node.boot_interface = nic
-        node.save()
+        Interface.objects.filter(node_config=self.node.current_config).delete()
+        nic = factory.make_Interface(node=self.node)
+        self.node.boot_interface = nic
+        self.node.save()
 
-        self.hook(node, b"no bootif mac", 0)
-        node = reload_object(node)
+        self.hook(self.node, b"no bootif mac", 0)
+        self.node = reload_object(self.node)
 
-        self.assertEqual(nic, node.boot_interface)
+        self.assertEqual(nic, self.node.boot_interface)
 
     def test_non_zero_exit_status(self):
-        node = factory.make_Node()
-        Interface.objects.filter(node_config=node.current_config).delete()
-        nic = factory.make_Interface(node=node)
-        node.boot_interface = None
-        node.save()
+        Interface.objects.filter(node_config=self.node.current_config).delete()
+        nic = factory.make_Interface(node=self.node)
+        self.node.boot_interface = None
+        self.node.save()
         kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
             mac_address=str(nic.mac_address).replace(":", "-")
         )
 
         logger = self.useFixture(FakeLogger())
-        self.hook(node, kernel_cmdline.encode("utf-8"), 1)
-        node = reload_object(node)
-        self.assertIsNone(node.boot_interface)
+        self.hook(self.node, kernel_cmdline.encode("utf-8"), 1)
+        self.node = reload_object(self.node)
+        self.assertIsNone(self.node.boot_interface)
 
         self.assertIn("kernel-cmdline failed with status: 1", logger.output)
 
