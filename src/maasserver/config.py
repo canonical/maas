@@ -98,8 +98,13 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     vault_secrets_mount = ConfigurationOption(
         "vault_secrets_mount",
-        "mount path for  the Vault KV engine",
+        "mount path for the Vault KV engine",
         UnicodeString(if_missing="secret", accept_python=False),
+    )
+    vault_secrets_path = ConfigurationOption(
+        "vault_secrets_path",
+        "path prefix for the MAAS secrets stored in Vault KV engine",
+        UnicodeString(if_missing="", accept_python=False),
     )
     vault_approle_id = ConfigurationOption(
         "vault_approle_id",

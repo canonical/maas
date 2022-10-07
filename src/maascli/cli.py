@@ -256,6 +256,7 @@ REGIOND_COMMANDS = (
     ("apikey", "maasserver", None),
     ("configauth", "maasserver", None),
     ("config-tls", "maasserver", None),
+    ("config-vault", "maasserver", None),
     ("createadmin", "maasserver", None),
     (
         "changepassword",

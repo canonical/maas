@@ -30,8 +30,8 @@ from provisioningserver.testing.certificates import (
 class TestConfigTLSCommand(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        self.read_input = self.patch(config_tls, "read_input")
-        self.read_input.return_value = ""
+        self.read_input = self.patch(config_tls, "prompt_yes_no")
+        self.read_input.return_value = False
 
     @contextmanager
     def wrong_file(self):

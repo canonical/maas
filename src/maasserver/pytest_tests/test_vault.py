@@ -20,9 +20,9 @@ from provisioningserver.utils.env import MAAS_UUID
 def vault_client(mock_hvac_client):
     yield VaultClient(
         url="http://localhost:8200",
-        secrets_base_path="prefix",
         role_id="123",
         secret_id="xyz",
+        secrets_base_path="prefix",
         client=mock_hvac_client,
     )
 
@@ -31,9 +31,9 @@ class TestVaultClient:
     def test_set(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
-            secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            secrets_base_path="prefix",
             client=mock_hvac_client,
         )
         value = {"foo": "bar"}
@@ -44,9 +44,9 @@ class TestVaultClient:
         mock_hvac_client.mock_kv.expected_mount_point = "other/secret/mount"
         client = VaultClient(
             url="http://localhost:8200",
-            secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            secrets_base_path="prefix",
             secrets_mount="other/secret/mount",
             client=mock_hvac_client,
         )
@@ -66,9 +66,9 @@ class TestVaultClient:
     def test_delete(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
-            secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            secrets_base_path="prefix",
             client=mock_hvac_client,
         )
         value = {"foo": "bar"}
@@ -79,9 +79,9 @@ class TestVaultClient:
     def test_auth_on_request(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
-            secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            secrets_base_path="prefix",
             client=mock_hvac_client,
         )
         client.set("mysecret", {"foo": "bar"})
@@ -95,9 +95,9 @@ class TestVaultClient:
     def test_reauth_on_request_if_token_expired(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
-            secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            secrets_base_path="prefix",
             client=mock_hvac_client,
         )
         client.set("mysecret", {"foo": "bar"})

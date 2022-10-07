@@ -8,7 +8,7 @@ import argparse
 from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS
 
-from maascli.init import read_input
+from maascli.init import prompt_yes_no
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.listener import notify
@@ -96,14 +96,10 @@ class Command(BaseCommand):
             return
 
         if not options["yes"]:
-            reply = (
-                read_input(
-                    "Once TLS is enabled, the MAAS UI and API won't be accessible over HTTP anymore, proceed? (y/n): "
-                )
-                .lower()
-                .strip()
+            reply = prompt_yes_no(
+                "Once TLS is enabled, the MAAS UI and API won't be accessible over HTTP anymore, proceed? (y/n): "
             )
-            if reply != "y":
+            if not reply:
                 return
 
         cacerts = options["cacert"].read() if options["cacert"] else ""

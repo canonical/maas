@@ -308,3 +308,8 @@ def prompt_for_choices(prompt, choices, default=None, help_text=None):
             print_msg()
         else:
             return value
+
+
+def prompt_yes_no(message: str) -> bool:
+    """Prompts user with a question and returns true if the answer is 'y'"""
+    return read_input(message).lower().strip() == "y"
