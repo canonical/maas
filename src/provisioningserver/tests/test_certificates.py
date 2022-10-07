@@ -20,7 +20,7 @@ from provisioningserver.testing.certificates import get_sample_cert
 class TestCertificate(MAASTestCase):
     def setUp(self):
         super().setUp()
-        self.sample_cert = get_sample_cert("maas")
+        self.sample_cert = get_sample_cert()
 
     def test_certificate(self):
         self.assertEqual(self.sample_cert.cn(), "maas")

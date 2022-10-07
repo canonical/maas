@@ -466,13 +466,13 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_creates_lxd_pod_with_cert_expiration_supplied(self):
         pod_info = self.make_pod_info("lxd")
-        maas_cert = get_sample_cert("mypod", validity=timedelta(days=10))
+        maas_cert = get_sample_cert(validity=timedelta(days=5))
         pod_info["certificate"] = maas_cert.certificate_pem()
         pod_info["key"] = maas_cert.private_key_pem()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertEqual(9, pod.created_with_cert_expiration_days)
+        self.assertEqual(4, pod.created_with_cert_expiration_days)
 
     def test_creates_lxd_pod_with_maas_generated_cert_supplied(self):
         pod_info = self.make_pod_info("lxd")

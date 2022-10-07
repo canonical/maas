@@ -5,19 +5,17 @@ from fixtures import Fixture
 from provisioningserver.certificates import Certificate
 
 
-@lru_cache()
+@lru_cache(maxsize=5)
 def get_sample_cert(name: str = "maas", *args, **kwargs) -> Certificate:
     """Return a sample Certificate for tests."""
     return Certificate.generate(name, *args, **kwargs)
 
 
-@lru_cache()
-def get_sample_cert_with_cacerts(
-    name: str = "maas", ca_name: str = "CA", *args, **kwargs
-) -> Certificate:
+@lru_cache(maxsize=1)
+def get_sample_cert_with_cacerts() -> Certificate:
     """Return a sample Certificate with CA material for tests."""
-    cert = get_sample_cert(name, *args, **kwargs)
-    ca_cert = get_sample_cert(name=ca_name)
+    cert = get_sample_cert()
+    ca_cert = get_sample_cert(name="CA")
     return Certificate.from_pem(
         cert.private_key_pem(),
         cert.certificate_pem(),
