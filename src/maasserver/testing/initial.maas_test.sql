@@ -9302,7 +9302,6 @@ ALTER SEQUENCE public.maastesting_perftestbuild_id_seq OWNED BY public.maastesti
 
 CREATE TABLE public.metadataserver_nodekey (
     id integer NOT NULL,
-    key character varying(18) NOT NULL,
     node_id integer NOT NULL,
     token_id integer NOT NULL
 );
@@ -11209,6 +11208,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 334	maasserver	0283_migrate_tls_secrets	2022-10-03 12:52:26.80416+00
 335	maasserver	0284_migrate_more_global_secrets	2022-10-03 12:52:26.811989+00
 336	maasserver	0285_migrate_external_auth_secrets	2022-10-06 11:12:27.640004+00
+337	metadataserver	0033_remove_nodekey_key	2022-10-07 06:51:34.349659+00
 \.
 
 
@@ -11904,7 +11904,7 @@ COPY public.maastesting_perftestbuild (id, created, updated, start_ts, end_ts, g
 -- Data for Name: metadataserver_nodekey; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.metadataserver_nodekey (id, key, node_id, token_id) FROM stdin;
+COPY public.metadataserver_nodekey (id, node_id, token_id) FROM stdin;
 \.
 
 
@@ -12017,7 +12017,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 336, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 337, true);
 
 
 --
@@ -13964,14 +13964,6 @@ ALTER TABLE ONLY public.maastesting_perftestbuild
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_key_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_nodekey
-    ADD CONSTRAINT metadataserver_nodekey_key_key UNIQUE (key);
-
-
---
 -- Name: metadataserver_nodekey metadataserver_nodekey_node_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15208,13 +15200,6 @@ CREATE INDEX maasserver_zone_name_a0aef207_like ON public.maasserver_zone USING 
 --
 
 CREATE INDEX maastesting_perftestbuild_git_hash_07335de3_like ON public.maastesting_perftestbuild USING btree (git_hash text_pattern_ops);
-
-
---
--- Name: metadataserver_nodekey_key_2a0a84be_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX metadataserver_nodekey_key_2a0a84be_like ON public.metadataserver_nodekey USING btree (key varchar_pattern_ops);
 
 
 --
