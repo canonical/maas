@@ -54,7 +54,11 @@ setup() {
     fi
 
     message "ensure KV store at $SECRETS_MOUNT is using v2"
-    vault kv enable-versioning "$SECRETS_MOUNT"
+    if vault secrets list | grep -q "^${SECRETS_MOUNT}/"; then
+        vault kv enable-versioning "$SECRETS_MOUNT"
+    else
+        vault secrets enable -path "$SECRETS_MOUNT" kv-v2
+    fi
 
     message "configure policy for MAAS: $MAAS_POLICY"
     vault policy write "$MAAS_POLICY" - <<EOF
