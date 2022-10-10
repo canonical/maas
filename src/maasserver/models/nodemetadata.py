@@ -4,7 +4,7 @@
 """NodeMetadata objects."""
 
 
-from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
+from django.db.models import CASCADE, CharField, ForeignKey, TextField
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
@@ -12,26 +12,6 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
 
 maaslog = get_maas_logger("nodemetadata")
-
-
-class NodeMetadataManager(Manager):
-    def release_volatile(cls, node):
-        """Remove volatile information.
-
-        Should be called when releasing the node to remove all data that
-        is related to this deployment.
-        """
-        from metadataserver import vendor_data
-
-        volatile_meta = (
-            vendor_data.LXD_CERTIFICATE_METADATA_KEY,
-            vendor_data.VIRSH_PASSWORD_METADATA_KEY,
-        )
-
-        NodeMetadata.objects.filter(
-            node=node,
-            key__in=volatile_meta,
-        ).delete()
 
 
 class NodeMetadata(CleanSave, TimestampedModel):
@@ -53,8 +33,6 @@ class NodeMetadata(CleanSave, TimestampedModel):
         verbose_name_plural = "NodeMetadata"
         unique_together = ("node", "key")
 
-    objects = NodeMetadataManager()
-
     node = ForeignKey(
         Node, null=False, blank=False, editable=False, on_delete=CASCADE
     )
@@ -69,8 +47,3 @@ class NodeMetadata(CleanSave, TimestampedModel):
             self.node.hostname,
             self.key,
         )
-
-    def delete(self):
-        """Delete this node metadata entry."""
-        maaslog.info("%s: deleting key '%s'.", self, self.key)
-        super().delete()

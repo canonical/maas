@@ -19,11 +19,12 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
-from maasserver.models import Event, NodeMetadata, Pod
+from maasserver.models import Event, Pod
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -1127,16 +1128,24 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
         cert = get_sample_cert()
-        password_meta = NodeMetadata.objects.create(
-            node=node,
-            key="lxd_certificate",
-            value=cert.certificate_pem() + cert.private_key_pem(),
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                "lxd-certificate": cert.certificate_pem()
+                + cert.private_key_pem()
+            },
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
         lxd_vmhost = Pod.objects.get(power_type="lxd")
         self.mock_discover_and_sync.assert_called_once_with(lxd_vmhost, user)
-        self.assertIsNone(reload_object(password_meta))
+        self.assertIsNone(
+            secret_manager.get_composite_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )
 
     def test_creates_vmhost_install_kvm(self):
         user = factory.make_User()
@@ -1147,14 +1156,21 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             install_kvm=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        password_meta = NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {"virsh-password": "xyz123"},
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
         virsh_vmhost = Pod.objects.get(power_type="virsh")
         self.mock_discover_and_sync.assert_called_once_with(virsh_vmhost, user)
-        self.assertIsNone(reload_object(password_meta))
+        self.assertIsNone(
+            secret_manager.get_composite_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )
 
     def test_creates_vmhost_both(self):
         user = factory.make_User()
@@ -1166,14 +1182,16 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             register_vmhost=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        virsh_password_meta = NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
-        )
         cert = get_sample_cert()
-        lxd_cert_meta = NodeMetadata.objects.create(
-            node=node,
-            key="lxd_certificate",
-            value=cert.certificate_pem() + cert.private_key_pem(),
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                "lxd-certificate": cert.certificate_pem()
+                + cert.private_key_pem(),
+                "virsh-password": "xyz123",
+            },
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         virsh_vmhost = Pod.objects.get(power_type="virsh")
@@ -1186,8 +1204,11 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             ],
             any_order=True,
         )
-        self.assertIsNone(reload_object(virsh_password_meta))
-        self.assertIsNone(reload_object(lxd_cert_meta))
+        self.assertIsNone(
+            secret_manager.get_composite_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )
 
     def test_creates_vmhost_pick_right_interface(self):
         user = factory.make_User()
@@ -1206,9 +1227,10 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         ip = factory.make_StaticIPAddress(interface=bridge)
         another_if = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(interface=another_if)
-
-        NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
+        SecretManager().set_composite_secret(
+            "deploy-metadata",
+            {"virsh-password": "xyz123"},
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
@@ -1231,8 +1253,10 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             install_kvm=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
+        SecretManager().set_composite_secret(
+            "deploy-metadata",
+            {"virsh-password": "xyz123"},
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
@@ -1248,8 +1272,10 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             install_kvm=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
+        SecretManager().set_composite_secret(
+            "deploy-metadata",
+            {"virsh-password": "xyz123"},
+            obj=node,
         )
         _create_vmhost_for_deployment(node)
         self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
@@ -1265,8 +1291,10 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             install_kvm=True,
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
-        NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
+        SecretManager().set_composite_secret(
+            "deploy-metadata",
+            {"virsh-password": "xyz123"},
+            obj=node,
         )
         self.assertRaises(DatabaseError, _create_vmhost_for_deployment, node)
 
@@ -1279,14 +1307,16 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             install_kvm=True,
         )
         ip = factory.make_StaticIPAddress(interface=node.boot_interface)
-        virsh_password_meta = NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
-        )
         cert = get_sample_cert()
-        lxd_cert_meta = NodeMetadata.objects.create(
-            node=node,
-            key="lxd_certificate",
-            value=cert.certificate_pem() + cert.private_key_pem(),
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                "lxd-certificate": cert.certificate_pem()
+                + cert.private_key_pem(),
+                "virsh-password": "xyz123",
+            },
+            obj=node,
         )
         addr = ip.ip
         if IPAddress(addr).version == 6:
@@ -1300,8 +1330,11 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             ],
             any_order=True,
         )
-        self.assertIsNone(reload_object(virsh_password_meta))
-        self.assertIsNotNone(reload_object(lxd_cert_meta))
+        self.assertIsNone(
+            secret_manager.get_composite_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )
 
     def test_ignore_unused_virsh_creds(self):
         user = factory.make_User()
@@ -1312,14 +1345,16 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             register_vmhost=True,
         )
         ip = factory.make_StaticIPAddress(interface=node.boot_interface)
-        virsh_password_meta = NodeMetadata.objects.create(
-            node=node, key="virsh_password", value="xyz123"
-        )
         cert = get_sample_cert()
-        lxd_cert_meta = NodeMetadata.objects.create(
-            node=node,
-            key="lxd_certificate",
-            value=cert.certificate_pem() + cert.private_key_pem(),
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                "lxd-certificate": cert.certificate_pem()
+                + cert.private_key_pem(),
+                "virsh-password": "xyz123",
+            },
+            obj=node,
         )
         addr = ip.ip
         if IPAddress(addr).version == 6:
@@ -1333,5 +1368,8 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             ],
             any_order=True,
         )
-        self.assertIsNotNone(reload_object(virsh_password_meta))
-        self.assertIsNone(reload_object(lxd_cert_meta))
+        self.assertIsNone(
+            secret_manager.get_composite_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )

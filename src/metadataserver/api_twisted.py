@@ -18,8 +18,9 @@ from twisted.web.server import NOT_DONE_YET
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
-from maasserver.models import Node, NodeMetadata
+from maasserver.models import Node
 from maasserver.preseed import CURTIN_INSTALL_LOG
+from maasserver.secrets import SecretManager
 from maasserver.utils.orm import (
     in_transaction,
     transactional,
@@ -32,8 +33,8 @@ from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from metadataserver.vendor_data import (
-    LXD_CERTIFICATE_METADATA_KEY,
-    VIRSH_PASSWORD_METADATA_KEY,
+    DEPLOY_SECRETS_LXD_KEY,
+    DEPLOY_SECRETS_VIRSH_KEY,
 )
 from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_STATUS_MESSAGES
@@ -184,19 +185,21 @@ POD_CREATION_ERROR = (
 
 
 def _create_vmhost_for_deployment(node):
-    cred_types = set()
-    if node.register_vmhost:
-        cred_types.add(LXD_CERTIFICATE_METADATA_KEY)
-    if node.install_kvm:
-        cred_types.add(VIRSH_PASSWORD_METADATA_KEY)
-
-    creds_meta = list(
-        NodeMetadata.objects.filter(
-            node=node,
-            key__in=cred_types,
-        )
+    secret_manager = SecretManager()
+    deploy_secrets = secret_manager.get_composite_secret(
+        "deploy-metadata",
+        obj=node,
+        default={},
     )
-    if not creds_meta:
+    secret_manager.delete_secret("deploy-metadata", obj=node.as_node())
+
+    # ensure only specified VM host types are registered
+    if not node.register_vmhost:
+        deploy_secrets.pop(DEPLOY_SECRETS_LXD_KEY, None)
+    if not node.install_kvm:
+        deploy_secrets.pop(DEPLOY_SECRETS_VIRSH_KEY, None)
+
+    if not deploy_secrets:
         node.mark_failed(
             comment="Failed to deploy VM host: Credentials not found.",
             commit=False,
@@ -211,13 +214,11 @@ def _create_vmhost_for_deployment(node):
     if ":" in ip:
         ip = f"[{ip}]"
 
-    for cred_meta in creds_meta:
-        is_lxd = cred_meta.key == LXD_CERTIFICATE_METADATA_KEY
-        secret = cred_meta.value
-        cred_meta.delete()
+    for secret_key, secret_value in deploy_secrets.items():
+        is_lxd = secret_key == DEPLOY_SECRETS_LXD_KEY
 
         name = node.hostname
-        if len(creds_meta) > 1:
+        if len(deploy_secrets) > 1:
             # make VM host names unique
             name += "-lxd" if is_lxd else "-virsh"
 
@@ -227,7 +228,7 @@ def _create_vmhost_for_deployment(node):
             "pool": node.pool.name,
         }
         if is_lxd:
-            certificate = Certificate.from_pem(secret)
+            certificate = Certificate.from_pem(secret_value)
             form_data.update(
                 {
                     "type": "lxd",
@@ -242,7 +243,7 @@ def _create_vmhost_for_deployment(node):
                 {
                     "type": "virsh",
                     "power_address": f"qemu+ssh://virsh@{ip}/system",
-                    "power_pass": secret,
+                    "power_pass": secret_value,
                 }
             )
         pod_form = PodForm(data=form_data, user=node.owner)

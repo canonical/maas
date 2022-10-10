@@ -32,8 +32,8 @@ from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 
-LXD_CERTIFICATE_METADATA_KEY = "lxd_certificate"
-VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
+DEPLOY_SECRETS_LXD_KEY = "lxd-certificate"
+DEPLOY_SECRETS_VIRSH_KEY = "virsh-password"
 
 HARDWARE_SYNC_MACHINE_TOKEN_PATH = "/tmp/maas-machine-creds.yml"
 HARDWARE_SYNC_SERVICE_TEMPLATE = "hardware_sync_service.template"
@@ -196,18 +196,14 @@ def generate_kvm_pod_configuration(node):
     if node.netboot or not (node.install_kvm or node.register_vmhost):
         return
 
-    NodeMetadata.objects.release_volatile(node)
+    deploy_secrets = {}
 
     arch, _ = node.split_arch()
 
     if node.register_vmhost:
         cert = generate_certificate(Config.objects.get_config("maas_name"))
         cert_pem = cert.certificate_pem() + cert.private_key_pem()
-        NodeMetadata.objects.create(
-            node=node,
-            key=LXD_CERTIFICATE_METADATA_KEY,
-            value=cert_pem,
-        )
+        deploy_secrets[DEPLOY_SECRETS_LXD_KEY] = cert_pem
         # write out the LXD cert on node to add it to the trust after setup
         maas_project = "maas"
         project_conf_file = "/root/maas-project.yaml"
@@ -239,11 +235,7 @@ def generate_kvm_pod_configuration(node):
 
     if node.install_kvm:
         password = _generate_password()
-        NodeMetadata.objects.create(
-            node=node,
-            key=VIRSH_PASSWORD_METADATA_KEY,
-            value=password,
-        )
+        deploy_secrets[DEPLOY_SECRETS_VIRSH_KEY] = password
         # Make sure SSH password authentication is enabled.
         yield "ssh_pwauth", True
         # Create a custom 'virsh' user (in addition to the default user)
@@ -299,6 +291,14 @@ def generate_kvm_pod_configuration(node):
                 "append": True,
             },
         ]
+
+    secret_manager = SecretManager()
+    if deploy_secrets:
+        secret_manager.set_composite_secret(
+            "deploy-metadata", deploy_secrets, obj=node
+        )
+    else:
+        secret_manager.delete_secret("deploy-metadata", obj=node.as_node())
 
     if arch == "ppc64el":
         rc_script = dedent(

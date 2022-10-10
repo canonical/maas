@@ -2944,6 +2944,13 @@ class Node(CleanSave, TimestampedModel):
 
     def delete(self, *args, **kwargs):
         """Delete this node."""
+        from maasserver.secrets import SecretManager
+
+        delete_node_secrets = partial(
+            SecretManager().delete_all_object_secrets,
+            self.as_node(),
+        )
+
         bmc = self.bmc
         if (
             self.node_type == NODE_TYPE.MACHINE
@@ -2968,6 +2975,7 @@ class Node(CleanSave, TimestampedModel):
                     VirtualMachine.objects.filter(
                         machine_id=machine_id
                     ).delete()
+                    delete_node_secrets()
                     super(Node, machine).delete()
 
                 if isinstance(result, Failure):
@@ -3011,6 +3019,7 @@ class Node(CleanSave, TimestampedModel):
                 )
                 self.bmc.delete()
 
+            delete_node_secrets()
             super().delete(*args, **kwargs)
 
     def set_random_hostname(self):
@@ -3701,9 +3710,9 @@ class Node(CleanSave, TimestampedModel):
         self.children.filter(node_type=NODE_TYPE.DEVICE).delete()
 
         # Release volatile metadata
-        from maasserver.models import NodeMetadata
+        from maasserver.secrets import SecretManager
 
-        NodeMetadata.objects.release_volatile(self)
+        SecretManager().delete_secret("deploy-metadata", obj=self.as_node())
 
         # Power was off or cannot be powered off so release to ready now.
         if finalize_release:

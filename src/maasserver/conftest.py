@@ -58,7 +58,7 @@ class MockKVStore:
                 method="get",
             )
 
-    def delete_latest_version_of_secret(self, path, mount_point="secret"):
+    def delete_metadata_and_all_versions(self, path, mount_point="secret"):
         assert mount_point == self.expected_mount_point
         self.store.pop(path, None)
 

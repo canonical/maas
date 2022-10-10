@@ -1581,6 +1581,19 @@ class TestNode(MAASServerTestCase):
         self.assertIsNotNone(reload_object(ip1))
         self.assertIsNone(reload_object(ip2))
 
+    def test_delete_deletes_node_secrets(self):
+        node = factory.make_Node()
+        secret_manager = SecretManager()
+        secret_manager.set_simple_secret(
+            "deploy-metadata", {"foo": "bar"}, obj=node
+        )
+        node.delete()
+        self.assertIsNone(
+            secret_manager.get_simple_secret(
+                "deploy-metadata", obj=node, default=None
+            )
+        )
+
     def test_set_random_hostname_set_hostname(self):
         node = factory.make_Node()
         original_hostname = node.hostname

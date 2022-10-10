@@ -1,19 +1,23 @@
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
-from maasserver.models import BMC, Config, NodeMetadata, RootKey, Secret
+from maasserver.models import Node, Secret
 from maasserver.vault import get_region_vault_client, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
 
 
-MODEL_SECRET_PREFIXES = {
-    BMC: "bmc",
-    Config: "config",
-    RootKey: "rootkey",
-    NodeMetadata: "nodemetadata",
+class ModelSecret(NamedTuple):
+    model: Model
+    prefix: str
+    secret_names: list[str]
+
+
+MODEL_SECRETS = {
+    secret.model: secret
+    for secret in (ModelSecret(Node, "node", ["deploy-metadata"]),)
 }
 
 
@@ -41,8 +45,10 @@ class SecretManager:
         path = self._get_secret_path(name, obj=obj)
         if self._vault_client:
             self._vault_client.set(path, value)
-
-        Secret.objects.update_or_create(path=path, defaults={"value": value})
+        else:
+            Secret.objects.update_or_create(
+                path=path, defaults={"value": value}
+            )
 
     def set_simple_secret(
         self, name: str, value: Any, obj: Optional[Model] = None
@@ -57,8 +63,21 @@ class SecretManager:
         path = self._get_secret_path(name, obj=obj)
         if self._vault_client:
             self._vault_client.delete(path)
+        else:
+            Secret.objects.filter(path=path).delete()
 
-        Secret.objects.filter(path=path).delete()
+    def delete_all_object_secrets(self, obj: Model):
+        """Delete all known secrets for an object."""
+        prefix = self._get_secret_path_prefix_for_object(obj)
+        paths = tuple(
+            f"{prefix}/{name}"
+            for name in MODEL_SECRETS[type(obj)].secret_names
+        )
+        if self._vault_client:
+            for path in paths:
+                self._vault_client.delete(path)
+        else:
+            Secret.objects.filter(path__in=paths).delete()
 
     def get_composite_secret(
         self,
@@ -101,14 +120,15 @@ class SecretManager:
             return default
         return secret[SIMPLE_SECRET_KEY]
 
-    def _get_secret_path(self, name: str, obj: Optional[Model] = None):
-        if obj:
-            model_prefix = MODEL_SECRET_PREFIXES[type(obj)]
-            prefix = f"{model_prefix}/{obj.id}"
-        else:
-            prefix = "global"
-
+    def _get_secret_path(self, name: str, obj: Optional[Model] = None) -> str:
+        prefix = (
+            self._get_secret_path_prefix_for_object(obj) if obj else "global"
+        )
         return f"{prefix}/{name}"
+
+    def _get_secret_path_prefix_for_object(self, obj: Model) -> str:
+        model_secret = MODEL_SECRETS[type(obj)]
+        return f"{model_secret.prefix}/{obj.id}"
 
     def _get_secret_from_db(self, path: str):
         try:

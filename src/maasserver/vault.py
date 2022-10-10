@@ -68,7 +68,7 @@ class VaultClient:
 
     def delete(self, path: str):
         self._ensure_auth()
-        return self._kv.delete_latest_version_of_secret(
+        return self._kv.delete_metadata_and_all_versions(
             self._secret_path(path),
             mount_point=self._secrets_mount,
         )

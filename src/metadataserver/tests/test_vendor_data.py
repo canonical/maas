@@ -10,7 +10,7 @@ from testtools.matchers import ContainsDict, Equals, KeysEqual, MatchesDict
 import yaml
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Config, ControllerInfo, NodeMetadata
+from maasserver.models import Config, ControllerInfo
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
@@ -18,12 +18,13 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
-from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
     _get_node_admin_token,
+    DEPLOY_SECRETS_LXD_KEY,
+    DEPLOY_SECRETS_VIRSH_KEY,
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
     generate_hardware_sync_systemd_configuration,
@@ -38,8 +39,6 @@ from metadataserver.vendor_data import (
     HARDWARE_SYNC_MACHINE_TOKEN_PATH,
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
-    LXD_CERTIFICATE_METADATA_KEY,
-    VIRSH_PASSWORD_METADATA_KEY,
 )
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.testing.certificates import get_sample_cert
@@ -331,15 +330,14 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             netboot=False,
             install_kvm=True,
         )
-        factory.make_NodeMetadata(
-            key=VIRSH_PASSWORD_METADATA_KEY,
-            node=node,
-            value="old value",
-        )
-        cred_lxd = factory.make_NodeMetadata(
-            key=LXD_CERTIFICATE_METADATA_KEY,
-            node=node,
-            value="old value",
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                DEPLOY_SECRETS_VIRSH_KEY: "old value",
+                DEPLOY_SECRETS_LXD_KEY: "old value",
+            },
+            obj=node,
         )
 
         config = list(generate_kvm_pod_configuration(node))
@@ -393,10 +391,10 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                 ),
             ],
         )
-        password_meta = NodeMetadata.objects.first()
-        self.assertEqual(password_meta.key, "virsh_password")
-        self.assertEqual(password_meta.value, password)
-        self.assertIsNone(reload_object(cred_lxd))
+        self.assertEqual(
+            secret_manager.get_composite_secret("deploy-metadata", obj=node),
+            {DEPLOY_SECRETS_VIRSH_KEY: password},
+        )
 
     def test_yields_configuration_when_machine_register_vmhost_true(self):
         cert = get_sample_cert()
@@ -407,16 +405,16 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             netboot=False,
             register_vmhost=True,
         )
-        cred_virsh = factory.make_NodeMetadata(
-            key=VIRSH_PASSWORD_METADATA_KEY,
-            node=node,
-            value="old value",
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "deploy-metadata",
+            {
+                DEPLOY_SECRETS_VIRSH_KEY: "old value",
+                DEPLOY_SECRETS_LXD_KEY: "old value",
+            },
+            obj=node,
         )
-        factory.make_NodeMetadata(
-            key=LXD_CERTIFICATE_METADATA_KEY,
-            node=node,
-            value="old value",
-        )
+
         config = list(generate_kvm_pod_configuration(node))
         self.assertEqual(
             config,
@@ -449,12 +447,13 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                 ),
             ],
         )
-        creds_meta = NodeMetadata.objects.first()
-        self.assertEqual(creds_meta.key, "lxd_certificate")
         self.assertEqual(
-            creds_meta.value, cert.certificate_pem() + cert.private_key_pem()
+            secret_manager.get_composite_secret("deploy-metadata", obj=node),
+            {
+                DEPLOY_SECRETS_LXD_KEY: cert.certificate_pem()
+                + cert.private_key_pem()
+            },
         )
-        self.assertIsNone(reload_object(cred_virsh))
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         password = "123secure"
