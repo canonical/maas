@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from functools import cache
-from textwrap import dedent
 from typing import Any, NamedTuple, Optional
 
 from dateutil.parser import isoparse
 import hvac
 
 from maasserver.config import RegionConfiguration
-from provisioningserver.utils.env import MAAS_UUID
 
 # refresh the token if the remaining life is less than this
 TOKEN_BEFORE_EXPIRY_LIMIT = timedelta(seconds=10)
@@ -102,108 +100,15 @@ class AppRole(NamedTuple):
     secret_id: str
 
 
-class VaultConfigurator:
-    """Helper to configure Vault roles and approles for MAAS."""
-
-    # policies for the "role manager" approle, which can manage roles for this MAAS
-    ROLE_MANAGER_POLICY_HCL = dedent(
-        """
-        path "auth/approle/role/maas-{maas_uuid}-*" {{
-          capabilities = ["read", "create", "update", "delete"]
-          allowed_parameters = {{
-            "token_policies" = ["default,maas-{maas_uuid}-region"]
-            "*" = []
-          }}
-        }}
-        """
-    )
-
-    # policies for the "region controller" approle, which can manage secrets for
-    # this MAAS
-    REGION_POLICY_HCL = dedent(
-        """
-        path "{secrets_mount}/metadata/maas-{maas_uuid}/" {{
-          capabilities = ["list"]
-        }}
-        path "{secrets_mount}/data/maas-{maas_uuid}/*" {{
-          capabilities = ["read", "create", "update", "delete"]
-        }}
-        """
-    )
-
-    TOKEN_TTL = "5m"
-
-    def __init__(
-        self,
-        url: str,
-        token: str,
-        maas_uuid: str,
-        secrets_mount: str = "secret",
-        client: Optional[hvac.Client] = None,
-    ):
-        self._client = client or hvac.Client(url=url, token=token)
-        self.maas_uuid = maas_uuid
-        self.secrets_mount = secrets_mount
-
-    @property
-    def rolemanager_policy_name(self) -> str:
-        return f"maas-{self.maas_uuid}-rolemanager"
-
-    @property
-    def region_policy_name(self) -> str:
-        return f"maas-{self.maas_uuid}-region"
-
-    def configure_policies(self):
-        """Configure policies for this MAAS."""
-        entries = (
-            (self.rolemanager_policy_name, self.ROLE_MANAGER_POLICY_HCL),
-            (self.region_policy_name, self.REGION_POLICY_HCL),
-        )
-        for name, policy_template in entries:
-            policy_hcl = (
-                policy_template.format(
-                    maas_uuid=self.maas_uuid, secrets_mount=self.secrets_mount
-                )
-            ).strip()
-            self._client.sys.create_or_update_policy(
-                name=name, policy=policy_hcl
-            )
-
-    def get_approle_with_secret(
-        self, policy: str, name_suffix: str = ""
-    ) -> AppRole:
-        """Create (or update) an approle with a specified policy.
-
-        The name of the approle is built by appending the suffix to the policy
-        name.
-        """
-        approle_cli = self._client.auth.approle
-        role_name = policy
-        if name_suffix:
-            role_name += f"-{name_suffix}"
-        approle_cli.create_or_update_approle(
-            role_name=role_name,
-            token_policies=["default", policy],
-            token_ttl=self.TOKEN_TTL,
-            token_max_ttl=self.TOKEN_TTL,
-        )
-        role_id = approle_cli.read_role_id(role_name=role_name)["data"][
-            "role_id"
-        ]
-        secret_id = approle_cli.generate_secret_id(role_name=role_name)[
-            "data"
-        ]["secret_id"]
-        return AppRole(name=role_name, role_id=role_id, secret_id=secret_id)
-
-
 @cache
 def get_region_vault_client() -> Optional[VaultClient]:
     """Return a VaultClient configured for the region controller, if configured.
 
-    This is must be called once MAAS_UUID and Vault configuration (if any) are
-    set, since the result is cached.  This is done since Vault configuration is
-    not expected to change within the life of the region controller (a restart
-    is needed).
+    This is must be called once the Vault configuration (if any) is set, since
+    the result is cached.  This is done since Vault configuration is not
+    expected to change within the life of the region controller (a restart is
+    needed).
+
     """
     return _get_region_vault_client()
 
@@ -213,10 +118,6 @@ def _get_region_vault_client() -> Optional[VaultClient]:
 
     If configuration options for Vault are not set, None is returned.
     """
-    maas_uuid = MAAS_UUID.get()
-    if not maas_uuid:
-        return None
-
     with RegionConfiguration.open() as config:
         if not all(
             (config.vault_url, config.vault_approle_id, config.vault_secret_id)
@@ -226,7 +127,7 @@ def _get_region_vault_client() -> Optional[VaultClient]:
             url=config.vault_url,
             role_id=config.vault_approle_id,
             secret_id=config.vault_secret_id,
-            secrets_base_path=f"maas-{maas_uuid}",
+            secrets_base_path=config.vault_secrets_path,
             secrets_mount=config.vault_secrets_mount,
         )
 
