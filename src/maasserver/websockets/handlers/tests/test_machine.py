@@ -1016,13 +1016,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": blockdevice.type,
                 "path": blockdevice.path,
                 "size": blockdevice.size,
-                "size_human": human_readable_bytes(blockdevice.size),
                 "used_size": blockdevice.used_size,
-                "used_size_human": human_readable_bytes(blockdevice.used_size),
                 "available_size": blockdevice.available_size,
-                "available_size_human": human_readable_bytes(
-                    blockdevice.available_size
-                ),
                 "block_size": blockdevice.block_size,
                 "model": blockdevice.model,
                 "serial": blockdevice.serial,
@@ -1069,13 +1064,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": blockdevice.type,
                 "path": blockdevice.path,
                 "size": blockdevice.size,
-                "size_human": human_readable_bytes(blockdevice.size),
                 "used_size": blockdevice.used_size,
-                "used_size_human": human_readable_bytes(blockdevice.used_size),
                 "available_size": blockdevice.available_size,
-                "available_size_human": human_readable_bytes(
-                    blockdevice.available_size
-                ),
                 "block_size": blockdevice.block_size,
                 "model": blockdevice.model,
                 "serial": blockdevice.serial,
@@ -1109,13 +1099,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": blockdevice.type,
                 "path": blockdevice.path,
                 "size": blockdevice.size,
-                "size_human": human_readable_bytes(blockdevice.size),
                 "used_size": blockdevice.used_size,
-                "used_size_human": human_readable_bytes(blockdevice.used_size),
                 "available_size": blockdevice.available_size,
-                "available_size_human": human_readable_bytes(
-                    blockdevice.available_size
-                ),
                 "block_size": blockdevice.block_size,
                 "model": "",
                 "serial": "",
@@ -1153,15 +1138,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": volume_group.group_type,
                 "path": "",
                 "size": volume_group.get_size(),
-                "size_human": human_readable_bytes(volume_group.get_size()),
                 "used_size": volume_group.get_lvm_allocated_size(),
-                "used_size_human": human_readable_bytes(
-                    volume_group.get_lvm_allocated_size()
-                ),
                 "available_size": volume_group.get_lvm_free_space(),
-                "available_size_human": human_readable_bytes(
-                    volume_group.get_lvm_free_space()
-                ),
                 "block_size": volume_group.get_virtual_block_device_block_size(),
                 "model": "",
                 "serial": "",
@@ -1229,17 +1207,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "type": "cache-set",
                 "path": "",
                 "size": cache_set.get_device().size,
-                "size_human": human_readable_bytes(
-                    cache_set.get_device().size
-                ),
                 "used_size": cache_set.get_device().get_used_size(),
-                "used_size_human": human_readable_bytes(
-                    cache_set.get_device().get_used_size()
-                ),
                 "available_size": cache_set.get_device().get_available_size(),
-                "available_size_human": human_readable_bytes(
-                    cache_set.get_device().get_available_size()
-                ),
                 "block_size": cache_set.get_device().get_block_size(),
                 "model": "",
                 "serial": "",
@@ -1309,7 +1278,6 @@ class TestMachineHandler(MAASServerTestCase):
                     "type": partition.type,
                     "id": partition.id,
                     "size": partition.size,
-                    "size_human": human_readable_bytes(partition.size),
                     "used_for": partition.used_for,
                     "tags": partition.tags,
                 }
