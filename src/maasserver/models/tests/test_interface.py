@@ -1125,7 +1125,7 @@ class TestInterface(MAASServerTestCase):
 
     def test_get_links_returns_links_for_each_type(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        links = []
+        expected_links = []
         dhcp_subnet = factory.make_Subnet()
         dhcp_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP,
@@ -1133,14 +1133,12 @@ class TestInterface(MAASServerTestCase):
             subnet=dhcp_subnet,
             interface=interface,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(dhcp_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
-                    "subnet": Equals(dhcp_subnet),
-                }
-            )
+        expected_links.append(
+            {
+                "id": dhcp_ip.id,
+                "mode": INTERFACE_LINK_TYPE.DHCP,
+                "subnet": dhcp_subnet,
+            }
         )
         static_subnet = factory.make_Subnet()
         static_ip = factory.pick_ip_in_network(static_subnet.get_ipnetwork())
@@ -1150,16 +1148,15 @@ class TestInterface(MAASServerTestCase):
             subnet=static_subnet,
             interface=interface,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(sip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.STATIC),
-                    "ip_address": Equals(static_ip),
-                    "subnet": Equals(static_subnet),
-                }
-            )
+        expected_links.append(
+            {
+                "id": sip.id,
+                "mode": INTERFACE_LINK_TYPE.STATIC,
+                "ip_address": static_ip,
+                "subnet": static_subnet,
+            }
         )
+
         temp_ip = factory.pick_ip_in_network(
             static_subnet.get_ipnetwork(), but_not=[static_ip]
         )
@@ -1170,14 +1167,12 @@ class TestInterface(MAASServerTestCase):
             interface=interface,
             temp_expires_on=datetime.datetime.utcnow(),
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(temp_sip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.AUTO),
-                    "subnet": Equals(static_subnet),
-                }
-            )
+        expected_links.append(
+            {
+                "id": temp_sip.id,
+                "mode": INTERFACE_LINK_TYPE.AUTO,
+                "subnet": static_subnet,
+            }
         )
         link_subnet = factory.make_Subnet()
         link_ip = factory.make_StaticIPAddress(
@@ -1186,16 +1181,14 @@ class TestInterface(MAASServerTestCase):
             subnet=link_subnet,
             interface=interface,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(link_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
-                    "subnet": Equals(link_subnet),
-                }
-            )
+        expected_links.append(
+            {
+                "id": link_ip.id,
+                "mode": INTERFACE_LINK_TYPE.LINK_UP,
+                "subnet": link_subnet,
+            }
         )
-        self.assertThat(interface.get_links(), MatchesListwise(links))
+        self.assertCountEqual(interface.get_links(), expected_links)
 
     def test_get_discovered_returns_None_when_empty(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

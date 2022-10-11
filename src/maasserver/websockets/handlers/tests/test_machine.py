@@ -3989,6 +3989,108 @@ class TestMachineHandler(MAASServerTestCase):
             },
         )
 
+    def test_clone_success(self):
+        user = factory.make_admin()
+        request = HttpRequest()
+        request.user = user
+        source = factory.make_Machine(with_boot_disk=False)
+        source_boot_disk = factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024**3, name="sda"
+        )
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=source_boot_disk
+        )
+        factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=512 * 1024**2,
+            bootable=True,
+        )
+        factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=2 * 1024**3,
+            bootable=False,
+        )
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination, size=8 * 1024**3, name="sda"
+        )
+        pt = (
+            destination.current_config.blockdevice_set.first().get_partitiontable()
+        )
+        self.assertIsNone(pt)  # Pre-condition check
+        handler = MachineHandler(user, {}, request)
+        handler.action(
+            {
+                "system_id": source.system_id,
+                "action": "clone",
+                "extra": {
+                    "storage": True,
+                    "interfaces": False,
+                    "destinations": [
+                        destination.system_id,
+                    ],
+                },
+            },
+        )
+        pt = (
+            destination.current_config.blockdevice_set.first().get_partitiontable()
+        )
+        self.assertIsNotNone(pt)
+
+    def test_clone_with_filter(self):
+        user = factory.make_admin()
+        request = HttpRequest()
+        request.user = user
+        source = factory.make_Machine(with_boot_disk=False)
+        source_boot_disk = factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024**3, name="sda"
+        )
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=source_boot_disk
+        )
+        factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=512 * 1024**2,
+            bootable=True,
+        )
+        factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=2 * 1024**3,
+            bootable=False,
+        )
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination, size=8 * 1024**3, name="sda"
+        )
+        pt = (
+            destination.current_config.blockdevice_set.first().get_partitiontable()
+        )
+        self.assertIsNone(pt)  # Pre-condition check
+        handler = MachineHandler(user, {}, request)
+        handler.action(
+            {
+                "system_id": source.system_id,
+                "action": "clone",
+                "extra": {
+                    "storage": True,
+                    "interfaces": False,
+                },
+                "filter": {"id": destination.system_id},
+            },
+        )
+        pt = (
+            destination.current_config.blockdevice_set.first().get_partitiontable()
+        )
+        self.assertIsNotNone(pt)
+
     def test_clone_where_possible(self):
         user = factory.make_admin()
         request = HttpRequest()

@@ -1050,12 +1050,26 @@ class MachineHandler(NodeHandler):
 
         return success_count, failed_system_ids
 
+    def _bulk_clone(self, source, filter_params, extra_params):
+        """Bulk clone - special case of bulk_action."""
+        actions = compile_node_actions(source, self.user, request=self.request)
+        clone_action = actions.get("clone")
+        destinations = self._filter(self._meta.queryset, None, filter_params)
+        destination_ids = [node.system_id for node in destinations]
+        return clone_action.execute(
+            destinations=destination_ids, **extra_params
+        )
+
     def action(self, params):
         """Perform the action on the object."""
         # `compile_node_actions` handles the permission checking internally
         # the default view permission check is enough at this level.
         action_name = params.get("action")
         extra_params = params.get("extra", {})
+        if action_name == "clone" and "filter" in params:
+            return self._bulk_clone(
+                self.get_object(params), params["filter"], extra_params
+            )
         if "filter" in params:
             success_count, failed_system_ids = self._bulk_action(
                 params["filter"], action_name, extra_params
