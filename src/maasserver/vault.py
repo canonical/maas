@@ -140,7 +140,13 @@ def check_approle_permissions(
     secrets_mount: str,
 ) -> None:
     """Tests permissions for the AppRole by performing basic actions."""
-    client = VaultClient(url, role_id, secret_id, secrets_path, secrets_mount)
+    client = VaultClient(
+        url=url,
+        role_id=role_id,
+        secret_id=secret_id,
+        secrets_base_path=secrets_path,
+        secrets_mount=secrets_mount,
+    )
 
     test_path = f"test-{role_id}"
     # Test create/update
@@ -155,8 +161,8 @@ def configure_region_with_vault(
     url: str,
     role_id: str,
     wrapped_token: str,
-    secrets_mount: str,
     secrets_path: str,
+    secrets_mount: str,
 ):
     """Configure the region to use Vault.
 
@@ -164,14 +170,18 @@ def configure_region_with_vault(
     """
     secret_id = unwrap_secret(url, wrapped_token)
     check_approle_permissions(
-        url, role_id, secret_id, secrets_mount, secrets_path
+        url=url,
+        role_id=role_id,
+        secret_id=secret_id,
+        secrets_path=secrets_path,
+        secrets_mount=secrets_mount,
     )
 
     with RegionConfiguration.open_for_update() as config:
         config.vault_url = url
         config.vault_approle_id = role_id
         config.vault_secret_id = secret_id
-        config.vault_secrets_mount = secrets_mount
         config.vault_secrets_path = secrets_path
+        config.vault_secrets_mount = secrets_mount
     # ensure future calls to get the client use the updated config
     get_region_vault_client.cache_clear()

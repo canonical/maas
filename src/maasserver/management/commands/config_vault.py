@@ -41,11 +41,11 @@ class Command(BaseCommand):
 
         try:
             configure_region_with_vault(
-                vault_url,
-                approle_id,
-                wrapped_token,
-                secrets_path,
-                mount,
+                url=vault_url,
+                role_id=approle_id,
+                wrapped_token=wrapped_token,
+                secrets_path=secrets_path,
+                secrets_mount=mount,
             )
             return dedent(
                 """

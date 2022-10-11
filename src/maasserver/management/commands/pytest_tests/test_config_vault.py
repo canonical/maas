@@ -37,11 +37,11 @@ class TestConfigVaultConfigurateCommand:
         kwargs = self._configure_kwargs()
         result = Command().handle(**kwargs)
         configure_mock.assert_called_once_with(
-            kwargs["url"],
-            kwargs["role_id"],
-            kwargs["wrapped_token"],
-            kwargs["secrets_path"],
-            kwargs["mount"],
+            url=kwargs["url"],
+            role_id=kwargs["role_id"],
+            wrapped_token=kwargs["wrapped_token"],
+            secrets_path=kwargs["secrets_path"],
+            secrets_mount=kwargs["mount"],
         )
         assert "sudo maas config-vault migrate" in result
 

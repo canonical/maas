@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from unittest.mock import ANY
 
 from hvac.exceptions import VaultError
 import pytest
@@ -185,3 +186,61 @@ class TestUnwrapSecret:
         ).side_effect = VaultError("Test")
         with pytest.raises(VaultError):
             vault.unwrap_secret("http://vault:8200", "token")
+
+
+class TestConfigureRegionWithVault:
+    def test_configures_region(self, factory, mocker, vault_regionconfig):
+        url = "http://vault:8200"
+        role_id = factory.make_name("uuid")
+        secret_id = factory.make_name("uuid")
+        wrapped_token = factory.make_name("uuid")
+        secrets_path = factory.make_name("uuid")
+        secrets_mount = factory.make_name("uuid")
+
+        mocker.patch.object(vault, "unwrap_secret").return_value = secret_id
+        check_mock = mocker.patch.object(vault, "check_approle_permissions")
+
+        vault.configure_region_with_vault(
+            url=url,
+            role_id=role_id,
+            wrapped_token=wrapped_token,
+            secrets_path=secrets_path,
+            secrets_mount=secrets_mount,
+        )
+
+        assert vault_regionconfig["vault_url"] == url
+        assert vault_regionconfig["vault_approle_id"] == role_id
+        assert vault_regionconfig["vault_secret_id"] == secret_id
+        assert vault_regionconfig["vault_secrets_path"] == secrets_path
+        assert vault_regionconfig["vault_secrets_mount"] == secrets_mount
+        check_mock.assert_called_once_with(
+            url=url,
+            role_id=role_id,
+            secret_id=secret_id,
+            secrets_path=secrets_path,
+            secrets_mount=secrets_mount,
+        )
+
+
+class TestCheckApprolePermissions:
+    def test_performs_expected_actions(self, mocker, factory):
+        client = mocker.patch.object(vault, "VaultClient").return_value
+
+        url = "http://vault:8200"
+        role_id = factory.make_name("uuid")
+        secret_id = factory.make_name("uuid")
+        secrets_path = factory.make_name("uuid")
+        secrets_mount = factory.make_name("uuid")
+        expected_path = f"test-{role_id}"
+
+        vault.check_approle_permissions(
+            url=url,
+            role_id=role_id,
+            secret_id=secret_id,
+            secrets_path=secrets_path,
+            secrets_mount=secrets_mount,
+        )
+
+        client.set.assert_called_once_with(expected_path, ANY)
+        client.get.assert_called_once_with(expected_path)
+        client.delete.assert_called_once_with(expected_path)
