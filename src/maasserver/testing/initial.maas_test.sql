@@ -11209,6 +11209,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 335	maasserver	0284_migrate_more_global_secrets	2022-10-03 12:52:26.811989+00
 336	maasserver	0285_migrate_external_auth_secrets	2022-10-06 11:12:27.640004+00
 337	metadataserver	0033_remove_nodekey_key	2022-10-07 06:51:34.349659+00
+338	maasserver	0286_node_deploy_metadata	2022-10-11 03:29:32.800937+00
 \.
 
 
@@ -12017,7 +12018,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 337, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 338, true);
 
 
 --
