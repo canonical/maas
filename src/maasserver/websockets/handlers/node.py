@@ -44,7 +44,7 @@ from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils.converters import XMLToYAML
+from maasserver.utils.converters import human_readable_bytes, XMLToYAML
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.websockets.base import (
     dehydrate_datetime,
@@ -616,8 +616,13 @@ class NodeHandler(TimestampedModelHandler):
             "type": blockdevice.type,
             "path": blockdevice.path,
             "size": blockdevice.size,
+            "size_human": human_readable_bytes(blockdevice.size),
             "used_size": blockdevice.used_size,
+            "used_size_human": human_readable_bytes(blockdevice.used_size),
             "available_size": blockdevice.available_size,
+            "available_size_human": human_readable_bytes(
+                blockdevice.available_size
+            ),
             "block_size": blockdevice.block_size,
             "model": model,
             "serial": serial,
@@ -663,8 +668,11 @@ class NodeHandler(TimestampedModelHandler):
             "type": volume_group.group_type,
             "path": "",
             "size": size,
+            "size_human": human_readable_bytes(size),
             "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
             "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
             "block_size": volume_group.get_virtual_block_device_block_size(),
             "model": "",
             "serial": "",
@@ -690,8 +698,11 @@ class NodeHandler(TimestampedModelHandler):
             "type": "cache-set",
             "path": "",
             "size": device.size,
+            "size_human": human_readable_bytes(device.size),
             "used_size": used_size,
+            "used_size_human": human_readable_bytes(used_size),
             "available_size": available_size,
+            "available_size_human": human_readable_bytes(available_size),
             "block_size": device.get_block_size(),
             "model": "",
             "serial": "",
@@ -718,6 +729,7 @@ class NodeHandler(TimestampedModelHandler):
                     "type": partition.type,
                     "id": partition.id,
                     "size": partition.size,
+                    "size_human": human_readable_bytes(partition.size),
                     "used_for": partition.used_for,
                     "tags": partition.tags,
                 }
