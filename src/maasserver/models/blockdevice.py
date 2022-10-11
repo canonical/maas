@@ -266,10 +266,17 @@ class BlockDevice(CleanSave, TimestampedModel):
         filesystem = self.get_effective_filesystem()
         if filesystem is not None:
             return 0
+
         partitiontable = self.get_partitiontable()
-        if partitiontable is not None:
-            return partitiontable.get_available_size()
-        return self.size
+        if partitiontable is None:
+            # if there's no partition table, create one without saving it, for
+            # the purpose of calculating the availble size for a partition
+            # (thus excluding the space used by the table itself).
+            from maasserver.models.partitiontable import PartitionTable
+
+            partitiontable = PartitionTable(block_device=self)
+
+        return partitiontable.get_available_size()
 
     def is_boot_disk(self):
         """Return true if block device is the boot disk."""
