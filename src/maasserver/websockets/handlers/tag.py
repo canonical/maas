@@ -8,7 +8,9 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT, NODE_TYPE
 from maasserver.forms import TagForm
 from maasserver.models.tag import Tag
-from maasserver.websockets.base import AdminOnlyMixin
+from maasserver.node_constraint_filter_forms import FreeTextFilterNodeForm
+from maasserver.websockets.base import AdminOnlyMixin, HandlerValidationError
+from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -84,3 +86,19 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
             None,
             description=description,
         )
+
+    def _node_filter(self, params):
+        form = FreeTextFilterNodeForm(data=params)
+        if not form.is_valid():
+            raise HandlerValidationError(form.errors)
+        qs = MachineHandler.Meta.list_queryset
+        qs, _, _ = form.filter_nodes(qs)
+        return qs.values("id")
+
+    def list(self, params):
+        """List objects."""
+        qs_tags = self.get_queryset(for_list=True)
+        if "node_filter" in params:
+            nodes = self._node_filter(params["node_filter"])
+            qs_tags = qs_tags.filter(node__in=nodes)
+        return self._build_list_simple(qs_tags, params)

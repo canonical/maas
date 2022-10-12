@@ -178,3 +178,24 @@ class TestTagHandler(MAASServerTestCase):
             HandlerPermissionError, handler.delete, {"id": tag.id}
         )
         self.assertIsNotNone(reload_object(tag))
+
+    def test_node_filter(self):
+        tag = factory.make_Tag()
+        tag.node_set.add(
+            factory.make_Machine(),
+            factory.make_Machine(),
+        )
+        machine = factory.make_Machine()
+        tag2 = factory.make_Tag()
+        tag2.node_set.add(machine)
+        handler = TagHandler(factory.make_admin(), {}, None)
+        listing = handler.list(
+            {
+                "node_filter": {
+                    "hostname": [machine.hostname],
+                }
+            }
+        )
+        self.assertEqual(len(listing), 1)
+        self.assertEqual(listing[0]["name"], tag2.name)
+        self.assertEqual(listing[0]["machine_count"], 1)
