@@ -6615,7 +6615,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         for machine in machines:
             machine.tags.add(factory.make_Tag())
 
-            _assert_value_in(machine.system_id, "parent")
+            _assert_value_in(machine.hostname, "parent")
             _assert_value_in(machine.architecture, "arch")
             _assert_value_in(machine.owner.username, "owner")
             _assert_value_in(machine.power_state, "power_state")
@@ -6936,8 +6936,12 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             }
         )
         self.assertEqual(
-            parent.system_id,
+            parent.hostname,
             result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            parent.hostname,
+            result["groups"][0]["value"],
         )
         self.assertEqual(
             2,

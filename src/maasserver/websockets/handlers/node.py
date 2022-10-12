@@ -1256,7 +1256,7 @@ class NodeHandler(TimestampedModelHandler):
         elif key == "storage":
             expr = "total_storage"
         elif key == "parent":
-            expr = "parent__system_id"
+            expr = "parent__hostname"
         else:
             expr = key
         return expr
