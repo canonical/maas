@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple, Optional
+from typing import Any, Literal, NamedTuple, Optional
 
 from django.db.models import Model
 from hvac.exceptions import InvalidPath
@@ -9,16 +9,16 @@ from maasserver.vault import get_region_vault_client, VaultClient
 SIMPLE_SECRET_KEY = "secret"
 
 
-class ModelSecret(NamedTuple):
-    model: Model
-    prefix: str
-    secret_names: list[str]
+class UnknownSecret(Exception):
+    """Path for an unknown secret has been requested."""
 
-
-MODEL_SECRETS = {
-    secret.model: secret
-    for secret in (ModelSecret(Node, "node", ["deploy-metadata"]),)
-}
+    def __init__(self, name: str, obj: Optional[Model] = None):
+        self.name = name
+        self.obj = obj
+        message = f"Unkownn secret '{name}'"
+        if obj is not None:
+            message += f" for object {type(obj)}"
+        super().__init__(message)
 
 
 class SecretNotFound(Exception):
@@ -29,14 +29,47 @@ class SecretNotFound(Exception):
         super().__init__(f"Secret '{path}' not found")
 
 
+class ModelSecret(NamedTuple):
+    model: Model
+    prefix: str
+    secret_names: list[str]
+
+    def get_secret_path(self, name: str, obj: Model) -> str:
+        if name not in self.secret_names:
+            raise UnknownSecret(name, obj=obj)
+        return f"{self.prefix}/{obj.id}/{name}"
+
+
+MODEL_SECRETS = {
+    secret.model: secret
+    for secret in (ModelSecret(Node, "node", ["deploy-metadata"]),)
+}
+
+GLOBAL_SECRETS = frozenset(
+    [
+        "external-auth",
+        "ipmi-k_g-key",
+        "macaroon-key",
+        "omapi-key",
+        "rpc-shared",
+        "tls",
+        "vcenter-password",
+    ]
+)
+
 UNSET = object()
 
 
 class SecretManager:
     """Handle operations on secrets."""
 
-    def __init__(self, vault_client: Optional[VaultClient] = None):
-        self._vault_client = vault_client or get_region_vault_client()
+    def __init__(
+        self, vault_client: VaultClient | None | Literal[UNSET] = UNSET
+    ):
+        if vault_client is UNSET:
+            self._vault_client = get_region_vault_client()
+        else:
+            self._vault_client = vault_client
 
     def set_composite_secret(
         self, name: str, value: dict[str, Any], obj: Optional[Model] = None
@@ -68,10 +101,10 @@ class SecretManager:
 
     def delete_all_object_secrets(self, obj: Model):
         """Delete all known secrets for an object."""
-        prefix = self._get_secret_path_prefix_for_object(obj)
+        model_secret = MODEL_SECRETS[type(obj)]
         paths = tuple(
-            f"{prefix}/{name}"
-            for name in MODEL_SECRETS[type(obj)].secret_names
+            model_secret.get_secret_path(name, obj)
+            for name in model_secret.secret_names
         )
         if self._vault_client:
             for path in paths:
@@ -121,14 +154,16 @@ class SecretManager:
         return secret[SIMPLE_SECRET_KEY]
 
     def _get_secret_path(self, name: str, obj: Optional[Model] = None) -> str:
-        prefix = (
-            self._get_secret_path_prefix_for_object(obj) if obj else "global"
-        )
-        return f"{prefix}/{name}"
+        if obj is not None:
+            try:
+                model_secret = MODEL_SECRETS[type(obj)]
+            except KeyError:
+                raise UnknownSecret(name, obj=obj)
+            return model_secret.get_secret_path(name, obj)
 
-    def _get_secret_path_prefix_for_object(self, obj: Model) -> str:
-        model_secret = MODEL_SECRETS[type(obj)]
-        return f"{model_secret.prefix}/{obj.id}"
+        if name not in GLOBAL_SECRETS:
+            raise UnknownSecret(name)
+        return f"global/{name}"
 
     def _get_secret_from_db(self, path: str):
         try:
