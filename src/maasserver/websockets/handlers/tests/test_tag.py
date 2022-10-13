@@ -181,13 +181,15 @@ class TestTagHandler(MAASServerTestCase):
 
     def test_node_filter(self):
         tag = factory.make_Tag()
+        factory.make_Machine(hostname="untagged")
         tag.node_set.add(
-            factory.make_Machine(),
-            factory.make_Machine(),
+            factory.make_Machine(hostname="nope1"),
+            factory.make_Machine(hostname="nope2"),
         )
-        machine = factory.make_Machine()
+        machine = factory.make_Machine(hostname="matching")
         tag2 = factory.make_Tag()
         tag2.node_set.add(machine)
+        tag2.node_set.add(factory.make_Machine())
         handler = TagHandler(factory.make_admin(), {}, None)
         listing = handler.list(
             {
@@ -196,6 +198,25 @@ class TestTagHandler(MAASServerTestCase):
                 }
             }
         )
-        self.assertEqual(len(listing), 1)
+        self.assertEqual(len(listing), 1, listing)
         self.assertEqual(listing[0]["name"], tag2.name)
+        self.assertEqual(listing[0]["machine_count"], 1)
+
+    def test_node_filter_by_physical_disk_count(self):
+        tag = factory.make_Tag()
+        factory.make_Tag()
+        machine = factory.make_Machine()
+        factory.make_PhysicalBlockDevice(node=machine)
+        tag.node_set.add(machine)
+
+        handler = TagHandler(factory.make_admin(), {}, None)
+        listing = handler.list(
+            {
+                "node_filter": {
+                    "physical_disk_count": 2,
+                }
+            }
+        )
+        self.assertEqual(len(listing), 1, listing)
+        self.assertEqual(listing[0]["name"], tag.name)
         self.assertEqual(listing[0]["machine_count"], 1)

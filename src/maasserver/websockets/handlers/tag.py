@@ -1,7 +1,7 @@
 # Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from django.db.models import Count, Q
+from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest
 
 from maasserver.audit import create_audit_event
@@ -17,28 +17,31 @@ from maasserver.websockets.handlers.timestampedmodel import (
 from provisioningserver.events import EVENT_TYPES
 
 
+def _annotate_qs_with_counts(qs: QuerySet) -> QuerySet:
+    """Helper to add annotations for node type."""
+    return qs.annotate(
+        machine_count=Count(
+            "node", filter=Q(node__node_type=NODE_TYPE.MACHINE)
+        ),
+        device_count=Count("node", filter=Q(node__node_type=NODE_TYPE.DEVICE)),
+        controller_count=Count(
+            "node",
+            filter=Q(
+                node__node_type__in=(
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                )
+            ),
+        ),
+    )
+
+
 class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
     class Meta:
         form = TagForm
         form_requires_request = False
-        queryset = Tag.objects.annotate(
-            machine_count=Count(
-                "node", filter=Q(node__node_type=NODE_TYPE.MACHINE)
-            ),
-            device_count=Count(
-                "node", filter=Q(node__node_type=NODE_TYPE.DEVICE)
-            ),
-            controller_count=Count(
-                "node",
-                filter=Q(
-                    node__node_type__in=(
-                        NODE_TYPE.RACK_CONTROLLER,
-                        NODE_TYPE.REGION_CONTROLLER,
-                        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                    )
-                ),
-            ),
-        ).all()
+        queryset = _annotate_qs_with_counts(Tag.objects).all()
         pk = "id"
         allowed_methods = [
             "list",
@@ -91,14 +94,18 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
         form = FreeTextFilterNodeForm(data=params)
         if not form.is_valid():
             raise HandlerValidationError(form.errors)
-        qs = MachineHandler.Meta.list_queryset
+        mh = MachineHandler(self.user, self.cache, self.request)
+        qs = mh.get_queryset(for_list=True).filter(tags__isnull=False)
         qs, _, _ = form.filter_nodes(qs)
-        return qs.values("id")
+        return qs.values_list("id", flat=True)
 
     def list(self, params):
         """List objects."""
-        qs_tags = self.get_queryset(for_list=True)
         if "node_filter" in params:
-            nodes = self._node_filter(params["node_filter"])
-            qs_tags = qs_tags.filter(node__in=nodes)
-        return self._build_list_simple(qs_tags, params)
+            node_ids = self._node_filter(params["node_filter"])
+            qs_tags = _annotate_qs_with_counts(
+                Tag.objects.filter(node__id__in=node_ids)
+            ).all()
+            return self._build_list_simple(qs_tags, params)
+        else:
+            return super().list(params)
