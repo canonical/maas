@@ -22,9 +22,11 @@ from maasserver.models import (
 from maasserver.models import BlockDevice
 from maasserver.models import blockdevice as blockdevice_module
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
@@ -470,6 +472,36 @@ class TestBlockDevice(MAASServerTestCase):
         block_device = factory.make_BlockDevice()
         block_device.delete()
         self.assertIsNone(reload_object(block_device))
+
+    def test_get_available_size_with_partition_table(self):
+        node = factory.make_Node(
+            architecture="amd64/generic", bios_boot_method="uefi"
+        )
+        disk = factory.make_PhysicalBlockDevice(node=node, size=100000000)
+        factory.make_PartitionTable(block_device=disk)
+        self.assertEqual(
+            disk.get_available_size(),
+            round_size_to_nearest_block(
+                disk.size - PARTITION_TABLE_EXTRA_SPACE,
+                PARTITION_ALIGNMENT_SIZE,
+                False,
+            ),
+        )
+
+    def test_get_available_size_without_partition_table(self):
+        node = factory.make_Node(
+            architecture="amd64/generic", bios_boot_method="uefi"
+        )
+        disk = factory.make_PhysicalBlockDevice(node=node, size=100000000)
+        # reported available space is the same as if there was a partition table
+        self.assertEqual(
+            disk.get_available_size(),
+            round_size_to_nearest_block(
+                disk.size - PARTITION_TABLE_EXTRA_SPACE,
+                PARTITION_ALIGNMENT_SIZE,
+                False,
+            ),
+        )
 
     def test_create_partition(self):
         node = factory.make_Node(with_boot_disk=False)
