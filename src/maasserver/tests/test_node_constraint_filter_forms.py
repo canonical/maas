@@ -1694,9 +1694,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
     def test_substring_fabrics_filter(self):
         fabric = factory.make_Fabric()
         vlan = factory.make_VLAN(fabric=fabric)
-        interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, vlan=vlan)
         factory.make_Node()
         constraints = {
             "fabrics": [fabric.name[:3]],
@@ -1707,9 +1706,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         fabric_class = factory.make_name()
         fabric = factory.make_Fabric(class_type=fabric_class)
         vlan = factory.make_VLAN(fabric=fabric)
-        interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, vlan=vlan)
         factory.make_Node()
         constraints = {
             "fabric_classes": [fabric_class[:3]],
@@ -1718,9 +1716,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
 
     def test_substring_vlans_filter(self):
         vlan = factory.make_VLAN(name=factory.make_name())
-        interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, vlan=vlan)
         factory.make_Node()
         constraints = {
             "vlans": [vlan.name[:3]],
@@ -1748,9 +1745,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
     def test_substring_spaces_filter(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(name=factory.make_name(), space=space)
-        interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, vlan=vlan)
         factory.make_Node()
         constraints = {
             "spaces": [space.name[:3]],
@@ -1777,9 +1773,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
 
     def test_substring_subnet_filter(self):
         subnet = factory.make_Subnet()
-        interface = factory.make_Interface(subnet=subnet)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, subnet=subnet)
         factory.make_Node()
         constraints = {
             "subnets": [str(subnet.cidr)[:3]],
@@ -1789,9 +1784,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
     def test_substring_ip_addresses_filter(self):
         subnet = factory.make_Subnet()
         ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
-        interface = factory.make_Interface(subnet=subnet, ip=ip)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(node=node1, subnet=subnet, ip=ip)
         factory.make_Node()
         constraints = {
             "ip_addresses": [str(subnet.cidr)[:3]],
@@ -1808,10 +1802,9 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         tags = [factory.make_name("tag") for _ in range(3)]
         nodes = [factory.make_Machine() for _ in range(3)]
         ifaces = [
-            factory.make_Interface(tags=[tags[i]], ip=ips[i]) for i in range(3)
+            factory.make_Interface(node=nodes[i], tags=[tags[i]], ip=ips[i])
+            for i in range(3)
         ]
-        for node, iface in zip(nodes, ifaces):
-            node.current_config.interface_set.add(iface)
         self.assertConstrainedNodes(
             [nodes[0]], {"interfaces": f"name={ifaces[0].name}"}
         )
@@ -1898,9 +1891,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
 
     def test_substring_mac_addresses_filter(self):
         mac_address = factory.make_mac_address()
-        interface = factory.make_Interface(mac_address=mac_address)
         node1 = factory.make_Node()
-        node1.current_config.interface_set.add(interface)
+        factory.make_Interface(mac_address=mac_address, node=node1)
         factory.make_Node()
         constraints = {
             "mac_address": [str(mac_address)[:4]],
@@ -1915,6 +1907,41 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
             "agent_name": name,
         }
         self.assertConstrainedNodes([node1], constraints)
+
+    def test_srvio(self):
+        node1 = factory.make_Machine()
+        node2 = factory.make_Machine(interface=True)
+        factory.make_Interface(sriov_max_vf=2, node=node1)
+        self.assertConstrainedNodes(
+            [node1],
+            {
+                "sriov_support": True,
+            },
+        )
+        self.assertConstrainedNodes(
+            [node2],
+            {
+                "sriov_support": False,
+            },
+        )
+
+    def test_numa_nodes_count(self):
+        node1 = factory.make_Machine()
+        factory.make_NUMANode(node=node1)
+        node2 = factory.make_Machine()
+        self.assertConstrainedNodes(
+            [node1],
+            {
+                "numa_nodes_count": [2],
+            },
+        )
+        # default NUMA node
+        self.assertConstrainedNodes(
+            [node2],
+            {
+                "numa_nodes_count": [1],
+            },
+        )
 
     def test_substring_description_filter(self):
         desc = factory.make_unicode_string(size=30, spaces=True)

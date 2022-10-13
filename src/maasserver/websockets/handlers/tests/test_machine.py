@@ -6556,6 +6556,27 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "dynamic": True,
                     "for_grouping": True,
                 },
+                {
+                    "key": "numa_nodes_count",
+                    "label": "NUMA nodes Count",
+                    "type": "list[int]",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "not_numa_nodes_count",
+                    "label": "NUMA nodes Count",
+                    "type": "list[int]",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "sriov_support",
+                    "label": "SR-IOV support",
+                    "type": "bool",
+                    "dynamic": False,
+                    "for_grouping": False,
+                },
             ],
             handler.filter_groups({}),
         )
@@ -6743,6 +6764,27 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertCountEqual(
             [v["label"] for v in result],
             [choice[1] for choice in SIMPLIFIED_NODE_STATUS_CHOICES],
+        )
+
+    def test_filter_options_sriov(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "sriov_support"})
+        self.assertCountEqual(
+            [v["label"] for v in result],
+            ["True", "False"],
+        )
+
+    def test_filter_options_numa_nodes_count(self):
+        user = factory.make_User()
+        factory.make_Machine()
+        node1 = factory.make_Machine()
+        factory.make_NUMANode(node=node1)
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "numa_nodes_count"})
+        self.assertCountEqual(
+            [v["label"] for v in result],
+            ["1", "2"],
         )
 
     def test_filter_options_interfaces_unique_values(self):

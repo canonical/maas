@@ -13,6 +13,7 @@ import attr
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Model, Q
+from django.forms import NullBooleanField
 from django.forms.fields import Field
 from netaddr import IPAddress
 
@@ -633,6 +634,7 @@ STATIC_FILTER_FIELDS = (
     "power_state",
     "simple_status",
     "status",
+    "sriov_support",
 )
 
 
@@ -661,6 +663,8 @@ def get_field_argument_type(field):
         return "int"
     elif isinstance(field, (forms.CharField,)):
         return "str"
+    elif isinstance(field, (forms.BooleanField, forms.NullBooleanField)):
+        return "bool"
     elif isinstance(field, (TypedMultipleChoiceField)):
         ftype = "str" if field.coerce is str_or_none else field.coerce.__name__
         return f"list[{ftype}]"
@@ -1542,6 +1546,30 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         },
     )
 
+    numa_nodes_count = UnconstrainedTypedMultipleChoiceField(
+        label="NUMA nodes Count",
+        coerce=int,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid number: number of NUMA nodes required."
+        },
+    )
+
+    not_numa_nodes_count = UnconstrainedTypedMultipleChoiceField(
+        label="NUMA nodes Count",
+        coerce=int,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid number: number of NUMA nodes required."
+        },
+    )
+
+    sriov_support = NullBooleanField(
+        label="SR-IOV support",
+        required=False,
+        help_text="Whether the machine support SR-IOV",
+    )
+
     not_physical_disk_count = UnconstrainedTypedMultipleChoiceField(
         label="Physical disk Count",
         coerce=int,
@@ -1660,6 +1688,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "mem": ("memory", _match_any),
         "physical_disk_count": ("physical_disk_count", _match_any),
         "total_storage": ("total_storage", _match_any),
+        "numa_nodes_count": ("numa_nodes_count", _match_any),
     }
 
     FREETEXT_EXCLUDES = {
@@ -1720,6 +1749,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "not_mem": ("memory", _match_any),
         "not_physical_disk_count": ("physical_disk_count", _match_any),
         "not_total_storage": ("total_storage", _match_any),
+        "not_numa_nodes_count": ("numa_nodes_count", _match_any),
     }
 
     def __init__(self, **kwargs):
@@ -1917,5 +1947,8 @@ class FreeTextFilterNodeForm(ReadNodesForm):
 
     def _apply_filters(self, nodes):
         nodes = super()._apply_filters(nodes)
+        sriov = self.cleaned_data.get("sriov_support", None)
+        if sriov is not None:
+            nodes = nodes.filter(sriov_support=sriov)
         nodes = self._free_text_search(nodes)
         return nodes.distinct()

@@ -1547,6 +1547,11 @@ class NodeHandler(TimestampedModelHandler):
                         {"key": choice[0], "label": choice[1]}
                         for choice in sorted(POWER_STATE_CHOICES)
                     ]
+                elif key == "sriov_support":
+                    return [
+                        {"key": choice, "label": str(choice)}
+                        for choice in (True, False)
+                    ]
             else:
                 return self._get_dynamic_filter_options(key)
 

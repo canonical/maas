@@ -172,6 +172,12 @@ class MachineHandler(NodeHandler):
                     output_field=CharField(),
                 ),
                 simple_status=_build_simple_status_q(),
+                numa_nodes_count=Count("numanode", distinct=True),
+                sriov_support=Exists(
+                    Interface.objects.filter(
+                        node_config__node=OuterRef("pk"), sriov_max_vf__gt=0
+                    )
+                ),
             )
             .annotate(
                 status_event_type_description=Subquery(
@@ -188,12 +194,8 @@ class MachineHandler(NodeHandler):
                     .order_by("-created", "-id")
                     .values("description")[:1]
                 ),
-                numa_nodes_count=Count("numanode", distinct=True),
-                sriov_support=Exists(
-                    Interface.objects.filter(
-                        node_config__node=OuterRef("pk"), sriov_max_vf__gt=0
-                    )
-                ),
+                numa_nodes_count=F("numa_nodes_count"),
+                sriov_support=F("sriov_support"),
                 physical_disk_count=F("physical_disk_count"),
                 total_storage=F("storage"),
                 pxe_mac=F("pxe_mac"),
