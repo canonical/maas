@@ -82,7 +82,7 @@ def discover_and_sync_vmhost(vmhost, user):
         )
         discovered_pod = get_best_discovered_result(discovered)
     except Exception as error:
-        raise PodProblem(str(error))
+        raise PodProblem(str(error)) from error
 
     if discovered_pod is None:
         raise PodProblem(
@@ -118,7 +118,7 @@ async def discover_and_sync_vmhost_async(vmhost, user):
         )
         discovered_pod = get_best_discovered_result(discovered)
     except Exception as error:
-        raise PodProblem(str(error))
+        raise PodProblem(str(error)) from error
 
     if discovered_pod is None:
         raise PodProblem(

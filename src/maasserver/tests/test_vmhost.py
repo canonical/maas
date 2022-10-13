@@ -199,6 +199,7 @@ class TestDiscoverAndSyncVMHost(MAASServerTestCase):
             factory.make_User(),
         )
         self.assertEqual(str(exc), str(error))
+        self.assertIs(error.__cause__, exc)
 
 
 class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
@@ -274,6 +275,7 @@ class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
         except Exception as error:
             self.assertIsInstance(error, PodProblem)
             self.assertEqual(str(exc), str(error))
+            self.assertIs(error.__cause__, exc)
         else:
             self.fail("No exception raised")
 
