@@ -40,7 +40,6 @@ from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import CountQueries
 from maastesting.matchers import (
@@ -647,10 +646,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
 
     def test_GET_with_agent_name_filters_by_agent_name(self):
-        non_listed_machine = factory.make_Node(
-            agent_name=factory.make_name("agent_name")
-        )
-        ignore_unused(non_listed_machine)
+        factory.make_Node(agent_name=factory.make_name("other_agent_name"))
         agent_name = factory.make_name("agent-name")
         machine = factory.make_Node(agent_name=agent_name)
         parsed_result = self.get_json({"agent_name": agent_name})
@@ -683,10 +679,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual([], parsed_result)
 
     def test_GET_with_zone_filters_by_zone(self):
-        non_listed_machine = factory.make_Node(
-            zone=factory.make_Zone(name="twilight")
-        )
-        ignore_unused(non_listed_machine)
+        factory.make_Node(zone=factory.make_Zone(name="twilight"))
         zone = factory.make_Zone()
         machine = factory.make_Node(zone=zone)
         parsed_result = self.get_json({"zone": zone.name})

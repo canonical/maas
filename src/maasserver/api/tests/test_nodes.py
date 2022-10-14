@@ -26,7 +26,6 @@ from maasserver.exceptions import MAASAPIValidationError
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
 
 
@@ -299,10 +298,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         self.assertEqual(expected_msg, ex.messages)
 
     def test_node_list_with_agent_name_filters_by_agent_name(self):
-        non_listed_node = factory.make_Node(
-            agent_name=factory.make_name("agent_name")
-        )
-        ignore_unused(non_listed_node)
+        factory.make_Node(agent_name=factory.make_name("other_agent_name"))
         agent_name = factory.make_name("agent-name")
         node = factory.make_Node(agent_name=agent_name)
 
@@ -358,10 +354,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         )
 
     def test_node_list_with_zone_filters_by_zone(self):
-        non_listed_node = factory.make_Node(
-            zone=factory.make_Zone(name="twilight")
-        )
-        ignore_unused(non_listed_node)
+        factory.make_Node(zone=factory.make_Zone(name="twilight"))
         zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
 
@@ -580,10 +573,7 @@ class TestNodesAPI(APITestCase.ForUser):
         )
 
     def test_GET_with_agent_name_filters_by_agent_name(self):
-        non_listed_node = factory.make_Node(
-            agent_name=factory.make_name("agent_name")
-        )
-        ignore_unused(non_listed_node)
+        factory.make_Node(agent_name=factory.make_name("other_agent_name"))
         agent_name = factory.make_name("agent-name")
         node = factory.make_Node(agent_name=agent_name)
         response = self.client.get(
@@ -664,10 +654,7 @@ class TestNodesAPI(APITestCase.ForUser):
         )
 
     def test_GET_with_zone_filters_by_zone(self):
-        non_listed_node = factory.make_Node(
-            zone=factory.make_Zone(name="twilight")
-        )
-        ignore_unused(non_listed_node)
+        factory.make_Node(zone=factory.make_Zone(name="twilight"))
         zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         response = self.client.get(

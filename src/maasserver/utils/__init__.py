@@ -8,7 +8,6 @@ __all__ = [
     "build_absolute_uri",
     "find_rack_controller",
     "get_maas_user_agent",
-    "ignore_unused",
     "strip_domain",
     "synchronised",
 ]
@@ -27,15 +26,6 @@ from maasserver.config import RegionConfiguration
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL
 from provisioningserver.utils.version import get_running_version
-
-
-def ignore_unused(*args):
-    """Suppress warnings about unused variables.
-
-    This function does nothing.  Use it whenever you have deliberately
-    unused symbols: pass them to this function and lint checkers will no
-    longer consider them unused.
-    """
 
 
 def absolute_reverse(

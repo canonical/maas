@@ -46,7 +46,6 @@ from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import ignore_unused
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 
@@ -1435,8 +1434,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         patch_usable_architectures(self, [arch, wrong_arch])
         node_big = factory.make_Node(architecture=arch)
         node_big.tags.add(tag_big)
-        node_small = factory.make_Node(architecture=arch)
-        ignore_unused(node_small)
+        factory.make_Node(architecture=arch)
         node_big_other_arch = factory.make_Node(architecture=wrong_arch)
         node_big_other_arch.tags.add(tag_big)
         self.assertConstrainedNodes(

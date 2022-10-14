@@ -28,7 +28,6 @@ from maasserver.enum import NODE_TYPE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
-from maasserver.utils import ignore_unused
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
@@ -315,7 +314,7 @@ class TestEventsAPI(APITestCase.ForUser):
 
         agent_name2 = factory.make_name("agent-name")
         node2 = factory.make_Node(agent_name=agent_name2)
-        node2_events = make_events(node=node2)
+        make_events(node=node2)
 
         # Request events relating to node1's agent.
         response = self.client.get(
@@ -333,14 +332,12 @@ class TestEventsAPI(APITestCase.ForUser):
         )
         self.assertEqual(parsed_result["count"], len(node1_events))
 
-        ignore_unused(node2_events)
-
     def test_GET_query_with_agent_name_filters_with_empty_string(self):
         node1 = factory.make_Node(agent_name="")
         node1_events = make_events(node=node1)
 
         node2 = factory.make_Node(agent_name=factory.make_name("agent-name"))
-        node2_events = make_events(node=node2)
+        make_events(node=node2)
 
         # Request events relating to node1's agent, the empty string.
         response = self.client.get(
@@ -357,8 +354,6 @@ class TestEventsAPI(APITestCase.ForUser):
             extract_event_ids(parsed_result),
         )
         self.assertEqual(parsed_result["count"], len(node1_events))
-
-        ignore_unused(node2_events)
 
     def test_GET_query_without_agent_name_does_not_filter(self):
         nodes = [
@@ -427,7 +422,7 @@ class TestEventsAPI(APITestCase.ForUser):
 
         zone2 = factory.make_Zone(name="zone2")
         node2 = factory.make_Node(zone=zone2)
-        node2_events = make_events(node=node2)
+        make_events(node=node2)
 
         response = self.client.get(
             reverse("events_handler"),
@@ -440,8 +435,6 @@ class TestEventsAPI(APITestCase.ForUser):
             extract_event_ids(parsed_result),
         )
         self.assertEqual(len(node1_events), parsed_result["count"])
-
-        ignore_unused(node2_events)
 
     def test_GET_query_with_limit_limits_with_most_recent_events(self):
         test_limit = randint(4, 8)
