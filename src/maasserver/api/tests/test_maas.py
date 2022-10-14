@@ -40,6 +40,7 @@ FORBIDDEN_NAMES = {
     "rpc_shared_secret",
     "tls_port",
     "uuid",
+    "vault_enabled",
 }
 
 

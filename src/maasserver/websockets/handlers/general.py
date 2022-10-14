@@ -69,6 +69,7 @@ class GeneralHandler(Handler):
             "target_version",
             "tls_certificate",
             "version",
+            "vault_enabled",
         ]
 
     def architectures(self, params):
@@ -279,3 +280,7 @@ class GeneralHandler(Handler):
             "expiration": dehydrate_datetime(cert.expiration()),
             "fingerprint": cert.cert_hash(),
         }
+
+    def vault_enabled(self, params):
+        """Tells whether Vault integration is enabled or not"""
+        return Config.objects.get_config("vault_enabled", False)

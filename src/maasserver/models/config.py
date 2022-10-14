@@ -143,6 +143,7 @@ def get_default_config():
         "tls_port": None,
         "tls_cert_expiration_notification_enabled": False,
         "tls_cert_expiration_notification_interval": 30,
+        "vault_enabled": False,
         # Windows settings
         "windows_kms_host": None,
     }

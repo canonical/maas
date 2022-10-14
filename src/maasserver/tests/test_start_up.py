@@ -8,6 +8,7 @@ from testtools.matchers import HasLength
 
 from maasserver import deprecations, eventloop, locks, start_up
 from maasserver.models.config import Config
+from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
@@ -229,3 +230,21 @@ class TestInnerStartUp(MAASServerTestCase):
         region = RegionController.objects.first()
         self.assertEqual(region.version, "1:3.1.0-1234-g.deadbeef")
         self.assertEqual(region.info.install_type, "deb")
+
+    def test_sets_vault_flag_disabled(self):
+        self.patch(start_up, "get_region_vault_client").return_value = None
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+
+        region = RegionController.objects.first()
+        controller = ControllerInfo.objects.get(node_id=region.id)
+        self.assertFalse(controller.vault_configured)
+
+    def test_sets_vault_flag_enabled(self):
+        self.patch(start_up, "get_region_vault_client").return_value = object()
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+
+        region = RegionController.objects.first()
+        controller = ControllerInfo.objects.get(node_id=region.id)
+        self.assertTrue(controller.vault_configured)

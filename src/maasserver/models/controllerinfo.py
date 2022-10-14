@@ -9,6 +9,7 @@ import re
 from typing import List, NamedTuple, Optional
 
 from django.db.models import (
+    BooleanField,
     CASCADE,
     CharField,
     Count,
@@ -149,6 +150,7 @@ class ControllerInfo(CleanSave, TimestampedModel):
     snap_cohort = CharField(max_length=255, blank=True, default="")
     snap_revision = CharField(max_length=255, blank=True, default="")
     snap_update_revision = CharField(max_length=255, blank=True, default="")
+    vault_configured = BooleanField(default=False)
 
     def __str__(self):
         return f"{self.__class__.__name__} ({self.node.hostname})"

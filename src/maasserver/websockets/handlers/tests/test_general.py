@@ -420,3 +420,20 @@ class TestGeneralHandler(MAASServerTestCase):
         result = handler.tls_certificate({})
 
         self.assertIsNone(result)
+
+    def test_vault_enabled(self):
+        Config.objects.set_config("vault_enabled", True)
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.vault_enabled({})
+        self.assertTrue(result)
+
+    def test_vault_disabled(self):
+        Config.objects.set_config("vault_enabled", False)
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.vault_enabled({})
+        self.assertFalse(result)
+
+    def test_vault_not_specified(self):
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.vault_enabled({})
+        self.assertFalse(result)

@@ -115,6 +115,7 @@ class ControllerHandler(NodeHandler):
             "dns_process",
             "managing_process",
             "current_config",
+            "vault_configured",
         ]
         list_fields = [
             "id",
@@ -126,6 +127,7 @@ class ControllerHandler(NodeHandler):
             "last_image_sync",
             "cpu_count",
             "cpu_speed",
+            "vault_configured",
         ]
         listen_channels = ["controller"]
         create_permission = NodePermission.admin
@@ -188,6 +190,7 @@ class ControllerHandler(NodeHandler):
                 "service_ids": [
                     service.id for service in obj.service_set.all()
                 ],
+                "vault_configured": self.dehydrate_vault_flag(obj.info),
             }
         )
         if not for_list:
@@ -243,6 +246,12 @@ class ControllerHandler(NodeHandler):
     def dehydrate_show_os_info(self, obj):
         """Always show the OS information for controllers in the UI."""
         return True
+
+    def dehydrate_vault_flag(self, info):
+        if not info:
+            return False
+
+        return info.vault_configured
 
     def preprocess_form(self, action, params):
         params.update(self.preprocess_node_form(action, params))

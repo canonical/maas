@@ -522,3 +522,51 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             output["vlans_ha"]["false"], 2
         )  # default interface and the one linked to vlan2
+
+    def test_vault_flag_returned_true(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        region = factory.make_RegionRackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
+            },
+            cohort="abc123",
+        )
+        ControllerInfo.objects.set_versions_info(region, versions)
+        ControllerInfo.objects.filter(node=region).update(
+            vault_configured=True
+        )
+
+        list_results = handler.list({})
+        self.assertTrue(list_results[0]["vault_configured"])
+
+    def test_vault_flag_returned_false(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        region = factory.make_RegionRackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
+            },
+            cohort="abc123",
+        )
+        ControllerInfo.objects.set_versions_info(region, versions)
+        ControllerInfo.objects.filter(node=region).update(
+            vault_configured=False
+        )
+
+        list_results = handler.list({})
+        self.assertFalse(list_results[0]["vault_configured"])

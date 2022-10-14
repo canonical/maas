@@ -32,6 +32,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.vault import get_region_vault_client
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -123,6 +124,10 @@ def inner_start_up(master=False):
     node = RegionController.objects.get_or_create_running_controller()
     # Update region version
     ControllerInfo.objects.set_versions_info(node, get_versions_info())
+    # Sets the flag if Vault was configured.
+    ControllerInfo.objects.filter(node_id=node.id).update(
+        vault_configured=bool(get_region_vault_client())
+    )
     # Ensure the UUID is available, and set it to the local file
     MAAS_UUID.set(ensure_uuid_in_config())
 
