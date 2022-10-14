@@ -14,12 +14,12 @@ export MAAS_RAND_SEED PYTHONHASHSEED
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
-bin/test.parallel --subprocess-per-core --emit-subunit | \
+bin/test.parallel --emit-subunit | \
     bin/subunit-1to2 | \
     bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
     bin/subunit2pyunit --no-passthrough
 res1=$?
 DBUPGRADE_ARGS='-v 0' bin/database --preserve run -- make syncdb
-bin/database run -- bin/pytest -n auto --junit-xml=junit-pytest.xml
+bin/database run -- bin/pytest -n auto --maxprocesses=6 --dist=loadscope --junit-xml=junit-pytest.xml
 res2=$?
 exit $((res1 + res2))
