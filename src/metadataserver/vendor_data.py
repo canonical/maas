@@ -229,7 +229,7 @@ def generate_kvm_pod_configuration(node):
             "lxd init --auto --network-address=[::]",
             f"lxc project create {maas_project}",
             f"sh -c 'lxc project edit {maas_project} <{project_conf_file}'",
-            f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
+            f"lxc config trust add {cert_file}",
             f"rm {cert_file} {project_conf_file}",
         ]
 
@@ -293,12 +293,13 @@ def generate_kvm_pod_configuration(node):
         ]
 
     secret_manager = SecretManager()
+    node = node.as_node()
     if deploy_secrets:
         secret_manager.set_composite_secret(
             "deploy-metadata", deploy_secrets, obj=node
         )
     else:
-        secret_manager.delete_secret("deploy-metadata", obj=node.as_node())
+        secret_manager.delete_secret("deploy-metadata", obj=node)
 
     if arch == "ppc64el":
         rc_script = dedent(

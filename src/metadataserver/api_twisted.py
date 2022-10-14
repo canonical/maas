@@ -185,13 +185,14 @@ POD_CREATION_ERROR = (
 
 
 def _create_vmhost_for_deployment(node):
+    node = node.as_node()  # ensure a Node instance is passed
     secret_manager = SecretManager()
     deploy_secrets = secret_manager.get_composite_secret(
         "deploy-metadata",
         obj=node,
         default={},
     )
-    secret_manager.delete_secret("deploy-metadata", obj=node.as_node())
+    secret_manager.delete_secret("deploy-metadata", obj=node)
 
     # ensure only specified VM host types are registered
     if not node.register_vmhost:

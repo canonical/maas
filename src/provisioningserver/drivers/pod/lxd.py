@@ -875,7 +875,7 @@ class LXDPodDriver(PodDriver):
                 try:
                     client.authenticate(password)
                 except LXDAPIException as e:
-                    raise Error(f"Password authentication failed: {e}")
+                    raise Error(f"Password authentication failed: {e}") from e
             return client
 
         try:
@@ -898,10 +898,10 @@ class LXDPodDriver(PodDriver):
                 raise Error(
                     "Certificate is not trusted and no password was given"
                 )
-        except ClientConnectionFailed:
+        except ClientConnectionFailed as e:
             raise LXDPodError(
-                f"Pod {pod_id}: Failed to connect to the LXD REST API."
-            )
+                f"Pod {pod_id}: Failed to connect to the LXD REST API: {e}"
+            ) from e
         else:
             yield client
         finally:
