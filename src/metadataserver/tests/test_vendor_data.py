@@ -450,7 +450,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                         "lxd init --auto --network-address=[::]",
                         "lxc project create maas",
                         "sh -c 'lxc project edit maas </root/maas-project.yaml'",
-                        "lxc config trust add /root/lxd.crt --restricted --projects maas",
+                        "lxc config trust add /root/lxd.crt",
                         "rm /root/lxd.crt /root/maas-project.yaml",
                     ],
                 ),
