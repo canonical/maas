@@ -56,7 +56,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maastesting import get_testing_timeout
-from maastesting.matchers import MockCalledOnce, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -660,7 +659,7 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_RegionRackController()
         mock = self.patch(requests_module, "get")
         make_maas_user_agent_request()
-        self.assertThat(mock, MockCalledOnce())
+        mock.assert_called_once()
 
     def test_get_custom_static_images_uploaded_stats(self):
         for _ in range(0, 2):
@@ -801,10 +800,6 @@ class FakeRequest:
 
 
 class TestGetBrownfieldStats(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        load_builtin_scripts()
-
     def _make_brownfield_machine(self):
         admin = factory.make_admin()
         # Use the form to create the brownfield node, so that it gets
@@ -856,11 +851,11 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         commissioning_result.store_result(exit_status=0)
 
     def test_added_deployed(self):
-        for _ in range(5):
-            machine = self._make_brownfield_machine()
-            machine.bmc = factory.make_BMC()
-            machine.save()
-        for _ in range(9):
+        machine = self._make_brownfield_machine()
+        machine.bmc = factory.make_BMC()
+        machine.save()
+        for _ in range(2):
+
             machine = self._make_brownfield_machine()
             machine.bmc = None
             machine.save()
@@ -880,14 +875,14 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         self.assertNotIn(controller, brownfield_machines)
         self.assertNotIn(pod, brownfield_machines)
         stats = get_brownfield_stats()
-        self.assertEqual(5, stats["machines_added_deployed_with_bmc"])
-        self.assertEqual(9, stats["machines_added_deployed_without_bmc"])
+        self.assertEqual(1, stats["machines_added_deployed_with_bmc"])
+        self.assertEqual(2, stats["machines_added_deployed_without_bmc"])
 
     def test_commission_after_deploy_brownfield(self):
-        for _ in range(5):
-            self._update_commissioning(self._make_brownfield_machine())
+        load_builtin_scripts()
+        self._update_commissioning(self._make_brownfield_machine())
         self._make_brownfield_machine()
-        for _ in range(9):
+        for _ in range(2):
             self._update_commissioning(self._make_normal_deployed_machine())
         self._make_normal_deployed_machine()
         # If pods and controllers are registered in MAAS, that don't
@@ -897,8 +892,8 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         self._make_pod_machine()
         factory.make_Controller()
         stats = get_brownfield_stats()
-        self.assertEqual(5, stats["commissioned_after_deploy_brownfield"])
-        self.assertEqual(9, stats["commissioned_after_deploy_no_brownfield"])
+        self.assertEqual(1, stats["commissioned_after_deploy_brownfield"])
+        self.assertEqual(2, stats["commissioned_after_deploy_no_brownfield"])
 
 
 class TestGetSubnetsUtilisationStats(MAASServerTestCase):
@@ -1137,7 +1132,7 @@ class TestStatsServiceAsync(MAASTransactionServerTestCase):
         )
         maybe_make_stats_request().wait(TIMEOUT)
 
-        self.assertThat(mock_call, MockCalledOnce())
+        mock_call.assert_called_once()
 
     def test_maybe_make_stats_request_doesnt_make_request(self):
         mock_call = self.patch(stats, "make_maas_user_agent_request")
@@ -1151,4 +1146,4 @@ class TestStatsServiceAsync(MAASTransactionServerTestCase):
         )
         maybe_make_stats_request().wait(TIMEOUT)
 
-        self.assertThat(mock_call, MockNotCalled())
+        mock_call.assert_not_called()
