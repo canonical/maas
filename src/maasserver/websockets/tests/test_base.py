@@ -1135,32 +1135,73 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
         self.assertEqual(output, result)
 
     def test_group_items_with_none(self):
-        nodes_ready = [
+        for _ in range(4):
             factory.make_Node(status=NODE_STATUS.READY, power_type=None)
-            for _ in range(3)
-        ]
-
+        for _ in range(4):
+            factory.make_Node(status=NODE_STATUS.READY, power_type="manual")
         handler = self.make_nodes_handler(fields=["hostname", "status"])
-        result = handler.list({"group_key": "bmc__power_type"})
 
-        output = {
-            "count": 3,
-            "cur_page": 1,
-            "num_pages": 1,
-            "groups": [
-                {
-                    "name": "None",
-                    "value": None,
-                    "count": 3,
-                    "collapsed": False,
-                    "items": [
-                        {"hostname": n.hostname, "status": n.status}
-                        for n in nodes_ready
-                    ],
-                },
-            ],
-        }
-        self.assertEqual(output, result)
+        # [MMM] M----
+        result = handler.list(
+            {
+                "group_key": "bmc__power_type",
+                "page_size": 3,
+                "page_number": 1,
+            }
+        )
+        self.assertEqual(1, len(result["groups"]))
+        self.assertEqual("manual", result["groups"][0]["name"])
+        self.assertEqual("manual", result["groups"][0]["value"])
+
+        # [MMMM-] ---
+        result = handler.list(
+            {
+                "group_key": "bmc__power_type",
+                "page_size": 5,
+                "page_number": 1,
+            }
+        )
+        self.assertEqual(2, len(result["groups"]))
+        self.assertEqual("manual", result["groups"][0]["name"])
+        self.assertEqual("None", result["groups"][1]["name"])
+        self.assertEqual(None, result["groups"][1]["value"])
+
+        # MMM [M--] --
+        result = handler.list(
+            {
+                "group_key": "bmc__power_type",
+                "page_size": 3,
+                "page_number": 2,
+            }
+        )
+        self.assertEqual(2, len(result["groups"]))
+        self.assertEqual("manual", result["groups"][0]["name"])
+        self.assertEqual("None", result["groups"][1]["name"])
+        self.assertEqual(None, result["groups"][1]["value"])
+
+        # MMMM [----]
+        result = handler.list(
+            {
+                "group_key": "bmc__power_type",
+                "page_size": 4,
+                "page_number": 2,
+            }
+        )
+        self.assertEqual(1, len(result["groups"]))
+        self.assertEqual("None", result["groups"][0]["name"])
+        self.assertEqual(None, result["groups"][0]["value"])
+
+        # MMMM- [---]
+        result = handler.list(
+            {
+                "group_key": "bmc__power_type",
+                "page_size": 5,
+                "page_number": 2,
+            }
+        )
+        self.assertEqual(1, len(result["groups"]))
+        self.assertEqual("None", result["groups"][0]["name"])
+        self.assertEqual(None, result["groups"][0]["value"])
 
     def test_group_suppresion(self):
         nodes_ready = [

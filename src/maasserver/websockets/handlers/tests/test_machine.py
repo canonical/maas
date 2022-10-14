@@ -7002,6 +7002,75 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             result["groups"][1]["count"],
         )
 
+    def test_group_parent_pages_no_parent_first_pagelast(self):
+        # On the first page, the last machine does not have a parent.
+        admin = factory.make_admin()
+        parent = factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin, parent=parent)
+        factory.make_Machine(owner=admin, parent=parent)
+        handler = MachineHandler(admin, {}, None)
+        handler.list(
+            {
+                "group_key": "parent",
+                "page_size": 2,
+                "page_number": 1,
+            }
+        )
+
+    def test_group_parent_pages_no_parent_previous_page_with_parent(self):
+        # On the second page, the top has no parent, previous page
+        # ended with a machine with a parent
+        admin = factory.make_admin()
+        parent = factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin, parent=parent)
+        factory.make_Machine(owner=admin, parent=parent)
+        handler = MachineHandler(admin, {}, None)
+        handler.list(
+            {
+                "group_key": "parent",
+                "page_size": 2,
+                "page_number": 2,
+            }
+        )
+
+    def test_group_parent_pages_with_parent_previous_page_with_parent_and_no_parent(
+        self,
+    ):
+        # On the second page, the top of the page has a parent, but there
+        # should machines with no parents included as well.
+        admin = factory.make_admin()
+        parent1 = factory.make_Machine(owner=admin)
+        parent2 = factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin, parent=parent1)
+        factory.make_Machine(owner=admin, parent=parent1)
+        factory.make_Machine(owner=admin, parent=parent1)
+        factory.make_Machine(owner=admin, parent=parent2)
+        handler = MachineHandler(admin, {}, None)
+        handler.list(
+            {
+                "group_key": "parent",
+                "page_size": 1,
+                "page_number": 2,
+            }
+        )
+
+    def test_group_parent_pages_no_parent_previous_page_without_parent(self):
+        # On the second page, the previous page ended with a machine
+        # without a parent.
+        admin = factory.make_admin()
+        factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin)
+        factory.make_Machine(owner=admin)
+        handler = MachineHandler(admin, {}, None)
+        handler.list(
+            {
+                "group_key": "parent",
+                "page_size": 2,
+                "page_number": 2,
+            }
+        )
+
     def test_group_zone(self):
         user = factory.make_User()
         zones = sorted(

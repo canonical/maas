@@ -17,7 +17,7 @@ from operator import attrgetter
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Model
+from django.db.models import Count, F, Model, Q
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -629,26 +629,31 @@ class Handler(metaclass=HandlerMetaclass):
                 return _get_id
 
             gid_getter = get_group_key(grp_expr)
-            qs_grouping = qs
+            qs_grouping = Q()
 
             if current_page.has_previous():
-                top_this_page = gid_getter(objs[0])
                 # start_index() is 1-based index
+                # None is always last, so there's nothing after
+                top_this_page = gid_getter(objs[0])
                 bottom_prev_page = gid_getter(
                     qs_list[(current_page.start_index() - 1) - 1]
                 )
-                cmp = "gte" if top_this_page == bottom_prev_page else "gt"
-                qs_grouping = qs_grouping.filter(
-                    **{f"{grp_expr}__{cmp}": bottom_prev_page}
-                )
+                if bottom_prev_page is None:
+                    qs_grouping &= Q(**{f"{grp_expr}__isnull": True})
+                else:
+                    cmp = "gte" if top_this_page == bottom_prev_page else "gt"
+                    qs_grouping &= Q(
+                        **{f"{grp_expr}__{cmp}": bottom_prev_page}
+                    ) | Q(**{f"{grp_expr}__isnull": True})
+
             if current_page.has_next():
                 bottom_this_page = gid_getter(objs[-1])
-                qs_grouping = qs_grouping.filter(
-                    **{f"{grp_expr}__lte": bottom_this_page}
-                )
+                if bottom_this_page is not None:
+                    qs_grouping &= Q(**{f"{grp_expr}__lte": bottom_this_page})
 
             groups_visible = (
-                qs_grouping.values(**{"grp_id": F(grp_expr)})
+                qs.filter(qs_grouping)
+                .values(**{"grp_id": F(grp_expr)})
                 .annotate(total=Count(self._meta.batch_key, distinct=True))
                 .order_by(grp_expr)
             )
