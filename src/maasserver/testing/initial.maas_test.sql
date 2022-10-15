@@ -6822,7 +6822,8 @@ CREATE TABLE public.maasserver_controllerinfo (
     snap_update_revision character varying(255) NOT NULL,
     update_origin character varying(255) NOT NULL,
     update_version character varying(255) NOT NULL,
-    update_first_reported timestamp with time zone
+    update_first_reported timestamp with time zone,
+    vault_configured boolean NOT NULL
 );
 
 
@@ -11210,6 +11211,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 336	maasserver	0285_migrate_external_auth_secrets	2022-10-06 11:12:27.640004+00
 337	metadataserver	0033_remove_nodekey_key	2022-10-07 06:51:34.349659+00
 338	maasserver	0286_node_deploy_metadata	2022-10-11 03:29:32.800937+00
+339	maasserver	0287_add_controller_info_vault_flag	2022-10-15 03:29:44.399652+00
 \.
 
 
@@ -11322,7 +11324,7 @@ COPY public.maasserver_config (id, name, value) FROM stdin;
 -- Data for Name: maasserver_controllerinfo; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_controllerinfo (created, updated, node_id, version, install_type, snap_cohort, snap_revision, snap_update_revision, update_origin, update_version, update_first_reported) FROM stdin;
+COPY public.maasserver_controllerinfo (created, updated, node_id, version, install_type, snap_cohort, snap_revision, snap_update_revision, update_origin, update_version, update_first_reported, vault_configured) FROM stdin;
 \.
 
 
@@ -12018,7 +12020,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 338, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 339, true);
 
 
 --
