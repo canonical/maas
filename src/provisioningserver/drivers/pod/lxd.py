@@ -388,7 +388,7 @@ class LXDPodDriver(PodDriver):
         pools = []
         local_storage = 0
         for storage_pool in storage_pools:
-            discovered_storage_pool = self._get_discovered_pod_storage_pool(
+            discovered_storage_pool = self._get_discovered_storage_pool(
                 storage_pool
             )
             local_storage += discovered_storage_pool.storage
@@ -805,11 +805,12 @@ class LXDPodDriver(PodDriver):
             location=machine.location,
         )
 
-    def _get_discovered_pod_storage_pool(self, storage_pool):
-        """Get the Pod storage pool."""
-        storage_pool_config = storage_pool.config
-        # Sometimes the config is empty, use get() method on the dictionary in case.
-        storage_pool_path = storage_pool_config.get("source")
+    def _get_discovered_storage_pool(self, storage_pool):
+        """Get storage pool info by name."""
+        # Storage configuration can either be empty or None (if credentials are
+        # restricted to a project)
+        storage_pool_config = storage_pool.config or {}
+        storage_pool_path = storage_pool_config.get("source", "")
         storage_pool_resources = storage_pool.resources.get()
         total_storage = storage_pool_resources.space["total"]
 
