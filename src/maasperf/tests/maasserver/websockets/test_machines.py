@@ -7,7 +7,17 @@ from maastesting.perftest import perf_test, profile
 
 @perf_test(db_only=True)
 def test_perf_list_machines_Websocket_endpoint(admin):
-    ws_handler = MachineHandler(admin, {}, None)
-
     with profile("test_perf_list_machines_Websocket_endpoint"):
-        ws_handler.list({})
+        ws_handler = MachineHandler(admin, {}, None)
+        # Extracted from a clean load of labmaas with empty local
+        # storage
+        params = {
+            "filter": {},
+            "group_collapsed": [],
+            "group_key": "status",
+            "page_number": 1,
+            "page_size": 50,
+            "sort_direction": "descending",
+            "sort_key": "hostname",
+        }
+        ws_handler.list(params)

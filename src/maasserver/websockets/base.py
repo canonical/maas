@@ -608,8 +608,7 @@ class Handler(metaclass=HandlerMetaclass):
         )
         current_page = pager.get_page(params.get("page_number", 1))
 
-        objs = list(current_page)
-        self._cache_pks(objs)
+        self._cache_pks(current_page)
 
         result = {
             "count": qs.count(),
@@ -634,20 +633,20 @@ class Handler(metaclass=HandlerMetaclass):
             if current_page.has_previous():
                 # start_index() is 1-based index
                 # None is always last, so there's nothing after
-                top_this_page = gid_getter(objs[0])
                 bottom_prev_page = gid_getter(
                     qs_list[(current_page.start_index() - 1) - 1]
                 )
                 if bottom_prev_page is None:
                     qs_grouping &= Q(**{f"{grp_expr}__isnull": True})
                 else:
+                    top_this_page = gid_getter(current_page[0])
                     cmp = "gte" if top_this_page == bottom_prev_page else "gt"
                     qs_grouping &= Q(
                         **{f"{grp_expr}__{cmp}": bottom_prev_page}
                     ) | Q(**{f"{grp_expr}__isnull": True})
 
             if current_page.has_next():
-                bottom_this_page = gid_getter(objs[-1])
+                bottom_this_page = gid_getter(current_page[-1])
                 if bottom_this_page is not None:
                     qs_grouping &= Q(**{f"{grp_expr}__lte": bottom_this_page})
 
@@ -668,7 +667,7 @@ class Handler(metaclass=HandlerMetaclass):
                     grp_id in collapsed,
                 )
 
-            for obj in objs:
+            for obj in current_page:
                 grp_id = gid_getter(obj)
                 groups[grp_id]["items"].append(
                     self.full_dehydrate(obj, for_list=True)
@@ -677,7 +676,7 @@ class Handler(metaclass=HandlerMetaclass):
         else:
             grp = new_grp(None, None, result["count"], False)
             grp["items"] = [
-                self.full_dehydrate(obj, for_list=True) for obj in objs
+                self.full_dehydrate(obj, for_list=True) for obj in current_page
             ]
             result["groups"] = [grp]
 
