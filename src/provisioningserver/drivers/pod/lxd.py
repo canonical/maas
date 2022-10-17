@@ -391,7 +391,7 @@ class LXDPodDriver(PodDriver):
         pools = []
         local_storage = 0
         for storage_pool in storage_pools:
-            discovered_storage_pool = self._get_discovered_pod_storage_pool(
+            discovered_storage_pool = self._get_discovered_storage_pool(
                 storage_pool
             )
             local_storage += discovered_storage_pool.storage
@@ -803,11 +803,12 @@ class LXDPodDriver(PodDriver):
             location=machine.location,
         )
 
-    def _get_discovered_pod_storage_pool(self, storage_pool):
-        """Get the Pod storage pool."""
-        storage_pool_config = storage_pool.config
-        # Sometimes the config is empty, use get() method on the dictionary in case.
-        storage_pool_path = storage_pool_config.get("source")
+    def _get_discovered_storage_pool(self, storage_pool):
+        """Get storage pool info by name."""
+        # Storage configuration can either be empty or None (if credentials are
+        # restricted to a project)
+        storage_pool_config = storage_pool.config or {}
+        storage_pool_path = storage_pool_config.get("source", "")
         storage_pool_resources = storage_pool.resources.get()
         total_storage = storage_pool_resources.space["total"]
 
@@ -875,7 +876,7 @@ class LXDPodDriver(PodDriver):
                 try:
                     client.authenticate(password)
                 except LXDAPIException as e:
-                    raise Error(f"Password authentication failed: {e}")
+                    raise Error(f"Password authentication failed: {e}") from e
             return client
 
         try:
@@ -898,10 +899,10 @@ class LXDPodDriver(PodDriver):
                 raise Error(
                     "Certificate is not trusted and no password was given"
                 )
-        except ClientConnectionFailed:
+        except ClientConnectionFailed as e:
             raise LXDPodError(
-                f"Pod {pod_id}: Failed to connect to the LXD REST API."
-            )
+                f"Pod {pod_id}: Failed to connect to the LXD REST API: {e}"
+            ) from e
         yield client
         if cert_paths:
             for path in cert_paths:

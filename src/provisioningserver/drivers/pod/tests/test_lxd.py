@@ -721,12 +721,11 @@ class TestLXDPodDriver(MAASTestCase):
             ],
         )
 
-    def test_get_discovered_pod_storage_pool(self):
+    def test_get_discovered_storage_pool(self):
         mock_storage_pool = Mock()
         mock_storage_pool.name = factory.make_name("pool")
         mock_storage_pool.driver = "dir"
         mock_storage_pool.config = {
-            "size": "61203283968",
             "source": "/home/chb/mnt/l2/disks/default.img",
             "volume.size": "0",
             "zfs.pool_name": "default",
@@ -734,8 +733,8 @@ class TestLXDPodDriver(MAASTestCase):
         mock_resources = Mock()
         mock_resources.space = {"used": 207111192576, "total": 306027577344}
         mock_storage_pool.resources.get.return_value = mock_resources
-        discovered_pod_storage_pool = (
-            self.driver._get_discovered_pod_storage_pool(mock_storage_pool)
+        discovered_pod_storage_pool = self.driver._get_discovered_storage_pool(
+            mock_storage_pool
         )
         self.assertEqual(
             mock_storage_pool.name, discovered_pod_storage_pool.id
@@ -753,6 +752,35 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(
             mock_resources.space["total"], discovered_pod_storage_pool.storage
         )
+
+    def test_get_discovered_storage_pool_no_source(self):
+        mock_storage_pool = Mock()
+        mock_storage_pool.name = factory.make_name("pool")
+        mock_storage_pool.driver = "dir"
+        mock_storage_pool.config = {
+            "volume.size": "0",
+            "zfs.pool_name": "default",
+        }
+        mock_resources = Mock()
+        mock_resources.space = {"used": 207111192576, "total": 306027577344}
+        mock_storage_pool.resources.get.return_value = mock_resources
+        discovered_pod_storage_pool = self.driver._get_discovered_storage_pool(
+            mock_storage_pool
+        )
+        self.assertEqual(discovered_pod_storage_pool.path, "")
+
+    def test_get_discovered_storage_pool_no_config(self):
+        mock_storage_pool = Mock()
+        mock_storage_pool.name = factory.make_name("pool")
+        mock_storage_pool.driver = "dir"
+        mock_storage_pool.config = None
+        mock_resources = Mock()
+        mock_resources.space = {"used": 207111192576, "total": 306027577344}
+        mock_storage_pool.resources.get.return_value = mock_resources
+        discovered_pod_storage_pool = self.driver._get_discovered_storage_pool(
+            mock_storage_pool
+        )
+        self.assertEqual(discovered_pod_storage_pool.path, "")
 
     def test_get_discovered_machine(self):
         mock_machine = Mock()
