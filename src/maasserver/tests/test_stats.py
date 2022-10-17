@@ -44,6 +44,7 @@ from maasserver.stats import (
     get_request_params,
     get_storage_layouts_stats,
     get_tls_configuration_stats,
+    get_vault_stats,
     get_vm_hosts_stats,
     get_vmcluster_stats,
     get_workload_annotations_stats,
@@ -466,6 +467,9 @@ class TestMAASStats(MAASServerTestCase):
                 "user_created": {"lxd": 1, "virsh": 2},
                 "unknown": {},
             },
+            "vault": {
+                "enabled": False,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -643,6 +647,9 @@ class TestMAASStats(MAASServerTestCase):
                 "user_created": {},
                 "unknown": {},
             },
+            "vault": {
+                "enabled": False,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -792,6 +799,14 @@ class TestMAASStats(MAASServerTestCase):
             },
             get_tls_configuration_stats(),
         )
+
+    def test_get_vault_stats_vault_enabled(self):
+        Config.objects.set_config("vault_enabled", True)
+        self.assertEqual({"enabled": True}, get_vault_stats())
+
+    def test_get_vault_stats_vault_disabled(self):
+        Config.objects.set_config("vault_enabled", False)
+        self.assertEqual({"enabled": False}, get_vault_stats())
 
 
 class FakeRequest:

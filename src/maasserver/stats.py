@@ -431,6 +431,10 @@ def get_bmc_stats():
     return result
 
 
+def get_vault_stats():
+    return {"enabled": Config.objects.get_config("vault_enabled", False)}
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -481,6 +485,7 @@ def get_maas_stats():
         "storage_layouts": get_storage_layouts_stats(),
         "tls_configuration": get_tls_configuration_stats(),
         "bmcs": get_bmc_stats(),
+        "vault": get_vault_stats(),
     }
 
 
