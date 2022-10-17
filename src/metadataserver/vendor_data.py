@@ -229,7 +229,7 @@ def generate_kvm_pod_configuration(node):
             "lxd init --auto --network-address=[::]",
             f"lxc project create {maas_project}",
             f"sh -c 'lxc project edit {maas_project} <{project_conf_file}'",
-            f"lxc config trust add {cert_file}",
+            f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
             f"rm {cert_file} {project_conf_file}",
         ]
 
