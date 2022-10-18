@@ -1117,7 +1117,5 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
     """
     actions = (action_class(node, user, request) for action_class in classes)
     return OrderedDict(
-        (action.name, action)
-        for action in actions
-        if action.is_actionable() and action.is_permitted()
+        (action.name, action) for action in actions if action.is_actionable()
     )
