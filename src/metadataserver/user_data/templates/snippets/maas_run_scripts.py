@@ -321,7 +321,26 @@ def fetch_scripts(maas_url, metadata_url, paths, credentials):
         raise ExitError("No script returned")
 
     with tarfile.open(mode="r|*", fileobj=BytesIO(res.read())) as tar:
-        tar.extractall(str(paths.scripts))
+        def is_within_directory(directory, target):
+            
+            abs_directory = os.path.abspath(directory)
+            abs_target = os.path.abspath(target)
+        
+            prefix = os.path.commonprefix([abs_directory, abs_target])
+            
+            return prefix == abs_directory
+        
+        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+        
+            for member in tar.getmembers():
+                member_path = os.path.join(path, member.name)
+                if not is_within_directory(path, member_path):
+                    raise Exception("Attempted Path Traversal in Tar File")
+        
+            tar.extractall(path, members, numeric_owner=numeric_owner) 
+            
+        
+        safe_extract(tar, str(paths.scripts))
 
     with (paths.scripts / "index.json").open() as fd:
         data = json.load(fd)
