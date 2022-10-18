@@ -809,12 +809,11 @@ class LXDPodDriver(PodDriver):
         # Storage configuration can either be empty or None (if credentials are
         # restricted to a project)
         storage_pool_config = storage_pool.config or {}
-        storage_pool_path = storage_pool_config.get("source", "")
+        storage_pool_path = storage_pool_config.get("source", "Unknown")
         storage_pool_resources = storage_pool.resources.get()
         total_storage = storage_pool_resources.space["total"]
 
         return DiscoveredPodStoragePool(
-            # No ID's with LXD so we are just using the name as the ID.
             id=storage_pool.name,
             name=storage_pool.name,
             path=storage_pool_path,

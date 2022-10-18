@@ -809,7 +809,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_pod_storage_pool = self.driver._get_discovered_storage_pool(
             mock_storage_pool
         )
-        self.assertEqual(discovered_pod_storage_pool.path, "")
+        self.assertEqual(discovered_pod_storage_pool.path, "Unknown")
 
     def test_get_discovered_storage_pool_no_config(self):
         mock_storage_pool = Mock()
@@ -822,7 +822,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_pod_storage_pool = self.driver._get_discovered_storage_pool(
             mock_storage_pool
         )
-        self.assertEqual(discovered_pod_storage_pool.path, "")
+        self.assertEqual(discovered_pod_storage_pool.path, "Unknown")
 
     def test_get_discovered_machine(self):
         mock_machine = Mock()
