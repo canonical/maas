@@ -40,7 +40,7 @@ perf_tester = None
 
 
 class PerfTester:
-    """PerfTester is responsible for recording and comparing performance tests"""
+    """PerfTester is responsible for recording performance tests"""
 
     def __init__(self, git_branch, git_hash):
         self.results = {"branch": git_branch, "commit": git_hash, "tests": {}}
@@ -125,9 +125,11 @@ def profile(testname: str):
     This functions uses cProfile module to provide deterministic
     profiling data for tests. The overhead is reasonable, typically < 5%.
 
-    When enabled (MAAS_PROFILING is set in the environment) the profiling
-    data is written to a file called `<testname>.profile` in the current
-    directory. This file can be analized with external tools like `snakeviz`.
+    When enabled (MAAS_PROFILING is set in the environment) the
+    profiling data is written to a file called
+    `<testname>.$MAAS_PROFILING.profile` in the current
+    directory. This file can be analyzed with external tools like
+    `snakeviz`.
 
     Args:
         testname (str): name of the output file
@@ -137,9 +139,11 @@ def profile(testname: str):
         with perftest.profile("my_test_case"):
             <<block being profiled>>
     """
-    if os.getenv("MAAS_PROFILING") == "1":
+    if profiling_tag := os.environ.get("MAAS_PROFILING"):
         with Profile() as profiler:
             yield
-        profiler.dump_stats(f"{testname}.profile")
+        filename = f"{testname}.{profiling_tag}.profile"
+        profiler.dump_stats(filename)
+        print(f"Dumped stats to {filename}")
     else:
         yield
