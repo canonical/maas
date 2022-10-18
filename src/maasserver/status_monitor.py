@@ -177,7 +177,7 @@ def mark_nodes_failed_after_missing_script_timeout(now, node_timeout):
             # The node running the scripts checks if the script has run past
             # its time limit. The node will try to kill the script and move on
             # by signaling the region. If after 5 minutes past the timeout the
-            # region hasn't recieved the signal mark_failed and stop the node.
+            # region hasn't received the signal mark_failed and stop the node.
             script_expires = (
                 script_result.started + timeout + timedelta(minutes=5)
             )

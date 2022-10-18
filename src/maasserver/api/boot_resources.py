@@ -383,7 +383,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
             raise MAASAPIBadRequest("Missing data.")
         if size != len(data):
             raise MAASAPIBadRequest(
-                "Content-Length doesn't equal size of recieved data."
+                "Content-Length doesn't equal size of received data."
             )
         if resource.rtype not in ALLOW_UPLOAD_RTYPES:
             raise MAASAPIForbidden(
@@ -399,7 +399,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
             # than expected.
             current_size = stream.tell()
             if current_size + size > rfile.largefile.total_size:
-                raise MAASAPIBadRequest("Too much data recieved.")
+                raise MAASAPIBadRequest("Too much data received.")
 
             stream.write(data)
             rfile.largefile.size = current_size + size

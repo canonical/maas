@@ -78,7 +78,7 @@ def update_lease(
         raise LeaseUpdateError("Unknown lease action: %s" % action)
 
     # Get the subnet for this IP address. If no subnet exists then something
-    # is wrong as we should not be recieving message about unknown subnets.
+    # is wrong as we should not be receiving message about unknown subnets.
     subnet = Subnet.objects.get_best_subnet_for_ip(ip)
     if subnet is None:
         raise LeaseUpdateError("No subnet exists for: %s" % ip)
@@ -111,7 +111,7 @@ def update_lease(
         )
     )
 
-    # We will recieve actions on all addresses in the subnet. We only want
+    # We will receive actions on all addresses in the subnet. We only want
     # to update the addresses in the dynamic range.
     dynamic_range = subnet.get_dynamic_range_for_ip(IPAddress(ip))
     if dynamic_range is None:

@@ -178,7 +178,7 @@ class RackControllerService(Service):
         rack_id = int(rack_id)
 
         log.debug(
-            "[pid:{pid()}] recieved {action} action for rack: {rack_id}",
+            "[pid:{pid()}] received {action} action for rack: {rack_id}",
             pid=os.getpid,
             action=action,
             rack_id=rack_id,
@@ -191,7 +191,7 @@ class RackControllerService(Service):
                 )
             else:
                 log.warn(
-                    "[pid:{pid()}] recieved unwatched when not watching "
+                    "[pid:{pid()}] received unwatched when not watching "
                     "for rack: {rack_id}",
                     pid=os.getpid,
                     rack_id=rack_id,
@@ -205,7 +205,7 @@ class RackControllerService(Service):
                 )
             else:
                 log.warn(
-                    "[pid:{pid()}] recieved watched when already watching "
+                    "[pid:{pid()}] received watched when already watching "
                     "for rack: {rack_id}",
                     pid=os.getpid,
                     rack_id=rack_id,
@@ -248,7 +248,7 @@ class RackControllerService(Service):
             )
         else:
             log.warn(
-                "[pid:{pid()}] recieved DHCP push notify when not watching "
+                "[pid:{pid()}] received DHCP push notify when not watching "
                 "for rack: {rack_id}",
                 pid=os.getpid,
                 rack_id=rack_id,
@@ -302,7 +302,7 @@ class RackControllerService(Service):
                 log.info(
                     f"[pid:{os.getpid()}] watched rack is not in the DB, un-watching: {rack_id}"
                 )
-                # Note: since proper unwatch message might come later, "recieved unwatched when not watching"
+                # Note: since proper unwatch message might come later, "received unwatched when not watching"
                 # warning might show up.
                 self.watching.discard(rack_id)
             else:

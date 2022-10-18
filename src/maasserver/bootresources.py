@@ -1187,7 +1187,7 @@ def download_all_boot_resources(
 
     This process is long running and can be triggered to be stopped through
     a postgres notification of `sys_stop_import`. When that notification is
-    recieved the running import will be stopped.
+    received the running import will be stopped.
 
     :param sources: List of dicts describing the Simplestreams sources from
         which we should download.

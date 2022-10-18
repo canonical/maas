@@ -1,7 +1,7 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Twisted service recieves lease information from the MAAS dhcpd.sock."""
+"""Twisted service receives lease information from the MAAS dhcpd.sock."""
 
 
 from collections import deque
@@ -28,7 +28,7 @@ def get_socket_path():
 
 
 class LeaseSocketService(Service, DatagramProtocol):
-    """Service for recieving lease information over MAAS dhcpd.sock."""
+    """Service for receiving lease information over MAAS dhcpd.sock."""
 
     # None, or a Deferred that will fire when the processor exits.
     done = None

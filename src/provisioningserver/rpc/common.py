@@ -331,14 +331,14 @@ class RPCProtocol(amp.AMP):
 
     def _answerReceived(self, box):
         """
-        Override `_answerRecieved` to log recieving RPC response.
+        Override `_answerRecieved` to log receiving RPC response.
         """
-        log.debug("[RPC <- recieved] {box}", box=box)
+        log.debug("[RPC <- received] {box}", box=box)
         return super()._answerReceived(box)
 
     def _errorReceived(self, box):
         """
-        Override `_errorReceived` to log recieving RPC response.
+        Override `_errorReceived` to log receiving RPC response.
         """
         log.debug("[RPC <- error] {box}", box=box)
         return super()._errorReceived(box)

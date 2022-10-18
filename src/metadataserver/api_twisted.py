@@ -276,7 +276,7 @@ def _create_vmhost_for_deployment(node):
 
 
 class StatusWorkerService(TimerService):
-    """Service to update nodes from recieved status messages."""
+    """Service to update nodes from received status messages."""
 
     check_interval = 60  # Every second.
 

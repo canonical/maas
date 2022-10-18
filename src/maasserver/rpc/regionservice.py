@@ -157,7 +157,7 @@ class Region(RPCProtocol):
 
         # Wait for the record to be handled. This will cause the cluster to
         # send one at a time. So they are processed in order no matter which
-        # region recieves the message.
+        # region receives the message.
         return d
 
     @amp.StartTLS.responder

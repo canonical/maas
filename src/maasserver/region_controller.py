@@ -8,19 +8,19 @@ This service is ran only on the master regiond process for a region controller.
 
 DNS:
     The regiond process listens for messages from Postgres on channel
-    'sys_dns'. Any time a message is recieved on that channel the DNS is marked
+    'sys_dns'. Any time a message is received on that channel the DNS is marked
     as requiring an update. Once marked for update the DNS configuration is
     updated and bind9 is told to reload.
 
 Proxy:
     The regiond process listens for messages from Postgres on channel
-    'sys_proxy'. Any time a message is recieved on that channel the maas-proxy
+    'sys_proxy'. Any time a message is received on that channel the maas-proxy
     is marked as requiring an update. Once marked for update the proxy
     configuration is updated and maas-proxy is told to reload.
 
 RBAC:
     The regiond process listens for messages from Postgres on channel
-    'sys_rbac'. Any time a message is recieved on that channel the RBAC
+    'sys_rbac'. Any time a message is received on that channel the RBAC
     micro-service is marked as required a sync. Once marked for sync the
     RBAC micro-service will be pushed the changed information.
 """

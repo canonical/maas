@@ -67,7 +67,7 @@ class RegionSyslogService(TimerService):
         else:
             if this_region.is_rack_controller:
                 # Region controller is also a rack controller, need to forward
-                # the recieved syslog message to the other region peers.
+                # the received syslog message to the other region peers.
                 peers = self._getPeers(this_region)
             else:
                 # Only a region controller, no need to forward logs.
