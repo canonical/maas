@@ -5,9 +5,11 @@ from hvac.exceptions import VaultError
 import pytest
 
 from maasserver import vault
+from maasserver.models import Config
 from maasserver.vault import (
     _get_region_vault_client,
     get_region_vault_client,
+    get_region_vault_client_if_enabled,
     hvac,
     VaultClient,
     WrappedSecretError,
@@ -152,6 +154,33 @@ class TestGetRegionVaultClient:
         vault_regionconfig["vault_secrets_mount"] = "other/secrets"
         client = _get_region_vault_client()
         assert client._secrets_mount == "other/secrets"
+
+
+class TestGetRegionVaultClientIfEnabled:
+    def test_cached(self, mocker):
+        mock_get_client = mocker.patch.object(
+            vault, "_get_region_vault_client"
+        )
+        mock_get_config = mocker.patch.object(Config.objects, "get_config")
+        mock_get_config.return_value = True
+
+        get_region_vault_client_if_enabled()
+        get_region_vault_client_if_enabled()
+        mock_get_client.assert_called_once()
+        mock_get_config.assert_called_once()
+
+    def test_no_client_if_not_enabled(self, factory, mocker):
+        mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
+        mocker.patch.object(Config.objects, "get_config").return_value = False
+        assert get_region_vault_client_if_enabled() is None
+        mock_get_client.assert_not_called()
+
+    def test_returns_client_if_enabled(self, factory, mocker):
+        mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
+        mock_get_client.return_value = {}
+        mocker.patch.object(Config.objects, "get_config").return_value = True
+        assert get_region_vault_client_if_enabled() is not None
+        mock_get_client.assert_called_once()
 
 
 class TestUnwrapSecret:

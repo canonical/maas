@@ -4,7 +4,7 @@ from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
 from maasserver.models import Node, Secret
-from maasserver.vault import get_region_vault_client, VaultClient
+from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
 
@@ -66,10 +66,10 @@ class SecretManager:
     def __init__(
         self, vault_client: VaultClient | None | Literal[UNSET] = UNSET
     ):
-        if vault_client is UNSET:
-            self._vault_client = get_region_vault_client()
-        else:
+        if vault_client is not UNSET:
             self._vault_client = vault_client
+        else:
+            self._vault_client = get_region_vault_client_if_enabled()
 
     def set_composite_secret(
         self, name: str, value: dict[str, Any], obj: Optional[Model] = None

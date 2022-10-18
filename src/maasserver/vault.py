@@ -101,6 +101,22 @@ class AppRole(NamedTuple):
 
 
 @cache
+def get_region_vault_client_if_enabled() -> Optional[VaultClient]:
+    """Return a VaultClient configured for the region controller
+    (if Vault is configured and enabled cluster-wide).
+
+    This method exists because not all `get_region_vault_client` calls
+    are from contexts where it's possible to check the DB flag. Since
+    the Vault configuration is still expected to remain static until region restart,
+    we can cache the flag value too to minimize DB queries amount."""
+    from maasserver.models import Config
+
+    if Config.objects.get_config("vault_enabled", False):
+        return get_region_vault_client()
+    return None
+
+
+@cache
 def get_region_vault_client() -> Optional[VaultClient]:
     """Return a VaultClient configured for the region controller, if configured.
 
@@ -185,3 +201,4 @@ def configure_region_with_vault(
         config.vault_secrets_mount = secrets_mount
     # ensure future calls to get the client use the updated config
     get_region_vault_client.cache_clear()
+    get_region_vault_client_if_enabled.cache_clear()

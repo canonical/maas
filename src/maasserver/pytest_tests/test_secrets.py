@@ -1,6 +1,7 @@
 import pytest
 
-from maasserver.models import Secret
+from maasserver import vault
+from maasserver.models import Config, Secret
 from maasserver.secrets import SecretManager, SecretNotFound, UnknownSecret
 from maasserver.testing.factory import factory
 
@@ -44,6 +45,18 @@ class TestSecretManager:
             assert vault_client.store == secrets
         else:
             assert dict(Secret.objects.values_list("path", "value")) == secrets
+
+    def test_uses_provided_client_instead_of_making_new(
+        self, vault_client, mocker
+    ):
+        get_vault_mock = mocker.patch.object(vault, "get_region_vault_client")
+        get_vault_mock.return_value = vault_client
+
+        Config.objects.set_config("vault_enabled", True)
+        SecretManager(vault_client=vault_client)
+        Config.objects.set_config("vault_enabled", False)
+
+        get_vault_mock.assert_not_called()
 
     def test_get_composite_secret_with_model(self, vault_client):
         value = {"foo": "bar"}
