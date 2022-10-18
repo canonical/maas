@@ -15,8 +15,6 @@ from cryptography.fernet import InvalidToken
 from testtools import ExpectedException
 
 from maastesting.factory import factory
-from maastesting.fixtures import TempDirectory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
 from provisioningserver.security import (
@@ -81,6 +79,12 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
 
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
+    def setUp(self):
+        secret_dir = Path(self.make_dir())
+        self.patch(utils_env.MAAS_SHARED_SECRET, "path", secret_dir / "secret")
+        utils_env.MAAS_SHARED_SECRET.clear_cached()
+        super().setUp()
+
     def test_default_iteration_count_is_reasonably_large(self):
         # Ensure that the iteration count is high by default. This is very
         # important so that the MAAS secret cannot be determined by
@@ -113,9 +117,10 @@ class TestInstallSharedSecretScript(MAASTestCase):
         # Ensure each test uses a different filename for the shared secret,
         # so that tests cannot interfere with each other.
         super().setUp()
-        tempdir = Path(self.useFixture(TempDirectory()).path)
+        tempdir = Path(self.make_dir())
         utils_env.MAAS_SHARED_SECRET.clear_cached()
         self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        self._mock_print = self.patch(security, "print")
 
     def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
@@ -161,9 +166,7 @@ class TestInstallSharedSecretScript(MAASTestCase):
         input.return_value = b2a_hex(secret).decode("ascii")
 
         self.installAndCheckExitCode(0)
-        self.assertThat(
-            input, MockCalledOnceWith("Secret (hex/base16 encoded): ")
-        )
+        input.assert_called_once_with("Secret (hex/base16 encoded): ")
         self.assertEqual(secret, security.get_shared_secret_from_filesystem())
 
     def test_ignores_surrounding_whitespace_from_tty(self):
@@ -207,16 +210,11 @@ class TestInstallSharedSecretScript(MAASTestCase):
         stdin.readline.return_value = "garbage"
         stdin.isatty.return_value = False
 
-        print = self.patch(security, "print")
-
         self.installAndCheckExitCode(1)
-        self.assertThat(
-            print,
-            MockCalledOnceWith(
-                "Secret could not be decoded:",
-                "Odd-length string",
-                file=security.stderr,
-            ),
+        self._mock_print.assert_called_once_with(
+            "Secret could not be decoded:",
+            "Odd-length string",
+            file=security.stderr,
         )
 
     def test_prints_message_when_secret_is_installed(self):
@@ -226,10 +224,8 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
         stdin.isatty.return_value = False
 
-        mock_print = self.patch(security, "print")
-
         self.installAndCheckExitCode(0)
-        mock_print.assert_called_once_with(
+        self._mock_print.assert_called_once_with(
             f"Secret installed to {utils_env.MAAS_SHARED_SECRET.path}."
         )
 
@@ -237,9 +233,10 @@ class TestInstallSharedSecretScript(MAASTestCase):
 class TestCheckForSharedSecretScript(MAASTestCase):
     def setUp(self):
         super().setUp()
-        tempdir = Path(self.useFixture(TempDirectory()).path)
+        tempdir = Path(self.make_dir())
         utils_env.MAAS_SHARED_SECRET.clear_cached()
         self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        self._mock_print = self.patch(security, "print")
 
     def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
@@ -248,23 +245,21 @@ class TestCheckForSharedSecretScript(MAASTestCase):
         self.assertIsNotNone("Obligatory assertion.")
 
     def test_exits_non_zero_if_secret_does_not_exist(self):
-        mock_print = self.patch(security, "print")
         error = self.assertRaises(
             SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
         )
         self.assertEqual(1, error.code)
-        mock_print.assert_called_once_with("Shared-secret is NOT installed.")
+        self._mock_print.assert_called_once_with(
+            "Shared-secret is NOT installed."
+        )
 
     def test_exits_zero_if_secret_exists(self):
         security.set_shared_secret_on_filesystem(factory.make_bytes())
-        print = self.patch(security, "print")
         error = self.assertRaises(
             SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
         )
         self.assertEqual(0, error.code)
-        self.assertThat(
-            print, MockCalledOnceWith("Shared-secret is installed.")
-        )
+        self._mock_print.assert_called_once_with("Shared-secret is installed.")
 
 
 class TestFernetEncryption(SharedSecretTestCase):
