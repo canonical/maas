@@ -1548,6 +1548,26 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.CONFLICT, response.status_code)
 
+    def test_POST_allocate_fails_if_given_system_id_invalid(self):
+        # If an unavailable or incorrect "system_id" is passed, make sure
+        # that no machine is returned.
+        some_available_machine = factory.make_Node(
+            status=NODE_STATUS.READY, owner=None, with_boot_disk=True
+        )
+        incorrect_system_id = (
+            some_available_machine.system_id[-1]
+            + some_available_machine.system_id[:-1]
+        )
+        response = self.client.post(
+            self.machines_url,
+            {"op": "allocate", "system_id": incorrect_system_id},
+        )
+        expected_response = f"No machine with system ID {incorrect_system_id} available.".encode(
+            "utf-8"
+        )
+        self.assertEqual(http.client.CONFLICT, response.status_code)
+        self.assertEqual(expected_response, response.content)
+
     def test_POST_allocate_does_not_ignore_unknown_constraint(self):
         factory.make_Node(
             status=NODE_STATUS.READY, owner=None, with_boot_disk=True

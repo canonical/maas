@@ -2549,7 +2549,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
             )
             machines, storage, interfaces = form.filter_nodes(machines)
             machine = get_first(machines)
-            if machine is None:
+            system_id = get_optional_param(
+                request.POST, "system_id", default=None
+            )
+            if machine is None and system_id is None:
                 cores = form.cleaned_data.get("cpu_count")
                 if cores:
                     cores = int(min(cores))
@@ -2597,6 +2600,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     # No constraints. That means no machines at all were
                     # available.
                     message = "No machine available."
+                elif system_id is not None:
+                    message = (
+                        f"No machine with system ID {system_id} available."
+                    )
                 else:
                     message = (
                         "No available machine matches constraints: %s "
