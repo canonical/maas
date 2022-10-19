@@ -4,6 +4,7 @@
 # for path in sorted(Path("src").glob("**/pytest_tests")):
 #    cog.outl(str(path))
 # ]]]
+src/maasserver/djangosettings/pytest_tests
 src/maasserver/management/commands/pytest_tests
 src/maasserver/models/pytest_tests
 src/maasserver/pytest_tests

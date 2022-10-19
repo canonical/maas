@@ -5,9 +5,13 @@
 
 import os
 
-from maasserver.config import RegionConfiguration
+from django.core.exceptions import ImproperlyConfigured
+from hvac.exceptions import InvalidPath
+
+from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.djangosettings import fix_up_databases
 from maasserver.djangosettings.monkey import patch_get_script_prefix
+from maasserver.vault import get_region_vault_client
 
 
 def _read_timezone(tzfilename="/etc/timezone"):
@@ -37,6 +41,53 @@ def _get_local_timezone(tzfilename="/etc/timezone"):
     else:
         # If this fails, just use 'UTC', which should always exist.
         return "UTC"
+
+
+def _get_default_db_config(config: RegionConfiguration) -> dict:
+    """Builds a default Django DB dict based on region configuration."""
+    client = get_region_vault_client()
+    # When DB credentials are present in config, use them unconditionally.
+    database_user = config.database_user
+    database_pass = config.database_pass
+    database_name = config.database_name
+
+    # When local DB credentials are missing, they might be in Vault.
+    if not database_name:
+        if client is None:
+            # No local DB credentials, no Vault credentials... What a disaster.
+            raise ImproperlyConfigured(
+                "Unable to connect to the DB: credentials are not in region configuration "
+                "and Vault is not configured."
+            )
+
+        # Fetch DB credentials from Vault
+        try:
+            creds = client.get(get_db_creds_vault_path())
+        except InvalidPath:
+            raise ImproperlyConfigured(
+                "Unable to connect to the DB: credentials were not found "
+                "in both local region configuration and configured Vault"
+            )
+
+        database_user = creds["user"]
+        database_pass = creds["pass"]
+        database_name = creds["name"]
+
+    return {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": database_name,
+        "USER": database_user,
+        "PASSWORD": database_pass,
+        "HOST": config.database_host,
+        "PORT": str(config.database_port),
+        "CONN_MAX_AGE": config.database_conn_max_age,
+        "OPTIONS": {
+            "keepalives": int(config.database_keepalive),
+            "keepalives_idle": config.database_keepalive_idle,
+            "keepalives_interval": config.database_keepalive_interval,
+            "keepalives_count": config.database_keepalive_count,
+        },
+    }
 
 
 # Enable HA which uses the new rack controller and BMC code paths. This is a
@@ -91,23 +142,7 @@ AUTHENTICATION_BACKENDS = (
 # Database access configuration.
 try:
     with RegionConfiguration.open() as config:
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql_psycopg2",
-                "NAME": config.database_name,
-                "USER": config.database_user,
-                "PASSWORD": config.database_pass,
-                "HOST": config.database_host,
-                "PORT": str(config.database_port),
-                "CONN_MAX_AGE": config.database_conn_max_age,
-                "OPTIONS": {
-                    "keepalives": int(config.database_keepalive),
-                    "keepalives_idle": config.database_keepalive_idle,
-                    "keepalives_interval": config.database_keepalive_interval,
-                    "keepalives_count": config.database_keepalive_count,
-                },
-            }
-        }
+        DATABASES = {"default": _get_default_db_config(config)}
         DEBUG = config.debug
         DEBUG_QUERIES = config.debug_queries
         DEBUG_HTTP = config.debug_http
