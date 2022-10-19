@@ -167,7 +167,6 @@ from maasserver.worker_user import get_worker_user
 from maastesting.crochet import wait_for
 from maastesting.matchers import (
     DocTestMatches,
-    IsNonEmptyString,
     MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -4944,28 +4943,6 @@ class TestNode(MAASServerTestCase):
         node.save()
         node.boot_interface.delete()
         self.assertIsNotNone(reload_object(node))
-
-    def test_get_pxe_mac_vendor_returns_vendor(self):
-        node = factory.make_Node()
-        node.boot_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address="ec:a8:6b:fd:ae:3f", node=node
-        )
-        node.save()
-        self.assertThat(node.get_pxe_mac_vendor(), IsNonEmptyString)
-
-    def test_get_pxe_mac_vendor_returns_none_with_no_interface(self):
-        node = factory.make_Node()
-        self.assertIsNone(node.get_pxe_mac_vendor())
-
-    def test_get_pxe_mac_vendor_returns_none_with_no_mac_address(self):
-        node = factory.make_Node()
-        node.boot_interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=node
-        )
-        node.boot_interface.mac_address = None
-        node.boot_interface.save()
-        node.save()
-        self.assertIsNone(node.get_pxe_mac_vendor())
 
     def test_get_extra_macs_returns_all_but_boot_interface_mac(self):
         node = factory.make_Node()

@@ -16,7 +16,7 @@ from maasserver.enum import NODE_STATUS
 from maasserver.models import Config
 from maasserver.utils.dns import validate_url
 from maasserver.utils.forms import set_form_error
-from maasserver.utils.mac import is_mac
+from provisioningserver.utils.network import is_mac
 
 # When a Script has a parameter with the same name as one of these
 # MAAS configuration options the default value will be mapped to

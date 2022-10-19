@@ -902,6 +902,12 @@ def format_eui(eui):
     return str(eui).replace("-", ":").lower()
 
 
+def is_mac(mac: str) -> bool:
+    """Return whether or not the string is a MAC address."""
+    m = re.search(r"^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}$", str(mac), re.I)
+    return m is not None
+
+
 def get_eui_organization(eui):
     """Returns the registered organization for the specified EUI, if it can be
     determined. Otherwise, returns None.

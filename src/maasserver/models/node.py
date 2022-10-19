@@ -164,7 +164,6 @@ from maasserver.storage_layouts import (
 )
 from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_hostname
-from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
     get_one,
     MAASQueriesMixin,
@@ -5373,16 +5372,6 @@ class Node(CleanSave, TimestampedModel):
                 boot_interface.vlan.secondary_rack,
             ]
             return [rack for rack in racks if rack is not None]
-
-    def get_pxe_mac_vendor(self):
-        """Return the vendor of the MAC address the node booted from."""
-        boot_interface = self.get_boot_interface()
-        if boot_interface is None or (
-            boot_interface and boot_interface.mac_address is None
-        ):
-            return None
-        else:
-            return get_vendor_for_mac(boot_interface.mac_address.get_raw())
 
     def get_extra_macs(self):
         """Get the MACs other that the one the node booted from."""

@@ -77,6 +77,7 @@ from provisioningserver.utils.network import (
     ip_range_within_network,
     IPRangeStatistics,
     is_loopback_address,
+    is_mac,
     LOOPBACK_INTERFACE_INFO,
     MAASIPRange,
     MAASIPSet,
@@ -238,6 +239,14 @@ class TestFindIPViaARP(MAASTestCase):
         self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92".upper())
         self.assertEqual("192.168.0.1", ip_address_observed)
+
+
+class TestIsMac(MAASTestCase):
+    def test_true(self):
+        self.assertTrue(is_mac("aa:bb:cc:dd:ee:ff"))
+
+    def test_false(self):
+        self.assertFalse(is_mac(factory.make_name("bad")))
 
 
 class TestGetMACOrganization(MAASTestCase):
