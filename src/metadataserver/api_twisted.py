@@ -18,7 +18,7 @@ from twisted.web.server import NOT_DONE_YET
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
-from maasserver.models import Node
+from maasserver.models import Interface, Node, StaticIPAddress
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import (
@@ -209,11 +209,7 @@ def _create_vmhost_for_deployment(node):
 
     # the IP is associated to the bridge the boot interface is in, not the
     # interface itself
-    boot_if = node.get_boot_interface()
-    ifaces = list(boot_if.children.all())
-    ip = node.ip_addresses(ifaces=ifaces + [boot_if])[0]
-    if ":" in ip:
-        ip = f"[{ip}]"
+    ip = _get_ip_address_for_vmhost(node)
 
     for secret_key, secret_value in deploy_secrets.items():
         is_lxd = secret_key == DEPLOY_SECRETS_LXD_KEY
@@ -273,6 +269,31 @@ def _create_vmhost_for_deployment(node):
             return
 
     node.update_status(NODE_STATUS.DEPLOYED)
+
+
+def _get_ip_address_for_vmhost(node):
+    boot_interface = node.get_boot_interface()
+    interface_ids = {boot_interface.id}
+
+    # recursively find all children interface IDs
+    new_ids = {boot_interface.id}
+    while new_ids:
+        new_ids = set(
+            Interface.objects.filter(parents__in=new_ids).values_list(
+                "id", flat=True
+            )
+        )
+        interface_ids |= new_ids
+
+    ip = (
+        StaticIPAddress.objects.exclude(ip__isnull=True)
+        .filter(interface__in=interface_ids)
+        .values_list("ip", flat=True)
+        .first()
+    )
+    if ":" in ip:
+        ip = f"[{ip}]"
+    return ip
 
 
 class StatusWorkerService(TimerService):
