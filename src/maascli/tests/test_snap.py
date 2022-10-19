@@ -13,6 +13,7 @@ import time
 from unittest.mock import MagicMock
 
 from fixtures import EnvironmentVariableFixture
+from hvac.exceptions import VaultError
 import netifaces
 import pytest
 
@@ -535,6 +536,159 @@ class TestCmdInit(MAASTestCase):
             "'postgres://'",
             str(error),
         )
+
+    def test_get_vault_settings_returns_empty_dict_with_no_vault_uri(self):
+        options = self.parser.parse_args(
+            ["region+rack", "--database-uri", "maas-test-db:///"]
+        )
+        self.assertEqual(snap.get_vault_settings(options), {})
+
+    def test_get_vault_settings_requires_args_when_vault_uri_provided(self):
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "maas-test-db:///",
+                "--vault-uri",
+                "http://vault:8200",
+            ]
+        )
+        self.assertRaises(CommandError, snap.get_vault_settings, options)
+
+    def test_get_vault_settings_returns_default_mount_when_not_specified(self):
+        url = "http://vault:8200"
+        approle_id = factory.make_name("uuid")
+        wrapped_token = factory.make_name("uuid")
+        secret_id = factory.make_name("uuid")
+        secrets_path = "path"
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "maas-test-db:///",
+                "--vault-uri",
+                url,
+                "--vault-approle-id",
+                approle_id,
+                "--vault-wrapped-token",
+                wrapped_token,
+                "--vault-secrets-path",
+                secrets_path,
+            ]
+        )
+
+        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock.return_value = secret_id
+
+        assert snap.get_vault_settings(options) == {
+            "vault_url": url,
+            "vault_approle_id": approle_id,
+            "vault_secret_id": secret_id,
+            "vault_secrets_mount": "secret",
+            "vault_secrets_path": secrets_path,
+        }
+        prepare_mock.assert_called_once_with(
+            url=url,
+            role_id=approle_id,
+            wrapped_token=wrapped_token,
+            secrets_path=secrets_path,
+            secrets_mount="secret",
+        )
+
+    def test_get_vault_settings_returns_mount_when_specified(self):
+        url = "http://vault:8200"
+        approle_id = factory.make_name("uuid")
+        wrapped_token = factory.make_name("uuid")
+        secret_id = factory.make_name("uuid")
+        secrets_path = "path"
+        secrets_mount = "test_mount"
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "maas-test-db:///",
+                "--vault-uri",
+                url,
+                "--vault-approle-id",
+                approle_id,
+                "--vault-wrapped-token",
+                wrapped_token,
+                "--vault-secrets-path",
+                secrets_path,
+                "--vault-secrets-mount",
+                secrets_mount,
+            ]
+        )
+
+        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock.return_value = secret_id
+
+        assert snap.get_vault_settings(options) == {
+            "vault_url": url,
+            "vault_approle_id": approle_id,
+            "vault_secret_id": secret_id,
+            "vault_secrets_mount": secrets_mount,
+            "vault_secrets_path": secrets_path,
+        }
+        prepare_mock.assert_called_once_with(
+            url=url,
+            role_id=approle_id,
+            wrapped_token=wrapped_token,
+            secrets_path=secrets_path,
+            secrets_mount=secrets_mount,
+        )
+
+    def test_get_vault_settings_raises_command_error_for_vault_issues(self):
+        url = "http://vault:8200"
+        approle_id = factory.make_name("uuid")
+        wrapped_token = factory.make_name("uuid")
+        secrets_path = "path"
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "maas-test-db:///",
+                "--vault-uri",
+                url,
+                "--vault-approle-id",
+                approle_id,
+                "--vault-wrapped-token",
+                wrapped_token,
+                "--vault-secrets-path",
+                secrets_path,
+            ]
+        )
+
+        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock.side_effect = [VaultError()]
+
+        self.assertRaises(CommandError, snap.get_vault_settings, options)
+
+    def test_get_vault_settings_reraises_unknown_error(self):
+        url = "http://vault:8200"
+        approle_id = factory.make_name("uuid")
+        wrapped_token = factory.make_name("uuid")
+        secrets_path = "path"
+        options = self.parser.parse_args(
+            [
+                "region+rack",
+                "--database-uri",
+                "maas-test-db:///",
+                "--vault-uri",
+                url,
+                "--vault-approle-id",
+                approle_id,
+                "--vault-wrapped-token",
+                wrapped_token,
+                "--vault-secrets-path",
+                secrets_path,
+            ]
+        )
+
+        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        exc = factory.make_exception()
+        prepare_mock.side_effect = [exc]
+        self.assertRaises(type(exc), snap.get_vault_settings, options)
 
 
 class TestCmdStatus(MAASTestCase):

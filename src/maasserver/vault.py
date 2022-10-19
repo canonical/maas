@@ -173,6 +173,25 @@ def check_approle_permissions(
     client.delete(test_path)
 
 
+def prepare_wrapped_approle(
+    url: str,
+    role_id: str,
+    wrapped_token: str,
+    secrets_path: str,
+    secrets_mount: str,
+) -> str:
+    """Unwraps secret id, checks if the approle has enough permissions and returns the unwrapped secret_id"""
+    secret_id = unwrap_secret(url, wrapped_token)
+    check_approle_permissions(
+        url=url,
+        role_id=role_id,
+        secret_id=secret_id,
+        secrets_path=secrets_path,
+        secrets_mount=secrets_mount,
+    )
+    return secret_id
+
+
 def configure_region_with_vault(
     url: str,
     role_id: str,
@@ -184,11 +203,10 @@ def configure_region_with_vault(
 
     The AppRole Role ID and unwrapped Secret ID are stored in region configuration after permission validation.
     """
-    secret_id = unwrap_secret(url, wrapped_token)
-    check_approle_permissions(
+    secret_id = prepare_wrapped_approle(
         url=url,
         role_id=role_id,
-        secret_id=secret_id,
+        wrapped_token=wrapped_token,
         secrets_path=secrets_path,
         secrets_mount=secrets_mount,
     )

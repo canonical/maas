@@ -16,9 +16,11 @@ from textwrap import dedent
 import threading
 import time
 
+from hvac.exceptions import VaultError
 import netifaces
 import psycopg2
 from psycopg2.extensions import parse_dsn
+from requests.exceptions import ConnectionError
 import tempita
 
 from maascli.command import Command, CommandError
@@ -31,6 +33,7 @@ from maascli.init import (
     prompt_for_choices,
     read_input,
 )
+from maasserver.vault import prepare_wrapped_approle
 
 ARGUMENTS = OrderedDict(
     [
@@ -54,6 +57,39 @@ ARGUMENTS = OrderedDict(
                     "maas-test-db snap needs to be installed and connected"
                 ),
                 "for_mode": ["region+rack", "region"],
+            },
+        ),
+        (
+            "vault-uri",
+            {"help": "Vault URI", "for_mode": ["region+rack", "region"]},
+        ),
+        (
+            "vault-approle-id",
+            {
+                "help": "Vault AppRole Role ID",
+                "for_mode": ["region+rack", "region"],
+            },
+        ),
+        (
+            "vault-wrapped-token",
+            {
+                "help": "Vault Wrapped Token for AppRole ID",
+                "for_mode": ["region+rack", "region"],
+            },
+        ),
+        (
+            "vault-secrets-path",
+            {
+                "help": "Path prefix for MAAS secrets in Vault KV storage",
+                "for_mode": ["region+rack", "region"],
+            },
+        ),
+        (
+            "vault-secrets-mount",
+            {
+                "help": "Vault KV mount path",
+                "for_mode": ["region+rack", "region"],
+                "default": "secret",
             },
         ),
         (
@@ -520,6 +556,54 @@ def get_database_settings(options):
     return database_settings
 
 
+def get_vault_settings(options) -> dict:
+    """Get vault settings dict to use.
+
+    If `vault-uri` argument is not present, method returns empty dict.
+    Otherwise, it will:
+     - check if required Vault parameters were provided (and raise CommandException if not)
+     - check if Vault is reachable
+     - try to unwrap secret_id for the provided approle
+     - check if provided approle has all the permissions required
+     - return configuration parameters dict
+    """
+    if not options.vault_uri:
+        return {}
+
+    required_arguments = [
+        "vault-approle-id",
+        "vault-wrapped-token",
+        "vault-secrets-path",
+    ]
+    missing_arguments = [
+        key
+        for key in required_arguments
+        if getattr(options, key.replace("-", "_"), None) is None
+    ]
+    if missing_arguments:
+        raise CommandError(
+            f"Missing required vault arguments: {', '.join(missing_arguments)}"
+        )
+    try:
+        secret_id = prepare_wrapped_approle(
+            url=options.vault_uri,
+            role_id=options.vault_approle_id,
+            wrapped_token=options.vault_wrapped_token,
+            secrets_path=options.vault_secrets_path,
+            secrets_mount=options.vault_secrets_mount,
+        )
+    except (VaultError, ConnectionError) as e:
+        raise CommandError(e)
+
+    return {
+        "vault_url": options.vault_uri,
+        "vault_approle_id": options.vault_approle_id,
+        "vault_secret_id": secret_id,
+        "vault_secrets_mount": options.vault_secrets_mount,
+        "vault_secrets_path": options.vault_secrets_path,
+    }
+
+
 class cmd_init(SnapCommand):
     """Initialise MAAS in the specified run mode.
 
@@ -609,11 +693,14 @@ class cmd_init(SnapCommand):
                     sys.exit(0)
 
         rpc_secret = None
+        vault_settings = {}
         if mode in ("region", "region+rack"):
             try:
                 database_settings = get_database_settings(options)
             except DatabaseSettingsError as error:
                 raise CommandError(str(error))
+
+            vault_settings = get_vault_settings(options)
         else:
             database_settings = {}
         maas_url = options.maas_url
@@ -641,14 +728,19 @@ class cmd_init(SnapCommand):
         # Configure the settings.
         settings = {"maas_url": maas_url}
         settings.update(database_settings)
+        # Note: we store DB creds regardless of vault configuration, since
+        # the cluster might have `vault_enabled=False` => no creds should be there yet.
+        # Otherwise, if `vault_enabled` is `True` or this is a clean install,
+        # DB credentials will be moved to Vault on the first start.
+        settings.update(vault_settings)
 
         MAASConfiguration().update(settings)
         set_rpc_secret(rpc_secret)
 
         # Finalize the Initialization.
-        self._finalize_init(mode, options)
+        self._finalize_init(mode)
 
-    def _finalize_init(self, mode, options):
+    def _finalize_init(self, mode):
         # Configure mode.
         def start_services():
             render_supervisord(mode)
