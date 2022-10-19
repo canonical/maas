@@ -171,7 +171,6 @@ class TestMachineHandler(MAASServerTestCase):
         handler._cache_pks([node])
 
         boot_interface = node.get_boot_interface()
-        pxe_mac_vendor = node.get_pxe_mac_vendor()
         subnets = handler.get_all_subnets(node)
 
         blockdevices = [
@@ -355,7 +354,6 @@ class TestMachineHandler(MAASServerTestCase):
                 if boot_interface is None
                 else "%s" % boot_interface.mac_address
             ),
-            "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
             "show_os_info": handler.dehydrate_show_os_info(node),
             "status": node.display_status(),
             "status_code": node.status,

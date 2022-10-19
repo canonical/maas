@@ -83,7 +83,6 @@ from maasserver.storage_layouts import (
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
-from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -342,16 +341,14 @@ class MachineHandler(NodeHandler):
             data["status_message"] = obj.status_message()
 
         if obj.is_machine or not for_list:
-            data["pxe_mac"] = data["pxe_mac_vendor"] = ""
+            data["pxe_mac"] = ""
             if getattr(obj, "pxe_mac", None):
                 data["pxe_mac"] = str(obj.pxe_mac)
-                data["pxe_mac_vendor"] = get_vendor_for_mac(data["pxe_mac"])
                 data["vlan"] = self.dehydrate_vlan(obj, obj.boot_interface)
             else:
                 boot_interface = obj.get_boot_interface()
                 if boot_interface is not None:
                     data["pxe_mac"] = "%s" % boot_interface.mac_address
-                    data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
                     data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
             if data["pxe_mac"] != "":
                 data["power_type"] = obj.power_type
