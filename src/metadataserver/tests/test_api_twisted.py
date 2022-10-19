@@ -1189,7 +1189,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         self.assertIsNone(reload_object(virsh_password_meta))
         self.assertIsNone(reload_object(lxd_cert_meta))
 
-    def test_creates_vmhost_pick_right_interface(self):
+    def test_creates_vmhost_pick_right_interface_address(self):
         user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
             owner=user,
@@ -1207,6 +1207,45 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         another_if = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(interface=another_if)
 
+        NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123"
+        )
+        _create_vmhost_for_deployment(node)
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        virsh_vmhost = Pod.objects.get(power_type="virsh")
+
+        addr = ip.ip
+        if IPAddress(addr).version == 6:
+            addr = f"[{addr}]"
+        self.assertEqual(
+            virsh_vmhost.power_parameters.get("power_address"),
+            f"qemu+ssh://virsh@{addr}/system",
+        )
+
+    def test_creates_vmhost_pick_right_interface_with_bond(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
+            status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod",
+            install_kvm=True,
+        )
+        iface = factory.make_Interface(node=node)
+        bond = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BOND,
+            node=node,
+            parents=[node.get_boot_interface(), iface],
+        )
+        # deploying a machine as a VM host bridges the boot interface, which is
+        # now the bond
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE,
+            node=node,
+            parents=[bond],
+        )
+        ip = factory.make_StaticIPAddress(interface=bridge)
+        another_if = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        factory.make_StaticIPAddress(interface=another_if)
         NodeMetadata.objects.create(
             node=node, key="virsh_password", value="xyz123"
         )
