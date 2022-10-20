@@ -3,7 +3,7 @@ from typing import Any, Literal, NamedTuple, Optional
 from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
-from maasserver.models import Node, Secret
+from maasserver.models import Node, RootKey, Secret
 from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
@@ -42,7 +42,10 @@ class ModelSecret(NamedTuple):
 
 MODEL_SECRETS = {
     secret.model: secret
-    for secret in (ModelSecret(Node, "node", ["deploy-metadata"]),)
+    for secret in (
+        ModelSecret(Node, "node", ["deploy-metadata"]),
+        ModelSecret(RootKey, "rootkey", ["material"]),
+    )
 }
 
 GLOBAL_SECRETS = frozenset(

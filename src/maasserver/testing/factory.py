@@ -115,6 +115,7 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
+from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
@@ -141,6 +142,7 @@ from metadataserver.fields import Bin
 from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.security import to_hex
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
 
@@ -3296,8 +3298,10 @@ class Factory(maastesting.factory.Factory):
             material = os.urandom(24)
         if expiration is None:
             expiration = datetime.now() + timedelta(days=1)
-        key = RootKey(material=material, expiration=expiration)
-        key.save()
+        key = RootKey.objects.create(expiration=expiration)
+        SecretManager().set_simple_secret(
+            "material", to_hex(material), obj=key
+        )
         return key
 
     def make_PodStoragePool(

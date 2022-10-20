@@ -43,6 +43,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.testcase import MAASTestCase
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver.security import to_bin
 
 
 class TestExternalAuthEnabled(MAASServerTestCase):
@@ -716,6 +717,15 @@ class TestKeyStore(MAASServerTestCase):
             now=lambda: self.now,
         )
 
+    def get_key_secret_material(self, key):
+        return to_bin(
+            SecretManager().get_simple_secret(
+                "material",
+                obj=key,
+                default=None,
+            )
+        )
+
     def test_intervals(self):
         self.assertEqual(self.store.expiry_duration, self.expiry_duration)
         self.assertEqual(self.store.generate_interval, self.generate_interval)
@@ -728,7 +738,7 @@ class TestKeyStore(MAASServerTestCase):
     def test_root_key(self):
         material, key_id = self.store.root_key()
         key = RootKey.objects.get(pk=int(key_id))
-        self.assertEqual(key.material.tobytes(), material)
+        self.assertEqual(self.get_key_secret_material(key), material)
         self.assertEqual(
             key.expiration,
             self.now + self.expiry_duration + self.generate_interval,
@@ -784,6 +794,12 @@ class TestKeyStore(MAASServerTestCase):
 
     def test_get_not_found_id_not_numeric(self):
         self.assertIsNone(self.store.get(b"invalid"))
+
+    def test_get_secret_not_found(self):
+        _, key_id = self.store.root_key()
+        key = RootKey.objects.get(id=int(key_id))
+        SecretManager().delete_all_object_secrets(key)
+        self.assertIsNone(self.store.get(key_id))
 
 
 class TestMacaroonDischargeRequest(

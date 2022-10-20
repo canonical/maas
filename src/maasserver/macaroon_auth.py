@@ -7,6 +7,7 @@
 from collections import namedtuple
 from datetime import datetime, timedelta
 import os
+from typing import Optional
 from urllib.parse import quote
 
 from django.contrib.auth import authenticate, login
@@ -26,6 +27,7 @@ import requests
 from maasserver.models import MAASAuthorizationBackend, RootKey
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.views import request_headers
+from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)
 
@@ -206,18 +208,22 @@ class KeyStore:
 
         if key.expiration < self._now():
             key.delete()
+            self._delete_keys_material(key)
             return None
-        return bytes(key.material)
+        return self._get_key_material(key)
 
     def root_key(self):
         """Return the root key and its id as a byte string."""
         key = self._find_best_key()
         if not key:
             # delete expired keys (if any)
-            RootKey.objects.filter(expiration__lt=self._now()).delete()
+            now = self._now()
+            old_keys = RootKey.objects.filter(expiration__lt=now)
+            self._delete_keys_material(*old_keys)
+            old_keys.delete()
             key = self._new_key()
 
-        return bytes(key.material), str(key.id).encode("ascii")
+        return self._get_key_material(key), str(key.id).encode("ascii")
 
     def _find_best_key(self):
         now = self._now()
@@ -234,13 +240,38 @@ class KeyStore:
     def _new_key(self):
         now = self._now()
         expiration = now + self.expiry_duration + self.generate_interval
-        key = RootKey(
-            material=os.urandom(self.KEY_LENGTH),
+        key = RootKey.objects.create(
             created=now,
             expiration=expiration,
         )
         key.save()
+        material = os.urandom(self.KEY_LENGTH)
+        self._set_key_material(key, material)
         return key
+
+    def _get_key_material(self, key: RootKey) -> Optional[bytes]:
+        secret = self._secret_manager.get_simple_secret(
+            "material", obj=key, default=None
+        )
+        if not secret:
+            return None
+        return to_bin(secret)
+
+    def _set_key_material(self, key: RootKey, material: bytes):
+        self._secret_manager.set_simple_secret(
+            "material", to_hex(material), obj=key
+        )
+
+    def _delete_keys_material(self, *keys: list[RootKey]):
+        manager = self._secret_manager
+        for key in keys:
+            manager.delete_all_object_secrets(key)
+
+    @property
+    def _secret_manager(self):
+        from maasserver.secrets import SecretManager
+
+        return SecretManager()
 
 
 def get_auth_info():
