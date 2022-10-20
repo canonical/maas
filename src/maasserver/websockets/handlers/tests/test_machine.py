@@ -685,13 +685,10 @@ class TestMachineHandler(MAASServerTestCase):
             ],
         )
 
-    def test_list_num_queries_is_the_expected_number(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-
+    def _populate_db_for_query_count(self, n=2):
         owner = factory.make_User()
         vlan = factory.make_VLAN(space=factory.make_Space())
-        for _ in range(2):
+        for _ in range(n):
             node = factory.make_Node_with_Interface_on_Subnet(
                 owner=owner, vlan=vlan
             )
@@ -712,10 +709,52 @@ class TestMachineHandler(MAASServerTestCase):
                 factory.make_ScriptResult(
                     status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
                 )
+        return owner
 
+    def test_list_num_queries_is_the_expected_number(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+        owner = self._populate_db_for_query_count(2)
         handler = MachineHandler(owner, {}, None)
         queries_one, _ = count_queries(handler.list, {"page_size": 1})
         queries_total, _ = count_queries(handler.list, {})
+        # This check is to notify the developer that a change was made that
+        # affects the number of queries performed when doing a node listing.
+        # It is important to keep this number as low as possible. A larger
+        # number means regiond has to do more work slowing down its process
+        # and slowing down the client waiting for the response.
+        expected_query_count = 26
+        self.assertEqual(
+            queries_one,
+            expected_query_count,
+            "Number of queries has changed; make sure this is expected.",
+        )
+        self.assertEqual(
+            queries_total,
+            expected_query_count,
+            "Number of queries has changed; make sure this is expected.",
+        )
+
+    def test_list_num_queries_with_filter_is_the_expected_number(self):
+        # Prevent RBAC from making a query.
+        self.useFixture(RBACForceOffFixture())
+        owner = self._populate_db_for_query_count(2)
+        handler = MachineHandler(owner, {}, None)
+        base_params = {
+            "filter": {},
+            "group_collapsed": [],
+            "group_key": "status",
+            "page_number": 1,
+            "sort_direction": "descending",
+            "sort_key": "hostname",
+        }
+
+        queries_one, _ = count_queries(
+            handler.list, dict(page_size=1, **base_params)
+        )
+        queries_total, _ = count_queries(
+            handler.list, dict(page_size=50, **base_params)
+        )
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
         # It is important to keep this number as low as possible. A larger
@@ -734,7 +773,6 @@ class TestMachineHandler(MAASServerTestCase):
         )
 
     def test_list_num_queries_is_the_expected_number_with_rbac(self):
-        # Prevent RBAC from making a query.
         rbac = RBACEnabled()
         self.useFixture(rbac)
 
@@ -777,7 +815,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 27
+        expected_query_count = 26
         self.assertEqual(
             queries_one,
             expected_query_count,

@@ -629,8 +629,9 @@ class NodeHandler(TimestampedModelHandler):
                 )
 
     def _cache_pks(self, nodes):
-        super()._cache_pks(nodes)
+        node_list = super()._cache_pks(nodes)
         self._cache_script_results(nodes)
+        return node_list
 
     def on_listen_for_active_pk(self, action, pk, obj):
         self._cache_script_results([obj])

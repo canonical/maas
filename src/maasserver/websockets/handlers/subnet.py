@@ -73,7 +73,7 @@ class SubnetHandler(TimestampedModelHandler):
         return super().update(parameters)
 
     def _cache_pks(self, objs):
-        super()._cache_pks(objs)
+        subnets = super()._cache_pks(objs)
         self.cache["staticroutes"] = StaticRoute.objects.filter(
             source__in=objs
         )
@@ -82,6 +82,7 @@ class SubnetHandler(TimestampedModelHandler):
         # objects for the IPs doesn't scale.
         for subnet, allocated_ips in get_allocated_ips(objs):
             subnet.cache_allocated_ips(allocated_ips)
+        return subnets
 
     def create(self, parameters):
         assert self.user.has_perm(

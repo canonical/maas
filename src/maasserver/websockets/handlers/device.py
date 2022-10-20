@@ -3,9 +3,6 @@
 
 """The device handler for the WebSocket connection."""
 
-
-from operator import attrgetter
-
 from django.core.exceptions import ValidationError
 from netaddr import EUI
 
@@ -170,9 +167,8 @@ class DeviceHandler(NodeHandler):
 
     def _cache_pks(self, objs):
         """Cache all loaded object pks."""
-        # Copy from base.py as devices don't have ScriptResults
-        getpk = attrgetter(self._meta.pk)
-        self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
+        # Use base.py's version as devices don't have ScriptResults
+        return super(NodeHandler, self)._cache_pks(objs)
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""

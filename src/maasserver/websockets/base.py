@@ -480,7 +480,9 @@ class Handler(metaclass=HandlerMetaclass):
     def _cache_pks(self, objs):
         """Cache all loaded object pks."""
         getpk = attrgetter(self._meta.pk)
+        objs = list(objs)
         self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
+        return objs
 
     def _filter(self, qs, action, params):
         """Return a filtered queryset
@@ -507,8 +509,6 @@ class Handler(metaclass=HandlerMetaclass):
 
     def _collapse_groups(self, qs, grp_key, collapsed):
         """Exclude collapsed groups from results"""
-        if not grp_key or len(collapsed) == 0:
-            return qs
         return qs.exclude(**{f"{grp_key}__in": collapsed})
 
     def _get_group_expr(self, key):
@@ -567,8 +567,7 @@ class Handler(metaclass=HandlerMetaclass):
             qs = qs.filter(**{f"{self._meta.batch_key}__gt": params["start"]})
         if "limit" in params:
             qs = qs[: params["limit"]]
-        objs = list(qs)
-        self._cache_pks(objs)
+        objs = self._cache_pks(qs)
         return [self.full_dehydrate(obj, for_list=True) for obj in objs]
 
     def _build_list_grouping(self, qs, params):
@@ -601,17 +600,26 @@ class Handler(metaclass=HandlerMetaclass):
         ]
 
         qs = self._sort(qs, "list", params, [grp_expr] if grp_expr else [])
-        qs_list = self._collapse_groups(qs, grp_expr, collapsed)
+        page_size = params.get("page_size", self._meta.dft_page_size)
+        if not grp_key or not collapsed:
+            # No collapsed groups, so the original query is what we
+            # want to paginate through.
+            pager = Paginator(qs, page_size)
+            qs_list = qs
+            # This is a cached property on the Paginator which saves a query \o/
+            count = pager.count
+        else:
+            # Collapsed groups so we have to figure those out and
+            # derive the count separately.
+            qs_list = self._collapse_groups(qs, grp_expr, collapsed)
+            pager = Paginator(qs_list, page_size)
+            count = qs.count()
 
-        pager = Paginator(
-            qs_list, params.get("page_size", self._meta.dft_page_size)
-        )
         current_page = pager.get_page(params.get("page_number", 1))
-
-        self._cache_pks(current_page)
+        page_objs = self._cache_pks(current_page)
 
         result = {
-            "count": qs.count(),
+            "count": count,
             "cur_page": current_page.number,
             "num_pages": pager.num_pages,
         }
@@ -639,14 +647,14 @@ class Handler(metaclass=HandlerMetaclass):
                 if bottom_prev_page is None:
                     qs_grouping &= Q(**{f"{grp_expr}__isnull": True})
                 else:
-                    top_this_page = gid_getter(current_page[0])
+                    top_this_page = gid_getter(page_objs[0])
                     cmp = "gte" if top_this_page == bottom_prev_page else "gt"
                     qs_grouping &= Q(
                         **{f"{grp_expr}__{cmp}": bottom_prev_page}
                     ) | Q(**{f"{grp_expr}__isnull": True})
 
             if current_page.has_next():
-                bottom_this_page = gid_getter(current_page[-1])
+                bottom_this_page = gid_getter(page_objs[-1])
                 if bottom_this_page is not None:
                     qs_grouping &= Q(**{f"{grp_expr}__lte": bottom_this_page})
 
@@ -667,7 +675,7 @@ class Handler(metaclass=HandlerMetaclass):
                     grp_id in collapsed,
                 )
 
-            for obj in current_page:
+            for obj in page_objs:
                 grp_id = gid_getter(obj)
                 groups[grp_id]["items"].append(
                     self.full_dehydrate(obj, for_list=True)
@@ -676,7 +684,7 @@ class Handler(metaclass=HandlerMetaclass):
         else:
             grp = new_grp(None, None, result["count"], False)
             grp["items"] = [
-                self.full_dehydrate(obj, for_list=True) for obj in current_page
+                self.full_dehydrate(obj, for_list=True) for obj in page_objs
             ]
             result["groups"] = [grp]
 
