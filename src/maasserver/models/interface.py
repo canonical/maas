@@ -1661,7 +1661,7 @@ class Interface(CleanSave, TimestampedModel):
                     parent.vlan_id = self.vlan_id
                     parent.save()
                     maaslog.info(
-                        f"{parent.get_log_string}: "
+                        f"{parent.get_log_string()}: "
                         f"VLAN updated to match {self.get_log_string()} "
                         f"(vlan={parent.vlan_id})."
                     )

@@ -1396,6 +1396,28 @@ class TestUpdateInterfaceParentsOnSave(MAASServerTestCase):
         factory.make_Interface(self.iftype, parents=[parent1, parent2])
         self.assertIsNone(reload_object(static_ip))
 
+    def test_log_message(self):
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node_config=node_config,
+            name="parent1",
+        )
+        parent2 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            node_config=node_config,
+            name="parent2",
+        )
+        with FakeLogger("maas.interface") as maaslog:
+            child = factory.make_Interface(
+                self.iftype, parents=[parent1, parent2], name="child"
+            )
+        hostname = node_config.node.hostname
+        self.assertEqual(
+            f"parent2 (physical) on {hostname}: VLAN updated to match child ({self.iftype}) on {hostname} (vlan={child.vlan_id}).\n",
+            maaslog.output,
+        )
+
 
 class TestInterfaceUpdateNeighbour(MAASServerTestCase):
     """Tests for `Interface.update_neighbour`."""
