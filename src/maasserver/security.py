@@ -14,13 +14,7 @@ from maasserver.secrets import SecretManager
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.security import (
-    get_shared_secret_from_filesystem,
-    set_shared_secret_on_filesystem,
-    to_bin,
-    to_hex,
-)
-from provisioningserver.utils.env import MAAS_SHARED_SECRET
+from provisioningserver.security import to_bin, to_hex
 from provisioningserver.utils.twisted import asynchronous, synchronous
 
 
@@ -29,38 +23,6 @@ def get_serial():
     now = datetime.now(tz=UTC)
     serial = (now - ref).total_seconds()
     return int(serial)
-
-
-@synchronous
-@with_connection  # Needed by the following lock.
-@synchronised(locks.security)  # Region-wide lock.
-@transactional
-def get_shared_secret_txn():
-    manager = SecretManager()
-    secret_in_db_hex = manager.get_simple_secret("rpc-shared", default=None)
-    secret_in_db = to_bin(secret_in_db_hex) if secret_in_db_hex else None
-    # Load secret from the filesystem, if it exists.
-    secret_on_fs = get_shared_secret_from_filesystem()
-
-    if secret_in_db is None and secret_on_fs is None:
-        secret = os.urandom(16)  # 16-bytes of crypto-standard noise.
-        manager.set_simple_secret("rpc-shared", to_hex(secret))
-        set_shared_secret_on_filesystem(secret)
-    elif secret_in_db is None:
-        secret = secret_on_fs
-        manager.set_simple_secret("rpc-shared", to_hex(secret))
-    elif secret_on_fs is None:
-        secret = secret_in_db
-        set_shared_secret_on_filesystem(secret)
-    elif secret_in_db == secret_on_fs:
-        secret = secret_in_db  # or secret_on_fs.
-    else:
-        raise AssertionError(
-            "The secret stored in the database does not match the secret "
-            f"stored on the filesystem at {MAAS_SHARED_SECRET.path}. Please investigate."
-        )
-
-    return secret
 
 
 @asynchronous(timeout=10)
@@ -81,4 +43,19 @@ def get_shared_secret():
     :raises crochet.TimeoutError: when it times-out after being called from
         thread other than the IO/reactor thread.
     """
-    return deferToDatabase(get_shared_secret_txn)
+    return deferToDatabase(_get_shared_secret)
+
+
+@synchronous
+@with_connection  # Needed by the following lock.
+@synchronised(locks.security)  # Region-wide lock.
+@transactional
+def _get_shared_secret():
+    manager = SecretManager()
+    secret_hex = manager.get_simple_secret("rpc-shared", default=None)
+    secret = to_bin(secret_hex) if secret_hex else None
+    if secret is None:
+        secret = os.urandom(16)
+        manager.set_simple_secret("rpc-shared", to_hex(secret))
+
+    return secret

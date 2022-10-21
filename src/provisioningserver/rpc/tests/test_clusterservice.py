@@ -116,11 +116,10 @@ from provisioningserver.rpc.testing.doubles import (
     FakeConnection,
     StubOS,
 )
-from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
-from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
+from provisioningserver.utils.env import MAAS_ID, MAAS_SECRET, MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
@@ -165,7 +164,7 @@ class TestClusterProtocol_Authenticate(MAASTestCase):
     def test_authenticate_calculates_digest_with_salt(self):
         message = factory.make_bytes()
         secret = factory.make_bytes()
-        set_shared_secret_on_filesystem(secret)
+        MAAS_SECRET.set(secret)
 
         args = {"message": message}
         d = call_responder(Cluster(), cluster.Authenticate, args)
@@ -1852,7 +1851,7 @@ class TestClusterClient(MAASTestCase):
     #     self.assertTrue(client.isSecure())
 
     def test_authenticateRegion_accepts_matching_digests(self):
-        set_shared_secret_on_filesystem(factory.make_bytes())
+        MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
         def calculate_digest(_, message):
@@ -1867,7 +1866,7 @@ class TestClusterClient(MAASTestCase):
         self.assertTrue(extract_result(d))
 
     def test_authenticateRegion_rejects_non_matching_digests(self):
-        set_shared_secret_on_filesystem(factory.make_bytes())
+        MAAS_SECRET.set(factory.make_bytes())
         client = self.make_running_client()
 
         def calculate_digest(_, message):

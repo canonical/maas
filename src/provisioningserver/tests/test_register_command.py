@@ -18,13 +18,9 @@ from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver import register_command
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.security import (
-    get_shared_secret_from_filesystem,
-    set_shared_secret_on_filesystem,
-    to_hex,
-)
+from provisioningserver.security import to_hex
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.utils.env import MAAS_ID
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -133,26 +129,21 @@ class TestRegisterMAASRack(MAASTestCase):
 
     def test_sets_secret(self):
         url = factory.make_simple_http_url()
-        expected = factory.make_bytes()
-        register_command.run(self.make_args(url=url, secret=to_hex(expected)))
-        observed = get_shared_secret_from_filesystem()
-        self.assertEqual(expected, observed)
+        secret = to_hex(factory.make_bytes())
+        register_command.run(self.make_args(url=url, secret=secret))
+        self.assertEqual(MAAS_SHARED_SECRET.path.read_text(), secret)
 
     def test_prompts_user_for_secret(self):
         url = factory.make_simple_http_url()
-        expected_previous_value = factory.make_bytes()
-        set_shared_secret_on_filesystem(expected_previous_value)
+        previous_value = to_hex(factory.make_bytes())
+        MAAS_SHARED_SECRET.set(previous_value)
         InstallSharedSecretScript_mock = self.patch(
             register_command, "InstallSharedSecretScript"
         )
         args = self.make_args(url=url, secret=None)
         register_command.run(args)
-        observed = get_shared_secret_from_filesystem()
-
-        self.expectThat(expected_previous_value, Equals(observed))
-        self.expectThat(
-            InstallSharedSecretScript_mock.run, MockCalledOnceWith(args)
-        )
+        self.assertEqual(previous_value, MAAS_SHARED_SECRET.path.read_text())
+        InstallSharedSecretScript_mock.run.assert_called_once_with(args)
 
     def test_errors_out_when_piped_stdin_and_url_not_supplied(self):
         args = self.make_args(url=None)

@@ -21,12 +21,8 @@ from sys import stderr, stdin
 from textwrap import dedent
 
 from provisioningserver.config import ClusterConfiguration
-from provisioningserver.security import (
-    InstallSharedSecretScript,
-    set_shared_secret_on_filesystem,
-    to_bin,
-)
-from provisioningserver.utils.env import MAAS_ID
+from provisioningserver.security import InstallSharedSecretScript
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
 all_arguments = ("--url", "--secret")
@@ -132,7 +128,7 @@ def run(args):
             config.maas_url = url
         print("MAAS region controller URL saved as %s." % url)
     if args.secret is not None:
-        set_shared_secret_on_filesystem(to_bin(args.secret))
+        MAAS_SHARED_SECRET.set(args.secret)
     else:
         InstallSharedSecretScript.run(args)
     try:

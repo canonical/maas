@@ -24,6 +24,7 @@ from twisted.application.service import MultiService
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
+from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -58,7 +59,9 @@ from provisioningserver.rackdservices.version_update_check import (
     VersionUpdateCheckService,
 )
 from provisioningserver.rpc.clusterservice import ClusterClientCheckerService
+from provisioningserver.security import to_hex
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 
 class TestOptions(MAASTestCase):
@@ -91,11 +94,10 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.mock_generate_certificate = self.patch(
             plugin_module, "generate_certificate_if_needed"
         )
+        tempdir = Path(self.make_dir())
+        self.patch(MAAS_SHARED_SECRET, "path", tempdir / "secret")
         # by default, define a shared secret so that sevices are populated
-        self.mock_get_shared_secret = self.patch(
-            plugin_module, "get_shared_secret_from_filesystem"
-        )
-        self.mock_get_shared_secret.return_value = "secret"
+        MAAS_SHARED_SECRET.set(to_hex(factory.make_bytes()))
 
     def get_unused_pid(self):
         """Return a PID for a process that has just finished running."""
@@ -109,7 +111,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertEqual("Hill", service_maker.description)
 
     def test_makeService_no_shared_secret(self):
-        self.mock_get_shared_secret.return_value = None
+        MAAS_SHARED_SECRET.set(None)
         service_maker = ProvisioningServiceMaker("foo", "bar")
         self.patch(service_maker, "_loadSettings")
         clock = Clock()
@@ -130,8 +132,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertEqual(next(attempts), 301)
 
     def test_makeService_eventual_shared_secret(self):
-        # First two times we look, there's no secret
-        self.mock_get_shared_secret.side_effect = [None, None, "secret"]
+        # First two attempts will find the secret unset, third one will find it
+        MAAS_SHARED_SECRET.set(None)
+        secret_values = [None, to_hex(factory.make_bytes())]
         service_maker = ProvisioningServiceMaker("foo", "bar")
         self.patch(service_maker, "_loadSettings")
         clock = Clock()
@@ -139,6 +142,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         attempts = count(1)
 
         def advance(seconds):
+            secret = secret_values.pop(0)
+            MAAS_SHARED_SECRET.set(secret)
             next(attempts)
             clock.advance(60)
 

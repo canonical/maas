@@ -17,7 +17,7 @@ from maasserver.vault import (
 
 
 @pytest.fixture(autouse=True)
-def clean_cached_globals(clean_cached_globals):
+def clean_globals(clean_globals):
     get_region_vault_client.cache_clear()
     get_region_vault_client_if_enabled.cache_clear()
     yield

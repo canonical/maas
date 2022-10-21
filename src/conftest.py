@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from provisioningserver.utils.env import MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET
+from provisioningserver.utils.env import MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET, MAAS_SECRET
 
 
 @pytest.fixture(autouse=True)
@@ -20,9 +20,11 @@ def setup_testenv(monkeypatch, tmpdir):
 
 
 @pytest.fixture(autouse=True)
-def clean_cached_globals(tmpdir):
+def clean_globals(tmpdir):
     base_path = Path(tmpdir)
     for var in (MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET):
         var.clear_cached()
         var.path = base_path / var.name
+
+    MAAS_SECRET.set(None)
     yield

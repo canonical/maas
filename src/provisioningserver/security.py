@@ -8,51 +8,30 @@ from hashlib import sha256
 from hmac import HMAC
 from sys import stderr, stdin
 from threading import Lock
-from typing import Optional
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from provisioningserver.utils.env import MAAS_SHARED_SECRET
+from provisioningserver.utils.env import MAAS_SECRET, MAAS_SHARED_SECRET
 
 
 class MissingSharedSecret(RuntimeError):
     """Raised when the MAAS shared secret is missing."""
 
 
-def to_hex(b):
+def to_hex(b: bytes) -> str:
     """Convert byte string to hex encoding."""
     assert isinstance(b, bytes), f"{b!r} is not a byte string"
     return b2a_hex(b).decode("ascii")
 
 
-def to_bin(u):
+def to_bin(u: str) -> bytes:
     """Convert ASCII-only unicode string to hex encoding."""
     assert isinstance(u, str), f"{u!r} is not a unicode string"
     # Strip ASCII whitespace from u before converting.
     return a2b_hex(u.encode("ascii").strip())
-
-
-def get_shared_secret_from_filesystem() -> Optional[bytes]:
-    """Return the shared the secret from the filesystem.
-
-    If the file doesn't exist or it's empty, None is returned.
-
-    """
-    value = MAAS_SHARED_SECRET.get()
-    if value is not None:
-        return to_bin(value)
-    return None
-
-
-def set_shared_secret_on_filesystem(secret):
-    """Write the secret to the filesystem."""
-
-    if secret is not None:
-        secret = to_hex(secret)
-    MAAS_SHARED_SECRET.set(secret)
 
 
 def calculate_digest(secret, message, salt):
@@ -91,7 +70,7 @@ def _get_or_create_fernet_psk():
     with _fernet_lock:
         global _fernet_psk
         if _fernet_psk is None:
-            secret = get_shared_secret_from_filesystem()
+            secret = MAAS_SECRET.get()
             if secret is None:
                 raise MissingSharedSecret("MAAS shared secret not found.")
             # Keying material is required by PBKDF2 to be a byte string.
@@ -213,12 +192,12 @@ class InstallSharedSecretScript:
             secret_hex = stdin.readline()
         # Decode and install the secret.
         try:
-            secret = to_bin(secret_hex.strip())
+            to_bin(secret_hex.strip())
         except binascii.Error as error:
             print("Secret could not be decoded:", str(error), file=stderr)
             raise SystemExit(1)
         else:
-            set_shared_secret_on_filesystem(secret)
+            MAAS_SHARED_SECRET.set(secret_hex)
             print(f"Secret installed to {MAAS_SHARED_SECRET.path}.")
             raise SystemExit(0)
 
@@ -243,7 +222,7 @@ class CheckForSharedSecretScript:
 
         Exits 0 (zero) if a shared-secret has been installed.
         """
-        if get_shared_secret_from_filesystem() is None:
+        if MAAS_SHARED_SECRET.get() is None:
             print("Shared-secret is NOT installed.")
             raise SystemExit(1)
         else:

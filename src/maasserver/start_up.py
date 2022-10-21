@@ -36,7 +36,11 @@ from maasserver.vault import get_region_vault_client
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils.env import MAAS_UUID
+from provisioningserver.utils.env import (
+    MAAS_SECRET,
+    MAAS_SHARED_SECRET,
+    MAAS_UUID,
+)
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -60,11 +64,10 @@ def start_up(master=False):
     """
     while True:
         try:
-            # Get the shared secret from Tidmouth sheds which was generated
-            # when Sir Topham Hatt graduated Sodor Academy. (Ensure we have a
-            # shared-secret so that a cluster on the same host as this region
-            # can authenticate.)
-            yield security.get_shared_secret()
+            # Ensure the shared secret is configured
+            secret = yield security.get_shared_secret()
+            MAAS_SECRET.set(secret)
+
             # Execute other start-up tasks that must not run concurrently with
             # other invocations of themselves, across the whole of this MAAS
             # installation.
@@ -130,6 +133,12 @@ def inner_start_up(master=False):
     )
     # Ensure the UUID is available, and set it to the local file
     MAAS_UUID.set(ensure_uuid_in_config())
+
+    # Ensure the shared secret is written to file. This should only be written
+    # if the node is also a rack, but observe-beacons (which also runs on
+    # regions) requires it for the encryption key
+    secret = MAAS_SECRET.get()
+    MAAS_SHARED_SECRET.set(security.to_hex(secret))
 
     # Only perform the following if the master process for the
     # region controller.

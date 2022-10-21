@@ -40,6 +40,7 @@ from provisioningserver.utils.beaconing import (
     run,
     uuid_to_timestamp,
 )
+from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.script import ActionScriptError
 
 
@@ -74,7 +75,12 @@ class TestBeaconToJSON(MAASTestCase):
 
 
 class TestCreateBeaconPayload(SharedSecretTestCase):
+    def setUp(self):
+        super().setUp()
+        MAAS_SECRET.set(factory.make_bytes())
+
     def test_requires_maas_shared_secret_for_inner_data_payload(self):
+        MAAS_SECRET.set(None)
         with ExpectedException(
             MissingSharedSecret, ".*shared secret not found.*"
         ):
@@ -88,13 +94,11 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
         self.assertEqual(1, beacon.version)
 
     def test_succeeds_when_shared_secret_present(self):
-        self.write_secret()
         beacon = create_beacon_payload("solicitation", payload={})
         self.assertEqual("solicitation", beacon.type)
         self.assertEqual(BEACON_TYPES["solicitation"], beacon.payload["type"])
 
     def test_supplements_data_and_returns_complete_data(self):
-        self.write_secret()
         random_type = random.choice(list(BEACON_TYPES.keys()))
         random_key = factory.make_string(prefix="_")
         random_value = factory.make_string()
@@ -109,7 +113,6 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
         self.assertEqual(random_value, beacon.payload[random_key])
 
     def test_creates_packet_that_can_decode(self):
-        self.write_secret()
         random_type = random.choice(list(BEACON_TYPES.keys()))
         random_key = factory.make_string(prefix="_")
         random_value = factory.make_string()
@@ -131,6 +134,10 @@ def _make_beacon_payload(version=1, type_code=1, length=None, payload=None):
 
 
 class TestReadBeaconPayload(SharedSecretTestCase):
+    def setUp(self):
+        super().setUp()
+        MAAS_SECRET.set(factory.make_bytes())
+
     def test_raises_if_packet_too_small(self):
         with ExpectedException(
             InvalidBeaconingPacket, ".*packet must be at least 4 bytes.*"
@@ -152,7 +159,6 @@ class TestReadBeaconPayload(SharedSecretTestCase):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_payload_does_not_decrypt(self):
-        self.write_secret()
         packet = _make_beacon_payload(payload=b"\xfe")
         with ExpectedException(
             InvalidBeaconingPacket, ".*Failed to decrypt.*"
@@ -160,7 +166,6 @@ class TestReadBeaconPayload(SharedSecretTestCase):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_encapsulation_does_not_decompress(self):
-        self.write_secret()
         packet = _make_beacon_payload(
             payload=fernet_encrypt_psk("\n\n", raw=True)
         )
@@ -170,7 +175,6 @@ class TestReadBeaconPayload(SharedSecretTestCase):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_encapsulation_is_not_bson(self):
-        self.write_secret()
         payload = fernet_encrypt_psk(compress(b"\n\n"), raw=True)
         packet = _make_beacon_payload(payload=payload)
         with ExpectedException(

@@ -33,10 +33,7 @@ from provisioningserver.rpc.clusterservice import (
 )
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
-from provisioningserver.security import (
-    get_shared_secret_from_filesystem,
-    set_shared_secret_on_filesystem,
-)
+from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.twisted import asynchronous, callOut
 
 
@@ -185,11 +182,6 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
             protocol.ident = factory.make_name("eventloop")
             return protocol.ident
 
-    def ensureSharedSecret(self):
-        """Make sure the shared-secret is set."""
-        if get_shared_secret_from_filesystem() is None:
-            set_shared_secret_on_filesystem(factory.make_bytes())
-
     @asynchronous(timeout=5)
     def addEventLoop(self, protocol):
         """Add a new stub event-loop using the given `protocol`.
@@ -198,7 +190,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
 
         :return: py:class:`twisted.test.iosim.IOPump`
         """
-        self.ensureSharedSecret()
+        MAAS_SECRET.set(factory.make_bytes())
         eventloop = self.getEventLoopName(protocol)
         address = factory.make_ipv4_address(), factory.pick_port()
         client = ClusterClient(address, eventloop, self.rpc_service)

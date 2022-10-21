@@ -12,10 +12,12 @@ from testtools.matchers import MatchesStructure
 from twisted import internet
 from twisted.internet.task import Clock
 
+from maastesting.factory import factory
 from maastesting.matchers import Matches, MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import send_beacons as send_beacons_module
+from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.send_beacons import add_arguments, run
 
 
@@ -128,7 +130,7 @@ class TestSendBeaconsProtocolInteraction(
 ):
     def setUp(self):
         super().setUp()
-        self.write_secret()
+        MAAS_SECRET.set(factory.make_bytes())
         self.protocol_mock = self.patch(
             send_beacons_module, "BeaconingSocketProtocol"
         )

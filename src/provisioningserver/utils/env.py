@@ -51,7 +51,7 @@ class FileBackedValue:
         self._value = None
 
     def get(self) -> Optional[str]:
-        """Return the value of the ID, if set, else None"""
+        """Return the value if set, else None"""
         with self._lock:
             if not self._value:
                 if not self.path.exists():
@@ -64,7 +64,10 @@ class FileBackedValue:
             return self._value
 
     def set(self, value: Optional[str]):
-        """Set the value for the ID."""
+        """Set the value.
+
+        If None is passed, the backing file is removed.
+        """
         value = self._normalise_value(value)
         with self._lock:
             if value is None:
@@ -86,3 +89,21 @@ class FileBackedValue:
 MAAS_ID = FileBackedValue("maas_id")
 MAAS_UUID = FileBackedValue("maas_uuid")
 MAAS_SHARED_SECRET = FileBackedValue("secret")
+
+
+class GlobalValue:
+    """Hold the value for a global variable."""
+
+    def __init__(self):
+        self._value = None
+
+    def get(self):
+        """Return the value."""
+        return self._value
+
+    def set(self, value):
+        """Set the value."""
+        self._value = value
+
+
+MAAS_SECRET = GlobalValue()

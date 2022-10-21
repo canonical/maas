@@ -79,14 +79,15 @@ from provisioningserver.rpc.power import (
     maybe_change_power_state,
 )
 from provisioningserver.rpc.tags import evaluate_tag
-from provisioningserver.security import (
-    calculate_digest,
-    get_shared_secret_from_filesystem,
-    set_shared_secret_on_filesystem,
-)
+from provisioningserver.security import calculate_digest
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
-from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
+from provisioningserver.utils.env import (
+    MAAS_ID,
+    MAAS_SECRET,
+    MAAS_SHARED_SECRET,
+    MAAS_UUID,
+)
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
@@ -276,9 +277,8 @@ class Cluster(RPCProtocol):
 
     @cluster.Authenticate.responder
     def authenticate(self, message):
-        secret = get_shared_secret_from_filesystem()
         salt = urandom(16)  # 16 bytes of high grade noise.
-        digest = calculate_digest(secret, message, salt)
+        digest = calculate_digest(MAAS_SECRET.get(), message, salt)
         return {"digest": digest, "salt": salt}
 
     @cluster.ListBootImages.responder
@@ -911,7 +911,9 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DisableAndShutoffRackd`.
         """
         maaslog.info("Attempting to disable the rackd service.")
-        set_shared_secret_on_filesystem(None)
+        # clear the shared secret both in memory and on disk
+        MAAS_SECRET.set(None)
+        MAAS_SHARED_SECRET.set(None)
         try:
             if running_in_snap():
                 call_and_check(["snapctl", "restart", "maas.supervisor"])
@@ -1005,11 +1007,10 @@ class ClusterClient(Cluster):
     @inlineCallbacks
     def authenticateRegion(self):
         """Authenticate the region."""
-        secret = get_shared_secret_from_filesystem()
-        message = urandom(16)  # 16 bytes of the finest.
+        message = urandom(16)
         response = yield self.callRemote(region.Authenticate, message=message)
         salt, digest = response["salt"], response["digest"]
-        digest_local = calculate_digest(secret, message, salt)
+        digest_local = calculate_digest(MAAS_SECRET.get(), message, salt)
         returnValue(digest == digest_local)
 
     @inlineCallbacks

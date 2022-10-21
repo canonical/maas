@@ -21,11 +21,12 @@ from provisioningserver.monkey import (
     add_patches_to_txtftp,
 )
 from provisioningserver.prometheus.utils import clean_prometheus_dir
-from provisioningserver.security import get_shared_secret_from_filesystem
+from provisioningserver.security import to_bin
 from provisioningserver.utils.debug import (
     register_sigusr1_toggle_cprofile,
     register_sigusr2_thread_dump_handler,
 )
+from provisioningserver.utils.env import MAAS_SECRET, MAAS_SHARED_SECRET
 from provisioningserver.utils.twisted import retries
 
 
@@ -272,8 +273,9 @@ class ProvisioningServiceMaker:
 
         secret = None
         for elapsed, remaining, wait in retries(timeout=5 * 60, clock=clock):
-            secret = get_shared_secret_from_filesystem()
+            secret = MAAS_SHARED_SECRET.get()
             if secret is not None:
+                MAAS_SECRET.set(to_bin(secret))
                 break
             sleep(wait)
         if secret is not None:

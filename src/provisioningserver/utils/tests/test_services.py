@@ -46,6 +46,7 @@ from provisioningserver.utils.beaconing import (
     create_beacon_payload,
     TopologyHint,
 )
+from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.services import (
     BeaconingService,
     BeaconingSocketProtocol,
@@ -1121,7 +1122,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
         self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
-        self.write_secret()
+        MAAS_SECRET.set(factory.make_bytes())
         beacon = create_beacon_payload("solicitation", {})
         rx_uuid = beacon.payload["uuid"]
         destination = random.choice(["::ffff:127.0.0.1", "::1"])
@@ -1166,7 +1167,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
         self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
-        self.write_secret()
+        MAAS_SECRET.set(factory.make_bytes())
         beacon = create_beacon_payload("advertisement", {})
         protocol.send_multicast_beacon("127.0.0.1", beacon, port=listen_port)
         # Verify that we received the packet.
@@ -1205,7 +1206,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         )
         self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
-        self.write_secret()
+        MAAS_SECRET.set(factory.make_bytes())
         beacon = create_beacon_payload("advertisement", {})
         # The loopback interface ifindex should always be 1; this is saying
         # to send an IPv6 multicast on ifIndex == 1.

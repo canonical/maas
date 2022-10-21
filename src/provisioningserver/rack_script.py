@@ -7,6 +7,8 @@ import pwd
 import sys
 
 from provisioningserver.config import is_dev_environment
+from provisioningserver.security import to_bin
+from provisioningserver.utils.env import MAAS_SECRET, MAAS_SHARED_SECRET
 
 
 def check_users(users):
@@ -76,6 +78,11 @@ def run():
             if not is_snap:
                 set_group()
             set_umask()
+
+    # read the shared secret and make it globally available
+    shared_secret = MAAS_SHARED_SECRET.get()
+    if shared_secret:
+        MAAS_SECRET.set(to_bin(shared_secret))
 
     # Run the script.
     # Run the main provisioning script.
