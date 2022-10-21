@@ -127,10 +127,6 @@ def inner_start_up(master=False):
     node = RegionController.objects.get_or_create_running_controller()
     # Update region version
     ControllerInfo.objects.set_versions_info(node, get_versions_info())
-    # Sets the flag if Vault was configured.
-    ControllerInfo.objects.filter(node_id=node.id).update(
-        vault_configured=bool(get_region_vault_client())
-    )
     # Ensure the UUID is available, and set it to the local file
     MAAS_UUID.set(ensure_uuid_in_config())
 
@@ -174,3 +170,7 @@ def inner_start_up(master=False):
         # Log deprecations and Update related notifications if needed
         log_deprecations(logger=log)
         sync_deprecation_notifications()
+        # Sets the flag if Vault was configured.
+        ControllerInfo.objects.filter(node_id=node.id).update(
+            vault_configured=bool(get_region_vault_client())
+        )

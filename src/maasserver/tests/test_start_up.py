@@ -245,7 +245,7 @@ class TestInnerStartUp(MAASServerTestCase):
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None
         with post_commit_hooks:
-            start_up.inner_start_up(master=False)
+            start_up.inner_start_up(master=True)
 
         region = RegionController.objects.first()
         controller = ControllerInfo.objects.get(node_id=region.id)
@@ -254,7 +254,7 @@ class TestInnerStartUp(MAASServerTestCase):
     def test_sets_vault_flag_enabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = object()
         with post_commit_hooks:
-            start_up.inner_start_up(master=False)
+            start_up.inner_start_up(master=True)
 
         region = RegionController.objects.first()
         controller = ControllerInfo.objects.get(node_id=region.id)
