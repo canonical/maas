@@ -8625,7 +8625,6 @@ CREATE TABLE public.maasserver_rootkey (
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
     id bigint NOT NULL,
-    material bytea NOT NULL,
     expiration timestamp with time zone NOT NULL
 );
 
@@ -11212,6 +11211,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 337	metadataserver	0033_remove_nodekey_key	2022-10-07 06:51:34.349659+00
 338	maasserver	0286_node_deploy_metadata	2022-10-11 03:29:32.800937+00
 339	maasserver	0287_add_controller_info_vault_flag	2022-10-15 03:29:44.399652+00
+340	maasserver	0288_rootkey_material_secret	2022-10-21 03:29:26.788885+00
 \.
 
 
@@ -11738,7 +11738,7 @@ COPY public.maasserver_resourcepool (id, created, updated, name, description) FR
 -- Data for Name: maasserver_rootkey; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_rootkey (created, updated, id, material, expiration) FROM stdin;
+COPY public.maasserver_rootkey (created, updated, id, expiration) FROM stdin;
 \.
 
 
@@ -12020,7 +12020,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 339, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 340, true);
 
 
 --
