@@ -28,7 +28,6 @@ from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import systemd_interval_to_calendar
-from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 
@@ -206,16 +205,11 @@ def generate_kvm_pod_configuration(node):
         deploy_secrets[DEPLOY_SECRETS_LXD_KEY] = cert_pem
         # write out the LXD cert on node to add it to the trust after setup
         maas_project = "maas"
-        project_conf_file = "/root/maas-project.yaml"
         cert_file = "/root/lxd.crt"
         yield "write_files", [
             {
                 "content": cert.certificate_pem(),
                 "path": cert_file,
-            },
-            {
-                "content": yaml.safe_dump(LXD_MAAS_PROJECT_CONFIG),
-                "path": project_conf_file,
             },
         ]
         # When installing LXD, ensure no deb packages are installed, since they
@@ -228,9 +222,8 @@ def generate_kvm_pod_configuration(node):
             "snap refresh lxd --channel=latest",
             "lxd init --auto --network-address=[::]",
             f"lxc project create {maas_project}",
-            f"sh -c 'lxc project edit {maas_project} <{project_conf_file}'",
             f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
-            f"rm {cert_file} {project_conf_file}",
+            f"rm {cert_file}",
         ]
 
     if node.install_kvm:

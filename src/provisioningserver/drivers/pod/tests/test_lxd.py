@@ -709,11 +709,6 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd.projects.create.assert_called_once_with(
             name=project_name,
             description="Project managed by MAAS",
-            config={
-                "features.images": "false",
-                "features.profiles": "true",
-                "features.storage.volumes": "false",
-            },
         )
 
     @inlineCallbacks

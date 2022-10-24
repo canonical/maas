@@ -40,7 +40,6 @@ from metadataserver.vendor_data import (
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
 )
-from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.testing.certificates import get_sample_cert
 
 
@@ -426,10 +425,6 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                             "content": cert.certificate_pem(),
                             "path": "/root/lxd.crt",
                         },
-                        {
-                            "content": yaml.safe_dump(LXD_MAAS_PROJECT_CONFIG),
-                            "path": "/root/maas-project.yaml",
-                        },
                     ],
                 ),
                 (
@@ -440,9 +435,8 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                         "snap refresh lxd --channel=latest",
                         "lxd init --auto --network-address=[::]",
                         "lxc project create maas",
-                        "sh -c 'lxc project edit maas </root/maas-project.yaml'",
                         "lxc config trust add /root/lxd.crt --restricted --projects maas",
-                        "rm /root/lxd.crt /root/maas-project.yaml",
+                        "rm /root/lxd.crt",
                     ],
                 ),
             ],
