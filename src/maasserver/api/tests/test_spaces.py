@@ -146,7 +146,9 @@ class TestSpaceAPI(APITestCase.ForUser):
         )
 
     def test_read(self):
-        space = factory.make_Space()
+        name = factory.make_name("name")
+        description = factory.make_name("description")
+        space = factory.make_Space(name=name, description=description)
         subnet_ids = [factory.make_Subnet(space=space).id for _ in range(3)]
         uri = get_space_uri(space)
         response = self.client.get(uri)
@@ -157,12 +159,9 @@ class TestSpaceAPI(APITestCase.ForUser):
         parsed_space = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_space,
-            ContainsDict(
-                {"id": Equals(space.id), "name": Equals(space.get_name())}
-            ),
-        )
+        self.assertEqual(parsed_space["id"], space.id)
+        self.assertEqual(parsed_space["name"], space.get_name())
+        self.assertEqual(parsed_space["description"], space.description)
         parsed_subnets = [subnet["id"] for subnet in parsed_space["subnets"]]
         self.assertCountEqual(subnet_ids, parsed_subnets)
 

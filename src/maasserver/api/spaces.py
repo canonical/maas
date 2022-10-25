@@ -12,7 +12,14 @@ from maasserver.forms.space import SpaceForm
 from maasserver.models import Space, Subnet, VLAN
 from maasserver.permissions import NodePermission
 
-DISPLAYED_SPACE_FIELDS = ("resource_uri", "id", "name", "vlans", "subnets")
+DISPLAYED_SPACE_FIELDS = (
+    "resource_uri",
+    "id",
+    "name",
+    "vlans",
+    "subnets",
+    "description",
+)
 
 
 def _has_undefined_space():

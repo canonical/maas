@@ -1400,8 +1400,8 @@ class Factory(maastesting.factory.Factory):
             space = None
         return space
 
-    def make_Space(self, name=None):
-        space = Space(name=name)
+    def make_Space(self, name=None, description=""):
+        space = Space(name=name, description=description)
         space.save()
         return space
 
