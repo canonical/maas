@@ -185,6 +185,13 @@ class TestUserHandler(MAASServerTestCase):
             self.dehydrate_user(user, for_self=True), handler.auth_user({})
         )
 
+    def test_mark_intro_complete(self):
+        user = factory.make_User(completed_intro=False)
+        handler = UserHandler(user, {}, None)
+        result = handler.mark_intro_complete({})
+        self.assertEqual(user.id, result["id"])
+        self.assertTrue(result["completed_intro"])
+
     def test_create_as_unprivileged(self):
         unpriv_user = factory.make_User()
         handler = UserHandler(unpriv_user, {}, None)
@@ -381,6 +388,7 @@ class TestUserHandler(MAASServerTestCase):
     def test_change_password(self):
         user = factory.make_User()
         user.set_password("oldpassword")
+        user.save()
         handler = UserHandler(user, {}, None)
         observed = handler.change_password(
             {
@@ -390,7 +398,7 @@ class TestUserHandler(MAASServerTestCase):
             }
         )
         self.assertEqual(self.dehydrate_user(user, for_self=True), observed)
-        self.assertTrue(user.check_password("newpassword"))
+        self.assertTrue(reload_object(user).check_password("newpassword"))
 
     def test_change_other_users_password_as_admin(self):
         admin_user = factory.make_admin()

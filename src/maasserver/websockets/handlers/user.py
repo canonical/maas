@@ -190,9 +190,9 @@ class UserHandler(Handler):
 
     def auth_user(self, params):
         """Return the authenticated user."""
-        self.user.sshkeys_count = self.user.sshkey_set.count()
-        self.user.machines_count = self.user.node_set.count()
-        return self.full_dehydrate(self.user)
+        return self.full_dehydrate(
+            self.get_object(params={"id": self.user.id})
+        )
 
     def mark_intro_complete(self, params):
         """Mark the user as completed the intro.
@@ -200,18 +200,18 @@ class UserHandler(Handler):
         This is only for the authenticated user. This cannot be performed on
         a different user.
         """
-        self.user.userprofile.completed_intro = True
-        self.user.userprofile.save()
-        return self.full_dehydrate(self.user)
+        user = self.get_object(params={"id": self.user.id})
+        user.userprofile.completed_intro = True
+        user.userprofile.save()
+        return self.full_dehydrate(user)
 
     def change_password(self, params):
         """Update the authenticated user password."""
-        form = PasswordChangeForm(user=self.user, data=get_QueryDict(params))
+        user = self.get_object(params={"id": self.user.id})
+        form = PasswordChangeForm(user=user, data=get_QueryDict(params))
         if form.is_valid():
             form.save()
-            self.user.sshkeys_count = self.user.sshkey_set.count()
-            self.user.machines_count = self.user.node_set.count()
-            return self.full_dehydrate(self.user)
+            return self.full_dehydrate(user)
         else:
             raise HandlerValidationError(form.errors)
 
