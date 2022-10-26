@@ -2,11 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django settings for maas project."""
-
+import logging
 import os
 
 from django.core.exceptions import ImproperlyConfigured
-from hvac.exceptions import InvalidPath
+from hvac.exceptions import InvalidPath, VaultError
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.djangosettings import fix_up_databases
@@ -46,32 +46,33 @@ def _get_local_timezone(tzfilename="/etc/timezone"):
 def _get_default_db_config(config: RegionConfiguration) -> dict:
     """Builds a default Django DB dict based on region configuration."""
     client = get_region_vault_client()
-    # When DB credentials are present in config, use them unconditionally.
+    # If fetching credentials from vault fails, use credentials from local configuration.
     database_user = config.database_user
     database_pass = config.database_pass
     database_name = config.database_name
 
-    # When local DB credentials are missing, they might be in Vault.
-    if not database_name:
-        if client is None:
-            # No local DB credentials, no Vault credentials... What a disaster.
-            raise ImproperlyConfigured(
-                "Unable to connect to the DB: credentials are not in region configuration "
-                "and Vault is not configured."
-            )
-
-        # Fetch DB credentials from Vault
+    # Try fetching vault-stored credentials
+    if client is not None:
         try:
             creds = client.get(get_db_creds_vault_path())
-        except InvalidPath:
+            # Override local configuration
+            database_user = creds["user"]
+            database_pass = creds["pass"]
+            database_name = creds["name"]
+        except KeyError as e:
             raise ImproperlyConfigured(
-                "Unable to connect to the DB: credentials were not found "
-                "in both local region configuration and configured Vault"
+                f"Incomplete Vault-stored DB credentials, missing key {e}"
             )
-
-        database_user = creds["user"]
-        database_pass = creds["pass"]
-        database_name = creds["name"]
+        except InvalidPath:
+            # Vault does not have DB credentials, but is available. No need to report anything, use local credentials.
+            pass
+        except VaultError as e:
+            # Vault entry is unavailable for some reason (misconfigured/sealed/wrong permissions).
+            # Report and use local credentials.
+            logging.getLogger(__name__).warning(
+                "Unable to fetch DB credentials from Vault: ", exc_info=e
+            )
+            pass
 
     return {
         "ENGINE": "django.db.backends.postgresql_psycopg2",

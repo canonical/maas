@@ -14,7 +14,6 @@ from hvac.exceptions import InvalidPath, VaultError
 from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 import pytest
 
-from maasserver import vault
 from maasserver.config import RegionConfiguration
 from maasserver.djangosettings import find_settings, import_settings, settings
 from maasserver.djangosettings.settings import (
@@ -95,32 +94,25 @@ def db_creds_vault_path(mocker):
 
 
 class TestGetDefaultDbConfig:
-    def _call_with_vault_migrated_region_config(self):
-        return _get_default_db_config(
-            RegionConfiguration(
-                {
-                    "database_name": "",
-                    "database_user": "127.0.0.1",
-                    "database_pass": factory.make_name("uuid"),
-                }
-            )
+    def test_uses_local_creds_when_vault_not_configured(self, mocker):
+        get_vault_mock = mocker.patch.object(
+            settings, "get_region_vault_client"
         )
+        get_vault_mock.return_value = None
+        config = {
+            "database_name": "postgres",
+            "database_user": factory.make_name("uuid"),
+            "database_pass": factory.make_name("uuid"),
+        }
 
-    def test_uses_values_from_local_config_when_provided(self, mocker):
-        get_vault_mock = mocker.patch.object(vault, "get_region_vault_client")
-        get_vault_mock.return_value = MagicMock()
-        regionconfig = RegionConfiguration(
-            {
-                "database_name": "postgres",
-                "database_user": factory.make_name("uuid"),
-                "database_pass": factory.make_name("uuid"),
-            }
-        )
+        observed = _get_default_db_config(RegionConfiguration(config))
 
-        _get_default_db_config(regionconfig)
-        get_vault_mock.assert_not_called()
+        get_vault_mock.assert_called_once()
+        assert observed["NAME"] == config["database_name"]
+        assert observed["USER"] == config["database_user"]
+        assert observed["PASSWORD"] == config["database_pass"]
 
-    def test_uses_vault_when_database_name_is_empty_and_vault_is_configured(
+    def test_uses_vault_when_vault_is_configured(
         self, mocker, db_creds_vault_path
     ):
         vault_client = MagicMock()
@@ -141,53 +133,54 @@ class TestGetDefaultDbConfig:
         )
         get_vault_mock.return_value = vault_client
 
-        observed = self._call_with_vault_migrated_region_config()
-        get_vault_mock.assert_called_once()
+        observed = _get_default_db_config(RegionConfiguration({}))
         assert observed["NAME"] == expected["name"]
         assert observed["USER"] == expected["user"]
         assert observed["PASSWORD"] == expected["pass"]
 
-    def test_raises_when_database_name_is_empty_and_credentials_not_found_in_vault(
+    def test_raises_when_vault_db_creds_incomplete(
         self, mocker, db_creds_vault_path
     ):
         vault_client = MagicMock()
-        vault_client.get.side_effect = [InvalidPath()]
-        get_vault_mock = mocker.patch.object(
+        vault_client.get.return_value = {"name": "any", "pass": "any"}
+        mocker.patch.object(
             settings, "get_region_vault_client"
-        )
-        get_vault_mock.return_value = vault_client
+        ).return_value = vault_client
+        with pytest.raises(ImproperlyConfigured, match="'user'"):
+            _get_default_db_config(RegionConfiguration({}))
 
-        with pytest.raises(
-            ImproperlyConfigured, match="credentials were not found"
-        ):
-            self._call_with_vault_migrated_region_config()
-
-        get_vault_mock.assert_called_once()
-
-    def test_raises_when_database_name_is_empty_and_no_vault_available(
-        self, mocker
+    def test_uses_local_creds_when_no_creds_in_vault(
+        self, mocker, db_creds_vault_path
     ):
-        get_vault_mock = mocker.patch.object(
+        expected = {
+            "database_name": "postgres",
+            "database_user": factory.make_name("uuid"),
+            "database_pass": factory.make_name("uuid"),
+        }
+        vault_client = MagicMock()
+        vault_client.get.side_effect = [InvalidPath()]
+        mocker.patch.object(
             settings, "get_region_vault_client"
-        )
-        get_vault_mock.return_value = None
+        ).return_value = vault_client
+        observed = _get_default_db_config(RegionConfiguration(expected))
+        assert observed["NAME"] == expected["database_name"]
+        assert observed["USER"] == expected["database_user"]
+        assert observed["PASSWORD"] == expected["database_pass"]
 
-        with pytest.raises(
-            ImproperlyConfigured, match="Vault is not configured"
-        ):
-            self._call_with_vault_migrated_region_config()
-
-        get_vault_mock.assert_called_once()
-
-    def test_reraises_vault_exceptions(self, mocker, db_creds_vault_path):
+    def test_uses_local_creds_on_vault_error(
+        self, mocker, db_creds_vault_path
+    ):
+        expected = {
+            "database_name": "postgres",
+            "database_user": factory.make_name("uuid"),
+            "database_pass": factory.make_name("uuid"),
+        }
         vault_client = MagicMock()
         vault_client.get.side_effect = [VaultError()]
-        get_vault_mock = mocker.patch.object(
+        mocker.patch.object(
             settings, "get_region_vault_client"
-        )
-        get_vault_mock.return_value = vault_client
-
-        with pytest.raises(VaultError):
-            self._call_with_vault_migrated_region_config()
-
-        get_vault_mock.assert_called_once()
+        ).return_value = vault_client
+        observed = _get_default_db_config(RegionConfiguration(expected))
+        assert observed["NAME"] == expected["database_name"]
+        assert observed["USER"] == expected["database_user"]
+        assert observed["PASSWORD"] == expected["database_pass"]
