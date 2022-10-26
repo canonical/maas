@@ -1,3 +1,9 @@
+maas (2.8.9~rc1-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.8.9 RC1.
+
+ -- Heitor Alves de Siqueira <halves@canonical.com>  Wed, 26 Oct 2022 14:45:48 +0000
+
 maas (2.8.8-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.8.8.
