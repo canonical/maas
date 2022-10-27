@@ -1116,9 +1116,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         # Regression test for LP:1881133
         mock_get_source_address = self.patch(dhcp, "get_source_address")
         mock_get_source_address.return_value = "192.168.122.209"
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan, cidr="192.168.200.0/24")
         rack = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        subnet = factory.make_Subnet(vlan=vlan, cidr="192.168.200.0/24")
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack
         )
@@ -1131,6 +1131,46 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
 
         servers = get_default_dns_servers(rack, subnet)
         self.assertEqual([IPAddress("192.168.200.1")], servers)
+
+    def test_dns_servers_when_relaying(self):
+        mock_get_source_address = self.patch(dhcp, "get_source_address")
+        mock_get_source_address.return_value = "10.20.30.1"
+        rack = factory.make_RackController(interface=False)
+        vlan1_primary = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
+        vlan2_secondary = factory.make_VLAN(
+            primary_rack=rack, dhcp_on=False, relay_vlan=vlan1_primary
+        )
+        subnet1 = factory.make_Subnet(
+            vlan=vlan1_primary, vid=10, cidr="10.20.40.0/24"
+        )
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2_secondary, vid=20, cidr="10.20.50.0/24"
+        )
+        rack_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack
+        )
+        rack_interface_vlan1 = factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan1_primary,
+            parents=[rack_interface],
+            node=rack,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            vlan=vlan2_secondary,
+            parents=[rack_interface],
+            node=rack,
+        )
+        factory.make_StaticIPAddress(
+            interface=rack_interface_vlan1,
+            subnet=subnet1,
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip="10.20.40.1",
+        )
+        dns_servers = dhcp.get_default_dns_servers(
+            rack, subnet2, use_rack_proxy=True
+        )
+        self.assertEqual(dns_servers, [IPAddress("10.20.40.1")])
 
     def test_no_default_region_ip(self):
         self.patch(dhcp, "get_source_address").return_value = None
