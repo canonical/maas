@@ -10,7 +10,6 @@ import random
 from django.urls import reverse
 from testtools.matchers import ContainsDict, Equals
 
-from maasserver import middleware
 from maasserver.models.fabric import Fabric
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -64,12 +63,6 @@ class TestFabricsAPI(APITestCase.ForUser):
         self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_has_constant_number_of_queries(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         for _ in range(3):
             make_complex_fabric()
 

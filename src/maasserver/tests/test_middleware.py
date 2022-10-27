@@ -5,7 +5,6 @@ import http.client
 import json
 import logging
 import random
-from unittest.mock import Mock
 
 from crochet import TimeoutError
 from django.conf import settings
@@ -16,11 +15,6 @@ from fixtures import FakeLogger
 from testtools.matchers import Equals
 
 from maasserver import middleware as middleware_module
-from maasserver.components import (
-    get_persistent_error,
-    register_persistent_error,
-)
-from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException, MAASAPINotFound
 from maasserver.middleware import (
     AccessMiddleware,
@@ -29,7 +23,6 @@ from maasserver.middleware import (
     DebuggingLoggerMiddleware,
     ExceptionMiddleware,
     ExternalAuthInfoMiddleware,
-    ExternalComponentsMiddleware,
     is_public_path,
     RBACMiddleware,
     RPCErrorsMiddleware,
@@ -526,102 +519,6 @@ class TestAPIRPCErrorsMiddleware(MAASServerTestCase):
         )
         self.assertRaises(
             ZeroDivisionError, self.process_request, request, exception
-        )
-
-
-class TestExternalComponentsMiddleware(MAASServerTestCase):
-    def process_request(self, request):
-        def get_response(request):
-            return None
-
-        middleware = ExternalComponentsMiddleware(get_response)
-        return middleware(request)
-
-    def quick_process(self):
-        request = factory.make_fake_request(factory.make_string(), "GET")
-        return self.process_request(request)
-
-    def test_checks_connectivity_of_rack_controllers(self):
-        getAllClients = self.patch(middleware_module, "getAllClients")
-
-        self.quick_process()
-
-        self.assertThat(getAllClients, MockCalledOnceWith())
-
-    def test_registers_error_if_all_rack_controllers_are_disconnected(self):
-        factory.make_RackController()
-
-        getAllClients = self.patch(middleware_module, "getAllClients")
-        getAllClients.return_value = []
-
-        self.quick_process()
-
-        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
-        self.assertEqual(
-            "One rack controller is not yet connected to the region. Visit "
-            'the <a href="/MAAS/r/controllers">'
-            "rack controllers page</a> for more "
-            "information.",
-            error,
-        )
-
-    def test_registers_error_if_any_clusters_are_disconnected(self):
-        rack_controllers = [
-            factory.make_RackController(),
-            factory.make_RackController(),
-            factory.make_RackController(),
-        ]
-
-        getAllClients = self.patch(middleware_module, "getAllClients")
-        getAllClients.return_value = [
-            Mock(ident=rack_controllers[0].system_id)
-        ]
-
-        self.quick_process()
-
-        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
-        self.assertEqual(
-            "2 rack controllers are not yet connected to the region. Visit "
-            'the <a href="/MAAS/r/controllers">'
-            "rack controllers page</a> for more "
-            "information.",
-            error,
-        )
-
-    def test_removes_error_once_all_clusters_are_connected(self):
-        rack_controllers = [
-            factory.make_RackController(),
-            factory.make_RackController(),
-        ]
-
-        getAllClients = self.patch(middleware_module, "getAllClients")
-        getAllClients.return_value = [
-            Mock(ident=rack.system_id) for rack in rack_controllers
-        ]
-
-        register_persistent_error(
-            COMPONENT.RACK_CONTROLLERS, "Who flung that batter pudding?"
-        )
-
-        self.quick_process()
-
-        error = get_persistent_error(COMPONENT.RACK_CONTROLLERS)
-        self.assertIsNone(error)
-
-    def test_does_not_suppress_exceptions_from_connectivity_checks(self):
-        def get_response(request):
-            return None
-
-        middleware = ExternalComponentsMiddleware(get_response)
-
-        error_type = factory.make_exception_type()
-        check_rack_controller_connectivity = self.patch(
-            middleware, "_check_rack_controller_connectivity"
-        )
-        check_rack_controller_connectivity.side_effect = error_type
-        self.assertRaises(error_type, middleware, None)
-        self.assertThat(
-            check_rack_controller_connectivity, MockCalledOnceWith()
         )
 
 

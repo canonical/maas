@@ -29,15 +29,8 @@ from django.utils.http import urlquote_plus
 
 from maasserver import logger
 from maasserver.clusterrpc.utils import get_error_message_for_exception
-from maasserver.components import (
-    discard_persistent_error,
-    register_persistent_error,
-)
-from maasserver.enum import COMPONENT
 from maasserver.exceptions import MAASAPIException
-from maasserver.models.node import RackController
 from maasserver.rbac import rbac
-from maasserver.rpc import getAllClients
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import is_retryable_failure
 from provisioningserver.rpc.exceptions import (
@@ -107,49 +100,6 @@ class AccessMiddleware:
                 "/MAAS/?next=%s" % urlquote_plus(request.path)
             )
 
-        return self.get_response(request)
-
-
-class ExternalComponentsMiddleware:
-    """Middleware to check external components at regular intervals."""
-
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def _check_rack_controller_connectivity(self):
-        """Check each rack controller to see if it's connected.
-
-        If any rack controllers are disconnected, add a persistent error.
-        """
-        connected_ids = {client.ident for client in getAllClients()}
-        n_disconnected_controllers = RackController.objects.exclude(
-            system_id__in=connected_ids
-        ).count()
-        if n_disconnected_controllers == 0:
-            discard_persistent_error(COMPONENT.RACK_CONTROLLERS)
-        else:
-            if n_disconnected_controllers == 1:
-                message = (
-                    "One rack controller is not yet connected to the region"
-                )
-            else:
-                message = (
-                    "%d rack controllers are not yet connected to the region"
-                    % n_disconnected_controllers
-                )
-            message = (
-                '%s. Visit the <a href="/MAAS/r/controllers">'
-                "rack controllers page</a> for "
-                "more information." % message
-            )
-            register_persistent_error(COMPONENT.RACK_CONTROLLERS, message)
-
-    def __call__(self, request):
-        # This middleware hijacks the request to perform checks.  Any
-        # error raised during these checks should be caught to avoid
-        # disturbing the handling of the request.  Proper error reporting
-        # should be handled in the check method itself.
-        self._check_rack_controller_connectivity()
         return self.get_response(request)
 
 

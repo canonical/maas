@@ -11,7 +11,7 @@ from django.test import RequestFactory
 from django.urls import reverse
 from testtools.matchers import Contains, Equals, Not
 
-from maasserver import eventloop, middleware
+from maasserver import eventloop
 from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
@@ -514,12 +514,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertIsNone(parsed_result[0]["pod"])
 
     def test_GET_machines_issues_linear_number_of_queries(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         queries_count = []
         machines_count = []
 

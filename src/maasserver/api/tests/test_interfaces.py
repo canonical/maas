@@ -14,7 +14,6 @@ from testtools.matchers import (
     MatchesSetwise,
 )
 
-from maasserver import middleware
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -190,12 +189,6 @@ class TestInterfacesAPI(APITestCase.ForUser):
         )
 
     def test_read_uses_constant_number_of_queries(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         node = factory.make_Node()
         bond1, parents1, children1 = make_complex_interface(node)
         uri = get_interfaces_uri(node)

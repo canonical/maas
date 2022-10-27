@@ -259,9 +259,6 @@ MIDDLEWARE = (
     "maasserver.middleware.AccessMiddleware",
     # Sets X-Frame-Options header to SAMEORIGIN.
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # Used to display errors about disconnected clusters. FIXME: This should
-    # not be done on every request!
-    "maasserver.middleware.ExternalComponentsMiddleware",
 )
 
 ROOT_URLCONF = "maasserver.djangosettings.urls"

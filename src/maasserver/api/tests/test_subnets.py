@@ -82,7 +82,8 @@ class TestSubnetsAPI(APITestCase.ForUser):
         with CountQueries() as counter:
             response = self.client.get(uri)
         # XXX: These should be the same.
-        self.assertEqual(base_count + 8, counter.count)
+        self.assertEqual(base_count + 9, counter.count)
+        self.assertEqual((base_count, counter.count), (24, 33))
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content

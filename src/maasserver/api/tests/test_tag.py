@@ -11,7 +11,6 @@ from django.urls import reverse
 from testtools.matchers import MatchesStructure
 
 from apiclient.creds import convert_tuple_to_string
-from maasserver import middleware
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Event, Tag
 from maasserver.models.node import generate_node_system_id
@@ -187,12 +186,6 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
     def test_GET_nodes_query_count(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         tag = factory.make_Tag()
 
         query_counts = []
@@ -253,12 +246,6 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
     def test_GET_machines_query_count(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         tag = factory.make_Tag()
 
         query_counts = []
@@ -320,12 +307,6 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
     def test_GET_devices_query_count(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
-
         tag = factory.make_Tag()
         for _ in range(3):
             device = factory.make_Device()
@@ -387,11 +368,6 @@ class TestTagAPI(APITestCase.ForUser):
 
     @skip("XXX: ltrager 2919-11-29 bug=1854546")
     def test_GET_rack_controllers_query_count(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
         self.become_admin()
 
         tag = factory.make_Tag()
@@ -476,11 +452,6 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
     def test_GET_region_controllers_query_count(self):
-        # Patch middleware so it does not affect query counting.
-        self.patch(
-            middleware.ExternalComponentsMiddleware,
-            "_check_rack_controller_connectivity",
-        )
         self.become_admin()
 
         tag = factory.make_Tag()
