@@ -229,6 +229,14 @@ def make_CertificateExpirationCheckService():
     return CertificateExpirationCheckService(reactor)
 
 
+def make_VaultSecretsCleanupService():
+    from maasserver.regiondservices.vault_secrets_cleanup import (
+        VaultSecretsCleanupService,
+    )
+
+    return VaultSecretsCleanupService(reactor)
+
+
 class MAASServices(MultiService):
     def __init__(self, eventloop):
         self.eventloop = eventloop
@@ -409,6 +417,11 @@ class RegionEventLoop:
         "certificate-expiration-check": {
             "only_on_master": True,
             "factory": make_CertificateExpirationCheckService,
+            "requires": [],
+        },
+        "vault-secrets-cleanup": {
+            "only_on_master": True,
+            "factory": make_VaultSecretsCleanupService,
             "requires": [],
         },
     }

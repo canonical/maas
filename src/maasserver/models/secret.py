@@ -1,4 +1,4 @@
-from django.db.models import JSONField, TextField
+from django.db.models import BooleanField, JSONField, Model, TextField
 
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -12,3 +12,10 @@ class Secret(TimestampedModel):
 
     path = TextField(primary_key=True)
     value = JSONField()
+
+
+class VaultSecret(Model):
+    """Metadata for secrets stored in Vault."""
+
+    path = TextField(primary_key=True)
+    deleted = BooleanField(default=False)

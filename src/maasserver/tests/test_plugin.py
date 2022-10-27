@@ -1,8 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the ``maasregiond`` TAP."""
-
 
 import os
 from pathlib import Path
@@ -258,6 +256,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "version-check",
             "workers",
             "ipc-master",
+            "vault-secrets-cleanup",
         }
         self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
@@ -380,6 +379,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "active-discovery",
             "reverse-dns",
             "reverse-proxy",
+            "vault-secrets-cleanup",
             "certificate-expiration-check",
             "ntp",
             "syslog",

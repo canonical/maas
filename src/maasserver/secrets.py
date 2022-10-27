@@ -3,7 +3,7 @@ from typing import Any, Literal, NamedTuple, Optional
 from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
-from maasserver.models import Node, RootKey, Secret
+from maasserver.models import Node, RootKey, Secret, VaultSecret
 from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
@@ -81,6 +81,9 @@ class SecretManager:
         path = self._get_secret_path(name, obj=obj)
         if self._vault_client:
             self._vault_client.set(path, value)
+            VaultSecret.objects.update_or_create(
+                path=path, defaults={"deleted": False}
+            )
         else:
             Secret.objects.update_or_create(
                 path=path, defaults={"value": value}
@@ -98,7 +101,7 @@ class SecretManager:
         """Delete a secret, either global or for a model instance."""
         path = self._get_secret_path(name, obj=obj)
         if self._vault_client:
-            self._vault_client.delete(path)
+            VaultSecret.objects.filter(path=path).update(deleted=True)
         else:
             Secret.objects.filter(path=path).delete()
 
@@ -110,8 +113,7 @@ class SecretManager:
             for name in model_secret.secret_names
         )
         if self._vault_client:
-            for path in paths:
-                self._vault_client.delete(path)
+            VaultSecret.objects.filter(path__in=paths).update(deleted=True)
         else:
             Secret.objects.filter(path__in=paths).delete()
 
@@ -128,6 +130,9 @@ class SecretManager:
         path = self._get_secret_path(name, obj=obj)
         try:
             if self._vault_client:
+                vault_secret = VaultSecret.objects.filter(path=path).first()
+                if not vault_secret or vault_secret.deleted:
+                    raise SecretNotFound(path)
                 return self._get_secret_from_vault(path)
 
             return self._get_secret_from_db(path)

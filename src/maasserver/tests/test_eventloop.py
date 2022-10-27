@@ -31,6 +31,9 @@ from maasserver.regiondservices import ntp, service_monitor_service, syslog
 from maasserver.regiondservices.certificate_expiration_check import (
     CertificateExpirationCheckService,
 )
+from maasserver.regiondservices.vault_secrets_cleanup import (
+    VaultSecretsCleanupService,
+)
 from maasserver.regiondservices.version_update_check import (
     RegionVersionUpdateCheckService,
 )
@@ -619,6 +622,14 @@ class TestFactories(MAASServerTestCase):
                 "factory"
             ],
             eventloop.make_CertificateExpirationCheckService,
+        )
+
+    def test_make_VaultSecretsCleanupService(self):
+        service = eventloop.make_VaultSecretsCleanupService()
+        self.assertIsInstance(service, VaultSecretsCleanupService)
+        self.assertIs(
+            eventloop.loop.factories["vault-secrets-cleanup"]["factory"],
+            eventloop.make_VaultSecretsCleanupService,
         )
 
 

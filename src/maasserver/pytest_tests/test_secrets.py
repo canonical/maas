@@ -1,32 +1,16 @@
 import pytest
 
 from maasserver import vault
-from maasserver.models import Config, Secret
+from maasserver.models import Config, Secret, VaultSecret
 from maasserver.secrets import SecretManager, SecretNotFound, UnknownSecret
 from maasserver.testing.factory import factory
-
-
-class MockVaultClient:
-    def __init__(self):
-        self.store = {}
-
-    def set(self, path, value):
-        self.store[path] = value
-
-    def get(self, path):
-        try:
-            return self.store[path]
-        except KeyError:
-            raise SecretNotFound(path)
-
-    def delete(self, path):
-        self.store.pop(path, None)
+from maasserver.testing.vault import FakeVaultClient
 
 
 @pytest.fixture
 def vault_client(request):
     if request.param:
-        yield MockVaultClient()
+        yield FakeVaultClient()
     else:
         yield None
 
@@ -37,14 +21,41 @@ class TestSecretManager:
     def set_secret(self, vault_client, path, value):
         if vault_client:
             vault_client.store[path] = value
+            VaultSecret.objects.create(path=path)
         else:
             Secret.objects.create(path=path, value=value)
 
     def assert_secrets(self, vault_client, secrets):
         if vault_client:
             assert vault_client.store == secrets
+            assert set(
+                VaultSecret.objects.values_list("path", flat=True)
+            ) == set(secrets)
         else:
             assert dict(Secret.objects.values_list("path", "value")) == secrets
+
+    def assert_secrets_with_deleted(
+        self, vault_client, all_secrets, deleted_secrets
+    ):
+        known_secrets = {}
+        vault_secrets = {}
+        for path, value in all_secrets.items():
+            deleted = path in deleted_secrets
+            vault_secrets[path] = deleted
+            if not deleted:
+                known_secrets[path] = value
+        if vault_client:
+            assert vault_client.store == all_secrets
+            assert (
+                dict(VaultSecret.objects.values_list("path", "deleted"))
+                == vault_secrets
+            )
+        else:
+            assert (
+                dict(Secret.objects.values_list("path", "value"))
+                == known_secrets
+            )
+            assert not VaultSecret.objects.exists()
 
     def test_uses_provided_client_instead_of_making_new(
         self, vault_client, mocker
@@ -198,11 +209,11 @@ class TestSecretManager:
     def test_delete_secret_with_model(self, vault_client):
         node = factory.make_Node()
         manager = SecretManager(vault_client=vault_client)
-        self.set_secret(
-            vault_client, f"node/{node.id}/deploy-metadata", {"foo": "bar"}
-        )
+        path = f"node/{node.id}/deploy-metadata"
+        value = {"foo": "bar"}
+        self.set_secret(vault_client, path, value)
         manager.delete_secret("deploy-metadata", obj=node)
-        self.assert_secrets(vault_client, {})
+        self.assert_secrets_with_deleted(vault_client, {path: value}, {path})
 
     def test_delete_secret_with_model_unknown(self, vault_client):
         node = factory.make_Node()
@@ -214,7 +225,9 @@ class TestSecretManager:
         manager = SecretManager(vault_client=vault_client)
         self.set_secret(vault_client, "global/omapi-key", "foo")
         manager.delete_secret("omapi-key")
-        self.assert_secrets(vault_client, {})
+        self.assert_secrets_with_deleted(
+            vault_client, {"global/omapi-key": "foo"}, {"global/omapi-key"}
+        )
 
     def test_delete_secret_global_unknown(self, vault_client):
         manager = SecretManager(vault_client=vault_client)
@@ -229,9 +242,13 @@ class TestSecretManager:
         manager.set_simple_secret("deploy-metadata", value, obj=node1)
         manager.set_simple_secret("deploy-metadata", value, obj=node2)
         manager.delete_all_object_secrets(node1)
-        self.assert_secrets(
+        self.assert_secrets_with_deleted(
             vault_client,
-            {f"node/{node2.id}/deploy-metadata": {"secret": value}},
+            {
+                f"node/{node1.id}/deploy-metadata": {"secret": value},
+                f"node/{node2.id}/deploy-metadata": {"secret": value},
+            },
+            {f"node/{node1.id}/deploy-metadata"},
         )
 
     def test_delete_all_object_secrets_only_known(self, vault_client):
@@ -242,6 +259,11 @@ class TestSecretManager:
             vault_client, f"node/{node.id}/unknown", {"foo": "bar"}
         )
         manager.delete_all_object_secrets(node)
-        self.assert_secrets(
-            vault_client, {f"node/{node.id}/unknown": {"foo": "bar"}}
+        self.assert_secrets_with_deleted(
+            vault_client,
+            {
+                f"node/{node.id}/deploy-metadata": {"secret": "foo"},
+                f"node/{node.id}/unknown": {"foo": "bar"},
+            },
+            {f"node/{node.id}/deploy-metadata"},
         )
