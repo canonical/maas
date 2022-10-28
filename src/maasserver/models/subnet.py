@@ -1100,9 +1100,6 @@ def get_boot_rackcontroller_ips(subnet):
         value = 2
         if ip in network:
             value = 1
-        # Prefer addresses of the same IP version.
-        if ip.version != network.version:
-            value *= 10
         return value
 
     from maasserver.models.staticipaddress import StaticIPAddress
@@ -1120,5 +1117,13 @@ def get_boot_rackcontroller_ips(subnet):
         subnet__vlan=dhcp_vlan,
         interface__node_config__in=node_configs,
     )
-    ips = sorted((static_ip.ip for static_ip in static_ips), key=rank_ip)
+    ip_version = IPNetwork(subnet.cidr).version
+    ips = sorted(
+        (
+            static_ip.ip
+            for static_ip in static_ips
+            if IPAddress(static_ip.ip).version == ip_version
+        ),
+        key=rank_ip,
+    )
     return ips
