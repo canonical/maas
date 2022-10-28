@@ -8998,6 +8998,16 @@ ALTER SEQUENCE public.maasserver_userprofile_id_seq OWNED BY public.maasserver_u
 
 
 --
+-- Name: maasserver_vaultsecret; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_vaultsecret (
+    path text NOT NULL,
+    deleted boolean NOT NULL
+);
+
+
+--
 -- Name: maasserver_versionedtextfile; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10722,6 +10732,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 438	Can change secret	110	change_secret
 439	Can delete secret	110	delete_secret
 440	Can view secret	110	view_secret
+441	Can add vault secret	111	add_vaultsecret
+442	Can change vault secret	111	change_vaultsecret
+443	Can delete vault secret	111	delete_vaultsecret
+444	Can view vault secret	111	view_vaultsecret
 \.
 
 
@@ -10864,6 +10878,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 108	maastesting	perftestbuild
 109	maasserver	nodedevicevpd
 110	maasserver	secret
+111	maasserver	vaultsecret
 \.
 
 
@@ -11212,6 +11227,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 338	maasserver	0286_node_deploy_metadata	2022-10-11 03:29:32.800937+00
 339	maasserver	0287_add_controller_info_vault_flag	2022-10-15 03:29:44.399652+00
 340	maasserver	0288_rootkey_material_secret	2022-10-21 03:29:26.788885+00
+341	maasserver	0289_vault_secret	2022-10-28 03:29:40.716763+00
 \.
 
 
@@ -11831,6 +11847,14 @@ COPY public.maasserver_userprofile (id, user_id, completed_intro, auth_last_chec
 
 
 --
+-- Data for Name: maasserver_vaultsecret; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_vaultsecret (path, deleted) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_versionedtextfile; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -11985,7 +12009,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 440, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 444, true);
 
 
 --
@@ -12013,14 +12037,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 340, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 341, true);
 
 
 --
@@ -13839,6 +13863,14 @@ ALTER TABLE ONLY public.maasserver_userprofile
 
 
 --
+-- Name: maasserver_vaultsecret maasserver_vaultsecret_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_vaultsecret
+    ADD CONSTRAINT maasserver_vaultsecret_pkey PRIMARY KEY (path);
+
+
+--
 -- Name: maasserver_versionedtextfile maasserver_versionedtextfile_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15056,6 +15088,13 @@ CREATE INDEX maasserver_template_filename_aba74d61_like ON public.maasserver_tem
 --
 
 CREATE INDEX maasserver_template_version_id_78c8754e ON public.maasserver_template USING btree (version_id);
+
+
+--
+-- Name: maasserver_vaultsecret_path_4127e219_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_vaultsecret_path_4127e219_like ON public.maasserver_vaultsecret USING btree (path text_pattern_ops);
 
 
 --
