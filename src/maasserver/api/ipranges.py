@@ -65,7 +65,7 @@ class IPRangesHandler(OperationsHandler):
         @param (string) "end_ip" [required=true] End IP address of this range
         (inclusive).
 
-        @param (string) "subnet" [required=true] Subnet associated with this
+        @param (int) "subnet" [required=true] Subnet associated with this
         range.
 
         @param (string) "comment" [required=false] A description of this range.
