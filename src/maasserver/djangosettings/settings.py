@@ -12,6 +12,7 @@ from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.djangosettings import fix_up_databases
 from maasserver.djangosettings.monkey import patch_get_script_prefix
 from maasserver.vault import get_region_vault_client
+from provisioningserver.utils.env import MAAS_ID
 
 
 def _read_timezone(tzfilename="/etc/timezone"):
@@ -74,6 +75,10 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             )
             pass
 
+    # Provide application name to PostgreSQL to check region activities
+    maas_id = MAAS_ID.get() or "NO_ID"
+    application_name = f"maas-regiond-{maas_id}"
+
     return {
         "ENGINE": "django.db.backends.postgresql_psycopg2",
         "NAME": database_name,
@@ -87,6 +92,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             "keepalives_idle": config.database_keepalive_idle,
             "keepalives_interval": config.database_keepalive_interval,
             "keepalives_count": config.database_keepalive_count,
+            "application_name": application_name,
         },
     }
 

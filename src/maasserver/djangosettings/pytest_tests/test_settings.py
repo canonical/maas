@@ -184,3 +184,28 @@ class TestGetDefaultDbConfig:
         assert observed["NAME"] == expected["database_name"]
         assert observed["USER"] == expected["database_user"]
         assert observed["PASSWORD"] == expected["database_pass"]
+
+    def test_returns_expected_application_name(self, mocker):
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        maas_id_mock = mocker.patch.object(settings, "MAAS_ID")
+        maas_id = factory.make_name("id")
+        maas_id_mock.get.return_value = maas_id
+
+        observed = _get_default_db_config(RegionConfiguration({}))
+        assert "application_name" in observed["OPTIONS"]
+        assert (
+            observed["OPTIONS"]["application_name"]
+            == f"maas-regiond-{maas_id}"
+        )
+
+    def test_returns_random_application_name_with_no_maas_id(self, mocker):
+        mocker.patch.object(
+            settings, "get_region_vault_client"
+        ).return_value = None
+        mocker.patch.object(settings, "MAAS_ID").get.return_value = None
+
+        observed = _get_default_db_config(RegionConfiguration({}))
+        assert "application_name" in observed["OPTIONS"]
+        assert observed["OPTIONS"]["application_name"] == "maas-regiond-NO_ID"
