@@ -31,14 +31,17 @@ class VaultSecretsCleanupService(SingleInstanceService):
 
     @inlineCallbacks
     def do_action(self):
+        yield deferToDatabase(self._run)
+
+    @synchronous
+    @transactional
+    def _run(self):
         client = get_region_vault_client_if_enabled()
         if not client:
             return
 
-        yield deferToDatabase(self._clean_secrets, client)
+        self._clean_secrets(client)
 
-    @synchronous
-    @transactional
     def _clean_secrets(self, client: VaultClient):
         deleted_paths = list(
             VaultSecret.objects.filter(deleted=True).values_list(

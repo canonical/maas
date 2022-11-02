@@ -123,8 +123,8 @@ class TestVaultSecretsCleanupService(MAASTransactionServerTestCase):
 
         yield deferToDatabase(setup)
 
-        yield deferToDatabase(self.service._clean_secrets, vault_client)
-        yield deferToDatabase(self.service._clean_secrets, vault_client)
+        yield deferToDatabase(self.service._run)
+        yield deferToDatabase(self.service._run)
         self.assertEqual(
             mock_delete.mock_calls,
             [call("global/omapi-key"), call("global/omapi-key")],
