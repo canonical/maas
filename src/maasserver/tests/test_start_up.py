@@ -3,16 +3,19 @@
 
 from pathlib import Path
 import random
-from unittest.mock import call
+from unittest.mock import call, MagicMock
 
+from hvac.exceptions import InvalidPath, VaultError
 from testtools.matchers import HasLength
 
 from maasserver import deprecations, eventloop, locks, start_up
+from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
+from maasserver.start_up import migrate_db_credentials_if_necessary
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
@@ -27,6 +30,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from provisioningserver.config import ConfigurationFile
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.deb import DebVersionsInfo
@@ -253,9 +257,170 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test_sets_vault_flag_enabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = object()
+        self.patch(start_up, "migrate_db_credentials_if_necessary")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
 
         region = RegionController.objects.first()
         controller = ControllerInfo.objects.get(node_id=region.id)
         self.assertTrue(controller.vault_configured)
+
+    def test_migrates_db_credentials_when_configured(self):
+        self.patch(start_up, "get_region_vault_client").return_value = object()
+        migrate_mock = self.patch(
+            start_up, "migrate_db_credentials_if_necessary"
+        )
+
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+
+        migrate_mock.assert_called_once()
+
+    def test_does_not_migrate_db_credentials_when_not_configured(self):
+        self.patch(start_up, "get_region_vault_client").return_value = None
+        migrate_mock = self.patch(
+            start_up, "migrate_db_credentials_if_necessary"
+        )
+
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+
+        migrate_mock.assert_not_called()
+
+
+class TestVaultMigrateDbCredentials(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.creds_path = factory.make_name("uuid")
+        self.patch(
+            start_up, "get_db_creds_vault_path"
+        ).return_value = self.creds_path
+
+    def test_does_nothing_when_on_disk_and_vault_disabled(self):
+        db_name = factory.make_name("uuid")
+        self.useFixture(RegionConfigurationFixture(database_name=db_name))
+
+        client = MagicMock()
+        Config.objects.set_config("vault_enabled", False)
+        migrate_db_credentials_if_necessary(client)
+        client.assert_not_called()
+        with RegionConfiguration.open() as config:
+            self.assertEqual(db_name, config.database_name)
+
+    def test_does_nothing_when_not_on_disk_and_vault_enabled(self):
+        self.useFixture(RegionConfigurationFixture(database_name=""))
+
+        client = MagicMock()
+        Config.objects.set_config("vault_enabled", True)
+        migrate_db_credentials_if_necessary(client)
+        Config.objects.set_config("vault_enabled", False)
+        client.assert_not_called()
+        with RegionConfiguration.open() as config:
+            self.assertEqual("", config.database_name)
+
+    def test_migrates_to_vault_when_on_disk_and_vault_enabled(self):
+        db_name = factory.make_name("uuid")
+        db_user = factory.make_name("uuid")
+        db_pass = factory.make_name("uuid")
+        self.useFixture(
+            RegionConfigurationFixture(
+                database_name=db_name,
+                database_user=db_user,
+                database_pass=db_pass,
+            )
+        )
+
+        client = MagicMock()
+        Config.objects.set_config("vault_enabled", True)
+        migrate_db_credentials_if_necessary(client)
+        Config.objects.set_config("vault_enabled", False)
+        client.set.assert_called_once_with(
+            self.creds_path,
+            {"name": db_name, "user": db_user, "pass": db_pass},
+        )
+        with RegionConfiguration.open() as config:
+            self.assertEqual("", config.database_name)
+            self.assertEqual("", config.database_user)
+            self.assertEqual("", config.database_pass)
+
+    def test_retain_creds_on_disk_when_migration_to_vault_fails(self):
+        db_name = factory.make_name("uuid")
+        db_user = factory.make_name("uuid")
+        db_pass = factory.make_name("uuid")
+        self.useFixture(
+            RegionConfigurationFixture(
+                database_name=db_name,
+                database_user=db_user,
+                database_pass=db_pass,
+            )
+        )
+
+        client = MagicMock()
+        client.set.side_effect = [VaultError()]
+        Config.objects.set_config("vault_enabled", True)
+        self.assertRaises(
+            VaultError, migrate_db_credentials_if_necessary, client
+        )
+        Config.objects.set_config("vault_enabled", False)
+        with RegionConfiguration.open() as config:
+            self.assertEqual(db_name, config.database_name)
+            self.assertEqual(db_user, config.database_user)
+            self.assertEqual(db_pass, config.database_pass)
+
+    def test_migrates_to_disk_when_not_on_disk_and_vault_disabled(self):
+        db_name = factory.make_name("uuid")
+        db_user = factory.make_name("uuid")
+        db_pass = factory.make_name("uuid")
+        self.useFixture(
+            RegionConfigurationFixture(
+                database_name="",
+                database_user="",
+                database_pass="",
+            )
+        )
+
+        def get_side_effect(path):
+            if path == self.creds_path:
+                return {"name": db_name, "user": db_user, "pass": db_pass}
+            raise InvalidPath(path)
+
+        client = MagicMock()
+        client.get.side_effect = get_side_effect
+        Config.objects.set_config("vault_enabled", False)
+        migrate_db_credentials_if_necessary(client)
+        client.get.assert_called_once_with(self.creds_path)
+        with RegionConfiguration.open() as config:
+            self.assertEqual(db_name, config.database_name)
+            self.assertEqual(db_user, config.database_user)
+            self.assertEqual(db_pass, config.database_pass)
+        client.delete.assert_called_once_with(self.creds_path)
+
+    def test_retain_creds_in_vault_when_config_save_fails(self):
+        db_name = factory.make_name("uuid")
+        db_user = factory.make_name("uuid")
+        db_pass = factory.make_name("uuid")
+        self.useFixture(
+            RegionConfigurationFixture(
+                database_name="",
+                database_user="",
+                database_pass="",
+            )
+        )
+
+        client = MagicMock()
+        client.get.return_value = {
+            "name": db_name,
+            "user": db_user,
+            "pass": db_pass,
+        }
+        Config.objects.set_config("vault_enabled", False)
+        exc = factory.make_exception()
+        self.patch(ConfigurationFile, "save").side_effect = exc
+        self.assertRaises(
+            type(exc), migrate_db_credentials_if_necessary, client
+        )
+        with RegionConfiguration.open() as config:
+            self.assertEqual("", config.database_name)
+            self.assertEqual("", config.database_user)
+            self.assertEqual("", config.database_pass)
+        client.delete.assert_not_called()

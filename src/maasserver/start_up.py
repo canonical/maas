@@ -11,7 +11,7 @@ from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
-from maasserver.config import RegionConfiguration
+from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.deprecations import (
     log_deprecations,
     sync_deprecation_notifications,
@@ -32,7 +32,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vault import get_region_vault_client
+from maasserver.vault import get_region_vault_client, VaultClient
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -47,6 +47,58 @@ from provisioningserver.utils.version import get_versions_info
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)
 log = LegacyLogger()
+
+
+def migrate_db_credentials_if_necessary(client: VaultClient) -> None:
+    """Checks if Vault is enabled on cluster and migrates the DB credentials accordingly."""
+    vault_enabled = Config.objects.get_config("vault_enabled", False)
+    delete_path = None
+
+    with RegionConfiguration.open_for_update() as config:
+        db_creds_on_disk = bool(config.database_name)
+        if db_creds_on_disk ^ vault_enabled:
+            logger.debug("DB credentials migration not required")
+            # No operation required when:
+            # - db credentials are on disk and vault_enabled is False
+            # - db credentials are not on disk and vault_enabled is True
+            return
+
+        if db_creds_on_disk:
+            # Migrate from config to Vault
+            client.set(
+                get_db_creds_vault_path(),
+                {
+                    "user": config.database_user,
+                    "pass": config.database_pass,
+                    "name": config.database_name,
+                },
+            )
+            config.database_user = ""
+            config.database_pass = ""
+            config.database_name = ""
+            logger.info("Migrated DB credentials from local config to vault")
+            # No need to defer anything in case we failed to save
+            # the config here, as we now have two copies of these secrets,
+            # not zero. Failure to save the config will raise an exception
+            # that will prevent region from starting up, and we'll get rid
+            # of the local creds once config is successfully saved.
+        else:
+            # Migrate from Vault to config
+            delete_path = get_db_creds_vault_path()
+            creds = client.get(delete_path)
+            config.database_user = creds["user"]
+            config.database_pass = creds["pass"]
+            config.database_name = creds["name"]
+            logger.info("Migrated DB credentials from vault to local config")
+            # We defer deletion of creds from the Vault because
+            # the context manager calls `save` afterwards,
+            # and it might fail, meaning we shouldn't delete
+            # secrets from the Vault.
+
+    if delete_path:
+        # By that moment config should be saved successfully
+        client.delete(delete_path)
+        logger.info("Deleted DB credentials from vault")
 
 
 @asynchronous(timeout=FOREVER)
@@ -139,6 +191,14 @@ def inner_start_up(master=False):
     # Only perform the following if the master process for the
     # region controller.
     if master:
+        # Migrate DB credentials to Vault and set the flag if Vault client is configured
+        client = get_region_vault_client()
+        if client is not None:
+            migrate_db_credentials_if_necessary(client)
+
+        ControllerInfo.objects.filter(node_id=node.id).update(
+            vault_configured=bool(client)
+        )
         # Freshen the kms SRV records.
         dns_kms_setting_changed()
 
