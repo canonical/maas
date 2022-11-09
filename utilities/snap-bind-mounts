@@ -32,18 +32,8 @@ GIT_BASE_PATHS = [
 ]
 
 
-def is_relative_to(path, base_path):
-    """Implementation of Path.is_relative_to which was added in Python 3.9"""
-    try:
-        path.relative_to(base_path)
-    except ValueError:
-        return False
-    else:
-        return True
-
-
 def get_snap_base_path():
-    return Path("/snap/maas/current/lib/python3.8/site-packages").resolve()
+    return Path("/snap/maas/current/lib/python3.10/site-packages").resolve()
 
 
 def get_installed_revision():
@@ -60,7 +50,7 @@ def get_active_mounts(base_path):
     mounts = []
     for mount_line in Path("/proc/mounts").read_text().splitlines():
         mount_target = Path(mount_line.split(" ")[1])
-        if is_relative_to(mount_target, base_path):
+        if mount_target.is_relative_to(base_path):
             mounts.append(mount_target)
     return mounts
 
@@ -84,7 +74,7 @@ def get_files_to_mount(modified_files):
             if "tests" in modified_file.parts[:-1]:
                 # Unittests are not in the snap.
                 continue
-            if is_relative_to(modified_file, base_path):
+            if modified_file.is_relative_to(base_path):
                 files_to_mount.append(modified_file)
     return files_to_mount
 
