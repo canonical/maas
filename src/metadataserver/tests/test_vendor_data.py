@@ -29,9 +29,9 @@ from maasserver.utils.converters import systemd_interval_to_calendar
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
+from metadataserver.models import NodeKey
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
-    _get_node_admin_token,
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
     generate_hardware_sync_systemd_configuration,
@@ -751,6 +751,17 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
 
         maas_url = get_node_rack_url(node)
 
+        token = NodeKey.objects.get_token_for_node(node)
+        credentials = {
+            "reporting": {
+                "maas": {
+                    "endpoint": f"{maas_url}/metadata/status/{node.system_id}",
+                    "token_key": token.key,
+                    "token_secret": token.secret,
+                    "consumer_key": token.consumer.key,
+                }
+            }
+        }
         expected = (
             "write_files",
             [
@@ -764,12 +775,15 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
                 },
                 {
                     "content": self._get_service_template().substitute(
-                        admin_token=_get_node_admin_token(node),
                         maas_url=maas_url,
-                        system_id=node.system_id,
                         token_file_path=HARDWARE_SYNC_MACHINE_TOKEN_PATH,
                     ),
                     "path": "/lib/systemd/system/maas_hardware_sync.service",
+                },
+                {
+                    "content": yaml.safe_dump(credentials),
+                    "path": HARDWARE_SYNC_MACHINE_TOKEN_PATH,
+                    "permissions": "0700",
                 },
             ],
         )

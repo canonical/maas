@@ -8,11 +8,6 @@ After=network.target
 Type=oneshot
 ExecStartPre=/usr/bin/wget -O /usr/bin/maas-run-scripts {{ maas_url }}/maas-run-scripts
 ExecStartPre=/bin/chmod 0755 /usr/bin/maas-run-scripts
-ExecStartPre=/usr/bin/maas-run-scripts get-machine-token\
-    '{{ maas_url }}'\
-    '{{ admin_token }}'\
-    {{ system_id }}\
-    {{ token_file_path }}
 ExecStart=/usr/bin/maas-run-scripts report-results --config {{ token_file_path }}
 
 [Install]
