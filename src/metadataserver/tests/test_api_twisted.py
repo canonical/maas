@@ -521,7 +521,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         for script_result in node.get_latest_script_results:
             self.assertEqual(SCRIPT_STATUS.ABORTED, script_result.status)
 
-    def test_status_commissioning_failure_ignored_when_rebooting(self):
+    def test_status_commissioning_failure_ignored_when_rebooting_running(self):
         user = factory.make_User()
         node = factory.make_Node(
             interface=True,
@@ -548,6 +548,37 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
         self.assertEqual(
             SCRIPT_STATUS.RUNNING, reload_object(script_result).status
+        )
+
+    def test_status_commissioning_failure_ignored_when_rebooting_passed(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.COMMISSIONING,
+            owner=user,
+            with_empty_script_sets=True,
+        )
+        script = factory.make_Script(may_reboot=True)
+        now = datetime.now()
+        script_result = factory.make_ScriptResult(
+            script=script,
+            script_set=node.current_commissioning_script_set,
+            status=SCRIPT_STATUS.PASSED,
+            started=now - timedelta(seconds=120),
+            ended=now - timedelta(seconds=10),
+        )
+        payload = {
+            "event_type": "finish",
+            "result": "FAILURE",
+            "origin": "curtin",
+            "name": "commissioning",
+            "description": "Commissioning",
+            "timestamp": datetime.utcnow(),
+        }
+        self.processMessage(node, payload)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, reload_object(node).status)
+        self.assertEqual(
+            SCRIPT_STATUS.PASSED, reload_object(script_result).status
         )
 
     def test_status_installation_failure_leaves_node_failed(self):

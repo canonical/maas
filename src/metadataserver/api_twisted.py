@@ -453,12 +453,21 @@ class StatusWorkerService(TimerService):
                 # cloud-init may send a failure message if a script reboots
                 # the system. If a script is running which may_reboot ignore
                 # the signal.
+                # XXX: This check is quite fragile. There's no way of knowing
+                #      that the machine is actually rebooting. Cloud-init could
+                #      have failed for some other reason. The script runner
+                #      should become aware of scripts that need rebooting.
+                #      Instead of the scripts calling 'reboot' directly, they
+                #      should tell the script runner that a reboot is needed.
                 if failed:
                     script_set = node.current_commissioning_script_set
                     if (
                         script_set is None
                         or not script_set.scriptresult_set.filter(
-                            status=SCRIPT_STATUS.RUNNING,
+                            status__in=[
+                                SCRIPT_STATUS.RUNNING,
+                                SCRIPT_STATUS.PASSED,
+                            ],
                             script__may_reboot=True,
                         ).exists()
                     ):
