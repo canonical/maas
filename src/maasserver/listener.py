@@ -242,9 +242,9 @@ class PostgresListenerService(Service):
         if connection_wrapper is not None:
             connection = connection_wrapper.connection
             if connection is not None and not connection.closed:
-                connection_wrapper.dec_thread_sharing()
                 connection_wrapper.commit()
                 connection_wrapper.close()
+                connection_wrapper.dec_thread_sharing()
 
     def tryConnection(self):
         """Keep retrying to make the connection."""
