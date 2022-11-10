@@ -783,7 +783,7 @@ class MarkFixed(NodeAction):
             return False
         else:
             script_failures = script_set.scriptresult_set.exclude(
-                status=SCRIPT_STATUS.PASSED
+                status__in=[SCRIPT_STATUS.PASSED, SCRIPT_STATUS.SKIPPED]
             )
             return not script_failures.exists()
 

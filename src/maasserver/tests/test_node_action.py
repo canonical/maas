@@ -1535,8 +1535,10 @@ class TestMarkFixedAction(MAASServerTestCase):
         node.save()
         if result == 0:
             status = SCRIPT_STATUS.PASSED
-        else:
+        elif result == 1:
             status = SCRIPT_STATUS.FAILED
+        elif result == -1:
+            status = SCRIPT_STATUS.SKIPPED
         return [
             factory.make_ScriptResult(
                 script_set=script_set, exit_status=result, status=status
@@ -1549,6 +1551,7 @@ class TestMarkFixedAction(MAASServerTestCase):
             status=NODE_STATUS.BROKEN, power_state=POWER_STATE.ON
         )
         self.make_commissioning_data(node)
+        self.make_commissioning_data(node, result=-1)
         user = factory.make_admin()
         request = factory.make_fake_request("/")
         request.user = user
