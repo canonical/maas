@@ -2087,8 +2087,8 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_PUT_admin_can_change_power_type(self):
         self.become_admin()
-        original_power_type = factory.pick_power_type()
-        new_power_type = factory.pick_power_type(but_not=[original_power_type])
+        original_power_type = "ipmi"
+        new_power_type = "openbmc"
         machine = factory.make_Node(
             owner=self.user,
             power_type=original_power_type,
@@ -2107,8 +2107,8 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(new_power_type, reload_object(machine).power_type)
 
     def test_PUT_non_admin_cannot_change_power_type(self):
-        original_power_type = factory.pick_power_type()
-        new_power_type = factory.pick_power_type(but_not=[original_power_type])
+        original_power_type = "ipmi"
+        new_power_type = "openbmc"
         machine = factory.make_Node(
             owner=self.user, power_type=original_power_type
         )
