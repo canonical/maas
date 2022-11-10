@@ -24,7 +24,6 @@ package-repositories:
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
-  REQUESTS_CA_BUNDLE: /etc/ssl/certs
 
 plugs:
   test-db-socket:
