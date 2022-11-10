@@ -1,10 +1,9 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Testing helpers for provisioningserver.utils."""
+from pathlib import Path
 
-
-from fixtures import Fixture
+from fixtures import Fixture, TempDir
 from twisted.internet import defer
 
 from provisioningserver.utils.env import MAAS_ID
@@ -31,6 +30,7 @@ class MAASIDFixture(Fixture):
 
     def _setUp(self):
         super()._setUp()
+        MAAS_ID.path = Path(self.useFixture(TempDir()).path) / "maas_id"
         self.addCleanup(MAAS_ID.set, MAAS_ID.get())
         MAAS_ID.set(self.system_id)
 
