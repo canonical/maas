@@ -577,7 +577,14 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
                         },
                     ],
                 ),
-                ("runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]),
+                (
+                    "runcmd",
+                    [
+                        "rm -rf /run/netplan",
+                        "rm -rf /etc/netplan/50-cloud-init.yaml",
+                        "netplan apply --debug",
+                    ],
+                ),
             ],
         )
 

@@ -187,7 +187,11 @@ def generate_ephemeral_deployment_network_configuration(node):
             "path": "/etc/netplan/50-maas.yaml",
         }
     ]
-    yield "runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]
+    yield "runcmd", [
+        "rm -rf /run/netplan",
+        "rm -rf /etc/netplan/50-cloud-init.yaml",
+        "netplan apply --debug",
+    ]
 
 
 def generate_kvm_pod_configuration(node):
