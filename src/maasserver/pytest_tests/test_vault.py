@@ -109,6 +109,34 @@ class TestVaultClient:
         client.set("othersecret", {"a": "b"})
         assert len(mock_hvac_client.auth.approle.login.mock_calls) == 2
 
+    def test_check_authentication_ensures_auth(self, mocker, mock_hvac_client):
+        client = VaultClient(
+            url="http://localhost:8200",
+            role_id="123",
+            secret_id="xyz",
+            secrets_base_path="prefix",
+            client=mock_hvac_client,
+        )
+        ensure_auth = mocker.patch.object(client, "_ensure_auth")
+        client.check_authentication()
+        ensure_auth.assert_called_once()
+
+    def test_check_authentication_reraises_ensure_auth_errors(
+        self, mocker, mock_hvac_client
+    ):
+        client = VaultClient(
+            url="http://localhost:8200",
+            role_id="123",
+            secret_id="xyz",
+            secrets_base_path="prefix",
+            client=mock_hvac_client,
+        )
+        ensure_auth = mocker.patch.object(client, "_ensure_auth")
+        ensure_auth.side_effect = [VaultError()]
+        with pytest.raises(VaultError):
+            client.check_authentication()
+        ensure_auth.assert_called_once()
+
 
 @pytest.mark.django_db
 class TestGetRegionVaultClient:

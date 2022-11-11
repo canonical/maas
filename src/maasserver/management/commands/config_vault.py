@@ -5,6 +5,7 @@
 
 import argparse
 from textwrap import dedent
+import time
 from typing import Optional
 
 from django.core.management.base import BaseCommand, CommandError
@@ -12,19 +13,50 @@ from hvac.exceptions import VaultError
 from requests.exceptions import ConnectionError
 
 from maascli.init import prompt_yes_no
+from maasserver.enum import NODE_TYPE
+from maasserver.listener import notify
+from maasserver.locks import startup
+from maasserver.models import (
+    Config,
+    ControllerInfo,
+    Node,
+    RegionController,
+    Secret,
+)
+from maasserver.utils import synchronised
+from maasserver.utils.orm import transactional, with_connection
 from maasserver.vault import (
     configure_region_with_vault,
     get_region_vault_client,
     WrappedSecretError,
 )
+from provisioningserver.utils.env import MAAS_ID
 
 
 class Command(BaseCommand):
-    help = "(placeholder) Configure MAAS Region Vault integration."
+    help = "Configure MAAS Region Vault integration."
     CONFIGURE_COMMAND = "configure"
+    MIGRATE_COMMAND = "migrate"
 
-    @staticmethod
+    def _set_vault_configured_db_flag(self) -> bool:
+        """Set the DB flag saying Vault is configured for region"""
+        if not MAAS_ID.get():
+            return False
+
+        try:
+            node = RegionController.objects.get_running_controller()
+        except RegionController.DoesNotExist:
+            # No RegionController? No problem, region will create
+            # one on startup and the flag will be set if Vault
+            # is configured.
+            return False
+        ControllerInfo.objects.filter(node_id=node.id).update(
+            vault_configured=True
+        )
+        return True
+
     def _configure_vault(
+        self,
         vault_url: str,
         approle_id: str,
         wrapped_token: str,
@@ -40,6 +72,7 @@ class Command(BaseCommand):
                 return
 
         try:
+            # Populate region configuration
             configure_region_with_vault(
                 url=vault_url,
                 role_id=approle_id,
@@ -47,6 +80,10 @@ class Command(BaseCommand):
                 secrets_path=secrets_path,
                 secrets_mount=mount,
             )
+            # Set DB flag (if possible) to avoid having to restart
+            # the region in order to migrate the secrets.
+            self._set_vault_configured_db_flag()
+
             return dedent(
                 """
                 Vault successfully configured for the region!
@@ -59,12 +96,101 @@ class Command(BaseCommand):
         except (ConnectionError, VaultError, WrappedSecretError) as e:
             raise CommandError(e)
 
-    def add_arguments(self, parser):
-        subparsers = parser.add_subparsers(
-            dest="command",
-            # XXX: remove SUPPRESS once the command is publicly available
-            help=argparse.SUPPRESS,
+    def _get_online_regions(self) -> list[str]:
+        """Returns the list of online regions"""
+
+        return list(
+            Node.objects.filter(
+                node_type__in=[
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                ],
+                processes__isnull=False,
+            )
+            .distinct()
+            .values_list("hostname", flat=True)
+            .order_by("hostname")
         )
+
+    def _restart_regions(self):
+        """Notifies regions to restart and monitors their status based on PostgreSQL activity"""
+        # Retry restarting all the regions
+        print("Send restart signal to active regions")
+        notify("sys_vault_migration")
+        print(" - Signal sent. Waiting for 5 seconds...")
+        time.sleep(5)
+        attempts_allowed = 5
+        for attempt in range(1, attempts_allowed + 1):
+            print(
+                f"\nWait for active regions to restart (attempt {attempt}/{attempts_allowed})"
+            )
+            regions = self._get_online_regions()
+            if not regions:
+                print(" - No regions are currently active, proceeding.")
+                return
+            print(f" - Regions are still active: {', '.join(regions)}")
+            if attempt != attempts_allowed:
+                # Don't wait for the last attempt
+                time.sleep(5)
+
+        # Retries limit exceeded, raise an error
+        raise CommandError(
+            "Unable to migrate as one or more regions didn't restart when politely asked. "
+            "Please shut down these regions before starting the migration process again."
+        )
+
+    @transactional
+    def _migrate_secrets(self, client):
+        """Handles the actual secrets migration"""
+
+        print("Migrating secrets")
+        for secret in Secret.objects.all():
+            client.set(secret.path, secret.value)
+            secret.delete()
+
+        # Enable Vault cluster-wide
+        Config.objects.set_config("vault_enabled", True)
+
+    @with_connection  # Needed by the following lock.
+    @synchronised(startup)
+    def _handle_migrate(self):
+        if Config.objects.get_config("vault_enabled", False):
+            raise CommandError("Secrets are already migrated to Vault.")
+
+        client = get_region_vault_client()
+        # Check if current region has Vault client configured
+        if not client:
+            raise CommandError(
+                "Vault is not configured for the current region. "
+                "Please use `sudo maas config-vault configure` command on all regions before migrating."
+            )
+
+        # Check if all the other regions have Vault client configured
+        unconfigured_regions = list(
+            ControllerInfo.objects.filter(vault_configured=False)
+            .values_list("node__hostname", flat=True)
+            .order_by("node__hostname")
+        )
+        if unconfigured_regions:
+            raise CommandError(
+                f"Vault is not configured for regions: {', '.join(unconfigured_regions)}\n"
+                "Please use `sudo maas config-vault configure` command on the regions above before migrating."
+            )
+
+        # Check if vault is available (so that we won't restart regions for nothing)
+        try:
+            client.check_authentication()
+        except VaultError as e:
+            raise CommandError(f"Vault test failed: {e}")
+        # Restart regions to ensure there will be no regions trying to write secrets to the DB during migration
+        self._restart_regions()
+        # Now we're ready to perform the actual migration
+        self._migrate_secrets(client)
+
+        return "Successfully migrated cluster secrets to Vault"
+
+    def add_arguments(self, parser):
+        subparsers = parser.add_subparsers(dest="command")
         subparsers.required = True
 
         configure_vault_parser_append = subparsers.add_parser(
@@ -94,6 +220,12 @@ class Command(BaseCommand):
             default=False,
         )
 
+        subparsers.add_parser(
+            self.MIGRATE_COMMAND,
+            help="Migrate secrets to Vault",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+
     def handle(self, *args, **options):
         if options["command"] == self.CONFIGURE_COMMAND:
             return self._configure_vault(
@@ -104,3 +236,6 @@ class Command(BaseCommand):
                 options["yes"],
                 options["mount"].rstrip("/"),
             )
+
+        elif options["command"] == self.MIGRATE_COMMAND:
+            return self._handle_migrate()

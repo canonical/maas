@@ -71,6 +71,10 @@ class VaultClient:
             mount_point=self._secrets_mount,
         )
 
+    def check_authentication(self):
+        """Checks if vault is available, throws otherwise"""
+        self._ensure_auth(force=True)
+
     @property
     def _kv(self):
         return self._client.secrets.kv.v2
@@ -78,8 +82,12 @@ class VaultClient:
     def _utcnow(self) -> datetime:
         return datetime.now(tz=timezone.utc)
 
-    def _ensure_auth(self):
-        if self._token_expire - TOKEN_BEFORE_EXPIRY_LIMIT >= self._utcnow():
+    def _ensure_auth(self, force=False):
+        if (
+            not force
+            and self._token_expire - TOKEN_BEFORE_EXPIRY_LIMIT
+            >= self._utcnow()
+        ):
             return
 
         self._client.auth.approle.login(
