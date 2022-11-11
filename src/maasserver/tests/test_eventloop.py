@@ -320,6 +320,31 @@ class TestRegionEventLoop(MAASTestCase):
             eventloop.loop.__class__.factories, eventloop.loop.factories
         )
 
+    def test_restart(self):
+        # Replace the factories in RegionEventLoop with non-functional
+        # dummies to avoid bringing up real services here, and ensure
+        # that the services list is empty.
+        self.useFixture(RegionEventLoopFixture())
+        # Stop and reset eventloop afterwards
+        self.addCleanup(lambda: eventloop.loop.reset().wait(TIMEOUT))
+        # Patch prepare so it's not actually run.
+        self.patch(eventloop.loop, "prepare").return_value = defer.succeed(
+            None
+        )
+        reset_mock = self.patch(eventloop.loop, "reset")
+        reset_mock.return_value = defer.succeed(None)
+
+        eventloop.loop.start().wait(TIMEOUT)
+        start_mock = self.patch(eventloop.loop, "start")
+        start_mock.return_value = defer.succeed(None)
+        eventloop.loop.restart().wait(TIMEOUT)
+
+        reset_mock.assert_called_once()
+        start_mock.assert_called_once_with(
+            master=eventloop.loop.master, all_in_one=eventloop.loop.all_in_one
+        )
+        eventloop.loop.stop().wait(TIMEOUT)
+
     def test_module_globals(self):
         # Several module globals are references to a shared RegionEventLoop.
         self.assertIs(eventloop.services, eventloop.loop.services)
@@ -327,6 +352,7 @@ class TestRegionEventLoop(MAASTestCase):
         self.assertEqual(eventloop.reset, eventloop.loop.reset)
         self.assertEqual(eventloop.start, eventloop.loop.start)
         self.assertEqual(eventloop.stop, eventloop.loop.stop)
+        self.assertEqual(eventloop.restart, eventloop.loop.restart)
 
 
 class TestFactories(MAASServerTestCase):

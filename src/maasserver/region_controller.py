@@ -23,9 +23,15 @@ RBAC:
     'sys_rbac'. Any time a message is received on that channel the RBAC
     micro-service is marked as required a sync. Once marked for sync the
     RBAC micro-service will be pushed the changed information.
+
+Vault migration restart:
+    The regiond process listens for messages from Postgres on channel
+    'sys_vault_migration'. Any time a message is received, regiond eventloop
+    is restarted to make sure no regions will try to access secrets table.
 """
 
 
+import logging
 from operator import attrgetter
 
 from twisted.application.service import Service
@@ -34,7 +40,7 @@ from twisted.internet.defer import DeferredList, inlineCallbacks
 from twisted.internet.task import LoopingCall
 from twisted.names.client import Resolver
 
-from maasserver import locks
+from maasserver import eventloop, locks
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.dnspublication import DNSPublication
@@ -106,6 +112,9 @@ class RegionControllerService(Service):
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
+        self.postgresListener.register(
+            "sys_vault_migration", self.restartRegion
+        )
         self.postgresListener.events.connected.registerHandler(
             self.markAllForUpdate
         )
@@ -120,6 +129,9 @@ class RegionControllerService(Service):
         self.postgresListener.unregister("sys_dns", self.markDNSForUpdate)
         self.postgresListener.unregister("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.unregister("sys_rbac", self.markRBACForUpdate)
+        self.postgresListener.unregister(
+            "sys_vault_migration", self.restartRegion
+        )
         if self.processingDefer is not None:
             self.processingDefer, d = None, self.processingDefer
             self.processing.stop()
@@ -144,6 +156,13 @@ class RegionControllerService(Service):
         """Called when the `sys_rbac` message is received."""
         self.needsRBACUpdate = True
         self.startProcessing()
+
+    def restartRegion(self, channel, message):
+        """Restarts region eventloop when `sys_vault_migration` message is received."""
+        logging.getLogger(__name__).info(
+            "Received migration restart notification."
+        )
+        eventloop.restart()
 
     def startProcessing(self):
         """Start the process looping call."""

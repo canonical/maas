@@ -31,9 +31,13 @@ that are not tied to an HTTP reqoest.
 
    This is a convenient reference to :py:attr:`.loop.stop`.
 
+.. py:data:: restart
+
+   Restart all the services in :py:data:`services`.
+
+   This is a convenient reference to :py:attr:`.loop.restart`.
+
 """
-
-
 import os
 from socket import gethostname
 
@@ -44,7 +48,7 @@ from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 from maasserver.utils.orm import disable_all_database_connections
 from provisioningserver.prometheus.metrics import set_global_labels
 from provisioningserver.utils.env import MAAS_UUID
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import asynchronous, call
 
 # Default port for regiond.
 DEFAULT_PORT = 5240
@@ -431,6 +435,7 @@ class RegionEventLoop:
         self.services = MAASServices(self)
         self.handle = None
         self.master = False
+        self.all_in_one = False
 
     @asynchronous
     def populateService(
@@ -499,6 +504,7 @@ class RegionEventLoop:
     def populate(self, master=False, all_in_one=False, import_services=False):
         """Prepare services."""
         self.master = master
+        self.all_in_one = all_in_one
         for name, item in self.factories.items():
             if all_in_one:
                 if not item.get("not_all_in_one", False):
@@ -553,6 +559,13 @@ class RegionEventLoop:
         return self.prepare().addCallback(self.startMultiService)
 
     @asynchronous
+    def restart(self):
+        """Convenience method that resets and starts event-loop."""
+        return self.reset().addCallback(
+            call, self.start, master=self.master, all_in_one=self.all_in_one
+        )
+
+    @asynchronous
     def stop(self):
         """stop()
 
@@ -603,3 +616,4 @@ reset = loop.reset
 services = loop.services
 start = loop.start
 stop = loop.stop
+restart = loop.restart

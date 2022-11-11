@@ -14,7 +14,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.names.dns import A, Record_SOA, RRHeader, SOA
 
-from maasserver import region_controller
+from maasserver import eventloop, region_controller
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
 from maasserver.models.resourcepool import ResourcePool
@@ -71,6 +71,7 @@ class TestRegionControllerService(MAASServerTestCase):
                 call("sys_dns", service.markDNSForUpdate),
                 call("sys_proxy", service.markProxyForUpdate),
                 call("sys_rbac", service.markRBACForUpdate),
+                call("sys_vault_migration", service.restartRegion),
             ),
         )
 
@@ -97,6 +98,7 @@ class TestRegionControllerService(MAASServerTestCase):
                 call("sys_dns", service.markDNSForUpdate),
                 call("sys_proxy", service.markProxyForUpdate),
                 call("sys_rbac", service.markRBACForUpdate),
+                call("sys_vault_migration", service.restartRegion),
             ),
         )
 
@@ -132,6 +134,12 @@ class TestRegionControllerService(MAASServerTestCase):
         service.markRBACForUpdate(None, None)
         self.assertTrue(service.needsRBACUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
+
+    def test_restart_region_restarts_eventloop(self):
+        restart_mock = self.patch(eventloop, "restart")
+        service = self.make_service(MagicMock())
+        service.restartRegion("sys_vault_migration", "")
+        restart_mock.assert_called_once()
 
     def test_startProcessing_doesnt_call_start_when_looping_call_running(self):
         service = self.make_service(sentinel.listener)
