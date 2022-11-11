@@ -88,6 +88,7 @@ class PostgresListenerService(Service):
         self.notifierDone = None
         self.connecting = None
         self.disconnecting = None
+        self.shutting_down = False
         self.registeredChannels = set()
         self.channelRegistrar = task.LoopingCall(
             lambda: ensureDeferred(self.registerChannels())
@@ -103,12 +104,14 @@ class PostgresListenerService(Service):
         """Start the listener."""
         super().startService()
         self.autoReconnect = True
+        self.shutting_down = False
         return self.tryConnection()
 
     def stopService(self):
         """Stop the listener."""
         super().stopService()
         self.autoReconnect = False
+        self.shutting_down = True
         return self.loseConnection()
 
     def connected(self):
@@ -181,6 +184,10 @@ class PostgresListenerService(Service):
         When a notification is received for that `channel` the `handler` will
         be called with the action and object id.
         """
+        if self.shutting_down:
+            raise PostgresListenerRegistrationError(
+                "Listener service is shutting down."
+            )
         self.log.debug(f"Register on {channel} with handler {handler}")
         handlers = self.listeners[channel]
         if self.isSystemChannel(channel) and len(handlers) > 0:
@@ -201,6 +208,13 @@ class PostgresListenerService(Service):
 
         `handler` needs to be same handler that was registered.
         """
+        if self.shutting_down:
+            # When shutting down, channels will be unregistered automatically
+            self.log.debug(
+                f"Unregister on {channel} with handler {handler} skipped due to shutdown"
+            )
+            return
+
         self.log.debug(f"Unregister on {channel} with handler {handler}")
         if channel not in self.listeners:
             raise PostgresListenerUnregistrationError(
@@ -302,6 +316,7 @@ class PostgresListenerService(Service):
 
             def done():
                 self.disconnecting = None
+                self.shutting_down = False
 
             d.addBoth(callOut, done)
 
@@ -381,7 +396,17 @@ class PostgresListenerService(Service):
                 self.registeredChannels.add(channel)
             for channel in to_unregister:
                 await deferToThread(self.unregisterChannel, channel)
-                self.registeredChannels.remove(channel)
+                if self.disconnecting:
+                    # When disconnecting, registeredChannels will be cleared,
+                    # so `remove` will raise `KeyError`. However, we still need
+                    # to delete channel from the set if it's there, since the
+                    # registration lockout only happens on service shutdown,
+                    # which is not the only reason for disconnection.
+                    self.registeredChannels.discard(channel)
+                else:
+                    # In normal operation this shouldn't raise, so if it does,
+                    # something unexpected happened.
+                    self.registeredChannels.remove(channel)
 
     def convertChannel(self, channel):
         """Convert the postgres channel to a registered channel and action.
