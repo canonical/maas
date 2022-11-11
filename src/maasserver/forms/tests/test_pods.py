@@ -365,6 +365,18 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(pod.pool, pool)
         self.assertEqual(pod.name, new_name)
 
+    def test_updates_existing_pod_keeps_tags(self):
+        tags = ["foo", "bar", "pod-console-logging"]
+        pod = factory.make_Pod(tags=tags)
+        form = PodForm(
+            data={"name": factory.make_name("pod")},
+            request=self.request,
+            instance=pod,
+        )
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertCountEqual(pod.tags, tags)
+
     def test_updates_default_storage_pool(self):
         discovered_pod = self.make_discovered_pod()
         default_storage_pool = random.choice(discovered_pod.storage_pools)
