@@ -36,3 +36,13 @@ def test_perf_list_machines_MachinesHander_direct_call(admin):
             anonymous=False,
         )
         emitter.render(request)
+
+
+@perf_test(db_only=True)
+def test_perf_list_machines_MachinesHander_only_objects(admin):
+    handler = MachinesHandler()
+    request = make_HttpRequest()
+    request.user = admin
+
+    with profile("test_perf_list_machines_MachinesHander_only_objects"):
+        list(handler.read(request))
