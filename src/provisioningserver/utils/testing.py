@@ -6,7 +6,7 @@ from pathlib import Path
 from fixtures import Fixture, TempDir
 from twisted.internet import defer
 
-from provisioningserver.utils.env import MAAS_ID
+from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
 from provisioningserver.utils.registry import _registry
 from provisioningserver.utils.twisted import call, callOut
 
@@ -21,18 +21,35 @@ class RegistryFixture(Fixture):
         _registry.clear()
 
 
-class MAASIDFixture(Fixture):
-    """Populate the `maas_id` file."""
+class MAASFileBackedValueFixture(Fixture):
 
-    def __init__(self, system_id):
+    FILE_BACKED_VALUE = None
+
+    def __init__(self, value):
         super().__init__()
-        self.system_id = system_id
+        self.value = value
 
     def _setUp(self):
         super()._setUp()
-        MAAS_ID.path = Path(self.useFixture(TempDir()).path) / "maas_id"
-        self.addCleanup(MAAS_ID.set, MAAS_ID.get())
-        MAAS_ID.set(self.system_id)
+        self.FILE_BACKED_VALUE.path = (
+            Path(self.useFixture(TempDir()).path) / self.FILE_BACKED_VALUE.name
+        )
+        self.addCleanup(
+            self.FILE_BACKED_VALUE.set, self.FILE_BACKED_VALUE.get()
+        )
+        self.FILE_BACKED_VALUE.set(self.value)
+
+
+class MAASIDFixture(MAASFileBackedValueFixture):
+    """Populate the `maas_id` file."""
+
+    FILE_BACKED_VALUE = MAAS_ID
+
+
+class MAASUUIDFixture(MAASFileBackedValueFixture):
+    """Populate the `maas_uuid` file."""
+
+    FILE_BACKED_VALUE = MAAS_UUID
 
 
 def callWithServiceRunning(service, f, *args, **kwargs):

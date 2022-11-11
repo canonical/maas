@@ -12,7 +12,7 @@ from maasserver.utils.certificates import (
     get_maas_client_cn,
 )
 from provisioningserver.certificates import Certificate
-from provisioningserver.utils.env import MAAS_UUID
+from provisioningserver.utils.testing import MAASUUIDFixture
 
 
 class TestGetMAASClientCN(MAASServerTestCase):
@@ -37,29 +37,28 @@ class TestGetMAASClientCN(MAASServerTestCase):
 class TestGenerateCertificate(MAASServerTestCase):
     def test_generate_certificate(self):
         mock_cert = self.patch_autospec(certificates, "Certificate")
-        maas_uuid = MAAS_UUID.get()
-        if maas_uuid is None:
-            MAAS_UUID.set(str(uuid4()))
+        maas_uuid = str(uuid4())
+        self.useFixture(MAASUUIDFixture(maas_uuid))
         generate_certificate("maas")
         mock_cert.generate.assert_called_once_with(
             "maas",
             organization_name="MAAS",
-            organizational_unit_name=MAAS_UUID.get(),
+            organizational_unit_name=maas_uuid,
         )
 
 
 class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        if MAAS_UUID.get() is None:
-            MAAS_UUID.set(str(uuid4()))
+        self.maas_uuid = str(uuid4())
+        self.useFixture(MAASUUIDFixture(self.maas_uuid))
         ssl_cert = crypto.X509()
         self._issuer = ssl_cert.get_issuer()
         self._cert = Certificate(None, ssl_cert, ())
 
     def test_generate_certificate(self):
         self._issuer.organizationName = "MAAS"
-        self._issuer.organizationalUnitName = MAAS_UUID.get()
+        self._issuer.organizationalUnitName = self.maas_uuid
 
         self.assertTrue(certificate_generated_by_this_maas(self._cert))
 
