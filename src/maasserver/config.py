@@ -23,7 +23,7 @@ from provisioningserver.utils.env import MAAS_ID
 def get_db_creds_vault_path():
     node_id = MAAS_ID.get()
     assert node_id, f"MAAS ID not set in {MAAS_ID.path}"
-    return f"controller/{node_id}/database_creds"
+    return f"controller/{node_id}/database-creds"
 
 
 class RegionConfigurationMeta(ConfigurationMeta):
