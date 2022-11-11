@@ -155,8 +155,7 @@ def get_overridden_query_dict(defaults, data, fields):
     :return: The updated QueryDict.
     :raises: :class:`django.http.QueryDict`
     """
-    # Create a writable query dict.
-    new_data = QueryDict("").copy()
+    new_data = QueryDict(mutable=True)
     # If the fields are a dict of django Fields see if one is a DictCharField.
     # DictCharField must have their values prefixed with the DictField name in
     # the returned data or defaults don't get carried.

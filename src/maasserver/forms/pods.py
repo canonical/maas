@@ -195,6 +195,8 @@ class PodForm(MAASModelForm):
             if self.instance.power_type != "":
                 self.initial["type"] = self.instance.power_type
         if instance is not None:
+            # tags must be passed as a comma-separated value, not a list
+            self.initial["tags"] = ",".join(instance.tags)
             self.initial["zone"] = instance.zone.name
             self.initial["pool"] = instance.pool.name
             self.fields[

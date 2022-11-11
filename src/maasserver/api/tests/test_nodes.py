@@ -189,7 +189,9 @@ class RequestFixture:
         if user is None:
             user = factory.make_User()
         self.user = user
-        self.GET = get_overridden_query_dict(dict, QueryDict(""), fields)
+        self.GET = get_overridden_query_dict(
+            dict, QueryDict(mutable=True), fields
+        )
 
 
 class TestFilteredNodesListFromRequest(APITestCase.ForUser):
