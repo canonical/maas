@@ -230,7 +230,3 @@ def inner_start_up(master=False):
         # Log deprecations and Update related notifications if needed
         log_deprecations(logger=log)
         sync_deprecation_notifications()
-        # Sets the flag if Vault was configured.
-        ControllerInfo.objects.filter(node_id=node.id).update(
-            vault_configured=bool(get_region_vault_client())
-        )
