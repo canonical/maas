@@ -96,6 +96,16 @@ approle details
   wrapped token: $wrapped_token
   token TTL:     $TOKEN_TTL
 
+
+MAAS controller configuration command line:
+
+ sudo maas config-vault configure \\
+   "$VAULT_ADDR" \\
+   "$role_id" \\
+   "$wrapped_token" \\
+   "$SECRETS_PATH" \\
+   --mount "$SECRETS_MOUNT"
+
 EOF
 }
 
