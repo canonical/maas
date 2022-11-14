@@ -3,6 +3,7 @@ from functools import cache
 from typing import Any, NamedTuple, Optional
 
 from dateutil.parser import isoparse
+from django.core.exceptions import ImproperlyConfigured
 import hvac
 
 from maasserver.config import RegionConfiguration
@@ -120,7 +121,13 @@ def get_region_vault_client_if_enabled() -> Optional[VaultClient]:
     from maasserver.models import Config
 
     if Config.objects.get_config("vault_enabled", False):
-        return get_region_vault_client()
+        client = get_region_vault_client()
+        if not client:
+            raise ImproperlyConfigured(
+                "Vault is enabled cluster-wide, but is not configured for this region."
+            )
+        return client
+    # Since Vault is disabled, there is no client to return
     return None
 
 

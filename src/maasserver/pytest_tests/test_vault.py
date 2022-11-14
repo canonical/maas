@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, MagicMock
 
+from django.core.exceptions import ImproperlyConfigured
 from hvac.exceptions import VaultError
 import pytest
 
@@ -204,9 +205,17 @@ class TestGetRegionVaultClientIfEnabled:
         assert get_region_vault_client_if_enabled() is None
         mock_get_client.assert_not_called()
 
+    def test_raises_if_enabled_but_not_configured(self, mocker):
+        mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
+        mock_get_client.return_value = None
+        mocker.patch.object(Config.objects, "get_config").return_value = True
+        with pytest.raises(ImproperlyConfigured):
+            get_region_vault_client_if_enabled()
+        mock_get_client.assert_called_once()
+
     def test_returns_client_if_enabled(self, factory, mocker):
         mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
-        mock_get_client.return_value = {}
+        mock_get_client.return_value = MagicMock()
         mocker.patch.object(Config.objects, "get_config").return_value = True
         assert get_region_vault_client_if_enabled() is not None
         mock_get_client.assert_called_once()
