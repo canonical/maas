@@ -226,5 +226,10 @@ def configure_region_with_vault(
         config.vault_secrets_path = secrets_path
         config.vault_secrets_mount = secrets_mount
     # ensure future calls to get the client use the updated config
+    clear_vault_client_caches()
+
+
+def clear_vault_client_caches():
+    """Clears cached vault clients, useful after reconfiguration"""
     get_region_vault_client.cache_clear()
     get_region_vault_client_if_enabled.cache_clear()

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import ANY
+from unittest.mock import ANY, MagicMock
 
 from hvac.exceptions import VaultError
 import pytest
@@ -8,6 +8,7 @@ from maasserver import vault
 from maasserver.models import Config
 from maasserver.vault import (
     _get_region_vault_client,
+    clear_vault_client_caches,
     get_region_vault_client,
     get_region_vault_client_if_enabled,
     hvac,
@@ -301,3 +302,21 @@ class TestCheckApprolePermissions:
         client.set.assert_called_once_with(expected_path, ANY)
         client.get.assert_called_once_with(expected_path)
         client.delete.assert_called_once_with(expected_path)
+
+
+class TestClearVaultCaches:
+    def test_clears_vault_caches(self, mocker):
+        mocker.patch.object(Config.objects, "get_config").return_value = True
+        mock_get_client = mocker.patch.object(
+            vault, "_get_region_vault_client"
+        )
+        first_client = MagicMock()
+        second_client = MagicMock()
+        mock_get_client.side_effect = [first_client, second_client]
+        assert get_region_vault_client() == first_client
+        assert get_region_vault_client() == first_client
+        assert get_region_vault_client_if_enabled() == first_client
+        assert get_region_vault_client_if_enabled() == first_client
+        clear_vault_client_caches()
+        assert get_region_vault_client() == second_client
+        assert get_region_vault_client_if_enabled() == second_client

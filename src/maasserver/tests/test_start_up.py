@@ -246,6 +246,12 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertEqual(region.version, "1:3.1.0-1234-g.deadbeef")
         self.assertEqual(region.info.install_type, "deb")
 
+    def test_clears_vault_cache(self):
+        clear_caches_mock = self.patch(start_up, "clear_vault_client_caches")
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+        clear_caches_mock.assert_called_once()
+
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None
         with post_commit_hooks:

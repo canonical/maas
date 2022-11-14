@@ -32,7 +32,11 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vault import get_region_vault_client, VaultClient
+from maasserver.vault import (
+    clear_vault_client_caches,
+    get_region_vault_client,
+    VaultClient,
+)
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -191,6 +195,9 @@ def inner_start_up(master=False):
     # Only perform the following if the master process for the
     # region controller.
     if master:
+        # Since start_up now can be called multiple times in a process lifetime,
+        # vault client caches should be cleared in order to re-read the configuration.
+        clear_vault_client_caches()
         # Migrate DB credentials to Vault and set the flag if Vault client is configured
         client = get_region_vault_client()
         if client is not None:
