@@ -429,12 +429,14 @@ snap-tree-clean:
 	rm -rf $(SNAP_DEV_DIR)
 .PHONY: snap-tree-clean
 
-$(SNAP_UNPACKED_DIR_MARKER): $(SNAP_FILE)
-	mkdir -p $(SNAP_DEV_DIR)
+$(SNAP_DEV_DIR):
+	mkdir -p $@
+
+$(SNAP_UNPACKED_DIR_MARKER): $(SNAP_DEV_DIR) $(SNAP_FILE)
 	unsquashfs -f -d $(SNAP_UNPACKED_DIR) $^
 	touch $@
 
-$(SNAP_FILE):
+$(SNAP_FILE): $(SNAP_DEV_DIR)
 	$(snapcraft) -o $(SNAP_FILE)
 
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
