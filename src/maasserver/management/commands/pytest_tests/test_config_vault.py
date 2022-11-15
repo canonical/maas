@@ -4,6 +4,7 @@ from django.core.management import CommandError
 from hvac.exceptions import VaultError
 import pytest
 from requests.exceptions import ConnectionError
+import yaml
 
 from maasserver.management.commands import config_vault
 from maasserver.management.commands.config_vault import Command
@@ -227,7 +228,7 @@ class TestMigrateSecrets:
         )
         Config.objects.set_config("vault_enabled", True)
         with pytest.raises(CommandError, match="already migrated"):
-            Command()._handle_migrate()
+            Command()._handle_migrate({})
         get_vault_mock.assert_not_called()
 
     def test_handle_migrate_stops_when_no_client(self, mocker):
@@ -237,7 +238,7 @@ class TestMigrateSecrets:
         with pytest.raises(
             CommandError, match="Vault is not configured for the current"
         ):
-            Command()._handle_migrate()
+            Command()._handle_migrate({})
 
     def test_handle_migrate_stops_when_regions_unconfigured(self, mocker):
         mocker.patch.object(
@@ -250,7 +251,7 @@ class TestMigrateSecrets:
         with pytest.raises(
             CommandError, match="Vault is not configured for regions"
         ):
-            Command()._handle_migrate()
+            Command()._handle_migrate({})
 
     def test_handle_migrate_success(self, mocker):
         restart_mock = mocker.patch.object(Command, "_restart_regions")
@@ -259,7 +260,7 @@ class TestMigrateSecrets:
         mocker.patch.object(
             config_vault, "get_region_vault_client"
         ).return_value = client
-        observed = Command()._handle_migrate()
+        observed = Command()._handle_migrate({})
         client.check_authentication.assert_called_once()
         restart_mock.assert_called_once()
         migrate_mock.assert_called_once_with(client)
@@ -273,7 +274,7 @@ class TestMigrateSecrets:
         expected_error = factory.make_name("error")
         client.check_authentication.side_effect = [VaultError(expected_error)]
         with pytest.raises(CommandError, match=expected_error):
-            Command()._handle_migrate()
+            Command()._handle_migrate({})
 
     def test_get_online_regions_returns_correct_online_status(self):
         running = factory.make_RegionController(hostname="running")
@@ -326,3 +327,26 @@ class TestMigrateSecrets:
         with pytest.raises(CommandError, match="Unable to migrate"):
             target._restart_regions()
         assert notify_mock.call_count == 1
+
+
+@pytest.mark.django_db
+class TestStatus:
+    def test_status_not_enabled(self, capsys):
+        region_one = factory.make_RegionController(hostname="one")
+        region_two = factory.make_RegionController(hostname="two")
+        ControllerInfo(node=region_one, vault_configured=True).save()
+        ControllerInfo(node=region_two, vault_configured=False).save()
+        Command()._handle_status({})
+        assert yaml.safe_load(capsys.readouterr().out) == {
+            "status": "disabled",
+            "unconfigured_regions": ["two"],
+        }
+
+    def test_status_enabled(self, capsys):
+        region_one = factory.make_RegionController(hostname="one")
+        region_two = factory.make_RegionController(hostname="two")
+        ControllerInfo(node=region_one, vault_configured=True).save()
+        ControllerInfo(node=region_two, vault_configured=True).save()
+        Config.objects.set_config("vault_enabled", True)
+        Command()._handle_status({})
+        assert yaml.safe_load(capsys.readouterr().out) == {"status": "enabled"}

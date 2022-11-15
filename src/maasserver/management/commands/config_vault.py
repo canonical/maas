@@ -11,6 +11,7 @@ from typing import Optional
 from django.core.management.base import BaseCommand, CommandError
 from hvac.exceptions import VaultError
 from requests.exceptions import ConnectionError
+import yaml
 
 from maascli.init import prompt_yes_no
 from maasserver.enum import NODE_TYPE
@@ -37,6 +38,7 @@ class Command(BaseCommand):
     help = "Configure MAAS Region Vault integration."
     CONFIGURE_COMMAND = "configure"
     MIGRATE_COMMAND = "migrate"
+    STATUS_COMMAND = "status"
 
     def _set_vault_configured_db_flag(self) -> bool:
         """Set the DB flag saying Vault is configured for region"""
@@ -151,9 +153,17 @@ class Command(BaseCommand):
         # Enable Vault cluster-wide
         Config.objects.set_config("vault_enabled", True)
 
+    def _get_unconfigured_regions(self) -> list[str]:
+        """Return a list of names of regions that are not configured for Vault"""
+        return list(
+            ControllerInfo.objects.filter(vault_configured=False)
+            .values_list("node__hostname", flat=True)
+            .order_by("node__hostname")
+        )
+
     @with_connection  # Needed by the following lock.
     @synchronised(startup)
-    def _handle_migrate(self):
+    def _handle_migrate(self, options):
         if Config.objects.get_config("vault_enabled", False):
             raise CommandError("Secrets are already migrated to Vault.")
 
@@ -166,11 +176,7 @@ class Command(BaseCommand):
             )
 
         # Check if all the other regions have Vault client configured
-        unconfigured_regions = list(
-            ControllerInfo.objects.filter(vault_configured=False)
-            .values_list("node__hostname", flat=True)
-            .order_by("node__hostname")
-        )
+        unconfigured_regions = self._get_unconfigured_regions()
         if unconfigured_regions:
             raise CommandError(
                 f"Vault is not configured for regions: {', '.join(unconfigured_regions)}\n"
@@ -188,6 +194,24 @@ class Command(BaseCommand):
         self._migrate_secrets(client)
 
         return "Successfully migrated cluster secrets to Vault"
+
+    @with_connection
+    def _handle_status(self, options):
+        vault_enabled = Config.objects.get_config("vault_enabled", False)
+        report = {"status": "enabled" if vault_enabled else "disabled"}
+        if not vault_enabled:
+            report["unconfigured_regions"] = self._get_unconfigured_regions()
+        print(yaml.safe_dump(report), end=None)
+
+    def _handle_configure(self, options):
+        return self._configure_vault(
+            options["url"],
+            options["role_id"],
+            options["wrapped_token"],
+            options["secrets_path"].rstrip("/"),
+            options["yes"],
+            options["mount"].rstrip("/"),
+        )
 
     def add_arguments(self, parser):
         subparsers = parser.add_subparsers(dest="command")
@@ -226,16 +250,16 @@ class Command(BaseCommand):
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
 
-    def handle(self, *args, **options):
-        if options["command"] == self.CONFIGURE_COMMAND:
-            return self._configure_vault(
-                options["url"],
-                options["role_id"],
-                options["wrapped_token"],
-                options["secrets_path"].rstrip("/"),
-                options["yes"],
-                options["mount"].rstrip("/"),
-            )
+        subparsers.add_parser(
+            self.STATUS_COMMAND,
+            help="Report status of Vault integration",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
 
-        elif options["command"] == self.MIGRATE_COMMAND:
-            return self._handle_migrate()
+    def handle(self, *args, **options):
+        handlers = {
+            self.CONFIGURE_COMMAND: self._handle_configure,
+            self.MIGRATE_COMMAND: self._handle_migrate,
+            self.STATUS_COMMAND: self._handle_status,
+        }
+        return handlers[options["command"]](options)
