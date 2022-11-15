@@ -352,7 +352,7 @@ class ScriptSetManager(Manager):
         # delete empty ScriptSets
         empty_scriptsets = ScriptSet.objects.annotate(
             results_count=Count("scriptresult")
-        ).filter(node=node, results_count=0)
+        ).filter(node=node, result_type=result_type, results_count=0)
         empty_scriptsets.delete()
 
         # Set previous ScriptSet ScriptResults which are still pending,

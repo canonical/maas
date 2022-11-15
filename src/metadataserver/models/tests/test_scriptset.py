@@ -544,9 +544,18 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertIsNone(reload_object(previous_script_result))
 
     def test_create_commissioning_script_set_cleans_up_empty_sets(self):
-        Config.objects.set_config("max_node_commissioning_results", 1)
+        Config.objects.set_config("max_node_commissioning_results", 10)
         node = factory.make_Node()
-        ScriptSet.objects.create_commissioning_script_set(node)
+        empty_installation = ScriptSet.objects.create_installation_script_set(
+            node
+        )
+        empty_installation.scriptresult_set.all().delete()
+        empty_commissioning = (
+            ScriptSet.objects.create_commissioning_script_set(node)
+        )
+        empty_commissioning.scriptresult_set.all().delete()
+        empty_testing = ScriptSet.objects.create_testing_script_set(node)
+        empty_testing.scriptresult_set.all().delete()
         script_set = ScriptSet.objects.create_commissioning_script_set(node)
 
         # the first set is removed since it's empty
@@ -554,6 +563,19 @@ class TestScriptSetManager(MAASServerTestCase):
             [script_set],
             ScriptSet.objects.filter(
                 result_type=RESULT_TYPE.COMMISSIONING
+            ).all(),
+        )
+        # Other types are still there, even though they are empty.
+        self.assertCountEqual(
+            [empty_installation],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.INSTALLATION,
+            ).all(),
+        )
+        self.assertCountEqual(
+            [empty_testing],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.TESTING,
             ).all(),
         )
 
@@ -840,12 +862,19 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertIsNone(reload_object(previous_script_result))
 
     def test_create_testing_script_set_cleans_up_empty_sets(self):
-        Config.objects.set_config("max_node_testing_results", 1)
+        Config.objects.set_config("max_node_testing_results", 10)
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
         node = factory.make_Node()
-        ScriptSet.objects.create_testing_script_set(
-            node, scripts=[script.name]
+        empty_installation = ScriptSet.objects.create_installation_script_set(
+            node
         )
+        empty_installation.scriptresult_set.all().delete()
+        empty_commissioning = (
+            ScriptSet.objects.create_commissioning_script_set(node)
+        )
+        empty_commissioning.scriptresult_set.all().delete()
+        empty_testing = ScriptSet.objects.create_testing_script_set(node)
+        empty_testing.scriptresult_set.all().delete()
         script_set = ScriptSet.objects.create_testing_script_set(
             node, scripts=[script.name]
         )
@@ -853,6 +882,19 @@ class TestScriptSetManager(MAASServerTestCase):
         self.assertCountEqual(
             [script_set],
             ScriptSet.objects.filter(result_type=RESULT_TYPE.TESTING).all(),
+        )
+        # Other types are still there, even though they are empty.
+        self.assertCountEqual(
+            [empty_installation],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.INSTALLATION,
+            ).all(),
+        )
+        self.assertCountEqual(
+            [empty_commissioning],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.COMMISSIONING,
+            ).all(),
         )
 
     def test_create_testing_script_set_cleans_up_per_node(self):
@@ -963,7 +1005,7 @@ class TestScriptSetManager(MAASServerTestCase):
             ).count(),
         )
 
-    def test_create_installation_script_set_cleans_up_by_node(self):
+    def test_create_installation_script_set_cleans_up_by_node_and_type(self):
         limit = Config.objects.get_config("max_node_installation_results")
         node1 = factory.make_Node()
         node2 = factory.make_Node()
@@ -1004,15 +1046,37 @@ class TestScriptSetManager(MAASServerTestCase):
         )
 
     def test_create_installation_script_set_cleans_up_empty_sets(self):
-        Config.objects.set_config("max_node_installation_results", 1)
+        Config.objects.set_config("max_node_installation_results", 10)
         node = factory.make_Node()
-        ScriptSet.objects.create_installation_script_set(node)
+        empty_installation = ScriptSet.objects.create_installation_script_set(
+            node
+        )
+        empty_installation.scriptresult_set.all().delete()
+        empty_commissioning = (
+            ScriptSet.objects.create_commissioning_script_set(node)
+        )
+        empty_commissioning.scriptresult_set.all().delete()
+        empty_testing = ScriptSet.objects.create_testing_script_set(node)
+        empty_testing.scriptresult_set.all().delete()
         script_set = ScriptSet.objects.create_installation_script_set(node)
         # the first set is removed since it's empty
         self.assertCountEqual(
             [script_set],
             ScriptSet.objects.filter(
                 result_type=RESULT_TYPE.INSTALLATION
+            ).all(),
+        )
+        # Other types are still there, even though they are empty.
+        self.assertCountEqual(
+            [empty_commissioning],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.COMMISSIONING,
+            ).all(),
+        )
+        self.assertCountEqual(
+            [empty_testing],
+            ScriptSet.objects.filter(
+                result_type=RESULT_TYPE.TESTING,
             ).all(),
         )
 
