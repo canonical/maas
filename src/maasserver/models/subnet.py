@@ -1065,14 +1065,10 @@ def get_allocated_ips(subnets):
         yield subnet, mapping[subnet.id]
 
 
-def get_dhcp_vlan(subnet):
-    if subnet is None:
+def get_dhcp_vlan(vlan):
+    if vlan is None:
         return None
-    dhcp_vlan = (
-        subnet.vlan
-        if subnet.vlan.relay_vlan_id is None
-        else subnet.vlan.relay_vlan
-    )
+    dhcp_vlan = vlan if vlan.relay_vlan_id is None else vlan.relay_vlan
     if not dhcp_vlan.dhcp_on or dhcp_vlan.primary_rack is None:
         return None
     return dhcp_vlan
@@ -1104,7 +1100,9 @@ def get_boot_rackcontroller_ips(subnet):
 
     from maasserver.models.staticipaddress import StaticIPAddress
 
-    dhcp_vlan = get_dhcp_vlan(subnet)
+    dhcp_vlan = None
+    if subnet is not None:
+        dhcp_vlan = get_dhcp_vlan(subnet.vlan)
     if dhcp_vlan is None:
         return []
 

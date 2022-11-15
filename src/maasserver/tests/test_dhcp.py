@@ -25,7 +25,7 @@ from twisted.internet.threads import deferToThread
 
 from maasserver import dhcp
 from maasserver import server_address as server_address_module
-from maasserver.dhcp import get_default_dns_servers
+from maasserver.dhcp import _get_dhcp_rackcontrollers, get_default_dns_servers
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, SERVICE_STATUS
 from maasserver.models import (
     Config,
@@ -2921,6 +2921,88 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             )
 
         yield deferToDatabase(service_status_updated)
+
+
+class TestGetDHCPRackcontroller(MAASTransactionServerTestCase):
+    def create_dhcp_vlan(self, primary_address, secondary_adress=None):
+        dhcp_vlan = factory.make_VLAN()
+        dhcp_subnet = factory.make_Subnet(
+            vlan=dhcp_vlan, cidr=IPNetwork(primary_address).cidr
+        )
+        primary_rack = factory.make_rack_with_interfaces(
+            eth0=[primary_address]
+        )
+        secondary_rack = None
+        if secondary_adress is not None:
+            secondary_rack = factory.make_rack_with_interfaces(
+                eth0=[secondary_adress]
+            )
+        dhcp_vlan.dhcp_on = True
+        dhcp_vlan.primary_rack = primary_rack
+        dhcp_vlan.secondary_rack = secondary_rack
+        dhcp_vlan.save()
+        return dhcp_subnet
+
+    def test_subnet(self):
+        subnet = self.create_dhcp_vlan("10.10.10.2/24")
+        self.create_dhcp_vlan("10.10.20.2/24")
+        snippet = factory.make_DHCPSnippet(subnet=subnet, enabled=True)
+        self.assertCountEqual(
+            [subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
+        )
+
+    def test_subnet_includes_secondary(self):
+        subnet = self.create_dhcp_vlan("10.10.10.2/24", "10.10.10.3/24")
+        self.create_dhcp_vlan("10.10.20.0/24")
+        snippet = factory.make_DHCPSnippet(subnet=subnet, enabled=True)
+        self.assertCountEqual(
+            [subnet.vlan.primary_rack, subnet.vlan.secondary_rack],
+            _get_dhcp_rackcontrollers(snippet),
+        )
+
+    def test_subnet_relay(self):
+        dhcp_subnet = self.create_dhcp_vlan("10.10.10.2/24")
+        self.create_dhcp_vlan("10.10.20.2/24")
+        relay_subnet = factory.make_Subnet(cidr="10.10.30.0/24")
+        relay_subnet.vlan.relay_vlan = dhcp_subnet.vlan
+        relay_subnet.vlan.save()
+        snippet = factory.make_DHCPSnippet(subnet=relay_subnet, enabled=True)
+        self.assertCountEqual(
+            [dhcp_subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
+        )
+
+    def test_node(self):
+        subnet = self.create_dhcp_vlan("10.10.10.2/24")
+        self.create_dhcp_vlan("10.10.20.0/24")
+        node = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
+        self.assertCountEqual(
+            [subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
+        )
+
+    def test_node_includes_secondary(self):
+        subnet = self.create_dhcp_vlan("10.10.10.2/24", "10.10.10.3/24")
+        self.create_dhcp_vlan("10.10.20.0/24")
+        node = factory.make_Machine_with_Interface_on_Subnet(subnet=subnet)
+        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
+        self.assertCountEqual(
+            [subnet.vlan.primary_rack, subnet.vlan.secondary_rack],
+            _get_dhcp_rackcontrollers(snippet),
+        )
+
+    def test_node_relay(self):
+        dhcp_subnet = self.create_dhcp_vlan("10.10.10.2/24")
+        self.create_dhcp_vlan("10.10.20.2/24")
+        relay_subnet = factory.make_Subnet(cidr="10.10.30.0/24")
+        relay_subnet.vlan.relay_vlan = dhcp_subnet.vlan
+        relay_subnet.vlan.save()
+        node = factory.make_Machine_with_Interface_on_Subnet(
+            subnet=relay_subnet
+        )
+        snippet = factory.make_DHCPSnippet(node=node, enabled=True)
+        self.assertCountEqual(
+            [dhcp_subnet.vlan.primary_rack], _get_dhcp_rackcontrollers(snippet)
+        )
 
 
 class TestValidateDHCPConfig(MAASTransactionServerTestCase):

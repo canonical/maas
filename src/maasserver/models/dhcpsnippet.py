@@ -93,6 +93,10 @@ class DHCPSnippet(CleanSave, TimestampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def is_global(self):
+        return self.node_id is None and self.subnet_id is None
+
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
         if self.node is not None and self.subnet is not None:

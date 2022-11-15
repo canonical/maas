@@ -138,3 +138,17 @@ class TestDHCPSnippet(MAASServerTestCase):
                 VersionedTextFile.objects.get,
                 id=i,
             )
+
+    def test_is_global(self):
+        snippet = factory.make_DHCPSnippet(subnet=None, node=None)
+        self.assertTrue(snippet.is_global)
+
+    def test_is_global_node(self):
+        node = factory.make_Machine()
+        snippet = factory.make_DHCPSnippet(subnet=None, node=node)
+        self.assertFalse(snippet.is_global)
+
+    def test_is_global_subnet(self):
+        subnet = factory.make_Subnet()
+        snippet = factory.make_DHCPSnippet(subnet=subnet, node=None)
+        self.assertFalse(snippet.is_global)

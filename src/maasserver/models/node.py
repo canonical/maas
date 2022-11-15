@@ -130,7 +130,7 @@ from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.service import Service
 from maasserver.models.staticipaddress import StaticIPAddress
-from maasserver.models.subnet import Subnet
+from maasserver.models.subnet import get_dhcp_vlan, Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.models.vlan import VLAN
@@ -5360,18 +5360,16 @@ class Node(CleanSave, TimestampedModel):
     def get_boot_rack_controllers(self):
         """Return the `RackController` that this node will boot from."""
         boot_interface = self.get_boot_interface()
-        if (
-            boot_interface is None
-            or boot_interface.vlan is None
-            or not boot_interface.vlan.dhcp_on
-        ):
+        if boot_interface is None:
             return []
-        else:
-            racks = [
-                boot_interface.vlan.primary_rack,
-                boot_interface.vlan.secondary_rack,
-            ]
-            return [rack for rack in racks if rack is not None]
+
+        boot_vlan = get_dhcp_vlan(boot_interface.vlan)
+        if boot_vlan is None:
+            return []
+        racks = [boot_vlan.primary_rack]
+        if boot_vlan.secondary_rack:
+            racks.append(boot_vlan.secondary_rack)
+        return racks
 
     def get_extra_macs(self):
         """Get the MACs other that the one the node booted from."""

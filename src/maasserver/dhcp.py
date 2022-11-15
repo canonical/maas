@@ -977,6 +977,13 @@ def get_racks_by_subnet(subnet):
     return racks
 
 
+def _get_dhcp_rackcontrollers(dhcp_snippet):
+    if dhcp_snippet.subnet is not None:
+        return get_racks_by_subnet(dhcp_snippet.subnet)
+    elif dhcp_snippet.node is not None:
+        return dhcp_snippet.node.get_boot_rack_controllers()
+
+
 def validate_dhcp_config(test_dhcp_snippet=None):
     """Validate a DHCPD config with uncommitted values.
 
@@ -987,9 +994,6 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     :param test_dhcp_snippet: A DHCPSnippet which has not yet been committed to
         the database and needs to be validated.
     """
-    # XXX ltrager 2016-03-28 - This only tests the existing config with new
-    # DHCPSnippets but could be expanded to test changes to the config(e.g
-    # subnets, omapi_key, interfaces, etc) before they are commited.
 
     def find_connected_rack(racks):
         connected_racks = [client.ident for client in getAllClients()]
@@ -1006,17 +1010,15 @@ def validate_dhcp_config(test_dhcp_snippet=None):
             "no available rack controller connected."
         )
 
-    rack_controller = None
+    # XXX ltrager 2016-03-28 - This only tests the existing config with new
+    # DHCPSnippets but could be expanded to test changes to the config(e.g
+    # subnets, omapi_key, interfaces, etc) before they are commited.
     # Test on the rack controller where the DHCPSnippet will be used
-    if test_dhcp_snippet is not None:
-        if test_dhcp_snippet.subnet is not None:
-            rack_controller = find_connected_rack(
-                get_racks_by_subnet(test_dhcp_snippet.subnet)
-            )
-        elif test_dhcp_snippet.node is not None:
-            rack_controller = find_connected_rack(
-                test_dhcp_snippet.node.get_boot_rack_controllers()
-            )
+    rack_controller = None
+    if test_dhcp_snippet is not None and not test_dhcp_snippet.is_global:
+        rack_controller = find_connected_rack(
+            _get_dhcp_rackcontrollers(test_dhcp_snippet)
+        )
     # If no rack controller is linked to the DHCPSnippet its a global DHCP
     # snippet which we can test anywhere.
     if rack_controller is None:
