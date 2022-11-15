@@ -16,10 +16,12 @@ from twisted.internet.protocol import DatagramProtocol
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import UpdateLease
+from provisioningserver.rpc.region import UpdateLeases
 from provisioningserver.utils.twisted import pause, retries
 
 maaslog = get_maas_logger("lease_socket_service")
+
+MAX_LEASE_NOTIFICATION = 16
 
 
 def get_socket_path():
@@ -84,22 +86,34 @@ class LeaseSocketService(Service, DatagramProtocol):
         self.notifications.append(notification)
 
     def processNotifications(self, clock=reactor):
-        """Process all notifications."""
+        """Process all notifications.
 
-        def gen_notifications(notifications):
-            while len(notifications) != 0:
-                yield notifications.popleft()
+        In order to guarantee the correct final state, we must preserve the
+        ordering of updates of the same IP address. As the Region doesn't give
+        us this guarantee, we cannot allow two updates to the same IP to be
+        flying at the same time.
+        """
+        payload = []
+        ips_seem = set()
+        budget = min(len(self.notifications), MAX_LEASE_NOTIFICATION)
+        for _ in range(budget):
+            ntfy = self.notifications[0]
+            if ntfy["ip"] in ips_seem:
+                break
+            ips_seem.add(ntfy["ip"])
+            payload.append(self.notifications.popleft())
 
-        return task.coiterate(
-            self.processNotification(notification, clock=clock)
-            for notification in gen_notifications(self.notifications)
-        )
+        notification = {
+            "cluster_uuid": None,  # TBD when sending
+            "updates": payload,
+        }
+        return self.processNotification(notification, clock=clock)
 
     @inlineCallbacks
     def processNotification(self, notification, clock=reactor):
         """Send a notification to the region."""
         client = None
-        for elapsed, remaining, wait in retries(30, 10, clock):
+        for _, _, wait in retries(30, 10, clock):
             try:
                 client = yield self.client_service.getClientNow()
                 break
@@ -116,4 +130,4 @@ class LeaseSocketService(Service, DatagramProtocol):
         # UUID. Add that into the notification and send the information to
         # the region for processing.
         notification["cluster_uuid"] = client.localIdent
-        yield client(UpdateLease, **notification)
+        yield client(UpdateLeases, **notification)

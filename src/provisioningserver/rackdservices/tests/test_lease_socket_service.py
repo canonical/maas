@@ -25,7 +25,7 @@ from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
 from provisioningserver.rpc import clusterservice, getRegionClient
-from provisioningserver.rpc.region import UpdateLease
+from provisioningserver.rpc.region import UpdateLeases
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.twisted import DeferredValue, pause, retries
 
@@ -50,9 +50,9 @@ class TestLeaseSocketService(MAASTestCase):
         ).return_value = socket_path
         return socket_path
 
-    def patch_rpc_UpdateLease(self):
+    def patch_rpc_UpdateLeases(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(UpdateLease)
+        protocol, connecting = fixture.makeEventLoop(UpdateLeases)
         return protocol, connecting
 
     def send_notification(self, socket_path, payload):
@@ -60,6 +60,17 @@ class TestLeaseSocketService(MAASTestCase):
         conn.connect(socket_path)
         conn.send(json.dumps(payload).encode("utf-8"))
         conn.close()
+
+    def create_lease_notification(self, ip=None):
+        return {
+            "action": "commit",
+            "mac": factory.make_mac_address(),
+            "ip_family": "ipv4",
+            "ip": ip or factory.make_ipv4_address(),
+            "timestamp": int(time.time()),
+            "lease_time": 30,
+            "hostname": factory.make_name("host"),
+        }
 
     def test_init(self):
         socket_path = self.patch_socket_path()
@@ -100,7 +111,7 @@ class TestLeaseSocketService(MAASTestCase):
         service.processor = MagicMock()
 
         # Create test payload to send.
-        packet = {"test": factory.make_name("test")}
+        packet = self.create_lease_notification()
 
         # Send notification to the socket should appear in notifications.
         yield deferToThread(self.send_notification, socket_path, packet)
@@ -132,17 +143,23 @@ class TestLeaseSocketService(MAASTestCase):
         self.addCleanup(service.stopService)
 
         # Create test payload to send.
-        packet = {"test": factory.make_name("test")}
+        packet1 = self.create_lease_notification()
+        packet2 = self.create_lease_notification()
+        payload = {
+            "cluster_uuid": None,
+            "updates": [packet1, packet2],
+        }
 
         # Send notification to the socket and wait for notification.
-        yield deferToThread(self.send_notification, socket_path, packet)
+        yield deferToThread(self.send_notification, socket_path, packet1)
+        yield deferToThread(self.send_notification, socket_path, packet2)
         yield dv.get(timeout=10)
 
-        # Packet should be the argument passed to processNotifcation
-        self.assertEqual((packet,), dv.value)
+        # Payload should be the argument passed to processNotifcation
+        self.assertEqual((payload,), dv.value)
 
     @defer.inlineCallbacks
-    def test_processNotification_gets_called_multiple_times(self):
+    def test_processNotification_dont_allow_same_address(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(sentinel.service, reactor)
         dvs = [DeferredValue(), DeferredValue()]
@@ -161,8 +178,9 @@ class TestLeaseSocketService(MAASTestCase):
         self.addCleanup(service.stopService)
 
         # Create test payload to send.
-        packet1 = {"test1": factory.make_name("test1")}
-        packet2 = {"test2": factory.make_name("test2")}
+        ip = factory.make_ipv4_address()
+        packet1 = self.create_lease_notification(ip=ip)
+        packet2 = self.create_lease_notification(ip=ip)
 
         # Send notifications to the socket and wait for notifications.
         yield deferToThread(self.send_notification, socket_path, packet1)
@@ -172,12 +190,28 @@ class TestLeaseSocketService(MAASTestCase):
 
         # Packet should be the argument passed to processNotification in
         # order.
-        self.assertEqual((packet1,), dvs[0].value)
-        self.assertEqual((packet2,), dvs[1].value)
+        self.assertEqual(
+            (
+                {
+                    "cluster_uuid": None,
+                    "updates": [packet1],
+                },
+            ),
+            dvs[0].value,
+        )
+        self.assertEqual(
+            (
+                {
+                    "cluster_uuid": None,
+                    "updates": [packet2],
+                },
+            ),
+            dvs[1].value,
+        )
 
     @defer.inlineCallbacks
     def test_processNotification_send_to_region(self):
-        protocol, connecting = self.patch_rpc_UpdateLease()
+        protocol, connecting = self.patch_rpc_UpdateLeases()
         self.addCleanup((yield connecting))
 
         client = getRegionClient()
@@ -186,27 +220,17 @@ class TestLeaseSocketService(MAASTestCase):
         service = LeaseSocketService(rpc_service, reactor)
 
         # Notification to region.
-        packet = {
-            "action": "commit",
-            "mac": factory.make_mac_address(),
-            "ip_family": "ipv4",
-            "ip": factory.make_ipv4_address(),
-            "timestamp": int(time.time()),
-            "lease_time": 30,
-            "hostname": factory.make_name("host"),
+        packet = self.create_lease_notification()
+        payload = {
+            "cluster_uuid": None,
+            "updates": [packet],
         }
-        yield service.processNotification(packet, clock=reactor)
+        yield service.processNotification(payload, clock=reactor)
         self.assertThat(
-            protocol.UpdateLease,
+            protocol.UpdateLeases,
             MockCalledOnceWith(
                 protocol,
                 cluster_uuid=client.localIdent,
-                action=packet["action"],
-                mac=packet["mac"],
-                ip_family=packet["ip_family"],
-                ip=packet["ip"],
-                timestamp=packet["timestamp"],
-                lease_time=packet["lease_time"],
-                hostname=packet["hostname"],
+                updates=[packet],
             ),
         )

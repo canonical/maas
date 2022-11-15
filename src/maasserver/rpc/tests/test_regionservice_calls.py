@@ -42,7 +42,11 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockCalledWith
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+    MockCalledWith,
+)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rpc.exceptions import NoSuchCluster, NoSuchNode
@@ -71,6 +75,7 @@ from provisioningserver.rpc.region import (
     SendEvent,
     SendEventMACAddress,
     UpdateLease,
+    UpdateLeases,
     UpdateNodePowerState,
     UpdateServices,
 )
@@ -267,6 +272,59 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
 
         # Test is that no exceptions are raised. If this test passes then all
         # works as expected.
+
+
+class TestRegionProtocol_UpdateLeases(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.useFixture(RegionEventLoopFixture("database-tasks"))
+
+    def test_update_leases_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(UpdateLeases.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_update_lease_called_N_times(self):
+        uuid = factory.make_name("uuid")
+        update_lease_mock = self.patch_autospec(leases_module, "update_lease")
+        updates = [
+            {
+                "action": random.choice(["commit", "expiry", "release"]),
+                "mac": factory.make_mac_address(),
+                "ip_family": "ipv4",
+                "ip": factory.make_ipv4_address(),
+                "timestamp": int(time.time()),
+            }
+            for _ in range(3)
+        ]
+
+        yield eventloop.start()
+        try:
+            yield call_responder(
+                Region(),
+                UpdateLeases,
+                {
+                    "cluster_uuid": uuid,
+                    "updates": updates,
+                },
+            )
+        finally:
+            yield eventloop.reset()
+        for upd in updates:
+            self.assertThat(
+                update_lease_mock,
+                MockAnyCall(
+                    upd["action"],
+                    upd["mac"],
+                    upd["ip_family"],
+                    upd["ip"],
+                    upd["timestamp"],
+                    None,
+                    None,
+                ),
+            )
 
 
 class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):

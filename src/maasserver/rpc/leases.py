@@ -69,9 +69,6 @@ def update_lease(
         expiry -  When a lease has expired. Occurs when a client fails to renew
                   their lease before the end of the `lease_time`.
         release - When a client explicitly releases the lease.
-
-    :raises NoSuchCluster: If the cluster identified by `cluster_uuid` does not
-        exist.
     """
     # Check for a valid action.
     if action not in ["commit", "expiry", "release"]:

@@ -61,7 +61,6 @@ from provisioningserver.prometheus.metrics import (
 )
 from provisioningserver.rpc import cluster, common, exceptions, region
 from provisioningserver.rpc.common import RPCProtocol
-from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.events import EventGroup
@@ -144,20 +143,47 @@ class Region(RPCProtocol):
             hostname,
         )
 
-        # Catch all errors except the NoSuchCluster failure. We want that to
-        # be sent back to the cluster.
-        def err_NoSuchCluster_passThrough(failure):
-            if failure.check(NoSuchCluster):
-                return failure
-            else:
-                log.err(failure, "Unhandled failure in updating lease.")
-                return {}
+        def log_error(failure):
+            log.err(failure, "Unhandled failure in updating lease.")
+            return {}
 
-        d.addErrback(err_NoSuchCluster_passThrough)
+        d.addErrback(log_error)
 
         # Wait for the record to be handled. This will cause the cluster to
         # send one at a time. So they are processed in order no matter which
         # region receives the message.
+        return d
+
+    @region.UpdateLeases.responder
+    def update_leases(self, cluster_uuid, updates):
+        """update_leases(
+            cluster_uuid, updates)
+
+        Implementation of
+        :py:class`~provisioningserver.rpc.region.UpdateLeases`.
+        """
+
+        def log_error(failure):
+            log.err(failure, "Unhandled failure in updating lease.")
+            return {}
+
+        dbtasks = eventloop.services.getServiceNamed("database-tasks")
+        tasks = []
+        for upd in updates:
+            t = dbtasks.deferTask(
+                leases.update_lease,
+                upd["action"],
+                upd["mac"],
+                upd["ip_family"],
+                upd["ip"],
+                upd["timestamp"],
+                upd["lease_time"],
+                upd["hostname"],
+            )
+            t.addErrback(log_error)
+            tasks.append(t)
+
+        d = defer.gatherResults(tasks)
         return d
 
     @amp.StartTLS.responder

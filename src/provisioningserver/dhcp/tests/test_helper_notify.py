@@ -8,7 +8,6 @@ import os
 import random
 from unittest.mock import sentinel
 
-from testtools.matchers import Equals, IsInstance, MatchesDict
 from twisted.internet import defer, reactor
 
 from maastesting import dev_root, get_testing_timeout
@@ -83,17 +82,11 @@ class TestDHCPNotify(MAASTestCase):
         )
         yield done.get(timeout=TIMEOUT)
 
-        self.assertThat(
-            done.value[0],
-            MatchesDict(
-                {
-                    "action": Equals(action),
-                    "mac": Equals(mac),
-                    "ip_family": Equals(ip_family),
-                    "ip": Equals(ip),
-                    "timestamp": IsInstance(int),
-                    "lease_time": Equals(lease_time),
-                    "hostname": Equals(hostname),
-                }
-            ),
-        )
+        self.assertEqual(1, len(done.value[0]["updates"]))
+        update = done.value[0]["updates"][0]
+        self.assertEqual(action, update["action"])
+        self.assertEqual(mac, update["mac"])
+        self.assertEqual(ip_family, update["ip_family"])
+        self.assertEqual(ip, update["ip"])
+        self.assertEqual(lease_time, update["lease_time"])
+        self.assertEqual(hostname, update["hostname"])

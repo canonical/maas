@@ -501,6 +501,32 @@ class UpdateLease(amp.Command):
     errors = {NoSuchCluster: b"NoSuchCluster"}
 
 
+class UpdateLeases(amp.Command):
+    """Report DHCP lease updates from a cluster controller.
+    :since: 2.0
+    """
+
+    arguments = [
+        (b"cluster_uuid", amp.Unicode()),
+        (
+            b"updates",
+            AmpList(
+                [
+                    (b"action", amp.Unicode()),
+                    (b"mac", amp.Unicode()),
+                    (b"ip_family", amp.Unicode()),
+                    (b"ip", amp.Unicode()),
+                    (b"timestamp", amp.Integer()),
+                    (b"lease_time", amp.Integer(optional=True)),
+                    (b"hostname", amp.Unicode(optional=True)),
+                ]
+            ),
+        ),
+    ]
+    response = []
+    errors = {NoSuchCluster: b"NoSuchCluster"}
+
+
 class UpdateServices(amp.Command):
     """Report service statuses that are monitored on the rackd.
 
