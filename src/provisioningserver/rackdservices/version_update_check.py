@@ -42,6 +42,8 @@ class RackVersionUpdateCheckService(VersionUpdateCheckService):
     @inlineCallbacks
     def process_versions_info(self, versions_info):
         client = yield self._getRPCClient()
+        if not client:
+            return
         yield client(
             UpdateControllerState,
             system_id=client.localIdent,

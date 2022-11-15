@@ -141,3 +141,17 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
                 "snap": dataclasses.asdict(versions_info),
             },
         )
+
+    @inlineCallbacks
+    def test_process_version_info_not_called_without_client(self):
+        protocol = yield self.create_fake_rpc_service()
+        rpc_service = services.getServiceNamed("rpc")
+        service = RackVersionUpdateCheckService(rpc_service)
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = sentinel.version_info
+
+        self.patch(service._getRPCClient).return_value = None
+        service.startService()
+        yield service.stopService()
+        protocol.UpdateControllerState.assert_not_called()
