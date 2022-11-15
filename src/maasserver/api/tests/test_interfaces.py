@@ -31,6 +31,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 
 EDITABLE_STATUSES = (
+    NODE_STATUS.NEW,
     NODE_STATUS.READY,
     NODE_STATUS.FAILED_TESTING,
     NODE_STATUS.ALLOCATED,

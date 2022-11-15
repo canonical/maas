@@ -94,6 +94,7 @@ INTERFACES_PREFETCH = [
 ]
 
 ALLOWED_STATES = (
+    NODE_STATUS.NEW,
     NODE_STATUS.READY,
     NODE_STATUS.FAILED_TESTING,
     NODE_STATUS.ALLOCATED,
@@ -119,8 +120,8 @@ def raise_error_for_invalid_state_on_allocated_operations(
         allowed.extend(extra_states)
     if node.status not in allowed:
         raise NodeStateViolation(
-            "Cannot %s interface because the machine is not Ready, Allocated, "
-            "or Broken." % operation
+            f"Cannot {operation} interface because the machine is not New, "
+            "Ready, Allocated, or Broken."
         )
 
 
