@@ -38,6 +38,7 @@ that are not tied to an HTTP reqoest.
    This is a convenient reference to :py:attr:`.loop.restart`.
 
 """
+import logging
 import os
 from socket import gethostname
 
@@ -56,6 +57,8 @@ DEFAULT_PORT = 5240
 reactor.addSystemEventTrigger(
     "before", "startup", disable_all_database_connections
 )
+
+logger = logging.getLogger(f"{__name__}_{os.getpid()}")
 
 
 def make_DatabaseTaskService():
@@ -436,6 +439,7 @@ class RegionEventLoop:
         self.handle = None
         self.master = False
         self.all_in_one = False
+        self.logger = logger.getChild("generic")
 
     @asynchronous
     def populateService(
@@ -503,6 +507,7 @@ class RegionEventLoop:
     @asynchronous
     def populate(self, master=False, all_in_one=False, import_services=False):
         """Prepare services."""
+        self.logger = logger.getChild("master" if master else "worker")
         self.master = master
         self.all_in_one = all_in_one
         for name, item in self.factories.items():
@@ -539,11 +544,13 @@ class RegionEventLoop:
         """Perform start_up of the region process."""
         from maasserver.start_up import start_up
 
+        self.logger.info("Calling start_up to start region process")
         return start_up(self.master)
 
     @asynchronous
     def startMultiService(self, result):
         """Start the multi service."""
+        self.logger.info("Starting eventloop multiservice")
         self.services.startService()
 
     @asynchronous
@@ -552,18 +559,26 @@ class RegionEventLoop:
 
         Start all services in the region's event-loop.
         """
+        self.logger.info("Starting eventloop")
         self.populate(master=master, all_in_one=all_in_one)
         self.handle = reactor.addSystemEventTrigger(
             "before", "shutdown", self.services.stopService
         )
-        return self.prepare().addCallback(self.startMultiService)
+        d = self.prepare()
+        d.addCallback(self.startMultiService)
+        d.addCallback(call, logger.info, "Region started")
+        return d
 
     @asynchronous
     def restart(self):
         """Convenience method that resets and starts event-loop."""
-        return self.reset().addCallback(
+        self.logger.info("Restarting region")
+        d = self.reset()
+        d.addCallback(
             call, self.start, master=self.master, all_in_one=self.all_in_one
         )
+        d.addCallback(call, self.logger.info, "Region restarted")
+        return d
 
     @asynchronous
     def stop(self):
@@ -571,6 +586,7 @@ class RegionEventLoop:
 
         Stop all services in the region's event-loop.
         """
+        self.logger.info("Stopping region")
         if self.handle is not None:
             handle, self.handle = self.handle, None
             reactor.removeSystemEventTrigger(handle)
@@ -595,9 +611,11 @@ class RegionEventLoop:
                 # It wasn't shadowed.
                 pass
 
+        self.logger.info("Resetting region")
         d = self.stop()
         d.addCallback(disown_all_services)
         d.addCallback(reset_factories)
+        d.addCallback(call, self.logger.info, "Region reset finished")
         return d
 
     @property
