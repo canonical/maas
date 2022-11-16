@@ -1990,7 +1990,7 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
         self.assertCountEqual(["10.10.0.2", "10.10.1.2"], boot_ips)
 
-    def test_with_relay_prefer_ipv4(self):
+    def test_with_relay_mixed_ipv4_subnet(self):
         dhcp_vlan = factory.make_VLAN(
             dhcp_on=False,
             primary_rack=None,
@@ -2017,9 +2017,9 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         relay_vlan.relay_vlan = dhcp_vlan
         relay_vlan.save()
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
-        self.assertEqual(["10.10.0.2", "fd12:3456:789a::2"], boot_ips)
+        self.assertEqual(["10.10.0.2"], boot_ips)
 
-    def test_with_relay_prefer_ipv6(self):
+    def test_with_relay_prefer_mixed_ipv6_subnet(self):
         dhcp_vlan = factory.make_VLAN(
             dhcp_on=False,
             primary_rack=None,
@@ -2046,4 +2046,4 @@ class TestGetBootRackcontrollerIPs(MAASServerTestCase):
         relay_vlan.relay_vlan = dhcp_vlan
         relay_vlan.save()
         boot_ips = get_boot_rackcontroller_ips(relay_subnet)
-        self.assertEqual(["fd12:3456:789a::2", "10.10.0.2"], boot_ips)
+        self.assertEqual(["fd12:3456:789a::2"], boot_ips)

@@ -23,7 +23,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
-    NODE_TYPE,
     SERVICE_STATUS,
 )
 from maasserver.exceptions import UnresolvableHost
@@ -37,6 +36,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models.subnet import get_boot_rackcontroller_ips
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -545,37 +545,6 @@ def get_ntp_servers(ntp_servers, subnet, peer_rack):
         return ntp_servers
 
 
-def get_dns_server_addresses_for_rack(
-    rack_controller: RackController, subnet: Subnet
-) -> dict:
-    """Return a map of IP addresses suitable for DNS on subnet.
-
-    This will define a list of IP addresses across all rack controllers that
-    exist on `subnet`. The `rack_controller` will always be the first in the
-    list followed by other rack controllers that are also on the subnet.
-    """
-    addresses = StaticIPAddress.objects.filter(
-        subnet=subnet,
-        alloc_type__in={IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
-        interface__enabled=True,
-        interface__node_config__node__node_type__in={
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        },
-    )
-    addresses = addresses.distinct()
-    addresses = addresses.values_list("ip", "interface__node_config__node_id")
-
-    def sort_key__rack__ip(record):
-        ip, node_id = record
-        return -int(node_id == rack_controller.id), IPAddress(ip)
-
-    return [
-        IPAddress(record[0])
-        for record in sorted(addresses, key=sort_key__rack__ip)
-    ]
-
-
 def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     """Calculates the DNS servers on a per-subnet basis, to make sure we
     choose the best possible IP addresses for each subnet.
@@ -607,7 +576,9 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     if use_rack_proxy:
         # Add the IP address for the rack controllers on the subnet before the
         # region DNS servers.
-        rack_ips = get_dns_server_addresses_for_rack(rack_controller, subnet)
+        rack_ips = [
+            IPAddress(ip) for ip in get_boot_rackcontroller_ips(subnet)
+        ]
         if dns_servers:
             dns_servers = rack_ips + [
                 server
@@ -616,7 +587,7 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
             ]
         elif rack_ips:
             dns_servers = rack_ips
-    elif default_region_ip in dns_servers:
+    if default_region_ip in dns_servers:
         # Make sure the region DNS server comes last
         dns_servers = [
             server for server in dns_servers if server != default_region_ip
