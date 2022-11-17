@@ -193,6 +193,7 @@ parts:
       - usr/share/dns
       - usr/share/ieee-data
       - usr/share/keyrings
+      - usr/share/maas
       - usr/share/nginx
       - usr/share/squid*
       - var/lib/ieee-data
