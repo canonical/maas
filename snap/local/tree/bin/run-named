@@ -12,8 +12,9 @@ cp -f "$SNAP/usr/share/maas/bind/named.conf" "$SNAP_DATA/bind/"
 mkdir -p "$SNAP_DATA/bind/cache"
 
 # generate MAAS bind configuration
-MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" "$SNAP/bin/maas-rack" \
-    setup-dns --no-clobber
+MAAS_ZONE_FILE_CONFIG_DIR="$SNAP_DATA/bind" \
+    MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind" \
+    "$SNAP/bin/maas-rack" setup-dns --no-clobber
 
 # named default socket limit (21k) can be higher than current limits.
 # Increase the limit to the max allowed and restrict named to this.
