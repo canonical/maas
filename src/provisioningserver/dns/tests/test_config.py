@@ -11,7 +11,7 @@ from textwrap import dedent
 from unittest.mock import Mock, sentinel
 
 from fixtures import EnvironmentVariable
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -40,6 +40,7 @@ from provisioningserver.dns.config import (
     DNSConfig,
     DNSConfigDirectoryMissing,
     DNSConfigFail,
+    DynamicDNSUpdate,
     execute_rndc_command,
     extract_suggested_named_conf,
     generate_rndc,
@@ -593,3 +594,75 @@ class TestDNSConfig(MAASTestCase):
                 ),
             ),
         )
+
+
+class TestDynamicDNSUpdate(MAASTestCase):
+    def test_create_from_trigger_v4(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate.create_from_trigger(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(ipv6=False),
+        )
+        self.assertEqual(update.rectype, "A")
+
+    def test_create_from_trigger_v6(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate.create_from_trigger(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(ipv6=True),
+        )
+        self.assertEqual(update.rectype, "AAAA")
+
+    def test_answer_is_ip_returns_true_when_answer_is_an_ip(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(),
+        )
+        self.assertTrue(update.answer_is_ip)
+
+    def test_answer_is_ip_returns_false_when_answer_is_not_an_ip(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="CNAME",
+            answer=factory.make_name(),
+        )
+        self.assertFalse(update.answer_is_ip)
+
+    def test_as_reverse_record_update(self):
+        domain = factory.make_name()
+        subnet = factory.make_ip4_or_6_network()
+        fwd_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=str(IPAddress(subnet.next())),
+        )
+        expected_rev_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=IPAddress(fwd_update.answer).reverse_dns,
+            rectype="PTR",
+            ttl=fwd_update.ttl,
+            subnet=str(subnet),
+            answer=fwd_update.name,
+        )
+        rev_update = DynamicDNSUpdate.as_reverse_record_update(
+            fwd_update, str(subnet)
+        )
+        self.assertEqual(expected_rev_update.name, rev_update.name)
+        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
+        self.assertEqual(expected_rev_update.answer, rev_update.answer)

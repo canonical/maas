@@ -4,11 +4,10 @@
 """Helper class for all tests using the `PostgresListenerService` under
 `maasserver.triggers.tests`."""
 
-
 from django.contrib.auth.models import User
 from piston3.models import Token
 from testtools.matchers import GreaterThan, Is, Not
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import DeferredQueue, inlineCallbacks, returnValue
 
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
@@ -53,6 +52,7 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory, RANDOM
+from maasserver.triggers import register_trigger
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
@@ -942,3 +942,44 @@ class RBACHelpersMixin:
                 GreaterThan(old.id),
                 "RBAC sync tracking has not been modified again.",
             )
+
+
+class NotifyHelperMixin:
+
+    channels = ()
+    channel_queues = {}
+    postgres_listener_service = None
+
+    @inlineCallbacks
+    def set_service(self, listener):
+        self.postgres_listener_service = listener
+        yield self.postgres_listener_service.startService()
+
+    def register_trigger(self, table, channel, ops=(), trigger=None):
+        if channel not in self.channels:
+            self.postgres_listener_service.registerChannel(channel)
+            self.postgres_listener_service.register(channel, self.listen)
+            self.channels = self.channels + (channel,)
+        for op in ops:
+            trigger = trigger or f"{channel}_{table}_{op}"
+            register_trigger(table, trigger, op)
+
+    @inlineCallbacks
+    def listen(self, channel, msg):
+        if msg:
+            yield self.channel_queues[channel].put(msg)
+
+    @inlineCallbacks
+    def get_notify(self, channel):
+        msg = yield self.channel_queues[channel].get()
+        return msg
+
+    def start_reading(self):
+        for channel in self.channels:
+            self.channel_queues[channel] = DeferredQueue()
+        self.postgres_listener_service.startReading()
+
+    def stop_reading(self):
+        for channel in self.channels:
+            del self.channel_queues[channel]
+        self.postgres_listener_service.stopReading()

@@ -29,6 +29,7 @@ from maasserver.dns.config import (
     get_trusted_acls,
     get_trusted_networks,
     get_upstream_dns,
+    process_dns_update_notify,
 )
 from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
@@ -40,10 +41,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.dns.commands import get_named_conf, setup_dns
-from provisioningserver.dns.config import compose_config_path, DNSConfig
+from provisioningserver.dns.config import (
+    compose_config_path,
+    DNSConfig,
+    DynamicDNSUpdate,
+)
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_rndc_port,
+    patch_zone_file_config_path,
 )
 from provisioningserver.testing.bindfixture import allocate_ports, BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
@@ -127,6 +133,7 @@ class TestDNSServer(MAASServerTestCase):
         patch_dns_config_path(self, self.bind.config.homedir)
         # Use a random port for rndc.
         patch_dns_rndc_port(self, allocate_ports("localhost")[0])
+        patch_zone_file_config_path(self, config_dir=self.bind.config.homedir)
         # This simulates what should happen when the package is
         # installed:
         # Create MAAS-specific DNS configuration files.
@@ -430,6 +437,28 @@ class TestDNSConfigModifications(TestDNSServer):
                 ]
             ),
         )
+
+    def test_dns_update_all_zones_does_not_reload_if_it_does_not_need_to(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        domain = factory.make_Domain()
+        # These domains should not show up. Just to test we create them.
+        for _ in range(3):
+            factory.make_Domain(authoritative=False)
+        node, static = self.create_node_with_static_ip(domain=domain)
+        fake_serial = random.randint(1, 1000)
+        self.patch(
+            dns_config_module, "current_zone_serial"
+        ).return_value = fake_serial
+        reload_call = self.patch(dns_config_module, "bind_reload")
+        serial1, reloaded, _ = dns_update_all_zones(
+            reload_timeout=RELOAD_TIMEOUT
+        )
+        self.assertTrue(reloaded)
+        factory.make_DNSResource(domain=domain)
+        _, _, _ = dns_update_all_zones(  # should be a dynamic update
+            reload_timeout=RELOAD_TIMEOUT
+        )
+        reload_call.assert_called_once()
 
 
 class TestDNSDynamicIPAddresses(TestDNSServer):
@@ -754,3 +783,122 @@ class TestGetResourceNameForSubnet(MAASServerTestCase):
     def test_returns_valid(self):
         subnet = factory.make_Subnet(cidr=self.cidr)
         self.assertEqual(self.result, get_resource_name_for_subnet(subnet))
+
+
+class TestProcessDNSUpdateNotify(MAASServerTestCase):
+    def test_insert(self):
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        ip = resource.ip_addresses.first().ip
+        message = f"INSERT {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    ttl=resource.address_ttl if resource.address_ttl else 60,
+                    answer=ip,
+                    rectype="A" if IPAddress(ip).version == 4 else "AAAA",
+                )
+            ],
+            result,
+        )
+
+    def test_delete_without_ip(self):
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        message = f"DELETE {domain.name} {resource.name} A"
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    rectype="A",
+                )
+            ],
+            result,
+        )
+
+    def test_delete_with_ip(self):
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        ip = resource.ip_addresses.first().ip
+        message = f"DELETE {domain.name} {resource.name} A {ip}"
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    answer=ip,
+                    rectype="A" if IPAddress(ip).version == 4 else "AAAA",
+                )
+            ],
+            result,
+        )
+
+    def test_update(self):
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        ip = resource.ip_addresses.first().ip
+        message = f"UPDATE {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    answer=ip,
+                    rectype="A" if IPAddress(ip).version == 4 else "AAAA",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    ttl=resource.address_ttl if resource.address_ttl else 60,
+                    answer=ip,
+                    rectype="A" if IPAddress(ip).version == 4 else "AAAA",
+                ),
+            ],
+            result,
+        )
+
+    def test_delete_ip(self):
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        ip = resource.ip_addresses.first().ip
+        ip2 = factory.make_StaticIPAddress()
+        resource.ip_addresses.add(ip2)
+        message = f"DELETE-IP {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
+        resource.ip_addresses.first().delete()
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    rectype="A",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    rectype="AAAA",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    zone=domain.name,
+                    name=f"{resource.name}.{domain.name}",
+                    rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
+                    answer=ip2.ip,
+                ),
+            ],
+            result,
+        )

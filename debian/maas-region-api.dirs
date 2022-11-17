@@ -1,2 +1,3 @@
 etc/bind/maas
+var/lib/bind/maas
 var/lib/maas/prometheus

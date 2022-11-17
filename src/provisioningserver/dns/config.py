@@ -6,12 +6,17 @@
 
 from collections import namedtuple
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 import errno
+import grp
 import os
 import os.path
 import re
 import sys
+from typing import Optional
+
+from netaddr import AddrFormatError, IPAddress
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import load_template, locate_config
@@ -26,6 +31,63 @@ MAAS_NAMED_CONF_NAME = "named.conf.maas"
 MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME = "named.conf.options.inside.maas"
 MAAS_NAMED_RNDC_CONF_NAME = "named.conf.rndc.maas"
 MAAS_RNDC_CONF_NAME = "rndc.conf.maas"
+MAAS_NSUPDATE_KEY_NAME = "keys.conf.maas"
+MAAS_ZONE_FILE_DIR = "/var/lib/bind/maas"
+MAAS_ZONE_FILE_GROUP = "bind"
+
+
+@dataclass
+class DynamicDNSUpdate:
+    operation: str
+    name: str
+    zone: str
+    rectype: str
+    ttl: Optional[int] = None
+    subnet: Optional[str] = None  # for reverse updates
+    answer: Optional[str] = None
+
+    @classmethod
+    def _is_ip(cls, answer):
+        if not answer:
+            return False
+        try:
+            IPAddress(answer)
+        except AddrFormatError:
+            return False
+        else:
+            return True
+
+    @classmethod
+    def create_from_trigger(cls, **kwargs):
+        answer = kwargs.get("answer")
+        rectype = kwargs.pop("rectype")
+        if answer:
+            del kwargs["answer"]
+        # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
+        if cls._is_ip(answer):
+            ip = IPAddress(answer)
+            if ip.version == 6:
+                rectype = "AAAA"
+        return cls(answer=answer, rectype=rectype, **kwargs)
+
+    @classmethod
+    def as_reverse_record_update(cls, fwd_update, subnet):
+        if not fwd_update.answer_is_ip:
+            return None
+        ip = IPAddress(fwd_update.answer)
+        return cls(
+            operation=fwd_update.operation,
+            name=ip.reverse_dns,
+            zone=fwd_update.zone,
+            subnet=subnet,
+            ttl=fwd_update.ttl,
+            answer=fwd_update.name,
+            rectype="PTR",
+        )
+
+    @property
+    def answer_is_ip(self):
+        return DynamicDNSUpdate._is_ip(self.answer)
 
 
 def get_dns_config_dir():
@@ -33,6 +95,19 @@ def get_dns_config_dir():
     setting = os.getenv(
         "MAAS_DNS_CONFIG_DIR", locate_config(os.path.pardir, "bind", "maas")
     )
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        return setting.decode(fsenc)
+    else:
+        return setting
+
+
+def get_zone_file_config_dir():
+    """
+    Location of MAAS' zone files, separate from config files
+    so that bind can write to the location as well
+    """
+    setting = os.getenv("MAAS_ZONE_FILE_CONFIG_DIR", MAAS_ZONE_FILE_DIR)
     if isinstance(setting, bytes):
         fsenc = sys.getfilesystemencoding()
         return setting.decode(fsenc)
@@ -155,6 +230,30 @@ def get_rndc_conf_path():
     return compose_config_path(MAAS_RNDC_CONF_NAME)
 
 
+def get_nsupdate_key_path():
+    return compose_config_path(MAAS_NSUPDATE_KEY_NAME)
+
+
+def set_up_nsupdate_key():
+    tsig = call_and_check(["tsig-keygen", "-a", "HMAC-SHA512", "maas."])
+    atomic_write(tsig, get_nsupdate_key_path(), overwrite=True, mode=0o644)
+
+
+def set_up_zone_file_dir():
+    p = get_zone_file_config_dir()
+    if not os.path.exists(p):
+        os.mkdir(p)
+
+        uid = os.getuid()
+        gid = 0
+        group = grp.getgrnam(MAAS_ZONE_FILE_GROUP)
+        if group:
+            gid = group.gr_gid
+
+        os.chown(p, uid, gid)
+        os.chmod(p, 0o775)
+
+
 def set_up_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
     MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
@@ -232,12 +331,16 @@ def set_up_options_conf(overwrite=True, **kwargs):
 
 
 def compose_config_path(filename):
-    """Return the full path for a DNS config or zone file."""
+    """Return the full path for a DNS config"""
     return os.path.join(get_dns_config_dir(), filename)
 
 
+def compose_zone_file_config_path(filename):
+    return os.path.join(get_zone_file_config_dir(), filename)
+
+
 def compose_bind_config_path(filename):
-    """Return the full path for a DNS config or zone file."""
+    """Return the full path for a DNS config"""
     return os.path.join(get_bind_config_dir(), filename)
 
 
@@ -309,6 +412,7 @@ class DNSConfig:
             "forwarded_zones": self.forwarded_zones,
             "DNS_CONFIG_DIR": get_dns_config_dir(),
             "named_rndc_conf_path": get_named_rndc_conf_path(),
+            "nsupdate_keys_conf_path": get_nsupdate_key_path(),
             "trusted_networks": trusted_networks,
             "modified": str(datetime.today()),
         }

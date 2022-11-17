@@ -41,7 +41,10 @@ from twisted.internet.task import LoopingCall
 from twisted.names.client import Resolver
 
 from maasserver import eventloop, locks
-from maasserver.dns.config import dns_update_all_zones
+from maasserver.dns.config import (
+    dns_update_all_zones,
+    process_dns_update_notify,
+)
 from maasserver.macaroon_auth import get_auth_info
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.rbacsync import RBAC_ACTION, RBACLastSync, RBACSync
@@ -94,6 +97,8 @@ class RegionControllerService(Service):
         self.needsDNSUpdate = False
         self.needsProxyUpdate = False
         self.needsRBACUpdate = False
+        self._dns_updates = []
+        self._dns_requires_full_reload = False
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
             resolv=None,
@@ -110,6 +115,9 @@ class RegionControllerService(Service):
         """Start listening for messages."""
         super().startService()
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
+        self.postgresListener.register(
+            "sys_dns_updates", self.queueDynamicDNSUpdate
+        )
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
         self.postgresListener.register(
@@ -164,6 +172,21 @@ class RegionControllerService(Service):
         )
         eventloop.restart()
 
+    def queueDynamicDNSUpdate(self, channel, message):
+        """
+        Called when the `sys_dns_update` message is received
+        and queues updates for existing domains
+        """
+        if message == "":
+            return
+
+        (new_updates, need_reload) = process_dns_update_notify(message)
+
+        self._dns_requires_full_reload = (
+            self._dns_requires_full_reload or need_reload
+        )
+        self._dns_updates += new_updates
+
     def startProcessing(self):
         """Start the process looping call."""
         if not self.processing.running:
@@ -193,10 +216,22 @@ class RegionControllerService(Service):
             if delay:
                 return pause(delay)
 
+        def _clear_dynamic_dns_updates(d):
+            self._dns_updates = []
+            self._dns_requires_full_reload = False
+            return d
+
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
-            d = deferToDatabase(transactional(dns_update_all_zones))
+            d = deferToDatabase(
+                transactional(
+                    dns_update_all_zones,
+                ),
+                dynamic_updates=self._dns_updates,
+                requires_reload=self._dns_requires_full_reload,
+            )
+            d.addCallback(_clear_dynamic_dns_updates)
             d.addCallback(self._checkSerial)
             d.addCallback(self._logDNSReload)
             # Order here matters, first needsDNSUpdate is set then pass the

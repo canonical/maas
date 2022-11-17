@@ -17,7 +17,10 @@ from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
 )
-from provisioningserver.dns.testing import patch_dns_config_path
+from provisioningserver.dns.testing import (
+    patch_dns_config_path,
+    patch_zone_file_config_path,
+)
 
 
 class TestSetupCommand(MAASTestCase):
@@ -35,6 +38,7 @@ class TestSetupCommand(MAASTestCase):
     def test_writes_configuration(self):
         dns_conf_dir = self.make_dir()
         patch_dns_config_path(self, dns_conf_dir)
+        patch_zone_file_config_path(self, dns_conf_dir)
         self.run_command()
         named_config = os.path.join(dns_conf_dir, MAAS_NAMED_CONF_NAME)
         rndc_conf_path = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
@@ -43,6 +47,7 @@ class TestSetupCommand(MAASTestCase):
     def test_does_not_overwrite_config(self):
         dns_conf_dir = self.make_dir()
         patch_dns_config_path(self, dns_conf_dir)
+        patch_zone_file_config_path(self, dns_conf_dir)
         random_content = factory.make_string()
         factory.make_file(
             location=dns_conf_dir,

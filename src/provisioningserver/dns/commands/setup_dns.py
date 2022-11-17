@@ -16,8 +16,10 @@ from textwrap import dedent
 
 from provisioningserver.dns.config import (
     DNSConfig,
+    set_up_nsupdate_key,
     set_up_options_conf,
     set_up_rndc,
+    set_up_zone_file_dir,
 )
 
 
@@ -49,6 +51,8 @@ def run(args, stdout=sys.stdout, stderr=sys.stderr):
     :param stdout: Standard output stream to write to.
     :param stderr: Standard error stream to write to.
     """
+    set_up_nsupdate_key()
+    set_up_zone_file_dir()
     set_up_rndc()
     set_up_options_conf(overwrite=not args.no_clobber)
     config = DNSConfig()

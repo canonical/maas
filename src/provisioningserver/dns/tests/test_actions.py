@@ -20,11 +20,19 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import actions
+from provisioningserver.dns.actions import (
+    get_nsupdate_key_path,
+    NSUpdateCommand,
+)
 from provisioningserver.dns.config import (
+    DynamicDNSUpdate,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
 )
-from provisioningserver.dns.testing import patch_dns_config_path
+from provisioningserver.dns.testing import (
+    patch_dns_config_path,
+    patch_zone_file_config_path,
+)
 from provisioningserver.dns.tests.test_zoneconfig import HostnameIPMapping
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -208,6 +216,7 @@ class TestConfiguration(MAASTestCase):
         )
 
     def test_bind_write_zones_writes_file(self):
+        zone_file_dir = patch_zone_file_config_path(self)
         domain = factory.make_string()
         network = IPNetwork("192.168.0.3/24")
         dns_ip_list = [factory.pick_ip_in_network(network)]
@@ -229,8 +238,8 @@ class TestConfiguration(MAASTestCase):
         forward_file_name = "zone.%s" % domain
         reverse_file_name = "zone.0.168.192.in-addr.arpa"
         expected_files = [
-            join(self.dns_conf_dir, forward_file_name),
-            join(self.dns_conf_dir, reverse_file_name),
+            join(zone_file_dir, forward_file_name),
+            join(zone_file_dir, reverse_file_name),
         ]
         self.assertThat(expected_files, AllMatch(FileExists()))
 
@@ -269,4 +278,113 @@ class TestConfiguration(MAASTestCase):
         )
         self.assertThat(
             expected_options_file, FileContains(expected_options_content)
+        )
+
+
+class TestNSUpdateCommand(MAASTestCase):
+    def test_format_update_deletion(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="DELETE",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+        )
+        cmd = NSUpdateCommand(
+            domain,
+            [update],
+            serial=random.randint(1, 100),
+            ttl=random.randint(1, 100),
+        )
+        self.assertEqual(
+            f"update delete {update.name} A", cmd._format_update(update)
+        )
+
+    def test_format_update_addition(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(),
+        )
+        ttl = random.randint(1, 100)
+        cmd = NSUpdateCommand(
+            domain, [update], serial=random.randint(1, 100), ttl=ttl
+        )
+        self.assertEqual(
+            f"update add {update.name} {ttl} A {update.answer}",
+            cmd._format_update(update),
+        )
+
+    def test_nsupdate_sends_a_single_update(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(),
+        )
+        serial = random.randint(1, 100)
+        ttl = random.randint(1, 100)
+        cmd = NSUpdateCommand(domain, [update], serial=serial, ttl=ttl)
+        run_command = self.patch(actions, "run_command")
+        cmd.update()
+        run_command.assert_called_once_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            stdin="\n".join(
+                [
+                    "server localhost",
+                    f"zone {domain}",
+                    f"update add {update.name} {ttl} A {update.answer}",
+                    f"update add {domain} {ttl} SOA {domain}. nobody.example.com. {serial} 600 1800 604800 {ttl}",
+                    "send\n",
+                ]
+            ).encode("ascii"),
+        )
+
+    def test_nsupdate_sends_a_bulk_update(self):
+        domain = factory.make_name()
+        deletions = [
+            DynamicDNSUpdate(
+                operation="DELETE",
+                zone=domain,
+                name=f"{factory.make_name()}.{domain}",
+                rectype="A",
+            )
+            for _ in range(2)
+        ]
+        additions = [
+            DynamicDNSUpdate(
+                operation="INSERT",
+                zone=domain,
+                name=f"{factory.make_name()}.{domain}",
+                rectype="A",
+                answer=factory.make_ip_address(),
+            )
+            for _ in range(2)
+        ]
+        ttl = random.randint(1, 100)
+        cmd = NSUpdateCommand(domain, deletions + additions, ttl=ttl)
+        run_command = self.patch(actions, "run_command")
+        cmd.update()
+        expected_stdin = [
+            "server localhost",
+            f"zone {domain}",
+            f"update delete {deletions[0].name} {deletions[0].rectype}",
+            f"update delete {deletions[1].name} {deletions[1].rectype}",
+            f"update add {additions[0].name} {ttl} {additions[0].rectype} {additions[0].answer}",
+            f"update add {additions[1].name} {ttl} {additions[1].rectype} {additions[1].answer}",
+            "send\n",
+        ]
+        run_command.assert_called_once_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            "-v",
+            stdin="\n".join(expected_stdin).encode("ascii"),
         )

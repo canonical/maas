@@ -6,12 +6,14 @@
 
 from datetime import datetime
 from itertools import chain
+import os
 
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
 
+from provisioningserver.dns.actions import NSUpdateCommand
 from provisioningserver.dns.config import (
-    compose_config_path,
+    compose_zone_file_config_path,
     render_dns_template,
     report_missing_config_dir,
 )
@@ -115,7 +117,9 @@ class DomainInfo:
         self.subnetwork = subnetwork
         self.zone_name = zone_name
         if target_path is None:
-            self.target_path = compose_config_path("zone.%s" % zone_name)
+            self.target_path = compose_zone_file_config_path(
+                "zone.%s" % zone_name
+            )
         else:
             self.target_path = target_path
 
@@ -140,9 +144,12 @@ class DomainConfigBase:
         self.ns_host_name = kwargs.pop("ns_host_name", None)
         self.serial = serial
         self.zone_info = zone_info
-        self.target_base = compose_config_path("zone")
+        self.target_base = compose_zone_file_config_path("zone")
         self.default_ttl = kwargs.pop("default_ttl", 30)
         self.ns_ttl = kwargs.pop("ns_ttl", self.default_ttl)
+        self.requires_reload = False
+        self._dynamic_updates = kwargs.pop("dynamic_updates", [])
+        self.force_config_write = kwargs.pop("force_config_write", False)
 
     def make_parameters(self):
         """Return a dict of the common template parameters."""
@@ -154,6 +161,27 @@ class DomainConfigBase:
             "ns_ttl": self.ns_ttl,
             "ns_host_name": self.ns_host_name,
         }
+
+    def zone_file_exists(self, zone_info):
+        try:
+            os.stat(zone_info.target_path)
+        except FileNotFoundError:
+            return False
+        else:
+            return True
+
+    def dynamic_update(self, zone_info):
+        nsupdate = NSUpdateCommand(
+            zone_info.zone_name,
+            [
+                update
+                for update in self._dynamic_updates
+                if update.zone == zone_info.zone_name or update.subnet
+            ],
+            serial=self.serial,
+            ttl=self.default_ttl,
+        )
+        nsupdate.update()
 
     @classmethod
     def write_zone_file(cls, output_file, *parameters):
@@ -292,22 +320,29 @@ class DNSForwardZoneConfig(DomainConfigBase):
                     if dynamic_range.version == 4
                 )
             )
-            self.write_zone_file(
-                zi.target_path,
-                self.make_parameters(),
-                {
-                    "mappings": {
-                        "A": self.get_A_mapping(self._mapping, self._ipv4_ttl),
-                        "AAAA": self.get_AAAA_mapping(
-                            self._mapping, self._ipv6_ttl
+            if not self.force_config_write and self.zone_file_exists(zi):
+                if len(self._dynamic_updates) > 0:
+                    self.dynamic_update(zi)
+            else:
+                self.requires_reload = True
+                self.write_zone_file(
+                    zi.target_path,
+                    self.make_parameters(),
+                    {
+                        "mappings": {
+                            "A": self.get_A_mapping(
+                                self._mapping, self._ipv4_ttl
+                            ),
+                            "AAAA": self.get_AAAA_mapping(
+                                self._mapping, self._ipv6_ttl
+                            ),
+                        },
+                        "other_mapping": enumerate_rrset_mapping(
+                            self._other_mapping
                         ),
+                        "generate_directives": {"A": generate_directives},
                     },
-                    "other_mapping": enumerate_rrset_mapping(
-                        self._other_mapping
-                    ),
-                    "generate_directives": {"A": generate_directives},
-                },
-            )
+                )
 
 
 class DNSReverseZoneConfig(DomainConfigBase):
@@ -575,21 +610,28 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     if dynamic_range.version == 4
                 )
             )
-            self.write_zone_file(
-                zi.target_path,
-                self.make_parameters(),
-                {
-                    "mappings": {
-                        "PTR": self.get_PTR_mapping(
-                            self._mapping, zi.subnetwork
-                        )
+            if not self.force_config_write and self.zone_file_exists(zi):
+                if len(self._dynamic_updates) > 0:
+                    self.dynamic_update(zi)
+            else:
+                self.requires_reload = True
+                self.write_zone_file(
+                    zi.target_path,
+                    self.make_parameters(),
+                    {
+                        "mappings": {
+                            "PTR": self.get_PTR_mapping(
+                                self._mapping, zi.subnetwork
+                            )
+                        },
+                        "other_mapping": [],
+                        "generate_directives": {
+                            "PTR": generate_directives,
+                            "CNAME": self.get_rfc2317_GENERATE_directives(
+                                zi.subnetwork,
+                                self._rfc2317_ranges,
+                                self.domain,
+                            ),
+                        },
                     },
-                    "other_mapping": [],
-                    "generate_directives": {
-                        "PTR": generate_directives,
-                        "CNAME": self.get_rfc2317_GENERATE_directives(
-                            zi.subnetwork, self._rfc2317_ranges, self.domain
-                        ),
-                    },
-                },
-            )
+                )

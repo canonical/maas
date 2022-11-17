@@ -1901,6 +1901,159 @@ RBAC_RPOOL_DELETE = dedent(
 )
 
 
+# handles dynamic updates when a dnsresource is created
+# or a StaticIPAddres maps to a resource or was deleted
+def render_dns_dynamic_update_dnsresource_ip_addresses_procedure(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_dns_ip_{op}()
+        RETURNS trigger as $$
+        DECLARE
+          ip_addr text;
+          rname text;
+          rdomain_id bigint;
+          domain text;
+          ttl integer;
+        BEGIN
+          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
+          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
+          IF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
+            SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
+            SELECT name, domain_id, COALESCE(address_ttl, 0) INTO rname, rdomain_id, ttl FROM maasserver_dnsresource WHERE id=NEW.dnsresource_id;
+            SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
+            PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || rname || ' A ' || ttl || ' ' || ip_addr);
+          ELSIF (TG_OP = 'DELETE' AND TG_LEVEl = 'ROW') THEN
+            IF EXISTS(SELECT id FROM maasserver_dnsresource WHERE id=OLD.dnsresource_id) THEN
+              IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
+                SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
+                SELECT name, domain_id INTO rname, rdomain_id FROM maasserver_dnsresource WHERE id=OLD.dnsresource_id;
+                SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
+                PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || rname || ' A ' || ip_addr);
+              ELSE
+                SELECT name, domain_id INTO rname, rdomain_id FROM maasserver_dnsresource WHERE id=NEW.dnsresource_id;
+                SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
+                PERFORM pg_notify('sys_dns_updates', 'DELETE-IP ' || domain || ' ' || rname || ' A');
+                PERFORM pg_notify('sys_dns_updates', 'DELETE-IP ' || domain || ' ' || rname || ' AAAA');
+              END IF;
+            END IF;
+          END IF;
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
+# handles when ttl or name is modified or resource is deleted,
+# DNS_DYNAMIC_UPDATE_DNSRESOURCE_STATICIPADDRESS covers the case of insert
+def render_dns_dynamic_update_dnsresource_procedure(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_dnsresource_{op}()
+        RETURNS trigger as $$
+        DECLARE
+          ip_addr text;
+          ips text[];
+          domain text;
+        BEGIN
+          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
+          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
+          IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
+            IF NEW IS DISTINCT FROM OLD THEN
+                SELECT array_agg(host(ip)) INTO ips FROM maasserver_dnsresource_ip_addresses m
+                  INNER JOIN maasserver_staticipaddress ON maasserver_staticipaddress.id=m.staticipaddress_id
+                  WHERE dnsresource_id=NEW.id;
+                SELECT name INTO domain FROM maasserver_domain WHERE id=NEW.domain_id;
+                IF array_length(ips, 1) > 0 THEN
+                    FOREACH ip_addr IN ARRAY ips
+                    LOOP
+                      IF OLD.name <> NEW.name THEN
+                        PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.name || ' A ' || ip_addr);
+                        PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || NEW.name || ' A ' || NEW.address_ttl || ' ' || ip_addr);
+                      ELSE
+                        PERFORM pg_notify('sys_dns_updates', 'UPDATE ' || domain || ' ' || NEW.name || ' A ' || NEW.address_ttl || ' ' || ip_addr);
+                      END IF;
+                    END LOOP;
+                END IF;
+            ELSE
+              RETURN NULL;
+            END IF;
+          ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
+            SELECT name INTO domain FROM maasserver_domain WHERE id=NEW.domain_id;
+            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.name || ' A');
+          END IF;
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
+def render_dns_dynamic_update_dnsdata_procedure(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_dnsdata_{op}()
+        RETURNS trigger as $$
+        DECLARE
+          rname text;
+          rdomain_id bigint;
+          domain text;
+          ttl int;
+        BEGIN
+          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
+          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
+          IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
+            IF NEW IS DISTINCT FROM OLD THEN
+                PERFORM pg_notify('sys_dns_updates', 'UPDATE-DATA ' || NEW.id);
+            ELSE
+              RETURN NULL;
+            END IF;
+          ELSIF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
+            PERFORM pg_notify('sys_dns_updates', 'INSERT-DATA ' || NEW.id);
+          ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
+            SELECT name, domain_id INTO rname, rdomain_id from maasserver_dnsresource WHERE id=OLD.dnsresource_id;
+            SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
+            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || rname || ' ' || OLD.rrtype);
+          END IF;
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
+def render_dns_dynamic_update_domain_procedure(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_domain_{op}()
+        RETURNS trigger as $$
+        BEGIN
+          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
+          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
+          PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
+def render_dns_dynamic_update_subnet_procedure(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_subnet_{op}()
+        RETURNS trigger as $$
+        BEGIN
+          ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
+          ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
+          PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
 def render_sys_proxy_procedure(proc_name, on_delete=False):
     """Render a database procedure with name `proc_name` that notifies that a
     proxy update is needed.
@@ -2162,4 +2315,91 @@ def register_system_triggers():
     register_procedure(RBAC_RPOOL_DELETE)
     register_trigger(
         "maasserver_resourcepool", "sys_rbac_rpool_delete", "delete"
+    )
+
+    register_procedure(
+        render_dns_dynamic_update_dnsresource_ip_addresses_procedure("insert")
+    )
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_updates_dns_ip_insert",
+        "insert",
+    )
+    register_procedure(
+        render_dns_dynamic_update_dnsresource_ip_addresses_procedure("delete")
+    )
+    register_trigger(
+        "maasserver_dnsresource_ip_addresses",
+        "sys_dns_updates_dns_ip_delete",
+        "delete",
+    )
+    register_procedure(
+        render_dns_dynamic_update_dnsresource_procedure("update")
+    )
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_updates_maasserver_dnsresource_update",
+        "update",
+    )
+    register_procedure(
+        render_dns_dynamic_update_dnsresource_procedure("delete")
+    )
+    register_trigger(
+        "maasserver_dnsresource",
+        "sys_dns_updates_maasserver_dnsresource_delete",
+        "delete",
+    )
+    register_procedure(render_dns_dynamic_update_dnsdata_procedure("insert"))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_updates_maasserver_dnsdata_insert",
+        "update",
+    )
+    register_procedure(render_dns_dynamic_update_dnsdata_procedure("update"))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_updates_maasserver_dnsdata_update",
+        "update",
+    )
+    register_procedure(render_dns_dynamic_update_dnsdata_procedure("delete"))
+    register_trigger(
+        "maasserver_dnsdata",
+        "sys_dns_updates_maasserver_dnsdata_delete",
+        "delete",
+    )
+    register_procedure(render_dns_dynamic_update_domain_procedure("insert"))
+    register_trigger(
+        "maasserver_domain",
+        "sys_dns_updates_maasserver_domain_insert",
+        "insert",
+    )
+    register_procedure(render_dns_dynamic_update_domain_procedure("update"))
+    register_trigger(
+        "maasserver_domain",
+        "sys_dns_updates_maasserver_domain_update",
+        "update",
+    )
+    register_procedure(render_dns_dynamic_update_domain_procedure("delete"))
+    register_trigger(
+        "maasserver_domain",
+        "sys_dns_updates_maasserver_domain_delete",
+        "delete",
+    )
+    register_procedure(render_dns_dynamic_update_subnet_procedure("insert"))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_updates_maasserver_subnet_insert",
+        "insert",
+    )
+    register_procedure(render_dns_dynamic_update_subnet_procedure("update"))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_updates_maasserver_subnet_update",
+        "update",
+    )
+    register_procedure(render_dns_dynamic_update_subnet_procedure("delete"))
+    register_trigger(
+        "maasserver_subnet",
+        "sys_dns_updates_maasserver_subnet_delete",
+        "delete",
     )

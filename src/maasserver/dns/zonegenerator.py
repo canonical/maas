@@ -21,6 +21,7 @@ from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_addresses
+from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -200,6 +201,8 @@ class ZoneGenerator:
         default_ttl=None,
         serial=None,
         internal_domains=None,
+        dynamic_updates=None,
+        force_config_write=False,
     ):
         """
         :param serial: A serial number to reuse when creating zones in bulk.
@@ -215,6 +218,10 @@ class ZoneGenerator:
         self.internal_domains = internal_domains
         if self.internal_domains is None:
             self.internal_domains = []
+        self._dynamic_updates = dynamic_updates
+        if self._dynamic_updates is None:
+            self._dynamic_updates = []
+        self.force_config_write = force_config_write  # some data changed that nsupdate cannot update if true
 
     @staticmethod
     def _get_mappings():
@@ -235,6 +242,8 @@ class ZoneGenerator:
         rrset_mappings,
         default_ttl,
         internal_domains,
+        dynamic_updates,
+        force_config_write,
     ):
         """Generator of forward zones, collated by domain name."""
         dns_ip_list = get_dns_server_addresses(filter_allowed_dns=False)
@@ -290,6 +299,12 @@ class ZoneGenerator:
                             (ttl, "AAAA", dns_ip.format())
                         )
 
+            domain_updates = [
+                update
+                for update in dynamic_updates
+                if update.zone == domain.name
+            ]
+
             yield DNSForwardZoneConfig(
                 domain.name,
                 serial=serial,
@@ -301,6 +316,8 @@ class ZoneGenerator:
                 ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=dynamic_ranges,
+                dynamic_updates=domain_updates,
+                force_config_write=force_config_write,
             )
 
         # Create the forward zone config for the internal domains.
@@ -313,6 +330,13 @@ class ZoneGenerator:
                     resource_mapping.rrset.add(
                         (internal_domain.ttl, record.rrtype, record.rrdata)
                     )
+
+            domain_updates = [
+                update
+                for update in dynamic_updates
+                if update.zone == internal_domain.name
+            ]
+
             yield DNSForwardZoneConfig(
                 internal_domain.name,
                 serial=serial,
@@ -324,11 +348,19 @@ class ZoneGenerator:
                 ns_host_name=ns_host_name,
                 other_mapping=other_mapping,
                 dynamic_ranges=[],
+                dynamic_updates=domain_updates,
+                force_config_write=force_config_write,
             )
 
     @staticmethod
     def _gen_reverse_zones(
-        subnets, serial, ns_host_name, mappings, default_ttl
+        subnets,
+        serial,
+        ns_host_name,
+        mappings,
+        default_ttl,
+        dynamic_updates,
+        force_config_write,
     ):
         """Generator of reverse zones, sorted by network."""
 
@@ -418,6 +450,15 @@ class ZoneGenerator:
                 del rfc2317_glue[network]
             else:
                 glue = set()
+
+            domain_updates = [
+                DynamicDNSUpdate.as_reverse_record_update(update, subnet)
+                for update in dynamic_updates
+                if update.answer
+                and update.answer_is_ip
+                and (IPAddress(update.answer) in IPNetwork(subnet.cidr))
+            ]
+
             yield DNSReverseZoneConfig(
                 ns_host_name,
                 serial=serial,
@@ -430,6 +471,8 @@ class ZoneGenerator:
                 exclude={
                     IPNetwork(s.cidr) for s in subnets if s is not subnet
                 },
+                dynamic_updates=domain_updates,
+                force_config_write=force_config_write,
             )
         # Now provide any remaining rfc2317 glue networks.
         for network, ranges in rfc2317_glue.items():
@@ -445,6 +488,8 @@ class ZoneGenerator:
                     for s in subnets
                     if network in IPNetwork(s.cidr)
                 },
+                dynamic_updates=domain_updates,
+                force_config_write=force_config_write,
             )
 
     def __iter__(self):
@@ -470,9 +515,17 @@ class ZoneGenerator:
                 rrset_mappings,
                 default_ttl,
                 self.internal_domains,
+                self._dynamic_updates,
+                self.force_config_write,
             ),
             self._gen_reverse_zones(
-                self.subnets, serial, ns_host_name, mappings, default_ttl
+                self.subnets,
+                serial,
+                ns_host_name,
+                mappings,
+                default_ttl,
+                self._dynamic_updates,
+                self.force_config_write,
             ),
         )
 

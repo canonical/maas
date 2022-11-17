@@ -30,6 +30,11 @@ configure_libdir() {
     if [ -f /var/lib/maas/maas_id ]; then
        chown maas:maas /var/lib/maas/maas_id
     fi
+
+    if [ -d /var/lib/maas/bind ]; then
+        chown maas:bind /var/lib/bind/maas
+        chmod 0775 /var/lib/bind/maas
+    fi
 }
 
 edit_named_options() {

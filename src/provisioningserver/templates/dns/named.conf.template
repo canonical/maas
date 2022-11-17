@@ -1,4 +1,5 @@
 include "{{named_rndc_conf_path}}";
+include "{{nsupdate_keys_conf_path}}";
 
 # Authoritative Zone declarations.
 {{for zone in zones}}
@@ -6,6 +7,9 @@ include "{{named_rndc_conf_path}}";
 zone "{{zoneinfo.zone_name}}" {
     type master;
     file "{{zoneinfo.target_path}}";
+    allow-update {
+        key maas.;
+    };
 };
 {{endfor}}
 {{endfor}}

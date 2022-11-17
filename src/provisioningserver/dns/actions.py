@@ -10,12 +10,16 @@ from time import sleep
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
+    get_nsupdate_key_path,
     set_up_options_conf,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError, run_command
 
 maaslog = get_maas_logger("dns")
+
+
+MAAS_NSUPDATE_HOST = "localhost"
 
 
 def bind_reconfigure():
@@ -135,3 +139,50 @@ def bind_write_zones(zones):
     """
     for zone in zones:
         zone.write_config()
+
+
+class NSUpdateCommand:
+    executable = "nsupdate"
+
+    def __init__(self, zone, updates, **kwargs):
+        self._zone = zone
+        self._updates = updates
+        self._serial = kwargs.get("serial")
+        self._zone_ttl = kwargs["ttl"]
+
+    def _format_update(self, update):
+        if update.operation == "DELETE":
+            if update.answer:
+                return f"update delete {update.name} {update.rectype} {update.answer}"
+            return f"update delete {update.name} {update.rectype}"
+        ttl = update.ttl
+        if ttl is None:
+            ttl = self._zone_ttl
+        return (
+            f"update add {update.name} {ttl} {update.rectype} {update.answer}"
+        )
+
+    def update(self, server_address=MAAS_NSUPDATE_HOST):
+        stdin = [f"zone {self._zone}"] + [
+            self._format_update(update) for update in self._updates
+        ]
+        if server_address:
+            stdin = [f"server {server_address}"] + stdin
+
+        if self._serial:
+            stdin.append(
+                f"update add {self._zone} {self._zone_ttl} SOA {self._zone}. nobody.example.com. {self._serial} 600 1800 604800 {self._zone_ttl}"
+            )
+
+        stdin.append("send\n")
+
+        cmd = [self.executable, "-k", get_nsupdate_key_path()]
+        if len(self._updates) > 1:
+            cmd.append("-v")  # use TCP for bulk payloads
+
+        try:
+            run_command(*cmd, stdin="\n".join(stdin).encode("ascii"))
+        except CalledProcessError as exc:
+            maaslog.error(f"dynamic update of DNS failed: {exc}")
+            ExternalProcessError.upgrade(exc)
+            raise

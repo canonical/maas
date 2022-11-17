@@ -17,6 +17,16 @@ def patch_dns_config_path(testcase, config_dir=None):
     return config_dir
 
 
+def patch_zone_file_config_path(testcase, config_dir=None):
+    """Set the DNS config dir to a temporary directory, and return its path."""
+    if config_dir is None:
+        config_dir = testcase.make_dir()
+    testcase.useFixture(
+        EnvironmentVariable("MAAS_ZONE_FILE_CONFIG_DIR", config_dir)
+    )
+    return config_dir
+
+
 def patch_dns_rndc_port(testcase, port):
     testcase.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT", "%d" % port))
 
