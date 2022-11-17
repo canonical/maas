@@ -134,6 +134,7 @@ class BINDServerResources(fixtures.Fixture):
         port=None,
         rndc_port=None,
         homedir=None,
+        zonedir=None,
         log_file=None,
         include_in_options=None,
     ):
@@ -142,6 +143,7 @@ class BINDServerResources(fixtures.Fixture):
             port=port,
             rndc_port=rndc_port,
             homedir=homedir,
+            zonedir=zonedir,
             log_file=log_file,
             include_in_options=include_in_options,
         )
@@ -209,6 +211,8 @@ class BINDServerResources(fixtures.Fixture):
             [self.rndc_port] = allocate_ports("localhost")
         if self.homedir is None:
             self.homedir = self.useFixture(TempDirectory()).path
+        if self.zonedir is None:
+            self.zonedir = self.useFixture(TempDirectory()).path
         if self.log_file is None:
             self.log_file = os.path.join(self.homedir, "named.log")
         self.named_file = os.path.join(

@@ -239,6 +239,13 @@ def set_up_nsupdate_key():
     atomic_write(tsig, get_nsupdate_key_path(), overwrite=True, mode=0o644)
 
 
+def clean_old_zone_files():
+    p = get_zone_file_config_dir()
+    files = os.listdir(p)
+    for f in files:
+        os.remove(os.path.join(p, f))
+
+
 def set_up_zone_file_dir():
     p = get_zone_file_config_dir()
     if not os.path.exists(p):
@@ -252,6 +259,8 @@ def set_up_zone_file_dir():
 
         os.chown(p, uid, gid)
         os.chmod(p, 0o775)
+    else:
+        clean_old_zone_files()
 
 
 def set_up_rndc():

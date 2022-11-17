@@ -35,6 +35,7 @@ from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
+    clean_old_zone_files,
     compose_config_path,
     DEFAULT_CONTROLS,
     DNSConfig,
@@ -58,6 +59,7 @@ from provisioningserver.dns.config import (
 from provisioningserver.dns.testing import (
     patch_dns_config_path,
     patch_dns_default_controls,
+    patch_zone_file_config_path,
 )
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
@@ -289,6 +291,21 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         self.assertThat(target_file, FileExists())
+
+    def test_clean_old_zone_files(self):
+        zone_file_dir = patch_zone_file_config_path(self)
+
+        zonefiles = [
+            os.path.join(zone_file_dir, f"zonefile{i}")
+            for i, _ in enumerate(range(2))
+        ]
+        for zonefile in zonefiles:
+            with open(zonefile, "w+"):
+                pass
+
+        clean_old_zone_files()
+        for zonefile in zonefiles:
+            self.assertRaises(FileNotFoundError, os.stat, zonefile)
 
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = patch_dns_config_path(self)

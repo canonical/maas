@@ -46,8 +46,9 @@ class TestSetupCommand(MAASTestCase):
 
     def test_does_not_overwrite_config(self):
         dns_conf_dir = self.make_dir()
+        zone_file_dir = self.make_dir()
         patch_dns_config_path(self, dns_conf_dir)
-        patch_zone_file_config_path(self, dns_conf_dir)
+        patch_zone_file_config_path(self, zone_file_dir)
         random_content = factory.make_string()
         factory.make_file(
             location=dns_conf_dir,
