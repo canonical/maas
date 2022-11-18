@@ -33,7 +33,7 @@ class WedgePowerDriver(PowerDriver):
         make_setting_field("power_address", "IP address", required=True),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")

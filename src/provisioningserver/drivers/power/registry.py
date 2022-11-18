@@ -82,3 +82,33 @@ for driver in power_drivers:
 # Pod drivers are also power drivers.
 for driver_name, driver in PodDriverRegistry:
     PowerDriverRegistry.register_item(driver_name, driver)
+
+
+def sanitise_power_parameters(power_type, power_parameters):
+    """Performs extraction of sensitive parameters and returns them separately.
+    Extraction relies on a `secret` flag of the power parameters property.
+
+    :param power_type: BMC power driver type
+    :param power_parameters: BMC power parameters
+    """
+    power_driver = PowerDriverRegistry.get_item(power_type)
+
+    if not power_driver:
+        return power_parameters, {}
+
+    secret_params = set(
+        setting["name"]
+        for setting in power_driver.settings
+        if setting.get("secret")
+    )
+
+    parameters = {}
+    secrets = {}
+
+    for name, value in power_parameters.items():
+        if name in secret_params:
+            secrets[name] = value
+        else:
+            parameters[name] = value
+
+    return parameters, secrets

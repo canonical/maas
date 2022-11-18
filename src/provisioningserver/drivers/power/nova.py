@@ -48,7 +48,11 @@ class NovaPowerDriver(PowerDriver):
         make_setting_field("os_tenantname", "Tenant name", required=True),
         make_setting_field("os_username", "Username", required=True),
         make_setting_field(
-            "os_password", "Password", field_type="password", required=True
+            "os_password",
+            "Password",
+            field_type="password",
+            required=True,
+            secret=True,
         ),
         make_setting_field("os_authurl", "Auth URL", required=True),
     ]

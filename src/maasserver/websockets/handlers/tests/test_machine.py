@@ -342,7 +342,7 @@ class TestMachineHandler(MAASServerTestCase):
             "owner": handler.dehydrate_owner(node.owner),
             "parent": node.parent,
             "power_parameters": handler.dehydrate_power_parameters(
-                node.power_parameters
+                node.get_power_parameters()
             ),
             "power_bmc_node_count": node.bmc.node_set.count()
             if (node.bmc is not None)
@@ -895,7 +895,7 @@ class TestMachineHandler(MAASServerTestCase):
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
         self.assertEqual(
             queries,
-            54,
+            60,
             "Number of queries has changed; make sure this is expected.",
         )
 

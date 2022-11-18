@@ -358,10 +358,10 @@ def store_node_power_parameters(node, request):
         except ValueError:
             raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
     else:
-        power_parameters = node.power_parameters
+        power_parameters = node.get_power_parameters()
     if power_type == "redfish":
         power_parameters = {
-            **node.instance_power_parameters,
+            **node.get_instance_power_parameters(),
             **power_parameters,
         }
     node.set_power_config(

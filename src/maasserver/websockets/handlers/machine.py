@@ -435,8 +435,8 @@ class MachineHandler(NodeHandler):
             data["devices"] = sorted(devices, key=itemgetter("fqdn"))
 
             # include certificate info if present
-            certificate = obj.power_parameters.get("certificate")
-            key = obj.power_parameters.get("key")
+            certificate = obj.get_power_parameters().get("certificate")
+            key = obj.get_power_parameters().get("key")
             if certificate and key:
                 cert = Certificate.from_pem(certificate, key)
                 data["certificate"] = dehydrate_certificate(cert)

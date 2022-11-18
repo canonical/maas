@@ -48,7 +48,11 @@ class HMCZPowerDriver(PowerDriver):
         make_setting_field("power_address", "HMC Address", required=True),
         make_setting_field("power_user", "HMC username", required=True),
         make_setting_field(
-            "power_pass", "HMC password", field_type="password", required=True
+            "power_pass",
+            "HMC password",
+            field_type="password",
+            required=True,
+            secret=True,
         ),
         make_setting_field(
             "power_partition_name",

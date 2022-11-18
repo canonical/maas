@@ -60,6 +60,7 @@ class VMwarePowerDriver(PowerDriver):
             "VMware password",
             field_type="password",
             required=True,
+            secret=True,
         ),
         make_setting_field(
             "power_port", "VMware API port (optional)", required=False

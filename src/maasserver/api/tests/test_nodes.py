@@ -792,7 +792,8 @@ class TestPowersMixin(APITestCase.ForUser):
         )
         parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected = {
-            machine.system_id: machine.power_parameters for machine in machines
+            machine.system_id: machine.get_power_parameters()
+            for machine in machines
         }
         self.assertEqual(expected, parsed)
 
@@ -817,7 +818,7 @@ class TestPowersMixin(APITestCase.ForUser):
         )
         parsed = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         expected = {
-            machine.system_id: machine.power_parameters
+            machine.system_id: machine.get_power_parameters()
             for machine in expected_machines
         }
         self.assertEqual(expected, parsed)

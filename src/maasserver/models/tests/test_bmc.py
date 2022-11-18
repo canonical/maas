@@ -54,6 +54,7 @@ from maasserver.models.virtualmachine import (
 )
 from maasserver.models.vmcluster import VMCluster
 from maasserver.permissions import PodPermission
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.matchers import MatchesSetwiseWithAll
@@ -229,10 +230,12 @@ class TestBMC(MAASServerTestCase):
         sticky_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
         )
-        bmc.power_parameters = {
-            "power_address": "protocol://%s:8080/path/to/thing#tag"
-            % (factory.ip_to_url_format(sticky_ip.ip))
-        }
+        bmc.set_power_parameters(
+            {
+                "power_address": "protocol://%s:8080/path/to/thing#tag"
+                % (factory.ip_to_url_format(sticky_ip.ip))
+            }
+        )
         bmc.save()
         self.assertEqual(sticky_ip.ip, bmc.ip_address.ip)
         self.assertEqual(subnet, bmc.ip_address.subnet)
@@ -318,10 +321,12 @@ class TestBMC(MAASServerTestCase):
         new_ip_address.delete()
         self.assertNotEqual(new_ip, old_ip)
 
-        bmc.power_parameters = {
-            "power_address": "protocol://%s:8080/path/to/thing#tag"
-            % (factory.ip_to_url_format(new_ip))
-        }
+        bmc.set_power_parameters(
+            {
+                "power_address": "protocol://%s:8080/path/to/thing#tag"
+                % (factory.ip_to_url_format(new_ip))
+            }
+        )
         bmc.save()
 
         # Check Machine has old IP address and kept same instance: machine_ip.
@@ -351,10 +356,12 @@ class TestBMC(MAASServerTestCase):
         machine, bmc, machine_ip = self.make_machine_and_bmc_differing_ips()
 
         # Now change the BMC's address to match machine's.
-        bmc.power_parameters = {
-            "power_address": "protocol://%s:8080/path/to/thing#tag"
-            % (factory.ip_to_url_format(machine_ip.ip))
-        }
+        bmc.set_power_parameters(
+            {
+                "power_address": "protocol://%s:8080/path/to/thing#tag"
+                % (factory.ip_to_url_format(machine_ip.ip))
+            }
+        )
         bmc.save()
 
         # Make sure BMC and Machine are using same StaticIPAddress instance.
@@ -373,6 +380,20 @@ class TestBMC(MAASServerTestCase):
         ip = bmc.ip_address
         bmc.delete()
         self.assertEqual(0, StaticIPAddress.objects.filter(id=ip.id).count())
+
+    def test_delete_deletes_bmc_secrets(self):
+        bmc = factory.make_BMC()
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "power-parameters", {"foo": "bar"}, obj=bmc
+        )
+
+        bmc.delete()
+        self.assertIsNone(
+            secret_manager.get_simple_secret(
+                "power-parameters", obj=bmc, default=None
+            )
+        )
 
     def test_delete_bmc_spares_non_orphaned_ip_address(self):
         machine, bmc, machine_ip = self.make_machine_and_bmc_with_shared_ip()
@@ -615,6 +636,15 @@ class TestBMC(MAASServerTestCase):
             ),
             HasLength(len(non_routable_racks)),
         )
+
+    def test_get_power_params(self):
+        bmc = factory.make_BMC()
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "power-parameters", {"foo": "bar"}, obj=bmc
+        )
+
+        self.assertEqual({"foo": "bar"}, bmc.get_power_parameters())
 
 
 class TestPodManager(MAASServerTestCase):
@@ -1023,7 +1053,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         self.patch(pod, "sync_machines")
         pod.sync(discovered, factory.make_User())
-        self.assertNotIn("password", pod.power_parameters)
+        self.assertNotIn("password", pod.get_power_parameters())
 
     def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
         discovered = self.make_discovered_pod()
@@ -1065,7 +1095,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 created_machine.power_state, discovered_machine.power_state
             )
             self.assertEqual(
-                created_machine.instance_power_parameters,
+                created_machine.get_instance_power_parameters(),
                 discovered_machine.power_parameters,
             )
             self.assertFalse(created_machine.dynamic)
@@ -1243,7 +1273,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(
             discovered_default.name, pod.default_storage_pool.name
         )
-        self.assertEqual({}, pod.power_parameters)
+        self.assertEqual({}, pod.get_power_parameters())
 
     def test_sync_pod_sets_default_numanode(self):
         discovered_bdev = self.make_discovered_block_device()
@@ -1983,7 +2013,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 created_machine.power_state, discovered_machine.power_state
             )
             self.assertEqual(
-                created_machine.instance_power_parameters,
+                created_machine.get_instance_power_parameters(),
                 discovered_machine.power_parameters,
             )
             self.assertFalse(created_machine.dynamic)
@@ -3059,19 +3089,21 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
             bmc_module, "getClientFromIdentifiers"
         ).return_value = client
         yield pod.async_delete(decompose=True)
+
+        power_parameters = yield deferToDatabase(pod.get_power_parameters)
         client.assert_has_calls(
             [
                 call(
                     DecomposeMachine,
                     type=pod.power_type,
-                    context=pod.power_parameters,
+                    context=power_parameters,
                     pod_id=pod.id,
                     name=pod.name,
                 ),
                 call(
                     DecomposeMachine,
                     type=pod.power_type,
-                    context=pod.power_parameters,
+                    context=power_parameters,
                     pod_id=pod.id,
                     name=pod.name,
                 ),
@@ -3281,6 +3313,28 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
         )
         list_not_found_pods = yield deferToDatabase(list, not_found_pods)
         self.assertEqual(list_not_found_pods, [])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_deletes_pod_secrets(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        secret_manager = SecretManager()
+        yield deferToDatabase(
+            secret_manager.set_composite_secret,
+            "power-parameters",
+            {"foo": "bar"},
+            pod.as_bmc(),
+        )
+        yield pod.async_delete()
+
+        secret = yield deferToDatabase(
+            secret_manager.get_composite_secret,
+            "power-parameters",
+            pod.as_bmc(),
+            None,
+        )
+
+        self.assertIsNone(secret)
 
 
 class TestPodDefaultMACVlanMode(MAASServerTestCase):

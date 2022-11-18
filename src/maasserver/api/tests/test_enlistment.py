@@ -104,7 +104,7 @@ class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
         for key, value in power_parameters.items():
-            self.assertEqual(machine.bmc.power_parameters[key], value)
+            self.assertEqual(machine.bmc.get_power_parameters()[key], value)
         self.assertEqual(power_type, machine.power_type)
 
     def test_POST_create_creates_machine_with_arch_only(self):
@@ -463,7 +463,7 @@ class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
         self.assertEqual(hostname, machine.hostname)
         self.assertEqual(architecture, machine.architecture)
         for key, value in power_parameters.items():
-            self.assertEqual(machine.bmc.power_parameters[key], value)
+            self.assertEqual(machine.bmc.get_power_parameters()[key], value)
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
@@ -664,7 +664,7 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "power_id": new_power_id,
                 "power_address": new_power_address,
             },
-            machine.power_parameters,
+            machine.get_power_parameters(),
         )
 
     def test_POST_returns_limited_fields(self):
@@ -790,7 +790,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
             system_id=json_load_bytes(response.content)["system_id"]
         )
         self.assertEqual("manual", machine.power_type)
-        self.assertEqual({}, machine.power_parameters)
+        self.assertEqual({}, machine.get_power_parameters())
 
     def test_POST_sets_power_parameters_field(self):
         # The api allows the setting of a Machine's power_parameters field.
@@ -822,7 +822,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "power_pass": new_power_pass,
                 "power_address": new_power_address,
             },
-            reload_object(machine).power_parameters,
+            reload_object(machine).get_power_parameters(),
         )
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
@@ -869,7 +869,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
             system_id=json_load_bytes(response.content)["system_id"]
         )
         self.assertEqual(
-            {"param": param}, reload_object(machine).power_parameters
+            {"param": param}, reload_object(machine).get_power_parameters()
         )
 
     def test_POST_admin_creates_machine_in_commissioning_state(self):

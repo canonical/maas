@@ -41,7 +41,7 @@ class HMCPowerDriver(PowerDriver):
         make_setting_field("power_address", "IP for HMC", required=True),
         make_setting_field("power_user", "HMC username"),
         make_setting_field(
-            "power_pass", "HMC password", field_type="password"
+            "power_pass", "HMC password", field_type="password", secret=True
         ),
         make_setting_field(
             "server_name",

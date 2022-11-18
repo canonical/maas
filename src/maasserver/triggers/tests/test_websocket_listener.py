@@ -4399,7 +4399,7 @@ class TestBMCListener(
 
         def update_node(system_id):
             node = Node.objects.get(system_id=system_id)
-            node.bmc.power_parameters = {"power_address": "5.6.7.8"}
+            node.bmc.set_power_parameters({"power_address": "5.6.7.8"})
             node.bmc.save()
 
         yield listener.startService()

@@ -175,7 +175,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEqual(pod.power_type, pod_info["type"])
         self.assertEqual(
-            pod.power_parameters["power_address"], pod_info["power_address"]
+            pod.get_power_parameters()["power_address"],
+            pod_info["power_address"],
         )
         self.assertEqual(pod.cores, 0)
         self.assertEqual(pod.memory, 0)
@@ -197,10 +198,11 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(
-            pod_info["power_address"], pod.power_parameters["power_address"]
+            pod_info["power_address"],
+            pod.get_power_parameters()["power_address"],
         )
         self.assertEqual(
-            pod_info["power_pass"], pod.power_parameters["power_pass"]
+            pod_info["power_pass"], pod.get_power_parameters()["power_pass"]
         )
 
     def test_creates_pod_with_overcommit(self):
@@ -346,7 +348,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(cpu_over_commit, pod.cpu_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
-        self.assertEqual(power_parameters, pod.power_parameters)
+        self.assertEqual(power_parameters, pod.get_power_parameters())
 
     def test_updates_existing_pod(self):
         zone = factory.make_Zone()

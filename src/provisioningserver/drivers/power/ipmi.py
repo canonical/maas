@@ -276,9 +276,11 @@ class IPMIPowerDriver(PowerDriver):
         make_setting_field("power_address", "IP address", required=True),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
-        make_setting_field("k_g", "K_g BMC key", field_type="password"),
+        make_setting_field(
+            "k_g", "K_g BMC key", field_type="password", secret=True
+        ),
         make_setting_field(
             "cipher_suite_id",
             "Cipher Suite ID",

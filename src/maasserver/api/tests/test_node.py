@@ -515,7 +515,7 @@ class TestPowerParameters(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual(node.power_parameters, parsed_params)
+        self.assertEqual(node.get_power_parameters(), parsed_params)
 
     def test_get_power_parameters_user(self):
         power_parameters = {factory.make_string(): factory.make_string()}
@@ -542,7 +542,7 @@ class TestPowerParameters(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual(node.power_parameters, parsed_params)
+        self.assertEqual(node.get_power_parameters(), parsed_params)
 
     def test_get_power_parameters_rbac_pool_user(self):
         self.patch(auth, "validate_user_external_auth").return_value = True
@@ -570,7 +570,7 @@ class TestPowerParameters(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual(node.power_parameters, parsed_params)
+        self.assertEqual(node.get_power_parameters(), parsed_params)
 
     def test_get_power_parameters_view_lock(self):
         self.become_admin()
@@ -585,7 +585,7 @@ class TestPowerParameters(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual(node.power_parameters, parsed_params)
+        self.assertEqual(node.get_power_parameters(), parsed_params)
 
 
 class TestSetWorkloadAnnotations(APITestCase.ForUser):

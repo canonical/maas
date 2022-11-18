@@ -3102,7 +3102,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         node = reload_object(node)
         self.assertEqual("mscm", node.power_type)
-        self.assertNotEqual(params, node.power_parameters)
+        self.assertNotEqual(params, node.get_power_parameters())
 
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_Node(
@@ -3134,7 +3134,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         node = reload_object(node)
         self.assertEqual("ipmi", node.power_type)
-        self.assertEqual(params, node.power_parameters)
+        self.assertEqual(params, node.get_power_parameters())
 
     def test_signal_power_type_lower_case_works(self):
         node = factory.make_Node(
@@ -3153,7 +3153,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             http.client.OK, response.status_code, response.content
         )
         node = reload_object(node)
-        self.assertEqual(params, node.power_parameters)
+        self.assertEqual(params, node.get_power_parameters())
 
     def test_signal_invalid_power_parameters(self):
         node = factory.make_Node(
@@ -4103,7 +4103,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.node.set_power_config("", {})
         store_node_power_parameters(self.node, self.request)
         self.assertEqual("", self.node.power_type)
-        self.assertEqual({}, self.node.power_parameters)
+        self.assertEqual({}, self.node.get_power_parameters())
         self.save.assert_has_calls([])
 
     def test_power_type_redfish(self):
@@ -4116,8 +4116,8 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         store_node_power_parameters(self.node, self.request)
         self.assertEqual("redfish", self.node.power_type)
         self.assertEqual(
-            {**power_parameters, **self.node.instance_power_parameters},
-            self.node.power_parameters,
+            {**power_parameters, **self.node.get_instance_power_parameters()},
+            self.node.get_power_parameters(),
         )
         self.save.assert_has_calls([])
 
@@ -4127,7 +4127,8 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         store_node_power_parameters(self.node, self.request)
         self.assertEqual("redfish", self.node.power_type)
         self.assertEqual(
-            self.node.instance_power_parameters, self.node.power_parameters
+            self.node.get_instance_power_parameters(),
+            self.node.get_power_parameters(),
         )
         self.save.assert_has_calls([])
 
@@ -4140,9 +4141,10 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         }
         store_node_power_parameters(self.node, self.request)
         self.assertEqual("redfish", self.node.power_type)
-        self.assertEqual(self.node.power_parameters, power_parameters)
+        self.assertEqual(self.node.get_power_parameters(), power_parameters)
         self.assertEqual(
-            self.node.instance_power_parameters, self.node.power_parameters
+            self.node.get_instance_power_parameters(),
+            self.node.get_power_parameters(),
         )
         self.save.assert_called_once_with()
 
@@ -4154,7 +4156,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         self.request.POST = {"power_type": "virsh"}
         store_node_power_parameters(self.node, self.request)
         self.assertEqual(self.node.power_type, "virsh")
-        self.assertEqual({"some": "param"}, self.node.power_parameters)
+        self.assertEqual({"some": "param"}, self.node.get_power_parameters())
         self.save.assert_called_once_with()
 
     def test_power_type_set_with_parameters(self):
@@ -4168,7 +4170,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         }
         store_node_power_parameters(self.node, self.request)
         self.assertEqual(power_type, self.node.power_type)
-        self.assertEqual(power_parameters, self.node.power_parameters)
+        self.assertEqual(power_parameters, self.node.get_power_parameters())
         self.assertTrue(self.node.bmc.created_by_commissioning)
         self.save.assert_called_once_with()
 

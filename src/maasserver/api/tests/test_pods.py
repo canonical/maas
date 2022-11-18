@@ -214,7 +214,7 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         pod = Pod.objects.get(id=parsed_result["id"])
-        self.assertEqual(pod.power_parameters["project"], "default")
+        self.assertEqual(pod.get_power_parameters()["project"], "default")
 
     def test_create_creates_pod_with_default_resource_pool(self):
         self.patch(pods, "post_commit_do")
@@ -406,7 +406,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(new_name, pod.name)
         self.assertEqual(new_pool, pod.pool)
         self.assertCountEqual(new_tags, pod.tags)
-        self.assertEqual(new_power_parameters, pod.power_parameters)
+        self.assertEqual(new_power_parameters, pod.get_power_parameters())
         self.assertEqual(new_zone, pod.zone)
 
     def test_PUT_updates_discovers_syncs_and_returns_pod(self):
@@ -451,7 +451,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         pod.refresh_from_db()
         self.assertIsNotNone(Tag.objects.get(name="pod-console-logging"))
         self.assertEqual(new_name, pod.name)
-        self.assertEqual(power_parameters, pod.power_parameters)
+        self.assertEqual(power_parameters, pod.get_power_parameters())
 
     def test_PUT_update_updates_pod_default_macvlan_mode(self):
         self.patch(pods, "post_commit_do")
@@ -481,16 +481,16 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
 
     def test_parameters_returns_pod_parameters(self):
         pod = factory.make_Pod()
-        pod.power_parameters = {
-            factory.make_name("key"): factory.make_name("value")
-        }
+        pod.set_power_parameters(
+            {factory.make_name("key"): factory.make_name("value")}
+        )
         pod.save()
         response = self.client.get(get_pod_uri(pod), {"op": "parameters"})
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
         parsed_params = json_load_bytes(response.content)
-        self.assertEqual(pod.power_parameters, parsed_params)
+        self.assertEqual(pod.get_power_parameters(), parsed_params)
 
     def test_compose_not_allowed_on_none_composable_pod(self):
         pod = make_pod_with_hints()

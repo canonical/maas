@@ -70,7 +70,10 @@ from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import RESULT_TYPE
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import InterfaceAttachType
-from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import (
+    PowerDriverRegistry,
+    sanitise_power_parameters,
+)
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.constraints import LabeledConstraintMap
@@ -108,6 +111,47 @@ def get_ip_modes(requested_machine):
     else:
         ip_modes = {}
     return ip_modes
+
+
+def create_bmc(**kwargs):
+    power_type = kwargs.get("power_type", None)
+    power_parameters = kwargs.get("power_parameters", {})
+
+    power_parameters, secrets = sanitise_power_parameters(
+        power_type, power_parameters
+    )
+    kwargs["power_parameters"] = power_parameters
+
+    bmc = BMC.objects.create(**kwargs)
+
+    if secrets:
+        from maasserver.secrets import SecretManager
+
+        SecretManager().set_composite_secret(
+            "power-parameters", secrets, obj=bmc.as_bmc()
+        )
+    return bmc
+
+
+def get_or_create_bmc(**kwargs):
+    power_type = kwargs.get("power_type", None)
+    power_parameters = kwargs.get("power_parameters", {})
+
+    power_parameters, secrets = sanitise_power_parameters(
+        power_type, power_parameters
+    )
+    kwargs["power_parameters"] = power_parameters
+
+    bmc, created = BMC.objects.get_or_create(**kwargs)
+
+    if created and secrets:
+        from maasserver.secrets import SecretManager
+
+        SecretManager().set_composite_secret(
+            "power-parameters", secrets, obj=bmc.as_bmc()
+        )
+
+    return bmc, created
 
 
 class BaseBMCManager(Manager):
@@ -333,6 +377,9 @@ class BMC(CleanSave, TimestampedModel):
     def delete(self):
         """Delete this BMC."""
         maaslog.info("%s: Deleting BMC", self)
+        from maasserver.secrets import SecretManager
+
+        SecretManager().delete_all_object_secrets(self.as_bmc())
         super().delete()
 
     def save(self, *args, **kwargs):
@@ -356,10 +403,36 @@ class BMC(CleanSave, TimestampedModel):
             else:
                 break
 
+    def get_power_parameters(self):
+        from maasserver.secrets import SecretManager
+
+        power_parameters = self.power_parameters or {}
+        return {
+            **power_parameters,
+            **SecretManager().get_composite_secret(
+                "power-parameters", obj=self.as_bmc(), default={}
+            ),
+        }
+
+    def set_power_parameters(self, power_parameters):
+        power_parameters, secrets = sanitise_power_parameters(
+            self.power_type, power_parameters
+        )
+
+        if secrets:
+            from maasserver.secrets import SecretManager
+
+            SecretManager().set_composite_secret(
+                "power-parameters", secrets, obj=self.as_bmc()
+            )
+        self.power_parameters = power_parameters
+
     def clean(self):
         """Update our ip_address if the address extracted from our power
         parameters has changed."""
-        new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
+        new_ip = BMC.extract_ip_address(
+            self.power_type, self.get_power_parameters()
+        )
         current_ip = None if self.ip_address is None else self.ip_address.ip
         if new_ip != current_ip:
             if not new_ip:
@@ -685,7 +758,7 @@ class Pod(BMC):
     @property
     def tracked_project(self) -> str:
         """Return the project tracked by the Pod, or empty string."""
-        return self.power_parameters.get("project", "")
+        return self.get_power_parameters().get("project", "")
 
     @property
     def host(self):
@@ -907,7 +980,9 @@ class Pod(BMC):
             **kwargs,
         )
         machine.bmc = self
-        machine.instance_power_parameters = discovered_machine.power_parameters
+        machine.set_instance_power_parameters(
+            discovered_machine.power_parameters
+        )
         if not machine.hostname:
             machine.set_random_hostname()
         machine.save()
@@ -1125,7 +1200,7 @@ class Pod(BMC):
 
         # Sync power state and parameters for this machine always.
         existing_machine.power_state = discovered_machine.power_state
-        existing_machine.instance_power_parameters = (
+        existing_machine.set_instance_power_parameters(
             discovered_machine.power_parameters
         )
         existing_machine.cpu_count = discovered_machine.cores
@@ -1490,7 +1565,7 @@ class Pod(BMC):
             pool.pool_id: pool for pool in self.storage_pools.all()
         }
         possible_default = None
-        upgrade_default_pool = self.power_parameters.get(
+        upgrade_default_pool = self.get_power_parameters().get(
             "default_storage_pool"
         )
         for discovered_pool in discovered_storage_pools:
@@ -1524,7 +1599,7 @@ class Pod(BMC):
         if not self.default_storage_pool and possible_default:
             self.default_storage_pool = possible_default
             if upgrade_default_pool is not None:
-                self.power_parameters = self.power_parameters.copy()
+                self.power_parameters = self.get_power_parameters().copy()
                 self.power_parameters.pop("default_storage_pool", None)
             self.save()
         elif self.default_storage_pool in storage_pools_by_id.values():
@@ -1545,13 +1620,14 @@ class Pod(BMC):
         interfaces, and/or block devices that do not match the
         `discovered_pod` values will be removed.
         """
-        if self.power_type == "lxd" and "password" in self.power_parameters:
+        pod_power_parameters = self.get_power_parameters()
+        if self.power_type == "lxd" and "password" in pod_power_parameters:
             # ensure LXD trust_password is removed if it's there
             #
             # XXX copy and replace the whole attribute as the CleanSave base
             # class tracks which attributes to update on save via __setattr__,
             # so changing the value of the dict doesn't cause it to be updated.
-            power_params = self.power_parameters.copy()
+            power_params = pod_power_parameters.copy()
             del power_params["password"]
             self.power_parameters = power_params
         self.version = discovered_pod.version
@@ -1674,7 +1750,7 @@ class Pod(BMC):
         @transactional
         def gather_clients_and_machines(pod):
             machine_details = [
-                (machine.id, machine.power_parameters)
+                (machine.id, machine.get_power_parameters())
                 for machine in Machine.objects.filter(
                     bmc__id=pod.id
                 ).select_related("bmc")
@@ -1757,7 +1833,7 @@ class Pod(BMC):
             else:
                 # Call delete by bypassing the override that prevents its call.
                 pod = Pod.objects.get(id=pod_id)
-                super(BMC, pod).delete()
+                BMC.delete(pod)
 
         @transactional
         def _check_for_cluster_delete():

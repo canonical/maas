@@ -66,12 +66,13 @@ class WebhookPowerDriver(PowerDriver):
         ),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
         make_setting_field(
             "power_token",
             "Power token, will be used in place of power_user and power_pass",
             field_type="password",
+            secret=True,
         ),
         make_setting_field(
             "power_verify_ssl",

@@ -63,7 +63,10 @@ class MSCMPowerDriver(PowerDriver):
         ),
         make_setting_field("power_user", "MSCM CLI API user"),
         make_setting_field(
-            "power_pass", "MSCM CLI API password", field_type="password"
+            "power_pass",
+            "MSCM CLI API password",
+            field_type="password",
+            secret=True,
         ),
         make_setting_field(
             "node_id",

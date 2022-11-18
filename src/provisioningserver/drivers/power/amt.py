@@ -51,7 +51,7 @@ class AMTPowerDriver(PowerDriver):
     description = "Intel AMT"
     settings = [
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
         make_setting_field("power_address", "Power address", required=True),
     ]

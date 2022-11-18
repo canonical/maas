@@ -51,6 +51,7 @@ class OpenBMCPowerDriver(PowerDriver):
             "OpenBMC password",
             field_type="password",
             required=True,
+            secret=True,
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")

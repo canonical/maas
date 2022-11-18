@@ -3,7 +3,7 @@ from typing import Any, Literal, NamedTuple, Optional
 from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
-from maasserver.models import Node, RootKey, Secret, VaultSecret
+from maasserver.models import BMC, Node, RootKey, Secret, VaultSecret
 from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
@@ -15,7 +15,7 @@ class UnknownSecret(Exception):
     def __init__(self, name: str, obj: Optional[Model] = None):
         self.name = name
         self.obj = obj
-        message = f"Unkownn secret '{name}'"
+        message = f"Unknown secret '{name}'"
         if obj is not None:
             message += f" for object {type(obj)}"
         super().__init__(message)
@@ -43,8 +43,9 @@ class ModelSecret(NamedTuple):
 MODEL_SECRETS = {
     secret.model: secret
     for secret in (
-        ModelSecret(Node, "node", ["deploy-metadata"]),
+        ModelSecret(Node, "node", ["deploy-metadata", "power-parameters"]),
         ModelSecret(RootKey, "rootkey", ["material"]),
+        ModelSecret(BMC, "bmc", ["power-parameters"]),
     )
 }
 

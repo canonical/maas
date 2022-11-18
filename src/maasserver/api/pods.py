@@ -253,7 +253,7 @@ class VmHostHandler(OperationsHandler):
             This method is reserved for admin users.
         """
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
-        return pod.power_parameters
+        return pod.get_power_parameters()
 
     @admin_method
     @operation(idempotent=False)

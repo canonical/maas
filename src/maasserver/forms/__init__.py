@@ -286,7 +286,7 @@ class WithPowerTypeMixin:
 
         # Integrate the machines existing parameters if unset by form.
         if machine:
-            for key, value in machine.power_parameters.items():
+            for key, value in machine.get_power_parameters().items():
                 if parameters.get(key) is None:
                     parameters[key] = value
         return parameters
@@ -319,7 +319,7 @@ class WithPowerTypeMixin:
         if form.instance is not None:
             if form.instance.power_type != "":
                 form.initial[type_field_name] = form.instance.power_type
-            if form.instance.power_parameters != "":
+            if form.instance.get_power_parameters() != "":
                 for key, value in parameters.items():
                     form.initial[f"{params_field_name}_{key}"] = value
 

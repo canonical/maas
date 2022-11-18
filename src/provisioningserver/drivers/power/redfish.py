@@ -166,6 +166,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
             "Redfish password",
             field_type="password",
             required=True,
+            secret=True,
         ),
         make_setting_field("node_id", "Node ID", scope=SETTING_SCOPE.NODE),
     ]

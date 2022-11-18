@@ -388,6 +388,7 @@ class TestMakeSettingField(MAASTestCase):
                 "default": default,
                 "required": True,
                 "scope": SETTING_SCOPE.NODE,
+                "secret": False,
             },
             setting,
         )

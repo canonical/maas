@@ -119,6 +119,7 @@ def make_setting_field(
     default=None,
     required=False,
     scope=SETTING_SCOPE.BMC,
+    secret=False,
 ):
     """Helper function for building a JSON setting parameters field.
 
@@ -140,6 +141,9 @@ def make_setting_field(
     :param scope: 'bmc' or 'node' - Whether value is bmc or node specific.
         Defaults to 'bmc'.
     :type scope: string
+    :param secret: True or False - Whether value should be stored securely.
+        Defaults to False
+    :type secret: boolean
     """
     if field_type not in (
         "string",
@@ -164,6 +168,7 @@ def make_setting_field(
         "choices": choices,
         "default": default,
         "scope": scope,
+        "secret": secret,
     }
 
 

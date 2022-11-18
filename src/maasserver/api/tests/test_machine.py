@@ -2237,7 +2237,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 "power_pass": new_power_pass,
                 "power_address": new_power_address,
             },
-            reload_object(machine).power_parameters,
+            reload_object(machine).get_power_parameters(),
         )
 
     def test_PUT_updates_cpu_memory(self):
@@ -2277,7 +2277,7 @@ class TestMachineAPI(APITestCase.ForUser):
             (response.status_code, json_load_bytes(response.content)),
         )
         self.assertEqual(
-            power_parameters, reload_object(machine).power_parameters
+            power_parameters, reload_object(machine).get_power_parameters()
         )
 
     def test_PUT_updates_power_type_default_resets_params(self):
@@ -2297,7 +2297,11 @@ class TestMachineAPI(APITestCase.ForUser):
 
         machine = reload_object(machine)
         self.assertEqual(
-            (http.client.OK, machine.power_type, machine.power_parameters),
+            (
+                http.client.OK,
+                machine.power_type,
+                machine.get_power_parameters(),
+            ),
             (response.status_code, "", {}),
         )
 
@@ -2326,7 +2330,7 @@ class TestMachineAPI(APITestCase.ForUser):
             (response.status_code, json_load_bytes(response.content)),
         )
         self.assertEqual(
-            power_parameters, reload_object(machine).power_parameters
+            power_parameters, reload_object(machine).get_power_parameters()
         )
 
     def test_PUT_updates_power_type_empty_skip_check_to_force_params(self):
@@ -2353,7 +2357,11 @@ class TestMachineAPI(APITestCase.ForUser):
 
         machine = reload_object(machine)
         self.assertEqual(
-            (http.client.OK, machine.power_type, machine.power_parameters),
+            (
+                http.client.OK,
+                machine.power_type,
+                machine.get_power_parameters(),
+            ),
             (response.status_code, "", {"param": new_param}),
         )
 
@@ -2378,7 +2386,8 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            {new_param: new_value}, reload_object(machine).power_parameters
+            {new_param: new_value},
+            reload_object(machine).get_power_parameters(),
         )
 
     def test_PUT_updates_power_parameters_empty_string(self):
@@ -2400,7 +2409,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            "", reload_object(machine).power_parameters["power_pass"]
+            "", reload_object(machine).get_power_parameters()["power_pass"]
         )
 
     def test_PUT_sets_zone(self):

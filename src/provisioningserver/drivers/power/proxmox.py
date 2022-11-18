@@ -47,12 +47,14 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
             "Proxmox password, required if a token name and secret aren't "
             "given",
             field_type="password",
+            secret=True,
         ),
         make_setting_field("power_token_name", "Proxmox API token name"),
         make_setting_field(
             "power_token_secret",
             "Proxmox API token secret",
             field_type="password",
+            secret=True,
         ),
         make_setting_field(
             "power_vm_name", "Node ID", scope=SETTING_SCOPE.NODE, required=True

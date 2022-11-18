@@ -1285,6 +1285,7 @@ class VirshPodDriver(PodDriver):
             "Password (optional)",
             required=False,
             field_type="password",
+            secret=True,
         ),
         make_setting_field(
             "power_id", "Virsh VM ID", scope=SETTING_SCOPE.NODE, required=True

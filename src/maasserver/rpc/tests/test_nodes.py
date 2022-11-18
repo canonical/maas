@@ -78,7 +78,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
 
         self.assertEqual(
             (architecture, "manual", {}),
-            (node.architecture, node.power_type, node.power_parameters),
+            (node.architecture, node.power_type, node.get_power_parameters()),
         )
 
         # Node will not have an auto-generated name because migrations are
@@ -109,7 +109,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             (
                 node.architecture,
                 node.power_type,
-                node.power_parameters,
+                node.get_power_parameters(),
                 node.hostname,
             ),
         )
@@ -162,7 +162,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             (
                 node.architecture,
                 node.power_type,
-                node.power_parameters,
+                node.get_power_parameters(),
                 node.domain.id,
                 node.hostname,
             ),
@@ -241,7 +241,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
         # Reload the object from the DB so that we're sure its power
         # parameters are being persisted.
         node = reload_object(node)
-        self.assertEqual(power_parameters, node.power_parameters)
+        self.assertEqual(power_parameters, node.get_power_parameters())
 
     def test_forces_generic_subarchitecture_if_missing(self):
         self.prepare_rack_rpc()

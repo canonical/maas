@@ -204,7 +204,8 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = Machine.objects.get(system_id=system_id)
         self.assertEqual(machine.hostname, hostname)
         self.assertCountEqual(
-            workaround_flags, machine.power_parameters["workaround_flags"]
+            workaround_flags,
+            machine.get_power_parameters()["workaround_flags"],
         )
 
     def test_POST_creates_ipmi_machine_sets_mac_addresses_empty_no_arch(self):
@@ -237,7 +238,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             Equals(set()),
         )
         self.assertEqual(
-            power_address, machine.power_parameters["power_address"]
+            power_address, machine.get_power_parameters()["power_address"]
         )
 
     def test_POST_when_logged_in_creates_machine_in_declared_state(self):
@@ -323,7 +324,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )["system_id"]
         machine = Machine.objects.get(system_id=system_id)
         self.assertEqual("", machine.power_type)
-        self.assertEqual({}, machine.power_parameters)
+        self.assertEqual({}, machine.get_power_parameters())
 
     def test_POST_handles_error_when_unable_to_access_bmc(self):
         # Regression test for LP1600328
@@ -346,9 +347,9 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = Machine.objects.get(system_id=parsed_result["system_id"])
         self.assertEqual("virsh", parsed_result["power_type"])
         self.assertEqual(
-            power_address, machine.power_parameters["power_address"]
+            power_address, machine.get_power_parameters()["power_address"]
         )
-        self.assertEqual(power_id, machine.power_parameters["power_id"])
+        self.assertEqual(power_id, machine.get_power_parameters()["power_id"])
 
     def test_POST_sets_description(self):
         # Regression test for LP1707562

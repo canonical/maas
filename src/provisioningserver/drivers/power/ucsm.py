@@ -39,7 +39,7 @@ class UCSMPowerDriver(PowerDriver):
         make_setting_field("power_address", "URL for XML API", required=True),
         make_setting_field("power_user", "API user"),
         make_setting_field(
-            "power_pass", "API password", field_type="password"
+            "power_pass", "API password", field_type="password", secret=True
         ),
     ]
     ip_extractor = make_ip_extractor(

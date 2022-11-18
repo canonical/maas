@@ -53,7 +53,7 @@ def request_commissioning_results(pod):
                 pod.name,
                 pod.power_type,
                 node.system_id,
-                pod.power_parameters,
+                pod.get_power_parameters(),
                 token.consumer.key,
                 token.key,
                 token.secret,

@@ -519,7 +519,7 @@ class TestAdminMachineForm(MAASServerTestCase):
 
         self.assertEqual(
             (hostname, power_type, {"field": power_parameters_field}),
-            (node.hostname, node.power_type, node.power_parameters),
+            (node.hostname, node.power_type, node.get_power_parameters()),
         )
 
     def test_AdminMachineForm_doesnt_changes_power_parameters(self):
@@ -536,7 +536,7 @@ class TestAdminMachineForm(MAASServerTestCase):
             instance=node,
         )
         node = form.save()
-        self.assertEqual(power_parameters, node.power_parameters)
+        self.assertEqual(power_parameters, node.get_power_parameters())
 
     def test_AdminMachineForm_doesnt_change_power_type(self):
         power_type = factory.pick_power_type()
@@ -640,7 +640,7 @@ class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid())
         machine = form.save()
-        power_params = machine.bmc.power_parameters
+        power_params = machine.bmc.get_power_parameters()
         self.assertIn("certificate", power_params)
         self.assertIn("key", power_params)
         cert = Certificate.from_pem(
@@ -648,5 +648,7 @@ class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
         )
         self.assertEqual(cert.cn(), sample_cert.cn())
         # cert/key are not per-instance parameters
-        self.assertNotIn("certificate", machine.instance_power_parameters)
-        self.assertNotIn("key", machine.instance_power_parameters)
+        self.assertNotIn(
+            "certificate", machine.get_instance_power_parameters()
+        )
+        self.assertNotIn("key", machine.get_instance_power_parameters())

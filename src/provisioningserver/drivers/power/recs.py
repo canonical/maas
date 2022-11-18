@@ -215,7 +215,7 @@ class RECSPowerDriver(PowerDriver):
         make_setting_field("power_port", "Power port"),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")

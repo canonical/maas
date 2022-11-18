@@ -43,7 +43,7 @@ class MicrosoftOCSPowerDriver(PowerDriver):
         make_setting_field("power_port", "Power port"),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
         make_setting_field(
             "blade_id",

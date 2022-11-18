@@ -49,7 +49,7 @@ class SeaMicroPowerDriver(PowerDriver):
         make_setting_field("power_address", "Power address", required=True),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
-            "power_pass", "Power password", field_type="password"
+            "power_pass", "Power password", field_type="password", secret=True
         ),
         make_setting_field(
             "power_control",

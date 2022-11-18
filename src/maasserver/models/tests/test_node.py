@@ -1106,12 +1106,12 @@ class TestNode(MAASServerTestCase):
 
     def test_instance_name_virsh_vm(self):
         node = factory.make_Node()
-        node.instance_power_parameters = {"power_id": "vm"}
+        node.set_instance_power_parameters({"power_id": "vm"})
         self.assertEqual(node.instance_name, "vm")
 
     def test_instance_name_lxd_vm(self):
         node = factory.make_Node()
-        node.instance_power_parameters = {"instance_name": "vm"}
+        node.set_instance_power_parameters({"instance_name": "vm"})
         self.assertEqual(node.instance_name, "vm")
 
     def test_default_pool_for_machine(self):
@@ -6127,6 +6127,20 @@ class TestNode(MAASServerTestCase):
         [exclude_address] = node._copy_between_interface_mappings(mapping)
         self.assertIn(IPAddress(exclude_address), IPNetwork(subnet.cidr))
 
+    def test_delete_deletes_node_power_secrets(self):
+        node = factory.make_Node()
+        secret_manager = SecretManager()
+        secret_manager.set_composite_secret(
+            "power-parameters", {"foo": "bar"}, obj=node
+        )
+
+        node.delete()
+        self.assertIsNone(
+            secret_manager.get_simple_secret(
+                "power-parameters", obj=node, default=None
+            )
+        )
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
@@ -6140,11 +6154,11 @@ class TestNodePowerParameters(MAASServerTestCase):
         )
         node.save()
         node = reload_object(node)
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
 
     def test_power_parameters_default(self):
         node = factory.make_Node(power_type=None)
-        self.assertEqual({}, node.power_parameters)
+        self.assertEqual({}, node.get_power_parameters())
         self.assertIsNone(node.bmc)
 
     def test_power_parameters_from_commissioning_not_new(self):
@@ -6215,9 +6229,9 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("hmc", parameters)
         node.save()
         node = reload_object(node)
-        self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(node_parameters, node.instance_power_parameters)
-        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
+        self.assertEqual(node_parameters, node.get_instance_power_parameters())
+        self.assertEqual(bmc_parameters, node.bmc.get_power_parameters())
         self.assertEqual("hmc", node.bmc.power_type)
         self.assertEqual(node.power_type, node.bmc.power_type)
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
@@ -6235,7 +6249,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.save()
         node = reload_object(node)
         self.assertEqual("manual", node.bmc.power_type)
-        self.assertEqual({}, node.bmc.power_parameters)
+        self.assertEqual({}, node.bmc.get_power_parameters())
         self.assertTrue(BMC.objects.filter(power_type="manual"))
 
     def test_power_type_does_not_create_new_bmc_for_already_manual(self):
@@ -6270,9 +6284,9 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("virsh", parameters)
         node.save()
         node = reload_object(node)
-        self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(node_parameters, node.instance_power_parameters)
-        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
+        self.assertEqual(node_parameters, node.get_instance_power_parameters())
+        self.assertEqual(bmc_parameters, node.bmc.get_power_parameters())
         self.assertEqual("10.0.2.1", node.bmc.ip_address.ip)
 
     def test_unknown_power_parameter_stored_on_node(self):
@@ -6285,9 +6299,9 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.set_power_config("hmc", parameters)
         node.save()
         node = reload_object(node)
-        self.assertEqual(parameters, node.power_parameters)
-        self.assertEqual(node_parameters, node.instance_power_parameters)
-        self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
+        self.assertEqual(node_parameters, node.get_instance_power_parameters())
+        self.assertEqual(bmc_parameters, node.bmc.get_power_parameters())
 
     def test_none_chassis_bmc_doesnt_consolidate(self):
         for _ in range(3):
@@ -6308,9 +6322,11 @@ class TestNodePowerParameters(MAASServerTestCase):
             node.set_power_config("apc", parameters)
             node.save()
             node = reload_object(node)
-            self.assertEqual(parameters, node.power_parameters)
-            self.assertEqual(node_parameters, node.instance_power_parameters)
-            self.assertEqual(bmc_parameters, node.bmc.power_parameters)
+            self.assertEqual(parameters, node.get_power_parameters())
+            self.assertEqual(
+                node_parameters, node.get_instance_power_parameters()
+            )
+            self.assertEqual(bmc_parameters, node.bmc.get_power_parameters())
             self.assertEqual("apc", node.bmc.power_type)
             nodes.append(node)
 
@@ -6361,7 +6377,7 @@ class TestNodePowerParameters(MAASServerTestCase):
 
         # Set new BMC's values back to match original BMC, and make
         # sure the BMC count decreases as they consolidate.
-        parameters = nodes[0].power_parameters
+        parameters = nodes[0].get_power_parameters()
         parameters["power_id"] = factory.make_string()
         nodes[1].set_power_config(nodes[0].power_type, parameters)
         nodes[1].save()
@@ -6377,7 +6393,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address=ip_address)
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
     def test_power_parameters_unexpected_values_tolerated(self):
@@ -6385,7 +6401,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = {factory.make_string(): factory.make_string()}
         node.set_power_config("virsh", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertIsNone(node.bmc.ip_address)
 
     def test_power_parameters_blank_ip_address_tolerated(self):
@@ -6393,7 +6409,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address="")
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertIsNone(node.bmc.ip_address)
 
     def test_power_parameters_ip_address_reset(self):
@@ -6402,7 +6418,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address=ip_address)
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
         # StaticIPAddress can be changed after being set.
@@ -6410,7 +6426,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address=ip_address)
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
         # StaticIPAddress can be made None after being set.
@@ -6418,7 +6434,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address="")
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertIsNone(node.bmc.ip_address)
 
         # StaticIPAddress can be changed after being made None.
@@ -6426,7 +6442,7 @@ class TestNodePowerParameters(MAASServerTestCase):
         parameters = dict(power_address=ip_address)
         node.set_power_config("hmc", parameters)
         node.save()
-        self.assertEqual(parameters, node.power_parameters)
+        self.assertEqual(parameters, node.get_power_parameters())
         self.assertEqual(ip_address, node.bmc.ip_address.ip)
 
     def test_orphaned_bmcs_are_removed(self):
@@ -6650,9 +6666,9 @@ class TestDecomposeMachineTransactional(
         client.return_value = defer.succeed({"hints": hints})
         machine = factory.make_Node(**kwargs)
         machine.bmc = pod
-        machine.instance_power_parameters = {
-            "power_id": factory.make_name("power_id")
-        }
+        machine.set_instance_power_parameters(
+            {"power_id": factory.make_name("power_id")}
+        )
         return pod, machine, hints, client
 
     def test_delete_deletes_virtual_machine(self):
@@ -6675,7 +6691,7 @@ class TestDecomposeMachineTransactional(
             MockCalledOnceWith(
                 DecomposeMachine,
                 type=pod.power_type,
-                context=machine.power_parameters,
+                context=machine.get_power_parameters(),
                 pod_id=pod.id,
                 name=pod.name,
             ),
@@ -6724,7 +6740,7 @@ class TestDecomposeMachineTransactional(
             MockCalledOnceWith(
                 DecomposeMachine,
                 type=pod.power_type,
-                context=machine.power_parameters,
+                context=machine.get_power_parameters(),
                 pod_id=pod.id,
                 name=pod.name,
             ),

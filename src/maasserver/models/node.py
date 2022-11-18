@@ -182,7 +182,10 @@ from metadataserver.user_data import generate_user_data_for_status
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
-from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.drivers.power.registry import (
+    PowerDriverRegistry,
+    sanitise_power_parameters,
+)
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh.node_info_scripts import (
@@ -248,7 +251,7 @@ def get_bios_boot_from_bmc(bmc):
     """
     if bmc is None or bmc.power_type != "ipmi":
         return None
-    power_boot_type = bmc.power_parameters.get("power_boot_type")
+    power_boot_type = bmc.get_power_parameters().get("power_boot_type")
     if power_boot_type == IPMI_BOOT_TYPE.EFI:
         return "uefi"
     elif power_boot_type == IPMI_BOOT_TYPE.LEGACY:
@@ -1386,7 +1389,7 @@ class Node(CleanSave, TimestampedModel):
         current BMC, so if the BMC is a chassis, the configuration will apply
         to all connected nodes.
         """
-        from maasserver.models.bmc import BMC
+        from maasserver.models.bmc import BMC, create_bmc, get_or_create_bmc
 
         created_by_commissioning = from_commissioning
         old_bmc = self.bmc
@@ -1395,7 +1398,7 @@ class Node(CleanSave, TimestampedModel):
         )
         if power_type == self.power_type:
             if power_type == "manual":
-                self.bmc.power_parameters = bmc_params
+                self.bmc.set_power_parameters(bmc_params)
                 self.bmc.save()
             else:
                 existing_bmc = BMC.objects.filter(
@@ -1408,10 +1411,10 @@ class Node(CleanSave, TimestampedModel):
                         node.save()
                     self.bmc = existing_bmc
                 elif not existing_bmc:
-                    self.bmc.power_parameters = bmc_params
+                    self.bmc.set_power_parameters(bmc_params)
                     self.bmc.save()
         elif chassis:
-            self.bmc, _ = BMC.objects.get_or_create(
+            self.bmc, _ = get_or_create_bmc(
                 power_type=power_type,
                 power_parameters=bmc_params,
                 defaults={
@@ -1419,14 +1422,14 @@ class Node(CleanSave, TimestampedModel):
                 },
             )
         else:
-            self.bmc = BMC.objects.create(
+            self.bmc = create_bmc(
                 power_type=power_type,
                 power_parameters=bmc_params,
                 created_by_commissioning=created_by_commissioning,
             )
             self.bmc.save()
 
-        self.instance_power_parameters = node_params or {}
+        self.set_instance_power_parameters(node_params or {})
 
         # delete the old bmc if no node is connected to it
         if old_bmc and old_bmc != self.bmc and not old_bmc.node_set.exists():
@@ -1436,25 +1439,50 @@ class Node(CleanSave, TimestampedModel):
     def power_type(self):
         return "" if self.bmc is None else self.bmc.power_type
 
-    @property
-    def power_parameters(self):
+    def get_instance_power_parameters(self):
+        from maasserver.secrets import SecretManager
+
+        power_parameters = self.instance_power_parameters or {}
+        return {
+            **power_parameters,
+            **SecretManager().get_composite_secret(
+                "power-parameters", obj=self.as_node(), default={}
+            ),
+        }
+
+    def set_instance_power_parameters(self, power_parameters):
+        power_parameters, secrets = sanitise_power_parameters(
+            self.power_type, power_parameters
+        )
+
+        if secrets:
+            from maasserver.secrets import SecretManager
+
+            SecretManager().set_composite_secret(
+                "power-parameters", secrets, obj=self.as_node()
+            )
+        self.instance_power_parameters = power_parameters
+
+    def get_power_parameters(self):
         # Overlay instance power parameters over bmc power parameters.
-        instance_parameters = self.instance_power_parameters
+        instance_parameters = self.get_instance_power_parameters()
         if not instance_parameters:
             instance_parameters = {}
         bmc_parameters = {}
-        if self.bmc and self.bmc.power_parameters:
-            bmc_parameters = self.bmc.power_parameters
+        if self.bmc and (
+            bmc_power_parameters := self.bmc.get_power_parameters()
+        ):
+            bmc_parameters = bmc_power_parameters
         return {**bmc_parameters, **instance_parameters}
 
     @property
     def instance_name(self):
         """Return the name of the VM instance for this machine, or None."""
-        return self.instance_power_parameters.get(
+
+        # LXD uses "instance_name", virsh uses "power_id"
+        return self.get_instance_power_parameters().get(
             "instance_name"
-        ) or self.instance_power_parameters.get(  # for LXD
-            "power_id"
-        )  # for virsh
+        ) or self.get_instance_power_parameters().get("power_id")
 
     @property
     def fqdn(self):
@@ -2994,7 +3022,7 @@ class Node(CleanSave, TimestampedModel):
             d.addCallback(
                 decompose_machine,
                 pod.power_type,
-                self.power_parameters,
+                self.get_power_parameters(),
                 pod_id=pod.id,
                 name=pod.name,
             )
@@ -3098,7 +3126,7 @@ class Node(CleanSave, TimestampedModel):
 
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""
-        power_params = self.power_parameters.copy()
+        power_params = self.get_power_parameters().copy()
 
         power_params.setdefault("system_id", self.system_id)
         # TODO: This default ought to be in the virsh template.

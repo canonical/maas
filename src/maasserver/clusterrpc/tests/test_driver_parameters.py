@@ -277,6 +277,7 @@ class TestMakeSettingField(MAASServerTestCase):
             "choices": [],
             "default": "",
             "scope": "bmc",
+            "secret": False,
         }
         self.assertEqual(expected_field, json_field)
 
@@ -289,6 +290,7 @@ class TestMakeSettingField(MAASServerTestCase):
             "choices": [["spam", "Spam"], ["eggs", "Eggs"]],
             "default": "spam",
             "scope": "bmc",
+            "secret": False,
         }
         json_field = make_setting_field(**expected_field)
         self.assertEqual(expected_field, json_field)
@@ -304,7 +306,7 @@ class TestMakeSettingField(MAASServerTestCase):
 
     def test_creates_password_fields(self):
         json_field = make_setting_field(
-            "some_field", "Some Label", field_type="password"
+            "some_field", "Some Label", field_type="password", secret=True
         )
         expected_field = {
             "name": "some_field",
@@ -314,6 +316,7 @@ class TestMakeSettingField(MAASServerTestCase):
             "choices": [],
             "default": "",
             "scope": "bmc",
+            "secret": True,
         }
         self.assertEqual(expected_field, json_field)
 

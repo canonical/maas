@@ -583,7 +583,7 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin_read
         )
-        return node.power_parameters
+        return node.get_power_parameters()
 
 
 class AnonNodeHandler(AnonymousOperationsHandler):
@@ -1223,5 +1223,6 @@ class PowersMixin:
             machines = self.base_model.objects.filter(system_id__in=match_ids)
 
         return {
-            machine.system_id: machine.power_parameters for machine in machines
+            machine.system_id: machine.get_power_parameters()
+            for machine in machines
         }
