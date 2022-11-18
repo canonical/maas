@@ -12,6 +12,7 @@ import errno
 import grp
 import os
 import os.path
+from pathlib import Path
 import re
 import sys
 from typing import Optional
@@ -108,11 +109,7 @@ def get_zone_file_config_dir():
     so that bind can write to the location as well
     """
     setting = os.getenv("MAAS_ZONE_FILE_CONFIG_DIR", MAAS_ZONE_FILE_DIR)
-    if isinstance(setting, bytes):
-        fsenc = sys.getfilesystemencoding()
-        return setting.decode(fsenc)
-    else:
-        return setting
+    return Path(setting)
 
 
 def get_bind_config_dir():
@@ -240,16 +237,14 @@ def set_up_nsupdate_key():
 
 
 def clean_old_zone_files():
-    p = get_zone_file_config_dir()
-    files = os.listdir(p)
-    for f in files:
-        os.remove(os.path.join(p, f))
+    for path in get_zone_file_config_dir().glob("zone.*"):
+        path.unlink()
 
 
 def set_up_zone_file_dir():
-    p = get_zone_file_config_dir()
-    if not os.path.exists(p):
-        os.mkdir(p)
+    path = get_zone_file_config_dir()
+    if not path.exists():
+        path.mkdir(mode=0o775)
 
         uid = os.getuid()
         gid = 0
@@ -257,8 +252,7 @@ def set_up_zone_file_dir():
         if group:
             gid = group.gr_gid
 
-        os.chown(p, uid, gid)
-        os.chmod(p, 0o775)
+        os.chown(path, uid, gid)
     else:
         clean_old_zone_files()
 

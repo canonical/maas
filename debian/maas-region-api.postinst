@@ -31,7 +31,7 @@ configure_libdir() {
        chown maas:maas /var/lib/maas/maas_id
     fi
 
-    if [ -d /var/lib/maas/bind ]; then
+    if [ -d /var/lib/bind/maas ]; then
         chown maas:bind /var/lib/bind/maas
         chmod 0775 /var/lib/bind/maas
     fi
@@ -75,22 +75,10 @@ fix_dns_permissions() {
 # file. This does *not* overwrite any existing configuration.
 maas-region local_config_set
 
-if [ "$1" = "configure" ] && [ -z "$2" ]; then
+if [ "$1" = "configure" ]; then
     configure_logging
     configure_libdir
-    # Configure DNS
-    # If /etc/bind/maas is empty, setup dns.
-    if [ ! "$(ls -A /etc/bind/maas)" ]; then
-        /usr/lib/maas/maas-common setup-dns
-    fi
-    fix_dns_permissions
-    edit_named_options
-
-elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0ubuntu1; then
-    # Logging changed at r2611, ensure it is set up.
-    configure_logging
-    configure_libdir
-    # Configure DNS
+    /usr/lib/maas/maas-common setup-dns
     fix_dns_permissions
     edit_named_options
 fi

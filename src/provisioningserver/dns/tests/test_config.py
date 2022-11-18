@@ -296,7 +296,7 @@ class TestRNDCUtilities(MAASTestCase):
         zone_file_dir = patch_zone_file_config_path(self)
 
         zonefiles = [
-            os.path.join(zone_file_dir, f"zonefile{i}")
+            os.path.join(zone_file_dir, f"zone.{i}")
             for i, _ in enumerate(range(2))
         ]
         for zonefile in zonefiles:
