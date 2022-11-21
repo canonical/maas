@@ -729,6 +729,26 @@ class PodManager(BaseBMCManager):
             raise PermissionDenied()
 
 
+def create_pod(**kwargs):
+    power_type = kwargs.get("power_type", None)
+    power_parameters = kwargs.get("power_parameters", {})
+
+    power_parameters, secrets = sanitise_power_parameters(
+        power_type, power_parameters
+    )
+    kwargs["power_parameters"] = power_parameters
+
+    pod = Pod.objects.create(**kwargs)
+
+    if secrets:
+        from maasserver.secrets import SecretManager
+
+        SecretManager().set_composite_secret(
+            "power-parameters", secrets, obj=pod.as_bmc()
+        )
+    return pod
+
+
 class Pod(BMC):
     """A `Pod` represents a `BMC` that controls multiple machines."""
 
@@ -1629,7 +1649,7 @@ class Pod(BMC):
             # so changing the value of the dict doesn't cause it to be updated.
             power_params = pod_power_parameters.copy()
             del power_params["password"]
-            self.power_parameters = power_params
+            self.set_power_parameters(power_params)
         self.version = discovered_pod.version
         self.architectures = discovered_pod.architectures
         if not self.name or cluster is not None and discovered_pod.name:

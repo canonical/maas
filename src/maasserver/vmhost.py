@@ -18,6 +18,7 @@ from maasserver.models import (
     Tag,
     VMCluster,
 )
+from maasserver.models.bmc import create_pod
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import post_commit_do, transactional
@@ -194,7 +195,7 @@ def _get_or_create_clustered_host(
             hints__cluster=cluster,
         )
     except Pod.DoesNotExist:
-        host = Pod.objects.create(
+        host = create_pod(
             name=discovered_vmhost.name,
             architectures=discovered_vmhost.architectures,
             capabilities=discovered_vmhost.capabilities,
