@@ -3,6 +3,8 @@
 
 
 import random
+from unittest.mock import Mock
+from urllib.parse import urlparse
 
 from twisted.internet.defer import succeed
 
@@ -18,12 +20,15 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from maastesting.matchers import MockCalledOnceWith
+from metadataserver.models.nodekey import NodeKey
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
 )
+from provisioningserver.rpc.cluster import SendPodCommissioningResults
 
 
 def make_pod_info():
@@ -1052,3 +1057,40 @@ class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
 
         self.assertEqual(len(vmhosts), new_len)
         self.assertEqual(updated_cluster.id, cluster.id)
+
+
+class TestRequestCommissioningResults(MAASTransactionServerTestCase):
+
+    wait_for_reactor = wait_for()
+
+    @wait_for_reactor
+    async def test_request_commissioning_results_call(self):
+        client = Mock()
+        client.return_value = succeed(None)
+        self.patch(
+            vmhost_module, "getClientFromIdentifiers"
+        ).return_value = client
+        machine = await deferToDatabase(factory.make_Machine)
+        pod = await deferToDatabase(factory.make_Pod, host=machine)
+        power_params = await deferToDatabase(pod.get_power_parameters)
+        token = await deferToDatabase(
+            NodeKey.objects.get_token_for_node, machine
+        )
+        await vmhost_module.request_commissioning_results(pod)
+        self.assertThat(
+            client,
+            MockCalledOnceWith(
+                SendPodCommissioningResults,
+                pod_id=pod.id,
+                name=pod.name,
+                type=pod.power_type,
+                system_id=machine.system_id,
+                context=power_params,
+                consumer_key=token.consumer.key,
+                token_key=token.key,
+                token_secret=token.secret,
+                metadata_url=urlparse(
+                    "http://localhost:5240/MAAS/metadata/latest/"
+                ),
+            ),
+        )

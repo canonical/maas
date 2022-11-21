@@ -47,6 +47,10 @@ def request_commissioning_results(pod):
     client = yield getClientFromIdentifiers(client_identifiers)
     for node in nodes:
         token = yield deferToDatabase(NodeKey.objects.get_token_for_node, node)
+        power_params = yield deferToDatabase(pod.get_power_parameters)
+        url = yield deferToDatabase(
+            absolute_reverse, "metadata-version", args=["latest"]
+        )
         try:
             yield send_pod_commissioning_results(
                 client,
@@ -54,13 +58,11 @@ def request_commissioning_results(pod):
                 pod.name,
                 pod.power_type,
                 node.system_id,
-                pod.get_power_parameters(),
+                power_params,
                 token.consumer.key,
                 token.key,
                 token.secret,
-                urlparse(
-                    absolute_reverse("metadata-version", args=["latest"])
-                ),
+                urlparse(url),
             )
         except PodProblem as e:
             yield deferToDatabase(
