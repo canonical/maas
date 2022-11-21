@@ -150,18 +150,18 @@ from maasserver.models import (
     PhysicalBlockDevice,
     RAID,
     ResourcePool,
-    SSHKey,
-    SSLKey,
-    Tag,
-    VirtualBlockDevice,
     VMFS,
     VolumeGroup,
-    Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
+from maasserver.models.sshkey import SSHKey
+from maasserver.models.sslkey import SSLKey
+from maasserver.models.tag import Tag
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
+from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
 from maasserver.utils.certificates import generate_certificate

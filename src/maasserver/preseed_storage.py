@@ -14,18 +14,14 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models import (
-    FilesystemGroup,
-    Partition,
-    PhysicalBlockDevice,
-    VirtualBlockDevice,
-)
+from maasserver.models import FilesystemGroup, Partition, PhysicalBlockDevice
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
     INITIAL_PARTITION_OFFSET,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
 
 class CurtinStorageGenerator:

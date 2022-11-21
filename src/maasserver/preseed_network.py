@@ -18,7 +18,8 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
-from maasserver.models import Interface, StaticIPAddress
+from maasserver.models import Interface
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.staticroute import StaticRoute
 from provisioningserver.utils.netplan import (
     get_netplan_bond_parameters,

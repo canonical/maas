@@ -24,7 +24,8 @@ from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
 from piston3.utils import rc
 import requests
 
-from maasserver.models import MAASAuthorizationBackend, RootKey
+from maasserver.auth import MAASAuthorizationBackend
+from maasserver.models.rootkey import RootKey
 from maasserver.models.user import SYSTEM_USERS
 from maasserver.utils.views import request_headers
 from provisioningserver.security import to_bin, to_hex

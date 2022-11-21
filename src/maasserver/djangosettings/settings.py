@@ -142,7 +142,7 @@ PISTON_DISPLAY_ERRORS = False
 PISTON_IGNORE_DUPE_MODELS = True
 
 AUTHENTICATION_BACKENDS = (
-    "maasserver.models.MAASAuthorizationBackend",
+    "maasserver.auth.MAASAuthorizationBackend",
     "maasserver.macaroon_auth.MacaroonAuthorizationBackend",
 )
 

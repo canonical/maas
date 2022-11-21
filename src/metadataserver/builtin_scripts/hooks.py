@@ -30,10 +30,10 @@ from maasserver.models import (
     NUMANodeHugepages,
     PhysicalBlockDevice,
     PhysicalInterface,
-    Subnet,
-    Tag,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.subnet import Subnet
+from maasserver.models.tag import Tag
 from maasserver.storage_custom import (
     apply_layout_to_machine,
     get_storage_layout,
