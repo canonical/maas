@@ -13,13 +13,13 @@ import time
 from unittest.mock import MagicMock
 
 from fixtures import EnvironmentVariableFixture
-from hvac.exceptions import VaultError
 import netifaces
 import pytest
 
 from maascli import snap
 from maascli.command import CommandError
 from maascli.parser import ArgumentParser
+from maasserver.vault import VaultError
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 

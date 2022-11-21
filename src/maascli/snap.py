@@ -16,11 +16,9 @@ from textwrap import dedent
 import threading
 import time
 
-from hvac.exceptions import VaultError
 import netifaces
 import psycopg2
 from psycopg2.extensions import parse_dsn
-from requests.exceptions import ConnectionError
 import tempita
 
 from maascli.command import Command, CommandError
@@ -33,7 +31,7 @@ from maascli.init import (
     prompt_for_choices,
     read_input,
 )
-from maasserver.vault import prepare_wrapped_approle
+from maasserver.vault import prepare_wrapped_approle, VaultError
 
 ARGUMENTS = OrderedDict(
     [
@@ -592,7 +590,7 @@ def get_vault_settings(options) -> dict:
             secrets_path=options.vault_secrets_path,
             secrets_mount=options.vault_secrets_mount,
         )
-    except (VaultError, ConnectionError) as e:
+    except VaultError as e:
         raise CommandError(e)
 
     return {

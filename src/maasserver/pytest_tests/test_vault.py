@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, MagicMock
 
 from django.core.exceptions import ImproperlyConfigured
-from hvac.exceptions import VaultError
+from hvac.exceptions import VaultError as HVACVaultError
 import pytest
 
 from maasserver import vault
@@ -12,8 +12,9 @@ from maasserver.vault import (
     clear_vault_client_caches,
     get_region_vault_client,
     get_region_vault_client_if_enabled,
-    hvac,
+    UnknownSecretPath,
     VaultClient,
+    VaultError,
     WrappedSecretError,
 )
 
@@ -62,7 +63,7 @@ class TestVaultClient:
         assert vault_client.get("mysecret") == value
 
     def test_get_not_found(self, vault_client):
-        with pytest.raises(hvac.exceptions.InvalidPath):
+        with pytest.raises(UnknownSecretPath):
             vault_client.get("mysecret")
 
     def test_delete(self, mock_hvac_client):
@@ -134,7 +135,7 @@ class TestVaultClient:
             client=mock_hvac_client,
         )
         ensure_auth = mocker.patch.object(client, "_ensure_auth")
-        ensure_auth.side_effect = [VaultError()]
+        ensure_auth.side_effect = [HVACVaultError()]
         with pytest.raises(VaultError):
             client.check_authentication()
         ensure_auth.assert_called_once()
@@ -250,7 +251,7 @@ class TestUnwrapSecret:
     ):
         mocker.patch.object(
             mock_hvac_client.sys, "unwrap"
-        ).side_effect = VaultError("Test")
+        ).side_effect = HVACVaultError("Test")
         with pytest.raises(VaultError):
             vault.unwrap_secret("http://vault:8200", "token")
 

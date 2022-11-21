@@ -4,7 +4,6 @@
 from unittest.mock import call
 
 from django.db import transaction
-from hvac.exceptions import VaultError
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -17,6 +16,7 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.testing.vault import FakeVaultClient
 from maasserver.utils.threads import deferToDatabase
+from maasserver.vault import VaultError
 from maastesting.crochet import wait_for
 
 wait_for_reactor = wait_for()

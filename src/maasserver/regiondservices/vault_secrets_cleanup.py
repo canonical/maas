@@ -3,13 +3,16 @@ from datetime import timedelta
 import logging
 
 from django.db import transaction
-from hvac.exceptions import VaultError
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models import VaultSecret
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
+from maasserver.vault import (
+    get_region_vault_client_if_enabled,
+    VaultClient,
+    VaultError,
+)
 from provisioningserver.utils.services import SingleInstanceService
 from provisioningserver.utils.twisted import synchronous
 

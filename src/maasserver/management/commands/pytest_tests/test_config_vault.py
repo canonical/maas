@@ -1,9 +1,7 @@
 from unittest.mock import MagicMock
 
 from django.core.management import CommandError
-from hvac.exceptions import VaultError
 import pytest
-from requests.exceptions import ConnectionError
 import yaml
 
 from maasserver.management.commands import config_vault
@@ -15,7 +13,7 @@ from maasserver.models import (
     Secret,
 )
 from maasserver.testing.factory import factory
-from maasserver.vault import WrappedSecretError
+from maasserver.vault import VaultError, WrappedSecretError
 from provisioningserver.utils.env import MAAS_ID
 
 
@@ -58,7 +56,7 @@ class TestConfigVaultConfigurateCommand:
 
     def test_wraps_specific_exceptions_only(self, configure_mock):
         handler = Command()
-        side_effects = [ConnectionError(), VaultError(), WrappedSecretError()]
+        side_effects = [VaultError("error"), WrappedSecretError()]
         configure_mock.side_effect = side_effects
         kwargs = self._configure_kwargs()
 
@@ -272,7 +270,14 @@ class TestMigrateSecrets:
             config_vault, "get_region_vault_client"
         ).return_value = client
         expected_error = factory.make_name("error")
-        client.check_authentication.side_effect = [VaultError(expected_error)]
+
+        def error(*args, **kwargs):
+            try:
+                raise Exception(expected_error)
+            except Exception as e:
+                raise VaultError(e) from e
+
+        client.check_authentication = error
         with pytest.raises(CommandError, match=expected_error):
             Command()._handle_migrate({})
 

@@ -6,12 +6,15 @@ import logging
 import os
 
 from django.core.exceptions import ImproperlyConfigured
-from hvac.exceptions import InvalidPath, VaultError
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.djangosettings import fix_up_databases
 from maasserver.djangosettings.monkey import patch_get_script_prefix
-from maasserver.vault import get_region_vault_client
+from maasserver.vault import (
+    get_region_vault_client,
+    UnknownSecretPath,
+    VaultError,
+)
 from provisioningserver.utils.env import MAAS_ID
 
 
@@ -64,7 +67,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
             raise ImproperlyConfigured(
                 f"Incomplete Vault-stored DB credentials, missing key {e}"
             )
-        except InvalidPath:
+        except UnknownSecretPath:
             # Vault does not have DB credentials, but is available. No need to report anything, use local credentials.
             pass
         except VaultError as e:

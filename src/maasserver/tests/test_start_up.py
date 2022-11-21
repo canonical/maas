@@ -5,7 +5,6 @@ from pathlib import Path
 import random
 from unittest.mock import call, MagicMock
 
-from hvac.exceptions import InvalidPath, VaultError
 from testtools.matchers import HasLength
 
 from maasserver import deprecations, eventloop, locks, start_up
@@ -24,6 +23,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks
+from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting import get_testing_timeout
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -39,7 +39,7 @@ from provisioningserver.utils.env import (
     MAAS_SECRET,
     MAAS_SHARED_SECRET,
 )
-from provisioningserver.utils.testing import MAASIDFixture
+from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 
 class TestStartUp(MAASTransactionServerTestCase):
@@ -101,6 +101,7 @@ class TestInnerStartUp(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(MAASIDFixture(None))
+        self.useFixture(MAASUUIDFixture("uuid"))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch(ipaddr, "get_ip_addr").return_value = {}
         self.versions_info = DebVersionsInfo(
@@ -388,7 +389,7 @@ class TestVaultMigrateDbCredentials(MAASServerTestCase):
         def get_side_effect(path):
             if path == self.creds_path:
                 return {"name": db_name, "user": db_user, "pass": db_pass}
-            raise InvalidPath(path)
+            raise UnknownSecretPath(path)
 
         client = MagicMock()
         client.get.side_effect = get_side_effect

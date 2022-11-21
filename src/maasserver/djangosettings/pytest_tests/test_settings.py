@@ -10,7 +10,6 @@ from unittest.mock import MagicMock
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
-from hvac.exceptions import InvalidPath, VaultError
 from psycopg2.extensions import ISOLATION_LEVEL_REPEATABLE_READ
 import pytest
 
@@ -21,6 +20,7 @@ from maasserver.djangosettings.settings import (
     _get_local_timezone,
     _read_timezone,
 )
+from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting.factory import factory
 
 
@@ -125,7 +125,7 @@ class TestGetDefaultDbConfig:
         def side_effect(given_path):
             if given_path == db_creds_vault_path:
                 return expected
-            raise InvalidPath()
+            raise UnknownSecretPath(given_path)
 
         vault_client.get.side_effect = side_effect
         get_vault_mock = mocker.patch.object(
@@ -158,7 +158,7 @@ class TestGetDefaultDbConfig:
             "database_pass": factory.make_name("uuid"),
         }
         vault_client = MagicMock()
-        vault_client.get.side_effect = [InvalidPath()]
+        vault_client.get.side_effect = [UnknownSecretPath("some-path")]
         mocker.patch.object(
             settings, "get_region_vault_client"
         ).return_value = vault_client

@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
-from functools import cache
-from typing import Any, NamedTuple, Optional
+from functools import cache, wraps
+from typing import Any, Callable, NamedTuple, Optional
 
 from dateutil.parser import isoparse
 from django.core.exceptions import ImproperlyConfigured
 import hvac
+import requests
 
 from maasserver.config import RegionConfiguration
 
@@ -15,10 +16,34 @@ TOKEN_BEFORE_EXPIRY_LIMIT = timedelta(seconds=10)
 SecretValue = dict[str, Any]
 
 
+class VaultError(Exception):
+    """Raised to wrap the hvac.exception.VaultError one."""
+
+
+class UnknownSecretPath(Exception):
+    """Raised when the path for a secret is unknown."""
+
+
 class WrappedSecretError(Exception):
     """Raised when the provided token could not be used to obtain secret_id by unwrapping"""
 
 
+def wrap_errors(func: Callable) -> Callable:
+    """Wrap hvac exceptions with local ones."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except requests.exceptions.ConnectionError as e:
+            raise VaultError("Vault connection failed") from e
+        except hvac.exceptions.VaultError as e:
+            raise VaultError("Vault request failed") from e
+
+    return wrapper
+
+
+@wrap_errors
 def unwrap_secret(url: str, wrapped_token: str) -> str:
     """Helper function to unwrap approle secret id from wrapped token"""
     client = hvac.Client(url=url, token=wrapped_token)
@@ -50,6 +75,7 @@ class VaultClient:
         # ensure a token is created at the first request
         self._token_expire = self._utcnow()
 
+    @wrap_errors
     def set(self, path: str, value: SecretValue):
         self._ensure_auth()
         self._kv.create_or_update_secret(
@@ -58,13 +84,18 @@ class VaultClient:
             mount_point=self._secrets_mount,
         )
 
+    @wrap_errors
     def get(self, path: str) -> SecretValue:
         self._ensure_auth()
-        return self._kv.read_secret(
-            self._secret_path(path),
-            mount_point=self._secrets_mount,
-        )["data"]["data"]
+        try:
+            return self._kv.read_secret(
+                self._secret_path(path),
+                mount_point=self._secrets_mount,
+            )["data"]["data"]
+        except hvac.exceptions.InvalidPath:
+            raise UnknownSecretPath(path)
 
+    @wrap_errors
     def delete(self, path: str):
         self._ensure_auth()
         return self._kv.delete_metadata_and_all_versions(
@@ -72,6 +103,7 @@ class VaultClient:
             mount_point=self._secrets_mount,
         )
 
+    @wrap_errors
     def check_authentication(self):
         """Checks if vault is available, throws otherwise"""
         self._ensure_auth(force=True)

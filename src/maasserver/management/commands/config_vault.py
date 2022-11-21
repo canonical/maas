@@ -9,8 +9,6 @@ import time
 from typing import Optional
 
 from django.core.management.base import BaseCommand, CommandError
-from hvac.exceptions import VaultError
-from requests.exceptions import ConnectionError
 import yaml
 
 from maascli.init import prompt_yes_no
@@ -29,6 +27,7 @@ from maasserver.utils.orm import transactional, with_connection
 from maasserver.vault import (
     configure_region_with_vault,
     get_region_vault_client,
+    VaultError,
     WrappedSecretError,
 )
 from provisioningserver.utils.env import MAAS_ID
@@ -95,7 +94,9 @@ class Command(BaseCommand):
 
                 """
             )
-        except (ConnectionError, VaultError, WrappedSecretError) as e:
+        except VaultError as e:
+            raise CommandError(e.__cause__)
+        except WrappedSecretError as e:
             raise CommandError(e)
 
     def _get_online_regions(self) -> list[str]:
@@ -187,7 +188,7 @@ class Command(BaseCommand):
         try:
             client.check_authentication()
         except VaultError as e:
-            raise CommandError(f"Vault test failed: {e}")
+            raise CommandError(f"Vault test failed: {e.__cause__}")
         # Restart regions to ensure there will be no regions trying to write secrets to the DB during migration
         self._restart_regions()
         # Now we're ready to perform the actual migration

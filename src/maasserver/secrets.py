@@ -1,10 +1,13 @@
 from typing import Any, Literal, NamedTuple, Optional
 
 from django.db.models import Model
-from hvac.exceptions import InvalidPath
 
 from maasserver.models import BMC, Node, RootKey, Secret, VaultSecret
-from maasserver.vault import get_region_vault_client_if_enabled, VaultClient
+from maasserver.vault import (
+    get_region_vault_client_if_enabled,
+    UnknownSecretPath,
+    VaultClient,
+)
 
 SIMPLE_SECRET_KEY = "secret"
 
@@ -183,5 +186,5 @@ class SecretManager:
     def _get_secret_from_vault(self, path: str):
         try:
             return self._vault_client.get(path)
-        except InvalidPath:
+        except UnknownSecretPath:
             raise SecretNotFound(path)
