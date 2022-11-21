@@ -13,7 +13,6 @@ import bson
 from django.db.models import Prefetch
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from formencode.validators import Int, StringBool
 from piston3.utils import rc
 
@@ -540,12 +539,18 @@ class NodeHandler(OperationsHandler):
         ASCII using ``bsondump example.bson``.
         @success-example "success-content" [exkey=details] placeholder text
 
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have permission to see
+        the node details.
+        @error-example "no-perms"
+            Forbidden
+
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
             No Node matches the given query.
         """
-        node = get_object_or_404(self.model, system_id=system_id)
+        node = self.read(request, system_id)
         probe_details = get_single_probed_details(node)
         probe_details_report = {
             name: None if data is None else bson.Binary(data)

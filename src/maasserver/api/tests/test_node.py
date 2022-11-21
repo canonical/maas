@@ -498,6 +498,22 @@ class TestGetDetails(APITestCase.ForUser):
         response = self.client.get(url, {"op": "details"})
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
+    def test_GET_returns_all_details_for_administrator(self):
+        self.become_admin()
+        node = factory.make_Node(owner=factory.make_User())
+        lshw_result = self.make_lshw_result(node)
+        lldp_result = self.make_lldp_result(node)
+        self.assertDictEqual(
+            {"lshw": lshw_result.stdout, "lldp": lldp_result.stdout},
+            self.get_details(node),
+        )
+
+    def test_GET_returns_forbidden_for_non_owned_nodes(self):
+        node = factory.make_Node(owner=factory.make_User())
+        url = reverse("node_handler", args=[node.system_id])
+        response = self.client.get(url, {"op": "details"})
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
+
 
 class TestPowerParameters(APITestCase.ForUser):
     def get_node_uri(self, node):
