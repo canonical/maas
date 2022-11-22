@@ -7292,3 +7292,24 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             len(nodes_in_zone),
             handler.count({"filter": {"zone": zone.name}})["count"],
         )
+
+    def test_count_endpoint_filter_simple_status(self):
+        owner = factory.make_User()
+        statuses = [NODE_STATUS.ALLOCATED, NODE_STATUS.FAILED_COMMISSIONING]
+        nodes = [
+            factory.make_Machine(
+                owner=owner,
+                status=statuses[idx],
+                hostname=f"node{idx}-{factory.make_string(10)}",
+            )
+            for idx in range(2)
+        ]
+        handler = MachineHandler(owner, {}, None)
+        self.assertEqual(
+            len(nodes),
+            handler.count({})["count"],
+        )
+        self.assertEqual(
+            1,
+            handler.count({"filter": {"simple_status": "allocated"}})["count"],
+        )

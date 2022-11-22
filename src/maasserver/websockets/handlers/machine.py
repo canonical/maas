@@ -1215,7 +1215,7 @@ class MachineHandler(NodeHandler):
         return OwnerData.objects.get_owner_data(machine)
 
     def count(self, params):
-        qs = self.get_queryset()
+        qs = self.get_queryset(for_list=True)
         if "filter" in params:
             qs = self._filter(qs, "list", params["filter"])
         return {"count": qs.count()}
