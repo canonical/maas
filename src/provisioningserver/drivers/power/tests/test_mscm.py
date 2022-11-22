@@ -44,7 +44,13 @@ def make_node_id():
     return f"c{randint(1, 45)}n{randint(1, 8)}"
 
 
-NODE_LIST = dedent(
+SHOW_FIRMWARE_1 = dedent(
+    """\
+Invalid command
+"""
+)
+
+NODE_LIST_1 = dedent(
     """\
 Slot ID    Proc Manufacturer      Architecture         Memory Power Status
 ---- ----- ---------------------- -------------------- ------ ----- ------
@@ -54,7 +60,7 @@ Slot ID    Proc Manufacturer      Architecture         Memory Power Status
 )
 
 
-NODE_INFO = dedent(
+NODE_INFO_1 = dedent(
     """\
   c1: #Cartridge %s
     Type: Compute
@@ -71,6 +77,53 @@ Slot ID NIC 1 (Switch A)  NIC 2 (Switch B)  NIC 3 (Switch A)  NIC 4 (Switch B)
 ---- -- ----------------  ----------------  ----------------  ----------------
   1  %s %s                %s                N/A               N/A
   ...
+"""
+)
+
+SHOW_FIRMWARE_2 = dedent(
+    """\
+show firmware
+Firmware Versions:
+        Chassis Manager:
+                HPE Moonshot Chassis Manager 2.0: 2.0-b176
+                HPE Moonshot Chassis Manager 2.0 Base Image: 1.3
+"""
+)
+
+NODE_LIST_2 = dedent(
+    """\
+Slot ID    Management Address
+---- ----- ------------------
+  %s    %s  192.168.4.125:736
+...
+"""
+)
+
+NODE_INFO_2 = dedent(
+    """\
+Blades:
+        b%s:
+                AssetTag:
+                iLO HTTPS: https://192.168.1.1:123
+                iLO SSH: 192.168.1.1:124
+                iLO MAC: AA:AA:AA:AA:AA:AA
+                Model: %s
+                UUID: 12345678-9012-3456-7890-123456789012
+                SerialNumber: CN11111AAA
+                Product ID: P17342-B21
+                PartNumber: P17344-001
+                Health: OK
+                iLO Redfish Communication: OK
+                iLO Health: OK
+                UID: Off
+                PowerState: Off
+                NIC 1 MAC (Switch A): bb:bb:bb:bb:bb:bb
+                NIC 2 MAC (Switch B): cc:cc:cc:cc:cc:cc
+                FirmwareVersions:
+                        iLO: iLO 5 v2.30
+                        System ROM: H09 v1.34 (10/16/2020)
+                        System Programmable Logic Device: 0x05
+                        TPM: 73.64
 """
 )
 
@@ -243,7 +296,9 @@ class TestMSCMPowerDriver(MAASTestCase):
 
 class TestMSCMProbeAndEnlist(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     scenarios = [
         (key, dict(product_name=key, arch=value))
@@ -252,10 +307,10 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
     scenarios += [("default", dict(product_name="fake", arch="amd64/generic"))]
 
     @inlineCallbacks
-    def test_probe_and_enlist(self):
+    def test_probe_and_enlist_mscm_1(self):
         node_id = make_node_id()
-        node_list = NODE_LIST % node_id
-        node_info = NODE_INFO % (node_id, self.product_name)
+        node_list = NODE_LIST_1 % node_id
+        node_info = NODE_INFO_1 % (node_id, self.product_name)
         node_macaddr = NODE_MACADDR % (
             node_id,
             factory.make_mac_address(),
@@ -271,8 +326,55 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         system_id = factory.make_name("system_id")
         mscm_driver = self.patch(mscm_module, "MSCMPowerDriver").return_value
         mscm_driver.run_mscm_command.side_effect = (
+            SHOW_FIRMWARE_1,
             node_list,
             None,
+            node_info,
+            node_macaddr,
+        )
+        create_node = self.patch(mscm_module, "create_node")
+        create_node.side_effect = asynchronous(lambda *args: system_id)
+        commission_node = self.patch(mscm_module, "commission_node")
+        params = {
+            "power_address": host,
+            "power_user": username,
+            "power_pass": password,
+            "node_id": node_id,
+        }
+
+        yield deferToThread(
+            probe_and_enlist_mscm, user, host, username, password, True, domain
+        )
+
+        self.expectThat(
+            create_node,
+            MockCalledOnceWith(macs, self.arch, "mscm", params, domain),
+        )
+        self.expectThat(commission_node, MockCalledOnceWith(system_id, user))
+
+    @inlineCallbacks
+    def test_probe_and_enlist_mscm_2(self):
+        node_id = make_node_id()
+        slot_id = re.match(r"c(\d+)n\d", node_id).group(1)
+        node_list = NODE_LIST_2 % (slot_id, node_id)
+        node_info = NODE_INFO_2 % (slot_id, self.product_name)
+        node_macaddr = NODE_MACADDR % (
+            node_id,
+            factory.make_mac_address(),
+            factory.make_mac_address(),
+        )
+        macs = re.findall(r":".join(["[0-9a-f]{2}"] * 6), node_macaddr)
+
+        user = factory.make_name("user")
+        host = factory.make_hostname("mscm")
+        username = factory.make_name("user")
+        password = factory.make_name("password")
+        domain = factory.make_name("domain")
+        system_id = factory.make_name("system_id")
+        mscm_driver = self.patch(mscm_module, "MSCMPowerDriver").return_value
+        mscm_driver.run_mscm_command.side_effect = (
+            SHOW_FIRMWARE_2,
+            node_list,
             node_info,
             node_macaddr,
         )
@@ -302,16 +404,43 @@ class TestMSCMProbeAndEnlistCrashesNoMatch(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
-    def test_probe_and_enlist_mscm_crashes_for_no_match(self):
+    def test_probe_and_enlist_mscm_1_crashes_for_no_match(self):
         node_id = make_node_id()
-        node_list = NODE_LIST % node_id
+        node_list = NODE_LIST_1 % node_id
         user = factory.make_name("user")
         host = factory.make_hostname("mscm")
         username = factory.make_name("user")
         password = factory.make_name("password")
         Driver = self.patch(mscm_module, "MSCMPowerDriver")
         mscm_driver = Driver.return_value
-        mscm_driver.run_mscm_command.side_effect = (node_list, None, "Error")
+        mscm_driver.run_mscm_command.side_effect = (
+            SHOW_FIRMWARE_1,
+            node_list,
+            None,
+            "Error",
+        )
+
+        with ExpectedException(PowerFatalError):
+            yield deferToThread(
+                probe_and_enlist_mscm, user, host, username, password
+            )
+
+    @inlineCallbacks
+    def test_probe_and_enlist_mscm_2_crashes_for_no_match(self):
+        node_id = make_node_id()
+        slot_id = re.match(r"c(\d+)n\d", node_id).group(1)
+        node_list = NODE_LIST_2 % (slot_id, node_id)
+        user = factory.make_name("user")
+        host = factory.make_hostname("mscm")
+        username = factory.make_name("user")
+        password = factory.make_name("password")
+        Driver = self.patch(mscm_module, "MSCMPowerDriver")
+        mscm_driver = Driver.return_value
+        mscm_driver.run_mscm_command.side_effect = (
+            SHOW_FIRMWARE_2,
+            node_list,
+            "Error",
+        )
 
         with ExpectedException(PowerFatalError):
             yield deferToThread(

@@ -106,6 +106,10 @@ To run tests at a lower level of granularity::
     $ ./bin/test.region src/maasserver/tests/test_api.py
     $ ./bin/test.region src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
 
+Tests within provisioningserver are run with `test.rack` not `test.region` e.g.::
+
+    $ ./bin/test.rack src/provisioningserver/drivers/power/tests/test_mscm.py
+
 The test runner is `nose`_, so you can pass in options like ``--nocapture``
 (short option: ``-s``). This option is essential when using ``pdb`` so that
 stdout is not adulterated.
