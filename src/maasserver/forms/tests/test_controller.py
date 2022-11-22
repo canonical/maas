@@ -39,7 +39,7 @@ class TestControllerForm(MAASServerTestCase):
 
     def test_sets_power_type(self):
         rack = factory.make_RackController()
-        power_type = factory.pick_power_type()
+        power_type = factory.pick_power_type(but_not=["lxd"])
         form = ControllerForm(
             data={
                 "power_type": power_type,

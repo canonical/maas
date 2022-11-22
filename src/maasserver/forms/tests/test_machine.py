@@ -539,7 +539,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertEqual(power_parameters, node.get_power_parameters())
 
     def test_AdminMachineForm_doesnt_change_power_type(self):
-        power_type = factory.pick_power_type()
+        power_type = factory.pick_power_type(but_not=["lxd"])
         node = factory.make_Node(power_type=power_type)
         hostname = factory.make_string()
         arch = make_usable_architecture(self)
@@ -557,7 +557,7 @@ class TestAdminMachineForm(MAASServerTestCase):
     def test_AdminMachineForm_changes_power_type(self):
         node = factory.make_Node(interface=True)
         hostname = factory.make_string()
-        power_type = factory.pick_power_type()
+        power_type = factory.pick_power_type(but_not=["lxd"])
         arch = make_usable_architecture(self)
         form = AdminMachineForm(
             data={
