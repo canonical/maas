@@ -170,6 +170,19 @@ class TestHelpers(MAASTestCase):
         self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS", "0"))
         self.assertFalse(config.get_dns_default_controls())
 
+    def test_get_zone_file_config_dir_defaults_to_var_lib_bind_maas(self):
+        self.useFixture(EnvironmentVariable("MAAS_ZONE_FILE_CONFIG_DIR"))
+        self.assertEqual(
+            str(config.get_zone_file_config_dir()), "/var/lib/bind/maas"
+        )
+
+    def test_get_zone_file_config_dir_check_environ_first(self):
+        directory = self.make_dir()
+        self.useFixture(
+            EnvironmentVariable("MAAS_ZONE_FILE_CONFIG_DIR", directory)
+        )
+        self.assertEqual(str(config.get_zone_file_config_dir()), directory)
+
 
 class TestRNDCUtilities(MAASTestCase):
     def test_generate_rndc_returns_configurations(self):
@@ -306,6 +319,23 @@ class TestRNDCUtilities(MAASTestCase):
         clean_old_zone_files()
         for zonefile in zonefiles:
             self.assertRaises(FileNotFoundError, os.stat, zonefile)
+
+    def test_clean_old_zone_files_only_deletes_files(self):
+        zone_file_dir = patch_zone_file_config_path(self)
+
+        zonefiles = [
+            os.path.join(zone_file_dir, f"zone.{i}")
+            for i, _ in enumerate(range(2))
+        ]
+        for zonefile in zonefiles:
+            with open(zonefile, "w+"):
+                pass
+
+        child_dir = os.path.join(zone_file_dir, "test_dir")
+        os.mkdir(child_dir)
+
+        clean_old_zone_files()
+        self.assertIsNotNone(os.stat(child_dir))
 
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = patch_dns_config_path(self)

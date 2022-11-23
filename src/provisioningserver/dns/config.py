@@ -109,6 +109,9 @@ def get_zone_file_config_dir():
     so that bind can write to the location as well
     """
     setting = os.getenv("MAAS_ZONE_FILE_CONFIG_DIR", MAAS_ZONE_FILE_DIR)
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        setting = setting.decode(fsenc)
     return Path(setting)
 
 
@@ -238,7 +241,8 @@ def set_up_nsupdate_key():
 
 def clean_old_zone_files():
     for path in get_zone_file_config_dir().glob("zone.*"):
-        path.unlink()
+        if path.is_file():
+            path.unlink()
 
 
 def set_up_zone_file_dir():
