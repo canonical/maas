@@ -112,7 +112,7 @@ def run_perf_tests(env):
         perf_tester = PerfTester(env.get("GIT_BRANCH"), env.get("GIT_HASH"))
 
         pytest_main(
-            args=["src/maasperf"] + cmd_args,
+            args=cmd_args,
         )
     finally:
         perf_test_finish(env.get("OUTPUT_FILE"))
