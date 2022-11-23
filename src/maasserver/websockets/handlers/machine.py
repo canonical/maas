@@ -94,6 +94,7 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
+from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
@@ -251,6 +252,7 @@ class MachineHandler(NodeHandler):
             "filter_groups",
             "filter_options",
             "count",
+            "suppress_failed_script_results",
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
@@ -312,11 +314,11 @@ class MachineHandler(NodeHandler):
         super().__init__(*args, **kwargs)
         self._deployed = False
 
-    def get_queryset(self, for_list=False):
+    def get_queryset(self, for_list=False, perm=NodePermission.view):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
             self.user,
-            NodePermission.view,
+            perm,
             from_nodes=super().get_queryset(for_list=for_list),
         )
 
@@ -1219,3 +1221,21 @@ class MachineHandler(NodeHandler):
         if "filter" in params:
             qs = self._filter(qs, "list", params["filter"])
         return {"count": qs.count()}
+
+    def suppress_failed_script_results(self, params):
+        qs = self.get_queryset(for_list=True)
+        system_ids = self._filter(
+            qs, "list", params.get("filter")
+        ).values_list("system_id", flat=True)
+        script_results = self._get_latest_failed_testing_script_results(
+            system_ids
+        )
+        script_result_ids = [
+            script_result.id for script_result in script_results
+        ]
+        ScriptResult.objects.filter(
+            id__in=script_result_ids,
+        ).update(suppressed=True)
+        return {
+            "success_count": len(script_result_ids),
+        }

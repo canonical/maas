@@ -607,6 +607,7 @@ class TestMachineHandler(MAASServerTestCase):
             "refetch",
             "update_blockdevice_filesystem",
             "update_partition_filesystem",
+            "set_script_result_suppressed_value",
         ]
         [
             self.assertIn(attr, MachineHandler.Meta.allowed_methods)
@@ -5634,6 +5635,34 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         blockdevice = reload_object(blockdevice)
         self.assertEqual(blockdevice.tags, [])
 
+
+class TestMachineHandlerSuppressScriptResult(MAASServerTestCase):
+    def create_script_results(self, nodes, count=5):
+        script_results = []
+        for node in nodes:
+            script = factory.make_Script()
+            for _ in range(count):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node
+                )
+                factory.make_ScriptResult(script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node
+            )
+            script_result = factory.make_ScriptResult(
+                script=script,
+                script_set=script_set,
+                status=random.choice(
+                    list(SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}))
+                ),
+            )
+            if script.script_type == SCRIPT_TYPE.TESTING and (
+                script_result.status in SCRIPT_STATUS_FAILED
+            ):
+                script_results.append(script_result)
+        return script_results
+
     def test_set_script_result_suppressed(self):
         owner = factory.make_admin()
         node = factory.make_Node(owner=owner)
@@ -5685,6 +5714,16 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             handler.set_script_result_suppressed,
             params,
         )
+
+    def test_suppress_failed_script_results(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        nodes = [factory.make_Node(owner=owner) for _ in range(10)]
+        failed_results = self.create_script_results(nodes)
+        result = handler.suppress_failed_script_results(
+            {"filter": {"owner": owner.username}}
+        )
+        self.assertEqual(len(failed_results), result["success_count"])
 
     def test_set_script_result_unsuppressed(self):
         owner = factory.make_admin()
@@ -5746,43 +5785,27 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         node_result_handler = NodeResultHandler(owner, {}, None)
         nodes = [factory.make_Node(owner=owner) for _ in range(10)]
 
-        script_results = []
-        for node in nodes:
-            script = factory.make_Script()
-            for run in range(10):
-                script_set = factory.make_ScriptSet(
-                    result_type=script.script_type, node=node
+        script_results = self.create_script_results(nodes)
+
+        requests = [
+            {"system_ids": [node.system_id for node in nodes]},
+            {"filter": {"owner": owner.username}},
+        ]
+
+        for request in requests:
+            actual = handler.get_latest_failed_testing_script_results(request)
+            expected = {}
+            for script_result in script_results:
+                if script_result.script_set.node.system_id not in expected:
+                    expected[script_result.script_set.node.system_id] = []
+                mapping = node_result_handler.dehydrate(
+                    script_result, {}, for_list=True
                 )
-                factory.make_ScriptResult(script=script, script_set=script_set)
-
-            script_set = factory.make_ScriptSet(
-                result_type=script.script_type, node=node
-            )
-            script_result = factory.make_ScriptResult(
-                script=script,
-                script_set=script_set,
-                status=random.choice(
-                    list(SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}))
-                ),
-            )
-            if script.script_type == SCRIPT_TYPE.TESTING and (
-                script_result.status in SCRIPT_STATUS_FAILED
-            ):
-                script_results.append(script_result)
-
-        actual = handler.get_latest_failed_testing_script_results(
-            {"system_ids": [node.system_id for node in nodes]}
-        )
-        expected = {}
-        for script_result in script_results:
-            if script_result.script_set.node.system_id not in expected:
-                expected[script_result.script_set.node.system_id] = []
-            mapping = node_result_handler.dehydrate(
-                script_result, {}, for_list=True
-            )
-            mapping["id"] = script_result.id
-            expected[script_result.script_set.node.system_id].append(mapping)
-        self.assertEqual(actual, expected)
+                mapping["id"] = script_result.id
+                expected[script_result.script_set.node.system_id].append(
+                    mapping
+                )
+            self.assertEqual(actual, expected)
 
     def test_get_latest_failed_testing_script_results_num_queries(self):
         # Prevent RBAC from making a query.

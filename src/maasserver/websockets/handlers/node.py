@@ -1149,32 +1149,25 @@ class NodeHandler(TimestampedModelHandler):
 
     def set_script_result_suppressed(self, params):
         """Set suppressed for the ScriptResult ids."""
-        node = self.get_object(params)
-        if not self.user.has_perm(NodePermission.admin, node):
-            raise HandlerPermissionError()
+        node = self.get_object(params, NodePermission.admin)
         script_result_ids = params.get("script_result_ids")
-        ScriptResult.objects.filter(id__in=script_result_ids).update(
-            suppressed=True
-        )
+        ScriptResult.objects.filter(
+            script_set__node__system_id=node.system_id,
+            id__in=script_result_ids,
+        ).update(suppressed=True)
 
     def set_script_result_unsuppressed(self, params):
         """Set unsuppressed for the ScriptResult ids."""
-        node = self.get_object(params)
-        if not self.user.has_perm(NodePermission.admin, node):
-            raise HandlerPermissionError()
+        node = self.get_object(params, NodePermission.admin)
         script_result_ids = params.get("script_result_ids")
-        ScriptResult.objects.filter(id__in=script_result_ids).update(
-            suppressed=False
-        )
+        ScriptResult.objects.filter(
+            script_set__node__system_id=node.system_id,
+            id__in=script_result_ids,
+        ).update(suppressed=False)
 
-    def get_latest_failed_testing_script_results(self, params):
-        """Return a dictionary with Nodes system_ids mapped to a list of
-        the latest failed ScriptResults."""
-        node_result_handler = NodeResultHandler(self.user, {}, None)
-        system_ids = params.get("system_ids")
-
-        # Create the node to script result mappings.
-        script_result_mappings = {}
+    def _get_latest_failed_testing_script_results(
+        self, system_ids: Iterable[str]
+    ) -> Iterable[ScriptResult]:
         script_results = (
             ScriptResult.objects.filter(
                 script_set__node__system_id__in=system_ids,
@@ -1199,26 +1192,34 @@ class NodeHandler(TimestampedModelHandler):
                 "script_set__node_id", "script_name", "physical_blockdevice_id"
             )
         )
+        node_script_results = [
+            s for s in script_results if s.status in SCRIPT_STATUS_FAILED
+        ]
+        return node_script_results
 
-        for system_id in system_ids:
-            # Need to evaluate QuerySet first to get latest script results,
-            # then filter by results that have failed
-            node_script_results = [
-                s
-                for s in script_results
-                if s.status in SCRIPT_STATUS_FAILED
-                and (s.script_set.node.system_id == system_id)
-            ]
+    def get_latest_failed_testing_script_results(self, params):
+        """Return a dictionary with Nodes system_ids mapped to a list of
+        the latest failed ScriptResults."""
+        node_result_handler = NodeResultHandler(self.user, {}, None)
+        if "filter" in params:
+            qs = self.get_queryset(for_list=True)
+            system_ids = self._filter(
+                qs, "list", params.get("filter")
+            ).values_list("system_id", flat=True)
+        else:
+            system_ids = params.get("system_ids")
 
-            for script_result in node_script_results:
-                if system_id not in script_result_mappings:
-                    script_result_mappings[system_id] = []
-
-                mapping = node_result_handler.dehydrate(
-                    script_result, {}, for_list=True
-                )
-                mapping["id"] = script_result.id
-                script_result_mappings[system_id].append(mapping)
+        script_results = self._get_latest_failed_testing_script_results(
+            system_ids
+        )
+        script_result_mappings = {}
+        for script_result in script_results:
+            system_id = script_result.script_set.node.system_id
+            mapping = node_result_handler.dehydrate(
+                script_result, {}, for_list=True
+            )
+            mapping["id"] = script_result.id
+            script_result_mappings.setdefault(system_id, []).append(mapping)
         return script_result_mappings
 
     def _update_tags(self, node, tag_ids):
