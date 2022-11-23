@@ -79,7 +79,7 @@ def discover_and_sync_vmhost(vmhost, user):
     try:
         discovered = discover_pod(
             vmhost.power_type,
-            vmhost.power_parameters,
+            vmhost.get_power_parameters(),
             pod_id=vmhost.id,
             name=vmhost.name,
         )
@@ -113,9 +113,12 @@ def discover_and_sync_vmhost(vmhost, user):
 async def discover_and_sync_vmhost_async(vmhost, user):
     """Sync resources and information for the VM host from discovery."""
     try:
+        vmhost_power_parameters = await deferToDatabase(
+            vmhost.get_power_parameters
+        )
         discovered = await discover_pod(
             vmhost.power_type,
-            vmhost.power_parameters,
+            vmhost_power_parameters,
             pod_id=vmhost.id,
             name=vmhost.name,
         )
@@ -180,7 +183,7 @@ def _clean_power_address(vmhost_address):
 
 
 def _generate_cluster_power_params(vmhost, vmhost_address, first_host):
-    new_params = first_host.power_parameters.copy()
+    new_params = first_host.get_power_parameters().copy()
     new_params["power_address"] = _clean_power_address(vmhost_address)
     if isinstance(vmhost, DiscoveredPod):
         new_params["instance_name"] = vmhost.name
@@ -222,7 +225,7 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
         zone=vmhost.zone,
     )
     vmhost_pwr_addr = _clean_power_address(
-        vmhost.power_parameters["power_address"]
+        vmhost.get_power_parameters()["power_address"]
     )
 
     for i, discovered_vmhost in enumerate(discovered_cluster.pods):
@@ -265,7 +268,7 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
         )
         new_hosts = []
         vmhost_pwr_addr = _clean_power_address(
-            vmhost.power_parameters["power_address"]
+            vmhost.get_power_parameters()["power_address"]
         )
         for i, discovered_vmhost in enumerate(discovered_cluster.pods):
             power_parameters = _generate_cluster_power_params(
