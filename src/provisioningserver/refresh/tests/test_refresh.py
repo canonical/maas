@@ -144,21 +144,19 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                files={
-                    script_name: b"test script\n",
-                    "%s.out" % script_name: b"test script\n",
-                    "%s.err" % script_name: b"",
-                    "%s.yaml" % script_name: b"{status: skipped}\n",
-                },
-                exit_status=0,
-                error="Finished %s [1/1]: 0" % script_name,
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "WORKING",
+            files={
+                script_name: b"test script\n",
+                f"{script_name}.out": b"test script\n",
+                f"{script_name}.err": b"",
+                f"{script_name}.yaml": b"{status: skipped}\n",
+            },
+            exit_status=0,
+            error=f"Finished {script_name} [1/1]: 0",
+            retry=False,
         )
 
     def test_refresh_sets_env_vars(self):
@@ -206,19 +204,17 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                files={
-                    script_name: b"[Errno 8] Exec format error",
-                    "%s.err" % script_name: b"[Errno 8] Exec format error",
-                },
-                exit_status=8,
-                error="Failed to execute %s [1/1]: 8" % script_name,
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "WORKING",
+            files={
+                script_name: b"[Errno 8] Exec format error",
+                f"{script_name}.err": b"[Errno 8] Exec format error",
+            },
+            exit_status=8,
+            error=f"Failed to execute {script_name} [1/1]: 8",
+            retry=False,
         )
 
     def test_refresh_signals_failure_on_unexecutable_script_no_errno(self):
@@ -238,19 +234,17 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                files={
-                    script_name: b"Unable to execute script",
-                    "%s.err" % script_name: b"Unable to execute script",
-                },
-                exit_status=2,
-                error="Failed to execute %s [1/1]: 2" % script_name,
-            ),
+        signal.mock_any_call(
+            ANY,
+            ANY,
+            "WORKING",
+            files={
+                script_name: b"Unable to execute script",
+                f"{script_name}.err": b"Unable to execute script",
+            },
+            exit_status=2,
+            error=f"Failed to execute {script_name} [1/1]: 2",
+            retry=False,
         )
 
     def test_refresh_signals_failure_on_unexecutable_script_baderrno(self):
@@ -270,19 +264,17 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                files={
-                    script_name: b"[Errno 0] Exec format error",
-                    "%s.err" % script_name: b"[Errno 0] Exec format error",
-                },
-                exit_status=2,
-                error="Failed to execute %s [1/1]: 2" % script_name,
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "WORKING",
+            files={
+                script_name: b"[Errno 0] Exec format error",
+                f"{script_name}.err": b"[Errno 0] Exec format error",
+            },
+            exit_status=2,
+            error=f"Failed to execute {script_name} [1/1]: 2",
+            retry=False,
         )
 
     def test_refresh_signals_failure_on_timeout(self):
@@ -313,19 +305,17 @@ class TestRefresh(MAASTestCase):
                 system_id, consumer_key, token_key, token_secret, url
             )
 
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "TIMEDOUT",
-                files={
-                    script_name: b"",
-                    "%s.out" % script_name: b"",
-                    "%s.err" % script_name: b"",
-                },
-                error="Timeout(60) expired on %s [1/1]" % script_name,
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "TIMEDOUT",
+            files={
+                script_name: b"",
+                f"{script_name}.out": b"",
+                f"{script_name}.err": b"",
+            },
+            error=f"Timeout(60) expired on {script_name} [1/1]",
+            retry=False,
         )
 
     def test_refresh_signals_failure(self):
@@ -342,14 +332,12 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "FAILED",
-                "Failed refreshing %s" % system_id,
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "FAILED",
+            f"Failed refreshing {system_id}",
+            retry=False,
         )
 
     def test_refresh_executes_lxd_binary_in_snap(self):
@@ -370,14 +358,12 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                f"Starting {COMMISSIONING_OUTPUT_NAME} [1/1]",
-            ),
+        signal.assert_any_call(
+            ANY,
+            ANY,
+            "WORKING",
+            f"Starting {COMMISSIONING_OUTPUT_NAME} [1/1]",
+            retry=False,
         )
 
     def test_refresh_clears_up_temporary_directory(self):

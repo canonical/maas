@@ -69,12 +69,17 @@ def refresh(
             creds,
             tmpdir=tmpdir,
             post_process_hook=post_process_hook,
+            retry=False,
         )
 
     if failed_scripts:
-        signal_wrapper(url, creds, "FAILED", f"Failed refreshing {system_id}")
+        signal_wrapper(
+            url, creds, "FAILED", f"Failed refreshing {system_id}", retry=False
+        )
     else:
-        signal_wrapper(url, creds, "OK", f"Finished refreshing {system_id}")
+        signal_wrapper(
+            url, creds, "OK", f"Finished refreshing {system_id}", retry=False
+        )
 
 
 SCRIPTS_BASE_PATH = os.path.dirname(__file__)
@@ -82,7 +87,9 @@ SCRIPTS_BASE_PATH = os.path.dirname(__file__)
 
 # XXX: This method should download the scripts from the region, instead
 # of relying on the scripts being available locally.
-def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
+def runscripts(
+    scripts, url, creds, tmpdir, post_process_hook=None, retry=True
+):
     in_snap = running_in_snap()
 
     total_scripts = len(scripts)
@@ -98,6 +105,7 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
             creds,
             "WORKING",
             f"Starting {script_name} [{current_script}/{total_scripts}]",
+            retry=retry,
         )
 
         script_path = os.path.join(SCRIPTS_BASE_PATH, script_name)
@@ -152,8 +160,8 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
                 "WORKING",
                 files=files,
                 exit_status=exit_status,
-                error="Failed to execute %s [%d/%d]: %d"
-                % (script_name, current_script, total_scripts, exit_status),
+                error=f"Failed to execute {script_name} [{current_script}/{total_scripts}]: {exit_status}",
+                retry=retry,
             )
             failed_scripts.append(script_name)
         except TimeoutExpired:
@@ -167,8 +175,8 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
                 creds,
                 "TIMEDOUT",
                 files=files,
-                error="Timeout(%s) expired on %s [%d/%d]"
-                % (str(timeout), script_name, current_script, total_scripts),
+                error=f"Timeout({timeout}) expired on {script_name} [{current_script}/{total_scripts}]",
+                retry=retry,
             )
             failed_scripts.append(script_name)
         else:
@@ -189,13 +197,8 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
                 "WORKING",
                 files=files,
                 exit_status=proc.returncode,
-                error="Finished %s [%d/%d]: %d"
-                % (
-                    script_name,
-                    current_script,
-                    total_scripts,
-                    proc.returncode,
-                ),
+                error=f"Finished {script_name} [{current_script}/{total_scripts}]: {proc.returncode}",
+                retry=retry,
             )
             if proc.returncode != 0:
                 failed_scripts.append(script_name)

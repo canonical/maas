@@ -146,7 +146,14 @@ class FakeRefresher:
         proc.returncode = 0
 
     def fake_signal(
-        self, url, creds, status, error=None, files=None, exit_status=None
+        self,
+        url,
+        creds,
+        status,
+        error=None,
+        files=None,
+        exit_status=None,
+        retry=True,
     ):
         self.testcase.assertEqual(
             self.credentials["token_key"], creds.token_key

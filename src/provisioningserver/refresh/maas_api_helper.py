@@ -325,6 +325,7 @@ def signal(
     script_version_id=None,
     power_type=None,
     power_params=None,
+    retry=True,
 ):
     """Send a node signal to a given maas_url."""
     params = {b"op": b"signal", b"status": status.encode("utf-8")}
@@ -382,7 +383,13 @@ def signal(
     data, headers = encode_multipart_data(params, files=files)
 
     try:
-        ret = geturl(url, credentials=credentials, headers=headers, data=data)
+        ret = geturl(
+            url,
+            credentials=credentials,
+            headers=headers,
+            data=data,
+            retry=retry,
+        )
         if ret.status != 200:
             raise SignalException(
                 "Unexpected status(%d) sending region commissioning data: %s"
