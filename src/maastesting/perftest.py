@@ -8,12 +8,10 @@ from contextlib import contextmanager, ExitStack
 from cProfile import Profile
 import json
 import os
-import random
 import sys
 import time
 
 from pytest import fixture
-from pytest import main as pytest_main
 
 from maastesting.fixtures import MAASDataFixture, MAASRootFixture
 
@@ -85,15 +83,6 @@ class PerfTester:
 
     def finish_build(self, output):
         json.dump(self.results, output)
-
-
-def run_perf_tests(env):
-    rand_seed = os.environ.get("MAAS_RAND_SEED")
-    random.seed(rand_seed)
-
-    cmd_args = sys.argv[1:]
-
-    pytest_main(args=cmd_args)
 
 
 @contextmanager

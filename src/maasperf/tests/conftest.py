@@ -7,14 +7,17 @@ from maasserver.models.user import get_auth_tokens
 from maasserver.testing.factory import factory as maasserver_factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maastesting.perftest import perf
+from maastesting.pytest import configure_seeds, random_seed
 
 __all__ = [
     "admin_api_client",
     "api_client",
+    "configure_seeds",
     "django_db_setup",
     "factory",
     "maas_user",
     "perf",
+    "random_seed",
 ]
 
 

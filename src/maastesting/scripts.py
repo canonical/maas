@@ -9,7 +9,6 @@ from maasserver import execute_from_command_line
 from maasserver.utils import orm, threads
 from maastesting.noseplug import main as test_main
 from maastesting.parallel import main as test_parallel_main
-from maastesting.perftest import run_perf_tests
 from provisioningserver import logger
 
 
@@ -137,12 +136,3 @@ def run_parallel():
     init_asyncio_reactor()
     update_environ()
     test_parallel_main()
-
-
-def run_perf():
-    """Entry point for historical performance test runner."""
-
-    update_environ()
-    init_asyncio_reactor()
-
-    run_perf_tests(os.environ)
