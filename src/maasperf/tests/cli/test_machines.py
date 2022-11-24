@@ -4,14 +4,14 @@
 from contextlib import contextmanager
 
 from httplib2 import Response
+import pytest
 
 from maascli import api
 from maascli.config import ProfileConfig
 from maascli.parser import get_deepest_subparser, prepare_parser
-from maastesting.perftest import perf_test
 
 
-@perf_test()
+@pytest.mark.django_db
 def test_perf_list_machines_CLI(
     perf, cli_profile, monkeypatch, cli_machines_api_response
 ):

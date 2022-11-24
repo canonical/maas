@@ -1,12 +1,13 @@
 # Copyright 2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import pytest
+
 from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
-from maastesting.perftest import perf_test
 
 
-@perf_test(db_only=True)
+@pytest.mark.django_db
 def test_perf_list_machines_Websocket_endpoint(perf, admin):
     # This should test the websocket calls that are used to load
     # the machine listing page on the initial page load.
@@ -26,7 +27,7 @@ def test_perf_list_machines_Websocket_endpoint(perf, admin):
         ws_handler.list(params)
 
 
-@perf_test(db_only=True)
+@pytest.mark.django_db
 def test_perf_list_machines_Websocket_endpoint_all(perf, admin):
     # How long would it take to list all the machines using the
     # websocket without any pagination.

@@ -6,7 +6,6 @@
 
 from contextlib import contextmanager, ExitStack
 from cProfile import Profile
-from functools import wraps
 import json
 import os
 import random
@@ -15,7 +14,6 @@ import time
 
 from pytest import fixture
 from pytest import main as pytest_main
-from pytest import mark, skip
 
 from maastesting.fixtures import MAASDataFixture, MAASRootFixture
 
@@ -87,36 +85,6 @@ class PerfTester:
 
     def finish_build(self, output):
         json.dump(self.results, output)
-
-
-def perf_test(commit_transaction=False, db_only=False):
-    def inner(fn):
-        @wraps(fn)
-        @mark.django_db
-        def wrapper(*args, **kwargs):
-            from django.db import transaction
-
-            django_loaded = (
-                os.environ.get("DJANGO_SETTINGS_MODULE") is not None
-            )
-
-            if db_only and not django_loaded:
-                skip("skipping database test")
-
-            save_point = None
-            if django_loaded:
-                save_point = transaction.savepoint()
-
-            fn(*args, **kwargs)
-
-            if save_point and commit_transaction:
-                transaction.savepoint_commit(save_point)
-            elif save_point:
-                transaction.savepoint_rollback(save_point)
-
-        return wrapper
-
-    return inner
 
 
 def run_perf_tests(env):
