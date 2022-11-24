@@ -6,6 +6,16 @@ from pytest import fixture
 from maasserver.models.user import get_auth_tokens
 from maasserver.testing.factory import factory as maasserver_factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
+from maastesting.perftest import perf
+
+__all__ = [
+    "admin_api_client",
+    "api_client",
+    "django_db_setup",
+    "factory",
+    "maas_user",
+    "perf",
+]
 
 
 # override pytest-django's db setup

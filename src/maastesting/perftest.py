@@ -4,14 +4,14 @@
 """Performance testing related classes and functions for MAAS and its applications"""
 
 
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from cProfile import Profile
-from datetime import datetime
 from functools import wraps
 import json
 import os
 import random
 import sys
+import time
 
 from pytest import fixture
 from pytest import main as pytest_main
@@ -36,7 +36,37 @@ def maas_data():
     return None
 
 
-perf_tester = None
+@fixture(scope="session")
+def perf():
+    perf_tester = PerfTester(
+        os.environ.get("GIT_BRANCH"), os.environ.get("GIT_HASH")
+    )
+    yield perf_tester
+    output = os.environ.get("OUTPUT_FILE")
+    if output:
+        with open(output, "w") as f:
+            perf_tester.finish_build(f)
+    else:
+        perf_tester.finish_build(sys.stdout)
+
+
+class Timing:
+    duration = None
+
+    def __init__(self):
+        self.start = time.monotonic()
+
+    def stop(self):
+        assert self.duration is None, "Can't call stop() twice."
+        end = time.monotonic()
+        self.duration = end - self.start
+
+
+@contextmanager
+def measure_time():
+    timing = Timing()
+    yield timing
+    timing.stop()
 
 
 class PerfTester:
@@ -45,18 +75,15 @@ class PerfTester:
     def __init__(self, git_branch, git_hash):
         self.results = {"branch": git_branch, "commit": git_hash, "tests": {}}
 
-    def _record(self, name, start, end):
-        delta = (end - start).total_seconds()
-        self.results["tests"][name] = {"duration": delta}
-
     @contextmanager
     def record(self, name):
-        start = datetime.utcnow()
-        try:
+        with ExitStack() as stack:
+            profiling_tag = os.environ.get("MAAS_PROFILING")
+            if profiling_tag:
+                stack.enter_context(profile(name, profiling_tag))
+            timing = stack.enter_context(measure_time())
             yield
-        finally:
-            end = datetime.utcnow()
-            self._record(name, start, end)
+        self.results["tests"][name] = {"duration": timing.duration}
 
     def finish_build(self, output):
         json.dump(self.results, output)
@@ -80,8 +107,7 @@ def perf_test(commit_transaction=False, db_only=False):
             if django_loaded:
                 save_point = transaction.savepoint()
 
-            with perf_tester.record(fn.__name__):
-                fn(*args, **kwargs)
+            fn(*args, **kwargs)
 
             if save_point and commit_transaction:
                 transaction.savepoint_commit(save_point)
@@ -93,33 +119,17 @@ def perf_test(commit_transaction=False, db_only=False):
     return inner
 
 
-def perf_test_finish(output):
-    if output:
-        with open(output, "w") as f:
-            perf_tester.finish_build(f)
-    else:
-        perf_tester.finish_build(sys.stdout)
-
-
 def run_perf_tests(env):
-    global perf_tester
-
     rand_seed = os.environ.get("MAAS_RAND_SEED")
     random.seed(rand_seed)
 
-    try:
-        cmd_args = sys.argv[1:]
-        perf_tester = PerfTester(env.get("GIT_BRANCH"), env.get("GIT_HASH"))
+    cmd_args = sys.argv[1:]
 
-        pytest_main(
-            args=cmd_args,
-        )
-    finally:
-        perf_test_finish(env.get("OUTPUT_FILE"))
+    pytest_main(args=cmd_args)
 
 
 @contextmanager
-def profile(testname: str):
+def profile(testname: str, profiling_tag: str):
     """Produces profiling info for tests
 
     This functions uses cProfile module to provide deterministic
@@ -139,11 +149,8 @@ def profile(testname: str):
         with perftest.profile("my_test_case"):
             <<block being profiled>>
     """
-    if profiling_tag := os.environ.get("MAAS_PROFILING"):
-        with Profile() as profiler:
-            yield
-        filename = f"{testname}.{profiling_tag}.profile"
-        profiler.dump_stats(filename)
-        print(f"Dumped stats to {filename}")
-    else:
+    with Profile() as profiler:
         yield
+    filename = f"{testname}.{profiling_tag}.profile"
+    profiler.dump_stats(filename)
+    print(f"Dumped stats to {filename}")

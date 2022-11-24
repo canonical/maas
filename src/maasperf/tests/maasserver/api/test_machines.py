@@ -7,7 +7,7 @@ from piston3.handler import typemapper
 
 from maasserver.api.machines import MachinesHandler
 from maastesting.http import make_HttpRequest
-from maastesting.perftest import perf_test, profile
+from maastesting.perftest import perf_test
 
 
 class DummyEmitter(Emitter):
@@ -16,18 +16,20 @@ class DummyEmitter(Emitter):
 
 
 @perf_test()
-def test_perf_list_machines_MachineHandler_api_endpoint(admin_api_client):
-    with profile("test_perf_list_machines_MachineHandler_api_endpoint"):
+def test_perf_list_machines_MachineHandler_api_endpoint(
+    perf, admin_api_client
+):
+    with perf.record("test_perf_list_machines_MachineHandler_api_endpoint"):
         admin_api_client.get(reverse("machines_handler"))
 
 
 @perf_test(db_only=True)
-def test_perf_list_machines_MachinesHander_direct_call(admin):
+def test_perf_list_machines_MachinesHander_direct_call(perf, admin):
     handler = MachinesHandler()
     request = make_HttpRequest()
     request.user = admin
 
-    with profile("test_perf_list_machines_MachinesHander_direct_call"):
+    with perf.record("test_perf_list_machines_MachinesHander_direct_call"):
         emitter = DummyEmitter(
             handler.read(request),
             typemapper,
@@ -39,10 +41,10 @@ def test_perf_list_machines_MachinesHander_direct_call(admin):
 
 
 @perf_test(db_only=True)
-def test_perf_list_machines_MachinesHander_only_objects(admin):
+def test_perf_list_machines_MachinesHander_only_objects(perf, admin):
     handler = MachinesHandler()
     request = make_HttpRequest()
     request.user = admin
 
-    with profile("test_perf_list_machines_MachinesHander_only_objects"):
+    with perf.record("test_perf_list_machines_MachinesHander_only_objects"):
         list(handler.read(request))

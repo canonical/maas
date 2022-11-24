@@ -6,13 +6,14 @@ from maastesting.perftest import perf_test
 
 
 @perf_test(commit_transaction=True, db_only=True)
-def test_perf_create_machines(factory):
+def test_perf_create_machines(perf, factory):
     # TODO use create machines script
-    for _ in range(30):
-        factory.make_Machine()
+    with perf.record("test_perf_create_machines"):
+        for _ in range(30):
+            factory.make_Machine()
 
 
 @perf_test(db_only=True)
-def test_perf_list_machines():
-
-    list(Machine.objects.all())
+def test_perf_list_machines(perf):
+    with perf.record("test_perf_list_machines"):
+        list(Machine.objects.all())
