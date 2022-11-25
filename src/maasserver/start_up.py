@@ -120,6 +120,11 @@ def start_up(master=False):
     """
     while True:
         try:
+            # Since start_up now can be called multiple times in a process lifetime,
+            # vault client caches should be cleared in order to re-read the configuration.
+            # This prevents fetching shared secret from DB when Vault is already enabled.
+            clear_vault_client_caches()
+
             # Ensure the shared secret is configured
             secret = yield security.get_shared_secret()
             MAAS_SECRET.set(secret)
@@ -195,9 +200,6 @@ def inner_start_up(master=False):
     # Only perform the following if the master process for the
     # region controller.
     if master:
-        # Since start_up now can be called multiple times in a process lifetime,
-        # vault client caches should be cleared in order to re-read the configuration.
-        clear_vault_client_caches()
         # Migrate DB credentials to Vault and set the flag if Vault client is configured
         client = get_region_vault_client()
         if client is not None:

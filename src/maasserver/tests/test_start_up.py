@@ -7,13 +7,14 @@ from unittest.mock import call, MagicMock
 
 from testtools.matchers import HasLength
 
-from maasserver import deprecations, eventloop, locks, start_up
+from maasserver import deprecations, eventloop, locks, start_up, vault
 from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
+from maasserver.secrets import SecretManager
 from maasserver.start_up import migrate_db_credentials_if_necessary
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.eventloop import RegionEventLoopFixture
@@ -22,6 +23,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.testing.vault import FakeVaultClient
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting import get_testing_timeout
@@ -32,6 +34,7 @@ from maastesting.matchers import (
 )
 from provisioningserver.config import ConfigurationFile
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.security import to_hex
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.env import (
@@ -95,6 +98,33 @@ class TestStartUp(MAASTransactionServerTestCase):
         )
         # It also slept once, for 3 seconds, between those attempts.
         self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
+
+    def test_start_up_fetches_secret_from_vault_after_migration(self):
+        vault.clear_vault_client_caches()
+        # Apparently, MAAS_SECRET state is shared between the tests
+        old_secret = MAAS_SECRET.get()
+        # Prepare fake vault
+        expected_shared_secret = b"EXPECTED"
+        client = FakeVaultClient()
+        self.patch(vault, "_get_region_vault_client").return_value = client
+        SecretManager(client).set_simple_secret(
+            "rpc-shared", to_hex(expected_shared_secret)
+        )
+        # Cache vault being disabled
+        Config.objects.set_config("vault_enabled", False)
+        self.assertIsNone(vault.get_region_vault_client_if_enabled())
+        # Enable vault as if migration was finished before the call
+        Config.objects.set_config("vault_enabled", True)
+        # No need to do actual startup
+        self.patch(start_up, "inner_start_up")
+        self.patch(start_up, "pause")
+
+        with post_commit_hooks:
+            start_up.start_up()
+
+        self.assertEqual(expected_shared_secret, MAAS_SECRET.get())
+        MAAS_SECRET.set(old_secret)
+        vault.clear_vault_client_caches()
 
 
 class TestInnerStartUp(MAASServerTestCase):
@@ -246,12 +276,6 @@ class TestInnerStartUp(MAASServerTestCase):
         region = RegionController.objects.first()
         self.assertEqual(region.version, "1:3.1.0-1234-g.deadbeef")
         self.assertEqual(region.info.install_type, "deb")
-
-    def test_clears_vault_cache(self):
-        clear_caches_mock = self.patch(start_up, "clear_vault_client_caches")
-        with post_commit_hooks:
-            start_up.inner_start_up(master=True)
-        clear_caches_mock.assert_called_once()
 
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None
