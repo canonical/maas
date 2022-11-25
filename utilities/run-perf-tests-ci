@@ -15,7 +15,7 @@ MAAS_RAND_SEED="${MAAS_RAND_SEED:-$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')
 
 OUTPUT_FILE="${OUTPUT_FILE:-maas-perf-results.json}"
 
-export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH OUTPUT_FILE
+export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH
 
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
@@ -28,4 +28,5 @@ exec bin/database --preserve run -- bin/pytest \
     --no-header \
     --no-summary \
     --junit-xml=junit-perf.xml \
-    ./src/maasperf/
+    ./src/maasperf/ \
+    --perf-output-file ${OUTPUT_FILE}

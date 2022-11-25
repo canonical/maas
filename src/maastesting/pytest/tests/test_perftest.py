@@ -6,14 +6,16 @@ import json
 from time import sleep
 
 from maastesting.factory import factory
-from maastesting.perftest import PerfTester
+from maastesting.pytest.perftest import PerfTester
 from maastesting.testcase import MAASTestCase
 
 
 class TestPerfTester(MAASTestCase):
     def test_record_adds_result(self):
         perf_tester = PerfTester(
-            factory.make_name("branch"), factory.make_name("hash")
+            factory.make_name("branch"),
+            factory.make_name("hash"),
+            profiling_tag=None,
         )
 
         test_name = factory.make_name("test")
@@ -29,7 +31,9 @@ class TestPerfTester(MAASTestCase):
     def test_finish_build_outputs_results(self):
         buf = StringIO()
         perf_tester = PerfTester(
-            factory.make_name("branch"), factory.make_name("hash")
+            factory.make_name("branch"),
+            factory.make_name("hash"),
+            profiling_tag=None,
         )
 
         test_name = factory.make_name("test")

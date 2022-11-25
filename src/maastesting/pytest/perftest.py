@@ -32,13 +32,27 @@ def maas_data():
     return None
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--perf-output-file",
+        help="The file where to write the performance measurement as JSON.",
+    )
+    parser.addoption(
+        "--perf-profiling-tag",
+        help="If specified, create profiling dumps for the measured tests.",
+    )
+
+
 @fixture(scope="session")
-def perf():
+def perf(pytestconfig):
+    profiling_tag = pytestconfig.getoption("--perf-profiling-tag", None)
     perf_tester = PerfTester(
-        os.environ.get("GIT_BRANCH"), os.environ.get("GIT_HASH")
+        os.environ.get("GIT_BRANCH"),
+        os.environ.get("GIT_HASH"),
+        profiling_tag,
     )
     yield perf_tester
-    output = os.environ.get("OUTPUT_FILE")
+    output = pytestconfig.getoption("--perf-output-file", None)
     if output:
         with open(output, "w") as f:
             perf_tester.finish_build(f)
@@ -68,15 +82,15 @@ def measure_time():
 class PerfTester:
     """PerfTester is responsible for recording performance tests"""
 
-    def __init__(self, git_branch, git_hash):
+    def __init__(self, git_branch, git_hash, profiling_tag):
         self.results = {"branch": git_branch, "commit": git_hash, "tests": {}}
+        self.profiling_tag = profiling_tag
 
     @contextmanager
     def record(self, name):
         with ExitStack() as stack:
-            profiling_tag = os.environ.get("MAAS_PROFILING")
-            if profiling_tag:
-                stack.enter_context(profile(name, profiling_tag))
+            if self.profiling_tag:
+                stack.enter_context(profile(name, self.profiling_tag))
             timing = stack.enter_context(measure_time())
             yield
         self.results["tests"][name] = {"duration": timing.duration}

@@ -3,22 +3,16 @@
 
 from pytest import fixture
 
-from maasserver.models.user import get_auth_tokens
-from maasserver.testing.factory import factory as maasserver_factory
-from maasserver.testing.testclient import MAASSensibleOAuthClient
-from maastesting.perftest import perf
-from maastesting.pytest import configure_seeds, random_seed
-
 __all__ = [
     "admin_api_client",
     "api_client",
-    "configure_seeds",
     "django_db_setup",
     "factory",
     "maas_user",
-    "perf",
-    "random_seed",
 ]
+
+
+pytest_plugins = "maastesting.pytest.perftest,maastesting.pytest.seeds"
 
 
 # override pytest-django's db setup
@@ -29,6 +23,9 @@ def django_db_setup():
 
 @fixture(scope="session")
 def factory():
+    # Local imports from maasserver so that pytest --help works
+    from maasserver.testing.factory import factory as maasserver_factory
+
     return maasserver_factory
 
 
@@ -44,6 +41,10 @@ def maas_user(factory):
 
 @fixture()
 def api_client(maas_user):
+    # Local imports from maasserver so that pytest --help works
+    from maasserver.models.user import get_auth_tokens
+    from maasserver.testing.testclient import MAASSensibleOAuthClient
+
     return MAASSensibleOAuthClient(
         user=maas_user, token=get_auth_tokens(maas_user)[0]
     )
@@ -51,4 +52,8 @@ def api_client(maas_user):
 
 @fixture()
 def admin_api_client(admin):
+    # Local imports from maasserver so that pytest --help works
+    from maasserver.models.user import get_auth_tokens
+    from maasserver.testing.testclient import MAASSensibleOAuthClient
+
     return MAASSensibleOAuthClient(user=admin, token=get_auth_tokens(admin)[0])
