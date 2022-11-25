@@ -12,7 +12,9 @@ from maasserver.models import (
     RegionControllerProcess,
     Secret,
 )
+from maasserver.secrets import GLOBAL_SECRETS, SecretManager
 from maasserver.testing.factory import factory
+from maasserver.testing.vault import FakeVaultClient
 from maasserver.vault import VaultError, WrappedSecretError
 from provisioningserver.utils.env import MAAS_ID
 
@@ -205,19 +207,17 @@ class TestMigrateSecrets:
         assert Config.objects.get_config("vault_enabled", False)
 
     def test_migrate_secrets_actually_migrates_secrets(self):
-        client = MagicMock()
-        client.set.return_value = None
-
+        client = FakeVaultClient()
         secrets = []
-        for i in range(3):
-            path = factory.make_name("path")
+        for path in GLOBAL_SECRETS:
             value = factory.make_name("value")
-            Secret(path=path, value=value).save()
+            Secret(path=f"global/{path}", value=value).save()
             secrets.append((path, value))
 
         Command()._migrate_secrets(client)
+        secret_manager = SecretManager(client)
         for path, value in secrets:
-            assert (path, value) in [c[1] for c in client.set.mock_calls]
+            assert value == secret_manager.get_composite_secret(path)
         assert not Secret.objects.exists()
 
     def test_handle_migrate_stops_when_vault_is_enabled(self, mocker):

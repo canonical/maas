@@ -21,6 +21,7 @@ from maasserver.models import (
     Node,
     RegionController,
     Secret,
+    VaultSecret,
 )
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
@@ -147,9 +148,13 @@ class Command(BaseCommand):
         """Handles the actual secrets migration"""
 
         print("Migrating secrets")
+        metadata = []
         for secret in Secret.objects.all():
             client.set(secret.path, secret.value)
+            metadata.append(VaultSecret(path=secret.path, deleted=False))
             secret.delete()
+
+        VaultSecret.objects.bulk_create(metadata)
 
         # Enable Vault cluster-wide
         Config.objects.set_config("vault_enabled", True)
