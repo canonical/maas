@@ -57,7 +57,7 @@ def perf(pytestconfig):
         with open(output, "w") as f:
             perf_tester.finish_build(f)
     else:
-        perf_tester.finish_build(sys.stdout)
+        perf_tester.finish_build(sys.stdout, format=True)
 
 
 class Timing:
@@ -95,8 +95,11 @@ class PerfTester:
             yield
         self.results["tests"][name] = {"duration": timing.duration}
 
-    def finish_build(self, output):
-        json.dump(self.results, output)
+    def finish_build(self, output, format=False):
+        params = {"sort_keys": True, "indent": 4} if format else {}
+        if format:
+            output.write("\n")
+        json.dump(self.results, output, **params)
 
 
 @contextmanager
