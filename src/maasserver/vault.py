@@ -163,20 +163,7 @@ def get_region_vault_client_if_enabled() -> Optional[VaultClient]:
     return None
 
 
-@cache
 def get_region_vault_client() -> Optional[VaultClient]:
-    """Return a VaultClient configured for the region controller, if configured.
-
-    This is must be called once the Vault configuration (if any) is set, since
-    the result is cached.  This is done since Vault configuration is not
-    expected to change within the life of the region controller (a restart is
-    needed).
-
-    """
-    return _get_region_vault_client()
-
-
-def _get_region_vault_client() -> Optional[VaultClient]:
     """Return a VaultClient configured for the region controller.
 
     If configuration options for Vault are not set, None is returned.
@@ -265,10 +252,4 @@ def configure_region_with_vault(
         config.vault_secrets_path = secrets_path
         config.vault_secrets_mount = secrets_mount
     # ensure future calls to get the client use the updated config
-    clear_vault_client_caches()
-
-
-def clear_vault_client_caches():
-    """Clears cached vault clients, useful after reconfiguration"""
-    get_region_vault_client.cache_clear()
     get_region_vault_client_if_enabled.cache_clear()

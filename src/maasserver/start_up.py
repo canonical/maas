@@ -10,7 +10,7 @@ from django.db import connection
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver import locks, security
+from maasserver import locks, security, vault
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.deprecations import (
     log_deprecations,
@@ -32,11 +32,7 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vault import (
-    clear_vault_client_caches,
-    get_region_vault_client,
-    VaultClient,
-)
+from maasserver.vault import get_region_vault_client, VaultClient
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -123,7 +119,7 @@ def start_up(master=False):
             # Since start_up now can be called multiple times in a process lifetime,
             # vault client caches should be cleared in order to re-read the configuration.
             # This prevents fetching shared secret from DB when Vault is already enabled.
-            clear_vault_client_caches()
+            vault.get_region_vault_client_if_enabled.cache_clear()
 
             # Ensure the shared secret is configured
             secret = yield security.get_shared_secret()

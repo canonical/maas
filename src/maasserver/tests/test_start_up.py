@@ -100,13 +100,13 @@ class TestStartUp(MAASTransactionServerTestCase):
         self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
 
     def test_start_up_fetches_secret_from_vault_after_migration(self):
-        vault.clear_vault_client_caches()
+        vault.get_region_vault_client_if_enabled.cache_clear()
         # Apparently, MAAS_SECRET state is shared between the tests
         old_secret = MAAS_SECRET.get()
         # Prepare fake vault
         expected_shared_secret = b"EXPECTED"
         client = FakeVaultClient()
-        self.patch(vault, "_get_region_vault_client").return_value = client
+        self.patch(vault, "get_region_vault_client").return_value = client
         SecretManager(client).set_simple_secret(
             "rpc-shared", to_hex(expected_shared_secret)
         )
@@ -124,7 +124,7 @@ class TestStartUp(MAASTransactionServerTestCase):
 
         self.assertEqual(expected_shared_secret, MAAS_SECRET.get())
         MAAS_SECRET.set(old_secret)
-        vault.clear_vault_client_caches()
+        vault.get_region_vault_client_if_enabled.cache_clear()
 
 
 class TestInnerStartUp(MAASServerTestCase):

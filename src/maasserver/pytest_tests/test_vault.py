@@ -8,8 +8,6 @@ import pytest
 from maasserver import vault
 from maasserver.models import Config
 from maasserver.vault import (
-    _get_region_vault_client,
-    clear_vault_client_caches,
     get_region_vault_client,
     get_region_vault_client_if_enabled,
     UnknownSecretPath,
@@ -144,9 +142,7 @@ class TestVaultClient:
 @pytest.mark.django_db
 class TestGetRegionVaultClient:
     def test_cached(self, mocker):
-        mock_get_client = mocker.patch.object(
-            vault, "_get_region_vault_client"
-        )
+        mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
         get_region_vault_client()
         get_region_vault_client()
         mock_get_client.assert_called_once()
@@ -155,7 +151,7 @@ class TestGetRegionVaultClient:
         # the secret is not set
         vault_regionconfig["vault_url"] = "http://vault:8200"
         vault_regionconfig["vault_approle_id"] = "x-y-z"
-        assert _get_region_vault_client() is None
+        assert get_region_vault_client() is None
 
     def test_get_client(self, factory, vault_regionconfig):
         approle_id = factory.make_name("uuid")
@@ -167,7 +163,7 @@ class TestGetRegionVaultClient:
         vault_regionconfig["vault_secret_id"] = secret_id
         vault_regionconfig["vault_secrets_path"] = secrets_path
         vault_regionconfig["vault_secrets_mount"] = secrets_mount
-        client = _get_region_vault_client()
+        client = get_region_vault_client()
         assert isinstance(client, VaultClient)
         assert client._role_id == approle_id
         assert client._secret_id == secret_id
@@ -183,15 +179,13 @@ class TestGetRegionVaultClient:
         vault_regionconfig["vault_approle_id"] = approle_id
         vault_regionconfig["vault_secret_id"] = secret_id
         vault_regionconfig["vault_secrets_mount"] = "other/secrets"
-        client = _get_region_vault_client()
+        client = get_region_vault_client()
         assert client._secrets_mount == "other/secrets"
 
 
 class TestGetRegionVaultClientIfEnabled:
     def test_cached(self, mocker):
-        mock_get_client = mocker.patch.object(
-            vault, "_get_region_vault_client"
-        )
+        mock_get_client = mocker.patch.object(vault, "get_region_vault_client")
         mock_get_config = mocker.patch.object(Config.objects, "get_config")
         mock_get_config.return_value = True
 
@@ -312,21 +306,3 @@ class TestCheckApprolePermissions:
         client.set.assert_called_once_with(expected_path, ANY)
         client.get.assert_called_once_with(expected_path)
         client.delete.assert_called_once_with(expected_path)
-
-
-class TestClearVaultCaches:
-    def test_clears_vault_caches(self, mocker):
-        mocker.patch.object(Config.objects, "get_config").return_value = True
-        mock_get_client = mocker.patch.object(
-            vault, "_get_region_vault_client"
-        )
-        first_client = MagicMock()
-        second_client = MagicMock()
-        mock_get_client.side_effect = [first_client, second_client]
-        assert get_region_vault_client() == first_client
-        assert get_region_vault_client() == first_client
-        assert get_region_vault_client_if_enabled() == first_client
-        assert get_region_vault_client_if_enabled() == first_client
-        clear_vault_client_caches()
-        assert get_region_vault_client() == second_client
-        assert get_region_vault_client_if_enabled() == second_client
