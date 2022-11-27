@@ -119,7 +119,7 @@ class PodHandler(TimestampedModelHandler):
             }
         )
         if self.user.is_superuser:
-            data["power_parameters"] = obj.power_parameters
+            data["power_parameters"] = obj.get_power_parameters()
         if not for_list:
             if obj.host:
                 data["attached_vlans"] = list(
@@ -140,8 +140,8 @@ class PodHandler(TimestampedModelHandler):
                 data["boot_vlans"] = []
 
             # include certificate info if present
-            certificate = obj.power_parameters.get("certificate")
-            key = obj.power_parameters.get("key")
+            certificate = obj.get_power_parameters().get("certificate")
+            key = obj.get_power_parameters().get("key")
             if certificate and key:
                 cert = Certificate.from_pem(certificate, key)
                 data["certificate"] = dehydrate_certificate(cert)

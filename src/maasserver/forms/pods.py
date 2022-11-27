@@ -78,6 +78,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
 )
+from provisioningserver.drivers.power.registry import sanitise_power_parameters
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
@@ -225,7 +226,7 @@ class PodForm(MAASModelForm):
             ].field_dict
             self.fields.update(self.param_fields)
             if not self.is_new:
-                for key, value in self.instance.power_parameters.items():
+                for key, value in self.instance.get_power_parameters().items():
                     if key not in self.data:
                         self.data[key] = value
             super()._clean_fields()
@@ -269,6 +270,10 @@ class PodForm(MAASModelForm):
             if param_name in self.cleaned_data
         }
 
+        sanitised_power_parameters, _ = sanitise_power_parameters(
+            power_type, power_parameters
+        )
+
         # When the Pod is new try to get a BMC of the same type and
         # parameters to convert the BMC to a new Pod. When the Pod is not
         # new the form will use the already existing pod instance to update
@@ -276,7 +281,8 @@ class PodForm(MAASModelForm):
         # a validation erorr will be raised from the model level.
         if self.is_new:
             bmc = BMC.objects.filter(
-                power_type=power_type, power_parameters=power_parameters
+                power_type=power_type,
+                power_parameters=sanitised_power_parameters,
             ).first()
             if bmc is not None:
                 if bmc.bmc_type == BMC_TYPE.BMC:
@@ -296,8 +302,9 @@ class PodForm(MAASModelForm):
         # update the object
         self.instance = super().save(commit=False)
         self.instance.power_type = power_type
-        self.instance.power_parameters = power_parameters
-
+        # save the object because we need ID from the database
+        self.instance.save()
+        self.instance.set_power_parameters(power_parameters)
         # update all members in a cluster if certificates are updated
         if not self.is_new and self.instance.cluster is not None:
             self.instance.cluster.update_certificate(
@@ -638,6 +645,7 @@ class ComposeMachineForm(forms.Form):
                     % (self.pod.name, over_commit_message)
                 )
 
+            power_parameters = self.pod.get_power_parameters()
             # Update the default storage pool.
             if self.pod.default_storage_pool is not None:
                 power_parameters[
@@ -646,7 +654,7 @@ class ComposeMachineForm(forms.Form):
 
             interfaces = get_known_host_interfaces(self.pod)
 
-            return client, interfaces
+            return client, interfaces, power_parameters
 
         def create_and_sync(result):
             requested_machine, result = result
@@ -666,23 +674,19 @@ class ComposeMachineForm(forms.Form):
             return created_machine
 
         @inlineCallbacks
-        def async_compose_machine(
-            result, power_type, power_paramaters, **kwargs
-        ):
-            client, result = result
+        def async_compose_machine(result, power_type, **kwargs):
+            client, interfaces, power_parameters = result
             requested_machine = yield deferToDatabase(
-                self.get_requested_machine, result
+                self.get_requested_machine, interfaces
             )
             result = yield compose_machine(
                 client,
                 power_type,
-                power_paramaters,
+                power_parameters,
                 requested_machine,
                 **kwargs,
             )
             return requested_machine, result
-
-        power_parameters = self.pod.power_parameters.copy()
 
         if isInIOThread():
             # Running under the twisted reactor, before the work from inside.
@@ -692,7 +696,6 @@ class ComposeMachineForm(forms.Form):
             d.addCallback(
                 async_compose_machine,
                 self.pod.power_type,
-                power_parameters,
                 pod_id=self.pod.id,
                 name=self.pod.name,
             )
@@ -723,9 +726,9 @@ class ComposeMachineForm(forms.Form):
                 )
                 return d
 
-            _, result = db_work(None)
+            _, interfaces, power_parameters = db_work(None)
             try:
-                requested_machine = self.get_requested_machine(result)
+                requested_machine = self.get_requested_machine(interfaces)
                 result = wrap_compose_machine(
                     self.pod.get_client_identifiers(),
                     self.pod.power_type,

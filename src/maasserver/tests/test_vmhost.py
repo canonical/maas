@@ -169,7 +169,7 @@ class TestDiscoverAndSyncVMHost(MAASServerTestCase):
         self.assertEqual(vmhost.cpu_speed, discovered_pod.cpu_speed)
         self.assertEqual(vmhost.zone, zone)
         self.assertEqual(vmhost.power_type, "virsh")
-        self.assertEqual(vmhost.power_parameters, power_parameters)
+        self.assertEqual(vmhost.get_power_parameters(), power_parameters)
         self.assertEqual(vmhost.ip_address.ip, pod_info["ip_address"])
         routable_racks = [
             relation.rack_controller
@@ -232,6 +232,9 @@ class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
         vmhost = await vmhost_module.discover_and_sync_vmhost_async(
             orig_vmhost, user
         )
+        vmhost_power_parameters = await deferToDatabase(
+            vmhost.get_power_parameters
+        )
         self.assertEqual(vmhost.id, orig_vmhost.id)
         self.assertEqual(vmhost.bmc_type, BMC_TYPE.POD)
         self.assertEqual(vmhost.architectures, ["amd64/generic"])
@@ -241,7 +244,7 @@ class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
         self.assertEqual(vmhost.cpu_speed, discovered_pod.cpu_speed)
         self.assertEqual(vmhost.zone, zone)
         self.assertEqual(vmhost.power_type, "virsh")
-        self.assertEqual(vmhost.power_parameters, power_parameters)
+        self.assertEqual(vmhost_power_parameters, power_parameters)
         self.assertEqual(vmhost.ip_address.ip, pod_info["ip_address"])
 
         def validate_rack_routes():

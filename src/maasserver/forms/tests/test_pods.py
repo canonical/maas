@@ -272,8 +272,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         vmhost = form.save()
         cert = Certificate.from_pem(
-            vmhost.power_parameters["certificate"],
-            vmhost.power_parameters["key"],
+            vmhost.get_power_parameters()["certificate"],
+            vmhost.get_power_parameters()["key"],
         )
         self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
 
@@ -288,8 +288,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         vmhost = form.save()
         cert = Certificate.from_pem(
-            vmhost.power_parameters["certificate"],
-            vmhost.power_parameters["key"],
+            vmhost.get_power_parameters()["certificate"],
+            vmhost.get_power_parameters()["key"],
         )
         self.assertEqual(
             cert.cn(), "lxd-server@" + Config.objects.get_config("maas_name")
@@ -310,7 +310,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             power_type=pod_info["type"],
             power_parameters={
                 "power_address": pod_info["power_address"],
-                "power_pass": "",
             },
         )
         form = PodForm(data=pod_info, request=self.request)
@@ -432,11 +431,11 @@ class TestPodForm(MAASTransactionServerTestCase):
         updated_vmhosts = [vmhost for vmhost in result.hints.cluster.hosts()]
         for vmhost in updated_vmhosts:
             self.assertEqual(
-                vmhost.power_parameters["certificate"],
+                vmhost.get_power_parameters()["certificate"],
                 sample_cert.certificate_pem().strip(),
             )
             self.assertEqual(
-                vmhost.power_parameters["key"],
+                vmhost.get_power_parameters()["key"],
                 sample_cert.private_key_pem().strip(),
             )
 

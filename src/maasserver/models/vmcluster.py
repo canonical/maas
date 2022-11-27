@@ -237,10 +237,10 @@ class VMCluster(CleanSave, TimestampedModel):
         for vmhost in self.hosts():
             if skip is not None and vmhost.id == skip.id:
                 continue
-            power_parameters = vmhost.power_parameters.copy()
+            power_parameters = vmhost.get_power_parameters().copy()
             power_parameters["certificate"] = cert
             power_parameters["key"] = key
-            vmhost.power_parameters = power_parameters
+            vmhost.set_power_parameters(power_parameters)
             vmhost.save()
 
     @asynchronous

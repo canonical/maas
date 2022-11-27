@@ -531,8 +531,8 @@ class TestVMCluster(MAASServerTestCase):
 
         creds = [
             (
-                vmhost.power_parameters["certificate"],
-                vmhost.power_parameters["key"],
+                vmhost.get_power_parameters()["certificate"],
+                vmhost.get_power_parameters()["key"],
             )
             for vmhost in cluster.hosts()
         ]
