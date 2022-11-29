@@ -415,6 +415,56 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             stdin=expected_stdin.encode("ascii"),
         )
 
+    def test_dynamic_update_sets_serial_when_no_other_updates_are_present(
+        self,
+    ):
+        patch_zone_file_config_path(self)
+        domain = factory.make_string()
+        network = factory.make_ipv4_network()
+        ipv4_hostname = factory.make_name("host")
+        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv6_hostname = factory.make_name("host")
+        ipv6_ip = factory.make_ipv6_address()
+        ipv6_network = factory.make_ipv6_network()
+        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
+        ttl = random.randint(10, 300)
+        mapping = {
+            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
+            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
+        }
+        dns_zone_config = DNSForwardZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            mapping=mapping,
+            default_ttl=ttl,
+            dynamic_ranges=[dynamic_range],
+        )
+        self.patch(dns_zone_config, "get_GENERATE_directives")
+        run_command = self.patch(actions, "run_command")
+        dns_zone_config.write_config()
+        new_dns_zone_config = DNSForwardZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            mapping=mapping,
+            default_ttl=ttl,
+            dynamic_ranges=[dynamic_range],
+        )
+        new_dns_zone_config.write_config()
+        expected_stdin = "\n".join(
+            [
+                "server localhost",
+                f"zone {domain}",
+                f"update add {domain} {new_dns_zone_config.default_ttl} SOA {domain}. nobody.example.com. {new_dns_zone_config.serial} 600 1800 604800 {new_dns_zone_config.default_ttl}",
+                "send\n",
+            ]
+        )
+        run_command.assert_called_once_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            stdin=expected_stdin.encode("ascii"),
+        )
+
 
 class TestDNSReverseZoneConfig(MAASTestCase):
     """Tests for DNSReverseZoneConfig."""
@@ -885,6 +935,35 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             "-k",
             get_nsupdate_key_path(),
             "-v",
+            stdin=expected_stdin.encode("ascii"),
+        )
+
+    def test_dynamic_update_sets_serial_when_no_other_updates_are_present(
+        self,
+    ):
+        patch_zone_file_config_path(self)
+        domain = factory.make_string()
+        network = IPNetwork("10.0.0.0/24")
+        zone = DNSReverseZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            network=network,
+        )
+        run_command = self.patch(actions, "run_command")
+        zone.write_config()
+        zone.write_config()
+        expected_stdin = "\n".join(
+            [
+                "server localhost",
+                "zone 0.0.10.in-addr.arpa",
+                f"update add 0.0.10.in-addr.arpa {zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                "send\n",
+            ]
+        )
+        run_command.assert_called_once_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
             stdin=expected_stdin.encode("ascii"),
         )
 

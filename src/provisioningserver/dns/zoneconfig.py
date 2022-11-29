@@ -321,8 +321,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
                 )
             )
             if not self.force_config_write and self.zone_file_exists(zi):
-                if len(self._dynamic_updates) > 0:
-                    self.dynamic_update(zi)
+                self.dynamic_update(zi)
             else:
                 self.requires_reload = True
                 self.write_zone_file(
@@ -611,8 +610,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
                 )
             )
             if not self.force_config_write and self.zone_file_exists(zi):
-                if len(self._dynamic_updates) > 0:
-                    self.dynamic_update(zi)
+                self.dynamic_update(zi)
             else:
                 self.requires_reload = True
                 self.write_zone_file(
