@@ -66,9 +66,11 @@ class PostgresListenerServiceSpy(PostgresListenerService):
         self.notifications = frozenset()
 
     def _process_notifies(self):
+        self.log.debug("Start processing notifies for tests")
         for notify in self.connection.connection.notifies:
             self._captured_notifies.put(notify)
         super()._process_notifies()
+        self.log.debug("Done processing notifies for tests")
 
     @inlineCallbacks
     def wait_notification(self, channel):
@@ -76,6 +78,7 @@ class PostgresListenerServiceSpy(PostgresListenerService):
         while True:
             notice = yield self._captured_notifies.get()
             if notice.channel == channel:
+                self.log.debug(f"Found a notification for channel {channel}")
                 returnValue(notice)
 
 
