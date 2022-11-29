@@ -141,7 +141,6 @@ class TestVaultClient:
         ensure_auth.assert_called_once()
 
 
-@pytest.mark.django_db
 class TestGetRegionVaultClient:
     def test_cached(self, mocker):
         mock_get_client = mocker.patch.object(

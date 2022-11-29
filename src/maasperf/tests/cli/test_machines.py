@@ -11,7 +11,7 @@ from maascli.config import ProfileConfig
 from maascli.parser import get_deepest_subparser, prepare_parser
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 def test_perf_list_machines_CLI(
     perf, cli_profile, monkeypatch, cli_machines_api_response
 ):

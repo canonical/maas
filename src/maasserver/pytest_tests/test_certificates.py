@@ -7,7 +7,7 @@ from provisioningserver.testing.certificates import (
 )
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 class TestGetMAASCertificate:
     def test_no_secret(self):
         assert (

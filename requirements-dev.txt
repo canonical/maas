@@ -4,7 +4,6 @@ ipdb==0.13.9
 junitxml==0.7
 postgresfixture==0.4.2
 pytest==7.1.2
-pytest-django==4.5.2
 pytest-mock==3.7.0
 pytest-xdist==2.5.0
 python-subunit==1.4.0

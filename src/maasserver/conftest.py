@@ -9,7 +9,6 @@ import pytest
 
 from maasserver import vault
 from maasserver.config import RegionConfiguration
-from maasserver.testing.factory import factory as maasserver_factory
 from maasserver.vault import (
     get_region_vault_client,
     get_region_vault_client_if_enabled,
@@ -21,11 +20,6 @@ def clean_globals(clean_globals):
     get_region_vault_client.cache_clear()
     get_region_vault_client_if_enabled.cache_clear()
     yield
-
-
-@pytest.fixture(scope="session")
-def factory():
-    return maasserver_factory
 
 
 @pytest.fixture

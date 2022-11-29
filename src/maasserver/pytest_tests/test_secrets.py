@@ -15,8 +15,8 @@ def vault_client(request):
         yield None
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize("vault_client", [True, False], indirect=True)
+@pytest.mark.usefixtures("maasdb")
 class TestSecretManager:
     def set_secret(self, vault_client, path, value):
         if vault_client:

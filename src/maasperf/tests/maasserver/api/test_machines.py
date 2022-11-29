@@ -4,7 +4,6 @@
 from django.urls import reverse
 from piston3.emitters import Emitter
 from piston3.handler import typemapper
-import pytest
 
 from maasserver.api.machines import MachinesHandler
 from maastesting.http import make_HttpRequest
@@ -15,7 +14,6 @@ class DummyEmitter(Emitter):
         self.construct()
 
 
-@pytest.mark.django_db
 def test_perf_list_machines_MachineHandler_api_endpoint(
     perf, admin_api_client
 ):
@@ -23,7 +21,6 @@ def test_perf_list_machines_MachineHandler_api_endpoint(
         admin_api_client.get(reverse("machines_handler"))
 
 
-@pytest.mark.django_db
 def test_perf_list_machines_MachinesHander_direct_call(perf, admin):
     handler = MachinesHandler()
     request = make_HttpRequest()
@@ -40,7 +37,6 @@ def test_perf_list_machines_MachinesHander_direct_call(perf, admin):
         emitter.render(request)
 
 
-@pytest.mark.django_db
 def test_perf_list_machines_MachinesHander_only_objects(perf, admin):
     handler = MachinesHandler()
     request = make_HttpRequest()

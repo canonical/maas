@@ -1,11 +1,8 @@
 import logging
 
-import pytest
-
 from maasserver.enum import NODE_STATUS
 
 
-@pytest.mark.django_db
 def test_node_mark_failed_deployment_logs_failure(factory, caplog):
     node = factory.make_Node(
         status=NODE_STATUS.DEPLOYING, with_boot_disk=False

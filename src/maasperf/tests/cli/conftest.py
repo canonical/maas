@@ -7,19 +7,6 @@ from django.core.serializers import serialize
 from django.http import HttpResponse
 from pytest import fixture
 
-from maasserver.testing.factory import factory as maasserver_factory
-
-
-# override pytest-django's db setup
-@fixture(scope="session")
-def django_db_setup():
-    pass
-
-
-@fixture(scope="session")
-def factory():
-    return maasserver_factory
-
 
 @fixture()
 def maas_user(factory):

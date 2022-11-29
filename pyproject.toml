@@ -35,7 +35,6 @@ snippets
 order_by_type = false
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "maasserver.djangosettings.development"
 filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/apiclient",
@@ -54,7 +53,3 @@ testpaths = [
   "src/provisioningserver/utils/pytest_tests",
   # [[[end]]]
 ]
-markers = [
-    "perftest: marks tests for performance testing"
-]
-addopts = "--reuse-db"

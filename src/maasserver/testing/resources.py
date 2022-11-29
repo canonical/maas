@@ -59,6 +59,28 @@ def connect_no_transaction(cluster):
             conn.close()
 
 
+def create_postgres_cluster():
+    cluster = ClusterFixture("db", preserve=True)
+    cluster.create()
+    postgres_path = Path(cluster.datadir)
+    postgres_conf = postgres_path / "postgresql.conf"
+    postgres_speed_conf = postgres_path / "postgresql.conf.speed"
+    if "postgresql.conf.speed" not in postgres_conf.read_text():
+        with postgres_conf.open("a") as fh:
+            fh.write("include = 'postgresql.conf.speed'\n")
+        with postgres_speed_conf.open("w") as fh:
+            fh.write(
+                dedent(
+                    """\
+                fsync = off
+                full_page_writes = off
+                synchronous_commit = off
+                """
+                )
+            )
+    return cluster
+
+
 class DatabaseClusterManager(TestResourceManager):
     """Resource manager for a PostgreSQL cluster."""
 
@@ -66,24 +88,7 @@ class DatabaseClusterManager(TestResourceManager):
     testDownCost = 2
 
     def make(self, dependencies):
-        cluster = ClusterFixture("db", preserve=True)
-        cluster.create()
-        postgres_path = Path(cluster.datadir)
-        postgres_conf = postgres_path / "postgresql.conf"
-        postgres_speed_conf = postgres_path / "postgresql.conf.speed"
-        if "postgresql.conf.speed" not in postgres_conf.read_text():
-            with postgres_conf.open("a") as fh:
-                fh.write("include = 'postgresql.conf.speed'\n")
-            with postgres_speed_conf.open("w") as fh:
-                fh.write(
-                    dedent(
-                        """\
-                    fsync = off
-                    full_page_writes = off
-                    synchronous_commit = off
-                    """
-                    )
-                )
+        cluster = create_postgres_cluster()
         cluster.setUp()
         return cluster
 

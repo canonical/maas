@@ -7,16 +7,16 @@ import pytest
 from maasserver.models import Machine
 
 
-@pytest.mark.django_db
+@pytest.mark.allow_transactions
 def test_perf_create_machines(perf, factory):
     # TODO use create machines script
     with perf.record("test_perf_create_machines"):
-        with transaction.atomic():
-            for _ in range(30):
-                factory.make_Machine()
+        for _ in range(30):
+            factory.make_Machine()
+        transaction.commit()
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 def test_perf_list_machines(perf):
     with perf.record("test_perf_list_machines"):
         list(Machine.objects.all())

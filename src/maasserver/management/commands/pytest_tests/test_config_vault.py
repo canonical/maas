@@ -25,6 +25,7 @@ def configure_mock(mocker):
     yield mocker.patch.object(config_vault, "configure_region_with_vault")
 
 
+@pytest.mark.usefixtures("maasdb")
 class TestConfigVaultConfigurateCommand:
     def _configure_kwargs(
         self,
@@ -125,7 +126,7 @@ class TestConfigVaultConfigurateCommand:
         )
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 class TestSetVaultConfiguredDbCommand:
     def test_does_nothing_when_no_maas_id(self):
         assert MAAS_ID.get() is None
@@ -149,7 +150,7 @@ class TestSetVaultConfiguredDbCommand:
         assert ControllerInfo.objects.get(node_id=node.id).vault_configured
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 class TestConfigVaultMigrateCommand:
     def test_raises_when_vault_already_enabled(self):
         Config.objects.set_config("vault_enabled", True)
@@ -198,7 +199,7 @@ class TestConfigVaultMigrateCommand:
         migrate_mock.assert_called_once_with(client)
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 class TestMigrateSecrets:
     def test_migrate_secrets_enables_vault(self, mocker):
         assert not Config.objects.get_config("vault_enabled", False)
@@ -334,7 +335,7 @@ class TestMigrateSecrets:
         assert notify_mock.call_count == 1
 
 
-@pytest.mark.django_db
+@pytest.mark.usefixtures("maasdb")
 class TestStatus:
     def test_status_not_enabled(self, capsys):
         region_one = factory.make_RegionController(hostname="one")

@@ -341,6 +341,7 @@ TestHelpers = (
 TestHelpersRule = Rule(
     Allow("crochet|crochet.**"),
     Allow("django|django.**"),
+    Allow("maasserver|maasserver.**"),
     Allow("netaddr|netaddr.**"),
     Allow("twisted.**"),
     Allow("wrapt"),

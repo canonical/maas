@@ -13,20 +13,28 @@ GIT_HASH="$(git rev-parse HEAD)"
 PYTHONHASHSEED="${PYTHONHASHSEED:-$(shuf -i 0-4294967295 -n 1)}"
 MAAS_RAND_SEED="${MAAS_RAND_SEED:-$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')}"
 
+DB_DUMP=$1
 OUTPUT_FILE="${OUTPUT_FILE:-maas-perf-results.json}"
+
+if [ -z "$1" ]
+then
+  echo "Usage: $0 <maas_db_dump>"
+  exit 1
+fi
 
 export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH
 
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
-bin/database --preserve run make syncdb || exit 1
-exec bin/database --preserve run -- bin/pytest \
+exec bin/pytest \
     -q \
     --disable-warnings \
     --show-capture=no \
     --no-header \
     --no-summary \
     --junit-xml=junit-perf.xml \
+    --maas-recreate-initial-db \
+    --maas-initial-db ${DB_DUMP} \
     ./src/maasperf/ \
     --perf-output-file ${OUTPUT_FILE}
