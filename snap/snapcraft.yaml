@@ -85,6 +85,7 @@ parts:
       - amtterm # AMT
       - avahi-utils
       - bind9
+      - bind9-dnsutils
       - chrony
       - dns-root-data # for bind9
       - freeipmi-tools # IPMI
