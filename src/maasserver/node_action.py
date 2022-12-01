@@ -50,6 +50,7 @@ from maasserver.utils.osystems import (
     validate_osystem_and_distro_series,
 )
 from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -851,8 +852,16 @@ class OverrideFailedTesting(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
 
-    def _execute(self):
+    def _execute(self, suppress_failed_script_results=False):
         """See `NodeAction.execute`."""
+        if suppress_failed_script_results:
+            script_result_ids = (
+                self.node.get_latest_failed_testing_script_results()
+            )
+            ScriptResult.objects.filter(
+                script_set__node__system_id=self.node.system_id,
+                id__in=script_result_ids,
+            ).update(suppressed=True)
         self.node.override_failed_testing(self.user, "via web interface")
 
 
@@ -1102,6 +1111,23 @@ ACTION_CLASSES = (
 )
 
 ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)
+
+
+def get_node_action(node, action_name, user, request=None):
+    """Get Action for node, if actionable
+
+    :param node: The :class:`Node` that the request pertains to.
+    :param action_name: The action name.
+    :param user: The :class:`User` making the request.
+    :param request: The :class:`HttpRequest` being serviced.  It may be used
+        to obtain information about the OAuth token being used.
+    :return: An Action object if it's actionable, None otherwise
+    """
+    act_cls = ACTIONS_DICT.get(action_name)
+    if act_cls is None:
+        return None
+    action = act_cls(node, user, request)
+    return action if action.is_actionable() else None
 
 
 def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):

@@ -76,7 +76,7 @@ from maasserver.models import (
     Subnet,
     VolumeGroup,
 )
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import get_node_action
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -94,7 +94,6 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
-from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
@@ -252,7 +251,6 @@ class MachineHandler(NodeHandler):
             "filter_groups",
             "filter_options",
             "count",
-            "suppress_failed_script_results",
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
@@ -1023,8 +1021,9 @@ class MachineHandler(NodeHandler):
             )
 
     def _action(self, obj, action_name, extra_params):
-        actions = compile_node_actions(obj, self.user, request=self.request)
-        action = actions.get(action_name)
+        action = get_node_action(
+            obj, action_name, self.user, request=self.request
+        )
         if action is None:
             raise NodeActionError(
                 f"{action_name} action is not available for this node."
@@ -1035,7 +1034,9 @@ class MachineHandler(NodeHandler):
         self, filter_params, action_name, extra_params
     ) -> tuple[int, list[str]]:
         """Find nodes that match the filter, then apply the given action to them."""
-        machines = self._filter(self._meta.queryset, None, filter_params)
+        machines = self._filter(
+            self.get_queryset(for_list=True), None, filter_params
+        )
         success_count = 0
         failed_system_ids = []
         for machine in machines:
@@ -1053,9 +1054,12 @@ class MachineHandler(NodeHandler):
 
     def _bulk_clone(self, source, filter_params, extra_params):
         """Bulk clone - special case of bulk_action."""
-        actions = compile_node_actions(source, self.user, request=self.request)
-        clone_action = actions.get("clone")
-        destinations = self._filter(self._meta.queryset, None, filter_params)
+        clone_action = get_node_action(
+            source, "clone", self.user, request=self.request
+        )
+        destinations = self._filter(
+            self.get_queryset(for_list=True), None, filter_params
+        )
         destination_ids = [node.system_id for node in destinations]
         return clone_action.execute(
             destinations=destination_ids, **extra_params
@@ -1063,8 +1067,6 @@ class MachineHandler(NodeHandler):
 
     def action(self, params):
         """Perform the action on the object."""
-        # `compile_node_actions` handles the permission checking internally
-        # the default view permission check is enough at this level.
         action_name = params.get("action")
         extra_params = params.get("extra", {})
         if action_name == "clone" and "filter" in params:
@@ -1221,21 +1223,3 @@ class MachineHandler(NodeHandler):
         if "filter" in params:
             qs = self._filter(qs, "list", params["filter"])
         return {"count": qs.count()}
-
-    def suppress_failed_script_results(self, params):
-        qs = self.get_queryset(for_list=True)
-        system_ids = self._filter(
-            qs, "list", params.get("filter")
-        ).values_list("system_id", flat=True)
-        script_results = self._get_latest_failed_testing_script_results(
-            system_ids
-        )
-        script_result_ids = [
-            script_result.id for script_result in script_results
-        ]
-        ScriptResult.objects.filter(
-            id__in=script_result_ids,
-        ).update(suppressed=True)
-        return {
-            "success_count": len(script_result_ids),
-        }

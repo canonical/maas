@@ -176,6 +176,7 @@ from maasserver.worker_user import get_worker_user
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
+    SCRIPT_STATUS_FAILED,
     SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.user_data import generate_user_data_for_status
@@ -3964,6 +3965,38 @@ class Node(CleanSave, TimestampedModel):
         self.hwe_kernel = None
         self.current_installation_script_set = None
         self.save()
+
+    def get_latest_failed_testing_script_results(self) -> List[int]:
+        from metadataserver.models import ScriptResult
+
+        script_results = (
+            ScriptResult.objects.filter(
+                script_set__node__system_id=self.system_id,
+                script_set__result_type=RESULT_TYPE.TESTING,
+            )
+            .values(
+                "id",
+                "status",
+                "script_set__node_id",
+                "script_name",
+                "physical_blockdevice_id",
+            )
+            .order_by(
+                "script_set__node_id",
+                "script_name",
+                "physical_blockdevice_id",
+                "-id",
+            )
+            .distinct(
+                "script_set__node_id", "script_name", "physical_blockdevice_id"
+            )
+        )
+        node_script_results = [
+            s["id"]
+            for s in script_results
+            if s["status"] in SCRIPT_STATUS_FAILED
+        ]
+        return node_script_results
 
     def override_failed_testing(self, user, comment=None):
         """Reset a node with failed tests into a working state."""

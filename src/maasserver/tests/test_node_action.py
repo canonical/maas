@@ -71,7 +71,12 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
-from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS, SCRIPT_TYPE
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SCRIPT_STATUS,
+    SCRIPT_STATUS_FAILED,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import ScriptSet
 from provisioningserver.events import AUDIT
 from provisioningserver.utils.shell import ExternalProcessError
@@ -1634,6 +1639,32 @@ class TestMarkFixedAction(MAASServerTestCase):
 
 
 class TestOverrideFailedTesting(MAASServerTestCase):
+    def create_script_results(self, nodes, count=5):
+        script_results = []
+        for node in nodes:
+            script = factory.make_Script()
+            for _ in range(count):
+                script_set = factory.make_ScriptSet(
+                    result_type=script.script_type, node=node
+                )
+                factory.make_ScriptResult(script=script, script_set=script_set)
+
+            script_set = factory.make_ScriptSet(
+                result_type=script.script_type, node=node
+            )
+            script_result = factory.make_ScriptResult(
+                script=script,
+                script_set=script_set,
+                status=random.choice(
+                    list(SCRIPT_STATUS_FAILED.union({SCRIPT_STATUS.PASSED}))
+                ),
+            )
+            if script.script_type == SCRIPT_TYPE.TESTING and (
+                script_result.status in SCRIPT_STATUS_FAILED
+            ):
+                script_results.append(script_result)
+        return script_results
+
     def test_ignore_tests_sets_status_to_ready(self):
         owner = factory.make_admin()
         request = factory.make_fake_request("/")
@@ -1645,9 +1676,10 @@ class TestOverrideFailedTesting(MAASServerTestCase):
             error_description=description,
             osystem="",
         )
+        failed_scripts = self.create_script_results(nodes=[node])
         action = OverrideFailedTesting(node, owner, request)
         self.assertTrue(action.is_permitted())
-        action.execute()
+        action.execute(suppress_failed_script_results=True)
         node = reload_object(node)
         self.assertEqual(NODE_STATUS.READY, node.status)
         self.assertEqual("", node.osystem)
@@ -1657,6 +1689,9 @@ class TestOverrideFailedTesting(MAASServerTestCase):
             audit_event.description,
             "Overrode failed testing on '%s'." % node.hostname,
         )
+        for script_result in failed_scripts:
+            script_result = reload_object(script_result)
+            self.assertTrue(script_result.suppressed)
 
     def test_ignore_tests_sets_status_to_deployed(self):
         owner = factory.make_admin()

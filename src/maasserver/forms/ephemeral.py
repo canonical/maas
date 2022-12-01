@@ -19,7 +19,7 @@ from django.forms import (
 from django.http import QueryDict
 
 from maasserver.enum import NODE_STATUS
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import get_node_action
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import Script
@@ -160,8 +160,7 @@ class TestForm(Form):
         self._set_up_script_fields()
 
     def clean(self):
-        actions = compile_node_actions(self.instance, self.user)
-        action = actions.get(self._name)
+        action = get_node_action(self.instance, self._name, self.user)
         if action is None:
             raise ValidationError(
                 "%s is not available because of the current state of the node."

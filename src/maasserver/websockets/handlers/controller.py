@@ -22,7 +22,7 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import ControllerForm
 from maasserver.models import Controller, Event, RackController, VLAN
 from maasserver.models.controllerinfo import get_target_version
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import get_node_action
 from maasserver.permissions import NodePermission
 from maasserver.secrets import SecretManager
 from maasserver.websockets.base import (
@@ -154,12 +154,13 @@ class ControllerHandler(NodeHandler):
 
     def action(self, params):
         """Perform the action on the object."""
-        # `compile_node_actions` handles the permission checking internally
+        # `get_node_action` handles the permission checking internally
         # the default view permission check is enough at this level.
         obj = self.get_object(params)
         action_name = params.get("action")
-        actions = compile_node_actions(obj, self.user, request=self.request)
-        action = actions.get(action_name)
+        action = get_node_action(
+            obj, action_name, self.user, request=self.request
+        )
         if action is None:
             raise NodeActionError(
                 f"{action_name} action is not available for this node."

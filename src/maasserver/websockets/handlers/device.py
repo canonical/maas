@@ -18,7 +18,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.node import Device
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
-from maasserver.node_action import compile_node_actions
+from maasserver.node_action import get_node_action
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import HandlerError, HandlerValidationError
@@ -418,8 +418,9 @@ class DeviceHandler(NodeHandler):
         """Perform the action on the object."""
         obj = self.get_object(params, permission=self._meta.edit_permission)
         action_name = params.get("action")
-        actions = compile_node_actions(obj, self.user, request=self.request)
-        action = actions.get(action_name)
+        action = get_node_action(
+            obj, action_name, self.user, request=self.request
+        )
         if action is None:
             raise NodeActionError(
                 "%s action is not available for this device." % action_name

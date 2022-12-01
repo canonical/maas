@@ -5715,16 +5715,6 @@ class TestMachineHandlerSuppressScriptResult(MAASServerTestCase):
             params,
         )
 
-    def test_suppress_failed_script_results(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {}, None)
-        nodes = [factory.make_Node(owner=owner) for _ in range(10)]
-        failed_results = self.create_script_results(nodes)
-        result = handler.suppress_failed_script_results(
-            {"filter": {"owner": owner.username}}
-        )
-        self.assertEqual(len(failed_results), result["success_count"])
-
     def test_set_script_result_unsuppressed(self):
         owner = factory.make_admin()
         node = factory.make_Node(owner=owner)
