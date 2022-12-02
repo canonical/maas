@@ -63,7 +63,8 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.nodeprobeddetails import script_output_nsmap
-from maasserver.node_action import compile_node_actions
+
+# from maasserver.node_action import compile_node_actions
 from maasserver.node_constraint_filter_forms import (
     FreeTextFilterNodeForm,
     get_field_argument_type,
@@ -267,7 +268,7 @@ class NodeHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
-        data["actions"] = list(compile_node_actions(obj, self.user).keys())
+        # data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
         data["tags"] = [tag.id for tag in obj.tags.all()]
         if obj.node_type == NODE_TYPE.MACHINE or (
