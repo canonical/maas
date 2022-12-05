@@ -1,2 +1,3 @@
 pyvmomi==6.0.0.2016.6
 git+https://github.com/Supervisor/supervisor@main#egg=supervisor
+./snap/local/temporalio-0.1b3-cp37-abi3-manylinux_2_35_x86_64.whl
