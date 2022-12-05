@@ -312,6 +312,7 @@ RegionControllerRule = Rule(
     Allow("requests|requests.**"),
     Allow("simplestreams.**"),
     Allow("tempita"),
+    Allow("temporalio.**"),
     Allow("twisted.**"),
     Allow("yaml"),
     Allow("zope.interface|zope.interface.**"),

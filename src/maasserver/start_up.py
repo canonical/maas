@@ -2,15 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Start-up utilities for the MAAS server."""
-
-
 import logging
 
 from django.db import connection
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver import locks, security, vault
+from maasserver import locks, security, temporal, temporal_workflows, vault
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.deprecations import (
     log_deprecations,
@@ -25,6 +23,10 @@ from maasserver.models import (
 )
 from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.domain import dns_kms_setting_changed
+from maasserver.temporal_workflows import (
+    NodeDeployWorkflow,
+    NodeDeployWorkflowParams,
+)
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
@@ -160,6 +162,25 @@ def start_up(master=False):
             break
 
 
+@asynchronous
+def setup_temporal():
+    """Starts Temporal worker and issues a test workflow"""
+    # TODO Start worker as a separate service?
+    # TODO Workflows and activities lists are static
+    temporal.start_temporal_worker(
+        workflows=[NodeDeployWorkflow],
+        activities=[temporal_workflows.acquire],
+        debug_mode=True,
+    )
+    # TODO This is a test that everything works fine,
+    # can be safely deleted
+    temporal.start_workflow(
+        NodeDeployWorkflow.run,
+        NodeDeployWorkflowParams(node_id="test-test"),
+        id="aaaaaaa-bbbbbbb",
+    )
+
+
 @with_connection  # Needed by the following lock.
 @synchronised(locks.startup)
 @transactional
@@ -235,3 +256,4 @@ def inner_start_up(master=False):
         # Log deprecations and Update related notifications if needed
         log_deprecations(logger=log)
         sync_deprecation_notifications()
+        setup_temporal()

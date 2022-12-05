@@ -124,6 +124,18 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         UnicodeString(if_missing="", accept_python=False),
     )
 
+    # Temporal.io options
+    temporal_server = ConfigurationOption(
+        "temporal_server",
+        "Temporal.io server address (host:port)",
+        UnicodeString(if_missing="127.0.0.1:7233", accept_python=False),
+    )
+    temporal_namespace = ConfigurationOption(
+        "temporal_namespace",
+        "Temporal.io namespace",
+        UnicodeString(if_missing="default", accept_python=False),
+    )
+
     # Worker options.
     num_workers = ConfigurationOption(
         "num_workers",
