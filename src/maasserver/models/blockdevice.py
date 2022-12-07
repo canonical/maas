@@ -139,6 +139,9 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
+    # Used only for the sqlalchemy spike, to allow it to use inheritance.
+    device_type = CharField(max_length=255, null=True)
+
     def get_name(self):
         """Return the name.
 

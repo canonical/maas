@@ -16,7 +16,7 @@ import pytest
 
 from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
-from maasspike import baseline, django_light
+from maasspike import baseline, django_light, sqlalchemy_core, sqlalchemy_orm
 
 
 class ExpectedMachines:
@@ -94,6 +94,35 @@ def expected_machines(admin, _expected):
     return _expected["machines"]
 
 
+@pytest.fixture
+def sqlalchemy_engine(ensuremaasdb):
+    import sqlalchemy
+
+    from maasserver.djangosettings import development
+
+    params = development.DATABASES["default"]
+    connect_url = f"postgresql:///{params['NAME']}?host={params['HOST']}"
+    engine = sqlalchemy.create_engine(connect_url)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def sqlalchemy_conn(sqlalchemy_engine):
+    with sqlalchemy_engine.connect() as conn:
+        yield conn
+        conn.rollback()
+
+
+@pytest.fixture
+def sqlalchemy_session(sqlalchemy_engine):
+    from sqlalchemy.orm import Session
+
+    with Session(sqlalchemy_engine) as session:
+        yield session
+        session.rollback()
+
+
 def test_populate_expected_machines(expected_machines):
     """A blank test to populate the expected_machines fixture.
 
@@ -101,6 +130,18 @@ def test_populate_expected_machines(expected_machines):
     don't get any advantage by having the query to the machine
     listing cached.
     """
+
+
+@pytest.mark.skip(reason="Not worth using sqlalchemy ORM")
+def test_sqlalchemy_prime(sqlalchemy_session):
+    from sqlalchemy import select
+
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.Machine)))
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.Tag)))
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.Zone)))
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.ResourcePool)))
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.User)))
+    list(sqlalchemy_session.execute(select(sqlalchemy_orm.Domain)))
 
 
 @pytest.mark.parametrize("limit", [None, 50])
@@ -143,4 +184,29 @@ class TestListing:
     def test_django_light(self, limit):
         self.run_listing_test(
             "django_light", django_light.list_machines, limit
+        )
+
+    @pytest.mark.skip(reason="Not worth using sqlalchemy ORM")
+    def test_sqlalchemy_orm(self, limit, sqlalchemy_session):
+
+        self.run_listing_test(
+            "sqlalchemy_orm",
+            lambda admin, limit: sqlalchemy_orm.list_machines(
+                sqlalchemy_session,
+                admin,
+                limit,
+            ),
+            limit,
+        )
+
+    def test_sqlalchemy_core_one_query(self, limit, sqlalchemy_conn):
+
+        self.run_listing_test(
+            "sqlalchemy_core_one_query",
+            lambda admin, limit: sqlalchemy_core.list_machines_one_query(
+                sqlalchemy_conn,
+                admin,
+                limit,
+            ),
+            limit,
         )
