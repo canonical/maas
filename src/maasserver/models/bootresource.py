@@ -16,6 +16,7 @@ from django.db.models import (
     Prefetch,
     Sum,
 )
+from django.utils import timezone
 
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -114,7 +115,7 @@ class BootResourceManager(Manager):
     def get_usable_architectures(self):
         """Return the set of usable architectures.
 
-        Return the architectures for which the has at least one
+        Return the architectures for which the resource has at least one
         commissioning image and at least one install image.
         """
         arches = set()
@@ -514,6 +515,16 @@ class BootResource(CleanSave, TimestampedModel):
     def display_rtype(self):
         """Return rtype text as displayed to the user."""
         return BOOT_RESOURCE_TYPE_CHOICES_DICT[self.rtype]
+
+    @property
+    def last_deployed(self) -> timezone.datetime:
+        """Returns the most recent time of deplyment for an image."""
+        # Mock data: Generates a random time based on the hash of the
+        # resource name.
+        ms_py = 3153600000000
+        return timezone.datetime(2022, 6, 1) + timezone.timedelta(
+            microseconds=hash(self.name) % ms_py
+        )
 
     def clean(self):
         """Validate the model.

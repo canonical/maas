@@ -597,6 +597,9 @@ class BootResourceHandler(Handler):
                 "lastUpdate": resource.last_update.strftime(
                     "%a, %d %b. %Y %H:%M:%S"
                 ),
+                "lastDeployed": resource.last_deployed.strftime(
+                    "%a, %d %b. %Y %H:%M:%S"
+                ),
             }
             for resource in self.combine_resources(
                 BootResource.objects.filter(bootloader_type=None)
