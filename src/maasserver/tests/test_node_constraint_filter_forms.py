@@ -1444,6 +1444,11 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             [node_big], {"arch": arch, "tags": ["big"]}
         )
 
+    def test_wildcard_arch_constraint(self):
+        patch_usable_architectures(self, ["foo/bar", "foo/baz"])
+        form = FilterNodeForm(data={"arch": "foo"})
+        self.assertTrue(form.is_valid())
+
     def test_invalid_combined_constraints(self):
         form = FilterNodeForm(data={"tags": ["unknown"], "arch": "invalid"})
         self.assertEqual(

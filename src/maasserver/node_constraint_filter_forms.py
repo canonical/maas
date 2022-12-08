@@ -1025,7 +1025,7 @@ class FilterNodeForm(forms.Form):
             elif value in architecture_wildcards:
                 # Try to expand 'arch' to all available 'arch/subarch'
                 # matches.
-                arches.append(*architecture_wildcards[value])
+                arches.extend(architecture_wildcards[value])
             else:
                 set_form_error(
                     self,
