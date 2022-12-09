@@ -425,7 +425,9 @@ class ComposeMachineForm(forms.Form):
             choices=[(arch, arch) for arch in self.pod.architectures],
             required=False,
         )
-        self.initial["architecture"] = self.pod.architectures[0]
+        if self.pod.architectures:
+            self.initial["architecture"] = self.pod.architectures[0]
+
         if self.pod.hints.cpu_speed > 0:
             self.fields["cpu_speed"] = IntegerField(
                 min_value=300,

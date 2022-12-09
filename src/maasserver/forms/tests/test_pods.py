@@ -638,6 +638,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
+    def test_sets_up_fields_based_on_pod_no_architectures(self):
+        request = MagicMock()
+        pod = make_pod_with_hints()
+        pod.architectures = []
+        form = ComposeMachineForm(request=request, pod=pod)
+        self.assertFalse(form.fields["architecture"].required)
+        self.assertEqual(
+            pod.architectures, form.fields["architecture"].choices
+        )
+        self.assertNotIn("architecture", form.initial)
+
     def test_sets_up_fields_based_on_pod_no_max_cpu_speed(self):
         request = MagicMock()
         pod = make_pod_with_hints()
