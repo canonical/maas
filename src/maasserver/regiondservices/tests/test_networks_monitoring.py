@@ -10,6 +10,7 @@ from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from maasserver.regiondservices.networks_monitoring import (
     RegionNetworksMonitoringService,
 )
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
@@ -62,6 +63,8 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
     @wait_for()
     @inlineCallbacks
     def test_get_refresh_details_running(self):
+        example_url = factory.make_simple_http_url()
+        self.useFixture(RegionConfigurationFixture(maas_url=example_url))
         region = yield deferToDatabase(factory.make_RegionController)
         region.owner = yield deferToDatabase(factory.make_admin)
         yield deferToDatabase(region.save)
@@ -83,4 +86,6 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             "token_key": region_token.key,
             "token_secret": region_token.secret,
         }
-        self.assertEqual((None, region.system_id, region_credentials), details)
+        self.assertEqual(
+            (example_url, region.system_id, region_credentials), details
+        )

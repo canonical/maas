@@ -5,6 +5,7 @@
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+from maasserver.config import RegionConfiguration
 from maasserver.models.node import RegionController
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -26,7 +27,8 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         """Record the interfaces information."""
         regiond = yield deferToDatabase(self._getRegion)
         credentials = yield regiond.start_refresh()
-        returnValue((None, regiond.system_id, credentials))
+        with RegionConfiguration.open() as config:
+            returnValue((config.maas_url, regiond.system_id, credentials))
 
     def reportNeighbours(self, neighbours):
         """Record the specified list of neighbours."""
