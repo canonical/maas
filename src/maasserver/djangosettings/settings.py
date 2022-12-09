@@ -290,6 +290,7 @@ INSTALLED_APPS = (
     "django.contrib.staticfiles",
     "maasserver",
     "metadataserver",
+    "maasspike",
     "piston3",
 )
 

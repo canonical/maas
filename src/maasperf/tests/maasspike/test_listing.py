@@ -16,7 +16,7 @@ import pytest
 
 from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
-from maasspike import baseline
+from maasspike import baseline, django_light
 
 
 class ExpectedMachines:
@@ -139,3 +139,8 @@ class TestListing:
 
     def test_baseline(self, limit):
         self.run_listing_test("baseline", baseline.list_machines, limit)
+
+    def test_django_light(self, limit):
+        self.run_listing_test(
+            "django_light", django_light.list_machines, limit
+        )
