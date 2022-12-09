@@ -87,6 +87,10 @@ def pytest_configure(config):
         "markers",
         "allow_transactions: Allow a test to use transaction.commit()",
     )
+    config.addinivalue_line(
+        "markers",
+        "recreate_db: re-create database before each test run",
+    )
 
 
 @pytest.hookimpl(tryfirst=True)
@@ -161,7 +165,7 @@ def templatemaasdb(pytestconfig):
 
 
 @pytest.fixture
-def ensuremaasdb(templatemaasdb, pytestconfig, worker_id):
+def ensuremaasdb(request, templatemaasdb, pytestconfig, worker_id):
     from maasserver.djangosettings import development
 
     template = pytestconfig.stash[db_template_stash]
@@ -169,14 +173,19 @@ def ensuremaasdb(templatemaasdb, pytestconfig, worker_id):
     database = development.DATABASES["default"]
     database["NAME"] = dbname
     cluster = pytestconfig.stash[cluster_stash]
-    if dbname not in cluster.databases:
-        template = pytestconfig.stash[db_template_stash]
-        with cluster.lock.exclusive:
-            with connect(cluster) as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(
-                        f'CREATE DATABASE "{dbname}" WITH TEMPLATE "{template}"'
-                    )
+    template = pytestconfig.stash[db_template_stash]
+    with (
+        cluster.lock.exclusive,
+        connect(cluster) as conn,
+        conn.cursor() as cursor,
+    ):
+
+        if request.node.get_closest_marker("recreate_db"):
+            cursor.execute(f"DROP DATABASE IF EXISTS {dbname}")
+        if dbname not in cluster.databases:
+            cursor.execute(
+                f'CREATE DATABASE "{dbname}" WITH TEMPLATE "{template}"'
+            )
     yield
     database["NAME"] = "no_such_db"
 

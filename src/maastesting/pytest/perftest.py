@@ -11,21 +11,21 @@ import os
 import sys
 import time
 
-from pytest import fixture
+import pytest
 
 from maastesting.fixtures import MAASDataFixture, MAASRootFixture
 
 DEFAULT_BRANCH = "master"
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def maas_root():
     if "MAAS_ROOT" in os.environ:
         return MAASRootFixture()
     return None
 
 
-@fixture(scope="session")
+@pytest.fixture(scope="session")
 def maas_data():
     if "MAAS_DATA" in os.environ:
         return MAASDataFixture()
@@ -43,8 +43,11 @@ def pytest_addoption(parser):
     )
 
 
-@fixture(scope="session")
-def perf(pytestconfig):
+@pytest.fixture(scope="session")
+def perf(pytestconfig, request):
+    # mark all tests so that the database is re-created after each one
+    request.applymarker(pytest.mark.recreate_db)
+
     profiling_tag = pytestconfig.getoption("--perf-profiling-tag", None)
     perf_tester = PerfTester(
         os.environ.get("GIT_BRANCH"),
