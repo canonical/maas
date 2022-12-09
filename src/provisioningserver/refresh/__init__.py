@@ -3,7 +3,6 @@
 
 """Functionality to refresh rack controller hardware and networking details."""
 
-import copy
 import os
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
@@ -99,6 +98,11 @@ def runscripts(
     os.makedirs(out_dir)
     fd, resources_file = tempfile.mkstemp()
     os.close(fd)
+    # derive the base URL from the metadata one
+    parsed_url = urllib.parse.urlparse(url)
+    base_url = urllib.parse.urlunparse(
+        (parsed_url.scheme, parsed_url.netloc, "", "", "", "")
+    )
     for script_name in sorted(scripts.keys()):
         signal_wrapper(
             url,
@@ -117,24 +121,15 @@ def runscripts(
         result_name = f"{script_name}.yaml"
         result_path = os.path.join(out_dir, result_name)
 
-        # derive the base URL for from the metadata one
-        parsed_url = urllib.parse.urlparse(url)
-        base_url = urllib.parse.urlunparse(
-            (parsed_url.scheme, parsed_url.netloc, "", "", "", "")
-        )
-
-        env = copy.deepcopy(os.environ)
-        env.update(
-            {
-                "MAAS_BASE_URL": base_url,
-                "MAAS_RESOURCES_FILE": resources_file,
-                "OUTPUT_COMBINED_PATH": combined_path,
-                "OUTPUT_STDOUT_PATH": stdout_path,
-                "OUTPUT_STDERR_PATH": stderr_path,
-                "RESULT_PATH": result_path,
-                "TMPDIR": tmpdir,
-            }
-        )
+        env = os.environ | {
+            "MAAS_BASE_URL": base_url,
+            "MAAS_RESOURCES_FILE": resources_file,
+            "OUTPUT_COMBINED_PATH": combined_path,
+            "OUTPUT_STDOUT_PATH": stdout_path,
+            "OUTPUT_STDERR_PATH": stderr_path,
+            "RESULT_PATH": result_path,
+            "TMPDIR": tmpdir,
+        }
         timeout = 60
         command = [script_path] if in_snap else ["sudo", "-E", script_path]
         try:
