@@ -18,7 +18,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
-from tempfile import mkdtemp
+from tempfile import TemporaryDirectory
 import time
 import urllib.error
 
@@ -46,9 +46,7 @@ class ExitError(Exception):
 
 
 class ScriptsPaths:
-    def __init__(self, base_path=None):
-        if base_path is None:
-            base_path = Path(mkdtemp())
+    def __init__(self, base_path):
         self.scripts = base_path / "scripts"
         self.out = base_path / "out"
         self.downloads = base_path / "downloads"
@@ -375,52 +373,54 @@ def action_report_results(ns):
     if not config.metadata_url:
         raise ExitError("No MAAS URL set")
 
-    paths = ScriptsPaths()
-    paths.ensure()
+    with TemporaryDirectory() as base_path:
+        paths = ScriptsPaths(Path(base_path))
+        paths.ensure()
 
-    maas_url = get_base_url(config.metadata_url)
-    metadata_url = maas_url + "/MAAS/metadata/" + MD_VERSION + "/"
+        maas_url = get_base_url(config.metadata_url)
+        metadata_url = maas_url + "/MAAS/metadata/" + MD_VERSION + "/"
 
-    print(
-        "* Fetching scripts from {url} to {dir}".format(
-            url=metadata_url, dir=paths.scripts
-        )
-    )
-    for script in fetch_scripts(
-        maas_url, metadata_url, paths, config.credentials
-    ):
-        if not script.should_run():
-            continue
         print(
-            f"* Running '{script.name}'...",
-            end="\n" if ns.debug else " ",
-        )
-        result = script.run(console_output=ns.debug)
-        if ns.debug:
-            print(
-                f"* Finished running '{script.name}': ",
-                end=" ",
+            "* Fetching scripts from {url} to {dir}".format(
+                url=metadata_url, dir=paths.scripts
             )
-        if result.exit_status == 0:
-            print("success")
-        else:
+        )
+
+        for script in fetch_scripts(
+            maas_url, metadata_url, paths, config.credentials
+        ):
+            if not script.should_run():
+                continue
             print(
-                "FAILED (status {result.exit_status}): {result.error}".format(
-                    result=result
+                f"* Running '{script.name}'...",
+                end="\n" if ns.debug else " ",
+            )
+            result = script.run(console_output=ns.debug)
+            if ns.debug:
+                print(
+                    f"* Finished running '{script.name}': ",
+                    end=" ",
                 )
+            if result.exit_status == 0:
+                print("success")
+            else:
+                print(
+                    "FAILED (status {result.exit_status}): {result.error}".format(
+                        result=result
+                    )
+                )
+            signal(
+                metadata_url,
+                config.credentials,
+                result.status,
+                error=result.error,
+                script_name=script.name,
+                script_result_id=script.info.get("script_result_id"),
+                files=result.result_files,
+                runtime=result.runtime,
+                exit_status=result.exit_status,
+                script_version_id=script.info.get("script_version_id"),
             )
-        signal(
-            metadata_url,
-            config.credentials,
-            result.status,
-            error=result.error,
-            script_name=script.name,
-            script_result_id=script.info.get("script_result_id"),
-            files=result.result_files,
-            runtime=result.runtime,
-            exit_status=result.exit_status,
-            script_version_id=script.info.get("script_version_id"),
-        )
 
 
 def action_register_machine(ns):
