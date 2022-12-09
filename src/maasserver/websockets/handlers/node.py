@@ -397,12 +397,6 @@ class NodeHandler(TimestampedModelHandler):
                     obj.status, SIMPLIFIED_NODE_STATUS.OTHER
                 )
 
-        if for_list:
-            for attr in ("numa_nodes_count", "sriov_support"):
-                value = getattr(obj, attr, None)
-                if value is not None:
-                    data[attr] = value
-
         # Filters are only available on machines and devices.
         if not obj.is_controller:
             # For filters
@@ -421,7 +415,12 @@ class NodeHandler(TimestampedModelHandler):
                 }
             )
 
-        if not for_list:
+        if for_list:
+            for attr in ("numa_nodes_count", "sriov_support"):
+                value = getattr(obj, attr, None)
+                if value is not None:
+                    data[attr] = value
+        else:
             data["on_network"] = obj.on_network()
             if obj.node_type != NODE_TYPE.DEVICE:
                 data["numa_nodes"] = [

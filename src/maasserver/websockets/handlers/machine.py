@@ -323,9 +323,8 @@ class MachineHandler(NodeHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data = super().dehydrate(obj, data, for_list=for_list)
-        data.update(
-            {"locked": obj.locked, "pool": self.dehydrate_pool(obj.pool)}
-        )
+        data["workload_annotations"] = OwnerData.objects.get_owner_data(obj)
+        data["parent"] = getattr(obj.parent, "system_id", None)
         # Try to use the annotated event description so its loaded in the same
         # query as loading the machines. Otherwise fallback to the method on
         # the machine.
@@ -424,8 +423,6 @@ class MachineHandler(NodeHandler):
             node_script_results
         )
 
-        data["workload_annotations"] = OwnerData.objects.get_owner_data(obj)
-        data["parent"] = getattr(obj.parent, "system_id", None)
         if not for_list:
             # Add info specific to a machine.
             data["show_os_info"] = self.dehydrate_show_os_info(obj)
