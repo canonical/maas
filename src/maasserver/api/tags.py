@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from piston3.utils import rc
 
 from maasserver.api.nodes import NODES_PREFETCH, NODES_SELECT_RELATED
@@ -58,6 +59,13 @@ def check_rack_controller_access(request, rack_controller):
         )
 
 
+def get_tag_or_404(name, user, to_edit=False):
+    """Fetch a Tag by name or raise an Http404 exception."""
+    if to_edit and not user.is_superuser:
+        raise PermissionDenied()
+    return get_object_or_404(Tag, name=name)
+
+
 class TagHandler(OperationsHandler):
     """
     Tags are properties that can be associated with a Node and serve as
@@ -89,7 +97,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        return Tag.objects.get_tag_or_404(name=name, user=request.user)
+        return get_tag_or_404(name=name, user=request.user)
 
     def update(self, request, name):
         """@description-title Update a tag
@@ -119,9 +127,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = Tag.objects.get_tag_or_404(
-            name=name, user=request.user, to_edit=True
-        )
+        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
         name = tag.name
         form = TagForm(request.data, instance=tag)
         if not form.is_valid():
@@ -159,9 +165,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = Tag.objects.get_tag_or_404(
-            name=name, user=request.user, to_edit=True
-        )
+        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
         tag.delete()
         create_audit_event(
             EVENT_TYPES.TAG,
@@ -178,7 +182,7 @@ class TagHandler(OperationsHandler):
         # This is done because this operation actually returns a list of nodes
         # and not a list of tags as this handler is defined to return.
         self.fields = None
-        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        tag = get_tag_or_404(name=name, user=request.user)
         nodes = model.objects.get_nodes(
             request.user, NodePermission.view, from_nodes=tag.node_set.all()
         )
@@ -318,9 +322,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = Tag.objects.get_tag_or_404(
-            name=name, user=request.user, to_edit=True
-        )
+        tag = get_tag_or_404(name=name, user=request.user, to_edit=True)
         tag.populate_nodes()
         return {"rebuilding": tag.name}
 
@@ -373,7 +375,7 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
+        tag = get_tag_or_404(name=name, user=request.user)
         rack_controller = None
         if not request.user.is_superuser:
             system_id = request.data.get("rack_controller", None)
