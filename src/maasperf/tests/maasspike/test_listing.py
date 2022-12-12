@@ -37,8 +37,14 @@ class ExpectedMachines:
         assert [machine["id"] for machine in machine_list] == [
             machine["id"] for machine in expected_list
         ]
-        assert machine_list[0] == expected_list[0]
-        assert machine_list[-1] == expected_list[-1]
+        self.assert_machines(machine_list[0], expected_list[0])
+        self.assert_machines(machine_list[-1], expected_list[-1])
+
+    def assert_machines(self, machine1, machine2):
+        # tags are not ordered in output
+        machine1["tags"].sort()
+        machine2["tags"].sort()
+        assert machine1 == machine2
 
 
 def get_expected_machines(admin):
