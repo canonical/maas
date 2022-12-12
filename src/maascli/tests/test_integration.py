@@ -8,7 +8,7 @@ import os.path
 import random
 from subprocess import CalledProcessError, check_output, STDOUT
 
-from maascli import disable_colorama, main
+from maascli import main
 from maascli.config import ProfileConfig
 from maascli.testing.config import make_configs
 from maascli.utils import handler_command_name
@@ -73,9 +73,6 @@ class TestMain(MAASTestCase):
         resource_name = random.choice(resources)["name"]
         handler_name = handler_command_name(resource_name)
         command = "maas", profile_name, handler_name
-
-        # Trying to disable colorama conflicts with the CaptureStandardIO below
-        self.patch(disable_colorama)
 
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(SystemExit, main, command)

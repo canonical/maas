@@ -150,6 +150,22 @@ def print_response_headers(headers, file=None):
         print(form % (cap(header), headers[header]), file=file)
 
 
+def get_orig_stdout(file):
+    # Get the underlying buffer if we're writing to stdout. This allows us to
+    # write bytes directly, without attempting to convert the bytes to unicode.
+    # Unicode output may not be desired; the HTTP response could be raw bytes.
+    try:
+        import colorama
+
+        if isinstance(file, colorama.ansitowin32.StreamWrapper):
+            file = colorama.initialise.orig_stdout
+    except (ImportError, OSError):
+        pass
+    if isinstance(file, io.TextIOWrapper):
+        file = file.buffer
+    return file
+
+
 def print_response_content(response, content, file=None):
     """Write the response's content to stdout.
 
@@ -159,14 +175,10 @@ def print_response_content(response, content, file=None):
     :param file: a binary stream opened for writing (optional)
     """
     file = sys.stdout if file is None else file
+    file = get_orig_stdout(file)
     is_tty = file.isatty()
     success = response.status // 100 == 2
     is_textual = is_response_textual(response)
-    # Get the underlying buffer if we're writing to stdout. This allows us to
-    # write bytes directly, without attempting to convert the bytes to unicode.
-    # Unicode output may not be desired; the HTTP response could be raw bytes.
-    if isinstance(file, io.TextIOWrapper):
-        file = file.buffer
     if is_tty and success and is_textual:
         file.write(b"Success.\n")
         file.write(b"Machine-readable output follows:\n")
