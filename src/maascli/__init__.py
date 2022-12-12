@@ -25,24 +25,11 @@ def snap_setup():
         )
 
 
-def disable_colorama():
-    """Django pulls Colorama automatically if it's in PYTHONPATH, which
-    interferes with our raw output mode"""
-    try:
-        import colorama
-
-        colorama.deinit()
-    except (ImportError, OSError):
-        pass
-
-
 def main(argv=sys.argv):
     # If no arguments have been passed be helpful and point out --help.
     verbose_errors = "MAAS_CLI_VERBOSE_ERRORS" in os.environ
 
     snap_setup()
-
-    disable_colorama()
 
     parser = prepare_parser(argv)
 
