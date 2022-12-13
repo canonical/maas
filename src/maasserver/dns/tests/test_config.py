@@ -873,7 +873,10 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
         domain = factory.make_Domain()
         resource = factory.make_DNSResource(domain=domain)
         ip = resource.ip_addresses.first().ip
-        ip2 = factory.make_StaticIPAddress()
+        subnet = factory.make_Subnet()
+        ip2 = factory.make_StaticIPAddress(
+            subnet=subnet, ip=subnet.get_next_ip_for_allocation()[0]
+        )
         resource.ip_addresses.add(ip2)
         message = f"DELETE-IP {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
         resource.ip_addresses.first().delete()
@@ -896,6 +899,40 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                     operation="INSERT",
                     zone=domain.name,
                     name=f"{resource.name}.{domain.name}",
+                    rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
+                    answer=ip2.ip,
+                ),
+            ],
+            result,
+        )
+
+    def test_delete_iface_ip(self):
+        domain = factory.make_Domain()
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        ip1 = iface.ip_addresses.first()
+        ip2 = factory.make_StaticIPAddress(interface=iface)
+        ip1.delete()
+        message = f"DELETE-IFACE-IP {domain.name} {node.hostname} A {domain.ttl if domain.ttl else 60} {iface.id}"
+        result, _ = process_dns_update_notify(message)
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{node.hostname}.{domain.name}",
+                    rectype="A",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    zone=domain.name,
+                    name=f"{node.hostname}.{domain.name}",
+                    rectype="AAAA",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    zone=domain.name,
+                    name=f"{node.hostname}.{domain.name}",
                     rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
                     answer=ip2.ip,
                 ),
