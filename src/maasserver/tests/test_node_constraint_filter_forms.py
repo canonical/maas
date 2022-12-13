@@ -1911,41 +1911,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         }
         self.assertConstrainedNodes([node1], constraints)
 
-    def test_srvio(self):
-        node1 = factory.make_Machine()
-        node2 = factory.make_Machine(interface=True)
-        factory.make_Interface(sriov_max_vf=2, node=node1)
-        self.assertConstrainedNodes(
-            [node1],
-            {
-                "sriov_support": True,
-            },
-        )
-        self.assertConstrainedNodes(
-            [node2],
-            {
-                "sriov_support": False,
-            },
-        )
-
-    def test_numa_nodes_count(self):
-        node1 = factory.make_Machine()
-        factory.make_NUMANode(node=node1)
-        node2 = factory.make_Machine()
-        self.assertConstrainedNodes(
-            [node1],
-            {
-                "numa_nodes_count": [2],
-            },
-        )
-        # default NUMA node
-        self.assertConstrainedNodes(
-            [node2],
-            {
-                "numa_nodes_count": [1],
-            },
-        )
-
     def test_substring_description_filter(self):
         desc = factory.make_unicode_string(size=30, spaces=True)
         node1 = factory.make_Node(description=desc)

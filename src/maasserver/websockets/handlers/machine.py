@@ -9,16 +9,7 @@ import logging
 from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db.models import (
-    Case,
-    CharField,
-    Count,
-    Exists,
-    F,
-    OuterRef,
-    Subquery,
-    Sum,
-)
+from django.db.models import Case, CharField, Count, F, OuterRef, Subquery, Sum
 from django.db.models import Value as V
 from django.db.models import When
 from django.db.models.functions import Concat
@@ -171,12 +162,6 @@ class MachineHandler(NodeHandler):
                     output_field=CharField(),
                 ),
                 simple_status=_build_simple_status_q(),
-                numa_nodes_count=Count("numanode", distinct=True),
-                sriov_support=Exists(
-                    Interface.objects.filter(
-                        node_config__node=OuterRef("pk"), sriov_max_vf__gt=0
-                    )
-                ),
             )
             .annotate(
                 status_event_type_description=Subquery(
@@ -193,8 +178,6 @@ class MachineHandler(NodeHandler):
                     .order_by("-created", "-id")
                     .values("description")[:1]
                 ),
-                numa_nodes_count=F("numa_nodes_count"),
-                sriov_support=F("sriov_support"),
                 physical_disk_count=F("physical_disk_count"),
                 total_storage=F("storage"),
                 pxe_mac=F("pxe_mac"),
@@ -323,7 +306,6 @@ class MachineHandler(NodeHandler):
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data = super().dehydrate(obj, data, for_list=for_list)
-        data["workload_annotations"] = OwnerData.objects.get_owner_data(obj)
         data["parent"] = getattr(obj.parent, "system_id", None)
         # Try to use the annotated event description so its loaded in the same
         # query as loading the machines. Otherwise fallback to the method on
@@ -401,35 +383,37 @@ class MachineHandler(NodeHandler):
             storage_script_results
         )
 
-        interface_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.NETWORK, []
-            )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["interface_test_status"] = self.dehydrate_test_statuses(
-            interface_script_results
-        )
-
-        node_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.NODE, []
-            )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["other_test_status"] = self.dehydrate_test_statuses(
-            node_script_results
-        )
-
         if not for_list:
             # Add info specific to a machine.
+            data["workload_annotations"] = OwnerData.objects.get_owner_data(
+                obj
+            )
             data["show_os_info"] = self.dehydrate_show_os_info(obj)
             devices = [
                 self.dehydrate_device(device) for device in obj.children.all()
             ]
             data["devices"] = sorted(devices, key=itemgetter("fqdn"))
+
+            interface_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.NETWORK, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["interface_test_status"] = self.dehydrate_test_statuses(
+                interface_script_results
+            )
+            node_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.NODE, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["other_test_status"] = self.dehydrate_test_statuses(
+                node_script_results
+            )
 
             # include certificate info if present
             certificate = obj.get_power_parameters().get("certificate")

@@ -411,16 +411,12 @@ class TestMachineHandler(MAASServerTestCase):
                     "dhcp_on",
                     "distro_series",
                     "extra_macs",
-                    "link_speeds",
                     "fabrics",
                     "fqdn",
-                    "has_logs",
                     "installation_start_time",
                     "ip_addresses",
                     "link_type",
                     "metadata",
-                    "node_type_display",
-                    "numa_nodes_count",
                     "osystem",
                     "permissions",
                     "physical_disk_count",
@@ -428,20 +424,16 @@ class TestMachineHandler(MAASServerTestCase):
                     "pxe_mac",
                     "pxe_mac_vendor",
                     "spaces",
-                    "sriov_support",
                     "simple_status",
                     "status",
                     "status_code",
                     "status_message",
                     "storage",
-                    "storage_tags",
-                    "subnets",
                     "tags",
                     "testing_script_count",
                     "testing_start_time",
                     "testing_status",
                     "vlan",
-                    "workload_annotations",
                 }
             )
             for key in list(data):
@@ -506,27 +498,28 @@ class TestMachineHandler(MAASServerTestCase):
             storage_script_results
         )
 
-        interface_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.NETWORK, []
+        if not for_list:
+            interface_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.NETWORK, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["interface_test_status"] = handler.dehydrate_test_statuses(
+                interface_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["interface_test_status"] = handler.dehydrate_test_statuses(
-            interface_script_results
-        )
 
-        node_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.NODE, []
+            node_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.NODE, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["other_test_status"] = handler.dehydrate_test_statuses(
+                node_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["other_test_status"] = handler.dehydrate_test_statuses(
-            node_script_results
-        )
 
         if node.enable_hw_sync:
             data.update(
@@ -2411,29 +2404,6 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertCountEqual(
             [self.dehydrate_node(node, handler, for_list=True)], list_items
         )
-
-    def test_list_includes_numa_node_info(self):
-        user = factory.make_User()
-        machine = factory.make_Machine(owner=user)
-        memory_cores = ((512, [0, 1]), (1024, [2, 3]), (2048, [4, 5]))
-        for memory, cores in memory_cores:
-            factory.make_NUMANode(node=machine, memory=memory, cores=cores)
-        handler = MachineHandler(user, {}, None)
-        list_results = handler.list({})
-        [list_item] = list_results["groups"][0]["items"]
-        self.assertEqual(list_item["numa_nodes_count"], 4)
-        # the listing is not included in the result
-        self.assertNotIn("numa_nodes", list_item)
-
-    def test_list_includes_sriov_support_flag(self):
-        user = factory.make_User()
-        machine = factory.make_Machine(owner=user)
-        factory.make_Interface(node=machine)
-        factory.make_Interface(node=machine, sriov_max_vf=16)
-        handler = MachineHandler(user, {}, None)
-        list_results = handler.list({})
-        [list_item] = list_results["groups"][0]["items"]
-        self.assertTrue(list_item["sriov_support"])
 
     def test_list_ignores_devices(self):
         owner = factory.make_User()
@@ -6605,27 +6575,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "dynamic": True,
                     "for_grouping": True,
                 },
-                {
-                    "key": "numa_nodes_count",
-                    "label": "NUMA nodes Count",
-                    "type": "list[int]",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "not_numa_nodes_count",
-                    "label": "NUMA nodes Count",
-                    "type": "list[int]",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "sriov_support",
-                    "label": "SR-IOV support",
-                    "type": "bool",
-                    "dynamic": False,
-                    "for_grouping": False,
-                },
             ],
             handler.filter_groups({}),
         )
@@ -6813,27 +6762,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertCountEqual(
             [v["label"] for v in result],
             [choice[1] for choice in SIMPLIFIED_NODE_STATUS_CHOICES],
-        )
-
-    def test_filter_options_sriov(self):
-        user = factory.make_User()
-        handler = MachineHandler(user, {}, None)
-        result = handler.filter_options({"group_key": "sriov_support"})
-        self.assertCountEqual(
-            [v["label"] for v in result],
-            ["True", "False"],
-        )
-
-    def test_filter_options_numa_nodes_count(self):
-        user = factory.make_User()
-        factory.make_Machine()
-        node1 = factory.make_Machine()
-        factory.make_NUMANode(node=node1)
-        handler = MachineHandler(user, {}, None)
-        result = handler.filter_options({"group_key": "numa_nodes_count"})
-        self.assertCountEqual(
-            [v["label"] for v in result],
-            ["1", "2"],
         )
 
     def test_filter_options_interfaces_unique_values(self):

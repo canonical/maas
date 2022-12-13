@@ -268,7 +268,6 @@ class NodeHandler(TimestampedModelHandler):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
-        data["node_type_display"] = obj.get_node_type_display()
         data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
         data["tags"] = [tag.id for tag in obj.tags.all()]
         if obj.node_type == NODE_TYPE.MACHINE or (
@@ -300,7 +299,8 @@ class NodeHandler(TimestampedModelHandler):
                     / (1000**3),
                     1,
                 )
-            data["storage_tags"] = self.get_all_storage_tags(blockdevices)
+            if not for_list:
+                data["storage_tags"] = self.get_all_storage_tags(blockdevices)
             commissioning_script_results = []
             testing_script_results = []
             commissioning_start_time = None
@@ -359,9 +359,10 @@ class NodeHandler(TimestampedModelHandler):
             data["installation_start_time"] = dehydrate_datetime(
                 installation_start_time
             )
-            data["has_logs"] = (
-                log_results.difference(script_output_nsmap.keys()) == set()
-            )
+            if not for_list:
+                data["has_logs"] = (
+                    log_results.difference(script_output_nsmap.keys()) == set()
+                )
         else:
             blockdevices = []
 
@@ -401,26 +402,27 @@ class NodeHandler(TimestampedModelHandler):
         if not obj.is_controller:
             # For filters
             subnets = self.get_all_subnets(obj)
-            data["subnets"] = sorted(subnet.cidr for subnet in subnets)
             data["fabrics"] = sorted(self.get_all_fabric_names(obj, subnets))
             data["spaces"] = sorted(self.get_all_space_names(subnets))
             data["extra_macs"] = sorted(
                 "%s" % mac_address for mac_address in obj.get_extra_macs()
             )
-            data["link_speeds"] = sorted(
-                {
-                    interface.link_speed
-                    for interface in obj.current_config.interface_set.all()
-                    if interface.link_speed > 0
-                }
-            )
+            if not for_list:
+                data["subnets"] = sorted(subnet.cidr for subnet in subnets)
+                data["link_speeds"] = sorted(
+                    {
+                        interface.link_speed
+                        for interface in obj.current_config.interface_set.all()
+                        if interface.link_speed > 0
+                    }
+                )
 
-        if for_list:
+        if not for_list:
             for attr in ("numa_nodes_count", "sriov_support"):
                 value = getattr(obj, attr, None)
                 if value is not None:
                     data[attr] = value
-        else:
+            data["node_type_display"] = obj.get_node_type_display()
             data["on_network"] = obj.on_network()
             if obj.node_type != NODE_TYPE.DEVICE:
                 data["numa_nodes"] = [
