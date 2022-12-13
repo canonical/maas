@@ -21,6 +21,7 @@ from maasserver.models.dnsdata import DNSData
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.models.dnsresource import DNSResource
 from maasserver.models.domain import Domain
+from maasserver.models.interface import Interface
 from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
 from provisioningserver.dns.actions import (
@@ -348,7 +349,7 @@ def process_dns_update_notify(message):
         case _:
             # special case where we know an IP has been deleted but, we can't fetch the value
             # and the rrecord may still have other answers
-            if op == "DELETE-IP":
+            if op == "DELETE-IP" or op == "DELETE-IFACE-IP":
                 updates.append(
                     DynamicDNSUpdate.create_from_trigger(
                         operation="DELETE",
@@ -366,23 +367,42 @@ def process_dns_update_notify(message):
                             rectype="AAAA",
                         )
                     )
-                resource = DNSResource.objects.get(
-                    name=update_list[2], domain__name=zone
-                )
+
+                ttl = None
+                ip_addresses = []
+                if op == "DELETE-IP":
+                    resource = DNSResource.objects.get(
+                        name=update_list[2], domain__name=zone
+                    )
+                    ttl = (
+                        int(resource.address_ttl)
+                        if resource.address_ttl
+                        else None
+                    )
+                    ip_addresses = list(
+                        resource.ip_addresses.exclude(ip__isnull=True)
+                    )
+                else:
+                    iface_id = int(update_list[-1])
+                    iface = Interface.objects.get(id=iface_id)
+                    default_domain = Domain.objects.get_default_domain()
+                    ttl = (
+                        int(default_domain.ttl) if default_domain.ttl else None
+                    )
+                    ip_addresses = list(
+                        iface.ip_addresses.exclude(ip__isnull=True)
+                    )
                 updates += [
                     DynamicDNSUpdate.create_from_trigger(
                         operation="INSERT",
                         zone=zone,
                         name=name,
                         rectype=rectype,
-                        ttl=int(resource.address_ttl)
-                        if resource.address_ttl
-                        else None,
+                        ttl=ttl,
                         answer=ip.ip,
                     )
-                    for ip in resource.ip_addresses.all()
+                    for ip in ip_addresses
                 ]
-
             elif len(update_list) > 4:  # has an answer
                 updates.append(
                     DynamicDNSUpdate.create_from_trigger(

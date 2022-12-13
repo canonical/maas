@@ -7,6 +7,7 @@
 from datetime import datetime
 from itertools import chain
 import os
+from pathlib import Path
 
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
@@ -323,6 +324,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
             if not self.force_config_write and self.zone_file_exists(zi):
                 self.dynamic_update(zi)
             else:
+                Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
                 self.write_zone_file(
                     zi.target_path,
@@ -612,6 +614,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
             if not self.force_config_write and self.zone_file_exists(zi):
                 self.dynamic_update(zi)
             else:
+                Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
                 self.write_zone_file(
                     zi.target_path,
