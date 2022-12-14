@@ -17,6 +17,10 @@ configure_logging() {
     chown maas:maas /var/log/maas/maas.log
 }
 
+configure_conf_dir() {
+    chown maas:maas /etc/maas
+}
+
 configure_lib_dir() {
     # Ensure lib dir has correct permissions
     chown maas:maas /var/lib/maas/
@@ -42,6 +46,7 @@ add_user_group(){
 disable_nginx
 add_user_group
 configure_logging
+configure_conf_dir
 configure_lib_dir
 
 #DEBHELPER#

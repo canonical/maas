@@ -145,6 +145,7 @@ fix_dns_permissions() {
 # Unconditionally ensure that there is at least an empty configuration
 # file. This does *not* overwrite any existing configuration.
 maas-rack config
+chown maas:maas /etc/maas/rackd.conf
 
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_logging
