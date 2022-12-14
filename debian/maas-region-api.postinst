@@ -74,6 +74,7 @@ fix_dns_permissions() {
 # Unconditionally ensure that there is at least an empty configuration
 # file. This does *not* overwrite any existing configuration.
 maas-region local_config_set
+chown maas:maas /etc/maas/regiond.conf
 
 if [ "$1" = "configure" ]; then
     configure_logging
