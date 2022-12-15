@@ -177,7 +177,8 @@ class DomainConfigBase:
             [
                 update
                 for update in self._dynamic_updates
-                if update.zone == zone_info.zone_name or update.subnet
+                if update.zone == zone_info.zone_name
+                or IPNetwork(update.subnet) == zone_info.subnetwork
             ],
             serial=self.serial,
             ttl=self.default_ttl,

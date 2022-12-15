@@ -48,6 +48,7 @@ from maasserver.utils.orm import transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockAnyCall, MockCalledOnceWith, MockNotCalled
+from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -509,6 +510,49 @@ class TestZoneGenerator(MAASServerTestCase):
             "ns": HostnameRRsetMapping(None, {(30, "A", sip.ip)}),
         }
         self.assertEqual(expected_map, zones[0]._other_mapping)
+
+    def test_glue_receives_correct_dynamic_updates(self):
+        domain = factory.make_Domain()
+        subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        sip = factory.make_StaticIPAddress(subnet=subnet)
+        factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
+        )
+        update_rec = factory.make_DNSResource(
+            name=factory.make_name(), domain=domain, ip_addresses=[sip]
+        )
+        updates = [
+            DynamicDNSUpdate(
+                operation="INSERT",
+                name=update_rec.name,
+                zone=domain.name,
+                rectype="A",
+                answer=sip.ip,
+            )
+        ]
+        zones = ZoneGenerator(
+            domain,
+            subnet,
+            serial=random.randint(0, 65535),
+            dynamic_updates=updates,
+        ).as_list()
+        self.assertCountEqual(zones[0]._dynamic_updates, updates)
+        self.assertCountEqual(
+            zones[1]._dynamic_updates,
+            [
+                DynamicDNSUpdate.as_reverse_record_update(
+                    updates[0], str(IPNetwork("10/29"))
+                )
+            ],
+        )
+        self.assertCountEqual(
+            zones[2]._dynamic_updates,
+            [
+                DynamicDNSUpdate.as_reverse_record_update(
+                    updates[0], str(IPNetwork("10/24"))
+                )
+            ],
+        )
 
     def test_parent_of_default_domain_gets_glue(self):
         default_domain = Domain.objects.get_default_domain()

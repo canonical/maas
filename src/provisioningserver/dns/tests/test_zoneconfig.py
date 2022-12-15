@@ -967,6 +967,93 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             stdin=expected_stdin.encode("ascii"),
         )
 
+    def test_glue_network_zone_contains_appropriate_dynamic_updates(self):
+        patch_zone_file_config_path(self)
+        domain = factory.make_string()
+        network = IPNetwork("10.0.0.0/26")
+        glue_network = IPNetwork("10.0.0.0/24")
+        ip1 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network)
+        hostname1 = f"{factory.make_string()}.{domain}"
+        hostname2 = f"{factory.make_string()}.{domain}"
+        fwd_updates = [
+            DynamicDNSUpdate(
+                operation="INSERT",
+                zone=domain,
+                name=hostname1,
+                rectype="A",
+                answer=ip1,
+            ),
+            DynamicDNSUpdate(
+                operation="INSERT",
+                zone=domain,
+                name=hostname2,
+                rectype="A",
+                answer=ip2,
+            ),
+        ]
+        rev_updates = [
+            DynamicDNSUpdate.as_reverse_record_update(update, str(network))
+            for update in fwd_updates
+        ]
+        zone = DNSReverseZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            network=network,
+            dynamic_updates=rev_updates,
+        )
+        glue_rev_updates = [
+            DynamicDNSUpdate.as_reverse_record_update(
+                update, str(glue_network)
+            )
+            for update in fwd_updates
+        ]
+        glue_zone = DNSReverseZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            network=glue_network,
+            dynamic_updates=glue_rev_updates,
+        )
+        expected_stdin = "\n".join(
+            [
+                "server localhost",
+                "zone 0-26.0.0.10.in-addr.arpa",
+                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
+                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
+                f"update add 0-26.0.0.10.in-addr.arpa {zone.default_ttl} SOA 0-26.0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                "send\n",
+            ]
+        )
+        glue_expected_stdin = "\n".join(
+            [
+                "server localhost",
+                "zone 0.0.10.in-addr.arpa",
+                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
+                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
+                f"update add 0.0.10.in-addr.arpa {glue_zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {glue_zone.serial} 600 1800 604800 {glue_zone.default_ttl}",
+                "send\n",
+            ]
+        )
+        run_command = self.patch(actions, "run_command")
+        glue_zone.write_config()
+        glue_zone.write_config()
+        run_command.assert_called_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            "-v",
+            stdin=glue_expected_stdin.encode("ascii"),
+        )
+        zone.write_config()
+        zone.write_config()
+        run_command.assert_called_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            "-v",
+            stdin=expected_stdin.encode("ascii"),
+        )
+
 
 class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
     """Tests for `DNSReverseZoneConfig.get_GENERATE_directives()`."""
