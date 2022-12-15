@@ -452,7 +452,9 @@ class ZoneGenerator:
                 glue = set()
 
             domain_updates = [
-                DynamicDNSUpdate.as_reverse_record_update(update, subnet)
+                DynamicDNSUpdate.as_reverse_record_update(
+                    update, str(subnet.cidr)
+                )
                 for update in dynamic_updates
                 if update.answer
                 and update.answer_is_ip
@@ -476,6 +478,28 @@ class ZoneGenerator:
             )
         # Now provide any remaining rfc2317 glue networks.
         for network, ranges in rfc2317_glue.items():
+            exclude_set = {
+                IPNetwork(s.cidr)
+                for s in subnets
+                if network in IPNetwork(s.cidr)
+            }
+            domain_updates = []
+            for update in dynamic_updates:
+                glue_update = True
+                for exclude_net in exclude_set:
+                    if (
+                        update.answer
+                        and update.answer_is_ip
+                        and IPAddress(update.answer) in exclude_net
+                    ):
+                        glue_update = False
+                        break
+                if glue_update:
+                    domain_updates.append(
+                        DynamicDNSUpdate.as_reverse_record_update(
+                            update, str(network)
+                        )
+                    )
             yield DNSReverseZoneConfig(
                 ns_host_name,
                 serial=serial,
@@ -483,11 +507,7 @@ class ZoneGenerator:
                 network=network,
                 ns_host_name=ns_host_name,
                 rfc2317_ranges=ranges,
-                exclude={
-                    IPNetwork(s.cidr)
-                    for s in subnets
-                    if network in IPNetwork(s.cidr)
-                },
+                exclude=exclude_set,
                 dynamic_updates=domain_updates,
                 force_config_write=force_config_write,
             )
