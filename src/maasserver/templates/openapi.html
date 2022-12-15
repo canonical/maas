@@ -4,8 +4,10 @@
   <head>
     <meta charset="UTF-8">
     <title>MAAS API</title>
-    <link href="https://maas.io/static/css/main.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css" />
+    <link href="/MAAS/r/static/css/main.a4c6517c.css" rel="stylesheet">
+    <style>
+      {% include "dist/swagger-ui.css" %}
+    </style>
     <style>
       html * {
         font-family: ubuntu !important;
@@ -50,7 +52,9 @@
         </div>
       </header>
     <div id="swagger-ui" style="max-width: 72rem; margin: auto;"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js" crossorigin></script>
+    <script>
+      {% include "dist/swagger-ui-bundle.js" %}
+    </script>
     <script>
       window.onload = function() {
         window.ui = SwaggerUIBundle({

@@ -57,6 +57,12 @@ UI_BUILD := src/maasui/build
 
 OFFLINE_DOCS := src/maas-offline-docs/src
 
+swagger-dist := src/maasserver/templates/dist/
+swagger-js: file := src/maasserver/templates/dist/swagger-ui-bundle.js
+swagger-js: url := "https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js"
+swagger-css: file := src/maasserver/templates/dist/swagger-ui.css
+swagger-css: url := "https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css"
+
 build: \
   .run \
   $(VENV) \
@@ -110,6 +116,17 @@ $(UI_BUILD):
 
 $(OFFLINE_DOCS):
 	$(MAKE) -C src/maas-offline-docs
+
+$(swagger-dist):
+	mkdir $@
+
+swagger-js: $(swagger-dist)
+	wget -O $(file) $(url)
+.PHONY: swagger-js
+
+swagger-css: $(swagger-dist)
+	wget -O $(file) $(url)
+.PHONY: swagger-css
 
 go-bins:
 	$(MAKE) -j -C src/host-info build
@@ -222,7 +239,7 @@ api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 openapi.yaml: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_oapi_spec > $@
 
-doc: api-docs.rst openapi.yaml
+doc: api-docs.rst openapi.yaml swagger-css swagger-js
 .PHONY: doc
 
 .run: run-skel
