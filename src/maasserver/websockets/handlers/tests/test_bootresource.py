@@ -364,6 +364,32 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource = response["resources"][0]
         self.assertEqual(version, resource["title"])
 
+    def test_shows_last_deployment_time(self) -> None:
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED
+        )
+        os_name, series = resource.name.split("/")
+        # The polled datetime only has granularity of order seconds
+        start_time = datetime.datetime.now().replace(microsecond=0)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            osystem=os_name,
+            distro_series=series,
+            architecture=resource.architecture,
+        )
+        node.end_deployment()
+        response = handler.poll({})
+        resource = response["resources"][0]
+        self.assertIn("lastDeployed", resource)
+        self.assertGreaterEqual(
+            datetime.datetime.strptime(
+                resource["lastDeployed"], "%a, %d %b. %Y %H:%M:%S"
+            ),
+            start_time,
+        )
+
     def test_shows_number_of_nodes_deployed_for_resource(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)

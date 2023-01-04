@@ -1,9 +1,9 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource."""
 
-
+from datetime import datetime
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
@@ -16,7 +16,6 @@ from django.db.models import (
     Prefetch,
     Sum,
 )
-from django.utils import timezone
 
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -516,16 +515,6 @@ class BootResource(CleanSave, TimestampedModel):
         """Return rtype text as displayed to the user."""
         return BOOT_RESOURCE_TYPE_CHOICES_DICT[self.rtype]
 
-    @property
-    def last_deployed(self) -> timezone.datetime:
-        """Returns the most recent time of deplyment for an image."""
-        # Mock data: Generates a random time based on the hash of the
-        # resource name.
-        ms_py = 3153600000000
-        return timezone.datetime(2022, 6, 1) + timezone.timedelta(
-            microseconds=hash(self.name) % ms_py
-        )
-
     def clean(self):
         """Validate the model.
 
@@ -590,6 +579,23 @@ class BootResource(CleanSave, TimestampedModel):
             ):
                 return resource_set
         return None
+
+    def get_last_deploy(self) -> datetime:
+        from maasserver.models.event import Event
+        from provisioningserver.events import EVENT_TYPES
+
+        deploy_msg = f"deployed {self.name}/{self.architecture}"
+        try:
+            return (
+                Event.objects.filter(
+                    type__name=EVENT_TYPES.IMAGE_DEPLOYED,
+                    description=deploy_msg,
+                )
+                .latest("created")
+                .created
+            )
+        except Event.DoesNotExist:
+            pass
 
     def split_arch(self):
         return self.architecture.split("/")

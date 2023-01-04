@@ -4823,9 +4823,12 @@ class TestNode(MAASServerTestCase):
         self.disable_node_query()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node.end_deployment()
-        event = Event.objects.get(node=node)
+        events = Event.objects.filter(node=node)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
-        self.assertEqual(event.type.name, EVENT_TYPES.DEPLOYED)
+        self.assertEqual(
+            {event.type.name for event in events},
+            {EVENT_TYPES.IMAGE_DEPLOYED, EVENT_TYPES.DEPLOYED},
+        )
 
     def test_end_deployment_sets_first_last_sync_value(self):
         self.disable_node_query()

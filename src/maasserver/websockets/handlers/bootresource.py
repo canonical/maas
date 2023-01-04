@@ -5,6 +5,8 @@
 
 
 from collections import defaultdict
+from datetime import datetime
+from typing import Optional
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -376,7 +378,9 @@ class BootResourceHandler(Handler):
                     count += 1
         return count
 
-    def pick_latest_datetime(self, time, other_time):
+    def pick_latest_datetime(
+        self, time: datetime, other_time: datetime
+    ) -> datetime:
         """Return the datetime that is the latest."""
         if time is None:
             return other_time
@@ -410,7 +414,9 @@ class BootResourceHandler(Handler):
                 return False
         return True
 
-    def get_last_update_for_resources(self, resources):
+    def get_last_update_for_resources(
+        self, resources: list[BootResource]
+    ) -> datetime:
         """Return the latest updated time for all resources."""
         last_update = None
         for resource in resources:
@@ -430,6 +436,19 @@ class BootResourceHandler(Handler):
             self.get_number_of_nodes_deployed_for(resource)
             for resource in resources
         )
+
+    def get_last_deployed_for_resources(
+        self, resources: list[BootResource]
+    ) -> Optional[datetime]:
+        """Return the most recent deploy time for all resources."""
+        last_deployed = None
+        for resource in resources:
+            this_deploy = resource.get_last_deploy()
+            if this_deploy is not None:
+                last_deployed = self.pick_latest_datetime(
+                    last_deployed, this_deploy
+                )
+        return last_deployed
 
     def get_progress_for_resources(self, resources):
         """Return the overall progress for all resources."""
@@ -479,6 +498,7 @@ class BootResourceHandler(Handler):
         number_of_nodes = self.get_number_of_nodes_for_resources(group)
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
+        last_deployed = self.get_last_deployed_for_resources(group)
 
         # Set the computed attributes on the first resource as that will
         # be the only one returned to the UI.
@@ -489,6 +509,7 @@ class BootResourceHandler(Handler):
         resource.size = human_readable_bytes(unique_size)
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
+        resource.last_deployed = last_deployed
         resource.complete = complete
         if not complete:
             if progress > 0:
@@ -599,7 +620,9 @@ class BootResourceHandler(Handler):
                 ),
                 "lastDeployed": resource.last_deployed.strftime(
                     "%a, %d %b. %Y %H:%M:%S"
-                ),
+                )
+                if resource.last_deployed
+                else None,
             }
             for resource in self.combine_resources(
                 BootResource.objects.filter(bootloader_type=None)

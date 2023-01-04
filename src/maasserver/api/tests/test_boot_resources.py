@@ -101,6 +101,9 @@ class TestHelpers(APITestCase.ForUser):
             get_boot_resource_uri(resource),
             dict_representation["resource_uri"],
         )
+        self.assertEqual(
+            resource.get_last_deploy(), dict_representation["last_deployed"]
+        )
         self.assertFalse("sets" in dict_representation)
 
     def test_boot_resource_to_dict_with_sets(self):

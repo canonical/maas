@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -1789,10 +1789,20 @@ class Node(CleanSave, TimestampedModel):
         self.update_status(NODE_STATUS.DEPLOYED)
         if self.enable_hw_sync:
             self.last_sync = datetime.now()
+        self.update_deployment_time()
         self.save()
 
         # Create a status message for DEPLOYED.
         Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYED)
+
+    def update_deployment_time(self) -> None:
+        from maasserver.models.event import Event
+
+        Event.objects.create_node_event(
+            self,
+            EVENT_TYPES.IMAGE_DEPLOYED,
+            event_description=f"deployed {self.osystem}/{self.distro_series}/{self.architecture}",
+        )
 
     def ip_addresses(self, ifaces=None):
         """IP addresses allocated to this node.

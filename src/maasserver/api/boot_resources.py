@@ -108,6 +108,7 @@ def boot_resource_to_dict(resource, with_sets=False):
         "name": resource.name,
         "architecture": resource.architecture,
         "resource_uri": reverse("boot_resource_handler", args=[resource.id]),
+        "last_deployed": resource.get_last_deploy(),
     }
     dict_representation.update(resource.extra)
     if with_sets:

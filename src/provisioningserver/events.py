@@ -147,6 +147,7 @@ class EVENT_TYPES:
     READY = "READY"
     DEPLOYING = "DEPLOYING"
     DEPLOYED = "DEPLOYED"
+    IMAGE_DEPLOYED = "IMAGE_DEPLOYED"
     RELEASING = "RELEASING"
     RELEASED = "RELEASED"
     ENTERING_RESCUE_MODE = "ENTERING_RESCUE_MODE"
@@ -411,6 +412,9 @@ EVENT_DETAILS = {
     EVENT_TYPES.READY: EventDetail(description="Ready", level=INFO),
     EVENT_TYPES.DEPLOYING: EventDetail(description="Deploying", level=INFO),
     EVENT_TYPES.DEPLOYED: EventDetail(description="Deployed", level=INFO),
+    EVENT_TYPES.IMAGE_DEPLOYED: EventDetail(
+        description="Image Deployed", level=INFO
+    ),
     EVENT_TYPES.RELEASING: EventDetail(description="Releasing", level=INFO),
     EVENT_TYPES.RELEASED: EventDetail(description="Released", level=INFO),
     EVENT_TYPES.ENTERING_RESCUE_MODE: EventDetail(
