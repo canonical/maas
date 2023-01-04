@@ -208,20 +208,6 @@ class TestMachineHandler(MAASServerTestCase):
                 commissioning_start_time = script_result.started
         testing_scripts = node.get_latest_testing_script_results
         testing_scripts = testing_scripts.exclude(status=SCRIPT_STATUS.ABORTED)
-        testing_start_time = None
-        for script_result in testing_scripts:
-            if testing_start_time is None or (
-                script_result.started
-                and script_result.started < testing_start_time
-            ):
-                testing_start_time = script_result.started
-        installation_script_result = (
-            node.get_latest_installation_script_results.first()
-        )
-        if installation_script_result:
-            installation_start_time = installation_script_result.started
-        else:
-            installation_start_time = None
         log_results = set()
         for script_result in commissioning_scripts:
             if (
@@ -253,7 +239,6 @@ class TestMachineHandler(MAASServerTestCase):
             ),
             "current_testing_script_set": node.current_testing_script_set_id,
             "testing_status": handler.dehydrate_test_statuses(testing_scripts),
-            "testing_start_time": dehydrate_datetime(testing_start_time),
             "current_installation_script_set": (
                 node.current_installation_script_set_id
             ),
@@ -261,9 +246,6 @@ class TestMachineHandler(MAASServerTestCase):
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set
                 )
-            ),
-            "installation_start_time": dehydrate_datetime(
-                installation_start_time
             ),
             "has_logs": (
                 log_results.difference(script_output_nsmap.keys()) == set()
@@ -413,7 +395,6 @@ class TestMachineHandler(MAASServerTestCase):
                     "extra_macs",
                     "fabrics",
                     "fqdn",
-                    "installation_start_time",
                     "ip_addresses",
                     "link_type",
                     "metadata",
@@ -431,7 +412,6 @@ class TestMachineHandler(MAASServerTestCase):
                     "storage",
                     "tags",
                     "testing_script_count",
-                    "testing_start_time",
                     "testing_status",
                     "vlan",
                 }
