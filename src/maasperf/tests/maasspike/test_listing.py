@@ -10,6 +10,8 @@ Each test should measure how long it takes to produce the list, and then
 assert that the listing is the same as the original websocket handler.
 """
 
+from operator import itemgetter
+
 import pytest
 
 from maasserver.models import Machine
@@ -41,9 +43,19 @@ class ExpectedMachines:
         self.assert_machines(machine_list[-1], expected_list[-1])
 
     def assert_machines(self, machine1, machine2):
-        # tags are not ordered in output
-        machine1["tags"].sort()
-        machine2["tags"].sort()
+        # sort fields that don't have a strict order, for comparison
+        for item in (
+            "tags",
+            "extra_macs",
+            "fabrics",
+            ("ip_addresses", itemgetter("ip")),
+        ):
+            if isinstance(item, tuple):
+                key, sort_key = item
+            else:
+                key, sort_key = item, None
+            machine1[key].sort(key=sort_key)
+            machine2[key].sort(key=sort_key)
         assert machine1 == machine2
 
 
