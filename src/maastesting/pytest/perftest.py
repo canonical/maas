@@ -6,6 +6,7 @@
 
 from contextlib import contextmanager, ExitStack
 from cProfile import Profile
+import gc
 import json
 import os
 import sys
@@ -77,8 +78,18 @@ class Timing:
 
 @contextmanager
 def measure_time():
+    # Collect all the garbage before the timing begins,
+    # so that collection of unrelated garbage won't slow
+    # things down.
+    gc.collect()
     timing = Timing()
     yield timing
+    # Collect the garbage that was created by the code that is
+    # being timed, so that we get a more consistent timing.
+    # Otherwise, a small change to the code we time could cause
+    # a big change in time due to a new garbage collection being
+    # triggered.
+    gc.collect()
     timing.stop()
 
 
