@@ -67,30 +67,42 @@ def perf(pytestconfig, request):
 class Timing:
     duration = None
 
-    def __init__(self):
+    def __enter__(self):
+        # Collect all the garbage before the timing begins, so that collection
+        # of unrelated garbage won't slow things down.
+        gc.collect()
         self.start = time.monotonic()
+        return self
 
-    def stop(self):
-        assert self.duration is None, "Can't call stop() twice."
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Collect the garbage that was created by the code that is being timed,
+        # so that we get a more consistent timing.  Otherwise, a small change
+        # to the code we time could cause a big change in time due to a new
+        # garbage collection being triggered.
+        gc.collect()
         end = time.monotonic()
         self.duration = end - self.start
 
 
-@contextmanager
-def measure_time():
-    # Collect all the garbage before the timing begins,
-    # so that collection of unrelated garbage won't slow
-    # things down.
-    gc.collect()
-    timing = Timing()
-    yield timing
-    # Collect the garbage that was created by the code that is
-    # being timed, so that we get a more consistent timing.
-    # Otherwise, a small change to the code we time could cause
-    # a big change in time due to a new garbage collection being
-    # triggered.
-    gc.collect()
-    timing.stop()
+class QueryCounter:
+
+    count = 0
+    time = 0.0
+
+    def __enter__(self):
+        from django.db import reset_queries
+
+        reset_queries()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            return
+
+        from django.db import connection
+
+        self.count = len(connection.queries)
+        self.time = sum((float(entry["time"]) for entry in connection.queries))
 
 
 class PerfTester:
@@ -105,9 +117,14 @@ class PerfTester:
         with ExitStack() as stack:
             if self.profiling_tag:
                 stack.enter_context(profile(name, self.profiling_tag))
-            timing = stack.enter_context(measure_time())
+            query_counter = stack.enter_context(QueryCounter())
+            timing = stack.enter_context(Timing())
             yield
-        self.results["tests"][name] = {"duration": timing.duration}
+        self.results["tests"][name] = {
+            "duration": timing.duration,
+            "query_count": query_counter.count,
+            "query_time": query_counter.time,
+        }
 
     def finish_build(self, output, format=False):
         params = {"sort_keys": True, "indent": 4} if format else {}
