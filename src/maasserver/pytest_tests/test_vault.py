@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from os import environ
 from unittest.mock import ANY, MagicMock
 
 from django.core.exceptions import ImproperlyConfigured
@@ -8,6 +9,7 @@ import pytest
 from maasserver import vault
 from maasserver.models import Config
 from maasserver.vault import (
+    _create_hvac_client,
     _get_region_vault_client,
     clear_vault_client_caches,
     get_region_vault_client,
@@ -139,6 +141,27 @@ class TestVaultClient:
         with pytest.raises(VaultError):
             client.check_authentication()
         ensure_auth.assert_called_once()
+
+
+class TestNoProxySettingForHVAC:
+    def test_no_proxy_set(self, monkeypatch):
+        url = "http://url.to.vault:8200"
+        monkeypatch.delenv("no_proxy", raising=False)
+        _create_hvac_client(url)
+        assert environ.get("no_proxy") == url
+
+    def test_no_proxy_appended(self, monkeypatch):
+        url = "http://url.to.vault:8200"
+        monkeypatch.setenv("no_proxy", "localhost,127.0.0.1")
+        _create_hvac_client(url)
+        assert environ.get("no_proxy") == f"localhost,127.0.0.1,{url}"
+
+    def test_idempotency(self, monkeypatch):
+        url = "http://url.to.vault:8200"
+        monkeypatch.delenv("no_proxy", raising=False)
+        _create_hvac_client(url)
+        _create_hvac_client(url)
+        assert environ.get("no_proxy") == url
 
 
 class TestGetRegionVaultClient:
