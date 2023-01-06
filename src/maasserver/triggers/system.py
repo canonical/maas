@@ -12,6 +12,7 @@ for.
 
 from textwrap import dedent
 
+from maasserver.enum import NODE_TYPE
 from maasserver.models.dnspublication import zone_serial
 from maasserver.triggers import register_procedure, register_trigger
 from maasserver.utils.orm import transactional
@@ -2131,22 +2132,34 @@ dns_dynamic_update_static_ip_address_update = dedent(
     """
 )
 
-dns_dynamic_update_node_delete = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_node_delete()
-    RETURNS trigger as $$
-    DECLARE
-      hostname text;
-      domain text;
-      address_ttl int;
-    BEGIN
-      SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=OLD.domain_id;
-      PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A');
-      RETURN NULL;
-    END;
-    $$ LANGUAGE plpgsql;
-    """
-)
+
+def render_dns_dynamic_update_node(op):
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_node_{op}()
+        RETURNS trigger as $$
+        DECLARE
+          hostname text;
+          domain text;
+          address_ttl int;
+        BEGIN
+          IF ((TG_OP = 'INSERT' OR  TG_OP = 'UPDATE') AND TG_LEVEL = 'ROW') THEN
+              IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
+                  PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+              END IF;
+          ELSE
+              IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
+                  PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+              ELSE
+                  SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=OLD.domain_id;
+                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A');
+              END IF;
+          END IF;
+          RETURN NULL;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
 
 
 dns_dynamic_update_interface_delete = dedent(
@@ -2543,7 +2556,19 @@ def register_system_triggers():
         "sys_dns_updates_ip_update",
         "update",
     )
-    register_procedure(dns_dynamic_update_node_delete)
+    register_procedure(render_dns_dynamic_update_node("insert"))
+    register_trigger(
+        "maasserver_node",
+        "sys_dns_updates_maasserver_node_insert",
+        "insert",
+    )
+    register_procedure(render_dns_dynamic_update_node("update"))
+    register_trigger(
+        "maasserver_node",
+        "sys_dns_updates_maasserver_node_update",
+        "update",
+    )
+    register_procedure(render_dns_dynamic_update_node("delete"))
     register_trigger(
         "maasserver_node",
         "sys_dns_updates_maasserver_node_delete",

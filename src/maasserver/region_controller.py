@@ -94,11 +94,11 @@ class RegionControllerService(Service):
         self.processing = LoopingCall(self.process)
         self.processing.clock = self.clock
         self.processingDefer = None
-        self.needsDNSUpdate = False
+        self.needsDNSUpdate = True  # reload DNS on start of region
         self.needsProxyUpdate = False
         self.needsRBACUpdate = False
         self._dns_updates = []
-        self._dns_requires_full_reload = False
+        self._dns_requires_full_reload = True
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
             resolv=None,

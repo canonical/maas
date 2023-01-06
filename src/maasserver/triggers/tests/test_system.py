@@ -7,7 +7,7 @@ from contextlib import closing
 from django.db import connection
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import Domain
 from maasserver.models.dnspublication import zone_serial
 from maasserver.testing.factory import factory
@@ -386,11 +386,20 @@ class TestSysDNSUpdates(
         subnet = yield deferToDatabase(
             self.create_subnet, params={"vlan": vlan}
         )
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller,
+            params={"vlan": vlan, "subnet": subnet},
+        )
         self.start_reading()
         try:
             node = yield deferToDatabase(
                 self.create_node_with_interface,
-                params={"subnet": subnet, "status": NODE_STATUS.DEPLOYED},
+                params={
+                    "subnet": subnet,
+                    "status": NODE_STATUS.DEPLOYED,
+                    "node_type": NODE_TYPE.MACHINE,
+                    "primary_rack": rack_controller,
+                },
             )
             domain = yield deferToDatabase(Domain.objects.get_default_domain)
             expected_iface = yield deferToDatabase(
@@ -438,6 +447,10 @@ class TestSysDNSUpdates(
             self.create_subnet, params={"vlan": vlan}
         )
         domain = yield deferToDatabase(self.create_domain)
+        rack_controller = yield deferToDatabase(
+            self.create_rack_controller,
+            params={"vlan": vlan, "subnet": subnet},
+        )
         self.start_reading()
         try:
             node = yield deferToDatabase(
@@ -446,6 +459,8 @@ class TestSysDNSUpdates(
                     "subnet": subnet,
                     "status": NODE_STATUS.DEPLOYED,
                     "domain": domain,
+                    "node_type": NODE_TYPE.MACHINE,
+                    "primary_rack": rack_controller,
                 },
             )
             expected_iface = yield deferToDatabase(
@@ -583,6 +598,48 @@ class TestSysDNSUpdates(
                 msg4,
                 f"INSERT {domain.name} {iface.name}.{node.hostname} A 0 {ip.ip}",
             )
+        finally:
+            self.stop_reading()
+            yield self.postgres_listener_service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_dynamic_update_controller_insert(self):
+        listener = self.make_listener_without_delay()
+        yield self.set_service(listener)
+        yield deferToDatabase(
+            self.register_trigger,
+            "maasserver_node",
+            "sys_dns_updates",
+            ops=("insert",),
+        )
+        self.start_reading()
+        try:
+            yield deferToDatabase(self.create_rack_controller)
+            msg = yield self.get_notify("sys_dns_updates")
+            self.assertEqual(msg, "RELOAD")
+        finally:
+            self.stop_reading()
+            yield self.postgres_listener_service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_dynamic_update_controller_update(self):
+        listener = self.make_listener_without_delay()
+        yield self.set_service(listener)
+        yield deferToDatabase(
+            self.register_trigger,
+            "maasserver_node",
+            "sys_dns_updates",
+            ops=("update",),
+        )
+        self.start_reading()
+        controller = yield deferToDatabase(self.create_rack_controller)
+        try:
+            controller.cpu_speed = 10
+            yield deferToDatabase(controller.save)
+            msg = yield self.get_notify("sys_dns_updates")
+            self.assertEqual(msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()

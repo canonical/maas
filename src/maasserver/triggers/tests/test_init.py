@@ -102,6 +102,8 @@ class TestTriggersUsed(MAASServerTestCase):
         "node_sys_dhcp_node_update",
         "node_sys_dns_node_delete",
         "node_sys_dns_node_update",
+        "node_sys_dns_updates_maasserver_node_insert",
+        "node_sys_dns_updates_maasserver_node_update",
         "node_sys_dns_updates_maasserver_node_delete",
         "rbacsync_sys_rbac_sync",
         "regionrackrpcconnection_sys_core_rpc_delete",
