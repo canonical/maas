@@ -43,7 +43,9 @@ def move_secrets(apps, schema_editor):
     for bmc_id, power_type, power_parameters in BMC.objects.values_list(
         "id", "power_type", "power_parameters"
     ):
-
+        # LP:2002109 - Manual power driver has empty power parameters
+        if not power_parameters:
+            continue
         secrets = {}
         parameters = {}
         for name, value in power_parameters.items():
