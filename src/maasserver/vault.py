@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from functools import cache, wraps
+import logging
+import os
 from typing import Any, Callable, NamedTuple, Optional
 
 from dateutil.parser import isoparse
@@ -36,6 +38,7 @@ def wrap_errors(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except requests.exceptions.ConnectionError as e:
+            logging.exception(e)
             raise VaultError("Vault connection failed") from e
         except hvac.exceptions.VaultError as e:
             raise VaultError("Vault request failed") from e
@@ -43,10 +46,22 @@ def wrap_errors(func: Callable) -> Callable:
     return wrapper
 
 
+def _create_hvac_client(url: str, **kwargs) -> hvac.Client:
+    """Create HVAC client for the given URL, with no proxies set."""
+    # This is gross, and unfortunately necessary due to bootsources.get_simplestreams_env
+    # and https://github.com/psf/requests/issues/2018
+    if no_proxy := os.environ.get("no_proxy"):
+        if url not in no_proxy.split(","):
+            os.environ["no_proxy"] = f"{no_proxy},{url}"
+    else:
+        os.environ["no_proxy"] = url
+    return hvac.Client(url=url, **kwargs)
+
+
 @wrap_errors
 def unwrap_secret(url: str, wrapped_token: str) -> str:
     """Helper function to unwrap approle secret id from wrapped token"""
-    client = hvac.Client(url=url, token=wrapped_token)
+    client = _create_hvac_client(url, token=wrapped_token)
     try:
         return client.sys.unwrap()["data"]["secret_id"]
     except KeyError:
@@ -67,7 +82,7 @@ class VaultClient:
         secrets_mount: str = "secret",
         client: Optional[hvac.Client] = None,
     ):
-        self._client = client or hvac.Client(url=url)
+        self._client = client or _create_hvac_client(url)
         self._secrets_mount = secrets_mount
         self._secrets_base_path = secrets_base_path
         self._role_id = role_id
