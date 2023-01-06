@@ -53,7 +53,7 @@ class TestRegionControllerService(MAASServerTestCase):
             MatchesStructure.byEquality(
                 clock=reactor,
                 processingDefer=None,
-                needsDNSUpdate=False,
+                needsDNSUpdate=True,
                 postgresListener=sentinel.listener,
             ),
         )
@@ -157,6 +157,19 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_reload_dns_on_start(self):
+        service = self.make_service(sentinel.listener)
+        mock_dns_update_all_zones = self.patch(
+            region_controller, "dns_update_all_zones"
+        )
+        service.startProcessing()
+        yield service.processingDefer
+        mock_dns_update_all_zones.assert_called_once()
+        self.assertFalse(service.needsDNSUpdate)
+        self.assertFalse(service._dns_requires_full_reload)
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_process_doesnt_update_zones_when_nothing_to_process(self):
         service = self.make_service(sentinel.listener)
         service.needsDNSUpdate = False
@@ -218,7 +231,7 @@ class TestRegionControllerService(MAASServerTestCase):
         service.startProcessing()
         yield service.processingDefer
         mock_dns_update_all_zones.assert_called_once_with(
-            dynamic_updates=[], requires_reload=False
+            dynamic_updates=[], requires_reload=True
         )
         self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
         self.assertThat(
@@ -263,7 +276,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertThat(
             mock_dns_update_all_zones,
             MockCallsMatch(
-                call(dynamic_updates=[], requires_reload=False),
+                call(dynamic_updates=[], requires_reload=True),
                 call(dynamic_updates=[], requires_reload=False),
             ),
         )
@@ -321,7 +334,7 @@ class TestRegionControllerService(MAASServerTestCase):
         service.startProcessing()
         yield service.processingDefer
         mock_dns_update_all_zones.assert_called_once_with(
-            dynamic_updates=[], requires_reload=False
+            dynamic_updates=[], requires_reload=True
         )
         self.assertThat(
             mock_err, MockCalledOnceWith(ANY, "Failed configuring DNS.")
@@ -410,7 +423,7 @@ class TestRegionControllerService(MAASServerTestCase):
         service.startProcessing()
         yield service.processingDefer
         mock_dns_update_all_zones.assert_called_once_with(
-            dynamic_updates=[], requires_reload=False
+            dynamic_updates=[], requires_reload=True
         )
         mock_proxy_update_config.assert_called_once_with(reload_proxy=True)
         mock_rbacSync.assert_called_once()
@@ -635,7 +648,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service.startProcessing()
         yield service.processingDefer
         mock_dns_update_all_zones.assert_called_once_with(
-            dynamic_updates=[], requires_reload=False
+            dynamic_updates=[], requires_reload=True
         )
         self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
         self.assertThat(
@@ -681,7 +694,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             for publication in reversed(publications[1:])
         )
         mock_dns_update_all_zones.assert_called_once_with(
-            dynamic_updates=[], requires_reload=False
+            dynamic_updates=[], requires_reload=True
         )
         self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
         self.assertThat(mock_msg, MockCalledOnceWith(expected_msg))
