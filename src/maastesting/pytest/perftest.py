@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import time
+import tracemalloc
 
 import pytest
 
@@ -42,6 +43,10 @@ def pytest_addoption(parser):
         "--perf-profiling-tag",
         help="If specified, create profiling dumps for the measured tests.",
     )
+    parser.addoption(
+        "--perf-memory-trace-tag",
+        help="If specified, trace amount of allocated memory and dump stats.",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -50,10 +55,12 @@ def perf(pytestconfig, request):
     request.applymarker(pytest.mark.recreate_db)
 
     profiling_tag = pytestconfig.getoption("--perf-profiling-tag", None)
+    memory_trace_tag = pytestconfig.getoption("--perf-memory-trace-tag", False)
     perf_tester = PerfTester(
         os.environ.get("GIT_BRANCH"),
         os.environ.get("GIT_HASH"),
-        profiling_tag,
+        profiling_tag=profiling_tag,
+        memory_trace_tag=memory_trace_tag,
     )
     yield perf_tester
     output = pytestconfig.getoption("--perf-output-file", None)
@@ -105,26 +112,65 @@ class QueryCounter:
         self.time = sum((float(entry["time"]) for entry in connection.queries))
 
 
+class MemoryTracer:
+    _snapshot = None
+
+    def __init__(self, testname, tag):
+        self.testname = testname
+        self.tag = tag
+
+    def __enter__(self):
+        tracemalloc.start()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is not None:
+            return
+
+        self._snapshot = tracemalloc.take_snapshot()
+        tracemalloc.stop()
+        filename = f"{self.testname}.{self.tag}.memstat"
+        self._snapshot.dump(filename)
+        print(f"Dumped memory stats to {filename}")
+
+    def allocated_total(self) -> int:
+        if not self._snapshot:
+            return 0
+        stats = self._snapshot.statistics("lineno")
+        return sum(stat.size for stat in stats)
+
+
 class PerfTester:
     """PerfTester is responsible for recording performance tests"""
 
-    def __init__(self, git_branch, git_hash, profiling_tag):
+    def __init__(
+        self, git_branch, git_hash, profiling_tag=None, memory_trace_tag=None
+    ):
         self.results = {"branch": git_branch, "commit": git_hash, "tests": {}}
         self.profiling_tag = profiling_tag
+        self.memory_trace_tag = memory_trace_tag
 
     @contextmanager
     def record(self, name):
+        memory_tracer = None
         with ExitStack() as stack:
             if self.profiling_tag:
                 stack.enter_context(profile(name, self.profiling_tag))
+            if self.memory_trace_tag:
+                memory_tracer = stack.enter_context(
+                    MemoryTracer(name, self.memory_trace_tag)
+                )
             query_counter = stack.enter_context(QueryCounter())
             timing = stack.enter_context(Timing())
             yield
-        self.results["tests"][name] = {
+        results = {
             "duration": timing.duration,
             "query_count": query_counter.count,
             "query_time": query_counter.time,
         }
+        if memory_tracer:
+            results["memory"] = memory_tracer.allocated_total()
+        self.results["tests"][name] = results
 
     def finish_build(self, output, format=False):
         params = {"sort_keys": True, "indent": 4} if format else {}
@@ -158,4 +204,4 @@ def profile(testname: str, profiling_tag: str):
         yield
     filename = f"{testname}.{profiling_tag}.profile"
     profiler.dump_stats(filename)
-    print(f"Dumped stats to {filename}")
+    print(f"Dumped profiler stats to {filename}")
