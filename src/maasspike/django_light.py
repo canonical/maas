@@ -3,7 +3,7 @@ import logging
 
 from django.contrib.auth.models import User
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField
 from django.db.models import (
     BigIntegerField,
     BooleanField,
@@ -31,7 +31,6 @@ from django.db.models import (
     TextField,
     When,
 )
-from django.db.models.aggregates import Aggregate
 from django.db.models.expressions import F, Value
 from django.db.models.functions import Cast, Coalesce, Concat
 
@@ -57,20 +56,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE_CHOICES,
 )
-
-
-# XXX unused for now, was meant for workload annotations
-def JSONBOjectAgg(key, value):
-    return Coalesce(
-        Aggregate(
-            F(key),
-            F(value),
-            function="jsonb_object_agg",
-            filter=Q(**{f"{key}__isnull": False}),
-            output_field=JSONField(),
-        ),
-        Value({}, output_field=JSONField()),
-    )
 
 
 def EnumValues(field, values_map, output_field=None, default=None):
@@ -474,7 +459,7 @@ def list_machines(admin, limit=None):
     for entry in entries:
         node_id = entry["id"]
         # extend existing dict from storage data, as it's not used elsewhere
-        new_entry = storage_data[entry["id"]]
+        new_entry = storage_data[node_id]
 
         sub_entries = {}
         for key, value in entry.items():
@@ -511,10 +496,9 @@ def list_machines(admin, limit=None):
 
 
 def _get_storage_data(machine_ids):
-    storage_entries = Node.machines.values_list("id").annotate(
+    entries = Node.machines.values_list("id").annotate(
         physical_disk_count=Count(
             "current_config__blockdevice__physicalblockdevice",
-            distinct=True,
         ),
         storage=Float(
             Sum(
@@ -525,13 +509,13 @@ def _get_storage_data(machine_ids):
         / Value(1000**3),
     )
     if machine_ids is not None:
-        storage_entries = storage_entries.filter(id__in=machine_ids)
+        entries = entries.filter(id__in=machine_ids)
     return {
         node_id: {
             "physical_disk_count": physical_disk_count,
             "storage": storage,
         }
-        for node_id, physical_disk_count, storage in storage_entries
+        for node_id, physical_disk_count, storage in entries
     }
 
 
