@@ -9,9 +9,10 @@ from cProfile import Profile
 import gc
 import json
 import os
-import sys
+from pathlib import Path
 import time
 import tracemalloc
+from typing import Any
 
 import pytest
 
@@ -34,18 +35,21 @@ def maas_data():
     return None
 
 
+# registry for tracers
+PERF_TRACERS = {}
+
+
 def pytest_addoption(parser):
     parser.addoption(
-        "--perf-output-file",
-        help="The file where to write the performance measurement as JSON.",
+        "--perf-output-dir",
+        help="The directory where to output performance measurements.",
     )
     parser.addoption(
-        "--perf-profiling-tag",
-        help="If specified, create profiling dumps for the measured tests.",
-    )
-    parser.addoption(
-        "--perf-memory-trace-tag",
-        help="If specified, trace amount of allocated memory and dump stats.",
+        "--perf-tracers",
+        nargs="+",
+        choices=sorted(PERF_TRACERS),
+        default=["timing", "queries"],
+        help="Performance features to enable.",
     )
 
 
@@ -54,31 +58,58 @@ def perf(pytestconfig, request):
     # mark all tests so that the database is re-created after each one
     request.applymarker(pytest.mark.recreate_db)
 
-    profiling_tag = pytestconfig.getoption("--perf-profiling-tag", None)
-    memory_trace_tag = pytestconfig.getoption("--perf-memory-trace-tag", False)
+    outdir = pytestconfig.getoption("--perf-output-dir")
+    tracers = pytestconfig.getoption("--perf-tracers")
     perf_tester = PerfTester(
         os.environ.get("GIT_BRANCH"),
         os.environ.get("GIT_HASH"),
-        profiling_tag=profiling_tag,
-        memory_trace_tag=memory_trace_tag,
+        outdir=outdir,
+        tracers=tracers,
     )
     yield perf_tester
-    output = pytestconfig.getoption("--perf-output-file", None)
-    if output:
-        with open(output, "w") as f:
-            perf_tester.finish_build(f)
-    else:
-        perf_tester.finish_build(sys.stdout, format=True)
+    perf_tester.write_results()
 
 
-class Timing:
-    duration = None
+def perf_tracer(cls):
+    """Decorator to register test features."""
+    PERF_TRACERS[cls.name] = cls
+    return cls
+
+
+class PerfTracer:
+    """A profiling tracer that can be enabled during tests."""
+
+    name = ""
+
+    def __init__(self, test_name):
+        self.test_name = test_name
+
+    @property
+    def dump_file_name(self) -> str:
+        """Name of the dump file."""
+        return f"{self.test_name}.{self.name}"
+
+    def dump_results(self, file_path: Path):
+        """Dump test results to file."""
+        pass
+
+    def results(self) -> dict[str, Any]:
+        """Return a dict with profiler results."""
+        return {}
+
+
+@perf_tracer
+class Timing(PerfTracer):
+    name = "timing"
+
+    _start = None
+    _duration = None
 
     def __enter__(self):
         # Collect all the garbage before the timing begins, so that collection
         # of unrelated garbage won't slow things down.
         gc.collect()
-        self.start = time.monotonic()
+        self._start = time.monotonic()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -88,13 +119,18 @@ class Timing:
         # garbage collection being triggered.
         gc.collect()
         end = time.monotonic()
-        self.duration = end - self.start
+        self._duration = end - self._start
+
+    def results(self):
+        return {"duration": self._duration}
 
 
-class QueryCounter:
+@perf_tracer
+class QueryCounter(PerfTracer):
+    name = "queries"
 
-    count = 0
-    time = 0.0
+    _count = 0
+    _time = 0.0
 
     def __enter__(self):
         from django.db import reset_queries
@@ -108,16 +144,20 @@ class QueryCounter:
 
         from django.db import connection
 
-        self.count = len(connection.queries)
-        self.time = sum((float(entry["time"]) for entry in connection.queries))
+        self._count = len(connection.queries)
+        self._time = sum(
+            (float(entry["time"]) for entry in connection.queries)
+        )
+
+    def results(self):
+        return {"query_count": self._count, "query_time": self._time}
 
 
-class MemoryTracer:
+@perf_tracer
+class MemoryTracer(PerfTracer):
+    name = "memory"
+
     _snapshot = None
-
-    def __init__(self, testname, tag):
-        self.testname = testname
-        self.tag = tag
 
     def __enter__(self):
         tracemalloc.start()
@@ -129,79 +169,76 @@ class MemoryTracer:
 
         self._snapshot = tracemalloc.take_snapshot()
         tracemalloc.stop()
-        filename = f"{self.testname}.{self.tag}.memstat"
-        self._snapshot.dump(filename)
-        print(f"Dumped memory stats to {filename}")
 
-    def allocated_total(self) -> int:
-        if not self._snapshot:
-            return 0
+    def results(self):
         stats = self._snapshot.statistics("lineno")
-        return sum(stat.size for stat in stats)
+        return {"memory": sum(stat.size for stat in stats)}
+
+    def dump_results(self, file_path: Path):
+        self._snapshot.dump(str(file_path))
+
+
+@perf_tracer
+class Profiler(PerfTracer):
+    """Produces profiling info for tests
+
+    This functions uses cProfile module to provide deterministic profiling data
+    for tests. The overhead is reasonable, typically < 5%.
+    """
+
+    name = "profile"
+
+    _profiler = None
+
+    def __enter__(self):
+        self._profiler = Profile()
+        self._profiler.enable()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._profiler.disable()
+
+    def dump_results(self, file_path: Path):
+        self._profiler.dump_stats(file_path)
 
 
 class PerfTester:
     """PerfTester is responsible for recording performance tests"""
 
     def __init__(
-        self, git_branch, git_hash, profiling_tag=None, memory_trace_tag=None
+        self,
+        git_branch=None,
+        git_hash=None,
+        outdir=None,
+        tracers=(),
     ):
+        self.outdir = outdir
+        if self.outdir is not None:
+            self.outdir = Path(self.outdir)
+        self.tracers = tracers
         self.results = {"branch": git_branch, "commit": git_hash, "tests": {}}
-        self.profiling_tag = profiling_tag
-        self.memory_trace_tag = memory_trace_tag
 
     @contextmanager
     def record(self, name):
-        memory_tracer = None
+        tracers = []
         with ExitStack() as stack:
-            if self.profiling_tag:
-                stack.enter_context(profile(name, self.profiling_tag))
-            if self.memory_trace_tag:
-                memory_tracer = stack.enter_context(
-                    MemoryTracer(name, self.memory_trace_tag)
-                )
-            query_counter = stack.enter_context(QueryCounter())
-            timing = stack.enter_context(Timing())
+            for tracer in self.tracers:
+                tracer_class = PERF_TRACERS[tracer]
+                tracers.append(stack.enter_context(tracer_class(name)))
             yield
-        results = {
-            "duration": timing.duration,
-            "query_count": query_counter.count,
-            "query_time": query_counter.time,
-        }
-        if memory_tracer:
-            results["memory"] = memory_tracer.allocated_total()
+
+        if self.outdir:
+            self.outdir.mkdir(parents=True, exist_ok=True)
+        results = {}
+        for tracer in tracers:
+            results.update(tracer.results())
+            if self.outdir:
+                tracer.dump_results(self.outdir / tracer.dump_file_name)
         self.results["tests"][name] = results
 
-    def finish_build(self, output, format=False):
-        params = {"sort_keys": True, "indent": 4} if format else {}
-        if format:
-            output.write("\n")
-        json.dump(self.results, output, **params)
-
-
-@contextmanager
-def profile(testname: str, profiling_tag: str):
-    """Produces profiling info for tests
-
-    This functions uses cProfile module to provide deterministic
-    profiling data for tests. The overhead is reasonable, typically < 5%.
-
-    When enabled (MAAS_PROFILING is set in the environment) the
-    profiling data is written to a file called
-    `<testname>.$MAAS_PROFILING.profile` in the current
-    directory. This file can be analyzed with external tools like
-    `snakeviz`.
-
-    Args:
-        testname (str): name of the output file
-
-    Example:
-
-        with perftest.profile("my_test_case"):
-            <<block being profiled>>
-    """
-    with Profile() as profiler:
-        yield
-    filename = f"{testname}.{profiling_tag}.profile"
-    profiler.dump_stats(filename)
-    print(f"Dumped profiler stats to {filename}")
+    def write_results(self):
+        if self.outdir:
+            outfile = self.outdir / "results.json"
+            outfile.write_text(json.dumps(self.results))
+        else:
+            print("\n" + json.dumps(self.results, sort_keys=True, indent=4))

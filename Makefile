@@ -208,6 +208,7 @@ lint-shell:
 		utilities/ldap-setup \
 		utilities/maas-lxd-environment \
 		utilities/package-version \
+		utilities/run-perf-tests-ci \
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
 		utilities/schemaspy \
