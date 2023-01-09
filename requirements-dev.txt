@@ -7,6 +7,7 @@ pytest==7.1.2
 pytest-mock==3.7.0
 pytest-xdist==2.5.0
 python-subunit==1.4.0
+sqlalchemy==2.0.0rc2
 testresources==2.0.1
 testscenarios==0.5.0
 # Install MAAS itself in editable mode
