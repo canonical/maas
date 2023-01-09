@@ -12,7 +12,9 @@ pythonseeds_stash = pytest.StashKey[str]()
 
 @pytest.hookimpl
 def pytest_runtest_makereport(item, call):
-    if call.excinfo is None:
+    # If no tests were run for some reason, like skips or setup erros,
+    # pythonseeds didn't get initialized.
+    if call.excinfo is None or pythonseeds_stash not in item.config.stash:
         return
     python_hash_seed = item.config.stash[pythonseeds_stash]
     maas_rand_seed = item.config.stash[maasseeds_stash]
