@@ -137,8 +137,8 @@ class QueryCounter(PerfTracer):
         from django.db import connection
 
         self._count = len(connection.queries)
-        self._time = sum(
-            (float(entry["time"]) for entry in connection.queries)
+        self._time = float(
+            sum((float(entry["time"]) for entry in connection.queries))
         )
 
     def results(self):
