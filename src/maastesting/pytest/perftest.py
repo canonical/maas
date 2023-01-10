@@ -106,18 +106,10 @@ class Timing(PerfTracer):
     _duration = None
 
     def __enter__(self):
-        # Collect all the garbage before the timing begins, so that collection
-        # of unrelated garbage won't slow things down.
-        gc.collect()
         self._start = time.monotonic()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        # Collect the garbage that was created by the code that is being timed,
-        # so that we get a more consistent timing.  Otherwise, a small change
-        # to the code we time could cause a big change in time due to a new
-        # garbage collection being triggered.
-        gc.collect()
         end = time.monotonic()
         self._duration = end - self._start
 
@@ -221,11 +213,20 @@ class PerfTester:
     @contextmanager
     def record(self, name):
         tracers = []
+        # Collect all the garbage before tracers begin, so that collection of
+        # unrelated garbage won't affect measurements.
+        gc.collect()
         with ExitStack() as stack:
             for tracer in self.tracers:
                 tracer_class = PERF_TRACERS[tracer]
                 tracers.append(stack.enter_context(tracer_class(name)))
             yield
+            # Collect the garbage that was created by the code that is being
+            # profiled, so that we get a more consistent measurements.
+            # Otherwise, a small change to the code under test could cause a
+            # big change in measurements due to a new garbage collection being
+            # triggered.
+            gc.collect()
 
         if self.outdir:
             self.outdir.mkdir(parents=True, exist_ok=True)
