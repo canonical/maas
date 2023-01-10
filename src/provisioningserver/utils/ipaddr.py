@@ -174,8 +174,11 @@ def _parse_proc_net_bonding(path):
 def _get_resources_bin_path():
     """Return the path of the resources binary."""
     if is_dev_environment():
-        path = "src/machine-resources/bin"
+        path = "src/host-info/bin/machine-resources"
     else:
         prefix = SnapPaths.from_environ().snap or ""
         path = f"{prefix}/usr/share/maas/machine-resources"
+    assert os.path.exists(
+        path
+    ), f"Failed to find directory for machine-resources, expected at {path}"
     return os.path.join(path, get_architecture())

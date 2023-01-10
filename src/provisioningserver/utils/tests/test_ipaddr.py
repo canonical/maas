@@ -15,7 +15,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _annotate_with_proc_net_bonding_original_macs,
-    _get_resources_bin_path,
     _update_interface_type,
     get_ip_addr,
     get_mac_addresses,
@@ -130,6 +129,9 @@ class TestGetIPAddr(MAASTestCase):
 
     def test_get_ip_addr_calls_methods(self):
         self.patch(ipaddr_module, "running_in_snap").return_value = False
+        self.patch(
+            ipaddr_module, "_get_resources_bin_path"
+        ).return_value = "/path/to/amd64"
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
         patch_call_and_check.return_value = json.dumps(
             {"networks": SAMPLE_LXD_NETWORKS}
@@ -137,19 +139,20 @@ class TestGetIPAddr(MAASTestCase):
         # all interfaces from binary output are included in result
         self.assertCountEqual(SAMPLE_LXD_NETWORKS, get_ip_addr())
         patch_call_and_check.assert_called_once_with(
-            ["sudo", _get_resources_bin_path()]
+            ["sudo", "/path/to/amd64"]
         )
 
     def test_no_use_sudo_in_snap(self):
+        self.patch(
+            ipaddr_module, "_get_resources_bin_path"
+        ).return_value = "/path/to/amd64"
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
         patch_call_and_check.return_value = json.dumps(
             {"networks": SAMPLE_LXD_NETWORKS}
         )
         self.patch(ipaddr_module, "running_in_snap").return_value = True
         get_ip_addr()
-        patch_call_and_check.assert_called_once_with(
-            [_get_resources_bin_path()]
-        )
+        patch_call_and_check.assert_called_once_with(["/path/to/amd64"])
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):
         mac_addresses = []
