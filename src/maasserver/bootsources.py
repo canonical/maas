@@ -97,6 +97,15 @@ def get_boot_sources():
     return [source.to_dict() for source in BootSource.objects.all()]
 
 
+def _upsert_no_proxy_env(env, entry):
+    """Updates $no_proxy appropriately."""
+    if no_proxy := env.get("no_proxy"):
+        if entry not in no_proxy.split(","):
+            env["no_proxy"] = f"{no_proxy},{entry}"
+    else:
+        env["no_proxy"] = entry
+
+
 @transactional
 def get_simplestreams_env():
     """Get environment that should be used with simplestreams."""
@@ -106,24 +115,28 @@ def get_simplestreams_env():
         if http_proxy is not None:
             env["http_proxy"] = http_proxy
             env["https_proxy"] = http_proxy
+            if no_proxy := os.environ.get("no_proxy"):
+                env["no_proxy"] = no_proxy
             # When the proxy environment variables are set they effect the
             # entire process, including controller refresh. When the region
             # needs to refresh itself it sends itself results over HTTP to
             # 127.0.0.1.
-            no_proxy_hosts = "127.0.0.1,localhost"
+            no_proxy_hosts = ["127.0.0.1", "localhost"]
             # When using a proxy and using an image mirror, we may not want
             # to use the proxy to download the images, as they could be
             # located in the local network, hence it makes no sense to use
             # it. With this, we add the image mirror location(s) to the
             # no proxy variable, which ensures MAAS contacts the mirror
             # directly instead of through the proxy.
-            no_proxy = Config.objects.get_config("boot_images_no_proxy")
-            if no_proxy:
-                sources = get_boot_sources()
-                for source in sources:
-                    host = urlparse(source["url"]).netloc.split(":")[0]
-                    no_proxy_hosts = ",".join((no_proxy_hosts, host))
-            env["no_proxy"] = no_proxy_hosts
+            if Config.objects.get_config("boot_images_no_proxy"):
+                no_proxy_hosts.extend(
+                    [
+                        urlparse(source["url"]).hostname
+                        for source in get_boot_sources()
+                    ]
+                )
+            for host in no_proxy_hosts:
+                _upsert_no_proxy_env(env, host)
     else:
         # The proxy is disabled, let's not accidentally use proxy from
         # encompassing environment.
@@ -134,12 +147,24 @@ def get_simplestreams_env():
 
 def set_simplestreams_env():
     """Set the environment that simplestreams needs."""
+    bodged_env = get_simplestreams_env()
+    pristine_env = {k: os.environ.get(k) for k in bodged_env}
     # We simply set the env variables here as another simplestreams-based
     # import might be running concurrently (bootresources._import_resources)
     # and we don't want to use the environment_variables context manager that
     # would reset the environment variables (they are global to the entire
     # process) while the other import is still running.
-    os.environ.update(get_simplestreams_env())
+    os.environ.update(bodged_env)
+    return pristine_env
+
+
+def restore_pristine_env(pristine_env):
+    """Restored the environment that simplestreams needs' bodged."""
+    for key, value in pristine_env.items():
+        if value is None and key in os.environ:
+            del os.environ[key]
+        else:
+            os.environ[key] = value
 
 
 def get_os_info_from_boot_sources(os):
@@ -353,7 +378,7 @@ def cache_boot_sources():
 
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
-    yield deferToDatabase(set_simplestreams_env)
+    pristine_env = yield deferToDatabase(set_simplestreams_env)
 
     errors = []
     sources = yield deferToDatabase(get_sources)
@@ -392,6 +417,7 @@ def cache_boot_sources():
             else:
                 yield deferToDatabase(_update_cache, source, descriptions)
 
+    yield deferToDatabase(restore_pristine_env, pristine_env)
     yield deferToDatabase(check_commissioning_series_selected)
 
     component = COMPONENT.REGION_IMAGE_IMPORT

@@ -364,7 +364,8 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             self
         )
         factory.make_BootSource(keyring_data=b"1234")
-        cache_boot_sources()
+        with patch.dict("os.environ", {"no_proxy": ""}):
+            cache_boot_sources()
         self.assertEqual(
             (proxy_address, proxy_address, "127.0.0.1,localhost"),
             (
@@ -384,7 +385,8 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         factory.make_BootSource(
             keyring_data=b"1234", url="http://192.168.1.100:8080/ephemeral-v3/"
         )
-        cache_boot_sources()
+        with patch.dict("os.environ", {"no_proxy": ""}):
+            cache_boot_sources()
         no_proxy_hosts = "127.0.0.1,localhost,192.168.1.100"
         self.assertEqual(
             (proxy_address, proxy_address, no_proxy_hosts),
@@ -394,6 +396,45 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
                 capture.env["no_proxy"],
             ),
         )
+
+    def test_retains_existing_no_proxy(self):
+        proxy_address = factory.make_name("proxy")
+        Config.objects.set_config("http_proxy", proxy_address)
+        Config.objects.set_config("boot_images_no_proxy", True)
+        capture = patch_and_capture_env_for_download_all_image_descriptions(
+            self
+        )
+        factory.make_BootSource(
+            keyring_data=b"1234", url="http://192.168.1.100:8080/ephemeral-v3/"
+        )
+        with patch.dict("os.environ", {"no_proxy": "http://my.direct.host"}):
+            cache_boot_sources()
+        no_proxy_hosts = (
+            "http://my.direct.host,127.0.0.1,localhost,192.168.1.100"
+        )
+        self.assertEqual(no_proxy_hosts, capture.env["no_proxy"])
+
+    def test_restores_proxy_settings_post_call(self):
+        proxy_address = factory.make_name("proxy")
+        Config.objects.set_config("http_proxy", proxy_address)
+        Config.objects.set_config("boot_images_no_proxy", True)
+        mock_download = self.patch(
+            bootsources, "download_all_image_descriptions"
+        )
+        mock_download.return_value = make_boot_image_mapping()
+
+        with patch.dict(
+            "os.environ",
+            {
+                "no_proxy": "my.no_proxy",
+                "http_proxy": "my.http_proxy",
+                "https_proxy": "my.https_proxy",
+            },
+        ):
+            cache_boot_sources()
+            self.assertEqual(environ.get("no_proxy"), "my.no_proxy")
+            self.assertEqual(environ.get("http_proxy"), "my.http_proxy")
+            self.assertEqual(environ.get("https_proxy"), "my.https_proxy")
 
     def test_passes_user_agent_with_maas_version(self):
         mock_download = self.patch(
