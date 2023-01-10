@@ -30,6 +30,8 @@ server {
     listen {{http_port}};
     {{endif}}
 
+    absolute_redirect off;
+
     location = / {
         return 301 /MAAS/r/;
     }
