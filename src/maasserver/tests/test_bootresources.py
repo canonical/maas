@@ -133,7 +133,7 @@ class SimplestreamsEnvFixture(Fixture):
     def setUp(self):
         super().setUp()
         prior_env = {}
-        for key in ["GNUPGHOME", "http_proxy", "https_proxy"]:
+        for key in ["GNUPGHOME", "http_proxy", "https_proxy", "no_proxy"]:
             prior_env[key] = os.environ.get(key, "")
         self.addCleanup(os.environ.update, prior_env)
 
