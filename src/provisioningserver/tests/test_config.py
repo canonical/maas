@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for provisioning configuration."""
@@ -29,7 +29,6 @@ from maastesting.factory import factory
 from maastesting.fixtures import ImportErrorFixture
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
-from provisioningserver import config as config_module
 from provisioningserver.config import (
     ClusterConfiguration,
     Configuration,
@@ -38,7 +37,6 @@ from provisioningserver.config import (
     ConfigurationImmutable,
     ConfigurationMeta,
     ConfigurationOption,
-    debug_enabled,
     is_dev_environment,
 )
 from provisioningserver.path import get_data_path
@@ -726,30 +724,3 @@ class TestConfig(MAASTestCase):
 
     def test_is_dev_environment_returns_true(self):
         self.assertTrue(is_dev_environment())
-
-
-class TestDebugEnabled(MAASTestCase):
-    """Tests for `debug_enabled`."""
-
-    def setUp(self):
-        super().setUp()
-        # Make sure things aren't pulled from cache
-        debug_enabled.cache_clear()
-
-    def test_debug_enabled_false(self):
-        # Verifies that the default state of debug is false.
-        self.assertFalse(debug_enabled())
-
-    def test_debug_enabled(self):
-        debug = factory.pick_bool()
-        self.useFixture(ClusterConfigurationFixture(debug=debug))
-        self.assertEqual(debug, debug_enabled())
-
-    def test_debug_enabled_cached(self):
-        debug = factory.pick_bool()
-        self.useFixture(ClusterConfigurationFixture(debug=debug))
-        # Prime cache
-        debug_enabled()
-        mock_open = self.patch(config_module.ClusterConfiguration, "open")
-        self.assertEqual(debug, debug_enabled())
-        mock_open.assert_not_called()

@@ -19,7 +19,6 @@ from testtools.matchers import (
 from maastesting.factory import factory
 from maastesting.matchers import FileContains, MockAnyCall, MockCalledOnce
 from maastesting.testcase import MAASTestCase
-from provisioningserver import boot
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot import uefi_amd64 as uefi_amd64_module
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
@@ -30,7 +29,6 @@ from provisioningserver.boot.uefi_amd64 import (
     UEFIAMD64BootMethod,
     UEFIAMD64HTTPBootMethod,
 )
-from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
@@ -69,12 +67,6 @@ def compose_config_path(
 class TestUEFIAMD64BootMethodRender(MAASTestCase):
     """Tests for
     `provisioningserver.boot_amd64.uefi.UEFIAMD64BootMethod.render`."""
-
-    def setUp(self):
-        super().setUp()
-        boot.debug_enabled.cache_clear()
-        self.addClassCleanup(boot.debug_enabled.cache_clear)
-        self.useFixture(ClusterConfigurationFixture(debug=False))
 
     def test_get_reader(self):
         # Given the right configuration options, the UEFI configuration is
@@ -175,7 +167,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             output,
             ContainsAll(
                 [
-                    "menuentry 'Ephemeral'",
+                    "menuentry 'Commission'",
                     "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
                     params.kernel,
                 ]
@@ -193,7 +185,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             output,
             ContainsAll(
                 [
-                    "menuentry 'Ephemeral'",
+                    "menuentry 'Commission'",
                     "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
                     params.kernel,
                 ]

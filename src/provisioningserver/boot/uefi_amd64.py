@@ -124,9 +124,7 @@ class UEFIAMD64BootMethod(BootMethod):
         # UEFI.  And so we fix it here, instead of in the common code.  See
         # also src/provisioningserver/kernel_opts.py.
         namespace["kernel_command"] = kernel_command
-        return BytesReader(
-            template.substitute(namespace).strip().encode("utf-8")
-        )
+        return BytesReader(template.substitute(namespace).encode("utf-8"))
 
     def _find_and_copy_bootloaders(self, destination, log_missing=True):
         if not super()._find_and_copy_bootloaders(destination, False):

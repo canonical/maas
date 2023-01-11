@@ -17,7 +17,6 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from zope.interface import implementer
 
 from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
@@ -419,7 +418,6 @@ class BootMethod(metaclass=ABCMeta):
             "kernel_path": kernel_path,
             "kernel_name": kernel_name,
             "dtb_path": dtb_path,
-            "debug": debug_enabled(),
         }
 
         return namespace

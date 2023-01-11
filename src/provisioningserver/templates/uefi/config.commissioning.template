@@ -1,8 +1,7 @@
-{{if debug}}set debug="all"{{endif}}
 set default="0"
 set timeout=0
 
-menuentry 'Ephemeral' {
+menuentry 'Commission' {
     echo   'Booting under MAAS direction...'
     linux  {{kernel_params | fs_efihost}}{{kernel_params | kernel_path }} {{kernel_params | kernel_command}} BOOTIF=01-${net_default_mac}
     initrd {{kernel_params | fs_efihost}}{{kernel_params | initrd_path }}
