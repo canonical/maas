@@ -114,8 +114,6 @@ STATS_DEFINITIONS = [
     ),
 ]
 
-_METRICS = {}
-
 
 def prometheus_stats_handler(request):
     configs = Config.objects.get_configs(["prometheus_enabled", "uuid"])
@@ -123,17 +121,14 @@ def prometheus_stats_handler(request):
     if not have_prometheus:
         return HttpResponseNotFound()
 
-    global _METRICS
-    if not _METRICS:
-        _METRICS = create_metrics(
-            STATS_DEFINITIONS,
-            extra_labels={"maas_id": configs["uuid"]},
-            update_handlers=[update_prometheus_stats],
-            registry=prom_cli.CollectorRegistry(),
-        )
-
+    metrics = create_metrics(
+        STATS_DEFINITIONS,
+        extra_labels={"maas_id": configs["uuid"]},
+        update_handlers=[update_prometheus_stats],
+        registry=prom_cli.CollectorRegistry(),
+    )
     return HttpResponse(
-        content=_METRICS.generate_latest(), content_type="text/plain"
+        content=metrics.generate_latest(), content_type="text/plain"
     )
 
 
