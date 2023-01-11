@@ -111,7 +111,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs,
+            **kwargs
         )
 
     def _add_interface_id_query(self, current_q, op, item):
@@ -1522,10 +1522,20 @@ class Interface(CleanSave, TimestampedModel):
                     % (self.get_log_string(), vid, vlan.fabric.get_name())
                 )
 
-    def update_neighbour(self, ip, mac, time, vid=None):
-        """Updates the neighbour table for this interface."""
+    def update_neighbour(self, neighbour_json: dict):
+        """Updates the neighbour table for this interface.
+
+        Input is expected to be the neighbour JSON from the controller.
+        """
+        # Circular imports
         from maasserver.models.neighbour import Neighbour
 
+        if self.neighbour_discovery_state is False:
+            return None
+        ip = neighbour_json["ip"]
+        mac = neighbour_json["mac"]
+        time = neighbour_json["time"]
+        vid = neighbour_json.get("vid", None)
         deleted = Neighbour.objects.delete_and_log_obsolete_neighbours(
             ip, mac, interface=self, vid=vid
         )
@@ -1542,10 +1552,13 @@ class Interface(CleanSave, TimestampedModel):
             # generated a log statement about this neighbour.
             if not deleted:
                 maaslog.info(
-                    f"{self.get_log_string()}: "
-                    "New MAC, IP binding "
-                    f"observed{Neighbour.objects.get_vid_log_snippet(vid)}: "
-                    f"{mac}, {ip}"
+                    "%s: New MAC, IP binding observed%s: %s, %s"
+                    % (
+                        self.get_log_string(),
+                        Neighbour.objects.get_vid_log_snippet(vid),
+                        mac,
+                        ip,
+                    )
                 )
         else:
             neighbour.time = time

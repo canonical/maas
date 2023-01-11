@@ -1363,7 +1363,7 @@ class InterfaceTest(MAASServerTestCase):
         self.assertEquals(0, interface.link_speed)
 
 
-class TestInterfaceUpdateNeighbour(MAASServerTestCase):
+class InterfaceUpdateNeighbourTest(MAASServerTestCase):
     """Tests for `Interface.update_neighbour`."""
 
     def make_neighbour_json(self, ip=None, mac=None, time=None, **kwargs):
@@ -1384,15 +1384,22 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
                 vid = None
         return {"ip": ip, "mac": mac, "time": time, "vid": vid}
 
-    def test_adds_new_neighbour(self):
+    def test_ignores_updates_if_neighbour_discovery_state_is_false(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        iface.update_neighbour(**self.make_neighbour_json())
+        iface.update_neighbour(self.make_neighbour_json())
+        self.assertThat(Neighbour.objects.count(), Equals(0))
+
+    def test_adds_new_neighbour_if_neighbour_discovery_state_is_true(self):
+        iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        iface.update_neighbour(self.make_neighbour_json())
         self.assertThat(Neighbour.objects.count(), Equals(1))
 
     def test_updates_existing_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
-        iface.update_neighbour(**json)
+        iface.update_neighbour(json)
         neighbour = get_one(Neighbour.objects.all())
         # Pretend this was updated one day ago.
         yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
@@ -1403,7 +1410,7 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
             Equals(int(yesterday.timestamp())),
         )
         json["time"] += 1
-        iface.update_neighbour(**json)
+        iface.update_neighbour(json)
         neighbour = reload_object(neighbour)
         self.assertThat(Neighbour.objects.count(), Equals(1))
         self.assertThat(neighbour.time, Equals(json["time"]))
@@ -1415,12 +1422,13 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
 
     def test_replaces_obsolete_neighbour(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
-        iface.update_neighbour(**json)
+        iface.update_neighbour(json)
         # Have a different MAC address claim ownership of the IP.
         json["time"] += 1
         json["mac"] = factory.make_mac_address()
-        iface.update_neighbour(**json)
+        iface.update_neighbour(json)
         self.assertThat(Neighbour.objects.count(), Equals(1))
         self.assertThat(
             list(Neighbour.objects.all())[0].mac_address, Equals(json["mac"])
@@ -1431,8 +1439,10 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
 
     def test_logs_new_binding(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        iface.neighbour_discovery_state = True
+        json = self.make_neighbour_json()
         with FakeLogger("maas.interface") as maaslog:
-            iface.update_neighbour(**self.make_neighbour_json())
+            iface.update_neighbour(json)
         self.assertDocTestMatches(
             "...: New MAC, IP binding observed...", maaslog.output
         )
@@ -1441,18 +1451,18 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         iface.neighbour_discovery_state = True
         json = self.make_neighbour_json()
-        iface.update_neighbour(**json)
+        iface.update_neighbour(json)
         # Have a different MAC address claim ownership of the IP.
         json["time"] += 1
         json["mac"] = factory.make_mac_address()
         with FakeLogger("maas.neighbour") as maaslog:
-            iface.update_neighbour(**json)
+            iface.update_neighbour(json)
         self.assertDocTestMatches(
             "...: IP address...moved from...to...", maaslog.output
         )
 
 
-class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
+class InterfaceUpdateMDNSEntryTest(MAASServerTestCase):
     """Tests for `Interface.update_mdns_entry`."""
 
     def make_mdns_entry_json(self, ip=None, hostname=None):
@@ -1467,7 +1477,7 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
 
     def test_ignores_updates_if_mdns_discovery_state_is_false(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        iface.update_mdns_entry(self.make_mdns_entry_json())
+        iface.update_neighbour(self.make_mdns_entry_json())
         self.assertThat(MDNS.objects.count(), Equals(0))
 
     def test_adds_new_entry_if_mdns_discovery_state_is_true(self):
