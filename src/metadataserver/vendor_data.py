@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """vendor-data for cloud-init's use."""
@@ -247,10 +247,6 @@ def generate_kvm_pod_configuration(node):
             },
         ]
         packages = ["libvirt-daemon-system", "libvirt-clients"]
-        # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only
-        # a suggestion on ARM64 so cloud-init doesn't install it.
-        if node.split_arch()[0] == "arm64":
-            packages.append("qemu-efi-aarch64")
         yield "packages", packages
 
 

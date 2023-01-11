@@ -1,4 +1,4 @@
-# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `metadataserver.vendor_data`."""
@@ -296,7 +296,6 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertThat(config, Contains("libvirt-daemon-system"))
         self.assertThat(config, Contains("ForceCommand"))
         self.assertThat(config, Contains("libvirt-clients"))
-        self.assertThat(config, Not(Contains("qemu-efi-aarch64")))
         # Check that a password was saved for the pod-to-be.
         virsh_password_meta = NodeMetadata.objects.filter(
             node=node, key="virsh_password"
@@ -331,30 +330,6 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
             config["runcmd"], Contains(["chmod", "+x", "/etc/rc.local"])
         )
         self.assertThat(config["runcmd"], Contains(["/etc/rc.local"]))
-        self.assertThat(config, Not(Contains("qemu-efi-aarch64")))
-
-    def test_yields_configuration_when_arm64_kvm(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            architecture="arm64/generic",
-        )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = str(dict(configuration))
-        self.assertThat(config, Contains("virsh"))
-        self.assertThat(config, Contains("ssh_pwauth"))
-        self.assertThat(config, Contains("rbash"))
-        self.assertThat(config, Contains("libvirt-daemon-system"))
-        self.assertThat(config, Contains("ForceCommand"))
-        self.assertThat(config, Contains("libvirt-clients"))
-        self.assertThat(config, Contains("qemu-efi-aarch64"))
-        # Check that a password was saved for the pod-to-be.
-        virsh_password_meta = NodeMetadata.objects.filter(
-            node=node, key="virsh_password"
-        ).first()
-        self.assertThat(virsh_password_meta.value, HasLength(32))
 
 
 class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):
