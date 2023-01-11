@@ -522,16 +522,9 @@ class TestVirshSSH(MAASTestCase):
                 conn.sendline(line)
         return conn
 
-    def configure_virshssh(self, results, dom_prefix=None):
-        virshssh = virsh.VirshSSH(dom_prefix=dom_prefix)
-        mock_run = self.patch(virshssh, "run")
-        if isinstance(results, str):
-            mock_run.return_value = results
-        else:
-            # either a single exception or a list of results/errors
-            mock_run.side_effect = results
-
-        return virshssh
+    def configure_virshssh(self, output, dom_prefix=None):
+        self.patch(virsh.VirshSSH, "run").return_value = output
+        return virsh.VirshSSH(dom_prefix=dom_prefix)
 
     def test_login_prompt(self):
         virsh_outputs = ["virsh # "]
@@ -644,21 +637,6 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(mock_prompt, MockCalledOnceWith())
         self.assertEqual("\n".join(names), output)
 
-    def test_run_error(self):
-        cmd = ["list", "--all", "--name"]
-        message = "something failed"
-        conn = self.configure_virshssh_pexpect()
-        conn.before = "\n".join([" ".join(cmd), f"error: {message}"]).encode(
-            "utf-8"
-        )
-        self.patch(conn, "sendline")
-        self.patch(conn, "prompt")
-        mock_maaslog = self.patch(virsh, "maaslog")
-        error = self.assertRaises(virsh.VirshError, conn.run, cmd)
-        expected_message = "Virsh command ['list', '--all', '--name'] failed: something failed"
-        self.assertEqual(str(error), expected_message)
-        mock_maaslog.error.assert_called_once_with(expected_message)
-
     def test_get_column_values(self):
         keys = ["Source", "Model"]
         expected = (("br0", "e1000"), ("br1", "e1000"))
@@ -674,10 +652,13 @@ class TestVirshSSH(MAASTestCase):
         self.assertEquals(value, expected)
 
     def test_create_storage_pool(self):
-        conn = self.configure_virshssh("")
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.return_value = ""
+        conn = virsh.VirshSSH()
         conn.create_storage_pool()
-        conn.run.assert_has_calls(
-            [
+        self.assertThat(
+            mock_run,
+            MockCallsMatch(
                 call(
                     [
                         "pool-define-as",
@@ -690,7 +671,33 @@ class TestVirshSSH(MAASTestCase):
                 call(["pool-build", "maas"]),
                 call(["pool-start", "maas"]),
                 call(["pool-autostart", "maas"]),
-            ],
+            ),
+        )
+
+    def test_create_storage_pool_writes_maaslog_on_error(self):
+        mock_maaslog = self.patch(virsh, "maaslog")
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        error_msg = "error: error message here"
+        mock_run.return_value = error_msg
+        conn = virsh.VirshSSH()
+        conn.create_storage_pool()
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "pool-define-as",
+                    "maas",
+                    "dir",
+                    "- - - -",
+                    "/var/lib/libvirt/maas-images",
+                ]
+            ),
+        )
+        self.assertThat(
+            mock_maaslog.error,
+            MockCalledOnceWith(
+                "Failed to create Pod storage pool: %s", error_msg
+            ),
         )
 
     def test_list_machines(self):
@@ -730,7 +737,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(state, expected)
 
     def test_get_machine_state_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error:")
         expected = conn.get_machine_state("")
         self.assertEqual(None, expected)
 
@@ -748,7 +755,7 @@ class TestVirshSSH(MAASTestCase):
         )
 
     def test_get_machine_interface_info_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error:")
         expected = conn.get_machine_state("")
         self.assertEqual(None, expected)
 
@@ -1229,23 +1236,30 @@ class TestVirshSSH(MAASTestCase):
     def test_check_machine_can_startup(self):
         machine = factory.make_name("machine")
         conn = self.configure_virshssh("")
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = ("", "")
         conn.check_machine_can_startup(machine)
-        conn.run.assert_has_calls(
-            [
+        self.assertThat(
+            mock_run,
+            MockCallsMatch(
                 call(["start", "--paused", machine]),
                 call(["destroy", machine]),
-            ]
+            ),
         )
 
     def test_check_machine_can_startup_raises_exception(self):
         machine = factory.make_name("machine")
-        conn = self.configure_virshssh([virsh.VirshError("some error"), ""])
+        conn = self.configure_virshssh("")
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = ("error: some error", "")
         mock_delete_domain = self.patch(virsh.VirshSSH, "delete_domain")
         self.assertRaises(
             virsh.VirshError, conn.check_machine_can_startup, machine
         )
-        mock_delete_domain.assert_called_once_with(machine)
-        conn.run.assert_called_once_with(["start", "--paused", machine])
+        self.assertThat(mock_delete_domain, MockCalledOnceWith(machine))
+        self.assertThat(
+            mock_run, MockCalledOnceWith(["start", "--paused", machine])
+        )
 
     def test_set_machine_autostart(self):
         conn = self.configure_virshssh("")
@@ -1253,7 +1267,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(True, expected)
 
     def test_set_machine_autostart_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error:")
         expected = conn.poweron(factory.make_name("machine"))
         self.assertEqual(False, expected)
 
@@ -1296,7 +1310,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(True, expected)
 
     def test_poweron_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error:")
         expected = conn.poweron(factory.make_name("machine"))
         self.assertEqual(False, expected)
 
@@ -1306,7 +1320,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(True, expected)
 
     def test_poweroff_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error:")
         expected = conn.poweroff(factory.make_name("machine"))
         self.assertEqual(False, expected)
 
@@ -1504,11 +1518,11 @@ class TestVirshSSH(MAASTestCase):
         self.assertIsNone(conn.create_local_volume(random.randint(1000, 2000)))
 
     def test_create_local_volume_returns_tagged_pool_and_volume(self):
+        conn = self.configure_virshssh("")
         tagged_pools = ["pool1", "pool2"]
-        conn = self.configure_virshssh(
-            (SAMPLE_POOLINFO_FULL, SAMPLE_POOLINFO, None)
-        )
-        self.patch(conn, "list_pools").return_value = tagged_pools
+        self.patch(virsh.VirshSSH, "list_pools").return_value = tagged_pools
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.side_effect = (SAMPLE_POOLINFO_FULL, SAMPLE_POOLINFO, None)
         disk = RequestedMachineBlockDevice(size=4096, tags=tagged_pools)
         used_pool, _ = conn.create_local_volume(disk)
         self.assertEqual(tagged_pools[1], used_pool)
@@ -1521,21 +1535,25 @@ class TestVirshSSH(MAASTestCase):
             pool_type,
             pool,
         )
+        mock_run = self.patch(virsh.VirshSSH, "run")
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
         used_pool, volume_name = conn.create_local_volume(disk)
-        conn.run.assert_called_once_with(
-            [
-                "vol-create-as",
-                used_pool,
-                volume_name,
-                str(disk.size),
-                "--allocation",
-                "0",
-                "--format",
-                "raw",
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "vol-create-as",
+                    used_pool,
+                    volume_name,
+                    str(disk.size),
+                    "--allocation",
+                    "0",
+                    "--format",
+                    "raw",
+                ]
+            ),
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
@@ -1547,19 +1565,23 @@ class TestVirshSSH(MAASTestCase):
             "logical",
             pool,
         )
+        mock_run = self.patch(virsh.VirshSSH, "run")
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
         used_pool, volume_name = conn.create_local_volume(disk)
-        conn.run.assert_called_once_with(
-            [
-                "vol-create-as",
-                used_pool,
-                volume_name,
-                str(disk.size),
-                "--format",
-                "raw",
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "vol-create-as",
+                    used_pool,
+                    volume_name,
+                    str(disk.size),
+                    "--format",
+                    "raw",
+                ]
+            ),
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
@@ -1571,22 +1593,26 @@ class TestVirshSSH(MAASTestCase):
             "zfs",
             pool,
         )
+        mock_run = self.patch(virsh.VirshSSH, "run")
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
         used_pool, volume_name = conn.create_local_volume(disk)
         size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
-        conn.run.assert_called_once_with(
-            [
-                "vol-create-as",
-                used_pool,
-                volume_name,
-                str(size),
-                "--allocation",
-                "0",
-                "--format",
-                "raw",
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "vol-create-as",
+                    used_pool,
+                    volume_name,
+                    str(size),
+                    "--allocation",
+                    "0",
+                    "--format",
+                    "raw",
+                ]
+            ),
         )
         self.assertEqual(pool, used_pool)
         self.assertIsNotNone(volume_name)
@@ -1595,19 +1621,24 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh("")
         pool = factory.make_name("pool")
         volume_name = factory.make_name("volume")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         conn.delete_local_volume(pool, volume_name)
-        conn.run.assert_called_once_with(
-            ["vol-delete", volume_name, "--pool", pool]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(["vol-delete", volume_name, "--pool", pool]),
         )
 
     def test_get_volume_path(self):
+        conn = self.configure_virshssh("")
         pool = factory.make_name("pool")
         volume_name = factory.make_name("volume")
         volume_path = factory.make_name("path")
-        conn = self.configure_virshssh(volume_path)
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.return_value = "   %s    " % volume_path
         self.assertEqual(volume_path, conn.get_volume_path(pool, volume_name))
-        conn.run.assert_called_once_with(
-            ["vol-path", volume_name, "--pool", pool]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(["vol-path", volume_name, "--pool", pool]),
         )
 
     def test_attach_local_volume(self):
@@ -1618,24 +1649,28 @@ class TestVirshSSH(MAASTestCase):
         volume_path = factory.make_name("/some/path/to_vol_serial")
         serial = os.path.basename(volume_path)
         device_name = factory.make_name("device")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         self.patch(
             virsh.VirshSSH, "get_volume_path"
         ).return_value = volume_path
         conn.attach_local_volume(domain, pool, volume_name, device_name)
-        conn.run.assert_called_once_with(
-            [
-                "attach-disk",
-                domain,
-                volume_path,
-                device_name,
-                "--targetbus",
-                "virtio",
-                "--sourcetype",
-                "file",
-                "--config",
-                "--serial",
-                serial,
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "attach-disk",
+                    domain,
+                    volume_path,
+                    device_name,
+                    "--targetbus",
+                    "virtio",
+                    "--sourcetype",
+                    "file",
+                    "--config",
+                    "--serial",
+                    serial,
+                ]
+            ),
         )
 
     def test_get_networks_list(self):
@@ -1820,22 +1855,26 @@ class TestVirshSSH(MAASTestCase):
             network,
             InterfaceAttachType.NETWORK,
         )
+        mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface()
         self.patch(virsh, "generate_mac_address").return_value = fake_mac
         conn.attach_interface(request, interface, domain)
-        conn.run.assert_called_once_with(
-            [
-                "attach-interface",
-                domain,
-                "network",
-                network,
-                "--mac",
-                fake_mac,
-                "--model",
-                "virtio",
-                "--config",
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "attach-interface",
+                    domain,
+                    "network",
+                    network,
+                    "--mac",
+                    fake_mac,
+                    "--model",
+                    "virtio",
+                    "--config",
+                ]
+            ),
         )
 
     def test_attach_interface_calls_attaches_network(self):
@@ -1851,30 +1890,35 @@ class TestVirshSSH(MAASTestCase):
             network,
             InterfaceAttachType.NETWORK,
         )
+        mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=network, attach_type="network"
         )
         self.patch(virsh, "generate_mac_address").return_value = fake_mac
         conn.attach_interface(request, interface, domain)
-        conn.run.assert_called_once_with(
-            [
-                "attach-interface",
-                domain,
-                "network",
-                network,
-                "--mac",
-                fake_mac,
-                "--model",
-                "virtio",
-                "--config",
-            ]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(
+                [
+                    "attach-interface",
+                    domain,
+                    "network",
+                    network,
+                    "--mac",
+                    fake_mac,
+                    "--model",
+                    "virtio",
+                    "--config",
+                ]
+            ),
         )
 
     def test_attach_interface_attaches_macvlan(self):
         conn = self.configure_virshssh("")
         request = make_requested_machine()
         domain = factory.make_name("domain")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=factory.make_name("name"),
@@ -1893,24 +1937,31 @@ class TestVirshSSH(MAASTestCase):
             "attach_name": interface.attach_name,
             "attach_options": interface.attach_options,
         }
-        conn.run.assert_called_once_with(
-            ["attach-device", domain, ANY, "--config"]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(["attach-device", domain, ANY, "--config"]),
         )
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_MACVLAN_INTERFACE.format(
                         **device_params
                     ).encode("utf-8")
                 ),
                 call(b"\n"),
-            ]
+            ),
         )
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
 
     def test_attach_interface_attaches_bridge(self):
         conn = self.configure_virshssh("")
         request = make_requested_machine()
         domain = factory.make_name("domain")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         fake_mac = factory.make_mac_address()
         interface = RequestedMachineInterface(
             attach_name=factory.make_name("ifname"),
@@ -1928,19 +1979,25 @@ class TestVirshSSH(MAASTestCase):
             "mac_address": fake_mac,
             "attach_name": interface.attach_name,
         }
-        conn.run.assert_called_once_with(
-            ["attach-device", domain, ANY, "--config"]
+        self.assertThat(
+            mock_run,
+            MockCalledOnceWith(["attach-device", domain, ANY, "--config"]),
         )
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_BRIDGE_INTERFACE.format(
                         **device_params
                     ).encode("utf-8")
                 ),
                 call(b"\n"),
-            ]
+            ),
         )
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
 
     def test_get_domain_capabilities_for_kvm(self):
         conn = self.configure_virshssh(SAMPLE_CAPABILITY_KVM)
@@ -1950,19 +2007,18 @@ class TestVirshSSH(MAASTestCase):
         )
 
     def test_get_domain_capabilities_for_qemu(self):
-        conn = self.configure_virshssh(
-            (
-                virsh.VirshError("message for virsh"),
-                SAMPLE_CAPABILITY_QEMU,
-            )
-        )
+        conn = self.configure_virshssh("")
+        self.patch(virsh.VirshSSH, "run").side_effect = [
+            "error: message from virsh",
+            SAMPLE_CAPABILITY_QEMU,
+        ]
         self.assertEqual(
             {"type": "qemu", "emulator": "/usr/bin/qemu-system-x86_64"},
             conn.get_domain_capabilities(),
         )
 
     def test_get_domain_capabilities_raises_error(self):
-        conn = self.configure_virshssh(virsh.VirshError("some error"))
+        conn = self.configure_virshssh("error: some error")
         self.assertRaises(virsh.VirshError, conn.get_domain_capabilities)
 
     def test_cleanup_disks_deletes_all(self):
@@ -2065,6 +2121,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
         mock_check_machine_can_startup = self.patch(
@@ -2078,15 +2135,20 @@ class TestVirshSSH(MAASTestCase):
         mock_discovered.return_value = sentinel.discovered
         observed = conn.create_domain(request)
 
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_AMD64.format(**domain_params).encode("utf-8")
                 ),
                 call(b"\n"),
-            ]
+            ),
         )
-        conn.run.assert_called_once_with(["define", ANY])
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(["define", ANY]))
         self.assertThat(
             mock_attach_disk,
             MockCalledOnceWith(ANY, disk_info[0], disk_info[1], "vda"),
@@ -2137,6 +2199,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
         mock_check_machine_can_startup = self.patch(
@@ -2150,26 +2213,39 @@ class TestVirshSSH(MAASTestCase):
         mock_discovered.return_value = sentinel.discovered
         observed = conn.create_domain(request)
 
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_ARM64.format(**domain_params).encode("utf-8")
                 ),
                 call(b"\n"),
-            ]
+            ),
         )
-        conn.run.asert_called_once_with(["define", ANY])
-        mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(["define", ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], "vda"),
         )
-        mock_attach_nic.assert_called_once_with(request, ANY, ANY)
-        mock_check_machine_can_startup.assert_called_once_with(
-            request.hostname
+        self.assertThat(mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname),
         )
-        mock_set_machine_autostart.assert_called_once_with(request.hostname)
-        mock_configure_pxe.assert_called_once_with(request.hostname)
-        mock_discovered.assert_called_once_with(ANY, request=request)
-        self.assertEqual(sentinel.discovered, observed)
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request)
+        )
+        self.assertEquals(sentinel.discovered, observed)
 
     def test_create_domain_calls_correct_methods_with_ppc64_arch(self):
         conn = self.configure_virshssh("")
@@ -2201,6 +2277,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
         mock_check_machine_can_startup = self.patch(
@@ -2214,26 +2291,39 @@ class TestVirshSSH(MAASTestCase):
         mock_discovered.return_value = sentinel.discovered
         observed = conn.create_domain(request)
 
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_PPC64.format(**domain_params).encode("utf-8")
                 ),
                 call(b"\n"),
-            ],
+            ),
         )
-        conn.run.assert_called_once_with(["define", ANY])
-        mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(["define", ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], "vda"),
         )
-        mock_attach_nic.assert_called_once_with(request, ANY, ANY)
-        mock_check_machine_can_startup.assert_called_once_with(
-            request.hostname
+        self.assertThat(mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname),
         )
-        mock_set_machine_autostart.assert_called_once_with(request.hostname)
-        mock_configure_pxe.assert_called_once_with(request.hostname)
-        mock_discovered.assert_called_once_with(ANY, request=request)
-        self.assertEqual(sentinel.discovered, observed)
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request)
+        )
+        self.assertEquals(sentinel.discovered, observed)
 
     def test_create_domain_calls_correct_methods_with_s390x_arch(self):
         conn = self.configure_virshssh("")
@@ -2265,6 +2355,7 @@ class TestVirshSSH(MAASTestCase):
         tmpfile = NamedTemporaryFile.return_value
         tmpfile.__enter__.return_value = tmpfile
         tmpfile.name = factory.make_name("filename")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         mock_attach_disk = self.patch(virsh.VirshSSH, "attach_local_volume")
         mock_attach_nic = self.patch(virsh.VirshSSH, "attach_interface")
         mock_check_machine_can_startup = self.patch(
@@ -2278,34 +2369,49 @@ class TestVirshSSH(MAASTestCase):
         mock_discovered.return_value = sentinel.discovered
         observed = conn.create_domain(request)
 
-        tmpfile.write.assert_has_calls(
-            [
+        self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
+        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            tmpfile.write,
+            MockCallsMatch(
                 call(
                     DOM_TEMPLATE_S390X.format(**domain_params).encode("utf-8")
                 ),
                 call(b"\n"),
-            ]
+            ),
         )
-        conn.run.assert_called_once_with(["define", ANY])
-        mock_attach_disk.assert_called_once_with(
-            ANY, disk_info[0], disk_info[1], "vda"
+        self.assertThat(tmpfile.flush, MockCalledOnceWith())
+        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        self.assertThat(mock_run, MockCalledOnceWith(["define", ANY]))
+        self.assertThat(
+            mock_attach_disk,
+            MockCalledOnceWith(ANY, disk_info[0], disk_info[1], "vda"),
         )
-        mock_attach_nic.assert_called_once_with(request, ANY, ANY)
-        mock_check_machine_can_startup.assert_called_once_with(
-            request.hostname
+        self.assertThat(mock_attach_nic, MockCalledOnceWith(request, ANY, ANY))
+        self.assertThat(
+            mock_check_machine_can_startup,
+            MockCalledOnceWith(request.hostname),
         )
-        mock_set_machine_autostart.assert_called_once_with(request.hostname)
-        mock_configure_pxe.assert_called_once_with(request.hostname)
-        mock_discovered.assert_called_once_with(ANY, request=request)
-        self.assertEqual(sentinel.discovered, observed)
+        self.assertThat(
+            mock_set_machine_autostart, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_configure_pxe, MockCalledOnceWith(request.hostname)
+        )
+        self.assertThat(
+            mock_discovered, MockCalledOnceWith(ANY, request=request)
+        )
+        self.assertEquals(sentinel.discovered, observed)
 
     def test_delete_domain_calls_correct_methods(self):
         conn = self.configure_virshssh("")
+        mock_run = self.patch(virsh.VirshSSH, "run")
         domain = factory.make_name("vm")
         conn.delete_domain(domain)
-        conn.run.assert_has_calls(
-            [
-                call(["destroy", domain], raise_error=False),
+        self.assertThat(
+            mock_run,
+            MockCallsMatch(
+                call(["destroy", domain]),
                 call(
                     [
                         "undefine",
@@ -2313,10 +2419,9 @@ class TestVirshSSH(MAASTestCase):
                         "--remove-all-storage",
                         "--managed-save",
                         "--nvram",
-                    ],
-                    raise_error=False,
+                    ]
                 ),
-            ]
+            ),
         )
 
 
