@@ -1,18 +1,12 @@
-# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.script`"""
 
-import random
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.orm import reload_object
-from maasserver.websockets.base import (
-    dehydrate_datetime,
-    HandlerDoesNotExistError,
-    HandlerPermissionError,
-)
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.script import ScriptHandler
 
 
@@ -58,77 +52,3 @@ class TestScriptHandler(MAASServerTestCase):
         sorted_results = sorted(handler.list({}), key=lambda i: i["id"])
         for expected, real in zip(expected_scripts, sorted_results):
             self.assertDictEqual(expected, real)
-
-    def test_delete(self):
-        script = factory.make_Script()
-        admin = factory.make_admin()
-        handler = ScriptHandler(admin, {}, None)
-
-        handler.delete({"id": script.id})
-
-        self.assertIsNone(reload_object(script))
-
-    def test_delete_admin_only(self):
-        script = factory.make_Script()
-        user = factory.make_User()
-        handler = ScriptHandler(user, {}, None)
-
-        self.assertRaises(
-            HandlerPermissionError, handler.delete, {"id": script.id}
-        )
-
-        self.assertIsNotNone(reload_object(script))
-
-    def test_delete_cannot_delete_default(self):
-        script = factory.make_Script(default=True)
-        admin = factory.make_admin()
-        handler = ScriptHandler(admin, {}, None)
-
-        self.assertRaises(
-            HandlerPermissionError, handler.delete, {"id": script.id}
-        )
-
-        self.assertIsNotNone(reload_object(script))
-
-    def test_get_script(self):
-        script = factory.make_Script()
-        user = factory.make_User()
-        handler = ScriptHandler(user, {}, None)
-
-        self.assertEqual(
-            script.script.data, handler.get_script({"id": script.id})
-        )
-
-    def test_get_script_not_found(self):
-        user = factory.make_User()
-        handler = ScriptHandler(user, {}, None)
-
-        self.assertRaises(
-            HandlerDoesNotExistError,
-            handler.get_script,
-            {"id": random.randint(1000, 10000)},
-        )
-
-    def test_get_script_revision(self):
-        script = factory.make_Script()
-        old_vtf = script.script
-        script.script = script.script.update(factory.make_string())
-        script.save()
-        user = factory.make_User()
-        handler = ScriptHandler(user, {}, None)
-
-        self.assertEqual(
-            old_vtf.data,
-            handler.get_script({"id": script.id, "revision": old_vtf.id}),
-        )
-
-    def test_get_script_revision_not_found(self):
-        script = factory.make_Script()
-        user = factory.make_User()
-        handler = ScriptHandler(user, {}, None)
-
-        self.assertRaises(
-            HandlerDoesNotExistError,
-            handler.get_script,
-            {"id": script.id, "revision": random.randint(1000, 10000)},
-        )
