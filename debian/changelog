@@ -1,3 +1,10 @@
+maas (1:2.9.3~beta3-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 beta3.
+  * Revert all unreleased commits since MAAS 2.9.2.
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Wed, 11 Jan 2023 17:43:26 -0300
+
 maas (1:2.9.3~beta2-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta2.
