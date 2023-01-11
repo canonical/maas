@@ -6,23 +6,17 @@ from maasserver.deprecations import (
     sync_deprecation_notifications,
 )
 from maasserver.models import Notification
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LegacyLogger
 
 
-class TestGetDeprecations(MAASServerTestCase):
+class TestGetDeprecations(MAASTestCase):
     def test_empty(self):
         self.assertEqual(get_deprecations(), [])
 
-    def test_md2(self):
-        factory.make_Pod(pod_type="rsd")
-        [md2] = get_deprecations()
-        self.assertEqual(md2.id, "MD2")
-        self.assertEqual(md2.since, "2.9.4")
 
-
-class TestLogDeprecations(MAASServerTestCase):
+class TestLogDeprecations(MAASTestCase):
     def test_log_deprecations(self):
         self.patch(deprecations, "get_deprecations").return_value = [
             Deprecation(

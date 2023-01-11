@@ -12,10 +12,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
-from maasserver.deprecations import (
-    log_deprecations,
-    sync_deprecation_notifications,
-)
+from maasserver.deprecations import sync_deprecation_notifications
 from maasserver.fields import register_mac_type
 from maasserver.models.config import Config
 from maasserver.models.domain import dns_kms_setting_changed
@@ -148,8 +145,7 @@ def inner_start_up(master=False):
                 ident="commissioning_release_deprecated",
             )
 
-        # Log deprecations and update related notifications if needed
-        log_deprecations(logger=log)
+        # Update deprecation notifications if needed
         sync_deprecation_notifications()
 
         # Refresh soon after this transaction is in.

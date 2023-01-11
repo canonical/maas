@@ -28,25 +28,12 @@ class Deprecation:
 
 
 # all known deprecation notices
-DEPRECATIONS = {
-    "RSD_REMOVAL": Deprecation(
-        id="MD2",
-        since="2.9.4",
-        description=(
-            "Support for RSD pods will be dropped in the next major release."
-        ),
-    )
-}
+DEPRECATIONS = {}
 
 
 def get_deprecations():
     """Return a list of currently active deprecation notices."""
-    deprecations = []
-    from maasserver.models import Pod
-
-    if Pod.objects.filter(power_type="rsd").exists():
-        deprecations.append(DEPRECATIONS["RSD_REMOVAL"])
-    return deprecations
+    return []
 
 
 def log_deprecations(logger=None):

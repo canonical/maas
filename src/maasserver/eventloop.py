@@ -41,6 +41,7 @@ from twisted.application.service import MultiService, Service
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 
+from maasserver.deprecations import log_deprecations
 from maasserver.utils.orm import disable_all_database_connections
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.prometheus.metrics import set_global_labels
@@ -65,6 +66,7 @@ def make_DatabaseTaskService():
 def make_RegionControllerService(postgresListener):
     from maasserver.region_controller import RegionControllerService
 
+    log_deprecations()
     return RegionControllerService(postgresListener)
 
 

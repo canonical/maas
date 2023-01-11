@@ -211,14 +211,6 @@ class TestInnerStartUp(MAASServerTestCase):
             0,
         )
 
-    def test_logs_deprecation_notifications(self):
-        # create a deprecated RSD pod
-        factory.make_Pod(pod_type="rsd")
-        mock_log = self.patch(start_up, "log")
-        with post_commit_hooks:
-            start_up.inner_start_up(master=True)
-        mock_log.msg.assert_called_once()
-
 
 class TestFunctions(MAASServerTestCase):
     """Tests for other functions in the `start_up` module."""
