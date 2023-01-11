@@ -1,9 +1,3 @@
-maas (1:2.9.3~beta2-0ubuntu2) UNRELEASED; urgency=medium
-
-  * Test.
-
- -- Mauricio Faria de Oliveira <mfo@canonical.com>  Thu, 17 Nov 2022 12:29:11 -0300
-
 maas (1:2.9.3~beta2-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta2.
