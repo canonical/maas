@@ -52,7 +52,10 @@
 /src/maasui/build
 /src/maasui/nodejs
 /src/machine-resources/bin
-/src/machine-resources/vendor
+/src/machine-resources/pkg
+/src/machine-resources/src/*
+!/src/machine-resources/src/machine-resources
+/src/machine-resources/src/machine-resources/vendor
 /stage
 /TAGS
 /tags
