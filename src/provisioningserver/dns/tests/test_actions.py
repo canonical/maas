@@ -258,7 +258,7 @@ class TestConfiguration(MAASTestCase):
         };
 
         dnssec-validation %s;
-        empty-zones-enable no;
+
         allow-query { any; };
         allow-recursion { trusted; };
         allow-query-cache { trusted; };
@@ -267,6 +267,7 @@ class TestConfiguration(MAASTestCase):
         expected_options_content %= tuple(upstream_dns) + (
             expected_dnssec_validation,
         )
+
         self.assertThat(
             expected_options_file, FileContains(expected_options_content)
         )

@@ -7,7 +7,7 @@ forwarders {
 {{endif}}
 
 dnssec-validation {{dnssec_validation}};
-empty-zones-enable no;
+
 
 {{if not upstream_allow_query}}
 allow-query { any; };
