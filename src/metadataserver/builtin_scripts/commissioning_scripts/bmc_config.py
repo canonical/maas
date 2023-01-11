@@ -80,13 +80,6 @@ import urllib
 from paramiko.client import MissingHostKeyPolicy, SSHClient
 import yaml
 
-# Most commands execute very quickly. A timeout is used to catch commands which
-# hang. Sometimes a hanging command can be handled, othertimes not. 3 minutes
-# is used as the timeout as some BMCs respond slowly when a large amount of
-# data is being returned. LP:1917652 was due to a slow responding BMC which
-# timed out when IPMI._bmc_get_config() was called.
-COMMAND_TIMEOUT = 60 * 3
-
 
 def exit_skipped():
     """Write a result YAML indicating the test has been skipped."""
@@ -181,7 +174,7 @@ class IPMI(BMCConfig):
             proc = run(
                 cmd,
                 stdout=PIPE,
-                timeout=COMMAND_TIMEOUT,
+                timeout=60,
             )
         except Exception:
             print(
@@ -222,7 +215,7 @@ class IPMI(BMCConfig):
                 "--commit",
                 "--key-pair=%s:%s=%s" % (section, key, value),
             ],
-            timeout=COMMAND_TIMEOUT,
+            timeout=60,
         )
         # If the value was set update the cache.
         if section not in self._bmc_config:
@@ -253,7 +246,7 @@ class IPMI(BMCConfig):
     @staticmethod
     @lru_cache(maxsize=1)
     def _get_ipmi_locate_output():
-        return check_output(["ipmi-locate"], timeout=COMMAND_TIMEOUT).decode()
+        return check_output(["ipmi-locate"], timeout=60).decode()
 
     @staticmethod
     @lru_cache(maxsize=1)
@@ -268,7 +261,7 @@ class IPMI(BMCConfig):
                     check_output(
                         ["ipmitool", "lan", "print", i],
                         stderr=DEVNULL,
-                        timeout=COMMAND_TIMEOUT,
+                        timeout=60,
                     ).decode(),
                 )
             except (CalledProcessError, TimeoutExpired):
@@ -566,7 +559,7 @@ class IPMI(BMCConfig):
                     "cipher_privs",
                     new_cipher_suite_privs,
                 ],
-                timeout=COMMAND_TIMEOUT,
+                timeout=60,
             )
         return new_cipher_suite_privs
 
@@ -801,9 +794,7 @@ class HPMoonshot(BMCConfig):
     def detected(self):
         try:
             output = check_output(
-                ["ipmitool", "raw", "06", "01"],
-                timeout=COMMAND_TIMEOUT,
-                stderr=DEVNULL,
+                ["ipmitool", "raw", "06", "01"], timeout=60, stderr=DEVNULL
             ).decode()
         except Exception:
             return False
@@ -815,7 +806,7 @@ class HPMoonshot(BMCConfig):
 
     def _get_local_address(self):
         output = check_output(
-            ["ipmitool", "raw", "0x2c", "1", "0"], timeout=COMMAND_TIMEOUT
+            ["ipmitool", "raw", "0x2c", "1", "0"], timeout=60
         ).decode()
         return "0x%s" % output.split()[2]
 
@@ -834,7 +825,7 @@ class HPMoonshot(BMCConfig):
                 "1",
                 "0",
             ],
-            timeout=COMMAND_TIMEOUT,
+            timeout=60,
         ).decode()
         return "0x%s" % output.split()[2]
 
@@ -867,7 +858,7 @@ class HPMoonshot(BMCConfig):
                 "print",
                 "2",
             ],
-            timeout=COMMAND_TIMEOUT,
+            timeout=60,
         ).decode()
         m = re.search(
             r"IP Address\s+:\s+"
@@ -897,7 +888,7 @@ class HPMoonshot(BMCConfig):
                 "mcloc",
                 "-v",
             ],
-            timeout=COMMAND_TIMEOUT,
+            timeout=60,
         ).decode()
         local_chan = self._get_channel_number(local_address, output)
         cartridge_chan = self._get_channel_number(node_address, output)
@@ -941,14 +932,13 @@ class Wedge(BMCConfig):
         # XXX ltrager 2020-09-16 - It would be better to get these values from
         # /sys but no test system is available.
         sys_manufacturer = check_output(
-            ["dmidecode", "-s", "system-manufacturer"], timeout=COMMAND_TIMEOUT
+            ["dmidecode", "-s", "system-manufacturer"], timeout=60
         ).decode()
         prod_name = check_output(
-            ["dmidecode", "-s", "system-product-name"], timeout=COMMAND_TIMEOUT
+            ["dmidecode", "-s", "system-product-name"], timeout=60
         ).decode()
         baseboard_prod_name = check_output(
-            ["dmidecode", "-s", "baseboard-product-name"],
-            timeout=COMMAND_TIMEOUT,
+            ["dmidecode", "-s", "baseboard-product-name"], timeout=60
         ).decode()
         if (
             (sys_manufacturer == "Intel" and prod_name == "EPGSVR")
@@ -971,8 +961,7 @@ class Wedge(BMCConfig):
             # "fe80::ff:fe00:2" is the address for the device to the internal
             # BMC network.
             output = check_output(
-                ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"],
-                timeout=COMMAND_TIMEOUT,
+                ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"], timeout=60
             ).decode()
             # fe80::1 is the BMC's LLA.
             return "fe80::1%%%s" % output.split()[1]
@@ -1014,7 +1003,7 @@ class Wedge(BMCConfig):
                 password=self.password,
             )
             _, stdout, _ = client.exec_command(
-                "ip -o -4 addr show", timeout=COMMAND_TIMEOUT
+                "ip -o -4 addr show", timeout=60
             )
             return (
                 stdout.read().decode().splitlines()[1].split()[3].split("/")[0]
@@ -1114,7 +1103,7 @@ def main():
     # XXX: andreserl 2013-04-09 bug=1064527: Try to detect if node
     # is a Virtual Machine. If it is, do not try to detect IPMI.
     try:
-        check_call(["systemd-detect-virt", "-q"], timeout=COMMAND_TIMEOUT)
+        check_call(["systemd-detect-virt", "-q"], timeout=60)
     except CalledProcessError:
         pass
     else:
@@ -1131,11 +1120,11 @@ def main():
         # The IPMI modules will fail to load if loaded on unsupported
         # hardware.
         try:
-            run(["sudo", "-E", "modprobe", module], timeout=COMMAND_TIMEOUT)
+            run(["sudo", "-E", "modprobe", module], timeout=60)
         except TimeoutExpired:
             pass
     try:
-        run(["sudo", "-E", "udevadm", "settle"], timeout=COMMAND_TIMEOUT)
+        run(["sudo", "-E", "udevadm", "settle"], timeout=60)
     except TimeoutExpired:
         pass
     detect_and_configure(args, bmc_config_path)

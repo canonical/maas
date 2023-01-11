@@ -167,7 +167,7 @@ EndSection
                     "--commit",
                     f"--key-pair={section}:{key}={value}",
                 ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                timeout=60,
             ),
         )
         self.assertEqual({section: {key: value}}, self.ipmi._bmc_config)
@@ -201,7 +201,7 @@ EndSection
                     "--commit",
                     "--key-pair=User2:SOL_Payload_Access=Yes",
                 ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                timeout=60,
             ),
         )
         # Verify cache has been updated
@@ -248,9 +248,7 @@ EndSection
         self.assertEqual(ret, self.ipmi._get_ipmi_locate_output())
         self.assertThat(
             self.mock_check_output,
-            MockCalledOnceWith(
-                ["ipmi-locate"], timeout=bmc_config.COMMAND_TIMEOUT
-            ),
+            MockCalledOnceWith(["ipmi-locate"], timeout=60),
         )
 
     def test_get_ipmitool_lan_print(self):
@@ -273,17 +271,17 @@ EndSection
                 call(
                     ["ipmitool", "lan", "print", "0"],
                     stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
+                    timeout=60,
                 ),
                 call(
                     ["ipmitool", "lan", "print", "1"],
                     stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
+                    timeout=60,
                 ),
                 call(
                     ["ipmitool", "lan", "print", "2"],
                     stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
+                    timeout=60,
                 ),
             ),
         )
@@ -744,7 +742,7 @@ EndSection
                 "cipher_privs",
                 "XXXaXXXXaXXXaXXXX",
             ],
-            timeout=bmc_config.COMMAND_TIMEOUT,
+            timeout=60,
         )
 
     def test_configure_ipmitool_cipher_suite_ids_does_nothing_when_set(self):
@@ -816,7 +814,7 @@ EndSection
                 "cipher_privs",
                 "XXXaXXXXXXXXXXXX",
             ],
-            timeout=bmc_config.COMMAND_TIMEOUT,
+            timeout=60,
         )
         self.assertEqual("", self.ipmi._cipher_suite_id)
 
@@ -1134,9 +1132,7 @@ class TestHPMoonshot(MAASTestCase):
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(
-                ["ipmitool", "raw", "06", "01"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-                stderr=DEVNULL,
+                ["ipmitool", "raw", "06", "01"], timeout=60, stderr=DEVNULL
             ),
         )
 
@@ -1154,8 +1150,7 @@ class TestHPMoonshot(MAASTestCase):
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(
-                ["ipmitool", "raw", "0x2c", "1", "0"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                ["ipmitool", "raw", "0x2c", "1", "0"], timeout=60
             ),
         )
 
@@ -1184,7 +1179,7 @@ class TestHPMoonshot(MAASTestCase):
                     "print",
                     "2",
                 ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                timeout=60,
             ),
         )
 
@@ -1212,7 +1207,7 @@ class TestHPMoonshot(MAASTestCase):
                     "print",
                     "2",
                 ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                timeout=60,
             ),
         )
 
@@ -1281,7 +1276,7 @@ class TestHPMoonshot(MAASTestCase):
                     "mcloc",
                     "-v",
                 ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
+                timeout=60,
             ),
         )
         self.assertThat(
@@ -1549,34 +1544,18 @@ class TestMain(MAASTestCase):
 
         self.assertThat(
             self.mock_check_call,
-            MockCalledOnceWith(
-                ["systemd-detect-virt", "-q"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+            MockCalledOnceWith(["systemd-detect-virt", "-q"], timeout=60),
         )
         self.assertThat(
             mock_run,
             MockCallsMatch(
                 call(
-                    ["sudo", "-E", "modprobe", "ipmi_msghandler"],
-                    timeout=bmc_config.COMMAND_TIMEOUT,
+                    ["sudo", "-E", "modprobe", "ipmi_msghandler"], timeout=60
                 ),
-                call(
-                    ["sudo", "-E", "modprobe", "ipmi_devintf"],
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-                call(
-                    ["sudo", "-E", "modprobe", "ipmi_si"],
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-                call(
-                    ["sudo", "-E", "modprobe", "ipmi_ssif"],
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-                call(
-                    ["sudo", "-E", "udevadm", "settle"],
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
+                call(["sudo", "-E", "modprobe", "ipmi_devintf"], timeout=60),
+                call(["sudo", "-E", "modprobe", "ipmi_si"], timeout=60),
+                call(["sudo", "-E", "modprobe", "ipmi_ssif"], timeout=60),
+                call(["sudo", "-E", "udevadm", "settle"], timeout=60),
             ),
         )
         self.assertThat(mock_detect_and_configure, MockCalledOnce())
