@@ -31,7 +31,7 @@ plugs:
 apps:
   supervisor:
     daemon: simple
-    command: bin/ld-preload $SNAP/bin/run-supervisord
+    command: bin/run-supervisord
     environment:
       PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
       LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
@@ -102,7 +102,6 @@ parts:
       - libxtables12
       - lshw
       - nginx-core
-      - nmap
       - openssh-client
       - python3-attr
       - python3-bson
