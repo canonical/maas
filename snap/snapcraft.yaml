@@ -194,11 +194,14 @@ parts:
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
-      python3 -m compileall -q .
     override-prime: |
       set -e
-      (cd $SNAPCRAFT_PART_SRC; snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version))
+      cwd=$(pwd)
+      cd $SNAPCRAFT_PART_SRC
+      snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version)
+      cd $cwd
       snapcraftctl prime
+      $SNAPCRAFT_PART_INSTALL/usr/bin/python3 -m compileall -q .
 
   ui:
     plugin: npm
