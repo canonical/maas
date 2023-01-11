@@ -378,6 +378,7 @@ def cache_boot_sources():
 
     # FIXME: This modifies the environment of the entire process, which is Not
     # Cool. We should integrate with simplestreams in a more Pythonic manner.
+    # See maasserver.vault._create_hvac_client - LP:2002111
     pristine_env = yield deferToDatabase(set_simplestreams_env)
 
     errors = []

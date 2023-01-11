@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from functools import cache, wraps
 import logging
-import os
 from typing import Any, Callable, NamedTuple, Optional
+from urllib.parse import urlparse
 
 from dateutil.parser import isoparse
 from django.core.exceptions import ImproperlyConfigured
@@ -48,13 +48,11 @@ def wrap_errors(func: Callable) -> Callable:
 
 def _create_hvac_client(url: str, **kwargs) -> hvac.Client:
     """Create HVAC client for the given URL, with no proxies set."""
-    # This is gross, and unfortunately necessary due to bootsources.get_simplestreams_env
-    # and https://github.com/psf/requests/issues/2018
-    if no_proxy := os.environ.get("no_proxy"):
-        if url not in no_proxy.split(","):
-            os.environ["no_proxy"] = f"{no_proxy},{url}"
-    else:
-        os.environ["no_proxy"] = url
+    # FIXME: This is gross, and unfortunately necessary due to
+    # bootsources.get_simplestreams_env and
+    # https://github.com/psf/requests/issues/2018
+    # LP:2002528
+    kwargs["proxies"] = {urlparse(url).scheme: None}
     return hvac.Client(url=url, **kwargs)
 
 

@@ -1,10 +1,11 @@
+from contextlib import suppress
 from datetime import datetime, timedelta, timezone
-from os import environ
 from unittest.mock import ANY, MagicMock
 
 from django.core.exceptions import ImproperlyConfigured
 from hvac.exceptions import VaultError as HVACVaultError
 import pytest
+from requests.adapters import HTTPAdapter
 
 from maasserver import vault
 from maasserver.models import Config
@@ -143,25 +144,52 @@ class TestVaultClient:
         ensure_auth.assert_called_once()
 
 
+@pytest.mark.parametrize("scheme", ["http", "https"])
 class TestNoProxySettingForHVAC:
-    def test_no_proxy_set(self, monkeypatch):
-        url = "http://url.to.vault:8200"
-        monkeypatch.delenv("no_proxy", raising=False)
-        _create_hvac_client(url)
-        assert environ.get("no_proxy") == url
+    def test_proxy_for_vault_scheme_set_to_None(self, scheme):
+        """HVAC client should be configured to not use a proxy."""
+        hvac_client = _create_hvac_client(f"{scheme}://url.to.vault:8200")
+        assert hvac_client.session.proxies == {scheme: None}
 
-    def test_no_proxy_appended(self, monkeypatch):
-        url = "http://url.to.vault:8200"
-        monkeypatch.setenv("no_proxy", "localhost,127.0.0.1")
-        _create_hvac_client(url)
-        assert environ.get("no_proxy") == f"localhost,127.0.0.1,{url}"
+    def test_proxy_for_with_env(self, scheme, monkeypatch):
+        """HVAC client should ignore standard proxy environment variables."""
+        monkeypatch.setenv("http_proxy", "http://squid.proxy:3128")
+        monkeypatch.setenv("https_proxy", "http://squid.proxy:3128")
+        monkeypatch.setenv("no_proxy", "127.0.0.1.localhost")
 
-    def test_idempotency(self, monkeypatch):
-        url = "http://url.to.vault:8200"
-        monkeypatch.delenv("no_proxy", raising=False)
-        _create_hvac_client(url)
-        _create_hvac_client(url)
-        assert environ.get("no_proxy") == url
+        hvac_client = _create_hvac_client(f"{scheme}://url.to.vault:8200")
+        assert hvac_client.session.proxies == {scheme: None}
+
+    def test_request_honours_proxies(self, scheme, monkeypatch):
+        """Verify that the request made by requests follows the rules."""
+        monkeypatch.setenv("http_proxy", "http://squid.proxy:3128")
+        monkeypatch.setenv("https_proxy", "http://squid.proxy:3128")
+        monkeypatch.setenv("no_proxy", "127.0.0.1.localhost")
+        hvac_client = _create_hvac_client(f"{scheme}://url.to.vault:8200")
+
+        class ProxyRecordingAdapter(HTTPAdapter):
+            """
+            A basic subclass of the HTTPAdapter that records the arguments used to
+            ``send``.
+            """
+
+            def __init__(self2, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self2.proxies = []
+
+            def send(self2, request, **kwargs):
+                self2.proxies.append(kwargs.get("proxies"))
+                return
+
+        adapter = ProxyRecordingAdapter()
+        hvac_client.session.mount(f"{scheme}://", adapter)
+
+        # Since we return None from ProxyRecordingAdapter.send, it throws
+        # AttributeErrors, we just want to see the request that was
+        # attempted
+        with suppress(AttributeError):
+            hvac_client.seal_status
+        assert scheme not in adapter.proxies[0]
 
 
 class TestGetRegionVaultClient:
