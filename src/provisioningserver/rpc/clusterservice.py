@@ -807,7 +807,8 @@ class Cluster(RPCProtocol):
             )
             d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
         elif chassis_type == "proxmox":
-            d = probe_proxmox_and_enlist(
+            d = deferToThread(
+                probe_proxmox_and_enlist,
                 user,
                 hostname,
                 username,

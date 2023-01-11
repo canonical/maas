@@ -108,17 +108,20 @@ class TestProxmoxPowerDriver(MAASTestCase):
             },
             extra_headers,
         )
-        self.mock_webhook_request.assert_called_once_with(
-            b"POST",
-            self.proxmox._get_url(context, "access/ticket"),
-            self.proxmox._make_auth_headers(
-                system_id,
-                {},
-                {b"Content-Type": [b"application/json; charset=utf-8"]},
+        self.assertThat(
+            self.mock_webhook_request,
+            MockCalledOnceWith(
+                b"POST",
+                self.proxmox._get_url(context, "access/ticket"),
+                self.proxmox._make_auth_headers(
+                    system_id,
+                    {},
+                    {b"Content-Type": [b"application/json; charset=utf-8"]},
+                ),
+                False,
+                # unittest doesn't know how to compare FileBodyProducer
+                ANY,
             ),
-            False,
-            # unittest doesn't know how to compare FileBodyProducer
-            ANY,
         )
 
     @inlineCallbacks
@@ -194,43 +197,16 @@ class TestProxmoxPowerDriver(MAASTestCase):
         )
 
         self.assertEqual(vm, found_vm)
-        self.mock_webhook_request.assert_called_once_with(
-            b"GET",
-            self.proxmox._get_url(
-                context, "cluster/resources", {"type": "vm"}
+        self.assertThat(
+            self.mock_webhook_request,
+            MockCalledOnceWith(
+                b"GET",
+                self.proxmox._get_url(
+                    context, "cluster/resources", {"type": "vm"}
+                ),
+                self.proxmox._make_auth_headers(system_id, {}, extra_headers),
+                False,
             ),
-            self.proxmox._make_auth_headers(system_id, {}, extra_headers),
-            False,
-        )
-
-    @inlineCallbacks
-    def test_find_vm_doesnt_find_any_vms(self):
-        system_id = factory.make_name("system_id")
-        context = {
-            "power_address": factory.make_name("power_address"),
-            "power_vm_name": factory.make_name("power_vm_name"),
-        }
-        extra_headers = {
-            factory.make_name("key").encode(): [
-                factory.make_name("value").encode()
-            ]
-            for _ in range(3)
-        }
-        self.mock_webhook_request.return_value = succeed(
-            json.dumps({"data": []})
-        )
-
-        with ExpectedException(
-            PowerActionError, "No VMs returned! Are permissions set correctly?"
-        ):
-            yield self.proxmox._find_vm(system_id, context, extra_headers)
-        self.mock_webhook_request.assert_called_once_with(
-            b"GET",
-            self.proxmox._get_url(
-                context, "cluster/resources", {"type": "vm"}
-            ),
-            self.proxmox._make_auth_headers(system_id, {}, extra_headers),
-            False,
         )
 
     @inlineCallbacks
@@ -255,17 +231,18 @@ class TestProxmoxPowerDriver(MAASTestCase):
             json.dumps({"data": [vm]})
         )
 
-        with ExpectedException(
-            PowerActionError, "Unable to find virtual machine"
-        ):
+        with ExpectedException(PowerActionError):
             yield self.proxmox._find_vm(system_id, context, extra_headers)
-        self.mock_webhook_request.assert_called_once_with(
-            b"GET",
-            self.proxmox._get_url(
-                context, "cluster/resources", {"type": "vm"}
+        self.assertThat(
+            self.mock_webhook_request,
+            MockCalledOnceWith(
+                b"GET",
+                self.proxmox._get_url(
+                    context, "cluster/resources", {"type": "vm"}
+                ),
+                self.proxmox._make_auth_headers(system_id, {}, extra_headers),
+                False,
             ),
-            self.proxmox._make_auth_headers(system_id, {}, extra_headers),
-            False,
         )
 
     @inlineCallbacks
@@ -291,15 +268,18 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
         yield self.proxmox.power_on(system_id, context)
 
-        self.mock_webhook_request.assert_called_once_with(
-            b"POST",
-            self.proxmox._get_url(
-                context,
-                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/"
-                "status/start",
+        self.assertThat(
+            self.mock_webhook_request,
+            MockCalledOnceWith(
+                b"POST",
+                self.proxmox._get_url(
+                    context,
+                    f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/"
+                    "status/start",
+                ),
+                self.proxmox._make_auth_headers(system_id, {}, extra_headers),
+                False,
             ),
-            self.proxmox._make_auth_headers(system_id, {}, extra_headers),
-            False,
         )
 
     @inlineCallbacks
@@ -350,14 +330,18 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
         yield self.proxmox.power_off(system_id, context)
 
-        self.mock_webhook_request.assert_called_once_with(
-            b"POST",
-            self.proxmox._get_url(
-                context,
-                f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/" "status/stop",
+        self.assertThat(
+            self.mock_webhook_request,
+            MockCalledOnceWith(
+                b"POST",
+                self.proxmox._get_url(
+                    context,
+                    f"nodes/{vm['node']}/{vm['type']}/{vm['vmid']}/"
+                    "status/stop",
+                ),
+                self.proxmox._make_auth_headers(system_id, {}, extra_headers),
+                False,
             ),
-            self.proxmox._make_auth_headers(system_id, {}, extra_headers),
-            False,
         )
 
     @inlineCallbacks
@@ -587,36 +571,6 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
             ),
         )
         self.assertThat(self.mock_commission_node, MockNotCalled())
-
-    @inlineCallbacks
-    def test_probe_and_enlist_doesnt_find_any_vms(self):
-        user = factory.make_name("user")
-        hostname = factory.make_ipv4_address()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        token_name = factory.make_name("token_name")
-        token_secret = factory.make_name("token_secret")
-        domain = factory.make_name("domain")
-        mock_webhook_request = self.patch(
-            proxmox_module.ProxmoxPowerDriver, "_webhook_request"
-        )
-        mock_webhook_request.return_value = succeed(json.dumps({"data": []}))
-
-        with ExpectedException(
-            PowerActionError, "No VMs returned! Are permissions set correctly?"
-        ):
-            yield proxmox_module.probe_proxmox_and_enlist(
-                user,
-                hostname,
-                username,
-                password,
-                token_name,
-                token_secret,
-                False,
-                False,
-                domain,
-                None,
-            )
 
     @inlineCallbacks
     def test_probe_and_enlist_filters(self):

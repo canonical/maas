@@ -54,7 +54,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
             field_type="password",
         ),
         make_setting_field(
-            "power_vm_name", "Node ID", scope=SETTING_SCOPE.NODE, required=True
+            "power_vm_name", "Node ID", scope=SETTING_SCOPE.NODE
         ),
         make_setting_field(
             "power_verify_ssl",
@@ -157,12 +157,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
 
         def cb(response_data):
             parsed_data = json.loads(response_data)
-            vms = parsed_data["data"]
-            if not vms:
-                raise PowerActionError(
-                    "No VMs returned! Are permissions set correctly?"
-                )
-            for vm in vms:
+            for vm in parsed_data["data"]:
                 if power_vm_name in (str(vm.get("vmid")), vm.get("name")):
                     return vm
             raise PowerActionError("Unable to find virtual machine")
@@ -257,6 +252,7 @@ def probe_proxmox_and_enlist(
 
     d = proxmox._login("", context)
 
+    @asynchronous
     @inlineCallbacks
     def get_vms(extra_headers):
         vms = yield proxmox._webhook_request(
@@ -269,15 +265,11 @@ def probe_proxmox_and_enlist(
 
     d.addCallback(get_vms)
 
+    @asynchronous
     @inlineCallbacks
     def process_vms(data):
         extra_headers, response_data = data
-        vms = json.loads(response_data)["data"]
-        if not vms:
-            raise PowerActionError(
-                "No VMs returned! Are permissions set correctly?"
-            )
-        for vm in vms:
+        for vm in json.loads(response_data)["data"]:
             if prefix_filter and not vm["name"].startswith(prefix_filter):
                 continue
             # Proxmox doesn't have an easy way to get the MAC address, it
