@@ -2253,14 +2253,11 @@ class Node(CleanSave, TimestampedModel):
         # MAAS can log that they were skipped. This avoids user confusion when
         # BMC detection is run previously on the node but they don't want BMC
         # detection to run again.
-        if skip_bmc_config or self.split_arch()[0] == "s390x":
-            if self.split_arch()[0] == "s390x":
-                result = "INFO: BMC detection not supported on S390X".encode()
-            else:
-                result = (
-                    "INFO: User %s (%s) has choosen to skip BMC configuration "
-                    "during commissioning\n" % (user.get_username(), user.id)
-                ).encode()
+        if skip_bmc_config:
+            result = (
+                "INFO: User %s (%s) has choosen to skip BMC configuration "
+                "during commissioning\n" % (user.get_username(), user.id)
+            ).encode()
             for script_result in commis_script_set.scriptresult_set.filter(
                 script__tags__contains=["bmc-config"]
             ):

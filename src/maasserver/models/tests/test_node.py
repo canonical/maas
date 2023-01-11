@@ -3472,25 +3472,6 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(0, script_result.exit_status)
         self.assertEqual(SCRIPT_STATUS.SKIPPED, script_result.status)
 
-    def test_start_commissioning_skip_bmc_config_s390x(self):
-        script = factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING, tags=["bmc-config"]
-        )
-        node = factory.make_Node(architecture="s390x/generic")
-        admin = factory.make_admin()
-        self.patch(Node, "_start").return_value = None
-
-        node.start_commissioning(admin)
-        post_commit_hooks.reset()  # Ignore these for now.
-
-        script_result = (
-            node.current_commissioning_script_set.scriptresult_set.get(
-                script=script
-            )
-        )
-        self.assertEqual(0, script_result.exit_status)
-        self.assertEqual(SCRIPT_STATUS.SKIPPED, script_result.status)
-
     def test_start_commissioning_reverts_to_sane_state_on_error(self):
         # When start_commissioning encounters an error when trying to
         # start the node, it will revert the node to its previous

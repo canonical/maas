@@ -5,7 +5,7 @@
 # Author: Andres Rodriguez <andres.rodriguez@canonical.com>
 #         Lee Trager <lee.trager@canonical.com>
 #
-# Copyright (C) 2013-2021 Canonical
+# Copyright (C) 2013-2020 Canonical
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -1063,13 +1063,8 @@ class Wedge(BMCConfig):
 
     def detected(self):
         # First detect this is a known switch
-        try:
-            switch_type = self._detect_known_switch()
-        except (CalledProcessError, TimeoutExpired, FileNotFoundError):
+        if not self._detect_known_switch():
             return False
-        else:
-            if switch_type is None:
-                return False
         try:
             # Second, lets verify if this is a known endpoint
             # First try to hit the API. This would work on Wedge 100.

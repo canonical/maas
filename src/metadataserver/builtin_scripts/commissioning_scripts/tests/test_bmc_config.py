@@ -1435,20 +1435,6 @@ class TestWedge(MAASTestCase):
         self.patch(self.wedge, "_detect_known_switch").return_value = None
         self.assertFalse(self.wedge.detected())
 
-    def test_detected_dmidecode_error(self):
-        self.patch(
-            self.wedge, "_detect_known_switch"
-        ).side_effect = random.choice(
-            [
-                CalledProcessError(
-                    cmd="cmd", returncode=random.randint(1, 255)
-                ),
-                TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
-                FileNotFoundError(),
-            ]
-        )
-        self.assertFalse(self.wedge.detected())
-
     def test_detected_rest_api(self):
         self.patch(self.wedge, "_detect_known_switch").return_value = "accton"
         mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
