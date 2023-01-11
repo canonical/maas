@@ -19,7 +19,7 @@ class TestGetDeprecations(MAASServerTestCase):
         factory.make_Pod(pod_type="rsd")
         [md2] = get_deprecations()
         self.assertEqual(md2.id, "MD2")
-        self.assertEqual(md2.since, "2.9.3")
+        self.assertEqual(md2.since, "2.9.4")
 
 
 class TestLogDeprecations(MAASServerTestCase):

@@ -31,7 +31,7 @@ class Deprecation:
 DEPRECATIONS = {
     "RSD_REMOVAL": Deprecation(
         id="MD2",
-        since="2.9.3",
+        since="2.9.4",
         description=(
             "Support for RSD pods will be dropped in the next major release."
         ),
