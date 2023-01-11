@@ -641,7 +641,7 @@ class TestVirshSSH(MAASTestCase):
         keys = ["Source", "Model"]
         expected = (("br0", "e1000"), ("br1", "e1000"))
         conn = self.configure_virshssh("")
-        values = conn._get_column_values(SAMPLE_IFLIST, keys)
+        values = conn.get_column_values(SAMPLE_IFLIST, keys)
         self.assertItemsEqual(values, expected)
 
     def test_get_key_value(self):

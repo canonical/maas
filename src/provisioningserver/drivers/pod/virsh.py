@@ -4,12 +4,12 @@
 """Virsh pod driver."""
 
 
+from collections import namedtuple
 from math import floor
 import os
 import string
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
-from typing import NamedTuple
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -239,13 +239,7 @@ DOM_TEMPLATE_S390X = dedent(
     """
 )
 
-
-class InterfaceInfo(NamedTuple):
-    type: str
-    source: str
-    model: str
-    mac: str
-
+InterfaceInfo = namedtuple("InterfaceInfo", ("type", "source", "model", "mac"))
 
 REQUIRED_PACKAGES = [
     ["virsh", "libvirt-clients"],
@@ -402,16 +396,28 @@ class VirshSSH(pexpect.spawn):
         result = self.before.decode("utf-8").splitlines()
         return "\n".join(result[1:])
 
-    def _get_column_values(self, data, keys):
+    def get_column_values(self, data, keys):
         """Return tuple of column value tuples based off keys."""
-        entries = [row.split() for row in data.strip().splitlines()]
-        columns = entries[0]
-        indexes = [columns.index(key) for key in keys]
-        # skip header lines
-        entries = entries[2:]
-        return tuple(
-            tuple(entry[index] for index in indexes) for entry in entries
-        )
+        data = data.strip().splitlines()
+        cols = data[0].split()
+        indexes = []
+        # Look for column headers matching keys.
+        for k in keys:
+            try:
+                indexes.append(cols.index(k))
+            except Exception:
+                # key was not found, continue searching.
+                continue
+        col_values = []
+        if len(indexes) > 0:
+            # Iterate over data and return column key values.
+            # Skip first two header lines.
+            for line in data[2:]:
+                line_values = []
+                for index in indexes:
+                    line_values.append(line.split()[index])
+                col_values.append(tuple(line_values))
+        return tuple(col_values)
 
     def get_key_value(self, data, key):
         """Return value based off of key."""
@@ -455,16 +461,16 @@ class VirshSSH(pexpect.spawn):
 
     def list_pools(self):
         """Lists all pools in the pod."""
+        keys = ["Name"]
         output = self.run(["pool-list"])
-        pools = self._get_column_values(output, ["Name"])
+        pools = self.get_column_values(output, keys)
         return [p[0] for p in pools]
 
     def list_machine_block_devices(self, machine):
         """Lists all devices for VM."""
+        keys = ["Device", "Target", "Source"]
         output = self.run(["domblklist", machine, "--details"])
-        devices = self._get_column_values(
-            output, ["Device", "Target", "Source"]
-        )
+        devices = self.get_column_values(output, keys)
         return [(d[1], d[2]) for d in devices if d[0] == "disk"]
 
     def get_machine_state(self, machine):
@@ -480,12 +486,19 @@ class VirshSSH(pexpect.spawn):
         if output.startswith("error:"):
             maaslog.error("%s: Failed to get node MAC addresses", machine)
             return None
-        return [
-            InterfaceInfo(*entry)
-            for entry in self._get_column_values(
-                output, ["Type", "Source", "Model", "MAC"]
-            )
-        ]
+        # Parse the `virsh domiflist <machine>` output, which will look
+        # something like the following:
+        #
+        # Interface  Type       Source     Model       MAC
+        # -------------------------------------------------------
+        # -          network    default    virtio      52:54:00:5b:86:86
+        # -          bridge     br0        virtio      52:54:00:8f:39:13
+        # -          bridge     br1        virtio      52:54:00:72:f9:82
+        #
+        # That is, skip the two lines of header, and then extract the type,
+        # source, model, and MAC.
+        output = output.splitlines()[2:]
+        return [InterfaceInfo(*line.split()[1:5]) for line in output]
 
     def get_pod_cpu_count(self, nodeinfo):
         """Gets number of CPUs in the pod."""
