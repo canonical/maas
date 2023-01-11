@@ -6982,9 +6982,6 @@ class RackController(Controller):
         power_control=None,
         port=None,
         protocol=None,
-        token_name=None,
-        token_secret=None,
-        verify_ssl=False,
     ):
         self._register_request_event(
             self.owner,
@@ -7005,9 +7002,6 @@ class RackController(Controller):
             power_control=power_control,
             port=port,
             protocol=protocol,
-            token_name=token_name,
-            token_secret=token_secret,
-            verify_ssl=verify_ssl,
         )
         call.wait(30)
 

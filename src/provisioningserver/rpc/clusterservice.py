@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for clusters."""
@@ -49,7 +49,6 @@ from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.nos.registry import NOSDriverRegistry
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
-from provisioningserver.drivers.power.proxmox import probe_proxmox_and_enlist
 from provisioningserver.drivers.power.recs import probe_and_enlist_recs
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -786,9 +785,6 @@ class Cluster(RPCProtocol):
         power_control=None,
         port=None,
         protocol=None,
-        token_name=None,
-        token_secret=None,
-        verify_ssl=False,
     ):
         """AddChassis()
 
@@ -806,21 +802,6 @@ class Cluster(RPCProtocol):
                 domain,
             )
             d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
-        elif chassis_type == "proxmox":
-            d = deferToThread(
-                probe_proxmox_and_enlist,
-                user,
-                hostname,
-                username,
-                password,
-                token_name,
-                token_secret,
-                verify_ssl,
-                accept_all,
-                domain,
-                prefix_filter,
-            )
-            d.addErrback(partial(catch_probe_and_enlist_error, "proxmox"))
         elif chassis_type == "vmware":
             d = deferToThread(
                 probe_vmware_and_enlist,

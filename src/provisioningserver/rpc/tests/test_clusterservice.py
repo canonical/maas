@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the cluster's RPC implementation."""
@@ -3483,97 +3483,6 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             clusterservice.maaslog.error,
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s", "virsh", fake_error
-            ),
-        )
-
-    def test_chassis_type_proxmox_calls_probe_proxmoxand_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        token_name = factory.make_name("token_name")
-        token_secret = factory.make_name("token_secret")
-        verify_ssl = factory.pick_bool()
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        prefix_filter = factory.make_name("prefix_filter")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "proxmox",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "token_name": token_name,
-                "token_secret": token_secret,
-                "verify_ssl": verify_ssl,
-                "accept_all": accept_all,
-                "domain": domain,
-                "prefix_filter": prefix_filter,
-            },
-        )
-        self.assertThat(
-            mock_deferToThread,
-            MockCalledOnceWith(
-                clusterservice.probe_proxmox_and_enlist,
-                user,
-                hostname,
-                username,
-                password,
-                token_name,
-                token_secret,
-                verify_ssl,
-                accept_all,
-                domain,
-                prefix_filter,
-            ),
-        )
-
-    def test_chassis_type_proxmox_logs_error_to_maaslog(self):
-        fake_error = factory.make_name("error")
-        self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
-        )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
-        user = factory.make_name("user")
-        hostname = factory.make_hostname()
-        username = factory.make_name("username")
-        password = factory.make_name("password")
-        token_name = factory.make_name("token_name")
-        token_secret = factory.make_name("token_secret")
-        verify_ssl = factory.pick_bool()
-        accept_all = factory.pick_bool()
-        domain = factory.make_name("domain")
-        prefix_filter = factory.make_name("prefix_filter")
-        call_responder(
-            Cluster(),
-            cluster.AddChassis,
-            {
-                "user": user,
-                "chassis_type": "proxmox",
-                "hostname": hostname,
-                "username": username,
-                "password": password,
-                "token_name": token_name,
-                "token_secret": token_secret,
-                "verify_ssl": verify_ssl,
-                "accept_all": accept_all,
-                "domain": domain,
-                "prefix_filter": prefix_filter,
-            },
-        )
-        self.assertThat(
-            clusterservice.maaslog.error,
-            MockAnyCall(
-                "Failed to probe and enlist %s nodes: %s",
-                "proxmox",
-                fake_error,
             ),
         )
 

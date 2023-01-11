@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the machines API."""
@@ -2843,85 +2843,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             )
             self.assertEqual(b"No provided password!", response.content)
 
-    def test_POST_add_chassis_proxmox_requires_password_or_token(self):
-        self.become_admin()
-        rack = factory.make_RackController()
-        chassis_mock = self.patch(rack, "add_chassis")
-        response = self.client.post(
-            reverse("machines_handler"),
-            {
-                "op": "add_chassis",
-                "rack_controller": rack.system_id,
-                "chassis_type": "proxmox",
-                "hostname": factory.make_url(),
-                "username": factory.make_name("username"),
-            },
-        )
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )
-        self.assertEqual(
-            ("You must use a password or token with Proxmox.").encode("utf-8"),
-            response.content,
-        )
-        self.assertEqual(chassis_mock.call_count, 0)
-
-    def test_POST_add_chassis_proxmox_requires_password_xor_token(self):
-        self.become_admin()
-        rack = factory.make_RackController()
-        chassis_mock = self.patch(rack, "add_chassis")
-        response = self.client.post(
-            reverse("machines_handler"),
-            {
-                "op": "add_chassis",
-                "rack_controller": rack.system_id,
-                "chassis_type": "proxmox",
-                "hostname": factory.make_url(),
-                "username": factory.make_name("username"),
-                "password": factory.make_name("password"),
-                "token_name": factory.make_name("token_name"),
-                "token_secret": factory.make_name("token_secret"),
-            },
-        )
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )
-        self.assertEqual(
-            (
-                "You may only use a password or token with Proxmox, not both."
-            ).encode("utf-8"),
-            response.content,
-        )
-        self.assertEqual(chassis_mock.call_count, 0)
-
-    def test_POST_add_chassis_proxmox_requires_token_name_and_secret(self):
-        self.become_admin()
-        rack = factory.make_RackController()
-        chassis_mock = self.patch(rack, "add_chassis")
-        response = self.client.post(
-            reverse("machines_handler"),
-            {
-                "op": "add_chassis",
-                "rack_controller": rack.system_id,
-                "chassis_type": "proxmox",
-                "hostname": factory.make_url(),
-                "username": factory.make_name("username"),
-                random.choice(
-                    ["token_name", "token_secret"]
-                ): factory.make_name("token"),
-            },
-        )
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )
-        self.assertEqual(
-            ("Proxmox requires both a token_name and token_secret.").encode(
-                "utf-8"
-            ),
-            response.content,
-        )
-        self.assertEqual(chassis_mock.call_count, 0)
-
     def test_POST_add_chassis_username_disallowed_on_virsh_and_powerkvm(self):
         self.become_admin()
         rack = factory.make_RackController()
@@ -2986,9 +2907,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3027,9 +2945,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3042,7 +2957,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         add_chassis = self.patch(rack, "add_chassis")
         hostname = factory.make_url()
-        for chassis_type in ("powerkvm", "virsh", "vmware", "proxmox"):
+        for chassis_type in ("powerkvm", "virsh", "vmware"):
             prefix_filter = factory.make_name("prefix_filter")
             password = factory.make_name("password")
             params = {
@@ -3052,7 +2967,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 "password": password,
                 "prefix_filter": prefix_filter,
             }
-            if chassis_type in {"vmware", "proxmox"}:
+            if chassis_type == "vmware":
                 username = factory.make_name("username")
                 params["username"] = username
             else:
@@ -3075,9 +2990,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                     None,
                     None,
                     None,
-                    None,
-                    None,
-                    False,
                 ),
             )
 
@@ -3174,7 +3086,6 @@ class TestMachinesAPI(APITestCase.ForUser):
             "virsh",
             "vmware",
             "powerkvm",
-            "proxmox",
         ):
             params = {
                 "op": "add_chassis",
@@ -3238,9 +3149,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                     None,
                     port,
                     None,
-                    None,
-                    None,
-                    False,
                 ),
             )
 
@@ -3358,9 +3266,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 protocol,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3431,9 +3336,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3473,9 +3375,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3536,9 +3435,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3579,9 +3475,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 
@@ -3651,9 +3544,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
         self.assertThat(
@@ -3670,9 +3560,6 @@ class TestMachinesAPI(APITestCase.ForUser):
                 None,
                 None,
                 None,
-                None,
-                None,
-                False,
             ),
         )
 

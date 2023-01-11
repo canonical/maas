@@ -1,4 +1,4 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for clusters.
@@ -745,9 +745,6 @@ class AddChassis(amp.Command):
         (b"power_control", amp.Unicode(optional=True)),
         (b"port", amp.Integer(optional=True)),
         (b"protocol", amp.Unicode(optional=True)),
-        (b"token_name", amp.Unicode(optional=True)),
-        (b"token_secret", amp.Unicode(optional=True)),
-        (b"verify_ssl", amp.Boolean(optional=True)),
     ]
     errors = {}
 

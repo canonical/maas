@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -2575,7 +2575,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
         - ``mscm``: Moonshot Chassis Manager.
         - ``msftocs``: Microsoft OCS Chassis Manager.
         - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
-        - ``proxmox``: Virtual Machines managed by Proxmox
         - ``recs_box``: Christmann RECS|Box servers.
         - ``sm15k``: Seamicro 1500 Chassis.
         - ``ucsm``: Cisco UCS Manager.
@@ -2605,23 +2604,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         machine added should use.
 
         @param (string) "prefix_filter" [required=false] (``virsh``,
-        ``vmware``, ``powerkvm``, ``proxmox`` only.) Filter machines with
-        supplied prefix.
+        ``vmware``, ``powerkvm`` only.) Filter machines with supplied prefix.
 
         @param (string) "power_control" [required=false] (``seamicro15k`` only)
         The power_control to use, either ipmi (default), restapi, or restapi2.
-
-        The following are optional if you are adding a proxmox chassis.
-
-        @param (string) "token_name" [required=false] The name the
-        authentication token to be used instead of a password.
-
-        @param (string) "token_secret" [required=false] The token secret
-        to be used in combination with the power_token_name used in place of
-        a password.
-
-        @param (boolean) "verify_ssl" [required=false] Whether SSL
-        connections should be verified.
 
         The following are optional if you are adding a recs_box, vmware or
         msftocs chassis.
@@ -2629,7 +2615,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (int) "port" [required=false] (``recs_box``, ``vmware``,
         ``msftocs`` only) The port to use when accessing the chassis.
 
-        The following are optional if you are adding a vmware chassis:
+        The following are optioanl if you are adding a vmware chassis:
 
         @param (string) "protocol" [required=false] (``vmware`` only) The
         protocol to use when accessing the VMware chassis (default: https).
@@ -2669,31 +2655,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
         ):
             username = get_mandatory_param(request.POST, "username")
             password = get_mandatory_param(request.POST, "password")
-            token_name = None
-            token_secret = None
-        elif chassis_type == "proxmox":
-            username = get_mandatory_param(request.POST, "username")
-            password = get_optional_param(request.POST, "password")
-            token_name = get_optional_param(request.POST, "token_name")
-            token_secret = get_optional_param(request.POST, "token_secret")
-            if not any([password, token_name, token_secret]):
-                return HttpResponseBadRequest(
-                    "You must use a password or token with Proxmox."
-                )
-            elif all([password, token_name, token_secret]):
-                return HttpResponseBadRequest(
-                    "You may only use a password or token with Proxmox, "
-                    "not both."
-                )
-            elif password is None and not all([token_name, token_secret]):
-                return HttpResponseBadRequest(
-                    "Proxmox requires both a token_name and token_secret."
-                )
         else:
             username = get_optional_param(request.POST, "username")
             password = get_optional_param(request.POST, "password")
-            token_name = None
-            token_secret = None
             if username is not None and chassis_type in ("powerkvm", "virsh"):
                 return HttpResponseBadRequest(
                     "username can not be specified when using the %s chassis."
@@ -2709,13 +2673,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
         else:
             accept_all = False
 
-        # Only available with virsh, vmware, powerkvm, and proxmox
+        # Only available with virsh, vmware, and powerkvm
         prefix_filter = get_optional_param(request.POST, "prefix_filter")
         if prefix_filter is not None and chassis_type not in (
             "powerkvm",
             "virsh",
             "vmware",
-            "proxmox",
         ):
             return HttpResponseBadRequest(
                 "prefix_filter is unavailable with the %s chassis type"
@@ -2766,10 +2729,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
                     "text/plain; charset=%s" % settings.DEFAULT_CHARSET
                 ),
             )
-
-        verify_ssl = get_optional_param(
-            request.POST, "verify_ssl", default=False, validator=StringBool
-        )
 
         # If given a domain make sure it exists first
         domain_name = get_optional_param(request.POST, "domain")
@@ -2827,9 +2786,6 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 power_control,
                 port,
                 protocol,
-                token_name,
-                token_secret,
-                verify_ssl,
             )
 
         return HttpResponse(

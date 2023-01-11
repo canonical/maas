@@ -180,7 +180,7 @@ class WebhookPowerDriver(PowerDriver):
             b"POST",
             context["power_on_uri"].encode(),
             self._make_auth_headers(system_id, context),
-            context.get("power_verify_ssl") == SSL_INSECURE_YES,
+            context.get("power_verify_ssl") is True,
         )
 
     @asynchronous
@@ -191,7 +191,7 @@ class WebhookPowerDriver(PowerDriver):
             b"POST",
             context["power_off_uri"].encode(),
             self._make_auth_headers(system_id, context),
-            context.get("power_verify_ssl") == SSL_INSECURE_YES,
+            context.get("power_verify_ssl") is True,
         )
 
     @asynchronous
@@ -205,7 +205,7 @@ class WebhookPowerDriver(PowerDriver):
             b"GET",
             context["power_query_uri"].encode(),
             self._make_auth_headers(system_id, context),
-            context.get("power_verify_ssl") == SSL_INSECURE_YES,
+            context.get("power_verify_ssl") is True,
         )
         node_data = node_data.decode()
         if power_on_regex and re.search(power_on_regex, node_data) is not None:
