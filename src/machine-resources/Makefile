@@ -16,13 +16,11 @@ BINARIES := $(addprefix $(BINDIR)/,$(DEB_ARCHES))
 
 PACKAGE_DIR := ./cmd/machine-resources
 VENDOR_DIR := $(PACKAGE_DIR)/vendor
-GO_CACHE_DIR := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
 
 .DEFAULT_GOAL := build
 
-# XXX: Explicitly set GOCACHE to avoid situations where we can't mkdir $HOME/.cache (autopkgtest VM)
-$(BINARIES): vendor
-	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) go build -mod vendor -ldflags '-s -w' -o $@ $(PACKAGE_DIR)
+$(BINARIES):
+	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) go build -ldflags '-s -w' -o $@ $(PACKAGE_DIR)
 
 build: $(BINARIES)
 .PHONY: build
@@ -41,6 +39,7 @@ install: $(BINARIES)
 
 vendor:
 	go mod vendor
+.PHONY: vendor
 
 update-deps:
 	go get -u all
