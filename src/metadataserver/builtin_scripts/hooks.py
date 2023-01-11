@@ -199,12 +199,11 @@ def parse_interfaces_details(node):
     return _parse_interfaces(node, details)
 
 
-def update_interface_details(interface, details, numa_ids_map):
+def update_interface_details(interface, details):
     """Update details for an existing interface from commissioning data.
 
-    :params details: details from the _parse_interfaces call
-    :params numa_ids_map: dict mapping numa node indexes to their IDs for the
-        node the interface belongs to
+    This should be passed details from the _parse_interfaces call.
+
     """
     iface_details = details.get(interface.mac_address)
     if not iface_details:
@@ -224,19 +223,10 @@ def update_interface_details(interface, details, numa_ids_map):
             setattr(interface, field, value)
         update_fields.append(field)
 
-    numa_node_idx = iface_details["numa_node"]
-    if (
-        interface.numa_node is None
-        or interface.numa_node.index != numa_node_idx
-    ):
-        interface.numa_node_id = numa_ids_map[numa_node_idx]
-        update_fields.append("numa_node")
-
     sriov_max_vf = iface_details.get("sriov_max_vf")
     if interface.sriov_max_vf != sriov_max_vf:
         interface.sriov_max_vf = sriov_max_vf
         update_fields.append("sriov_max_vf")
-
     if update_fields:
         interface.save(update_fields=["updated", *update_fields])
 
@@ -305,12 +295,8 @@ def update_node_network_information(node, data, numa_nodes):
             # Duplicate MACs are not expected on machines, raise the
             # exception so this can be handled.
             raise
-
-    numa_ids_map = dict(
-        NUMANode.objects.filter(node=node).values_list("index", "id")
-    )
-
     current_interfaces = set()
+
     for mac, iface in interfaces_info.items():
         ifname = iface.get("name")
         link_connected = iface.get("link_connected")
@@ -327,9 +313,7 @@ def update_node_network_information(node, data, numa_nodes):
             if interface.node == node:
                 # Interface already exists on this node, so just update the NIC
                 # info
-                update_interface_details(
-                    interface, interfaces_info, numa_ids_map
-                )
+                update_interface_details(interface, interfaces_info)
             else:
                 logger.warning(
                     "Interface with MAC %s moved from node %s to %s. "

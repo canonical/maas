@@ -6783,12 +6783,11 @@ class Controller(Node):
             VLAN. Otherwise, creates the interfaces but does not create any
             links or VLANs.
         """
+        # Avoid circular imports
         from metadataserver.builtin_scripts.hooks import (
             parse_interfaces_details,
             update_interface_details,
         )
-
-        numa_ids_map = dict(self.numanode_set.values_list("index", "id"))
 
         # Get all of the current interfaces on this node.
         current_interfaces = {
@@ -6826,9 +6825,7 @@ class Controller(Node):
             if interface is not None:
                 interface.update_discovery_state(discovery_mode, settings)
                 if interface.type == INTERFACE_TYPE.PHYSICAL:
-                    update_interface_details(
-                        interface, interfaces_details, numa_ids_map
-                    )
+                    update_interface_details(interface, interfaces_details)
                 if interface.id in current_interfaces:
                     del current_interfaces[interface.id]
 

@@ -1675,20 +1675,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(0, iface3.link_speed)
         self.assertEqual(0, iface3.interface_speed)
 
-    def test_updates_interface_numa_node(self):
-        node = factory.make_Node()
-        iface = factory.make_Interface(
-            node=node,
-            mac_address="00:00:00:00:00:01",
-        )
-        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
-
-        lxd_output = make_lxd_output()
-        lxd_output["resources"]["network"]["cards"][0]["numa_node"] = 1
-        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        iface1 = reload_object(iface)
-        self.assertEqual(iface1.numa_node.index, 1)
-
     def test_ipaddr_script_before(self):
         self.assertLess(
             IPADDR_OUTPUT_NAME,
