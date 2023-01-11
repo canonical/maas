@@ -120,11 +120,7 @@ class TestFilesystem(MAASServerTestCase):
             block_device = factory.make_PhysicalBlockDevice(node=node)
             block_devices.append(block_device)
             pt = factory.make_PartitionTable(block_device=block_device)
-            partitions.append(
-                factory.make_Partition(
-                    partition_table=pt, size=pt.get_available_size()
-                )
-            )
+            partitions.append(factory.make_Partition(partition_table=pt))
         fs_group = RAID.objects.create_raid(
             level=FILESYSTEM_GROUP_TYPE.RAID_1, partitions=partitions
         )
