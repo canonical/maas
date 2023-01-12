@@ -7,6 +7,7 @@
 from itertools import chain
 import os.path
 import random
+from tempfile import mktemp
 
 from netaddr import IPAddress, IPNetwork, IPRange
 from testtools.matchers import (
@@ -29,9 +30,11 @@ from provisioningserver.dns.config import (
     get_zone_file_config_dir,
 )
 from provisioningserver.dns.testing import patch_zone_file_config_path
+import provisioningserver.dns.zoneconfig
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
+    DomainConfigBase,
     DomainInfo,
 )
 
@@ -75,6 +78,26 @@ class HostnameRRsetMapping:
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
+
+
+class TestDomainConfigBase(MAASTestCase):
+    def test_write_zone_file_sets_current_user_and_group(self):
+        render_dns_template = self.patch(
+            provisioningserver.dns.zoneconfig, "render_dns_template"
+        )
+        render_dns_template.return_value = ""
+        incremental_write = self.patch(
+            provisioningserver.dns.zoneconfig, "incremental_write"
+        )
+        tmp_file = mktemp()
+        DomainConfigBase.write_zone_file(tmp_file)
+        incremental_write.assert_called_once_with(
+            "".encode("utf-8"),
+            tmp_file,
+            mode=0o644,
+            uid=os.getuid(),
+            gid=os.getgid(),
+        )
 
 
 class TestDNSForwardZoneConfig(MAASTestCase):

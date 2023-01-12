@@ -199,7 +199,13 @@ class DomainConfigBase:
         for outfile in output_file:
             content = render_dns_template(cls.template_file_name, *parameters)
             with report_missing_config_dir():
-                incremental_write(content.encode("utf-8"), outfile, mode=0o644)
+                incremental_write(
+                    content.encode("utf-8"),
+                    outfile,
+                    mode=0o644,
+                    uid=os.getuid(),
+                    gid=os.getgid(),
+                )
         pass
 
 
