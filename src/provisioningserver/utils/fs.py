@@ -116,7 +116,9 @@ def _write_temp_file(content, filename):
         return temp_file
 
 
-def atomic_write(content, filename, overwrite=True, mode=0o600):
+def atomic_write(
+    content, filename, overwrite=True, mode=0o600, uid=None, gid=None
+):
     """Write `content` into the file `filename` in an atomic fashion.
 
     This requires write permissions to the directory that `filename` is in.
@@ -142,7 +144,9 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
             raise  # Something's seriously wrong.
     else:
         try:
-            chown(temp_file, prev_stats.st_uid, prev_stats.st_gid)
+            chown(
+                temp_file, uid or prev_stats.st_uid, gid or prev_stats.st_gid
+            )
         except PermissionError as error:
             # if the permissions of `filename` couldn't be applied to
             # `temp_file` then the temporary file needs to be removed and then
@@ -263,7 +267,7 @@ def atomic_symlink(source, link_name):
         raise
 
 
-def incremental_write(content, filename, mode=0o600):
+def incremental_write(content, filename, mode=0o600, uid=None, gid=None):
     """Write the given `content` into the file `filename`.  In the past, this
     would potentially change modification time to arbitrary values.
 
@@ -283,7 +287,7 @@ def incremental_write(content, filename, mode=0o600):
     # granularity are no longer supported by MAAS.  The good news is that since
     # 2.6, linux has supported nanosecond-granular time.  As of bind9
     # 1:9.10.3.dfsg.P2-5, BIND even uses it.
-    atomic_write(content, filename, mode=mode)
+    atomic_write(content, filename, mode=mode, uid=uid, gid=gid)
 
 
 def _with_dev_python(*command):
