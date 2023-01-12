@@ -128,7 +128,7 @@ class TestListing:
         self._perf = None
 
     def run_listing_test(self, name, func, limit):
-        record_name = name
+        record_name = f"maasspike_{name}"
         if limit:
             record_name += f"_{limit}"
         else:
