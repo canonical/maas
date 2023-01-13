@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Combine results for performance test runs"
+    )
+    parser.add_argument(
+        "output", type=argparse.FileType("w"), help="Output file"
+    )
+    parser.add_argument(
+        "input", type=argparse.FileType(), nargs="+", help="intput files"
+    )
+    return parser.parse_args()
+
+
+def files_content(files):
+    contents = []
+    for f in files:
+        contents.append(json.load(f))
+        f.close()
+    return contents
+
+
+def combine(contents):
+    combined = contents.pop(0)
+    for content in contents:
+        for name, metrics in content["tests"].items():
+            combined["tests"].setdefault(name, {}).update(metrics)
+    return combined
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    combined = combine(files_content(args.input))
+    json.dump(combined, args.output)

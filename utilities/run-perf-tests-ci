@@ -28,11 +28,22 @@ export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
-bin/pytest \
-    -v \
-    --junit-xml=junit-perf.xml \
-    --maas-recreate-initial-db \
-    --maas-initial-db "${DB_DUMP}" \
-    --perf-output-dir "$OUTPUT_DIR" \
-    ./src/maasperf/
-cp "$OUTPUT_DIR/results.json" "$OUTPUT_FILE"
+run_tests() {
+    local run_name="$1"
+    shift 1
+    local -a tracers=("$@")
+    bin/pytest \
+        -v \
+        --junit-xml="junit-perf-${run_name}.xml" \
+        --maas-recreate-initial-db \
+        --maas-initial-db "${DB_DUMP}" \
+        --perf-output-dir "$OUTPUT_DIR" \
+        --perf-tracers "${tracers[@]}" \
+        -- \
+        ./src/maasperf/tests/maasspike/
+    cp "$OUTPUT_DIR/results.json" "results-${run_name}.json"
+}
+
+run_tests timing timing queries
+run_tests memory memory
+./utilities/perf-tests-results-combine "$OUTPUT_FILE" results-*.json
