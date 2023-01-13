@@ -28,9 +28,6 @@ endif
 # which those commands appear.
 dbrun := bin/database --preserve run --
 
-export GOPATH := $(shell go env GOPATH)
-export PATH := $(GOPATH)/bin:$(PATH)
-
 # For anything we start, we want to hint as to its root and data directories.
 export MAAS_ROOT := $(CURDIR)/.run
 export MAAS_DATA := $(CURDIR)/.run/maas
@@ -260,7 +257,7 @@ format-py: bin/black bin/isort
 .PHONY: format-py
 
 format-go:
-	@find src/machine-resources/src/ -name vendor -prune -o -name '*.go' -execdir go fmt {} +
+	@$(MAKE) -C src/machine-resources format
 .PHONY: format-go
 
 check: clean test
@@ -451,7 +448,7 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-machine_resources_vendor := src/machine-resources/src/machine-resources/vendor
+machine_resources_vendor := src/machine-resources/vendor
 
 -packaging-clean:
 	rm -rf $(packaging-build-area)
