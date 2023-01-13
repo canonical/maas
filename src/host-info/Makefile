@@ -13,12 +13,10 @@ DEB_GO_ARCH_riscv64 = riscv64
 DEB_GO_ARCH_s390x = s390x
 
 BINDIR := bin
-MACHINE_RESOURCES_BINARIES := $(addprefix $(BINDIR)/machine-resources/,$(DEB_ARCHES))
-HARDWARE_SYNC_BINARIES := $(addprefix $(BINDIR)/hardware-sync/,$(DEB_ARCHES))
+BINARIES := $(addprefix $(BINDIR)/,$(DEB_ARCHES))
 
 CMD_DIR := ./cmd
 PACKAGE_DIR := $(CMD_DIR)/machine-resources
-HARDWARE_SYNC_DIR := $(CMD_DIR)/hardware-sync
 VENDOR_DIR := $(PACKAGE_DIR)/vendor
 # Explicitly set cache dirs to avoid situations where we can't mkdir under $HOME (e.g. Launchpad builds)
 export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
@@ -29,19 +27,17 @@ GO_BUILD := CGO_ENABLED=0 go build -mod=vendor -ldflags '-s -w -extldflags "-sta
 
 .DEFAULT_GOAL := build
 
-$(MACHINE_RESOURCES_BINARIES): TARGET_DIR=$(PACKAGE_DIR)
-$(HARDWARE_SYNC_BINARIES): TARGET_DIR=$(HARDWARE_SYNC_DIR)
-$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES):
-	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
+$(BINARIES):
+	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(PACKAGE_DIR)
 
 build:
 # call targets separately to work with parallel builds
 	$(MAKE) vendor/modules.txt
-	$(MAKE) $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+	$(MAKE) $(BINARIES)
 .PHONY: build
 
 # don't vendor dependencies before building binaries
-build-no-vendor: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+build-no-vendor: $(BINARIES)
 .PHONY: build-no-vendor
 
 clean:
@@ -52,8 +48,8 @@ format:
 	@go fmt $(PACKAGE_DIR)
 .PHONY: format
 
-install: $(MACHINE_RESOURCES_BINARIES)
-	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(MACHINE_RESOURCES_BINARIES)
+install: $(BINARIES)
+	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(BINARIES)
 .PHONY: install
 
 vendor: vendor/modules.txt
