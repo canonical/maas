@@ -1,3 +1,10 @@
+maas (1:2.9.3~beta5-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 beta5.
+  * Reapply test-related commits since MAAS 2.9.2.
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Fri, 13 Jan 2023 19:03:13 -0300
+
 maas (1:2.9.3~beta4-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta4.
