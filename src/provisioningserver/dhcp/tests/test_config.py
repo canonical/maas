@@ -28,6 +28,7 @@ from testtools.matchers import (
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches, GreaterThanOrEqual
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import running_in_docker
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
 from provisioningserver.dhcp.config import _get_addresses
@@ -169,12 +170,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
                 ),
             ),
         )
-        # Call `dhcpd` via `aa-exec --profile unconfined`. The latter is
-        # needed so that `dhcpd` can open the configuration file from /tmp.
         cmd = (
-            "aa-exec",
-            "--profile",
-            "unconfined",
             "dhcpd",
             ("-6" if ipv6 else "-4"),
             "-t",
@@ -183,6 +179,11 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
             "-lf",
             leasesfile.name,
         )
+        if not running_in_docker():
+            # Call `dhcpd` without AppArmor confinement, so that it can read
+            # configurations file from /tmp.  This is not needed when running
+            # in Docker when AppArmor is not present.
+            cmd = ["aa-exec", "--profile", "unconfined"] + cmd
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,

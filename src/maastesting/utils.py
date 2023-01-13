@@ -5,10 +5,16 @@
 
 import codecs
 import os
+from pathlib import Path
 import re
 
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
+
+
+def running_in_docker() -> bool:
+    """Return whether tests are running in a docker container."""
+    return Path("/.dockerenv").exists()
 
 
 def age_file(path, seconds):

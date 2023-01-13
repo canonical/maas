@@ -106,7 +106,7 @@ list_required = $(shell sort -u required-packages/$1 | sed '/^\#/d')
 install-dependencies: release := $(shell lsb_release -c -s)
 install-dependencies: apt_install := sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y
 install-dependencies:
-	$(apt_install) software-properties-common
+	$(apt_install) software-properties-common gpg-agent
 	if [ -n "$(MAAS_PPA)" ]; then sudo apt-add-repository -y $(MAAS_PPA); fi
 	$(apt_install) $(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
 	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
