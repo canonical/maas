@@ -188,17 +188,15 @@ parts:
     prime:
       - $remove
     override-build: |
-      set -e
       snapcraftctl build
       # If python3-netaddr contains absolute symlinks.
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
       ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
       ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
-      python3 -m compileall -q .
     override-prime: |
-      set -e
       (cd $SNAPCRAFT_PART_SRC; snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version))
       snapcraftctl prime
+      python3 -m compileall -j 0 -q .
 
   ui:
     plugin: npm
@@ -210,7 +208,6 @@ parts:
           # node-sass on non-amd64 needs python 2, see http://pad.lv/1867329
           - python
     override-build: |
-      set -e
       snapcraftctl build
       PATH="$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin:$SNAPCRAFT_PART_INSTALL/bin"
       NODE_ENV="production"
