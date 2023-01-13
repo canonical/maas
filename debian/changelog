@@ -1,3 +1,12 @@
+maas (1:2.9.3~beta4-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 beta4.
+  * Reapply build-related commits since MAAS 2.9.2.
+  * Apply 'fix: github.com/Supervisor/supervisor master->main'.
+  * Targets `make snap` and `make snap-prime` work.
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Fri, 13 Jan 2023 18:37:11 -0300
+
 maas (1:2.9.3~beta3-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta3.
