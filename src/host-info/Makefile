@@ -36,10 +36,6 @@ build:
 	$(MAKE) $(BINARIES)
 .PHONY: build
 
-# don't vendor dependencies before building binaries
-build-no-vendor: $(BINARIES)
-.PHONY: build-no-vendor
-
 clean:
 	rm -rf $(BINDIR) $(VENDOR_DIR)
 .PHONY: clean
