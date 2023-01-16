@@ -568,24 +568,6 @@ def _get_interfaces_data(machine_ids=None):
     return boot_interfaces, interfaces_data
 
 
-ORDERING_STATUS_MAP = {
-    status: index
-    for index, status in enumerate(
-        (
-            SCRIPT_STATUS.RUNNING,
-            SCRIPT_STATUS.APPLYING_NETCONF,
-            SCRIPT_STATUS.INSTALLING,
-            SCRIPT_STATUS.PENDING,
-            SCRIPT_STATUS.ABORTED,
-            SCRIPT_STATUS.FAILED,
-            SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-            SCRIPT_STATUS.FAILED_INSTALLING,
-            SCRIPT_STATUS.TIMEDOUT,
-            SCRIPT_STATUS.DEGRADED,
-        )
-    )
-}
-
 COMBINED_STATUS_MAP = {
     (
         SCRIPT_STATUS.APPLYING_NETCONF,
