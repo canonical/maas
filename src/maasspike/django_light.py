@@ -381,14 +381,9 @@ TESTING_STATUSES_MAP = {
     SCRIPT_STATUS.PENDING: "pending",
     SCRIPT_STATUS.RUNNING: "running",
     (SCRIPT_STATUS.PASSED, SCRIPT_STATUS.SKIPPED): "passed",
-    (SCRIPT_STATUS.ABORTED, SCRIPT_STATUS.DEGRADED): "",  # skipped in status
 }
 
-
-def testing_status_dict(global_status=None):
-    status = dict.fromkeys(("pending", "running", "passed", "failed"), 0)
-    status["status"] = global_status
-    return status
+TESTING_STATUSES = list(TESTING_STATUSES_MAP.values()) + ["failed"]
 
 
 def list_machines(admin, limit=None):
@@ -404,9 +399,9 @@ def list_machines(admin, limit=None):
     entries = _get_machines_qs(machines_qs, user_permissions)
     storage_entries = _get_storage_qs(machines_qs)
     network_entries = _get_network_qs(machines_qs)
+    testing_entries = _get_testing_qs(machines_qs)
 
     boot_interfaces, interfaces_data = _get_interfaces_data(machine_ids)
-    testing_data = _get_testing_data(machine_ids=machine_ids)
     vlan_data = _get_vlan_data(boot_interfaces)
     ipaddress_data = _get_ipaddress_data(
         boot_interfaces, machine_ids=machine_ids
@@ -415,27 +410,18 @@ def list_machines(admin, limit=None):
     result = []
     # entries match in both querysets because of ordering by ID and containing
     # all results
-    all_entries = zip(entries, storage_entries, network_entries)
-    for entry, storage_entry, network_entry in all_entries:
-        node_id = entry["id"]
+    all_entries = zip(
+        entries, storage_entries, network_entries, testing_entries
+    )
+    for entry, storage_entry, network_entry, testing_entry in all_entries:
+        entry |= storage_entry | network_entry | testing_entry
+
         # computed fields
-        entry |= storage_entry | network_entry
+        node_id = entry["id"]
         entry.update(interfaces_data[node_id])
         entry["vlan"] = vlan_data.get(node_id)
         entry["ip_addresses"] = ipaddress_data.get(node_id, [])
 
-        testing_statuses = testing_data.get(node_id, {})
-
-        def add_status(key, hardware_type):
-            entry[key] = testing_statuses.get(
-                hardware_type, testing_status_dict(global_status=-1)
-            )
-
-        add_status("cpu_test_status", HARDWARE_TYPE.CPU)
-        add_status("memory_test_status", HARDWARE_TYPE.MEMORY)
-        add_status("network_test_status", HARDWARE_TYPE.NETWORK)
-        add_status("storage_test_status", HARDWARE_TYPE.STORAGE)
-        add_status("testing_status", None)
         result.append(entry)
     return result
 
@@ -614,57 +600,152 @@ COMBINED_STATUS_MAP = {
     ): SCRIPT_STATUS.FAILED,
 }
 
+OTHER_COMBINED_STATUSES = (
+    SCRIPT_STATUS.APPLYING_NETCONF,
+    SCRIPT_STATUS.INSTALLING,
+    SCRIPT_STATUS.PENDING,
+    SCRIPT_STATUS.ABORTED,
+    SCRIPT_STATUS.DEGRADED,
+)
 
-def _get_testing_data(machine_ids):
-    testing_entries = (
-        ScriptResult.objects.order_by("-id")
+TESTS_TYPE_MAP = {
+    "cpu": HARDWARE_TYPE.CPU,
+    "memory": HARDWARE_TYPE.MEMORY,
+    "network": HARDWARE_TYPE.NETWORK,
+    "storage": HARDWARE_TYPE.STORAGE,
+}
+
+
+def _get_testing_qs(machines):
+    return (
+        machines.order_by("id")
         .filter(
-            script_set__result_type=RESULT_TYPE.TESTING,
+            scriptset__result_type=RESULT_TYPE.TESTING,
         )
-        .values("id", "suppressed")
+        .alias(
+            result_text_status=EnumValues(
+                "scriptset__scriptresult__status",
+                TESTING_STATUSES_MAP,
+                default=Value("failed"),
+            ),
+            result_hardware_type=Coalesce(
+                F("scriptset__scriptresult__script__hardware_type"),
+                Value(HARDWARE_TYPE.NODE),
+            ),
+            **{
+                f"result_combined_{combined_status}_counts": Sum(
+                    Case(
+                        When(
+                            Q(
+                                scriptset__scriptresult__suppressed=False,
+                                scriptset__scriptresult__status__in=statuses,
+                            ),
+                            then=Value(1),
+                        ),
+                        default=Value(0),
+                    )
+                )
+                for statuses, combined_status in COMBINED_STATUS_MAP.items()
+            },
+        )
         .annotate(
-            text_status=EnumValues(
-                "status", TESTING_STATUSES_MAP, default=Value("failed")
+            testing_status=JSONBBuildObject(
+                {
+                    status: Sum(
+                        Case(
+                            When(
+                                result_text_status=Value(status), then=Value(1)
+                            ),
+                            default=Value(0),
+                        )
+                    )
+                    for status in TESTING_STATUSES
+                }
+                | {
+                    "status": Case(
+                        *(
+                            When(
+                                Q(
+                                    scriptset__scriptresult__suppressed=False,
+                                    scriptset__scriptresult__status__in=statuses,
+                                ),
+                                then=Value(combined_status),
+                            )
+                            for statuses, combined_status in COMBINED_STATUS_MAP.items()
+                        ),
+                        *(
+                            When(
+                                Q(
+                                    scriptset__scriptresult__suppressed=False,
+                                    scriptset__scriptresult__status=status,
+                                ),
+                                then=Value(status),
+                            )
+                            for status in OTHER_COMBINED_STATUSES
+                        ),
+                        default=Value(-1),
+                    ),
+                }
             ),
-            combined_status=EnumValues(
-                "status",
-                COMBINED_STATUS_MAP,
-                default=F("status"),
-                output_field=IntegerField(),
-            ),
-            node_id=F("script_set__node_id"),
-            hardware_type=Coalesce(
-                F("script__hardware_type"), Value(HARDWARE_TYPE.NODE)
-            ),
+            **{
+                f"{test_type}_test_status": JSONBBuildObject(
+                    {
+                        status: Sum(
+                            Case(
+                                When(
+                                    Q(
+                                        result_hardware_type=Value(
+                                            hardware_type
+                                        ),
+                                        result_text_status=Value(status),
+                                    ),
+                                    then=Value(1),
+                                ),
+                                default=Value(0),
+                            )
+                        )
+                        for status in TESTING_STATUSES
+                    }
+                    | {
+                        "status": Case(
+                            *(
+                                When(
+                                    Q(
+                                        result_hardware_type=Value(
+                                            hardware_type
+                                        ),
+                                        scriptset__scriptresult__suppressed=False,
+                                        scriptset__scriptresult__status__in=statuses,
+                                    ),
+                                    then=Value(combined_status),
+                                )
+                                for statuses, combined_status in COMBINED_STATUS_MAP.items()
+                            ),
+                            *(
+                                When(
+                                    Q(
+                                        result_hardware_type=Value(
+                                            hardware_type
+                                        ),
+                                        scriptset__scriptresult__suppressed=False,
+                                        scriptset__scriptresult__status=status,
+                                    ),
+                                    then=Value(status),
+                                )
+                                for status in OTHER_COMBINED_STATUSES
+                            ),
+                            default=Value(-1),
+                        ),
+                    }
+                )
+                for test_type, hardware_type in TESTS_TYPE_MAP.items()
+            },
         )
-        .order_by(EnumValues("status", ORDERING_STATUS_MAP))
+        .values(
+            "testing_status",
+            *(f"{test_type}_test_status" for test_type in TESTS_TYPE_MAP),
+        )
     )
-    if machine_ids is not None:
-        testing_entries = testing_entries.filter(
-            script_set__node_id__in=machine_ids
-        )
-
-    testing_data = {}
-    for entry in testing_entries:
-        status_data = testing_data.setdefault(entry["node_id"], {}).setdefault(
-            entry["hardware_type"], testing_status_dict()
-        )
-        # null key for global status
-        global_status_data = testing_data.setdefault(
-            entry["node_id"], {}
-        ).setdefault(None, testing_status_dict())
-        status = entry["text_status"]
-        if status:
-            status_data[status] += 1
-            global_status_data[status] += 1
-        # take the combined status from the first entry since they're sorted by
-        # status priority
-        if not entry["suppressed"]:
-            if status_data["status"] is None:
-                status_data["status"] = entry["combined_status"]
-            if global_status_data["status"] is None:
-                global_status_data["status"] = entry["combined_status"]
-    return testing_data
 
 
 def _get_vlan_data(boot_interfaces):
