@@ -29,7 +29,7 @@ from maasserver.enum import (
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUSES_MAP,
 )
-from maasserver.models import Event, Interface, Node, StaticIPAddress, VLAN
+from maasserver.models import Event, Node, StaticIPAddress
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 
@@ -86,28 +86,32 @@ def list_machines(admin, limit=None):
     storage_entries = _get_storage_qs(machines_qs)
     network_entries = _get_network_qs(machines_qs)
     testing_entries = _get_testing_qs(machines_qs)
+    extra_macs_entries = _get_extra_macs_qs(machines_qs)
 
-    boot_interfaces, interfaces_data = _get_interfaces_data(machine_ids)
-    vlan_data = _get_vlan_data(boot_interfaces)
-    ipaddress_data = _get_ipaddress_data(
-        boot_interfaces, machine_ids=machine_ids
-    )
+    ipaddress_data = _get_ipaddress_data(machine_ids=machine_ids)
 
     result = []
     # entries match in both querysets because of ordering by ID and containing
     # all results
     all_entries = zip(
-        entries, storage_entries, network_entries, testing_entries
+        entries,
+        storage_entries,
+        network_entries,
+        testing_entries,
+        extra_macs_entries,
     )
-    for entry, storage_entry, network_entry, testing_entry in all_entries:
-        entry |= storage_entry | network_entry | testing_entry
+    for (
+        entry,
+        storage_entry,
+        network_entry,
+        testing_entry,
+        extra_macs_entry,
+    ) in all_entries:
+        entry |= (
+            storage_entry | network_entry | testing_entry | extra_macs_entry
+        )
 
-        # computed fields
-        node_id = entry["id"]
-        entry.update(interfaces_data[node_id])
-        entry["vlan"] = vlan_data.get(node_id)
-        entry["ip_addresses"] = ipaddress_data.get(node_id, [])
-
+        entry["ip_addresses"] = ipaddress_data.get(entry["id"], [])
         result.append(entry)
     return result
 
@@ -129,11 +133,27 @@ def _get_machines_qs(machines_qs, is_superuser):
     ).annotate(
         owner=Coalesce("owner__username", Value("")),
         parent=F("parent__system_id"),
+        pxe_mac=F("boot_interface__mac_address"),
         fqdn=Concat(
             F("hostname"),
             Value("."),
             F("domain__name"),
             output_field=TextField(),
+        ),
+        vlan=JSONBBuildObject(
+            {
+                "id": F("boot_interface__vlan_id"),
+                "name": Coalesce(
+                    F("boot_interface__vlan__name"), Value("None")
+                ),
+                "fabric_id": F("boot_interface__vlan__fabric_id"),
+                "fabric_name": Coalesce(
+                    "boot_interface__vlan__fabric__name",
+                    Concat(
+                        Value("fabric-"), F("id"), output_field=CharField()
+                    ),
+                ),
+            }
         ),
         status_code=F("status"),
         simple_status=EnumValues(
@@ -214,54 +234,25 @@ def _get_network_qs(machines):
     ).values("fabrics", "spaces")
 
 
-def _get_interfaces_data(machine_ids=None):
-    interfaces = Interface.objects.order_by("node_config__node_id", "name")
-    if machine_ids is None:
-        interfaces = interfaces.filter(
-            node_config__node__node_type=NODE_TYPE.MACHINE
-        )
-    else:
-        interfaces = interfaces.filter(node_config__node_id__in=machine_ids)
-
-    interface_id_to_mac = dict(
-        interfaces.values_list("id").annotate(
-            mac_address=Cast("mac_address", output_field=TextField())
-        )
-    )
-
-    node_interface_entries = (
-        Machines.filter(
+def _get_extra_macs_qs(machines):
+    return (
+        machines.filter(
             current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
         )
-        .values_list("id", "boot_interface_id")
         .annotate(
-            all_interfaces=ArrayAgg(
-                "current_config__interface__id",
-                ordering="current_config__interface__id",
-            ),
+            extra_macs=ArrayAgg(
+                Cast(
+                    "current_config__interface__mac_address",
+                    output_field=TextField(),
+                ),
+                filter=~Q(
+                    current_config__interface__id=F("boot_interface_id")
+                ),
+                ordering="id",
+            )
         )
+        .values("extra_macs")
     )
-    if machine_ids is not None:
-        node_interface_entries = node_interface_entries.filter(
-            id__in=machine_ids
-        )
-
-    # map boot interface ID to machine ID
-    boot_interfaces = {}
-    interfaces_data = {}
-    for node_id, boot_if_id, node_if_ids in node_interface_entries:
-        if boot_if_id is None:
-            boot_if_id = node_if_ids.pop(0)
-        else:
-            node_if_ids.remove(boot_if_id)
-        boot_interfaces[boot_if_id] = node_id
-        interfaces_data[node_id] = {
-            "pxe_mac": interface_id_to_mac[boot_if_id],
-            "extra_macs": [
-                interface_id_to_mac[if_id] for if_id in node_if_ids
-            ],
-        }
-    return boot_interfaces, interfaces_data
 
 
 COMBINED_STATUS_MAP = {
@@ -426,25 +417,7 @@ def _get_testing_qs(machines):
     )
 
 
-def _get_vlan_data(boot_interfaces):
-    vlan_entries = (
-        VLAN.objects.filter(interface__in=boot_interfaces)
-        .values("id", "fabric_id", "interface__id")
-        .annotate(
-            fabric_name=Coalesce(
-                "fabric__name",
-                Concat(Value("fabric-"), F("id"), output_field=CharField()),
-            ),
-            name=Coalesce("name", Value("None")),
-        )
-    )
-    return {
-        boot_interfaces[entry.pop("interface__id")]: entry
-        for entry in vlan_entries
-    }
-
-
-def _get_ipaddress_data(boot_interfaces, machine_ids=None):
+def _get_ipaddress_data(machine_ids=None):
     staticipaddress = StaticIPAddress.objects
     if machine_ids is not None:
         staticipaddress = staticipaddress.filter(
@@ -461,7 +434,7 @@ def _get_ipaddress_data(boot_interfaces, machine_ids=None):
                 IPADDRESS_TYPE.DISCOVERED,
             )
         )
-        .values_list("interface__node_config__node_id", "interface__id")
+        .values_list("interface__node_config__node_id")
         .annotate(
             ips=ArrayAgg(
                 "ip", filter=~Q(alloc_type=IPADDRESS_TYPE.DISCOVERED)
@@ -471,6 +444,17 @@ def _get_ipaddress_data(boot_interfaces, machine_ids=None):
                 filter=Q(
                     alloc_type=IPADDRESS_TYPE.DISCOVERED, ip__isnull=False
                 ),
+            ),
+            is_boot=Case(
+                When(
+                    Q(
+                        interface=F(
+                            "interface__node_config__node__boot_interface"
+                        )
+                    ),
+                    then=Value(True),
+                ),
+                default=Value(False),
             ),
             has_dhcp=Exists(
                 StaticIPAddress.objects.exclude(ip__isnull=True).filter(
@@ -484,13 +468,12 @@ def _get_ipaddress_data(boot_interfaces, machine_ids=None):
     discovered_ipaddress_data = {}
     for (
         node_id,
-        interface_id,
         ips,
         discovered_ips,
+        is_boot,
         has_dhcp,
     ) in ipaddress_entries:
         node_ipaddress_data = ipaddress_data.setdefault(node_id, [])
-        is_boot = interface_id in boot_interfaces
 
         include_discovered = False
         for ip in ips:
