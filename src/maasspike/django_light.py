@@ -387,8 +387,6 @@ TESTING_STATUSES = list(TESTING_STATUSES_MAP.values()) + ["failed"]
 
 
 def list_machines(admin, limit=None):
-    user_permissions = ["edit", "delete"] if admin.is_superuser else []
-
     machines_qs = Node.machines.order_by("id")
     if limit is None:
         machine_ids = None
@@ -396,7 +394,7 @@ def list_machines(admin, limit=None):
         machine_ids = list(machines_qs.values_list("id", flat=True)[:limit])
         machines_qs = machines_qs.filter(id__in=machine_ids)
 
-    entries = _get_machines_qs(machines_qs, user_permissions)
+    entries = _get_machines_qs(machines_qs, admin.is_superuser)
     storage_entries = _get_storage_qs(machines_qs)
     network_entries = _get_network_qs(machines_qs)
     testing_entries = _get_testing_qs(machines_qs)
@@ -426,7 +424,8 @@ def list_machines(admin, limit=None):
     return result
 
 
-def _get_machines_qs(machines_qs, user_permissions):
+def _get_machines_qs(machines_qs, is_superuser):
+    user_permissions = ["edit", "delete"] if is_superuser else []
     return machines_qs.values(
         "architecture",
         "cpu_count",
