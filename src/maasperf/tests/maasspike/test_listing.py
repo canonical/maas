@@ -210,3 +210,15 @@ class TestListing:
             ),
             limit,
         )
+
+    def test_sqlalchemy_core_multiple_queries(self, limit, sqlalchemy_conn):
+
+        self.run_listing_test(
+            "sqlalchemy_core_multiple_queries",
+            lambda admin, limit: sqlalchemy_core.list_machines_multiple_queries(
+                sqlalchemy_conn,
+                admin,
+                limit,
+            ),
+            limit,
+        )
