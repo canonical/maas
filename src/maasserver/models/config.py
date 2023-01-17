@@ -146,6 +146,8 @@ def get_default_config():
         "vault_enabled": False,
         # Windows settings
         "windows_kms_host": None,
+        # Session timeout length (s)
+        "session_length": 1209600,
     }
 
 

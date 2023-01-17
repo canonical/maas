@@ -1054,6 +1054,20 @@ CONFIG_ITEMS = {
             "max_value": 90,
         },
     },
+    "session_length": {
+        "default": 1209600,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": "Session timeout (seconds)",
+            "required": False,
+            "help_text": (
+                "Configure timeout of session (seconds). "
+                "Minimum 10s, maximum 2 weeks (1209600s)."
+            ),
+            "min_value": 10,
+            "max_value": 1209600,
+        },
+    },
 }
 
 

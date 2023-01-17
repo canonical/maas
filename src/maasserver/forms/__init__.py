@@ -1715,6 +1715,7 @@ class MAASForm(ConfigForm):
     maas_name = get_config_field("maas_name")
     theme = get_config_field("theme")
     enable_analytics = get_config_field("enable_analytics")
+    session_length = get_config_field("session_length")
 
 
 class ProxyForm(ConfigForm):

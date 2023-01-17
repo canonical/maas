@@ -293,6 +293,7 @@ INSTALLED_APPS = (
     "piston3",
 )
 
+SESSION_ENGINE = "maasserver.sessiontimeout"
 
 # See http://docs.djangoproject.com/en/dev/topics/logging for more details on
 # how to customize the logging configuration. At present all logging config is

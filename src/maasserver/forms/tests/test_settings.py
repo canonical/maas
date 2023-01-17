@@ -123,3 +123,14 @@ class TestMAASThemeConfigSettings(MAASServerTestCase):
         value = [1, 2, 3]
         field = get_config_field("theme")
         self.assertEqual(str(value), field.clean(value))
+
+
+class TestMAASSessionTimeoutSettings(MAASServerTestCase):
+    def test_default_value(self):
+        form = get_config_form("session_length")
+        self.assertEqual({"session_length": 1209600}, form.initial)
+
+    def test_session_config(self):
+        value = 300
+        field = get_config_field("session_length")
+        self.assertEqual(value, field.clean(value))
