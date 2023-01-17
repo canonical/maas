@@ -117,6 +117,32 @@ METRICS_DEFINITIONS = [
         of connections
         """,
     ),
+    MetricDefinition(
+        "Counter",
+        "maas_dns_full_zonefile_write_count",
+        """
+        counts the number of times MAAS writes
+        to a zonefile rather than push a dynamic
+        update per DNS zone
+        """,
+        ["zone"],
+    ),
+    MetricDefinition(
+        "Counter",
+        "maas_dns_dynamic_update_count",
+        """
+        counts the number of times MAAS pushes
+        a dynamic update per DNS zone rather than
+        writing a zonefile
+        """,
+        ["zone"],
+    ),
+    MetricDefinition(
+        "Histogram",
+        "maas_dns_update_latency",
+        "the time it takes MAAS to update BIND",
+        ["update_type"],
+    ),
     # Common metrics
     *node_metrics_definitions(),
 ]

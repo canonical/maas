@@ -18,6 +18,7 @@ from provisioningserver.dns.config import (
     render_dns_template,
     report_missing_config_dir,
 )
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.fs import incremental_write
 from provisioningserver.utils.network import (
     intersect_iprange,
@@ -330,6 +331,11 @@ class DNSForwardZoneConfig(DomainConfigBase):
             )
             if not self.force_config_write and self.zone_file_exists(zi):
                 self.dynamic_update(zi)
+                PROMETHEUS_METRICS.update(
+                    "maas_dns_dynamic_update_count",
+                    "inc",
+                    labels={"zone": self.domain},
+                )
             else:
                 Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
@@ -350,6 +356,11 @@ class DNSForwardZoneConfig(DomainConfigBase):
                         ),
                         "generate_directives": {"A": generate_directives},
                     },
+                )
+                PROMETHEUS_METRICS.update(
+                    "maas_dns_full_zonefile_write_count",
+                    "inc",
+                    labels={"zone": self.domain},
                 )
 
 
@@ -620,6 +631,11 @@ class DNSReverseZoneConfig(DomainConfigBase):
             )
             if not self.force_config_write and self.zone_file_exists(zi):
                 self.dynamic_update(zi)
+                PROMETHEUS_METRICS.update(
+                    "maas_dns_dynamic_update_count",
+                    "inc",
+                    labels={"zone": self.domain},
+                )
             else:
                 Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
@@ -642,4 +658,9 @@ class DNSReverseZoneConfig(DomainConfigBase):
                             ),
                         },
                     },
+                )
+                PROMETHEUS_METRICS.update(
+                    "maas_dns_full_zonefile_write_count",
+                    "inc",
+                    labels={"zone": self.domain},
                 )

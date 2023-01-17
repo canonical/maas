@@ -33,6 +33,7 @@ from provisioningserver.dns.actions import (
 )
 from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.shell import ExternalProcessError
 
 maaslog = get_maas_logger("dns")
@@ -66,6 +67,12 @@ def forward_domains_to_forwarded_zones(forward_domains):
     ]
 
 
+@PROMETHEUS_METRICS.record_call_latency(
+    "maas_dns_update_latency",
+    get_labels=lambda *args, **kwargs: {
+        "update_type": "reload" if kwargs.get("requires_reload") else "dynamic"
+    },
+)
 def dns_update_all_zones(
     reload_retry=False,
     reload_timeout=2,
