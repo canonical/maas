@@ -146,23 +146,6 @@ class MachineHandler(NodeHandler):
             .prefetch_related("tags")
             .prefetch_related("pool")
             .prefetch_related("ownerdata_set")
-            .alias(
-                physical_disk_count=Count(
-                    "current_config__blockdevice__physicalblockdevice"
-                ),
-                storage=Sum(
-                    "current_config__blockdevice__physicalblockdevice__size"
-                ),
-                pxe_mac=F("boot_interface__mac_address"),
-                fabric_name=F("boot_interface__vlan__fabric__name"),
-                fqdn=Concat(
-                    "hostname",
-                    V("."),
-                    "domain__name",
-                    output_field=CharField(),
-                ),
-                simple_status=_build_simple_status_q(),
-            )
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
@@ -178,12 +161,21 @@ class MachineHandler(NodeHandler):
                     .order_by("-created", "-id")
                     .values("description")[:1]
                 ),
-                physical_disk_count=F("physical_disk_count"),
-                total_storage=F("storage"),
-                pxe_mac=F("pxe_mac"),
-                fabric_name=F("fabric_name"),
-                node_fqdn=F("fqdn"),
-                simple_status=F("simple_status"),
+                physical_disk_count=Count(
+                    "current_config__blockdevice__physicalblockdevice"
+                ),
+                total_storage=Sum(
+                    "current_config__blockdevice__physicalblockdevice__size"
+                ),
+                pxe_mac=F("boot_interface__mac_address"),
+                fabric_name=F("boot_interface__vlan__fabric__name"),
+                node_fqdn=Concat(
+                    "hostname",
+                    V("."),
+                    "domain__name",
+                    output_field=CharField(),
+                ),
+                simple_status=_build_simple_status_q(),
             )
         )
         allowed_methods = [
