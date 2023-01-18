@@ -436,6 +436,17 @@ class TestControllerHandler(MAASServerTestCase):
             list_results[0]["tags"], [tag.id for tag in tags]
         )
 
+    def test_dehydrate_includes_node_display_type(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        region = factory.make_RegionRackController()
+        list_results = handler.list({})
+        self.assertIn("node_type_display", list_results[0])
+        self.assertEqual(
+            list_results[0]["node_type_display"],
+            region.get_node_type_display(),
+        )
+
     def test_register_info_non_admin(self):
         user = factory.make_User()
         handler = ControllerHandler(user, {}, None)

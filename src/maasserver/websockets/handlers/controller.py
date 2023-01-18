@@ -183,6 +183,7 @@ class ControllerHandler(NodeHandler):
 
         data.update(
             {
+                "node_type_display": obj.get_node_type_display(),
                 "vlans_ha": {
                     "true": vlan_counts[True],
                     "false": vlan_counts[False],
