@@ -7,8 +7,7 @@
 from base64 import b64decode, b64encode
 
 from django.db import connection
-
-from maasserver.fields import Field
+from django.db.models import Field
 
 
 class Bin(bytes):

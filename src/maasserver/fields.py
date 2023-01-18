@@ -29,9 +29,15 @@ from django import forms
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator, URLValidator
 from django.db import connections
-from django.db.models import BinaryField, CharField
-from django.db.models import Field as _BrokenField
-from django.db.models import GenericIPAddressField, IntegerField, Q, URLField
+from django.db.models import (
+    BinaryField,
+    CharField,
+    Field,
+    GenericIPAddressField,
+    IntegerField,
+    Q,
+    URLField,
+)
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPAddress, IPNetwork
@@ -44,17 +50,6 @@ from maasserver.utils.orm import get_one, validate_in_transaction
 
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
-
-
-class Field(_BrokenField):
-    """Django's `Field` has a mutable default argument, hence is broken.
-
-    This fixes it.
-    """
-
-    def __init__(self, *args, validators=None, **kwargs):
-        kwargs["validators"] = [] if validators is None else validators
-        super().__init__(*args, **kwargs)
 
 
 MAC_RE = re.compile(
