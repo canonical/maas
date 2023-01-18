@@ -6,15 +6,16 @@
 
 from typing import List
 
+from django.contrib.postgres.fields import ArrayField
 from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
     GenericIPAddressField,
     Manager,
+    TextField,
 )
 
-from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import LegacyLogger
@@ -125,14 +126,12 @@ class RDNS(CleanSave, TimestampedModel):
     # more than one entry, we'll need to make an educated guess as to which
     # is the "primary".) This will be coalesced with the other data in the
     # discovery view to present the default hostname for the IP.
-    hostname = CharField(
-        max_length=256, editable=True, null=True, blank=False, unique=False
-    )
+    hostname = CharField(max_length=256, null=True)
 
     # List of all hostnames returned by the lookup. (Useful for
     # support/debugging, in case we guess incorrectly about the "primary"
     # hostname -- and in case we ever want to show them all.)
-    hostnames = JSONObjectField()
+    hostnames = ArrayField(TextField(), default=list)
 
     # Region controller that observed the hostname.
     observer = ForeignKey(
