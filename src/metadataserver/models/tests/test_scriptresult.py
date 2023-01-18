@@ -695,8 +695,9 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_estimated_runtime_uses_timeout(self):
         now = datetime.now()
+        script = factory.make_Script(timeout=timedelta(10))
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.RUNNING, started=now
+            script=script, status=SCRIPT_STATUS.RUNNING, started=now
         )
         expected = str(
             script_result.script.timeout
@@ -706,11 +707,10 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_estimated_runtime_returns_Unknown(self):
         now = datetime.now()
+        script = factory.make_Script(timeout=timedelta(0))
         script_result = factory.make_ScriptResult(
-            status=SCRIPT_STATUS.RUNNING, started=now
+            script=script, status=SCRIPT_STATUS.RUNNING, started=now
         )
-        script_result.script.timeout = timedelta(0)
-        script_result.script.save()
         self.assertEqual("Unknown", script_result.estimated_runtime)
 
     def test_read_results(self):
