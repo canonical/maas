@@ -24,16 +24,19 @@ def make_events(
     machines: Iterable[Machine],
 ):
     event_types = cycle(event_types)
-    now = datetime.utcnow()
+    events = []
     for machine in machines:
-        Event.objects.bulk_create(
-            Event(
-                type=next(event_types),
-                node=machine,
-                action=make_name(),
-                description=make_name(),
-                created=now,
-                updated=now,
+        for _ in range(next(counts)):
+            now = datetime.utcnow()
+            events.append(
+                Event(
+                    type=next(event_types),
+                    node=machine,
+                    action=make_name(),
+                    description=make_name(),
+                    created=now,
+                    updated=now,
+                )
             )
-            for _ in range(next(counts))
-        )
+
+    Event.objects.bulk_create(events)
