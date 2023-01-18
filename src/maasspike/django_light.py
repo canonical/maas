@@ -2,32 +2,17 @@ from collections.abc import Iterable
 from itertools import chain
 import logging
 
-from django.contrib.auth.models import User
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.db.models import (
-    BigIntegerField,
-    BooleanField,
-    CASCADE,
     Case,
     CharField,
     Count,
-    DateTimeField,
-    DO_NOTHING,
     Exists,
     FloatField,
-    ForeignKey,
     Func,
-    GenericIPAddressField,
-    IntegerField,
-    Manager,
-    ManyToManyField,
-    Model,
     OuterRef,
-    PROTECT,
     Q,
-    SET_DEFAULT,
-    SET_NULL,
     Subquery,
     Sum,
     TextField,
@@ -38,26 +23,14 @@ from django.db.models.functions import Cast, Coalesce, Concat
 
 from maasserver.enum import (
     INTERFACE_TYPE,
-    INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
-    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
-    NODE_TYPE_CHOICES,
-    POWER_STATE,
-    POWER_STATE_CHOICES,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUSES_MAP,
 )
-from metadataserver.enum import (
-    HARDWARE_TYPE,
-    HARDWARE_TYPE_CHOICES,
-    RESULT_TYPE,
-    RESULT_TYPE_CHOICES,
-    SCRIPT_STATUS,
-    SCRIPT_STATUS_CHOICES,
-    SCRIPT_TYPE_CHOICES,
-)
+from maasserver.models import Event, Interface, Node, StaticIPAddress, VLAN
+from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 
 def JSONBBuildObject(fields_map):
@@ -89,294 +62,6 @@ def Float(field):
     return Cast(field, output_field=FloatField())
 
 
-class Zone(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_zone"
-        managed = False
-
-    name = CharField(max_length=256, unique=True)
-
-
-class Domain(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_domain"
-        managed = False
-
-    name = CharField(max_length=256, unique=True)
-
-
-class ResourcePool(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_resourcepool"
-        managed = False
-
-    name = CharField(max_length=256, unique=True)
-
-
-class Tag(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_tag"
-        managed = False
-
-    name = CharField(max_length=256, unique=True)
-
-
-class NodeConfig(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_nodeconfig"
-        unique_together = ("node", "name")
-        managed = False
-
-    name = TextField(default="discovered")
-    node = ForeignKey("Node", on_delete=CASCADE)
-
-
-class NUMANode(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_numanode"
-        unique_together = ("node", "index")
-        managed = False
-
-    node = ForeignKey("Node", on_delete=CASCADE)
-    index = IntegerField(default=0)
-    memory = IntegerField()
-    cores = ArrayField(IntegerField(), blank=True)
-
-
-class BlockDevice(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_blockdevice"
-        unique_together = ("node_config", "name")
-        managed = False
-
-    node_config = ForeignKey("NodeConfig", on_delete=CASCADE)
-    name = CharField(max_length=255)
-    size = BigIntegerField()
-    tags = ArrayField(TextField(), blank=True, null=True, default=list)
-
-
-class PhysicalBlockDevice(BlockDevice):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_physicalblockdevice"
-        managed = False
-
-    numa_node = ForeignKey(
-        NUMANode, related_name="blockdevices", on_delete=CASCADE
-    )
-
-
-class Fabric(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_fabric"
-        managed = False
-
-    name = CharField(max_length=256, null=True, blank=True)
-
-
-class Space(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_space"
-        managed = False
-
-    name = CharField(max_length=256, null=True, blank=True)
-
-
-class VLAN(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_vlan"
-        unique_together = ("vid", "fabric")
-        managed = False
-
-    name = CharField(max_length=256, null=True, blank=True)
-    vid = IntegerField()
-    fabric = ForeignKey(Fabric, on_delete=CASCADE)
-    space = ForeignKey(Space, null=True, on_delete=SET_NULL)
-
-
-class Subnet(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_subnet"
-        managed = False
-
-    name = CharField(max_length=255, blank=False)
-    vlan = ForeignKey(VLAN, on_delete=PROTECT)
-
-
-class StaticIPAddress(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_staticipaddress"
-        unique_together = ("alloc_type", "ip")
-        managed = False
-
-    alloc_type = IntegerField(default=IPADDRESS_TYPE.AUTO)
-    ip = GenericIPAddressField(null=True, blank=True)
-    subnet = ForeignKey(Subnet, null=True, on_delete=CASCADE)
-
-
-class Interface(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_interface"
-        unique_together = ("node_config", "name")
-        managed = False
-
-    node_config = ForeignKey(NodeConfig, null=True, on_delete=CASCADE)
-    name = CharField(max_length=255)
-    # don't need a MACAddressField here since it's only for reading
-    mac_address = TextField(unique=False, null=True, blank=True)
-    type = CharField(max_length=20, choices=INTERFACE_TYPE_CHOICES)
-    vlan = ForeignKey(VLAN, null=True, on_delete=PROTECT)
-    ip_addresses = ManyToManyField("StaticIPAddress")
-
-
-class BMC(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_bmc"
-        managed = False
-
-    power_type = CharField(max_length=10, blank=True)
-
-
-class EventType(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_eventtype"
-        managed = False
-
-    name = CharField(max_length=255, unique=True)
-    description = CharField(max_length=255)
-    level = IntegerField()
-
-
-class Event(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_event"
-        managed = False
-
-    type = ForeignKey(EventType, on_delete=PROTECT)
-    node = ForeignKey("Node", null=True, on_delete=DO_NOTHING)
-    created = DateTimeField()
-    description = TextField(blank=True, default="")
-
-
-class MachineManager(Manager):
-    def get_queryset(self):
-        return super().get_queryset().filter(node_type=NODE_TYPE.MACHINE)
-
-
-class Node(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_node"
-        managed = False
-
-    machines = MachineManager()
-
-    architecture = CharField(max_length=31, blank=True, null=True)
-    bmc = ForeignKey(BMC, null=True, on_delete=CASCADE)
-    boot_interface = ForeignKey(
-        Interface, null=True, related_name="+", on_delete=SET_NULL
-    )
-    cpu_count = IntegerField(default=0)
-    current_config = ForeignKey(
-        NodeConfig, null=True, on_delete=CASCADE, related_name="+"
-    )
-    description = TextField(blank=True, default="")
-    distro_series = CharField(max_length=255, blank=True, default="")
-    domain = ForeignKey(Domain, null=True, on_delete=PROTECT)
-    error_description = TextField(blank=True, default="")
-    hostname = CharField(max_length=255, default="", blank=True, unique=True)
-    locked = BooleanField(default=False)
-    memory = IntegerField(default=0)
-    node_type = IntegerField(
-        choices=NODE_TYPE_CHOICES, default=NODE_TYPE.DEFAULT
-    )
-    osystem = CharField(max_length=255, blank=True, default="")
-    owner = ForeignKey(User, null=True, on_delete=PROTECT)
-    parent = ForeignKey(
-        "Node", null=True, related_name="children", on_delete=CASCADE
-    )
-    pool = ForeignKey(ResourcePool, null=True, on_delete=PROTECT)
-    power_state = CharField(
-        max_length=10,
-        choices=POWER_STATE_CHOICES,
-        default=POWER_STATE.UNKNOWN,
-    )
-    status = IntegerField(choices=NODE_STATUS_CHOICES)
-    system_id = CharField(
-        max_length=41,
-        unique=True,
-    )
-    tags = ManyToManyField(Tag)
-    zone = ForeignKey(Zone, on_delete=SET_DEFAULT)
-
-
-class OwnerData(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "maasserver_ownerdata"
-        managed = False
-        unique_together = ("node", "key")
-
-    node = ForeignKey(Node, on_delete=CASCADE)
-    key = CharField(max_length=255)
-    value = TextField()
-
-
-class Script(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "metadataserver_script"
-        managed = False
-
-    name = CharField(max_length=255, unique=True)
-    script_type = IntegerField(choices=SCRIPT_TYPE_CHOICES)
-    hardware_type = IntegerField(choices=HARDWARE_TYPE_CHOICES)
-
-
-class ScriptSet(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "metadataserver_scriptset"
-        managed = False
-
-    node = ForeignKey(Node, on_delete=CASCADE)
-    result_type = IntegerField(choices=RESULT_TYPE_CHOICES)
-
-
-class ScriptResult(Model):
-    class Meta:
-        app_label = "maasspike"
-        db_table = "metadataserver_scriptresult"
-        managed = False
-
-    script_set = ForeignKey(ScriptSet, on_delete=CASCADE)
-    script = ForeignKey(Script, null=True, on_delete=CASCADE)
-    status = IntegerField(choices=SCRIPT_STATUS_CHOICES)
-    suppressed = BooleanField(default=False)
-    physical_blockdevice = ForeignKey(
-        PhysicalBlockDevice,
-        null=True,
-        on_delete=CASCADE,
-    )
-    interface = ForeignKey(Interface, null=True, on_delete=CASCADE)
-
-
 TESTING_STATUSES_MAP = {
     SCRIPT_STATUS.PENDING: "pending",
     SCRIPT_STATUS.RUNNING: "running",
@@ -386,8 +71,11 @@ TESTING_STATUSES_MAP = {
 TESTING_STATUSES = list(TESTING_STATUSES_MAP.values()) + ["failed"]
 
 
+Machines = Node.objects.filter(node_type=NODE_TYPE.MACHINE)
+
+
 def list_machines(admin, limit=None):
-    machines_qs = Node.machines.order_by("id")
+    machines_qs = Machines.order_by("id")
     if limit is None:
         machine_ids = None
     else:
@@ -441,7 +129,12 @@ def _get_machines_qs(machines_qs, is_superuser):
     ).annotate(
         owner=Coalesce("owner__username", Value("")),
         parent=F("parent__system_id"),
-        fqdn=Concat(F("hostname"), Value("."), F("domain__name")),
+        fqdn=Concat(
+            F("hostname"),
+            Value("."),
+            F("domain__name"),
+            output_field=TextField(),
+        ),
         status_code=F("status"),
         simple_status=EnumValues(
             "status",
@@ -530,10 +223,14 @@ def _get_interfaces_data(machine_ids=None):
     else:
         interfaces = interfaces.filter(node_config__node_id__in=machine_ids)
 
-    interface_id_to_mac = dict(interfaces.values_list("id", "mac_address"))
+    interface_id_to_mac = dict(
+        interfaces.values_list("id").annotate(
+            mac_address=Cast("mac_address", output_field=TextField())
+        )
+    )
 
     node_interface_entries = (
-        Node.machines.filter(
+        Machines.filter(
             current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
         )
         .values_list("id", "boot_interface_id")
