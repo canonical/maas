@@ -12,7 +12,11 @@ from pathlib import Path
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
 
-from provisioningserver.dns.actions import NSUpdateCommand
+from provisioningserver.dns.actions import (
+    bind_freeze_zone,
+    bind_thaw_zone,
+    NSUpdateCommand,
+)
 from provisioningserver.dns.config import (
     compose_zone_file_config_path,
     render_dns_template,
@@ -333,24 +337,31 @@ class DNSForwardZoneConfig(DomainConfigBase):
             else:
                 Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
-                self.write_zone_file(
-                    zi.target_path,
-                    self.make_parameters(),
-                    {
-                        "mappings": {
-                            "A": self.get_A_mapping(
-                                self._mapping, self._ipv4_ttl
+                needs_freeze_thaw = self.zone_file_exists(zi)
+                if needs_freeze_thaw:
+                    bind_freeze_zone(zone=self.domain)
+                try:
+                    self.write_zone_file(
+                        zi.target_path,
+                        self.make_parameters(),
+                        {
+                            "mappings": {
+                                "A": self.get_A_mapping(
+                                    self._mapping, self._ipv4_ttl
+                                ),
+                                "AAAA": self.get_AAAA_mapping(
+                                    self._mapping, self._ipv6_ttl
+                                ),
+                            },
+                            "other_mapping": enumerate_rrset_mapping(
+                                self._other_mapping
                             ),
-                            "AAAA": self.get_AAAA_mapping(
-                                self._mapping, self._ipv6_ttl
-                            ),
+                            "generate_directives": {"A": generate_directives},
                         },
-                        "other_mapping": enumerate_rrset_mapping(
-                            self._other_mapping
-                        ),
-                        "generate_directives": {"A": generate_directives},
-                    },
-                )
+                    )
+                finally:
+                    if needs_freeze_thaw:
+                        bind_thaw_zone(zone=self.domain)
 
 
 class DNSReverseZoneConfig(DomainConfigBase):
