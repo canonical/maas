@@ -16,7 +16,13 @@ import pytest
 
 from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
-from maasspike import baseline, django_light, sqlalchemy_core, sqlalchemy_orm
+from maasspike import (
+    baseline,
+    django_light,
+    plain_sql,
+    sqlalchemy_core,
+    sqlalchemy_orm,
+)
 
 
 class ExpectedMachines:
@@ -188,7 +194,6 @@ class TestListing:
 
     @pytest.mark.skip(reason="Not worth using sqlalchemy ORM")
     def test_sqlalchemy_orm(self, limit, sqlalchemy_session):
-
         self.run_listing_test(
             "sqlalchemy_orm",
             lambda admin, limit: sqlalchemy_orm.list_machines(
@@ -200,7 +205,6 @@ class TestListing:
         )
 
     def test_sqlalchemy_core_one_query(self, limit, sqlalchemy_conn):
-
         self.run_listing_test(
             "sqlalchemy_core_one_query",
             lambda admin, limit: sqlalchemy_core.list_machines_one_query(
@@ -212,7 +216,6 @@ class TestListing:
         )
 
     def test_sqlalchemy_core_multiple_queries(self, limit, sqlalchemy_conn):
-
         self.run_listing_test(
             "sqlalchemy_core_multiple_queries",
             lambda admin, limit: sqlalchemy_core.list_machines_multiple_queries(
@@ -220,5 +223,12 @@ class TestListing:
                 admin,
                 limit,
             ),
+            limit,
+        )
+
+    def test_plain_sql_one_query(self, limit):
+        self.run_listing_test(
+            "plain_sql_one_query",
+            plain_sql.list_machines_one_query,
             limit,
         )
