@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.5 (Ubuntu 14.5-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.5 (Ubuntu 14.5-0ubuntu0.22.04.1)
+-- Dumped from database version 14.6 (Ubuntu 14.6-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.6 (Ubuntu 14.6-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6938,7 +6938,7 @@ CREATE TABLE public.maasserver_rdns (
     updated timestamp with time zone NOT NULL,
     ip inet NOT NULL,
     hostname character varying(256),
-    hostnames text NOT NULL,
+    hostnames text[] NOT NULL,
     observer_id integer NOT NULL
 );
 
@@ -11229,6 +11229,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 340	maasserver	0288_rootkey_material_secret	2022-10-21 03:29:26.788885+00
 341	maasserver	0289_vault_secret	2022-10-28 03:29:40.716763+00
 342	maasserver	0290_migrate_node_power_parameters	2022-11-19 03:29:31.92822+00
+343	maasserver	0291_rdns_hostnames_as_array	2023-01-19 03:29:20.405694+00
 \.
 
 
@@ -12045,7 +12046,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 342, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 343, true);
 
 
 --
