@@ -458,7 +458,7 @@ class ZoneGenerator:
                 for update in dynamic_updates
                 if update.answer
                 and update.answer_is_ip
-                and (IPAddress(update.answer) in IPNetwork(subnet.cidr))
+                and (update.answer_as_ip in IPNetwork(subnet.cidr))
             ]
 
             yield DNSReverseZoneConfig(
@@ -490,11 +490,16 @@ class ZoneGenerator:
                     if (
                         update.answer
                         and update.answer_is_ip
-                        and IPAddress(update.answer) in exclude_net
+                        and update.answer_as_ip in exclude_net
                     ):
                         glue_update = False
                         break
-                if glue_update:
+                if (
+                    glue_update
+                    and update.answer
+                    and update.answer_is_ip
+                    and update.answer_as_ip in network
+                ):
                     domain_updates.append(
                         DynamicDNSUpdate.as_reverse_record_update(
                             update, str(network)

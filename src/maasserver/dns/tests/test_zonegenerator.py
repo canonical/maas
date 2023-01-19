@@ -514,7 +514,9 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_glue_receives_correct_dynamic_updates(self):
         domain = factory.make_Domain()
         subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
+        other_subnet = factory.make_Subnet()
         sip = factory.make_StaticIPAddress(subnet=subnet)
+        other_sip = factory.make_StaticIPAddress(subnet=other_subnet)
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
@@ -528,7 +530,14 @@ class TestZoneGenerator(MAASServerTestCase):
                 zone=domain.name,
                 rectype="A",
                 answer=sip.ip,
-            )
+            ),
+            DynamicDNSUpdate(
+                operation="INSERT",
+                name=update_rec.name,
+                zone=domain.name,
+                rectype="A",
+                answer=other_sip.ip,
+            ),
         ]
         zones = ZoneGenerator(
             domain,

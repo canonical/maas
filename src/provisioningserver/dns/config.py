@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 import errno
+from functools import cached_property
 import grp
 import os
 import os.path
@@ -48,25 +49,17 @@ class DynamicDNSUpdate:
     answer: Optional[str] = None
 
     @classmethod
-    def _is_ip(cls, answer):
-        if not answer:
-            return False
-        try:
-            IPAddress(answer)
-        except AddrFormatError:
-            return False
-        else:
-            return True
-
-    @classmethod
     def create_from_trigger(cls, **kwargs):
         answer = kwargs.get("answer")
         rectype = kwargs.pop("rectype")
         if answer:
             del kwargs["answer"]
         # the DB trigger is unable to figure out if an IP is v6, so we do it here instead
-        if cls._is_ip(answer):
+        try:
             ip = IPAddress(answer)
+        except AddrFormatError:
+            pass
+        else:
             if ip.version == 6:
                 rectype = "AAAA"
         return cls(answer=answer, rectype=rectype, **kwargs)
@@ -86,9 +79,16 @@ class DynamicDNSUpdate:
             rectype="PTR",
         )
 
-    @property
+    @cached_property
+    def answer_as_ip(self):
+        try:
+            return IPAddress(self.answer)
+        except AddrFormatError:
+            return None
+
+    @cached_property
     def answer_is_ip(self):
-        return DynamicDNSUpdate._is_ip(self.answer)
+        return self.answer_as_ip is not None
 
 
 def get_dns_config_dir():

@@ -666,6 +666,28 @@ class TestDynamicDNSUpdate(MAASTestCase):
         )
         self.assertEqual(update.rectype, "AAAA")
 
+    def test_answer_as_ip_returns_ip_when_answer_is_an_ip(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=factory.make_ip_address(),
+        )
+        self.assertIsNotNone(update.answer_as_ip)
+
+    def test_answer_as_ip_returns_none_when_answer_is_not_an_ip(self):
+        domain = factory.make_name()
+        update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="CNAME",
+            answer=factory.make_name(),
+        )
+        self.assertIsNone(update.answer_as_ip)
+
     def test_answer_is_ip_returns_true_when_answer_is_an_ip(self):
         domain = factory.make_name()
         update = DynamicDNSUpdate(

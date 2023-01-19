@@ -68,15 +68,38 @@ class TestReconfigure(MAASTestCase):
         self.assertRaises(ExternalProcessError, actions.bind_reconfigure)
 
 
+class TestFreezeZone(MAASTestCase):
+    """Tests for :py:func:`actions.bind_freeze_zone`."""
+
+    def test_executes_rndc_command(self):
+        self.patch_autospec(actions, "execute_rndc_command")
+        zone = factory.make_name()
+        actions.bind_freeze_zone(zone=zone)
+        actions.execute_rndc_command.assert_called_once_with(
+            ("freeze", zone), timeout=2
+        )
+
+
+class TestThawZone(MAASTestCase):
+    """Tests for :py:func:`actions.bind_freeze_zone`."""
+
+    def test_executes_rndc_command(self):
+        self.patch_autospec(actions, "execute_rndc_command")
+        zone = factory.make_name()
+        actions.bind_thaw_zone(zone=zone)
+        actions.execute_rndc_command.assert_called_once_with(
+            ("thaw", zone), timeout=2
+        )
+
+
 class TestReload(MAASTestCase):
     """Tests for :py:func:`actions.bind_reload`."""
 
     def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         actions.bind_reload()
-        self.assertThat(
-            actions.execute_rndc_command,
-            MockCalledOnceWith(("reload",), timeout=2),
+        actions.execute_rndc_command.assert_called_once_with(
+            ("reload",), timeout=2
         )
 
     def test_logs_subprocess_error(self):

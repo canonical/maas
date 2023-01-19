@@ -42,6 +42,48 @@ def bind_reconfigure():
         raise
 
 
+def bind_freeze_zone(zone=None, timeout=2):
+    cmd = ("freeze",)  # freeze all zones
+    if zone:
+        cmd = ("freeze", zone)  # freeze one zone
+
+    try:
+        execute_rndc_command(cmd, timeout=timeout)
+    except CalledProcessError as e:
+        maaslog.error(
+            f"Freezing {zone if zone else 'all zones'} for update failed"
+        )
+        ExternalProcessError.upgrade(e)
+        raise
+    except TimeoutExpired as e:
+        maaslog.error(
+            f"Freezing {zone if zone else 'all zones'} for update timed out"
+        )
+        ExternalProcessError.upgrade(e)
+        raise
+
+
+def bind_thaw_zone(zone=None, timeout=2):
+    cmd = ("thaw",)  # thaw all zones
+    if zone:
+        cmd = ("thaw", zone)  # thaw one zone
+
+    try:
+        execute_rndc_command(cmd, timeout=timeout)
+    except CalledProcessError as e:
+        maaslog.error(
+            f"Thawing {zone if zone else 'all zones'} for update failed"
+        )
+        ExternalProcessError.upgrade(e)
+        raise
+    except TimeoutExpired as e:
+        maaslog.error(
+            f"Thawing {zone if zone else 'all zones'} for update timed out"
+        )
+        ExternalProcessError.upgrade(e)
+        raise
+
+
 def bind_reload(timeout=2):
     """Ask BIND to reload its configuration and all zone files.  This operation
     is 'best effort' (with logging) as the server may not be running, and there
