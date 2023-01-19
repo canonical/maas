@@ -294,6 +294,12 @@ def list_machines_one_query(conn, admin, limit=None):
 
     If the query needs to be split to be quicker, do so in another handler.
     """
+    query = get_single_query(limit=limit)
+    rows = list(conn.execute(query))
+    return get_machines(rows, admin)
+
+
+def get_single_query(limit=None):
     storage_query = (
         select(
             Machine.c.id,
@@ -1307,10 +1313,12 @@ def list_machines_one_query(conn, admin, limit=None):
         .order_by(Machine.c.id)
         .limit(limit)
     )
-    machine_rows = list(conn.execute(stmt))
+    return stmt
 
+
+def get_machines(rows, admin):
     machines = []
-    for row in machine_rows:
+    for row in rows:
         machine = {key: getattr(row, key) for key in PLAIN_LIST_ATTRIBUTES}
         machine.update(
             {
