@@ -68,13 +68,6 @@ class ControllerHandler(NodeHandler):
                     .order_by("-created", "-id")
                     .values("type__description")[:1]
                 ),
-                status_event_description=Subquery(
-                    Event.objects.filter(
-                        node=OuterRef("pk"), type__level__gte=logging.INFO
-                    )
-                    .order_by("-created", "-id")
-                    .values("description")[:1]
-                ),
                 vlan_ids=_vlan_ids_aggr,
             )
         )

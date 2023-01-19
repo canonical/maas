@@ -9,9 +9,18 @@ import logging
 from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db.models import Case, CharField, Count, F, OuterRef, Subquery, Sum
-from django.db.models import Value as V
-from django.db.models import When
+from django.db.models import (
+    Case,
+    CharField,
+    Count,
+    F,
+    OuterRef,
+    Subquery,
+    Sum,
+    TextField,
+    Value,
+    When,
+)
 from django.db.models.functions import Concat
 
 from maasserver.enum import (
@@ -96,10 +105,10 @@ log = LegacyLogger()
 def _build_simple_status_q():
     return Case(
         *[
-            When(status__in=values, then=V(status))
+            When(status__in=values, then=Value(status))
             for status, values in SIMPLIFIED_NODE_STATUSES_MAP.items()
         ],
-        default=V(SIMPLIFIED_NODE_STATUS.OTHER),
+        default=Value(SIMPLIFIED_NODE_STATUS.OTHER),
     )
 
 
@@ -147,19 +156,20 @@ class MachineHandler(NodeHandler):
             .prefetch_related("pool")
             .prefetch_related("ownerdata_set")
             .annotate(
-                status_event_type_description=Subquery(
+                status_message_text=Subquery(
                     Event.objects.filter(
                         node=OuterRef("pk"), type__level__gte=logging.INFO
                     )
                     .order_by("-created", "-id")
-                    .values("type__description")[:1]
-                ),
-                status_event_description=Subquery(
-                    Event.objects.filter(
-                        node=OuterRef("pk"), type__level__gte=logging.INFO
+                    .annotate(
+                        message=Concat(
+                            F("type__description"),
+                            Value(" - "),
+                            F("description"),
+                            output_field=TextField(),
+                        ),
                     )
-                    .order_by("-created", "-id")
-                    .values("description")[:1]
+                    .values("message")[:1]
                 ),
                 physical_disk_count=Count(
                     "current_config__blockdevice__physicalblockdevice"
@@ -171,7 +181,7 @@ class MachineHandler(NodeHandler):
                 fabric_name=F("boot_interface__vlan__fabric__name"),
                 node_fqdn=Concat(
                     "hostname",
-                    V("."),
+                    Value("."),
                     "domain__name",
                     output_field=CharField(),
                 ),
@@ -299,17 +309,10 @@ class MachineHandler(NodeHandler):
         """Add extra fields to `data`."""
         data = super().dehydrate(obj, data, for_list=for_list)
         data["parent"] = getattr(obj.parent, "system_id", None)
-        # Try to use the annotated event description so its loaded in the same
-        # query as loading the machines. Otherwise fallback to the method on
-        # the machine.
-        if hasattr(obj, "status_event_description"):
-            if obj.status_event_description:
-                data["status_message"] = "{} - {}".format(
-                    obj.status_event_type_description,
-                    obj.status_event_description,
-                )
-            else:
-                data["status_message"] = obj.status_event_type_description
+        # Try to use the annotated value from the queryset. Otherwise fallback
+        # to the method on the machine.
+        if hasattr(obj, "status_message_text"):
+            data["status_message"] = obj.status_message_text
         else:
             data["status_message"] = obj.status_message()
 
