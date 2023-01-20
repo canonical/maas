@@ -15,6 +15,11 @@ def list_machines_one_query(admin, limit=None):
     return get_machines(rows, admin)
 
 
+def list_machines_materialized_view(view_name, admin, limit=None):
+    rows = get_rows_from_view(view_name, limit=limit)
+    return get_machines(rows, admin)
+
+
 def get_query(limit=None):
     query = """
     WITH
@@ -754,8 +759,19 @@ def get_query(limit=None):
     }
     return query, params
 
+
 def get_rows(query, params):
     # use the underlying psycopg2 connection
     with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute(query, params)
+        return cur.fetchall()
+
+
+def get_rows_from_view(view_name, limit=None):
+    query = f"SELECT * from {view_name} ORDER BY id"
+    if limit is not None:
+        query = f"{query} LIMIT {limit}"
+    # use the underlying psycopg2 connection
+    with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
+        cur.execute(query)
         return cur.fetchall()

@@ -101,6 +101,23 @@ def expected_machines(admin, _expected):
 
 
 @pytest.fixture
+def machine_listing_materialized_view(ensuremaasdb):
+    from django.db import connection
+
+    from maasspike.plain_sql import get_query
+
+    query, params = get_query(limit=None)  # always include all machines
+
+    view_name = "maasspike_machine_listing"
+    with connection.cursor() as cur:
+        cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}")
+        cur.execute(f"CREATE MATERIALIZED VIEW {view_name} AS {query}", params)
+    yield view_name
+    with connection.cursor() as cur:
+        cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}")
+
+
+@pytest.fixture
 def sqlalchemy_engine(ensuremaasdb):
     import sqlalchemy
 
@@ -230,5 +247,14 @@ class TestListing:
         self.run_listing_test(
             "plain_sql_one_query",
             plain_sql.list_machines_one_query,
+            limit,
+        )
+
+    def test_materialized_view(self, limit, machine_listing_materialized_view):
+        self.run_listing_test(
+            "materialized_view",
+            lambda admin, limit: plain_sql.list_machines_materialized_view(
+                machine_listing_materialized_view, admin, limit
+            ),
             limit,
         )
