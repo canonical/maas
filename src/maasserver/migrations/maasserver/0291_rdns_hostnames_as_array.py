@@ -13,8 +13,12 @@ QUERIES = (
       result text[] = '{}'::text[];
     BEGIN
       IF content != '' THEN
-        SELECT array_agg(sub.r) INTO result
-        FROM (SELECT json_array_elements_text(content::json) AS r) AS sub;
+        BEGIN
+          SELECT array_agg(sub.r) INTO result
+          FROM (SELECT json_array_elements_text(content::json) AS r) AS sub;
+        EXCEPTION
+          WHEN invalid_text_representation THEN RETURN content::text[];
+        END;
       END IF;
       RETURN result;
     END;
