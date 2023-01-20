@@ -1499,7 +1499,6 @@ def list_machines_multiple_queries(conn, admin, limit=None):
         .join(
             PhysicalBlockDevice,
             BlockDevice.c.id == PhysicalBlockDevice.c.blockdevice_ptr_id,
-            isouter=True,
         )
         .where(
             Machine.c.node_type == NODE_TYPE.MACHINE,
