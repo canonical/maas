@@ -8,36 +8,14 @@ from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 from .sqlalchemy_core import get_machines
 
-# Copied from maasserver.websocket.handlers.node
-NODE_TYPE_TO_LINK_TYPE = {
-    NODE_TYPE.DEVICE: "device",
-    NODE_TYPE.MACHINE: "machine",
-    NODE_TYPE.RACK_CONTROLLER: "controller",
-    NODE_TYPE.REGION_CONTROLLER: "controller",
-    NODE_TYPE.REGION_AND_RACK_CONTROLLER: "controller",
-}
-
-PLAIN_LIST_ATTRIBUTES = [
-    "architecture",
-    "cpu_count",
-    "description",
-    "distro_series",
-    "error_description",
-    "hostname",
-    "id",
-    "locked",
-    "osystem",
-    "power_state",
-    "system_id",
-]
-
 
 def list_machines_one_query(admin, limit=None):
-    rows = get_rows(limit=limit)
+    query, params = get_query(limit=limit)
+    rows = get_rows(query, params)
     return get_machines(rows, admin)
 
 
-def get_rows(limit=None):
+def get_query(limit=None):
     query = """
     WITH
       storage AS (
@@ -774,6 +752,9 @@ def get_rows(limit=None):
         "script_status_skipped": SCRIPT_STATUS.SKIPPED,
         "script_status_timedout": SCRIPT_STATUS.TIMEDOUT,
     }
+    return query, params
+
+def get_rows(query, params):
     # use the underlying psycopg2 connection
     with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute(query, params)
