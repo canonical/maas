@@ -25,6 +25,8 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
+set -o pipefail
+
 declare -A ARCH_MAP=(
     [aarch64]=arm64
     [i686]=i386
