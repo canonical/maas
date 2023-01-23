@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+from argparse import ArgumentParser, FileType
+import json
+import time
+
+import orjson
+from prettytable import PrettyTable
+import rapidjson
+import ujson
+
+
+def time_it(method, data, repeat):
+    times = []
+    for _ in range(repeat):
+        start = time.perf_counter()
+        result = method(data)
+        end = time.perf_counter()
+        times.append(end - start)
+    return sum(times) / repeat, result
+
+
+def benchmarks(content, payload, repeat):
+    def benchmark(name, load_method, dump_method):
+        print(f"timing {name}:")
+        print(" - load")
+        load_time, load_result = time_it(load_method, content, repeat)
+        assert load_result == payload
+        print(" - dump")
+        dump_time, dump_result = time_it(dump_method, payload, repeat)
+        assert json.loads(dump_result) == payload
+        return name, load_time * 100, dump_time * 1000
+
+    return [
+        benchmark("json", json.loads, json.dumps),
+        benchmark("rapidjson", rapidjson.loads, rapidjson.dumps),
+        benchmark(
+            "orjson", orjson.loads, lambda s: orjson.dumps(s).decode("utf-8")
+        ),
+        benchmark("ujson", ujson.loads, ujson.dumps),
+    ]
+
+
+def format_results(rows):
+    align = {"library": "l", "load time (ms)": "r", "dump time (ms)": "r"}
+    table = PrettyTable(list(align))
+    for key, value in align.items():
+        table.align[key] = value
+    table.float_format = "0.3"
+    for row in rows:
+        table.add_row(row)
+    return table
+
+
+def parse_args():
+    parser = ArgumentParser(description="benchmark JSON libraries")
+    parser.add_argument("file", type=FileType(), help="JSON file to load/dump")
+    parser.add_argument(
+        "--repeat", type=int, default=10, help="benchmark iterations"
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    content = args.file.read()
+    payload = json.loads(content)
+    print(f"benchmarking with {args.repeat} iterations")
+    results = benchmarks(content, payload, args.repeat)
+    print("\n" + str(format_results(results)) + "\n")
