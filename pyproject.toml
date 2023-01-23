@@ -40,6 +40,7 @@ testpaths = [
   "src/apiclient",
   "src/maascli",
   "src/maastesting",
+  "src/maasperf",
   # [[[cog
   # import cog
   # from pathlib import Path

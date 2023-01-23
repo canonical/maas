@@ -29,11 +29,7 @@ echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
 bin/pytest \
-    -q \
-    --disable-warnings \
-    --show-capture=no \
-    --no-header \
-    --no-summary \
+    -v \
     --junit-xml=junit-perf.xml \
     --maas-recreate-initial-db \
     --maas-initial-db "${DB_DUMP}" \
