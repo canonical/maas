@@ -4,7 +4,7 @@ import django.contrib.postgres.fields
 from django.db import migrations, models
 import django.db.models.deletion
 
-import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 import metadataserver.fields
 
@@ -121,7 +121,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "result",
-                    maasserver.fields.JSONObjectField(default="", blank=True),
+                    maasserver.migrations.fields.JSONObjectField(
+                        default="", blank=True
+                    ),
                 ),
                 (
                     "script",

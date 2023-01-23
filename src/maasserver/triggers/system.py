@@ -1488,7 +1488,7 @@ DNS_CONFIG_INSERT = dedent(
       THEN
         PERFORM sys_dns_publish_update(
           'configuration ' || NEW.name || ' set to ' ||
-          COALESCE(NEW.value, 'NULL'));
+          COALESCE(NEW.value::text, 'NULL'));
       END IF;
       RETURN NEW;
     END;

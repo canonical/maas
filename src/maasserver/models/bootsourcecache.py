@@ -4,9 +4,15 @@
 """Model for a cache of images available in a boot source."""
 
 
-from django.db.models import CASCADE, CharField, DateField, ForeignKey, Manager
+from django.db.models import (
+    CASCADE,
+    CharField,
+    DateField,
+    ForeignKey,
+    JSONField,
+    Manager,
+)
 
-from maasserver.fields import JSONObjectField
 from maasserver.models.bootsource import BootSource
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -65,7 +71,7 @@ class BootSourceCache(CleanSave, TimestampedModel):
 
     support_eol = DateField(null=True, blank=True)
 
-    extra = JSONObjectField(blank=True, default="", editable=False)
+    extra = JSONField(blank=True, default=dict)
 
     def __str__(self):
         return (

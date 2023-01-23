@@ -4,6 +4,7 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.bootresource
 import maasserver.models.cleansave
 import maasserver.models.fabric
@@ -124,7 +125,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "extra",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         default="", editable=False, blank=True
                     ),
                 ),
@@ -167,7 +168,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "extra",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         default="", editable=False, blank=True
                     ),
                 ),
@@ -414,7 +415,10 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("name", models.CharField(unique=True, max_length=255)),
-                ("value", maasserver.fields.JSONObjectField(null=True)),
+                (
+                    "value",
+                    maasserver.migrations.fields.JSONObjectField(null=True),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -803,15 +807,21 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "ipv4_params",
-                    maasserver.fields.JSONObjectField(default="", blank=True),
+                    maasserver.migrations.fields.JSONObjectField(
+                        default="", blank=True
+                    ),
                 ),
                 (
                     "ipv6_params",
-                    maasserver.fields.JSONObjectField(default="", blank=True),
+                    maasserver.migrations.fields.JSONObjectField(
+                        default="", blank=True
+                    ),
                 ),
                 (
                     "params",
-                    maasserver.fields.JSONObjectField(default="", blank=True),
+                    maasserver.migrations.fields.JSONObjectField(
+                        default="", blank=True
+                    ),
                 ),
                 (
                     "tags",
@@ -1050,7 +1060,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "power_parameters",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         default="", max_length=32768, blank=True
                     ),
                 ),

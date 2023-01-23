@@ -5,7 +5,6 @@ import json
 from random import choice, randint
 import re
 
-from django import forms
 from django.core import serializers
 from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
@@ -13,14 +12,12 @@ from django.db.models import BinaryField
 from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
-from testtools.matchers import AfterPreprocessing, Equals, Is
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
     EditableBinaryField,
     HostListFormField,
     IPListFormField,
-    JSONObjectField,
     LargeObjectField,
     LargeObjectFile,
     MAC,
@@ -45,7 +42,6 @@ from maasserver.testing.testcase import (
 from maasserver.tests.models import (
     CIDRTestModel,
     IPv4CIDRTestModel,
-    JSONFieldModel,
     LargeObjectFieldModel,
     XMLFieldModel,
 )
@@ -281,48 +277,6 @@ class TestMACAddressField(MAASServerTestCase):
 
     def test_rejects_long_octet(self):
         self.assertRaises(ValidationError, validate_mac, "00:11:222:33:44:55")
-
-
-class TestJSONObjectField(MAASLegacyServerTestCase):
-
-    apps = ["maasserver.tests"]
-
-    def test_stores_types(self):
-        values = [
-            None,
-            True,
-            False,
-            3.33,
-            "A simple string",
-            [1, 2.43, "3"],
-            {"not": 5, "another": "test"},
-        ]
-        for value in values:
-            name = factory.make_string()
-            test_instance = JSONFieldModel(name=name, value=value)
-            test_instance.save()
-
-            test_instance = JSONFieldModel.objects.get(name=name)
-            self.assertEqual(value, test_instance.value)
-
-    def test_field_exact_lookup(self):
-        # Value can be query via an 'exact' lookup.
-        obj = [4, 6, {}]
-        JSONFieldModel.objects.create(value=obj)
-        test_instance = JSONFieldModel.objects.get(value=obj)
-        self.assertEqual(obj, test_instance.value)
-
-    def test_field_none_lookup(self):
-        # Value can be queried via a 'isnull' lookup.
-        JSONFieldModel.objects.create(value=None)
-        test_instance = JSONFieldModel.objects.get(value__isnull=True)
-        self.assertIsNone(test_instance.value)
-
-    def test_form_field_is_a_plain_field(self):
-        self.assertThat(
-            JSONObjectField().formfield(),
-            AfterPreprocessing(type, Is(forms.Field)),
-        )
 
 
 class TestXMLField(MAASLegacyServerTestCase):
@@ -665,12 +619,10 @@ class TestHostListFormField(MAASTestCase):
         error = self.assertRaises(
             ValidationError, HostListFormField().clean, input
         )
-        self.assertThat(
+        self.assertEqual(
             error.message,
-            Equals(
-                "Invalid hostname: Label cannot start or end with "
-                "hyphen: 'abc-'."
-            ),
+            "Invalid hostname: Label cannot start or end with "
+            "hyphen: 'abc-'.",
         )
 
 
@@ -817,12 +769,10 @@ class TestSubnetListFormField(MAASTestCase):
         error = self.assertRaises(
             ValidationError, SubnetListFormField().clean, input
         )
-        self.assertThat(
+        self.assertEqual(
             error.message,
-            Equals(
-                "Invalid hostname: Label cannot start or end with "
-                "hyphen: 'abc-'."
-            ),
+            "Invalid hostname: Label cannot start or end with "
+            "hyphen: 'abc-'.",
         )
 
 

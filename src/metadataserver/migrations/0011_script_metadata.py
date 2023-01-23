@@ -1,6 +1,6 @@
 from django.db import migrations, models
 
-import maasserver.fields
+import maasserver.migrations.fields
 
 
 class Migration(migrations.Migration):
@@ -26,7 +26,9 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="script",
             name="packages",
-            field=maasserver.fields.JSONObjectField(blank=True, default={}),
+            field=maasserver.migrations.fields.JSONObjectField(
+                blank=True, default={}
+            ),
         ),
         migrations.AddField(
             model_name="script",
@@ -43,16 +45,22 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="script",
             name="parameters",
-            field=maasserver.fields.JSONObjectField(blank=True, default={}),
+            field=maasserver.migrations.fields.JSONObjectField(
+                blank=True, default={}
+            ),
         ),
         migrations.AddField(
             model_name="script",
             name="results",
-            field=maasserver.fields.JSONObjectField(blank=True, default={}),
+            field=maasserver.migrations.fields.JSONObjectField(
+                blank=True, default={}
+            ),
         ),
         migrations.AddField(
             model_name="scriptresult",
             name="parameters",
-            field=maasserver.fields.JSONObjectField(blank=True, default={}),
+            field=maasserver.migrations.fields.JSONObjectField(
+                blank=True, default={}
+            ),
         ),
     ]

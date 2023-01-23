@@ -1,6 +1,6 @@
 from django.db import migrations, models
 
-import maasserver.fields
+import maasserver.migrations.fields
 
 
 class Migration(migrations.Migration):
@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="bootsourcecache",
             name="extra",
-            field=maasserver.fields.JSONObjectField(
+            field=maasserver.migrations.fields.JSONObjectField(
                 blank=True, default="", editable=False
             ),
         )

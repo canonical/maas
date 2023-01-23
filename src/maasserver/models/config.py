@@ -11,10 +11,9 @@ from datetime import timedelta
 from socket import gethostname
 import uuid
 
-from django.db.models import CharField, Manager, Model
+from django.db.models import CharField, JSONField, Manager, Model
 from django.db.models.signals import post_save
 
-from maasserver.fields import JSONObjectField
 from maasserver.listener import notify_action
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
@@ -325,7 +324,7 @@ class Config(Model):
     """
 
     name = CharField(max_length=255, unique=True)
-    value = JSONObjectField(null=True)
+    value = JSONField(null=True)
 
     objects = ConfigManager()
 

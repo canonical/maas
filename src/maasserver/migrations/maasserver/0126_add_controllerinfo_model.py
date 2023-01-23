@@ -1,6 +1,6 @@
 from django.db import migrations, models
 
-import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -29,13 +29,13 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "interfaces",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         default="", blank=True, max_length=32768
                     ),
                 ),
                 (
                     "interface_update_hints",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         default="", blank=True, max_length=32768
                     ),
                 ),

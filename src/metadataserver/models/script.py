@@ -19,12 +19,12 @@ from django.db.models import (
     CharField,
     DurationField,
     IntegerField,
+    JSONField,
     Manager,
     OneToOneField,
     TextField,
 )
 
-from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
@@ -158,13 +158,13 @@ class Script(CleanSave, TimestampedModel):
     )
 
     # Any results which will be made availble after the script is run.
-    results = JSONObjectField(blank=True, default={})
+    results = JSONField(blank=True, default=dict)
 
     # Parameters which may be passed to the script and their constraints.
-    parameters = JSONObjectField(blank=True, default={})
+    parameters = JSONField(blank=True, default=dict)
 
     # apt, snap, dpkg, to install or archives to extract.
-    packages = JSONObjectField(blank=True, default={})
+    packages = JSONField(blank=True, default=dict)
 
     # 0 is no timeout
     timeout = DurationField(default=datetime.timedelta())

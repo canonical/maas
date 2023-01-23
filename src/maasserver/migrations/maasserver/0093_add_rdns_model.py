@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
 
-import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("hostname", models.CharField(max_length=256, null=True)),
-                ("hostnames", maasserver.fields.JSONObjectField()),
+                ("hostnames", maasserver.migrations.fields.JSONObjectField()),
                 (
                     "observer",
                     models.ForeignKey(

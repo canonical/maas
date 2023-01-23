@@ -1,6 +1,6 @@
 from django.db import migrations, models
 
-import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "nos_parameters",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         max_length=32768, blank=True, default=""
                     ),
                 ),

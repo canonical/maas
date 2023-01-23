@@ -4,13 +4,12 @@
 """Boot Resource File."""
 
 
-from django.db.models import CASCADE, CharField, ForeignKey
+from django.db.models import CASCADE, CharField, ForeignKey, JSONField
 
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
 )
-from maasserver.fields import JSONObjectField
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.largefile import LargeFile
@@ -56,7 +55,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
         editable=False,
     )
 
-    extra = JSONObjectField(blank=True, default="", editable=False)
+    extra = JSONField(blank=True, default=dict)
 
     def __str__(self):
         return f"<BootResourceFile {self.filename}/{self.filetype}>"

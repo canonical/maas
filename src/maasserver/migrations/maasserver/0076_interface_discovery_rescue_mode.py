@@ -2,6 +2,7 @@
 from django.db import migrations, models
 
 import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -99,7 +100,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="interface",
             name="active_discovery_params",
-            field=maasserver.fields.JSONObjectField(
+            field=maasserver.migrations.fields.JSONObjectField(
                 editable=False, default="", blank=True
             ),
         ),

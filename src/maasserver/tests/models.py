@@ -10,7 +10,6 @@ __all__ = [
     "FieldChangeTestModel",
     "GenericTestModel",
     "IPv4CIDRTestModel",
-    "JSONFieldModel",
     "LargeObjectFieldModel",
     "MessagesTestModel",
     "TimestampedModelTestModel",
@@ -28,7 +27,6 @@ from django.db.models import (
 from maasserver.fields import (
     CIDRField,
     IPv4CIDRField,
-    JSONObjectField,
     LargeObjectField,
     XMLField,
 )
@@ -41,11 +39,6 @@ class GenericTestModel(Model):
     """A multi-purpose test model with one field, named `field`."""
 
     field = CharField(max_length=20, blank=True)
-
-
-class JSONFieldModel(Model):
-    name = CharField(max_length=255, unique=False)
-    value = JSONObjectField(null=True)
 
 
 class XMLFieldModel(Model):

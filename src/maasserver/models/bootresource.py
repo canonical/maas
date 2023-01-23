@@ -12,6 +12,7 @@ from django.db.models import (
     CharField,
     Count,
     IntegerField,
+    JSONField,
     Manager,
     Prefetch,
     Sum,
@@ -23,7 +24,6 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
-from maasserver.fields import JSONObjectField
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
@@ -500,7 +500,7 @@ class BootResource(CleanSave, TimestampedModel):
     # BootResource kernel and instructs Curtin to install the meta-package.
     rolling = BooleanField(blank=False, null=False, default=False)
 
-    extra = JSONObjectField(blank=True, default="", editable=False)
+    extra = JSONField(blank=True, default=dict)
 
     def __str__(self):
         return "<BootResource name={}, arch={}, kflavor={}, base={}>".format(

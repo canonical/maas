@@ -23,6 +23,7 @@ from django.db.models import (
     CharField,
     Count,
     ForeignKey,
+    JSONField,
     Manager,
     ManyToManyField,
     PositiveIntegerField,
@@ -48,7 +49,6 @@ from maasserver.exceptions import (
     StaticIPAddressUnavailable,
 )
 from maasserver.fields import (
-    JSONObjectField,
     MACAddressField,
     validate_mac,
     VerboseRegexValidator,
@@ -580,11 +580,11 @@ class Interface(CleanSave, TimestampedModel):
 
     mac_address = MACAddressField(unique=False, null=True, blank=True)
 
-    ipv4_params = JSONObjectField(blank=True, default="")
+    ipv4_params = JSONField(blank=True, default=dict)
 
-    ipv6_params = JSONObjectField(blank=True, default="")
+    ipv6_params = JSONField(blank=True, default=dict)
 
-    params = JSONObjectField(blank=True, default="")
+    params = JSONField(blank=True, default=dict)
 
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
 

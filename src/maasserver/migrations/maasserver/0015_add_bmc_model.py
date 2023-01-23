@@ -1,7 +1,7 @@
 from django.db import migrations, models
 import django.db.models.deletion
 
-import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "power_parameters",
-                    maasserver.fields.JSONObjectField(
+                    maasserver.migrations.fields.JSONObjectField(
                         blank=True, default="", max_length=32768
                     ),
                 ),

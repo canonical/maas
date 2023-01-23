@@ -14,12 +14,12 @@ from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
+    JSONField,
     Manager,
     TextField,
 )
 from markupsafe import Markup
 
-from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -184,7 +184,7 @@ class Notification(CleanSave, TimestampedModel):
     admins = BooleanField(null=False, blank=True, default=False)
 
     message = TextField(null=False, blank=False)
-    context = JSONObjectField(null=False, blank=True, default=dict)
+    context = JSONField(blank=True, default=dict)
     category = CharField(
         null=False,
         blank=True,

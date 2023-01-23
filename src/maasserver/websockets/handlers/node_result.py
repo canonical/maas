@@ -64,8 +64,7 @@ class NodeResultHandler(TimestampedModelHandler):
             self.cache["system_ids"] = {}
 
     def dehydrate_parameters(self, parameters):
-        # Parameters is a JSONObjectField to convert it to a dictionary it must
-        # be accessed. Don't show password parameter values over the websocket.
+        # Don't show password parameter values over the websocket.
         for parameter in parameters.values():
             if parameter.get("type") == "password" and "value" in parameter:
                 parameter["value"] = "REDACTED"

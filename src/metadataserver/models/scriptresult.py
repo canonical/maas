@@ -12,12 +12,12 @@ from django.db.models import (
     DateTimeField,
     ForeignKey,
     IntegerField,
+    JSONField,
     Q,
     SET_NULL,
 )
 import yaml
 
-from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
 from maasserver.models.interface import Interface
@@ -51,7 +51,7 @@ class ScriptResult(CleanSave, TimestampedModel):
 
     # Any parameters set by MAAS or the user which should be passed to the
     # running script.
-    parameters = JSONObjectField(blank=True, default={})
+    parameters = JSONField(blank=True, default=dict)
 
     # If the result is in reference to a particular block device link it.
     physical_blockdevice = ForeignKey(
