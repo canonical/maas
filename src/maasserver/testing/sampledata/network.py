@@ -25,7 +25,7 @@ def make_networks(
     for fabric in fabrics:
         vlans[fabric] = [
             VLAN.objects.create(vid=vid, fabric=fabric)
-            for vid in random.sample(range(10, 4096), count_per_fabric)
+            for vid in random.sample(range(10, 4095), count_per_fabric)
         ]
         for vlan in vlans[fabric]:
             cidr = factory.make_ipv4_network(slash=24, but_not=created_cidrs)
