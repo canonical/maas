@@ -6533,7 +6533,7 @@ CREATE TABLE public.maasserver_bootresource (
     rtype integer NOT NULL,
     name character varying(255) NOT NULL,
     architecture character varying(255) NOT NULL,
-    extra text NOT NULL,
+    extra jsonb NOT NULL,
     kflavor character varying(32),
     bootloader_type character varying(32),
     rolling boolean NOT NULL,
@@ -6571,7 +6571,7 @@ CREATE TABLE public.maasserver_bootresourcefile (
     updated timestamp with time zone NOT NULL,
     filename character varying(255) NOT NULL,
     filetype character varying(20) NOT NULL,
-    extra text NOT NULL,
+    extra jsonb NOT NULL,
     largefile_id integer NOT NULL,
     resource_set_id integer NOT NULL
 );
@@ -6684,7 +6684,7 @@ CREATE TABLE public.maasserver_bootsourcecache (
     support_eol date,
     kflavor character varying(32),
     bootloader_type character varying(32),
-    extra text NOT NULL
+    extra jsonb NOT NULL
 );
 
 
@@ -6783,7 +6783,7 @@ ALTER SEQUENCE public.maasserver_cacheset_id_seq OWNED BY public.maasserver_cach
 CREATE TABLE public.maasserver_config (
     id integer NOT NULL,
     name character varying(255) NOT NULL,
-    value text
+    value jsonb
 );
 
 
@@ -6872,9 +6872,9 @@ CREATE TABLE public.maasserver_interface (
     name character varying(255) NOT NULL,
     type character varying(20) NOT NULL,
     mac_address macaddr,
-    ipv4_params text NOT NULL,
-    ipv6_params text NOT NULL,
-    params text NOT NULL,
+    ipv4_params jsonb NOT NULL,
+    ipv6_params jsonb NOT NULL,
+    params jsonb NOT NULL,
     tags text[],
     enabled boolean NOT NULL,
     vlan_id integer,
@@ -7984,7 +7984,7 @@ CREATE TABLE public.maasserver_notification (
     users boolean NOT NULL,
     admins boolean NOT NULL,
     message text NOT NULL,
-    context text NOT NULL,
+    context jsonb NOT NULL,
     user_id integer,
     category character varying(10) NOT NULL,
     dismissable boolean NOT NULL
@@ -9384,10 +9384,10 @@ CREATE TABLE public.metadataserver_script (
     script_id integer NOT NULL,
     title character varying(255) NOT NULL,
     hardware_type integer NOT NULL,
-    packages text NOT NULL,
+    packages jsonb NOT NULL,
     parallel integer NOT NULL,
-    parameters text NOT NULL,
-    results text NOT NULL,
+    parameters jsonb NOT NULL,
+    results jsonb NOT NULL,
     for_hardware character varying(255)[] NOT NULL,
     may_reboot boolean NOT NULL,
     recommission boolean NOT NULL,
@@ -9434,7 +9434,7 @@ CREATE TABLE public.metadataserver_scriptresult (
     output text NOT NULL,
     ended timestamp with time zone,
     started timestamp with time zone,
-    parameters text NOT NULL,
+    parameters jsonb NOT NULL,
     physical_blockdevice_id integer,
     suppressed boolean NOT NULL,
     interface_id integer
@@ -11230,6 +11230,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 341	maasserver	0289_vault_secret	2022-10-28 03:29:40.716763+00
 342	maasserver	0290_migrate_node_power_parameters	2022-11-19 03:29:31.92822+00
 343	maasserver	0291_rdns_hostnames_as_array	2023-01-19 03:29:20.405694+00
+344	maasserver	0292_use_builtin_json_field	2023-01-24 03:29:54.34659+00
+345	metadataserver	0034_use_builtin_json_field	2023-01-24 03:29:54.467889+00
 \.
 
 
@@ -12046,7 +12048,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 343, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 345, true);
 
 
 --
