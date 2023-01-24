@@ -26,7 +26,7 @@ from maasserver.clusterrpc.boot_images import (
     get_common_available_boot_images,
     is_import_boot_images_running,
 )
-from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
+from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS, NODE_TYPE
 from maasserver.models import (
     BootResource,
     BootSource,
@@ -252,6 +252,11 @@ class BootResourceHandler(Handler):
         resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
             resource
         )
+        resource.machine_count = (
+            self.get_number_of_nodes_of_node_type_deployed_for(
+                resource, NODE_TYPE.MACHINE
+            )
+        )
         resource_set = resource.get_latest_set()
         if resource_set is None:
             resource.size = human_readable_bytes(0)
@@ -378,6 +383,43 @@ class BootResourceHandler(Handler):
                     count += 1
         return count
 
+    def get_number_of_nodes_of_node_type_deployed_for(
+        self, resource, node_type=NODE_TYPE.MACHINE
+    ):
+        """Return number of nodes of node_type='node_type' that are deploying the given
+        os, series, and architecture."""
+        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            osystem = "custom"
+            distro_series = resource.name
+        else:
+            osystem, distro_series = resource.name.split("/")
+
+        # Count the number of nodes with same os/release and architecture.
+        count = sum(
+            1
+            for node in self.nodes.filter(
+                osystem=osystem,
+                distro_series=distro_series,
+                node_type=node_type,
+            )
+            if self.node_has_architecture_for_resource(node, resource)
+        )
+
+        # Any node that is deployed without osystem and distro_series,
+        # will be using the defaults.
+        if (
+            self.default_osystem == osystem
+            and self.default_distro_series == distro_series
+        ):
+            count += sum(
+                1
+                for node in self.nodes.filter(
+                    osystem="", distro_series="", node_type=node_type
+                )
+                if self.node_has_architecture_for_resource(node, resource)
+            )
+        return count
+
     def pick_latest_datetime(
         self, time: datetime, other_time: datetime
     ) -> datetime:
@@ -434,6 +476,17 @@ class BootResourceHandler(Handler):
         """Return the number of nodes used by all resources."""
         return sum(
             self.get_number_of_nodes_deployed_for(resource)
+            for resource in resources
+        )
+
+    def get_number_of_nodes_of_node_type_for_resources(
+        self, resources, node_type=NODE_TYPE.MACHINE
+    ):
+        """Return the number of nodes of node_type='node_type' used by all resources"""
+        return sum(
+            self.get_number_of_nodes_of_node_type_deployed_for(
+                resource, node_type
+            )
             for resource in resources
         )
 
@@ -496,6 +549,9 @@ class BootResourceHandler(Handler):
         last_update = self.get_last_update_for_resources(group)
         unique_size = self.calculate_unique_size_for_resources(group)
         number_of_nodes = self.get_number_of_nodes_for_resources(group)
+        machine_count = self.get_number_of_nodes_of_node_type_for_resources(
+            group, NODE_TYPE.MACHINE
+        )
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
         last_deployed = self.get_last_deployed_for_resources(group)
@@ -509,6 +565,7 @@ class BootResourceHandler(Handler):
         resource.size = human_readable_bytes(unique_size)
         resource.last_update = last_update
         resource.number_of_nodes = number_of_nodes
+        resource.machine_count = machine_count
         resource.last_deployed = last_deployed
         resource.complete = complete
         if not complete:
@@ -615,6 +672,7 @@ class BootResourceHandler(Handler):
                 "icon": resource.icon,
                 "downloading": resource.downloading,
                 "numberOfNodes": resource.number_of_nodes,
+                "machineCount": resource.machine_count,
                 "lastUpdate": resource.last_update.strftime(
                     "%a, %d %b. %Y %H:%M:%S"
                 ),

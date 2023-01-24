@@ -390,6 +390,63 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             start_time,
         )
 
+    def test_shows_latest_deployment_time(self) -> None:
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED
+        )
+        os_name, series = resource.name.split("/")
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            osystem=os_name,
+            distro_series=series,
+            architecture=resource.architecture,
+        )
+        node.end_deployment()
+        start_time = datetime.datetime.now().replace(microsecond=0)
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            osystem=os_name,
+            distro_series=series,
+            architecture=resource.architecture,
+        )
+        node.end_deployment()
+        response = handler.poll({})
+        resource = response["resources"][0]
+        self.assertGreaterEqual(
+            datetime.datetime.strptime(
+                resource["lastDeployed"], "%a, %d %b. %Y %H:%M:%S"
+            ),
+            start_time,
+        )
+
+    def test_shows_number_of_machines_deployed_at_current(self) -> None:
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED
+        )
+        os_name, series = resource.name.split("/")
+        node = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            osystem=os_name,
+            distro_series=series,
+            architecture=resource.architecture,
+        )
+        factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, architecture=resource.architecture
+        )
+        factory.make_RegionController(
+            status=NODE_STATUS.DEPLOYED,
+        )
+        response = handler.poll({})
+        self.assertEqual(1, response["resources"][0]["machineCount"])
+        node.delete()
+
+        response = handler.poll({})
+        self.assertEqual(0, response["resources"][0]["machineCount"])
+
     def test_shows_number_of_nodes_deployed_for_resource(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
