@@ -1,6 +1,5 @@
 import logging
 
-from django.db import connection
 from psycopg2.extras import NamedTupleCursor
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
@@ -9,14 +8,14 @@ from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 from .sqlalchemy_core import get_machines
 
 
-def list_machines_one_query(admin, limit=None):
+def list_machines_one_query(conn, admin, limit=None):
     query, params = get_query(limit=limit)
-    rows = get_rows(query, params)
+    rows = get_rows(conn, query, params)
     return get_machines(rows, admin)
 
 
-def list_machines_materialized_view(view_name, admin, limit=None):
-    rows = get_rows_from_view(view_name, limit=limit)
+def list_machines_materialized_view(conn, view_name, admin, limit=None):
+    rows = get_rows_from_view(conn, view_name, limit=limit)
     return get_machines(rows, admin)
 
 
@@ -760,18 +759,18 @@ def get_query(limit=None):
     return query, params
 
 
-def get_rows(query, params):
+def get_rows(conn, query, params):
     # use the underlying psycopg2 connection
-    with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
+    with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute(query, params)
         return cur.fetchall()
 
 
-def get_rows_from_view(view_name, limit=None):
+def get_rows_from_view(conn, view_name, limit=None):
     query = f"SELECT * from {view_name} ORDER BY id"
     if limit is not None:
         query = f"{query} LIMIT {limit}"
     # use the underlying psycopg2 connection
-    with connection.connection.cursor(cursor_factory=NamedTupleCursor) as cur:
+    with conn.cursor(cursor_factory=NamedTupleCursor) as cur:
         cur.execute(query)
         return cur.fetchall()

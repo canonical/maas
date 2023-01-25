@@ -147,7 +147,15 @@ class QueryCounter(PerfTracer):
         )
         self._count += self._sqlalchemy_counter.count
         self._time += self._sqlalchemy_counter.time
+        self._add_psycopg_counters(connection)
         self._sqlalchemy_counter.remove()
+
+    def _add_psycopg_counters(self, connection):
+        track = getattr(connection, "_psycopg_track", None)
+        if not track:
+            return
+        self._count += track["count"]
+        self._time += track["time"]
 
     def results(self):
         return {"query_count": self._count, "query_time": self._time}
@@ -189,7 +197,7 @@ class SQLAlchemyQueryCounter:
         remove(Engine, "before_cursor_execute", self.before_cursor_execute)
         remove(Engine, "after_cursor_execute", self.after_cursor_execute)
         self.count = 0
-        self.time = 0
+        self.time = 0.0
 
 
 @perf_tracer

@@ -11,6 +11,7 @@ assert that the listing is the same as the original websocket handler.
 """
 
 from operator import itemgetter
+import time
 
 import pytest
 
@@ -101,19 +102,18 @@ def expected_machines(admin, _expected):
 
 
 @pytest.fixture
-def machine_listing_materialized_view(ensuremaasdb):
-    from django.db import connection
+def machine_listing_materialized_view(ensuremaasdb, psycopg_conn):
 
     from maasspike.plain_sql import get_query
 
     query, params = get_query(limit=None)  # always include all machines
 
     view_name = "maasspike_machine_listing"
-    with connection.cursor() as cur:
+    with psycopg_conn.cursor() as cur:
         cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}")
         cur.execute(f"CREATE MATERIALIZED VIEW {view_name} AS {query}", params)
     yield view_name
-    with connection.cursor() as cur:
+    with psycopg_conn.cursor() as cur:
         cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}")
 
 
@@ -144,6 +144,45 @@ def sqlalchemy_session(sqlalchemy_engine):
     with Session(sqlalchemy_engine) as session:
         yield session
         session.rollback()
+
+
+@pytest.fixture
+def psycopg_conn():
+    from django.db import connection
+    from psycopg2 import connect
+    from psycopg2.extensions import connection as pg_connection
+    from psycopg2.extras import NamedTupleCursor
+
+    # track queries for psycopg in the django connection since the psycopg one
+    # isn't modifiable
+    query_track = {"count": 0, "time": 0.0}
+    connection._psycopg_track = query_track
+
+    class QueryLoggingCursor(NamedTupleCursor):
+        """Track query count/time
+
+        This extends the NuamedTupleCursor since it's the one used by tests.
+        """
+
+        def execute(self, *args, **kwargs):
+            query_track["count"] += 1
+            start = time.perf_counter()
+            result = super().execute(*args, **kwargs)
+            query_track["time"] += time.perf_counter() - start
+            return result
+
+    class QueryLoggingConnection(pg_connection):
+        def cursor(self, *args, **kwargs):
+            kwargs["cursor_factory"] = QueryLoggingCursor
+            return super().cursor(*args, **kwargs)
+
+    conn = connect(
+        dsn=connection.connection.dsn,
+        connection_factory=QueryLoggingConnection,
+    )
+    yield conn
+    conn.close()
+    delattr(connection, "_psycopg_track")
 
 
 def test_populate_expected_machines(expected_machines):
@@ -243,18 +282,27 @@ class TestListing:
             limit,
         )
 
-    def test_plain_sql_one_query(self, limit):
+    def test_plain_sql_one_query(self, limit, psycopg_conn):
         self.run_listing_test(
             "plain_sql_one_query",
-            plain_sql.list_machines_one_query,
+            lambda admin, limit: plain_sql.list_machines_one_query(
+                psycopg_conn,
+                admin,
+                limit,
+            ),
             limit,
         )
 
-    def test_materialized_view(self, limit, machine_listing_materialized_view):
+    def test_materialized_view(
+        self, limit, psycopg_conn, machine_listing_materialized_view
+    ):
         self.run_listing_test(
             "materialized_view",
             lambda admin, limit: plain_sql.list_machines_materialized_view(
-                machine_listing_materialized_view, admin, limit
+                psycopg_conn,
+                machine_listing_materialized_view,
+                admin,
+                limit,
             ),
             limit,
         )
