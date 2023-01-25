@@ -616,6 +616,7 @@ PACKAGE_MANAGER_PER_OS = {
     "ubuntu": PackageManager("dpkg-query -s", ["cloud-init", "netplan.io"]),
     "centos": PackageManager("rpm -q", ["cloud-init"]),
     "rhel": PackageManager("rpm -q", ["cloud-init"]),
+    "suse": PackageManager("rpm -q", ["cloud-init"]),
 }
 
 

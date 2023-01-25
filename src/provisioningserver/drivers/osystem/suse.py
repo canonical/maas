@@ -3,16 +3,26 @@
 
 """SUSE Operating System."""
 
+import re
 
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
 )
 
-DISTRO_SERIES_CHOICES = {"opensuse13": "openSUSE 13.1"}
+DISTRO_MATCHER = re.compile(
+    r"^(?P<product>sles|opensuse|tumbleweed)(?P<major>\d+)?(\.(?P<minor>\d+))?(-(?P<title>.+))?$",
+    re.I,
+)
 
-DISTRO_SERIES_DEFAULT = "opensuse13"
-assert DISTRO_SERIES_DEFAULT in DISTRO_SERIES_CHOICES
+SUSE_PRODUCTS = {
+    "sles": "SUSE Linux Enterprise Server",
+    "opensuse": "OpenSUSE",
+    "tumbleweed": "OpenSUSE Tumbleweed",
+}
+
+
+DISTRO_SERIES_DEFAULT = "tumbleweed"
 
 
 class SUSEOS(OperatingSystem):
@@ -27,7 +37,8 @@ class SUSEOS(OperatingSystem):
 
     def is_release_supported(self, release):
         """Return True when the release is supported, False otherwise."""
-        return release in DISTRO_SERIES_CHOICES
+        matched = DISTRO_MATCHER.match(release)
+        return matched is not None
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
@@ -36,4 +47,23 @@ class SUSEOS(OperatingSystem):
 
     def get_release_title(self, release):
         """Return the title for the given release."""
-        return DISTRO_SERIES_CHOICES.get(release)
+        matched = DISTRO_MATCHER.match(release)
+        if matched is None:
+            return f"{self.title} {release}"
+
+        prod = matched.group("product")
+        major = matched.group("major")
+        minor = matched.group("minor")
+        title = matched.group("title")
+
+        ret = SUSE_PRODUCTS[prod]
+        if major is not None:
+            ret = f"{ret} {major}"
+        if minor is not None:
+            if prod == "sles":
+                ret = f"{ret} SP{minor}"
+            else:
+                ret = f"{ret}.{minor}"
+        if title is not None:
+            ret = f"{ret} {title}"
+        return ret

@@ -5,13 +5,11 @@
 
 
 from itertools import product
-import random
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.suse import (
     BOOT_IMAGE_PURPOSE,
-    DISTRO_SERIES_CHOICES,
     DISTRO_SERIES_DEFAULT,
     SUSEOS,
 )
@@ -40,7 +38,16 @@ class TestSUSEOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = SUSEOS()
-        release = random.choice(list(DISTRO_SERIES_CHOICES))
-        self.assertEqual(
-            DISTRO_SERIES_CHOICES[release], osystem.get_release_title(release)
-        )
+        cases = [
+            ("sles", "SUSE Linux Enterprise Server"),
+            ("sles12", "SUSE Linux Enterprise Server 12"),
+            ("sles15.4", "SUSE Linux Enterprise Server 15 SP4"),
+            ("opensuse15", "OpenSUSE 15"),
+            ("opensuse15.4", "OpenSUSE 15.4"),
+            ("tumbleweed", "OpenSUSE Tumbleweed"),
+            ("tumbleweed-20230101", "OpenSUSE Tumbleweed 20230101"),
+        ]
+        for release, title in cases:
+            self.assertEqual(
+                title, osystem.get_release_title(release), release
+            )

@@ -135,6 +135,77 @@ class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
         self.assertStorageConfig(self.STORAGE_CONFIG, config)
 
 
+class TestExt4MetadataCSUM(MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent(
+        """\
+        config:
+          - grub_device: true
+            id: sda
+            model: QEMU HARDDISK
+            name: sda
+            ptable: gpt
+            serial: QM00001
+            type: disk
+            wipe: superblock
+          - device: sda
+            id: sda-part1
+            name: sda-part1
+            number: 1
+            offset: 4194304B
+            size: 5897191424B
+            type: partition
+            uuid: f74ff260-2a5b-4a36-b1b8-37f746b946bf
+            wipe: superblock
+          - fstype: ext4
+            id: sda-part1_format
+            label: null
+            type: format
+            uuid: bf34f38c-02b7-4b4b-bb7c-e73521f9ead7
+            volume: sda-part1
+            extra_options:
+              - -O
+              - ^metadata_csum
+          - device: sda-part1_format
+            id: sda-part1_mount
+            path: /
+            type: mount
+    """
+    )
+
+    def test_renders_expected_output(self):
+        node = factory.make_Node(
+            with_boot_disk=False, osystem="suse", distro_series="sles12.5"
+        )
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=8 * 1024**3,
+            name="sda",
+            model="QEMU HARDDISK",
+            serial="QM00001",
+        )
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=boot_disk
+        )
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=(5.5 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
+            bootable=False,
+        )
+        factory.make_Filesystem(
+            uuid="bf34f38c-02b7-4b4b-bb7c-e73521f9ead7",
+            node_config=node.current_config,
+            fstype=FILESYSTEM_TYPE.EXT4,
+            partition=root_partition,
+            mount_options=None,
+            mount_point="/",
+        )
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
 class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
     STORAGE_CONFIG = dedent(

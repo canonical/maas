@@ -14,6 +14,8 @@ menuentry 'Local' {
             redhat/grubx64.efi \
             rhel/shimx64.efi \
             rhel/grubx64.efi \
+            suse/shim.efi \
+            suse/grubx64.efi \
             red/grubx64.efi \
             Microsoft/Boot/bootmgfw.efi; do
         search --set=root --file /efi/$bootloader

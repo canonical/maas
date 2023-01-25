@@ -450,10 +450,26 @@ class CurtinStorageGenerator:
         for filesystem in self.operations["format"]:
             self._generate_format_operation(filesystem)
 
+    def _ext4_has_metadata_csum(self):
+        """Older distros don't have Metadata Checksum, and enabling it when
+        it's not supported prevents Linux from mounting this partition
+        for writing"""
+        if self.node.osystem == "suse":
+            return not self.node.distro_series.startswith("sles12")
+        return True
+
     def _generate_format_operation(self, filesystem):
         """Generate format operation for `filesystem` and place in
         `storage_config`."""
         device_or_partition = filesystem.get_device()
+        extra = {}
+
+        if (
+            filesystem.fstype == FILESYSTEM_TYPE.EXT4
+            and not self._ext4_has_metadata_csum()
+        ):
+            extra["extra_options"] = ["-O", "^metadata_csum"]
+
         self.storage_config.append(
             {
                 "id": "%s_format" % device_or_partition.get_name(),
@@ -462,6 +478,7 @@ class CurtinStorageGenerator:
                 "uuid": filesystem.uuid,
                 "label": filesystem.label,
                 "volume": device_or_partition.get_name(),
+                **extra,
             }
         )
 
