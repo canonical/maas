@@ -12,11 +12,7 @@ from pathlib import Path
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
 
-from provisioningserver.dns.actions import (
-    bind_freeze_zone,
-    bind_thaw_zone,
-    NSUpdateCommand,
-)
+from provisioningserver.dns.actions import freeze_thaw_zone, NSUpdateCommand
 from provisioningserver.dns.config import (
     compose_zone_file_config_path,
     render_dns_template,
@@ -344,9 +340,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
                 Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
                 needs_freeze_thaw = self.zone_file_exists(zi)
-                if needs_freeze_thaw:
-                    bind_freeze_zone(zone=self.domain)
-                try:
+                with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):
                     self.write_zone_file(
                         zi.target_path,
                         self.make_parameters(),
@@ -365,9 +359,6 @@ class DNSForwardZoneConfig(DomainConfigBase):
                             "generate_directives": {"A": generate_directives},
                         },
                     )
-                finally:
-                    if needs_freeze_thaw:
-                        bind_thaw_zone(zone=self.domain)
                 PROMETHEUS_METRICS.update(
                     "maas_dns_full_zonefile_write_count",
                     "inc",
@@ -650,26 +641,28 @@ class DNSReverseZoneConfig(DomainConfigBase):
             else:
                 Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
-                self.write_zone_file(
-                    zi.target_path,
-                    self.make_parameters(),
-                    {
-                        "mappings": {
-                            "PTR": self.get_PTR_mapping(
-                                self._mapping, zi.subnetwork
-                            )
+                needs_freeze_thaw = self.zone_file_exists(zi)
+                with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):
+                    self.write_zone_file(
+                        zi.target_path,
+                        self.make_parameters(),
+                        {
+                            "mappings": {
+                                "PTR": self.get_PTR_mapping(
+                                    self._mapping, zi.subnetwork
+                                )
+                            },
+                            "other_mapping": [],
+                            "generate_directives": {
+                                "PTR": generate_directives,
+                                "CNAME": self.get_rfc2317_GENERATE_directives(
+                                    zi.subnetwork,
+                                    self._rfc2317_ranges,
+                                    self.domain,
+                                ),
+                            },
                         },
-                        "other_mapping": [],
-                        "generate_directives": {
-                            "PTR": generate_directives,
-                            "CNAME": self.get_rfc2317_GENERATE_directives(
-                                zi.subnetwork,
-                                self._rfc2317_ranges,
-                                self.domain,
-                            ),
-                        },
-                    },
-                )
+                    )
                 PROMETHEUS_METRICS.update(
                     "maas_dns_full_zonefile_write_count",
                     "inc",

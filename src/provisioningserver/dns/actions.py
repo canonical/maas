@@ -4,6 +4,7 @@
 """Low-level actions to manage the DNS service, like reloading zones."""
 
 from collections.abc import Sequence
+from contextlib import contextmanager, nullcontext
 from subprocess import CalledProcessError, TimeoutExpired
 from time import sleep
 
@@ -82,6 +83,18 @@ def bind_thaw_zone(zone=None, timeout=2):
         )
         ExternalProcessError.upgrade(e)
         raise
+
+
+@contextmanager
+def freeze_thaw_zone(required, zone=None, timeout=2):
+    if not required:
+        yield nullcontext()
+    else:
+        bind_freeze_zone(zone=zone, timeout=timeout)
+        try:
+            yield
+        finally:
+            bind_thaw_zone(zone=zone, timeout=timeout)
 
 
 def bind_reload(timeout=2):
