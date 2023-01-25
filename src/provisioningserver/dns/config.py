@@ -62,6 +62,8 @@ class DynamicDNSUpdate:
         else:
             if ip.version == 6:
                 rectype = "AAAA"
+        if kwargs.get("ttl") == 0:  # default ttl
+            kwargs["ttl"] = 30
         return cls(answer=answer, rectype=rectype, **kwargs)
 
     @classmethod

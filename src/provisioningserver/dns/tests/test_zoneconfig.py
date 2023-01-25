@@ -8,6 +8,7 @@ from itertools import chain
 import os.path
 import random
 from tempfile import mktemp
+from unittest.mock import call
 
 from netaddr import IPAddress, IPNetwork, IPRange
 from testtools.matchers import (
@@ -486,6 +487,42 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             "-k",
             get_nsupdate_key_path(),
             stdin=expected_stdin.encode("ascii"),
+        )
+
+    def test_full_reload_calls_freeze_thaw(self):
+        patch_zone_file_config_path(self)
+        execute_rndc_command = self.patch(actions, "execute_rndc_command")
+        domain = factory.make_string()
+        network = factory.make_ipv4_network()
+        ipv4_hostname = factory.make_name("host")
+        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv6_hostname = factory.make_name("host")
+        ipv6_ip = factory.make_ipv6_address()
+        ipv6_network = factory.make_ipv6_network()
+        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
+        ttl = random.randint(10, 300)
+        mapping = {
+            ipv4_hostname: HostnameIPMapping(None, ttl, {ipv4_ip}),
+            ipv6_hostname: HostnameIPMapping(None, ttl, {ipv6_ip}),
+        }
+        dns_zone_config = DNSForwardZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            mapping=mapping,
+            default_ttl=ttl,
+            dynamic_ranges=[dynamic_range],
+        )
+        self.patch(dns_zone_config, "get_GENERATE_directives")
+        self.patch(actions, "run_command")
+        dns_zone_config.write_config()
+        dns_zone_config.force_config_write = True
+        dns_zone_config.write_config()
+        self.assertCountEqual(
+            execute_rndc_command.call_args_list,
+            [
+                call(("freeze", domain), timeout=2),
+                call(("thaw", domain), timeout=2),
+            ],
         )
 
 
@@ -1075,6 +1112,30 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             get_nsupdate_key_path(),
             "-v",
             stdin=expected_stdin.encode("ascii"),
+        )
+
+    def test_full_reload_calls_freeze_thaw(self):
+        patch_zone_file_config_path(self)
+        execute_rndc_command = self.patch(
+            provisioningserver.dns.actions, "execute_rndc_command"
+        )
+        domain = factory.make_string()
+        network = IPNetwork("10.0.0.0/24")
+        zone = DNSReverseZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            network=network,
+        )
+        self.patch(actions, "run_command")
+        zone.write_config()
+        zone.force_config_write = True
+        zone.write_config()
+        self.assertCountEqual(
+            execute_rndc_command.call_args_list,
+            [
+                call(("freeze", "0.0.10.in-addr.arpa"), timeout=2),
+                call(("thaw", "0.0.10.in-addr.arpa"), timeout=2),
+            ],
         )
 
 

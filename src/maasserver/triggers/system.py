@@ -2143,7 +2143,7 @@ def render_dns_dynamic_update_node(op):
           domain text;
           address_ttl int;
         BEGIN
-          IF ((TG_OP = 'INSERT' OR  TG_OP = 'UPDATE') AND TG_LEVEL = 'ROW') THEN
+          IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND TG_LEVEL = 'ROW') THEN
               IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
                   PERFORM pg_notify('sys_dns_updates', 'RELOAD');
               END IF;
