@@ -129,10 +129,11 @@ class QueryCounter(PerfTracer):
         self._sqlalchemy_counter = SQLAlchemyQueryCounter()
 
     def __enter__(self):
-        from django.db import reset_queries
+        from django.db import connection, reset_queries
 
         reset_queries()
         self._sqlalchemy_counter.install()
+        self._reset_psycopg_counters(connection)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -150,12 +151,20 @@ class QueryCounter(PerfTracer):
         self._add_psycopg_counters(connection)
         self._sqlalchemy_counter.remove()
 
+    def _reset_psycopg_counters(self, connection):
+        track = getattr(connection, "_psycopg_track", None)
+        if not track:
+            return
+        track["count"] = 0
+        track["time"] = 0.0
+
     def _add_psycopg_counters(self, connection):
         track = getattr(connection, "_psycopg_track", None)
         if not track:
             return
         self._count += track["count"]
         self._time += track["time"]
+        self._reset_psycopg_counters(connection)
 
     def results(self):
         return {"query_count": self._count, "query_time": self._time}
