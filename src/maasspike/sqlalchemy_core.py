@@ -355,22 +355,6 @@ def get_single_query(limit=None):
         .join(vlans_cte, vlans_cte.c.id == Vlan.c.id)
         .group_by(vlans_cte.c.machine_id)
     ).cte("spaces")
-    boot_interface_cte = (
-        select(
-            Machine.c.id,
-            func.coalesce(Machine.c.boot_interface_id, Interface.c.id).label(
-                "boot_interface_id"
-            ),
-        )
-        .select_from(Machine)
-        .distinct(Machine.c.id)
-        .join(NodeConfig, NodeConfig.c.id == Machine.c.current_config_id)
-        .join(Interface, Interface.c.node_config_id == NodeConfig.c.id)
-        .where(
-            Interface.c.type == INTERFACE_TYPE.PHYSICAL,
-        )
-        .order_by(Machine.c.id, Interface.c.id.asc())
-    ).cte("boot_interface_cte")
     extra_macs_cte = (
         select(
             Machine.c.id,
@@ -378,9 +362,8 @@ def get_single_query(limit=None):
         )
         .join(NodeConfig, NodeConfig.c.id == Machine.c.current_config_id)
         .join(Interface, Interface.c.node_config_id == NodeConfig.c.id)
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .where(
-            Interface.c.id != boot_interface_cte.c.boot_interface_id,
+            Interface.c.id != Machine.c.boot_interface_id,
             Interface.c.type == INTERFACE_TYPE.PHYSICAL,
         )
         .group_by(Machine.c.id)
@@ -485,8 +468,7 @@ def get_single_query(limit=None):
             Machine.c.id,
             postgresql.array_agg(interface_addresses_cte.c.ip).label("ips"),
             postgresql.array_agg(
-                interface_addresses_cte.c.id
-                == boot_interface_cte.c.boot_interface_id
+                interface_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
         )
         .select_from(Machine)
@@ -495,7 +477,6 @@ def get_single_query(limit=None):
             interface_addresses_cte,
             interface_addresses_cte.c.id == interfaces_cte.c.interface_id,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .group_by(Machine.c.id)
     ).cte("ip_addresses")
     discovered_machine_addresses_cte = (
@@ -503,8 +484,7 @@ def get_single_query(limit=None):
             Machine.c.id,
             postgresql.array_agg(discovered_addresses_cte.c.ip).label("ips"),
             postgresql.array_agg(
-                discovered_addresses_cte.c.id
-                == boot_interface_cte.c.boot_interface_id
+                discovered_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
         )
         .select_from(Machine)
@@ -513,7 +493,6 @@ def get_single_query(limit=None):
             discovered_addresses_cte,
             discovered_addresses_cte.c.id == interfaces_cte.c.interface_id,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .group_by(Machine.c.id)
     ).cte("discovered_machine_ip_addresses")
     testing_status_cte = (
@@ -1278,11 +1257,10 @@ def get_single_query(limit=None):
             MachineParent.c.id == Machine.c.parent_id,
             isouter=True,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .join(extra_macs_cte, extra_macs_cte.c.id == Machine.c.id)
         .join(
             BootInterface,
-            BootInterface.c.id == boot_interface_cte.c.boot_interface_id,
+            BootInterface.c.id == Machine.c.boot_interface_id,
             isouter=True,
         )
         .join(BMC, BMC.c.id == Machine.c.bmc_id, isouter=True)
@@ -1508,22 +1486,6 @@ def list_machines_multiple_queries(conn, admin, limit=None):
         .limit(limit)
     )
 
-    boot_interface_cte = (
-        select(
-            Machine.c.id,
-            func.coalesce(Machine.c.boot_interface_id, Interface.c.id).label(
-                "boot_interface_id"
-            ),
-        )
-        .select_from(Machine)
-        .distinct(Machine.c.id)
-        .join(NodeConfig, NodeConfig.c.id == Machine.c.current_config_id)
-        .join(Interface, Interface.c.node_config_id == NodeConfig.c.id)
-        .where(
-            Interface.c.type == INTERFACE_TYPE.PHYSICAL,
-        )
-        .order_by(Machine.c.id, Interface.c.id.asc())
-    ).cte("boot_interface_cte")
     extra_macs_cte = (
         select(
             Machine.c.id,
@@ -1531,9 +1493,8 @@ def list_machines_multiple_queries(conn, admin, limit=None):
         )
         .join(NodeConfig, NodeConfig.c.id == Machine.c.current_config_id)
         .join(Interface, Interface.c.node_config_id == NodeConfig.c.id)
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .where(
-            Interface.c.id != boot_interface_cte.c.boot_interface_id,
+            Interface.c.id != Machine.c.boot_interface_id,
             Interface.c.type == INTERFACE_TYPE.PHYSICAL,
         )
         .group_by(Machine.c.id)
@@ -1548,11 +1509,10 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             Interface.c.mac_address.label("pxe_mac"),
             extra_macs_cte.c.extra_macs,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .join(extra_macs_cte, extra_macs_cte.c.id == Machine.c.id)
         .join(
             Interface,
-            Interface.c.id == boot_interface_cte.c.boot_interface_id,
+            Interface.c.id == Machine.c.boot_interface_id,
             isouter=True,
         )
         .join(Vlan, Vlan.c.id == Interface.c.vlan_id)
@@ -1686,8 +1646,7 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             Machine.c.id,
             postgresql.array_agg(interface_addresses_cte.c.ip).label("ips"),
             postgresql.array_agg(
-                interface_addresses_cte.c.id
-                == boot_interface_cte.c.boot_interface_id
+                interface_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
         )
         .select_from(Machine)
@@ -1696,7 +1655,6 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             interface_addresses_cte,
             interface_addresses_cte.c.id == interfaces_cte.c.interface_id,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .group_by(Machine.c.id)
     ).cte("ip_addresses")
     discovered_machine_addresses_cte = (
@@ -1704,8 +1662,7 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             Machine.c.id,
             postgresql.array_agg(discovered_addresses_cte.c.ip).label("ips"),
             postgresql.array_agg(
-                discovered_addresses_cte.c.id
-                == boot_interface_cte.c.boot_interface_id
+                discovered_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
         )
         .select_from(Machine)
@@ -1714,7 +1671,6 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             discovered_addresses_cte,
             discovered_addresses_cte.c.id == interfaces_cte.c.interface_id,
         )
-        .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .group_by(Machine.c.id)
     ).cte("discovered_machine_ip_addresses")
     ip_stmt = (
@@ -1736,7 +1692,6 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             ).label("is_boot_ips"),
         )
         .select_from(Machine)
-        # .join(boot_interface_cte, boot_interface_cte.c.id == Machine.c.id)
         .join(
             ip_addresses_cte,
             ip_addresses_cte.c.id == Machine.c.id,
