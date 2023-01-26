@@ -968,7 +968,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             ),
         ]
         rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, str(network))
+            DynamicDNSUpdate.as_reverse_record_update(update, network)
             for update in fwd_updates
         ]
         zone = DNSReverseZoneConfig(
@@ -1053,7 +1053,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             ),
         ]
         rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, str(network))
+            DynamicDNSUpdate.as_reverse_record_update(update, network)
             for update in fwd_updates
         ]
         zone = DNSReverseZoneConfig(
@@ -1063,9 +1063,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             dynamic_updates=rev_updates,
         )
         glue_rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(
-                update, str(glue_network)
-            )
+            DynamicDNSUpdate.as_reverse_record_update(update, glue_network)
             for update in fwd_updates
         ]
         glue_zone = DNSReverseZoneConfig(
@@ -1078,8 +1076,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             [
                 "server localhost",
                 "zone 0-26.0.0.10.in-addr.arpa",
-                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
-                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
+                f"update add {IPAddress(ip1).reverse_dns.replace('0.0.10', '0-26.0.0.10')} {zone.default_ttl} PTR {hostname1}",
+                f"update add {IPAddress(ip2).reverse_dns.replace('0.0.10', '0-26.0.0.10')} {zone.default_ttl} PTR {hostname2}",
                 f"update add 0-26.0.0.10.in-addr.arpa {zone.default_ttl} SOA 0-26.0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
                 "send\n",
             ]

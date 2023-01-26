@@ -550,7 +550,7 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[1]._dynamic_updates,
             [
                 DynamicDNSUpdate.as_reverse_record_update(
-                    updates[0], str(IPNetwork("10/29"))
+                    updates[0], IPNetwork("10/29")
                 )
             ],
         )
@@ -558,7 +558,7 @@ class TestZoneGenerator(MAASServerTestCase):
             zones[2]._dynamic_updates,
             [
                 DynamicDNSUpdate.as_reverse_record_update(
-                    updates[0], str(IPNetwork("10/24"))
+                    updates[0], IPNetwork("10/24")
                 )
             ],
         )
