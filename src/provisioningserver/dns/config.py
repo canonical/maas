@@ -71,11 +71,24 @@ class DynamicDNSUpdate:
         if not fwd_update.answer_is_ip:
             return None
         ip = IPAddress(fwd_update.answer)
+        name = ip.reverse_dns
+        if (
+            ip.version == 4 and subnet.prefixlen > 24
+        ) or subnet.prefixlen > 64:
+            name = "in-addr.arpa."
+            addr_split = fwd_update.answer.split(".")
+            idx = len(addr_split) - 1
+            for i, octet in enumerate(addr_split):
+                if i == idx:
+                    name = f"{octet}.0-{subnet.prefixlen}.{name}"
+                else:
+                    name = f"{octet}.{name}"
+
         return cls(
             operation=fwd_update.operation,
-            name=ip.reverse_dns,
+            name=name,
             zone=fwd_update.zone,
-            subnet=subnet,
+            subnet=str(subnet.cidr),
             ttl=fwd_update.ttl,
             answer=fwd_update.name,
             rectype="PTR",

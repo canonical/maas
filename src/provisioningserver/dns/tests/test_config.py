@@ -730,7 +730,33 @@ class TestDynamicDNSUpdate(MAASTestCase):
             answer=fwd_update.name,
         )
         rev_update = DynamicDNSUpdate.as_reverse_record_update(
-            fwd_update, str(subnet)
+            fwd_update, subnet
+        )
+        self.assertEqual(expected_rev_update.name, rev_update.name)
+        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
+        self.assertEqual(expected_rev_update.answer, rev_update.answer)
+
+    def test_as_reverse_record_update_for_glue_zone(self):
+        domain = factory.make_name()
+        subnet = IPNetwork("10.1.1.0/25")
+        fwd_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=str("10.1.1.5"),
+        )
+        expected_rev_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name="5.0-25.1.1.10.in-addr.arpa.",
+            rectype="PTR",
+            ttl=fwd_update.ttl,
+            subnet=str(subnet),
+            answer=fwd_update.name,
+        )
+        rev_update = DynamicDNSUpdate.as_reverse_record_update(
+            fwd_update, subnet
         )
         self.assertEqual(expected_rev_update.name, rev_update.name)
         self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
