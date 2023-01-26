@@ -175,14 +175,12 @@ def update_interface_details(interface, details):
         interface.save(update_fields=["updated", *update_fields])
 
 
-BOOTIF_RE = re.compile(r"BOOTIF=\d\d-([0-9a-f]{2}(?:-[0-9a-f]{2}){5})")
+BOOTIF_RE = re.compile(r"BOOTIF=\d\d-([0-9a-f]{2}([:-][0-9a-f]{2}){5})")
 
 
 def parse_bootif_cmdline(cmdline):
     match = BOOTIF_RE.search(cmdline)
-    if match:
-        return match.group(1).replace("-", ":").lower()
-    return None
+    return match[1].replace("-", ":").lower() if match else None
 
 
 def update_boot_interface(node, output, exit_status):

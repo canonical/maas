@@ -197,6 +197,7 @@ class FakeCommissioningData:
         self._usb_devices = []
         self.networks = {}
         self._network_cards = []
+        self._boot_interface_mac = None
         if disks is None:
             disks = [LXDDisk("sda")]
         self._disks = list(disks)
@@ -339,6 +340,8 @@ class FakeCommissioningData:
                 network.name, len(card.ports), address=network.hwaddr
             )
         card.ports.append(port)
+        if self._boot_interface_mac is None:
+            self._boot_interface_mac = network.hwaddr
         return network
 
     def create_physical_network_without_nic(
@@ -524,6 +527,13 @@ class FakeCommissioningData:
         if self.storage_extra:
             data["storage-extra"] = deepcopy(self.storage_extra)
         return data
+
+    def render_kernel_cmdline(self):
+        """Return the kernel command line, including the BOOTIF."""
+        cmdline = "console=tty1 console=ttyS0"
+        if self._boot_interface_mac:
+            cmdline += f"{cmdline} BOOTIF=01-{self._boot_interface_mac}"
+        return cmdline
 
     def _generate_interfaces(self):
         # XXX: It would be good if this method could basically call

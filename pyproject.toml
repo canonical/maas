@@ -51,6 +51,7 @@ testpaths = [
   "src/maasserver/management/commands/pytest_tests",
   "src/maasserver/models/pytest_tests",
   "src/maasserver/pytest_tests",
+  "src/metadataserver/builtin_scripts/pytest_tests",
   "src/provisioningserver/utils/pytest_tests",
   # [[[end]]]
 ]

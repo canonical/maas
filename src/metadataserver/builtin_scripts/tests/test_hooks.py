@@ -59,7 +59,6 @@ from metadataserver.builtin_scripts.hooks import (
     filter_modaliases,
     get_dmi_data,
     NODE_INFO_SCRIPTS,
-    parse_bootif_cmdline,
     parse_interfaces,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
@@ -4767,28 +4766,6 @@ class TestUpdateBootInterface(MAASServerTestCase):
         self.assertIsNone(self.node.boot_interface)
 
         self.assertIn("kernel-cmdline failed with status: 1", logger.output)
-
-
-class TestParseBootifCmdline(MAASTestCase):
-    def test_normal(self):
-        mac_address = "01:02:03:04:05:06"
-        self.assertEqual(
-            mac_address,
-            parse_bootif_cmdline(
-                KERNEL_CMDLINE_OUTPUT.format(
-                    mac_address=mac_address.replace(":", "-")
-                )
-            ),
-        )
-
-    def test_garbage(self):
-        self.assertIsNone(parse_bootif_cmdline("garbage"))
-
-    def test_garbage_bootif(self):
-        self.assertIsNone(parse_bootif_cmdline("BOOTIF=garbage"))
-
-    def test_bootif_too_few(self):
-        self.assertIsNone(parse_bootif_cmdline("BOOTIF=01-02-03-04-05-06"))
 
 
 class TestHardwareSyncNotify(MAASServerTestCase):

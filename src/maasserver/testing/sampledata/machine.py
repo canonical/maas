@@ -8,7 +8,10 @@ from django.contrib.auth.models import User
 from maasserver.enum import NODE_STATUS
 from maasserver.models import BMC, Machine, Pod, Tag
 from maasserver.testing.commissioning import FakeCommissioningData
-from metadataserver.builtin_scripts.hooks import process_lxd_results
+from metadataserver.builtin_scripts.hooks import (
+    process_lxd_results,
+    update_boot_interface,
+)
 
 from . import LOGGER
 from .common import range_one
@@ -87,6 +90,9 @@ def make_machines(
         machine.tags.add(*random.choices(tags, k=10))
         lxd_info = json.dumps(machine_info.render()).encode()
         process_lxd_results(machine, lxd_info, 0)
+        update_boot_interface(
+            machine, machine_info.render_kernel_cmdline().encode(), 0
+        )
         make_scripts(machine, lxd_info)
         machines.append(machine)
         if n % 10 == 0:
