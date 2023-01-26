@@ -59,16 +59,6 @@ def get_query(limit=None):
           JOIN vlans ON vlans.id = maasserver_vlan.id
         GROUP BY vlans.machine_id
       ),
-      boot_interface_cte AS (
-        SELECT DISTINCT ON (maasserver_node.id)
-          maasserver_node.id AS id,
-          coalesce(maasserver_node.boot_interface_id, maasserver_interface.id) AS boot_interface_id
-        FROM maasserver_node
-          JOIN maasserver_nodeconfig ON maasserver_nodeconfig.id = maasserver_node.current_config_id
-          JOIN maasserver_interface ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
-        WHERE maasserver_interface.type = %(interface_physical)s
-        ORDER BY maasserver_node.id, maasserver_interface.id ASC
-      ),
       extra_macs AS (
         SELECT
           maasserver_node.id AS id,
@@ -76,8 +66,7 @@ def get_query(limit=None):
         FROM maasserver_node
           JOIN maasserver_nodeconfig ON maasserver_nodeconfig.id = maasserver_node.current_config_id
           JOIN maasserver_interface ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
-          JOIN boot_interface_cte ON boot_interface_cte.id = maasserver_node.id
-        WHERE maasserver_interface.id != boot_interface_cte.boot_interface_id
+        WHERE maasserver_interface.id != maasserver_node.boot_interface_id
           AND maasserver_interface.type = %(interface_physical)s
         GROUP BY maasserver_node.id
       ),
@@ -118,11 +107,10 @@ def get_query(limit=None):
         SELECT
           maasserver_node.id AS id,
           array_agg(interface_addresses.ip) AS ips,
-          array_agg(interface_addresses.id = boot_interface_cte.boot_interface_id) AS is_boot_ips
+          array_agg(interface_addresses.id = maasserver_node.boot_interface_id) AS is_boot_ips
         FROM maasserver_node
           JOIN interfaces ON interfaces.machine_id = maasserver_node.id
           JOIN interface_addresses ON interface_addresses.id = interfaces.interface_id
-          JOIN boot_interface_cte ON boot_interface_cte.id = maasserver_node.id
         GROUP BY maasserver_node.id),
       discovered_addresses AS (
         SELECT
@@ -138,11 +126,10 @@ def get_query(limit=None):
         SELECT
           maasserver_node.id AS id,
           array_agg(discovered_addresses.ip) AS ips,
-          array_agg(discovered_addresses.id = boot_interface_cte.boot_interface_id) AS is_boot_ips
+          array_agg(discovered_addresses.id = maasserver_node.boot_interface_id) AS is_boot_ips
         FROM maasserver_node
           JOIN interfaces ON interfaces.machine_id = maasserver_node.id
           JOIN discovered_addresses ON discovered_addresses.id = interfaces.interface_id
-          JOIN boot_interface_cte ON boot_interface_cte.id = maasserver_node.id
         GROUP BY maasserver_node.id
       ),
       testing_status AS (
@@ -715,9 +702,8 @@ def get_query(limit=None):
       LEFT OUTER JOIN fabrics ON fabrics.machine_id = maasserver_node.id
       LEFT OUTER JOIN spaces ON spaces.machine_id = maasserver_node.id
       LEFT OUTER JOIN maasserver_node AS parent ON parent.id = maasserver_node.parent_id
-      JOIN boot_interface_cte ON boot_interface_cte.id = maasserver_node.id
       JOIN extra_macs ON extra_macs.id = maasserver_node.id
-      LEFT OUTER JOIN maasserver_interface AS boot_interface ON boot_interface.id = boot_interface_cte.boot_interface_id
+      LEFT OUTER JOIN maasserver_interface AS boot_interface ON boot_interface.id = maasserver_node.boot_interface_id
       LEFT OUTER JOIN maasserver_bmc ON maasserver_bmc.id = maasserver_node.bmc_id
       JOIN maasserver_vlan AS boot_vlan ON boot_vlan.id = boot_interface.vlan_id
       JOIN maasserver_fabric AS boot_fabric ON boot_fabric.id = boot_vlan.fabric_id
