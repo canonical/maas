@@ -19,6 +19,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import connection, IntegrityError, transaction
 from django.db.models import (
+    BooleanField,
     CASCADE,
     DateTimeField,
     F,
@@ -27,6 +28,7 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
+    Model,
     PROTECT,
     Q,
     UniqueConstraint,
@@ -1179,3 +1181,27 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             .order_by("-id")
             .first()
         )
+
+
+class InterfaceIP(Model):
+    class Meta:
+        db_table = "spike_interface_ip"
+
+    ip = ForeignKey(
+        "StaticIPAddress",
+        null=False,
+        on_delete=CASCADE,
+    )
+
+    # Whether the IP comes from configuration of a deployed node.
+    configured = BooleanField(
+        editable=False,
+        null=False,
+        blank=False,
+    )
+
+    interface = ForeignKey(
+        "Interface",
+        null=False,
+        on_delete=CASCADE,
+    )

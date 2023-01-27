@@ -1,4 +1,4 @@
-from django.db import transaction
+from django.db import connection, transaction
 
 from . import LOGGER
 from .common import make_name
@@ -100,3 +100,9 @@ def generate(
 
     LOGGER.info("creating machine events")
     make_events(EVENT_PER_MACHINE, event_types, machines)
+
+    LOGGER.info("migrating to spike IP model")
+    with connection.cursor() as cursor:
+        from maasserver.migrations.spike_interface_ip import MIGRATE_IPS_SQL
+
+        cursor.execute(MIGRATE_IPS_SQL)
