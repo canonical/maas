@@ -1,6 +1,6 @@
 [submodule "src/maasui/src"]
 	path = src/maasui/src
-	url = https://github.com/canonical-web-and-design/maas-ui
+	url = https://github.com/canonical/maas-ui
 	branch = 3.3
 [submodule "src/maas-offline-docs/src"]
 	path = src/maas-offline-docs/src
