@@ -17,7 +17,6 @@ from sqlalchemy.sql.expression import func
 
 from maasserver.enum import (
     INTERFACE_TYPE,
-    IPADDRESS_TYPE,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
     SIMPLIFIED_NODE_STATUS,
@@ -205,6 +204,14 @@ InterfaceIPAddresses = Table(
     Column("staticipaddress_id", ForeignKey("maasserver_staticipaddress.id")),
 )
 
+SpikeInterfaceIP = Table(
+    "spike_interface_ip",
+    metadata_obj,
+    Column("interface_id", ForeignKey("maasserver_interface.id")),
+    Column("ip_id", ForeignKey("maasserver_staticipaddress.id")),
+    Column("configured", Boolean),
+)
+
 
 BlockDevice = Table(
     "maasserver_blockdevice",
@@ -385,82 +392,21 @@ def get_single_query(limit=None):
         )
         .limit(1)
     ).scalar_subquery()
-    discovered_addresses_cte = (
-        select(
-            Interface.c.id,
-            StaticIPAddress.c.ip,
-        )
-        .select_from(Interface)
-        .join(
-            InterfaceIPAddresses,
-            Interface.c.id == InterfaceIPAddresses.c.interface_id,
-        )
-        .join(
-            StaticIPAddress,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .where(
-            StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
-            StaticIPAddress.c.ip.is_not(None),
-        )
-    ).cte("discovered_addresses")
 
-    DiscoveredAddress = StaticIPAddress.alias("discovered_ip")
-    DiscoveredInterfaceIPAddresses = InterfaceIPAddresses.alias(
-        "discovered_interface_ip"
-    )
-    dhcp_address_cte = (
-        select(
-            StaticIPAddress.c.id,
-            DiscoveredAddress.c.ip,
-        )
-        .select_from(StaticIPAddress)
-        .distinct(StaticIPAddress.c.id)
-        .join(
-            InterfaceIPAddresses,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .join(
-            DiscoveredInterfaceIPAddresses,
-            DiscoveredInterfaceIPAddresses.c.interface_id
-            == InterfaceIPAddresses.c.interface_id,
-        )
-        .join(
-            DiscoveredAddress,
-            DiscoveredAddress.c.id
-            == InterfaceIPAddresses.c.staticipaddress_id,
-        )
-        .where(
-            StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DHCP,
-            DiscoveredAddress.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
-            DiscoveredAddress.c.ip.is_not(None),
-        )
-        .order_by(StaticIPAddress.c.id, DiscoveredAddress.c.id.desc())
-    ).cte("dhcp_address")
     interface_addresses_cte = (
         select(
             Interface.c.id,
-            case(
-                (
-                    StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DHCP,
-                    dhcp_address_cte.c.ip,
-                ),
-                else_=StaticIPAddress.c.ip,
-            ).label("ip"),
+            StaticIPAddress.c.ip,
+            SpikeInterfaceIP.c.configured,
         )
         .select_from(Interface)
         .join(
-            InterfaceIPAddresses,
-            Interface.c.id == InterfaceIPAddresses.c.interface_id,
+            SpikeInterfaceIP,
+            Interface.c.id == SpikeInterfaceIP.c.interface_id,
         )
         .join(
             StaticIPAddress,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .join(
-            dhcp_address_cte,
-            dhcp_address_cte.c.id == StaticIPAddress.c.id,
-            isouter=True,
+            SpikeInterfaceIP.c.ip_id == StaticIPAddress.c.id,
         )
     ).cte("interface_addresses")
     ip_addresses_cte = (
@@ -470,6 +416,9 @@ def get_single_query(limit=None):
             postgresql.array_agg(
                 interface_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
+            postgresql.array_agg(interface_addresses_cte.c.configured).label(
+                "ips_configured"
+            ),
         )
         .select_from(Machine)
         .join(interfaces_cte, interfaces_cte.c.machine_id == Machine.c.id)
@@ -479,22 +428,6 @@ def get_single_query(limit=None):
         )
         .group_by(Machine.c.id)
     ).cte("ip_addresses")
-    discovered_machine_addresses_cte = (
-        select(
-            Machine.c.id,
-            postgresql.array_agg(discovered_addresses_cte.c.ip).label("ips"),
-            postgresql.array_agg(
-                discovered_addresses_cte.c.id == Machine.c.boot_interface_id
-            ).label("is_boot_ips"),
-        )
-        .select_from(Machine)
-        .join(interfaces_cte, interfaces_cte.c.machine_id == Machine.c.id)
-        .join(
-            discovered_addresses_cte,
-            discovered_addresses_cte.c.id == interfaces_cte.c.interface_id,
-        )
-        .group_by(Machine.c.id)
-    ).cte("discovered_machine_ip_addresses")
     testing_status_cte = (
         select(
             Machine.c.id,
@@ -1072,20 +1005,9 @@ def get_single_query(limit=None):
             BootVlan.c.name.label("boot_vlan_name"),
             BootVlan.c.fabric_id.label("boot_fabric_id"),
             BootFabric.c.name.label("boot_fabric_name"),
-            case(
-                (
-                    ip_addresses_cte.c.ips.is_(None),
-                    discovered_machine_addresses_cte.c.ips,
-                ),
-                else_=ip_addresses_cte.c.ips,
-            ).label("ips"),
-            case(
-                (
-                    ip_addresses_cte.c.ips.is_(None),
-                    discovered_machine_addresses_cte.c.is_boot_ips,
-                ),
-                else_=ip_addresses_cte.c.is_boot_ips,
-            ).label("is_boot_ips"),
+            ip_addresses_cte.c.ips,
+            ip_addresses_cte.c.is_boot_ips,
+            ip_addresses_cte.c.ips_configured,
             testing_status_cte.c.testing_status_pending,
             testing_status_cte.c.testing_status_running,
             testing_status_cte.c.testing_status_passed,
@@ -1272,11 +1194,6 @@ def get_single_query(limit=None):
             isouter=True,
         )
         .join(
-            discovered_machine_addresses_cte,
-            discovered_machine_addresses_cte.c.id == Machine.c.id,
-            isouter=True,
-        )
-        .join(
             testing_status_cte,
             testing_status_cte.c.id == Machine.c.id,
             isouter=True,
@@ -1298,6 +1215,21 @@ def get_machines(rows, admin):
     machines = []
     for row in rows:
         machine = {key: getattr(row, key) for key in PLAIN_LIST_ATTRIBUTES}
+        ip_addresses = [
+            {"ip": ip, "is_boot": is_boot}
+            for ip, is_boot, configured in zip(
+                row.ips, row.is_boot_ips, row.ips_configured
+            )
+            if ip and configured
+        ]
+        if not ip_addresses:
+            ip_addresses = [
+                {"ip": ip, "is_boot": is_boot}
+                for ip, is_boot, configured in zip(
+                    row.ips, row.is_boot_ips, row.ips_configured
+                )
+                if ip and not configured
+            ]
         machine.update(
             {
                 "memory": row.memory,
@@ -1326,11 +1258,7 @@ def get_machines(rows, admin):
                 "pxe_mac": row.pxe_mac,
                 "power_type": row.power_type,
                 "status_message": row.status_message,
-                "ip_addresses": [
-                    {"ip": ip, "is_boot": is_boot}
-                    for ip, is_boot in zip(row.ips, row.is_boot_ips)
-                    if ip
-                ],
+                "ip_addresses": ip_addresses,
                 "vlan": {
                     "id": row.boot_vlan_id,
                     "name": str(row.boot_vlan_name),
@@ -1563,82 +1491,21 @@ def list_machines_multiple_queries(conn, admin, limit=None):
         .join(NodeConfig, NodeConfig.c.id == Interface.c.node_config_id)
         .join(Machine, Machine.c.current_config_id == NodeConfig.c.id)
     ).cte("interfaces")
-    discovered_addresses_cte = (
-        select(
-            Interface.c.id,
-            StaticIPAddress.c.ip,
-        )
-        .select_from(Interface)
-        .join(
-            InterfaceIPAddresses,
-            Interface.c.id == InterfaceIPAddresses.c.interface_id,
-        )
-        .join(
-            StaticIPAddress,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .where(
-            StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
-            StaticIPAddress.c.ip.is_not(None),
-        )
-    ).cte("discovered_addresses")
 
-    DiscoveredAddress = StaticIPAddress.alias("discovered_ip")
-    DiscoveredInterfaceIPAddresses = InterfaceIPAddresses.alias(
-        "discovered_interface_ip"
-    )
-    dhcp_address_cte = (
-        select(
-            StaticIPAddress.c.id,
-            DiscoveredAddress.c.ip,
-        )
-        .select_from(StaticIPAddress)
-        .distinct(StaticIPAddress.c.id)
-        .join(
-            InterfaceIPAddresses,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .join(
-            DiscoveredInterfaceIPAddresses,
-            DiscoveredInterfaceIPAddresses.c.interface_id
-            == InterfaceIPAddresses.c.interface_id,
-        )
-        .join(
-            DiscoveredAddress,
-            DiscoveredAddress.c.id
-            == InterfaceIPAddresses.c.staticipaddress_id,
-        )
-        .where(
-            StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DHCP,
-            DiscoveredAddress.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
-            DiscoveredAddress.c.ip.is_not(None),
-        )
-        .order_by(StaticIPAddress.c.id, DiscoveredAddress.c.id.desc())
-    ).cte("dhcp_address")
     interface_addresses_cte = (
         select(
             Interface.c.id,
-            case(
-                (
-                    StaticIPAddress.c.alloc_type == IPADDRESS_TYPE.DHCP,
-                    dhcp_address_cte.c.ip,
-                ),
-                else_=StaticIPAddress.c.ip,
-            ).label("ip"),
+            StaticIPAddress.c.ip,
+            SpikeInterfaceIP.c.configured,
         )
         .select_from(Interface)
         .join(
-            InterfaceIPAddresses,
-            Interface.c.id == InterfaceIPAddresses.c.interface_id,
+            SpikeInterfaceIP,
+            Interface.c.id == SpikeInterfaceIP.c.interface_id,
         )
         .join(
             StaticIPAddress,
-            InterfaceIPAddresses.c.staticipaddress_id == StaticIPAddress.c.id,
-        )
-        .join(
-            dhcp_address_cte,
-            dhcp_address_cte.c.id == StaticIPAddress.c.id,
-            isouter=True,
+            SpikeInterfaceIP.c.ip_id == StaticIPAddress.c.id,
         )
     ).cte("interface_addresses")
     ip_addresses_cte = (
@@ -1648,6 +1515,9 @@ def list_machines_multiple_queries(conn, admin, limit=None):
             postgresql.array_agg(
                 interface_addresses_cte.c.id == Machine.c.boot_interface_id
             ).label("is_boot_ips"),
+            postgresql.array_agg(interface_addresses_cte.c.configured).label(
+                "ips_configured"
+            ),
         )
         .select_from(Machine)
         .join(interfaces_cte, interfaces_cte.c.machine_id == Machine.c.id)
@@ -1657,49 +1527,17 @@ def list_machines_multiple_queries(conn, admin, limit=None):
         )
         .group_by(Machine.c.id)
     ).cte("ip_addresses")
-    discovered_machine_addresses_cte = (
-        select(
-            Machine.c.id,
-            postgresql.array_agg(discovered_addresses_cte.c.ip).label("ips"),
-            postgresql.array_agg(
-                discovered_addresses_cte.c.id == Machine.c.boot_interface_id
-            ).label("is_boot_ips"),
-        )
-        .select_from(Machine)
-        .join(interfaces_cte, interfaces_cte.c.machine_id == Machine.c.id)
-        .join(
-            discovered_addresses_cte,
-            discovered_addresses_cte.c.id == interfaces_cte.c.interface_id,
-        )
-        .group_by(Machine.c.id)
-    ).cte("discovered_machine_ip_addresses")
     ip_stmt = (
         select(
             Machine.c.id,
-            case(
-                (
-                    ip_addresses_cte.c.ips.is_(None),
-                    discovered_machine_addresses_cte.c.ips,
-                ),
-                else_=ip_addresses_cte.c.ips,
-            ).label("ips"),
-            case(
-                (
-                    ip_addresses_cte.c.ips.is_(None),
-                    discovered_machine_addresses_cte.c.is_boot_ips,
-                ),
-                else_=ip_addresses_cte.c.is_boot_ips,
-            ).label("is_boot_ips"),
+            ip_addresses_cte.c.ips,
+            ip_addresses_cte.c.is_boot_ips,
+            ip_addresses_cte.c.ips_configured,
         )
         .select_from(Machine)
         .join(
             ip_addresses_cte,
             ip_addresses_cte.c.id == Machine.c.id,
-            isouter=True,
-        )
-        .join(
-            discovered_machine_addresses_cte,
-            discovered_machine_addresses_cte.c.id == Machine.c.id,
             isouter=True,
         )
         .where(
@@ -2427,6 +2265,25 @@ def list_machines_multiple_queries(conn, admin, limit=None):
 
     machines = []
     for row in machine_rows:
+        ip_addresses = [
+            {"ip": ip, "is_boot": is_boot}
+            for ip, is_boot, configured in zip(
+                machine_ips[row.id].ips,
+                machine_ips[row.id].is_boot_ips,
+                machine_ips[row.id].ips_configured,
+            )
+            if ip and configured
+        ]
+        if not ip_addresses:
+            ip_addresses = [
+                {"ip": ip, "is_boot": is_boot}
+                for ip, is_boot, configured in zip(
+                    machine_ips[row.id].ips,
+                    machine_ips[row.id].is_boot_ips,
+                    machine_ips[row.id].ips_configured,
+                )
+                if ip and not configured
+            ]
         machine = {key: getattr(row, key) for key in PLAIN_LIST_ATTRIBUTES}
         machine.update(
             {
@@ -2460,14 +2317,7 @@ def list_machines_multiple_queries(conn, admin, limit=None):
                 "status_message": machine_status_message[
                     row.id
                 ].status_message,
-                "ip_addresses": [
-                    {"ip": ip, "is_boot": is_boot}
-                    for ip, is_boot in zip(
-                        machine_ips[row.id].ips,
-                        machine_ips[row.id].is_boot_ips,
-                    )
-                    if ip
-                ],
+                "ip_addresses": ip_addresses,
                 "vlan": {
                     "id": machine_boot[row.id].boot_vlan_id,
                     "name": str(machine_boot[row.id].boot_vlan_name),
