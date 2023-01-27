@@ -465,7 +465,7 @@ class ZoneGenerator:
                 default_ttl=default_ttl,
                 ns_host_name=ns_host_name,
                 mapping=mapping,
-                network=IPNetwork(subnet.cidr),
+                network=network,
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
                 exclude={

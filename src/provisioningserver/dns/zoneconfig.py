@@ -106,6 +106,10 @@ def get_details_for_ip_range(ip_range):
     return intersecting_subnets, prefix, rdns_suffix
 
 
+def networks_overlap(net1, net2):
+    return net1 in net2 or net2 in net1
+
+
 class DomainInfo:
     """Information about a DNS zone"""
 
@@ -172,14 +176,20 @@ class DomainConfigBase:
         else:
             return True
 
-    def dynamic_update(self, zone_info):
+    def dynamic_update(self, zone_info, network=None):
         nsupdate = NSUpdateCommand(
             zone_info.zone_name,
             [
                 update
                 for update in self._dynamic_updates
                 if update.zone == zone_info.zone_name
-                or IPNetwork(update.subnet) == zone_info.subnetwork
+                or (
+                    networks_overlap(IPNetwork(update.subnet), network)
+                    if network
+                    else networks_overlap(
+                        IPNetwork(update.subnet), zone_info.subnetwork
+                    )
+                )
             ],
             serial=self.serial,
             ttl=self.default_ttl,
@@ -632,7 +642,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
                 )
             )
             if not self.force_config_write and self.zone_file_exists(zi):
-                self.dynamic_update(zi)
+                self.dynamic_update(zi, network=self._network)
                 PROMETHEUS_METRICS.update(
                     "maas_dns_dynamic_update_count",
                     "inc",

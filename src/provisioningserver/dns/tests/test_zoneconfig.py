@@ -1136,6 +1136,63 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             ],
         )
 
+    def test_dynamic_updates_included_when_large_cidr_has_been_split(self):
+        patch_zone_file_config_path(self)
+        domain = factory.make_string()
+        network = IPNetwork("10.0.0.0/21")
+        ip1 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network)
+        hostname1 = f"{factory.make_string()}.{domain}"
+        hostname2 = f"{factory.make_string()}.{domain}"
+        fwd_updates = [
+            DynamicDNSUpdate(
+                operation="INSERT",
+                zone=domain,
+                name=hostname1,
+                rectype="A",
+                answer=ip1,
+            ),
+            DynamicDNSUpdate(
+                operation="INSERT",
+                zone=domain,
+                name=hostname2,
+                rectype="A",
+                answer=ip2,
+            ),
+        ]
+        rev_updates = [
+            DynamicDNSUpdate.as_reverse_record_update(update, network)
+            for update in fwd_updates
+        ]
+        # gets changed to a /24 and any other space in the original
+        # subnet is split into a separate zone for a given /24
+        zone = DNSReverseZoneConfig(
+            domain,
+            serial=random.randint(1, 100),
+            network=IPNetwork("10.0.0.0/24"),
+            dynamic_updates=rev_updates,
+        )
+        run_command = self.patch(actions, "run_command")
+        zone.write_config()
+        zone.write_config()
+        expected_stdin = "\n".join(
+            [
+                "server localhost",
+                "zone 0.0.10.in-addr.arpa",
+                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
+                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
+                f"update add 0.0.10.in-addr.arpa {zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                "send\n",
+            ]
+        )
+        run_command.assert_called_once_with(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            "-v",
+            stdin=expected_stdin.encode("ascii"),
+        )
+
 
 class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
     """Tests for `DNSReverseZoneConfig.get_GENERATE_directives()`."""
