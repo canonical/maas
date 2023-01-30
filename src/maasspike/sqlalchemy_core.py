@@ -1215,21 +1215,24 @@ def get_machines(rows, admin):
     machines = []
     for row in rows:
         machine = {key: getattr(row, key) for key in PLAIN_LIST_ATTRIBUTES}
-        ip_addresses = [
-            {"ip": ip, "is_boot": is_boot}
-            for ip, is_boot, configured in zip(
-                row.ips, row.is_boot_ips, row.ips_configured
-            )
-            if ip and configured
-        ]
-        if not ip_addresses:
+        if not row.ips:
+            ip_addresses = []
+        else:
             ip_addresses = [
                 {"ip": ip, "is_boot": is_boot}
                 for ip, is_boot, configured in zip(
                     row.ips, row.is_boot_ips, row.ips_configured
                 )
-                if ip and not configured
+                if ip and configured
             ]
+            if not ip_addresses:
+                ip_addresses = [
+                    {"ip": ip, "is_boot": is_boot}
+                    for ip, is_boot, configured in zip(
+                        row.ips, row.is_boot_ips, row.ips_configured
+                    )
+                    if ip and not configured
+                ]
         machine.update(
             {
                 "memory": row.memory,
@@ -2265,16 +2268,9 @@ def list_machines_multiple_queries(conn, admin, limit=None):
 
     machines = []
     for row in machine_rows:
-        ip_addresses = [
-            {"ip": ip, "is_boot": is_boot}
-            for ip, is_boot, configured in zip(
-                machine_ips[row.id].ips,
-                machine_ips[row.id].is_boot_ips,
-                machine_ips[row.id].ips_configured,
-            )
-            if ip and configured
-        ]
-        if not ip_addresses:
+        if not machine_ips[row.id].ips:
+            ip_addresses = []
+        else:
             ip_addresses = [
                 {"ip": ip, "is_boot": is_boot}
                 for ip, is_boot, configured in zip(
@@ -2282,8 +2278,18 @@ def list_machines_multiple_queries(conn, admin, limit=None):
                     machine_ips[row.id].is_boot_ips,
                     machine_ips[row.id].ips_configured,
                 )
-                if ip and not configured
+                if ip and configured
             ]
+            if not ip_addresses:
+                ip_addresses = [
+                    {"ip": ip, "is_boot": is_boot}
+                    for ip, is_boot, configured in zip(
+                        machine_ips[row.id].ips,
+                        machine_ips[row.id].is_boot_ips,
+                        machine_ips[row.id].ips_configured,
+                    )
+                    if ip and not configured
+                ]
         machine = {key: getattr(row, key) for key in PLAIN_LIST_ATTRIBUTES}
         machine.update(
             {
