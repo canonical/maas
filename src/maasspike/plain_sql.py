@@ -78,60 +78,25 @@ def get_query(limit=None):
           JOIN maasserver_nodeconfig ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
           JOIN maasserver_node ON maasserver_node.current_config_id = maasserver_nodeconfig.id
       ),
-      dhcp_address AS (
-        SELECT DISTINCT ON (maasserver_staticipaddress.id)
-          maasserver_staticipaddress.id AS id,
-          discovered_ip.ip AS ip
-        FROM maasserver_staticipaddress
-          JOIN maasserver_interface_ip_addresses ON maasserver_interface_ip_addresses.staticipaddress_id = maasserver_staticipaddress.id
-          JOIN maasserver_interface_ip_addresses AS discovered_interface_ip ON discovered_interface_ip.interface_id = maasserver_interface_ip_addresses.interface_id
-          JOIN maasserver_staticipaddress AS discovered_ip ON discovered_ip.id = maasserver_interface_ip_addresses.staticipaddress_id
-        WHERE maasserver_staticipaddress.alloc_type = %(alloc_type_dhcp)s
-          AND discovered_ip.alloc_type = %(alloc_type_discovered)s
-          AND discovered_ip.ip IS NOT NULL
-        ORDER BY maasserver_staticipaddress.id, discovered_ip.id DESC
-      ),
       interface_addresses AS (
         SELECT
           maasserver_interface.id AS id,
-          CASE
-            WHEN (maasserver_staticipaddress.alloc_type = %(alloc_type_dhcp)s) THEN dhcp_address.ip
-            ELSE maasserver_staticipaddress.ip
-          END AS ip
+          maasserver_staticipaddress.ip,
+          spike_interface_ip.configured
         FROM maasserver_interface
-          JOIN maasserver_interface_ip_addresses ON maasserver_interface.id = maasserver_interface_ip_addresses.interface_id
-          JOIN maasserver_staticipaddress ON maasserver_interface_ip_addresses.staticipaddress_id = maasserver_staticipaddress.id
-          LEFT OUTER JOIN dhcp_address ON dhcp_address.id = maasserver_staticipaddress.id
+          JOIN spike_interface_ip ON maasserver_interface.id = spike_interface_ip.interface_id
+          JOIN maasserver_staticipaddress ON spike_interface_ip.ip_id = maasserver_staticipaddress.id
       ),
       ip_addresses AS (
         SELECT
           maasserver_node.id AS id,
           array_agg(interface_addresses.ip) AS ips,
-          array_agg(interface_addresses.id = maasserver_node.boot_interface_id) AS is_boot_ips
+          array_agg(interface_addresses.id = maasserver_node.boot_interface_id) AS is_boot_ips,
+          array_agg(interface_addresses.configured) AS ips_configured
         FROM maasserver_node
           JOIN interfaces ON interfaces.machine_id = maasserver_node.id
           JOIN interface_addresses ON interface_addresses.id = interfaces.interface_id
         GROUP BY maasserver_node.id),
-      discovered_addresses AS (
-        SELECT
-          maasserver_interface.id AS id,
-          maasserver_staticipaddress.ip AS ip
-        FROM maasserver_interface
-          JOIN maasserver_interface_ip_addresses ON maasserver_interface.id = maasserver_interface_ip_addresses.interface_id
-          JOIN maasserver_staticipaddress ON maasserver_interface_ip_addresses.staticipaddress_id = maasserver_staticipaddress.id
-        WHERE maasserver_staticipaddress.alloc_type = %(alloc_type_discovered)s
-          AND maasserver_staticipaddress.ip IS NOT NULL
-      ),
-      discovered_machine_ip_addresses AS (
-        SELECT
-          maasserver_node.id AS id,
-          array_agg(discovered_addresses.ip) AS ips,
-          array_agg(discovered_addresses.id = maasserver_node.boot_interface_id) AS is_boot_ips
-        FROM maasserver_node
-          JOIN interfaces ON interfaces.machine_id = maasserver_node.id
-          JOIN discovered_addresses ON discovered_addresses.id = interfaces.interface_id
-        GROUP BY maasserver_node.id
-      ),
       testing_status AS (
         SELECT
           maasserver_node.id AS id,
@@ -619,14 +584,9 @@ def get_query(limit=None):
       boot_vlan.name AS boot_vlan_name,
       boot_vlan.fabric_id AS boot_fabric_id,
       boot_fabric.name AS boot_fabric_name,
-      CASE
-        WHEN (ip_addresses.ips IS NULL) THEN discovered_machine_ip_addresses.ips
-        ELSE ip_addresses.ips
-      END AS ips,
-      CASE
-        WHEN (ip_addresses.ips IS NULL) THEN discovered_machine_ip_addresses.is_boot_ips
-        ELSE ip_addresses.is_boot_ips
-      END AS is_boot_ips,
+      ip_addresses.ips,
+      ip_addresses.is_boot_ips,
+      ip_addresses.ips_configured,
       testing_status.testing_status_pending,
       testing_status.testing_status_running,
       testing_status.testing_status_passed,
@@ -708,7 +668,6 @@ def get_query(limit=None):
       JOIN maasserver_vlan AS boot_vlan ON boot_vlan.id = boot_interface.vlan_id
       JOIN maasserver_fabric AS boot_fabric ON boot_fabric.id = boot_vlan.fabric_id
       LEFT OUTER JOIN ip_addresses ON ip_addresses.id = maasserver_node.id
-      LEFT OUTER JOIN discovered_machine_ip_addresses ON discovered_machine_ip_addresses.id = maasserver_node.id
       LEFT OUTER JOIN testing_status ON testing_status.id = maasserver_node.id
       JOIN machine_tags ON machine_tags.id = maasserver_node.id
     WHERE maasserver_node.node_type = %(node_type_machine)s ORDER BY maasserver_node.id
