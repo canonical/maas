@@ -461,7 +461,7 @@ class ChildInterfaceForm(InterfaceForm):
         """
         if self.instance.id is not None:
             parent_macs = {
-                parent.mac_address.get_raw(): parent
+                parent.mac_address: parent
                 for parent in self.instance.parents.all()
             }
         else:

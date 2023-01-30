@@ -25,7 +25,6 @@ from django.db import (
 )
 from django.db.utils import IntegrityError, OperationalError
 
-from maasserver.fields import register_mac_type
 from maasserver.models import signals
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
@@ -77,11 +76,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     def client(self, client):
         """Set the current client."""
         self.__client = client
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        register_mac_type(connection.cursor())
 
     def setUp(self):
         reset_queries()  # Formerly this was handled by... Django?

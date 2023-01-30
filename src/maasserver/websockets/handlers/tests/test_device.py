@@ -18,7 +18,6 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.fields import MAC
 from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models import Interface, StaticIPAddress
 from maasserver.node_action import compile_node_actions
@@ -577,7 +576,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             created_device["ip_assignment"],
             Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
         )
-        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        static_interface = Interface.objects.get(mac_address=mac)
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
             observed_subnet,
@@ -620,7 +619,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
         )
         self.expectThat(created_device["ip_address"], Equals(ip_address))
-        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        static_interface = Interface.objects.get(mac_address=mac)
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
             observed_subnet,
@@ -674,7 +673,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.expectThat(
             created_device["ip_address"], Equals(static_ip_address)
         )
-        static_interface = Interface.objects.get(mac_address=MAC(mac_static))
+        static_interface = Interface.objects.get(mac_address=mac_static)
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
             observed_subnet,
@@ -824,7 +823,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             updated_device["ip_assignment"],
             Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
         )
-        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        static_interface = Interface.objects.get(mac_address=mac)
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
             observed_subnet,
@@ -857,7 +856,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             Equals(DEVICE_IP_ASSIGNMENT_TYPE.STATIC),
         )
         self.expectThat(updated_device["ip_address"], Equals(ip_address))
-        static_interface = Interface.objects.get(mac_address=MAC(mac))
+        static_interface = Interface.objects.get(mac_address=mac)
         observed_subnet = static_interface.ip_addresses.first().subnet
         self.expectThat(
             observed_subnet,

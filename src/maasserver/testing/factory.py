@@ -42,7 +42,7 @@ from maasserver.enum import (
     POWER_STATE,
     RDNS_MODE,
 )
-from maasserver.fields import LargeObjectFile, MAC
+from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BlockDevice,
     BootResource,
@@ -1058,10 +1058,6 @@ class Factory(maastesting.factory.Factory):
             **kwargs,
         )
 
-    def make_MAC(self):
-        """Generate a random MAC address, in the form of a MAC object."""
-        return MAC(self.make_mac_address())
-
     def make_Node_with_Interface_on_Subnet(
         self,
         interface_count=1,
@@ -1783,7 +1779,7 @@ class Factory(maastesting.factory.Factory):
             INTERFACE_TYPE.BRIDGE,
             INTERFACE_TYPE.UNKNOWN,
         ]:
-            mac_address = self.make_MAC()
+            mac_address = self.make_mac_address()
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         link_speeds = [10, 100, 1000, 10000, 20000, 40000, 50000, 100000]

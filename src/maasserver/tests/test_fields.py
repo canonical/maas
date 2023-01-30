@@ -1,16 +1,13 @@
 # Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-import json
 from random import choice, randint
 import re
 
-from django.core import serializers
 from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
 from django.db.models import BinaryField
 from psycopg2 import OperationalError
-from psycopg2.extensions import ISQLQuote
 from testtools import ExpectedException
 
 from maasserver.enum import INTERFACE_TYPE
@@ -20,15 +17,12 @@ from maasserver.fields import (
     IPListFormField,
     LargeObjectField,
     LargeObjectFile,
-    MAC,
     MODEL_NAME_VALIDATOR,
     NodeChoiceField,
-    register_mac_type,
     SubnetListFormField,
     SystemdIntervalField,
     URLOrPPAFormField,
     URLOrPPAValidator,
-    validate_mac,
     VerboseRegexField,
     VerboseRegexValidator,
     VersionedTextFileField,
@@ -48,134 +42,6 @@ from maasserver.tests.models import (
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-
-
-class TestMAC(MAASServerTestCase):
-    def test_conform_accepts_ISQLQuote(self):
-        mac = MAC(factory.make_mac_address())
-        self.assertEqual(mac, mac.__conform__(ISQLQuote))
-
-    def test_new_MAC_with_None_is_None(self):
-        self.assertIsNone(MAC(None))
-
-    def test_new_MAC_with_empty_unicode_string_is_None(self):
-        self.assertIsNone(MAC(""))
-
-    def test_new_MAC_with_empty_byte_string_is_None(self):
-        self.assertIsNone(MAC(b""))
-
-    def test_new_MAC_with_other_value_types_are_rejected(self):
-        self.assertRaises(TypeError, MAC, 1234)
-        self.assertRaises(TypeError, MAC, object())
-        self.assertRaises(TypeError, MAC, self)
-
-    def test_as_representation(self):
-        addr = factory.make_mac_address()
-        mac = MAC(addr)
-        self.assertEqual("<MAC " + addr + ">", repr(mac))
-
-    def test_as_unicode_string(self):
-        addr = factory.make_mac_address()
-        mac = MAC(addr)
-        self.assertEqual(addr, str(mac))
-
-    def test_as_byte_string(self):
-        addr = factory.make_mac_address()
-        mac = MAC(addr)
-        self.assertEqual(addr.encode("ascii"), bytes(mac))
-
-    def test_get_raw_returns_wrapped_address(self):
-        addr = factory.make_mac_address()
-        self.assertEqual(addr, MAC(addr).get_raw())
-
-    def test_get_raw_punches_through_double_wrapping(self):
-        addr = factory.make_mac_address()
-        self.assertEqual(addr, MAC(MAC(addr)).get_raw())
-
-    def test_raw_property_is_the_address(self):
-        addr = factory.make_mac_address()
-        self.assertEqual(addr, MAC(addr).raw)
-
-    def test_getquoted_returns_SQL_for_MAC(self):
-        addr = factory.make_mac_address()
-        self.assertEqual("'%s'::macaddr" % addr, MAC(addr).getquoted())
-
-    def test_getquoted_punches_through_double_wrapping(self):
-        addr = factory.make_mac_address()
-        self.assertEqual("'%s'::macaddr" % addr, MAC(MAC(addr)).getquoted())
-
-    def test_mac_is_len_able(self):
-        mac = factory.make_MAC()
-        self.assertEqual(len(mac), len(mac.raw))
-
-    def test_mac_equals_self(self):
-        mac = factory.make_MAC()
-        self.assertTrue(mac == mac)
-
-    def test_mac_equals_identical_mac(self):
-        addr = factory.make_mac_address()
-        self.assertTrue(MAC(addr) == MAC(addr))
-
-    def test_eq_punches_through_double_wrapping_on_self(self):
-        mac = factory.make_MAC()
-        self.assertTrue(MAC(mac) == mac)
-
-    def test_eq_punches_through_double_wrapping_on_other(self):
-        mac = factory.make_MAC()
-        self.assertTrue(mac == MAC(mac))
-
-    def test_eq_punches_through_double_double_wrappings(self):
-        mac = factory.make_MAC()
-        self.assertTrue(MAC(mac) == MAC(mac))
-
-    def test_mac_does_not_equal_other(self):
-        self.assertFalse(factory.make_MAC() == factory.make_MAC())
-
-    def test_mac_differs_from_other(self):
-        self.assertTrue(factory.make_MAC() != factory.make_MAC())
-
-    def test_mac_does_not_differ_from_self(self):
-        mac = factory.make_MAC()
-        self.assertFalse(mac != mac)
-
-    def test_mac_address_does_not_equal_none(self):
-        self.assertIsNotNone(factory.make_MAC())
-
-    def test_ne_punches_through_double_wrapping_on_self(self):
-        mac = factory.make_MAC()
-        self.assertFalse(MAC(mac) != mac)
-
-    def test_ne_punches_through_double_wrapping_on_other(self):
-        mac = factory.make_MAC()
-        self.assertFalse(mac != MAC(mac))
-
-    def test_ne_punches_through_double_double_wrapping(self):
-        mac = factory.make_MAC()
-        self.assertFalse(MAC(mac) != MAC(mac))
-
-    def test_different_macs_hash_differently(self):
-        mac1 = factory.make_MAC()
-        mac2 = factory.make_MAC()
-        self.assertCountEqual({mac1, mac2}, [mac1, mac2])
-
-    def test_identical_macs_hash_identically(self):
-        addr = factory.make_mac_address()
-        self.assertCountEqual(
-            {MAC(addr), MAC(addr), MAC(MAC(addr)), addr}, [addr]
-        )
-
-    def test_django_serializes_MAC_to_JSON(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        query = Interface.objects.filter(id=interface.id)
-        output = serializers.serialize("json", query)
-        self.assertIn(json.dumps(interface.mac_address.get_raw()), output)
-        self.assertIn('"%s"' % interface.mac_address.get_raw(), output)
-
-    def test_register_mac_type_is_idempotent(self):
-        register_mac_type(connection.cursor())
-        register_mac_type(connection.cursor())
-        # The test is that we get here without crashing.
-        pass
 
 
 class TestModelNameValidator(MAASServerTestCase):
@@ -234,49 +100,6 @@ class TestMACAddressField(MAASServerTestCase):
         )
         loaded_mac = Interface.objects.get(id=interface.id)
         self.assertEqual("aa:bb:cc:dd:ee:ff", loaded_mac.mac_address)
-
-    def test_accepts_colon_separated_octets(self):
-        validate_mac("00:aa:22:cc:44:dd")
-        # No error.
-        pass
-
-    def test_accepts_dash_separated_octets(self):
-        validate_mac("00-aa-22-cc-44-dd")
-        # No error.
-        pass
-
-    def test_accepts_upper_and_lower_case(self):
-        validate_mac("AA:BB:CC:dd:ee:ff")
-        # No error.
-        pass
-
-    def test_accepts_cisco_format(self):
-        validate_mac("0000.0200.3fff")
-        # No error.
-        pass
-
-    def test_accepts_leading_and_trailing_whitespace(self):
-        validate_mac(" AA:BB:CC:DD:EE:FF ")
-        # No error.
-        pass
-
-    def test_rejects_short_mac(self):
-        self.assertRaises(ValidationError, validate_mac, "00:11:22:33:44")
-
-    def test_rejects_long_mac(self):
-        self.assertRaises(
-            ValidationError, validate_mac, "00:11:22:33:44:55:66"
-        )
-
-    def test_accepts_short_octet(self):
-        # Hit both parts of the regex.
-        validate_mac("00:1:22:33:44:55")
-        validate_mac("00:11:22:33:44:5")
-        # No error.
-        pass
-
-    def test_rejects_long_octet(self):
-        self.assertRaises(ValidationError, validate_mac, "00:11:222:33:44:55")
 
 
 class TestXMLField(MAASLegacyServerTestCase):

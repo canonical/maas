@@ -35,7 +35,7 @@ def get_Interface_from_list(interfaces, mac):
     mac = EUI(mac)
     for interface in interfaces:
         ifmac = interface.mac_address
-        if ifmac is not None and EUI(ifmac.raw) == mac:
+        if ifmac is not None and EUI(ifmac) == mac:
             return interface
     else:
         return None

@@ -62,7 +62,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
 )
-from maasserver.fields import validate_mac
+from maasserver.fields import mac_validator
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,
@@ -1915,7 +1915,7 @@ class AnonMachinesHandler(AnonNodesHandler):
             macs_valid = True
             for mac_address in mac_addresses:
                 try:
-                    validate_mac(mac_address)
+                    mac_validator(mac_address)
                 except ValidationError:
                     macs_valid = False
                     break

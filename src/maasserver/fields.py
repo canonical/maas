@@ -10,15 +10,12 @@ __all__ = [
     "HostListFormField",
     "IPListFormField",
     "IPv4CIDRField",
-    "MAC",
     "MACAddressField",
     "MACAddressFormField",
     "MODEL_NAME_VALIDATOR",
     "NodeChoiceField",
-    "register_mac_type",
     "VerboseRegexValidator",
     "VersionedTextFileField",
-    "validate_mac",
 ]
 
 import re
@@ -39,7 +36,6 @@ from django.db.models import (
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPAddress, IPNetwork
-import psycopg2.extensions
 
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.converters import parse_systemd_interval
@@ -82,13 +78,6 @@ class VerboseRegexValidator(RegexValidator):
 
 
 mac_validator = VerboseRegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
-
-
-def validate_mac(value):
-    """Django validator for a MAC."""
-    if isinstance(value, MAC):
-        value = value.get_raw()
-    mac_validator(value)
 
 
 class StrippedCharField(forms.CharField):
@@ -144,145 +133,14 @@ class MACAddressField(Field):
 
     description = "MAC address"
 
-    default_validators = [validate_mac]
+    default_validators = [mac_validator]
 
     def db_type(self, *args, **kwargs):
         return "macaddr"
 
-    def to_python(self, value):
-        return MAC(value)
-
-    def from_db_value(self, value, expression, connection):
-        return MAC(value)
-
     def get_prep_value(self, value):
-        value = super().get_prep_value(value)
         # Convert empty string to None.
-        if not value:
-            return None
-        return value
-
-
-class MAC:
-    """A MAC address represented as a database value.
-
-    PostgreSQL supports MAC addresses as a native type. They show up
-    client-side as this class. It is essentially a wrapper for a string.
-
-    This NEVER represents a null or empty MAC address.
-    """
-
-    def __new__(cls, value):
-        """Return `None` if `value` is `None` or the empty string."""
-        if value is None:
-            return None
-        elif isinstance(value, (bytes, str)):
-            return None if len(value) == 0 else super().__new__(cls)
-        else:
-            return super().__new__(cls)
-
-    def __init__(self, value):
-        """Wrap a MAC address, or None, into a `MAC`.
-
-        :param value: A MAC address, in the form of a string or a `MAC`;
-            or None.
-        """
-        # The wrapped attribute is stored as self._wrapped, following
-        # ISQLQuote's example.
-        if isinstance(value, MAC):
-            self._wrapped = value._wrapped
-        elif isinstance(value, bytes):
-            self._wrapped = value.decode("ascii")
-        elif isinstance(value, str):
-            self._wrapped = value
-        else:
-            raise TypeError(f"expected MAC or string, got: {value!r}")
-
-    def __conform__(self, protocol):
-        """Tell psycopg2 that this type implements the adapter protocol."""
-        # The psychopg2 docs say to check that the protocol is ISQLQuote,
-        # but not what to do if it isn't.
-        assert protocol == psycopg2.extensions.ISQLQuote, (
-            "Unsupported psycopg2 adapter protocol: %s" % protocol
-        )
-        return self
-
-    def getquoted(self):
-        """Render this object in SQL.
-
-        This is part of psycopg2's adapter protocol.
-        """
-        return "'%s'::macaddr" % self._wrapped
-
-    def get_raw(self):
-        """Return the wrapped value."""
-        return self._wrapped
-
-    @property
-    def raw(self):
-        """The MAC address as a string."""
-        return self._wrapped
-
-    @classmethod
-    def parse(cls, value, cur):
-        """Turn a value as received from the database into a MAC."""
-        return cls(value)
-
-    def __repr__(self):
-        """Represent the MAC as a string."""
-        return "<MAC %s>" % self._wrapped
-
-    def __str__(self):
-        """Represent the MAC as a Unicode string."""
-        return self._wrapped
-
-    def __bytes__(self):
-        return self._wrapped.encode("ascii")
-
-    def __len__(self):
-        """Defer to len of the wrapped value."""
-        return len(self._wrapped)
-
-    def __eq__(self, other):
-        """Two `MAC`s are equal if they wrap the same value.
-
-        A MAC is is also equal to the value it wraps. This is non-commutative,
-        but it supports Django code that compares input values to various
-        kinds of "null" or "empty."
-        """
-        if isinstance(other, MAC):
-            return self._wrapped == other._wrapped
-        else:
-            return self._wrapped == other
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    def __hash__(self):
-        return hash(self._wrapped)
-
-
-def register_mac_type(cursor):
-    """Register our `MAC` type with psycopg2 and Django."""
-
-    # This is standard, but not built-in, magic to register a type in
-    # psycopg2: execute a query that returns a field of the corresponding
-    # database type, then get its oid out of the cursor, use that to create
-    # a "typecaster" in psycopg (by calling new_type(), confusingly!), then
-    # register that type in psycopg.
-    cursor.execute("SELECT NULL::macaddr")
-    oid = cursor.description[0][1]
-    mac_caster = psycopg2.extensions.new_type((oid,), "macaddr", MAC.parse)
-    psycopg2.extensions.register_type(mac_caster)
-
-    # Now do the same for the type array-of-MACs.  The "typecaster" created
-    # for MAC is passed in; it gets used for parsing an individual element
-    # of an array's text representation as received from the database.
-    cursor.execute("SELECT '{}'::macaddr[]")
-    oid = cursor.description[0][1]
-    psycopg2.extensions.register_type(
-        psycopg2.extensions.new_array_type((oid,), "macaddr", mac_caster)
-    )
+        return super().get_prep_value(value) or None
 
 
 class XMLField(Field):

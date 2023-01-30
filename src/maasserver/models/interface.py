@@ -49,8 +49,8 @@ from maasserver.exceptions import (
     StaticIPAddressUnavailable,
 )
 from maasserver.fields import (
+    mac_validator,
     MACAddressField,
-    validate_mac,
     VerboseRegexValidator,
 )
 from maasserver.models.cleansave import CleanSave
@@ -979,7 +979,7 @@ class Interface(CleanSave, TimestampedModel):
         network = IPNetwork(net_cidr)
         if network.prefixlen != 64:
             return None
-        return EUI(self.mac_address.raw).ipv6(network.first)
+        return EUI(self.mac_address).ipv6(network.first)
 
     def remove_link_dhcp(self, subnet_family=None):
         """Removes the DHCP links if they have no subnet or if the linked
@@ -1490,7 +1490,7 @@ class Interface(CleanSave, TimestampedModel):
 
         # Verify that the MAC address is legal if it is not empty.
         if self.mac_address:
-            validate_mac(self.mac_address)
+            mac_validator(self.mac_address)
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to

@@ -958,7 +958,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
                 Region(),
                 SendEventMACAddress,
                 {
-                    "mac_address": mac_address.get_raw(),
+                    "mac_address": mac_address,
                     "type_name": name,
                     "description": event_description,
                 },
@@ -985,7 +985,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
         event_type = factory.make_name("type_name")
         yield deferToDatabase(self.create_event_type, event_type, "", 0)
         interface = yield deferToDatabase(self.make_interface)
-        mac_address = interface.mac_address.get_raw()
+        mac_address = interface.mac_address
 
         yield eventloop.start()
         try:
@@ -1289,7 +1289,7 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         node_info_function.return_value = (node, purpose)
         interface = yield deferToDatabase(self.make_interface, node)
 
-        params = {"mac_address": interface.mac_address.get_raw()}
+        params = {"mac_address": interface.mac_address}
 
         response = yield call_responder(
             Region(), RequestNodeInfoByMACAddress, params

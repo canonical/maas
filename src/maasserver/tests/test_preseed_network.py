@@ -503,7 +503,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                 "config": [
                     {
                         "id": iface.name,
-                        "mac_address": iface.mac_address.raw,
+                        "mac_address": iface.mac_address,
                         "mtu": iface.get_effective_mtu(),
                         "name": iface.name,
                         "type": "physical",

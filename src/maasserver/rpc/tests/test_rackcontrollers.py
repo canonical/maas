@@ -112,11 +112,10 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_finds_existing_node_by_mac(self):
         node = factory.make_Node()
         nic = factory.make_Interface(node=node)
-        mac = nic.mac_address.raw
         interfaces = {
             nic.name: {
                 "type": "physical",
-                "mac_address": mac,
+                "mac_address": nic.mac_address,
                 "parents": [],
                 "links": [],
                 "enabled": True,

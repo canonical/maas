@@ -247,7 +247,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(
-            machine.boot_interface.mac_address.get_raw(),
+            machine.boot_interface.mac_address,
             parsed_result["boot_interface"]["mac_address"],
         )
 

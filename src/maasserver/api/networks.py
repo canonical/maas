@@ -137,7 +137,7 @@ class NetworkHandler(OperationsHandler):
             unique_interfaces_by_mac,
             key=lambda x: (
                 x.node_config.node.hostname.lower(),
-                x.mac_address.get_raw(),
+                x.mac_address,
             ),
         )
         return [

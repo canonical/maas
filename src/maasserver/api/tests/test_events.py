@@ -815,7 +815,7 @@ class TestEventsURIs(APITestCase.ForUser):
             "domain": machine.domain.name,
             "hostname": machine.hostname,
             "id": machine.system_id,
-            "mac_address": interface.mac_address.raw,
+            "mac_address": interface.mac_address,
             "zone": machine.zone.name,
         }
         event = factory.make_Event(node=machine)

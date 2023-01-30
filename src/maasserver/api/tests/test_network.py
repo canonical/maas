@@ -202,10 +202,10 @@ class TestListConnectedMACs(APITestCase.ForUser):
             interfaces,
             key=lambda x: (
                 x.node_config.node.hostname.lower(),
-                x.mac_address.get_raw(),
+                x.mac_address,
             ),
         )
         self.assertEqual(
-            [nic.mac_address.get_raw() for nic in sorted_interfaces],
+            [nic.mac_address for nic in sorted_interfaces],
             self.extract_macs(self.request_connected_macs(subnet)),
         )

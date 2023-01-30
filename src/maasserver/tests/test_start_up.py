@@ -74,11 +74,11 @@ class TestStartUp(MAASTransactionServerTestCase):
         locked = factory.make_exception("locked")
         unlocked = factory.make_exception("unlocked")
 
-        def check_lock(_):
+        def check_lock():
             raise locked if locks.startup.is_locked() else unlocked
 
-        self.patch(start_up, "register_mac_type").side_effect = check_lock
-        self.assertRaises(type(locked), start_up.inner_start_up, master=False)
+        self.patch(start_up, "load_builtin_scripts").side_effect = check_lock
+        self.assertRaises(type(locked), start_up.inner_start_up, master=True)
 
     def test_start_up_retries_with_wait_on_exception(self):
         inner_start_up = self.patch(start_up, "inner_start_up")

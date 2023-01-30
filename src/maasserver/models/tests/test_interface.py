@@ -1008,7 +1008,7 @@ class TestInterface(MAASServerTestCase):
         # twice: once as part of Interface.clean() resulting in the __all__
         # error, and once as part of field validation that happens after a
         # few queries are done, so we cannot easily get rid of
-        # validate_mac() in clean().
+        # mac_validator() in clean().
         self.assertThat(
             exception.message_dict,
             MatchesDict(
@@ -1035,7 +1035,7 @@ class TestInterface(MAASServerTestCase):
     def test_creates_interface(self):
         name = factory.make_name("name")
         node_config = factory.make_NodeConfig()
-        mac = factory.make_MAC()
+        mac = factory.make_mac_address()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
             name=name,
@@ -1055,7 +1055,7 @@ class TestInterface(MAASServerTestCase):
     def test_allows_null_vlan(self):
         name = factory.make_name("name")
         node_config = factory.make_NodeConfig()
-        mac = factory.make_MAC()
+        mac = factory.make_mac_address()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
             name=name,
@@ -1077,11 +1077,11 @@ class TestInterface(MAASServerTestCase):
     def test_string_representation_contains_essential_data(self):
         name = factory.make_name("name")
         node = factory.make_Node()
-        mac = factory.make_MAC()
+        mac = factory.make_mac_address()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name=name, node=node, mac_address=mac
         )
-        self.assertIn(mac.get_raw(), str(interface))
+        self.assertIn(mac, str(interface))
         self.assertIn(name, str(interface))
 
     def test_deletes_related_children(self):
@@ -1802,7 +1802,7 @@ class TestPhysicalInterfaceTransactional(MAASTransactionServerTestCase):
             with transaction.atomic():
                 _create_physical(mac)
 
-        mac = factory.make_MAC()
+        mac = factory.make_mac_address()
         t = threading.Thread(target=create_physical, args=(mac,))
 
         with transaction.atomic():
@@ -2482,7 +2482,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
 
     def test_does_not_add_eui_64_address(self):
         # See also LP#1639090.
-        mac_address = factory.make_MAC()
+        mac_address = factory.make_mac_address()
         iface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, mac_address=mac_address
         )
@@ -2494,7 +2494,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
 
     def test_does_not_add_addresses_from_duplicate_subnet(self):
         # See also LP#1803188.
-        mac_address = factory.make_MAC()
+        mac_address = factory.make_mac_address()
         vlan = factory.make_VLAN()
         factory.make_Subnet(cidr="10.0.0.0/8", vlan=vlan)
         factory.make_Subnet(cidr="2001::/64", vlan=vlan)

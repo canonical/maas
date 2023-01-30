@@ -1847,7 +1847,7 @@ class TestNodeInterfaceListener(
             yield deferToDatabase(
                 self.update_interface,
                 interface.id,
-                {"mac_address": factory.make_MAC()},
+                {"mac_address": factory.make_mac_address()},
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", node.system_id), dv.value)
@@ -1949,7 +1949,7 @@ class TestDeviceWithParentInterfaceListener(
             yield deferToDatabase(
                 self.update_interface,
                 interface.id,
-                {"mac_address": factory.make_MAC()},
+                {"mac_address": factory.make_mac_address()},
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", parent.system_id), dv.value)

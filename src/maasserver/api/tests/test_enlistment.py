@@ -489,7 +489,7 @@ class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
                     random.choice(macs),
                     # A MAC address unknown to MAAS shouldn't effect finding
                     # the machine.
-                    factory.make_MAC(),
+                    factory.make_mac_address(),
                 ],
             },
         )

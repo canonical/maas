@@ -112,7 +112,6 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
     StorageClearProblem,
 )
-from maasserver.fields import MAC
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bootresource import BootResource
 from maasserver.models.cacheset import CacheSet
@@ -2150,11 +2149,10 @@ class Node(CleanSave, TimestampedModel):
 
         if name is None:
             name = self.get_next_ifname()
-        mac = MAC(mac_address)
-        UnknownInterface.objects.filter(mac_address=mac).delete()
+        UnknownInterface.objects.filter(mac_address=mac_address).delete()
         numa_node = self.default_numanode if self.is_machine else None
         iface, created = PhysicalInterface.objects.get_or_create(
-            mac_address=mac,
+            mac_address=mac_address,
             defaults={
                 "node_config": self.current_config,
                 "name": name,
@@ -3159,8 +3157,7 @@ class Node(CleanSave, TimestampedModel):
                 boot_interface is not None
                 and boot_interface.mac_address is not None
             ):
-                mac = boot_interface.mac_address.get_raw()
-                power_params["mac_address"] = mac
+                power_params["mac_address"] = boot_interface.mac_address
 
         # boot_mode is something that tells the template whether this is
         # a PXE boot or a local HD boot.

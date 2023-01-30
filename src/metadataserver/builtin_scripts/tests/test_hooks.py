@@ -21,7 +21,6 @@ from maasserver.enum import (
     NODE_STATUS,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.fields import MAC
 from maasserver.models import (
     NodeMetadata,
     NUMANode,
@@ -3892,9 +3891,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """
 
     EXPECTED_INTERFACES = {
-        "eth0": MAC("00:00:00:00:00:01"),
-        "eth1": MAC("00:00:00:00:00:02"),
-        "eth2": MAC("00:00:00:00:00:03"),
+        "eth0": "00:00:00:00:00:01",
+        "eth1": "00:00:00:00:00:02",
+        "eth2": "00:00:00:00:00:03",
     }
 
     def assert_expected_interfaces_and_macs_exist_for_node(
@@ -4160,7 +4159,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             iface.mac_address
             for iface in node.current_config.interface_set.all()
         ]
-        self.assertNotIn(MAC("01:23:45:67:89:ab"), db_macaddresses)
+        self.assertNotIn("01:23:45:67:89:ab", db_macaddresses)
 
     def test_reassign_mac(self):
         """Test whether we can assign a MAC address previously connected to a
@@ -4169,7 +4168,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         # Create a MAC address that we know IS in the test dataset.
         interface_to_be_reassigned = factory.make_Interface(node=node1)
-        interface_to_be_reassigned.mac_address = MAC("00:00:00:00:00:01")
+        interface_to_be_reassigned.mac_address = "00:00:00:00:00:01"
         interface_to_be_reassigned.save()
 
         node2 = factory.make_Node()
@@ -4223,27 +4222,27 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # Note: since this VLANInterface will be linked to the default VLAN
         # ("vid 0", which is actually invalid) the VLANInterface will
         # automatically get the name "vlan0".
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
-        ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
+        eth0_mac = self.EXPECTED_INTERFACES["eth0"]
+        eth1_mac = self.EXPECTED_INTERFACES["eth1"]
         BOND_NAME = "bond0"
         node = factory.make_Node()
 
         eth0 = factory.make_Interface(
-            name="eth0", mac_address=ETH0_MAC, node=node
+            name="eth0", mac_address=eth0_mac, node=node
         )
         eth1 = factory.make_Interface(
-            name="eth1", mac_address=ETH1_MAC, node=node
+            name="eth1", mac_address=eth1_mac, node=node
         )
 
         factory.make_Interface(
             INTERFACE_TYPE.VLAN,
-            mac_address=ETH0_MAC,
+            mac_address=eth0_mac,
             parents=[eth0],
             node=node,
         )
         factory.make_Interface(
             INTERFACE_TYPE.BOND,
-            mac_address=ETH1_MAC,
+            mac_address=eth1_mac,
             parents=[eth1],
             node=node,
             name=BOND_NAME,
@@ -4255,12 +4254,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_interface_name_changed(self):
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
+        eth0_mac = self.EXPECTED_INTERFACES["eth1"]
         node = factory.make_Node()
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
             name="eth0",
-            mac_address=ETH0_MAC,
+            mac_address=eth0_mac,
             node=node,
         )
         update_node_network_information(
@@ -4272,10 +4271,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
     def test_mac_id_is_preserved(self):
         """Test whether MAC address entities are preserved and not recreated"""
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
+        eth0_mac = self.EXPECTED_INTERFACES["eth0"]
         node = factory.make_Node()
         iface_to_be_preserved = factory.make_Interface(
-            mac_address=ETH0_MAC, node=node
+            mac_address=eth0_mac, node=node
         )
 
         update_node_network_information(
@@ -4285,11 +4284,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNotNone(reload_object(iface_to_be_preserved))
 
     def test_legacy_model_upgrade_preserves_interfaces(self):
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
-        ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
+        eth0_mac = self.EXPECTED_INTERFACES["eth0"]
+        eth1_mac = self.EXPECTED_INTERFACES["eth1"]
         node = factory.make_Node()
-        eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
-        eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
+        eth0 = factory.make_Interface(mac_address=eth0_mac, node=node)
+        eth1 = factory.make_Interface(mac_address=eth1_mac, node=node)
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
         )
@@ -4300,15 +4299,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
     def test_legacy_model_with_extra_mac(self):
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
-        ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
-        ETH2_MAC = self.EXPECTED_INTERFACES["eth2"].get_raw()
-        ETH3_MAC = "00:00:00:00:01:04"
+        eth0_mac = self.EXPECTED_INTERFACES["eth0"]
+        eth1_mac = self.EXPECTED_INTERFACES["eth1"]
+        eth2_mac = self.EXPECTED_INTERFACES["eth2"]
+        eth3_mac = "00:00:00:00:01:04"
         node = factory.make_Node()
-        eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
-        eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
-        eth2 = factory.make_Interface(mac_address=ETH2_MAC, node=node)
-        eth3 = factory.make_Interface(mac_address=ETH3_MAC, node=node)
+        eth0 = factory.make_Interface(mac_address=eth0_mac, node=node)
+        eth1 = factory.make_Interface(mac_address=eth1_mac, node=node)
+        eth2 = factory.make_Interface(mac_address=eth2_mac, node=node)
+        eth3 = factory.make_Interface(mac_address=eth3_mac, node=node)
 
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
@@ -4325,12 +4324,12 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNone(reload_object(eth3))
 
     def test_deletes_virtual_interfaces_with_unique_mac(self):
-        ETH0_MAC = self.EXPECTED_INTERFACES["eth0"].get_raw()
-        ETH1_MAC = self.EXPECTED_INTERFACES["eth1"].get_raw()
+        eth0_mac = self.EXPECTED_INTERFACES["eth0"]
+        eth1_mac = self.EXPECTED_INTERFACES["eth1"]
         BOND_MAC = "00:00:00:00:01:02"
         node = factory.make_Node()
-        eth0 = factory.make_Interface(mac_address=ETH0_MAC, node=node)
-        eth1 = factory.make_Interface(mac_address=ETH1_MAC, node=node)
+        eth0 = factory.make_Interface(mac_address=eth0_mac, node=node)
+        eth1 = factory.make_Interface(mac_address=eth1_mac, node=node)
         factory.make_Interface(INTERFACE_TYPE.VLAN, node=node, parents=[eth0])
         factory.make_Interface(
             INTERFACE_TYPE.BOND,
@@ -4715,7 +4714,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
         )
 
     def test_boot_interface_bootif_bonded_interfaces(self):
-        mac_address = factory.make_MAC()
+        mac_address = factory.make_mac_address()
         parent = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=self.node, mac_address=mac_address
         )

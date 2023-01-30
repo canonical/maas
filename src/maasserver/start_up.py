@@ -6,7 +6,6 @@
 
 import logging
 
-from django.db import connection
 from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
@@ -16,7 +15,6 @@ from maasserver.deprecations import (
     log_deprecations,
     sync_deprecation_notifications,
 )
-from maasserver.fields import register_mac_type
 from maasserver.models import (
     Config,
     ControllerInfo,
@@ -169,9 +167,6 @@ def start_up(master=False):
 @transactional
 def inner_start_up(master=False):
     """Startup jobs that must run serialized w.r.t. other starting servers."""
-    # Register our MAC data type with psycopg.
-    register_mac_type(connection.cursor())
-
     # All commissioning and testing scripts are stored in the database. For
     # a commissioning ScriptSet to be created Scripts must exist first. Call
     # this early, only on the master process, to ensure they exist and are

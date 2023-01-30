@@ -339,7 +339,7 @@ class TestRequestNodeInfoByMACAddress(MAASServerTestCase):
     def test_request_node_info_by_mac_address_returns_node_for_mac(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         node, boot_purpose = request_node_info_by_mac_address(
-            interface.mac_address.get_raw()
+            interface.mac_address
         )
         self.assertEqual(node, interface.node_config.node)
 

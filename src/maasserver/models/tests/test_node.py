@@ -771,8 +771,7 @@ class TestRegionControllerManagerGetOrCreateRunningController(
 
     def set_mac_address_to_match(self, node):
         raw_macs = [
-            nic.mac_address.raw
-            for nic in node.current_config.interface_set.all()
+            nic.mac_address for nic in node.current_config.interface_set.all()
         ]
         node_module.get_mac_addresses.return_value = [random.choice(raw_macs)]
 

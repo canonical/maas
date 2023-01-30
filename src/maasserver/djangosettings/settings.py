@@ -334,10 +334,6 @@ ALLOWED_HOSTS = ["*"]
 # Consider the request secure if the header is set
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Extend Django's JSON serialization.  Without this, JSON serialization of
-# MAC addresses in model fields will break.
-SERIALIZATION_MODULES = {"maasjson": "maasserver.json"}
-
 # MAAS has no upload limit to allow for big image files.
 # (Django 1.10 introduced this limit with a default of 2.5MB.)
 DATA_UPLOAD_MAX_MEMORY_SIZE = None
