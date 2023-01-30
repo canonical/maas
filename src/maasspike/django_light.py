@@ -241,10 +241,7 @@ def _get_extra_macs_qs(machines):
         )
         .annotate(
             extra_macs=ArrayAgg(
-                Cast(
-                    "current_config__interface__mac_address",
-                    output_field=TextField(),
-                ),
+                "current_config__interface__mac_address",
                 filter=~Q(
                     current_config__interface__id=F("boot_interface_id")
                 ),
