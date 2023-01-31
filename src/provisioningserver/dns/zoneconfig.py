@@ -7,7 +7,6 @@
 from datetime import datetime
 from itertools import chain
 import os
-from pathlib import Path
 
 from netaddr import IPAddress, IPNetwork, spanning_cidr
 from netaddr.core import AddrFormatError
@@ -347,7 +346,6 @@ class DNSForwardZoneConfig(DomainConfigBase):
                     labels={"zone": self.domain},
                 )
             else:
-                Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
                 needs_freeze_thaw = self.zone_file_exists(zi)
                 with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):
@@ -649,7 +647,6 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     labels={"zone": self.domain},
                 )
             else:
-                Path(f"{zi.target_path}.jnl").unlink(missing_ok=True)
                 self.requires_reload = True
                 needs_freeze_thaw = self.zone_file_exists(zi)
                 with freeze_thaw_zone(needs_freeze_thaw, zone=zi.zone_name):

@@ -98,6 +98,8 @@ class RegionControllerService(Service):
         self.needsProxyUpdate = False
         self.needsRBACUpdate = False
         self._dns_updates = []
+        self._queued_updates = []
+        self._dns_update_in_progress = False
         self._dns_requires_full_reload = True
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
@@ -185,7 +187,10 @@ class RegionControllerService(Service):
         self._dns_requires_full_reload = (
             self._dns_requires_full_reload or need_reload
         )
-        self._dns_updates += new_updates
+        if self._dns_update_in_progress:
+            self._queued_updates += new_updates
+        else:
+            self._dns_updates += new_updates
 
     def startProcessing(self):
         """Start the process looping call."""
@@ -217,13 +222,19 @@ class RegionControllerService(Service):
                 return pause(delay)
 
         def _clear_dynamic_dns_updates(d):
-            self._dns_updates = []
+            if len(self._queued_updates) > 0:
+                self._dns_updates = self._queued_updates
+                self._queued_updates = []
+            else:
+                self._dns_updates = []
             self._dns_requires_full_reload = False
+            self._dns_update_in_progress = False
             return d
 
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
+            self._dns_update_in_progress = True
             d = deferToDatabase(
                 transactional(
                     dns_update_all_zones,

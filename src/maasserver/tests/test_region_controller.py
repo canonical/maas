@@ -36,6 +36,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.utils.events import Event
 
 wait_for_reactor = wait_for()
@@ -841,3 +842,54 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.assertEqual(rbac_sync.id, last_sync.id)
         self.assertEqual(last_sync.resource_type, "resource-pool")
         self.assertEqual(last_sync.sync_id, "x-y-z")
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_queueDynamicDNSUpdate_queues_in_separate_list_while_update_in_progress(
+        self,
+    ):
+        domain = yield deferToDatabase(factory.make_Domain)
+        update_result = (random.randint(0, 10), True, [domain.name])
+        record = yield deferToDatabase(factory.make_DNSResource, domain=domain)
+        service = RegionControllerService(sentinel.listener)
+
+        update_zones = self.patch(region_controller, "dns_update_all_zones")
+        update_zones.return_value = update_result
+        check_serial = self.patch(service, "_checkSerial")
+        check_serial.return_value = succeed(update_result)
+
+        service._dns_update_in_progress = True
+        service.queueDynamicDNSUpdate(
+            factory.make_name(),
+            f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
+        )
+        self.assertCountEqual(service._dns_updates, [])
+        self.assertCountEqual(
+            service._queued_updates,
+            [
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="10.10.10.10",
+                )
+            ],
+        )
+        service.needsDNSUpdate = True
+        yield service.process()
+        self.assertCountEqual(
+            service._dns_updates,
+            [
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="10.10.10.10",
+                )
+            ],
+        )
+        self.assertCountEqual(service._queued_updates, [])
