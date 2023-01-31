@@ -452,10 +452,14 @@ class MachineHandler(NodeHandler):
 
     def preprocess_form(self, action, params):
         """Process the `params` to before passing the data to the form."""
+        all_macs = list(params.get("extra_macs", []))
+        if "pxe_mac" in params:
+            all_macs.insert(0, params["pxe_mac"])
+
         new_params = self.preprocess_node_form(action, params)
         # Only copy the allowed fields into `new_params` to be passed into
         # the form.
-        new_params["mac_addresses"] = self.get_mac_addresses(params)
+        new_params["mac_addresses"] = all_macs
         new_params["hostname"] = params.get("hostname")
         new_params["architecture"] = params.get("architecture")
         new_params["power_type"] = params.get("power_type")

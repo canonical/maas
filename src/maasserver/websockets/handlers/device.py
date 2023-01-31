@@ -253,23 +253,16 @@ class DeviceHandler(NodeHandler):
         else:
             raise HandlerError("Unknown action: %s" % action)
 
-    def get_mac_addresses(self, data):
-        """Convert the given `data` into a list of mac addresses.
-
-        This is used by the create method and the hydrate method.
-        The `primary_mac` will always be the first entry in the list.
-        """
-        macs = data.get("extra_macs", [])
-        if "primary_mac" in data:
-            macs.insert(0, data["primary_mac"])
-        return macs
-
     def preprocess_form(self, action, params):
         """Process the `params` to before passing the data to the form."""
+        all_macs = list(params.get("extra_macs", []))
+        if "primary_mac" in params:
+            all_macs.insert(0, params["primary_mac"])
+
         new_params = self.preprocess_node_form(action, params)
         new_params.update(
             {
-                "mac_addresses": self.get_mac_addresses(params),
+                "mac_addresses": all_macs,
                 "hostname": params.get("hostname"),
                 "parent": params.get("parent"),
             }

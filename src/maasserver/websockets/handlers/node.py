@@ -1018,17 +1018,6 @@ class NodeHandler(TimestampedModelHandler):
             for blockdevice in obj.current_config.blockdevice_set.all()
         ]
 
-    def get_mac_addresses(self, data):
-        """Convert the given `data` into a list of mac addresses.
-
-        This is used by the create method and the hydrate method. The `pxe_mac`
-        will always be the first entry in the list.
-        """
-        macs = data.get("extra_macs", [])
-        if "pxe_mac" in data:
-            macs.insert(0, data["pxe_mac"])
-        return macs
-
     def get_providing_dhcp(self, obj):
         """Return if providing DHCP using the prefetched query."""
         for interface in obj.current_config.interface_set.all():
