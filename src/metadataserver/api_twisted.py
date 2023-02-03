@@ -18,7 +18,7 @@ from twisted.web.server import NOT_DONE_YET
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
-from maasserver.models import Interface, Node, StaticIPAddress
+from maasserver.models import Interface, Node
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import (
@@ -285,12 +285,9 @@ def _get_ip_address_for_vmhost(node):
         )
         interface_ids |= new_ids
 
-    ip = (
-        StaticIPAddress.objects.exclude(ip__isnull=True)
-        .filter(interface__in=interface_ids)
-        .values_list("ip", flat=True)
-        .first()
-    )
+    ip = node.ip_addresses(
+        ifaces=Interface.objects.filter(id__in=interface_ids)
+    )[0]
     if ":" in ip:
         ip = f"[{ip}]"
     return ip
