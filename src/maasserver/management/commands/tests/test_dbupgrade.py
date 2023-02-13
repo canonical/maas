@@ -58,7 +58,6 @@ def get_all_triggers(conn):
 
 
 class TestDBUpgrade(MAASTestCase):
-
     dbname = "test_maas_dbupgrade"
 
     def setUp(self):

@@ -13,7 +13,6 @@ def fill_node_dynamic(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0221_track_lxd_project"),
     ]

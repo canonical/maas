@@ -26,7 +26,6 @@ from provisioningserver.refresh.node_info_scripts import (
 
 
 class FakeResponse:
-
     status = 200
 
 
@@ -367,7 +366,6 @@ class TestRefresh(MAASTestCase):
         )
 
     def test_refresh_clears_up_temporary_directory(self):
-
         ScriptsBroken = factory.make_exception_type()
 
         def find_temporary_directories():

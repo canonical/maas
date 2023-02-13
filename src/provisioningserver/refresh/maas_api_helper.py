@@ -41,7 +41,6 @@ class InvalidCredentialsFormat(Exception):
 
 # This would be a dataclass, but needs to support python3.5
 class Credentials:
-
     KEYS = frozenset(
         ("token_key", "token_secret", "consumer_key", "consumer_secret")
     )

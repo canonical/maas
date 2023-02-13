@@ -9,7 +9,6 @@ def amt_remove_mac_address(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0059_merge")]
 
     operations = [migrations.RunPython(amt_remove_mac_address)]

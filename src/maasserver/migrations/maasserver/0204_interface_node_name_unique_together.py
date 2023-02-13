@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0203_interface_node_name_duplicates_delete")
     ]

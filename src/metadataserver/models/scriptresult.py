@@ -40,7 +40,6 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class ScriptResult(CleanSave, TimestampedModel):
-
     script_set = ForeignKey(ScriptSet, editable=False, on_delete=CASCADE)
 
     # All ScriptResults except commissioning scripts will be linked to a Script

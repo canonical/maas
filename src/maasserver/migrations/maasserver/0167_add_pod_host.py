@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0166_auto_select_s390x_extra_arches")]
 
     operations = [

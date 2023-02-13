@@ -236,7 +236,6 @@ IPMI_WORKAROUND_FLAG_CHOICES = [
 
 @enum.unique
 class IPMI_PRIVILEGE_LEVEL(enum.Enum):
-
     USER = "USER"
     OPERATOR = "OPERATOR"
     ADMIN = "ADMIN"
@@ -250,7 +249,6 @@ IPMI_PRIVILEGE_LEVEL_CHOICES = [
 
 
 class IPMIPowerDriver(PowerDriver):
-
     name = "ipmi"
     chassis = False
     can_probe = False

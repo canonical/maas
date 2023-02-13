@@ -296,7 +296,6 @@ def _make_context(
 
 
 class TestClusteredLXDPodDriver(MAASTestCase):
-
     run_tests_with = twisted_test_factory
 
     def setUp(self):
@@ -399,7 +398,6 @@ class TestClusteredLXDPodDriver(MAASTestCase):
 
 
 class TestLXDPodDriver(MAASTestCase):
-
     run_tests_with = twisted_test_factory
 
     def setUp(self):

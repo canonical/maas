@@ -23,7 +23,6 @@ class WedgeState:
 
 
 class WedgePowerDriver(PowerDriver):
-
     name = "wedge"
     chassis = False
     can_probe = False

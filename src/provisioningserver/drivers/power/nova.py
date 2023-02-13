@@ -35,7 +35,6 @@ class NovaPowerState:
 
 
 class NovaPowerDriver(PowerDriver):
-
     name = "nova"
     chassis = True
     can_probe = False

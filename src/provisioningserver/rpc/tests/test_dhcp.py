@@ -602,7 +602,6 @@ class TestUpdateHosts(MAASTestCase):
 
 
 class TestConfigureDHCP(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )
@@ -1336,7 +1335,6 @@ class TestConfigureDHCP(MAASTestCase):
 
 
 class TestValidateDHCP(MAASTestCase):
-
     scenarios = (
         ("DHCPv4", {"server": dhcp.DHCPv4Server}),
         ("DHCPv6", {"server": dhcp.DHCPv6Server}),

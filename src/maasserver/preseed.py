@@ -607,7 +607,6 @@ def get_curtin_config(request, node, base_osystem=None, base_series=None):
 
 @attr.s(auto_attribs=True)
 class PackageManager:
-
     package_tool: str
     deps: typing.List[str]
 

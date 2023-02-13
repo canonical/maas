@@ -32,7 +32,6 @@ class MicrosoftOCSState:
 
 
 class MicrosoftOCSPowerDriver(PowerDriver):
-
     name = "msftocs"
     chassis = True
     can_probe = True

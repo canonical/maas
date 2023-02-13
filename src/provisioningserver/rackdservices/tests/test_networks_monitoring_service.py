@@ -26,7 +26,6 @@ from provisioningserver.utils import services as services_module
 
 
 class TestRackNetworksMonitoringService(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         debug=True, timeout=get_testing_timeout()
     )

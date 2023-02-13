@@ -3259,7 +3259,6 @@ class Factory(maastesting.factory.Factory):
         category=None,
         dismissable=True,
     ):
-
         if context is None:
             context_name = self.make_name("name")
             context = {context_name: self.make_name("value")}

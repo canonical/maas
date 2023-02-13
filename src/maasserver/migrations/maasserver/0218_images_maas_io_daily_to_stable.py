@@ -10,7 +10,6 @@ def daily_to_stable(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0217_notification_dismissal_timestamp")]
 
     operations = [migrations.RunPython(daily_to_stable)]

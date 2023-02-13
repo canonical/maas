@@ -26,7 +26,6 @@ from provisioningserver.utils.version import get_running_version
 
 
 class TestWebhookPowerDriver(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )

@@ -15,7 +15,6 @@ def copy_existing_power_parameters(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0163_create_new_power_parameters_with_jsonfield")
     ]

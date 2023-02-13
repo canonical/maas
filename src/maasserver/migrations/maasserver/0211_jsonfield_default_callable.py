@@ -5,7 +5,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0210_filepathfield_to_charfield")]
 
     operations = [

@@ -3,7 +3,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0040_fix_id_seq")]
 
     operations = [

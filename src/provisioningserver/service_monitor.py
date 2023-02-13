@@ -20,14 +20,12 @@ class HTTPService(AlwaysOnService):
 
 
 class DHCPv4Service(ToggleableService):
-
     name = "dhcpd"
     service_name = "maas-dhcpd"
     snap_service_name = "dhcpd"
 
 
 class DHCPv6Service(ToggleableService):
-
     name = "dhcpd6"
     service_name = "maas-dhcpd6"
     snap_service_name = "dhcpd6"

@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0279_store_vpd_metadata_for_nodedevice"),
     ]

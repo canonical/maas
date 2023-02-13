@@ -14,7 +14,6 @@ def add_s390x_to_pkg_repository_to_arches(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0165_remove_and_rename_power_parameters")]
 
     operations = [migrations.RunPython(add_s390x_to_pkg_repository_to_arches)]

@@ -12,7 +12,6 @@ from provisioningserver.drivers.osystem import (
 
 
 class FakeOS(OperatingSystem):
-
     name = ""
     title = ""
 
@@ -50,7 +49,6 @@ def make_osystem(testcase, osystem, purpose=None, releases=None):
         return fake
 
     else:
-
         obj = OperatingSystemRegistry[osystem]
         old_func = obj.get_boot_image_purposes
         testcase.patch(obj, "get_boot_image_purposes").return_value = purpose

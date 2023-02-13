@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0114_node_dynamic_to_creation_type")]
 
     operations = [

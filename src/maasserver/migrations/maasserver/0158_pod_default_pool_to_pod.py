@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0157_drop_usergroup_and_role")]
 
     operations = [

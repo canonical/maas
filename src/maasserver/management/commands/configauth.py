@@ -27,7 +27,6 @@ from maasserver.utils.dns import validate_url
 
 @dataclass
 class _AuthDetails:
-
     url: str = ""
     domain: str = ""
     user: str = ""

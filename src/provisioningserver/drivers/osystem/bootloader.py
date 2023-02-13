@@ -11,7 +11,6 @@ from provisioningserver.drivers.osystem import (
 
 
 class BootLoaderOS(OperatingSystem):
-
     name = "bootloader"
     title = "Bootloader"
 

@@ -14,7 +14,6 @@ from maasserver.testing.factory import factory
 
 
 class TestNotFoundHandler(APITestCase.ForAnonymousAndUserAndAdmin):
-
     scenarios = (
         ("GET", dict(method="get")),
         ("POST", dict(method="post")),

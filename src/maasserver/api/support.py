@@ -150,7 +150,8 @@ def operation(idempotent, exported_as=None):
 def deprecated(use):
     """Decorator to note a method or class is deprecated on the API.
 
-    :param use: Name of the method or class that should be used in place of this method"""
+    :param use: Name of the method or class that should be used in place of this method
+    """
 
     # TODO: Determine any other behaviours we might want from this decorator in future
 

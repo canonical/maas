@@ -30,7 +30,6 @@ from provisioningserver.utils.service_monitor import (
 
 
 class TestServiceMonitorService(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )

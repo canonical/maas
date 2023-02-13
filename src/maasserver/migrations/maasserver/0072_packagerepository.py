@@ -5,7 +5,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0071_ntp_server_to_ntp_servers")]
 
     operations = [

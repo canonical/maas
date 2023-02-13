@@ -12,7 +12,6 @@ def maas_nodegroup_worker_to_maas(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0060_amt_remove_mac_address")]
 
     operations = [migrations.RunPython(maas_nodegroup_worker_to_maas)]

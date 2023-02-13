@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0117_add_iscsi_block_device")]
 
     operations = [

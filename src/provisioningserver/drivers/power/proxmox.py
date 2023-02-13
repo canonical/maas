@@ -29,7 +29,6 @@ from provisioningserver.utils.twisted import asynchronous
 
 
 class ProxmoxPowerDriver(WebhookPowerDriver):
-
     name = "proxmox"
     chassis = True
     can_probe = True

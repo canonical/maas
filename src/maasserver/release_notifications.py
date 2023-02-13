@@ -50,7 +50,6 @@ def notification_available(notification_version):
 
 @transactional
 def ensure_notification_exists(message, resurface_after=RESURFACE_AFTER):
-
     notification, created = Notification.objects.get_or_create(
         ident=RELEASE_NOTIFICATION_IDENT,
         defaults={
@@ -99,7 +98,6 @@ class ReleaseNotifications:
     @asynchronous
     @inlineCallbacks
     def check_notifications(self, notifications_enabled):
-
         if not notifications_enabled:
             maaslog.debug("Release notifications are disabled")
             # Notifications are disabled, we can delete any that currently exist.

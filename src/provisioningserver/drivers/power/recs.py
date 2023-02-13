@@ -201,7 +201,6 @@ class RECSAPI:
 
 
 class RECSPowerDriver(PowerDriver):
-
     name = "recs_box"
     chassis = True
     can_probe = True

@@ -18,7 +18,6 @@ class TestWithScenarios(MAASTestCase):
         events = []
 
         class Test(WithScenarios, unittest.TestCase):
-
             scenarios = [
                 ("one", dict(token="one")),
                 ("two", dict(token="two")),
@@ -39,7 +38,6 @@ class TestWithScenarios(MAASTestCase):
         events = []
 
         class Test(WithScenarios, unittest.TestCase):
-
             scenarios = [
                 ("one", dict(token="one")),
                 ("two", dict(token="two")),

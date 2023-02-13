@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("auth", "0003_django_1_11_update")]
 
     operations = [

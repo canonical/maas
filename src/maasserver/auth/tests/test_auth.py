@@ -1056,7 +1056,6 @@ class TestMAASAuthorizationBackendInterface(
 
 
 class TestMAASAuthorizationBackendForUnrestrictedRead(MAASServerTestCase):
-
     scenarios = (
         ("dnsdata", {"factory": factory.make_DNSData}),
         ("dnsresource", {"factory": factory.make_DNSResource}),
@@ -1120,7 +1119,6 @@ class TestMAASAuthorizationBackendForUnrestrictedRead(MAASServerTestCase):
 
 
 class TestMAASAuthorizationBackendForAdminRestricted(MAASServerTestCase):
-
     scenarios = (("discovery", {"factory": factory.make_Discovery}),)
 
     def test_user_cannot_view(self):

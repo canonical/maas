@@ -97,7 +97,6 @@ class TestOperatingSystem(MAASTestCase):
 
 
 class TestFindImage(MAASTestCase):
-
     scenarios = [
         (
             "squashfs",

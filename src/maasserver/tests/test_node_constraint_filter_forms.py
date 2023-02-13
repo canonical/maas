@@ -181,7 +181,6 @@ class TestUtils(MAASServerTestCase):
 
 
 class FilterConstraintsMixin:
-
     form_class = None  # set in subclasses
 
     def assertConstrainedNodes(self, nodes, data):
@@ -203,7 +202,6 @@ def create_unique_node_device_needle(needle_name, needle_factory):
 
 
 class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
-
     form_class = FilterNodeForm
 
     def set_usable_arch(self):
@@ -2010,7 +2008,6 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
 
 
 class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
-
     form_class = AcquireNodeForm
 
     def set_usable_arch(self):
@@ -2332,7 +2329,6 @@ class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
 
 
 class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
-
     form_class = ReadNodesForm
 
     def test_system_ids(self):

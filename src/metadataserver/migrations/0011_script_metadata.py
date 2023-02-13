@@ -4,7 +4,6 @@ import maasserver.migrations.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0010_scriptresult_time_and_script_title")
     ]

@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0156_drop_ssh_unique_key_index")]
 
     operations = [

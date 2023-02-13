@@ -103,7 +103,6 @@ class TestIsCallable(MAASTestCase):
 
 
 class MockTestMixin:
-
     # Some matchers return a private MismatchDecorator object, which
     # does not descend from Mismatch, so we check the contract instead.
     is_mismatch = MatchesStructure(

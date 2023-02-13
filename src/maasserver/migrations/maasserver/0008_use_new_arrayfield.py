@@ -5,7 +5,6 @@ import maasserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0007_create_node_proxy_models")]
 
     operations = [

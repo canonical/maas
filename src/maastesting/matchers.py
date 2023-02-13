@@ -244,7 +244,6 @@ class MockCallsMatch(Matcher):
         return f"{self.__class__.__name__}({self.calls!r})"
 
     def match(self, mock):
-
         matcher = MatchesAll(
             IsCallableMock(),
             Annotate(

@@ -52,7 +52,6 @@ class MSCMState:
 
 
 class MSCMPowerDriver(PowerDriver):
-
     name = "mscm"
     chassis = True
     can_probe = True

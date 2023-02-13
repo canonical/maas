@@ -22,7 +22,6 @@ class RegistryFixture(Fixture):
 
 
 class MAASFileBackedValueFixture(Fixture):
-
     FILE_BACKED_VALUE = None
 
     def __init__(self, value):

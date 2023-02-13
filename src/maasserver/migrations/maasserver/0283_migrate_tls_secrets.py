@@ -31,7 +31,6 @@ def move_tls_secrets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0282_rpc_shared_secret_to_secret"),
     ]

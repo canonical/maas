@@ -37,7 +37,6 @@ def run_migration(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0014_rename_dhcp_unconfigured_ifaces")]
 
     operations = [migrations.RunPython(run_migration)]

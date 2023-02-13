@@ -337,7 +337,7 @@ license_keys_handler = AdminRestrictedResource(
 def re_path(route, view, name=None, **kwargs):
     paths = [django_re_path(route, view, name=name, **kwargs)]
     if isinstance(view, OperationsResource):
-        for (_, op) in view.handler.exports.keys():
+        for _, op in view.handler.exports.keys():
             if op:
                 paths.append(
                     django_re_path(

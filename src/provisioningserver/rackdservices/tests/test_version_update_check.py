@@ -37,7 +37,6 @@ class SampleVersionUpdateCheckService(VersionUpdateCheckService):
 
 
 class TestVersionUpdateCheckService(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         debug=True, timeout=get_testing_timeout()
     )
@@ -62,7 +61,6 @@ class TestVersionUpdateCheckService(MAASTestCase):
 
 
 class TestRackVersionUpdateCheckService(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         debug=True, timeout=get_testing_timeout()
     )

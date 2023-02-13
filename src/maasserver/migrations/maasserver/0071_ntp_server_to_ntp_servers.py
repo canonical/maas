@@ -14,7 +14,6 @@ UPDATE maasserver_config
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0070_allow_null_vlan_on_interface")]
 
     operations = [

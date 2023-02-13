@@ -20,7 +20,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestConnectionPool(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_setitem_sets_item_in_connections(self):

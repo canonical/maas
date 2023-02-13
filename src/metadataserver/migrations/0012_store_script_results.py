@@ -4,7 +4,6 @@ import metadataserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0011_script_metadata")]
 
     operations = [

@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0021_scriptresult_applying_netconf")]
 
     operations = [

@@ -42,7 +42,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class FakePowerDriverBase(PowerDriverBase):
-
     name = ""
     chassis = False
     can_probe = False
@@ -212,7 +211,6 @@ class TestPowerDriverBase(MAASTestCase):
 
 
 class TestGetErrorMessage(MAASTestCase):
-
     scenarios = [
         (
             "auth",
@@ -263,7 +261,6 @@ class TestGetErrorMessage(MAASTestCase):
 
 
 class FakePowerDriver(PowerDriver):
-
     name = ""
     chassis = False
     can_probe = False
@@ -367,7 +364,6 @@ def make_async_power_driver(
 
 
 class TestPowerDriverPowerAction(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = [
@@ -485,7 +481,6 @@ class TestPowerDriverPowerAction(MAASTestCase):
 
 
 class TestPowerDriverCycle(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -519,7 +514,6 @@ class TestPowerDriverCycle(MAASTestCase):
 
 
 class TestPowerDriverQuery(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

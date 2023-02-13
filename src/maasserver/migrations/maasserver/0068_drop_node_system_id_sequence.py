@@ -28,7 +28,6 @@ sequence_drop = "DROP SEQUENCE IF EXISTS maasserver_node_system_id_seq"
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0067_add_size_to_largefile")]
 
     operations = [migrations.RunSQL(sequence_drop, sequence_create)]

@@ -78,7 +78,6 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
 
 
 class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
-
     scenarios = (
         (
             "commissioning",

@@ -146,7 +146,6 @@ class LocalConfigCommand(BaseCommand):
 
 
 class GetCommand(LocalConfigCommand):
-
     # Do NOT dump to self.stdout; Django does some odd things wrapping stdout,
     # like automatically injecting line breaks, and these break the YAML/JSON
     # output.
@@ -217,7 +216,6 @@ class ResetCommand(LocalConfigCommand):
 
 
 class SetCommand(LocalConfigCommand):
-
     help = "Set local configuration for the MAAS region controller."
 
     def add_arguments(self, parser):

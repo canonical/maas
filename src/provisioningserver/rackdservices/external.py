@@ -393,7 +393,6 @@ class RackSyslog(RackOnlyExternalService):
 
 
 class RackExternalService(TimerService):
-
     # Initial start the interval is low so that forwarders of bind9 gets
     # at least one region controller. When no region controllers are set
     # on the forwarders the interval is always set to the lower setting.

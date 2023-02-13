@@ -68,7 +68,6 @@ def format_bootif(mac):
 
 
 class PowerNVBootMethod(BootMethod):
-
     name = "powernv"
     bios_boot_method = "powernv"
     template_subdir = "pxe"

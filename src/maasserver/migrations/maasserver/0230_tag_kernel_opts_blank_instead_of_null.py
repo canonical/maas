@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0229_drop_physicalblockdevice_storage_pool"),
     ]

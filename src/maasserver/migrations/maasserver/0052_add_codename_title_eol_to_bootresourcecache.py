@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0051_space_fabric_unique")]
 
     operations = [

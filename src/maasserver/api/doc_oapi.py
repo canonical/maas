@@ -241,7 +241,7 @@ def _oapi_item_from_docstring(
                 if required:
                     body.setdefault("required", []).append(name)
 
-        for (status, content) in _response_pair(ap_dict):
+        for status, content in _response_pair(ap_dict):
             response = {
                 "description": _prettify(
                     content.get(

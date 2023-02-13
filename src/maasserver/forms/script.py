@@ -37,7 +37,6 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class ScriptForm(ModelForm):
-
     script_type = CharField(
         label="Script type",
         required=False,

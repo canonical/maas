@@ -38,7 +38,6 @@ from provisioningserver.utils.network import get_source_address
 
 
 class AssertNetworkConfigMixin:
-
     # MAC addresses are quoted because unquoted all-numeric MAC addresses —
     # e.g. 12:34:56:78:90:12 — are interpreted as *integers* by PyYAML. This
     # edge-case took some time to figure out, and begs the question: why is
@@ -324,7 +323,6 @@ class AssertNetworkConfigMixin:
 
 
 class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-
     scenarios = (("ipv4", {"version": 4}), ("ipv6", {"version": 6}))
 
     def test_renders_expected_output(self):
@@ -471,7 +469,6 @@ class TestVLANOnBondNetworkLayout(
 
 
 class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
-
     scenarios = (("ipv4", {"ip_version": 4}), ("ipv6", {"ip_version": 6}))
 
     def test_dhcp_configurations_rendered(self):

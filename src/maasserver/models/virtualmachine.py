@@ -353,7 +353,6 @@ class VMHostResources:
 
 @dataclass
 class VMHostUsedResources:
-
     cores: int
     memory: int
     hugepages_memory: int

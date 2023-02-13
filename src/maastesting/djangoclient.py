@@ -35,7 +35,6 @@ def transparent_encode_multipart(func):
         query=None,
         **extra
     ):
-
         if isinstance(data, bytes):
             if content_type is None:
                 content_type = "application/octet-stream"

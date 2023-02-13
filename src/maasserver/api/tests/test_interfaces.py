@@ -805,7 +805,6 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
 
 class TestInterfacesAPIForControllers(APITestCase.ForUser):
-
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),
@@ -2002,7 +2001,6 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
 
 
 class TestInterfaceAPIForControllers(APITestCase.ForUser):
-
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),

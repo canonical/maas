@@ -8,7 +8,6 @@ from zope import interface
 
 
 class IConnection(interface.Interface):
-
     ident = interface.Attribute(
         "ident", "An identifier for the far end of the connection."
     )
@@ -26,7 +25,6 @@ class IConnection(interface.Interface):
 
 
 class IConnectionToRegion(IConnection):
-
     localIdent = interface.Attribute(
         "ident", "An identifier for this end of the connection."
     )

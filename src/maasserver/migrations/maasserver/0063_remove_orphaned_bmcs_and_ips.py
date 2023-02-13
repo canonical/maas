@@ -10,7 +10,6 @@ def remove_orphaned_bmcs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0062_fix_bootsource_daily_label")]
 
     operations = [migrations.RunPython(remove_orphaned_bmcs)]

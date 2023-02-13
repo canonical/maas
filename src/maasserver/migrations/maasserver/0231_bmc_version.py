@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0230_tag_kernel_opts_blank_instead_of_null"),
     ]

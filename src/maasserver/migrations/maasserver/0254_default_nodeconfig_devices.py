@@ -25,7 +25,6 @@ def create_default_nodeconfig_devices(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0253_nodeconfig"),
     ]

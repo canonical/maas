@@ -4,7 +4,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0038_filesystem_ramfs_tmpfs_support")]
 
     operations = [

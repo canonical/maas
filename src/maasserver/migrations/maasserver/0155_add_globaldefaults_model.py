@@ -9,7 +9,6 @@ import maasserver.models.node
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0154_link_usergroup_role")]
 
     operations = [

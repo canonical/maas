@@ -4,7 +4,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0052_add_codename_title_eol_to_bootresourcecache")
     ]

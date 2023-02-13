@@ -7,7 +7,6 @@ import maasserver.models.dnsresource
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0011_domain_data")]
 
     operations = [

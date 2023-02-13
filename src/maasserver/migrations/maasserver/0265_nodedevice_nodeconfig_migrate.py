@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0264_nodedevice_nodeconfig_link"),
     ]

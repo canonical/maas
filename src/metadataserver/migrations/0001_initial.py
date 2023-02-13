@@ -5,7 +5,6 @@ import metadataserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0001_initial"),
         ("piston3", "0001_initial"),

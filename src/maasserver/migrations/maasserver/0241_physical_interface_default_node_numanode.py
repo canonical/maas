@@ -50,7 +50,6 @@ def fix_empty_interface_numanode(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0240_ownerdata_key_fix"),
     ]

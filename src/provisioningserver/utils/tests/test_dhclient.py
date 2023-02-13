@@ -19,7 +19,6 @@ from provisioningserver.utils.fs import atomic_write
 
 
 class TestGetLatestFixedAddress(MAASTestCase):
-
     IPV4_LEASE_FILE = dedent(
         """\
         lease {

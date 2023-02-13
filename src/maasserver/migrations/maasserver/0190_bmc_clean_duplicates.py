@@ -52,7 +52,6 @@ def clean_bmcs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0189_staticipaddress_temp_expires_on")]
 
     operations = [migrations.RunPython(clean_bmcs)]

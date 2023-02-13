@@ -233,7 +233,6 @@ def make_Failure(exception_type, *args, **kwargs):
 
 
 class TestDHCPRequestMonitor(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(debug=False, timeout=5)
 
     def test_send_requests_and_await_replies(self):

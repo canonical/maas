@@ -7,7 +7,6 @@ import maasserver.models.node
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0146_add_rootkey")]
 
     operations = [

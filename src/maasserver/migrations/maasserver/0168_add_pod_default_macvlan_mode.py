@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0167_add_pod_host")]
 
     operations = [

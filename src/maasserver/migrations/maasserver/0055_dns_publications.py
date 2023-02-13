@@ -5,7 +5,6 @@ import maasserver.models.dnspublication
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0054_controller")]
 
     operations = [

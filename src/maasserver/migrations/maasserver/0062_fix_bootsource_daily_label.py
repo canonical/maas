@@ -14,7 +14,6 @@ def fix_bootsource_daily_label(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0061_maas_nodegroup_worker_to_maas")]
 
     operations = [migrations.RunPython(fix_bootsource_daily_label)]

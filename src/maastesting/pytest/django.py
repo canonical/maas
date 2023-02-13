@@ -153,7 +153,6 @@ def _set_up_template_db(
 
 @pytest.fixture(scope="session")
 def templatemaasdb(pytestconfig):
-
     cluster = pytestconfig.stash[cluster_stash]
     force_recreate = pytestconfig.option.maas_recreate_initial_db
     template_path = Path(pytestconfig.option.maas_initial_db)
@@ -179,7 +178,6 @@ def ensuremaasdb(request, templatemaasdb, pytestconfig, worker_id):
         connect(cluster) as conn,
         conn.cursor() as cursor,
     ):
-
         if request.node.get_closest_marker("recreate_db"):
             cursor.execute(f"DROP DATABASE IF EXISTS {dbname}")
         if dbname not in cluster.databases:

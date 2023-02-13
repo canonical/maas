@@ -7,7 +7,6 @@ import maasserver.models.dnsresource
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0009_remove_routers_field_from_node")]
 
     operations = [

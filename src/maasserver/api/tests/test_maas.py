@@ -419,7 +419,6 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
 
 
 class TestMAASHandlerAPIForProxyPort(APITestCase.ForUser):
-
     scenarios = [
         ("valid-port", {"port": random.randint(5300, 65535), "valid": True}),
         (

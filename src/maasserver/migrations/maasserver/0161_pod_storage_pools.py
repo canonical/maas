@@ -7,7 +7,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0160_pool_only_for_machines")]
 
     operations = [

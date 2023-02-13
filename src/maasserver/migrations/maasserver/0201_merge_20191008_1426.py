@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0200_interface_sriov_max_vf"),
         ("maasserver", "0195_event_username_max_length"),

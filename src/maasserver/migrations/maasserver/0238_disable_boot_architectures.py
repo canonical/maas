@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0237_drop_controller_version_mismatch_notifications"),
     ]

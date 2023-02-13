@@ -142,7 +142,6 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         )
 
     def test_script_did_not_complete_emits_event(self):
-
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.RUNNING,
             script_set=factory.make_ScriptSet(result_type=RESULT_TYPE.TESTING),
@@ -172,7 +171,6 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         )
 
     def test_script_changed_status_emits_event(self):
-
         old_status = SCRIPT_STATUS.RUNNING
         script_result = factory.make_ScriptResult(
             status=old_status,
@@ -207,7 +205,6 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         )
 
     def test_install_log_emits_event(self):
-
         old_status = SCRIPT_STATUS.RUNNING
         script_result = factory.make_ScriptResult(
             status=old_status,

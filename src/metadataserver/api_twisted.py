@@ -45,7 +45,6 @@ log = LegacyLogger()
 
 
 class StatusHandlerResource(Resource):
-
     # Has no children, so getChild will not be called.
     isLeaf = True
 

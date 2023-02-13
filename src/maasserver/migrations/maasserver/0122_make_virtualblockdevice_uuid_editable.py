@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0121_relax_staticipaddress_unique_constraint")
     ]

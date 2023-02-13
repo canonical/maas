@@ -29,7 +29,6 @@ def create_virtual_machines(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0222_replace_node_creation_type"),
     ]

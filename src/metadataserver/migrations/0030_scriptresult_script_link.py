@@ -55,7 +55,6 @@ def add_run_machine_resources_scriptresult(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0029_scriptset_tags_cleanup"),
     ]

@@ -25,7 +25,6 @@ class RaritanState:
 
 
 class RaritanPowerDriver(PowerDriver):
-
     name = "raritan"
     chassis = True
     can_probe = False

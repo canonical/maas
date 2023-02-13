@@ -183,7 +183,6 @@ class LXDPodError(Exception):
 
 
 class LXDPodDriver(PodDriver):
-
     name = "lxd"
     chassis = True
     can_probe = False

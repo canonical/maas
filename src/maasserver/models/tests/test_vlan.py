@@ -231,7 +231,6 @@ class TestVLAN(MAASServerTestCase):
 
 
 class TestVLANVidValidation(MAASServerTestCase):
-
     scenarios = [
         ("0", {"vid": 0, "valid": True}),
         ("12", {"vid": 12, "valid": True}),
@@ -263,7 +262,6 @@ class TestVLANVidValidation(MAASServerTestCase):
 
 
 class TestVLANMTUValidation(MAASServerTestCase):
-
     scenarios = [
         ("551", {"mtu": 551, "valid": False}),
         ("552", {"mtu": 552, "valid": True}),

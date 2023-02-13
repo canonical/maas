@@ -34,7 +34,6 @@ SSL_INSECURE_CHOICES = [[SSL_INSECURE_NO, "No"], [SSL_INSECURE_YES, "Yes"]]
 
 
 class WebhookPowerDriver(PowerDriver):
-
     name = "webhook"
     chassis = False
     can_probe = False

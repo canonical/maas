@@ -226,6 +226,7 @@ class SerializationFailureTestCase(
 
     def cause_serialization_failure(self):
         """Trigger an honest, from the database, serialization failure."""
+
         # Helper to switch the transaction to SERIALIZABLE.
         def set_serializable():
             with connection.cursor() as cursor:
@@ -346,6 +347,7 @@ class UniqueViolationTestCase(
         ought to tell us about it.
 
         """
+
         # Helper to switch the transaction to REPEATABLE READ.
         def set_repeatable_read():
             with connection.cursor() as cursor:

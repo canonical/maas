@@ -5,7 +5,6 @@ import django.utils.timezone
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0216_remove_skip_bmc_config_column"),
     ]

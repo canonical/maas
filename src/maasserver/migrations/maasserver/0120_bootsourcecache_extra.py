@@ -4,7 +4,6 @@ import maasserver.migrations.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0119_set_default_vlan_field")]
 
     operations = [

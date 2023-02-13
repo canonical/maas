@@ -19,7 +19,6 @@ from provisioningserver.utils.xpath import try_match_xpath
 
 
 class TestTryMatchXPathScenarios(MAASTestCase):
-
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
     def scenario(name, xpath, doc, expected_result, expected_log=""):

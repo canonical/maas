@@ -7,7 +7,6 @@ import maasserver.models.node
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0013_remove_boot_type_from_node")]
 
     operations = [

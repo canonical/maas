@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0080_change_packagerepository_url_type")]
 
     operations = [

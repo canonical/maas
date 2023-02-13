@@ -5,7 +5,6 @@ import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0098_add_space_to_vlan")]
 
     operations = [

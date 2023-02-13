@@ -34,7 +34,6 @@ def extract_vmware_parameters(context):
 
 
 class VMwarePowerDriver(PowerDriver):
-
     name = "vmware"
     chassis = True
     can_probe = True

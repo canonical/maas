@@ -33,7 +33,6 @@ def migrate_rootkey_material(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0287_add_controller_info_vault_flag"),
     ]

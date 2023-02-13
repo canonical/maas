@@ -60,7 +60,6 @@ def fix_fabric_names(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0050_modify_external_dhcp_on_vlan")]
 
     operations = [

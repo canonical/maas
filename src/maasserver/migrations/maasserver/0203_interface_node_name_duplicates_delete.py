@@ -53,7 +53,6 @@ def delete_duplicate_interfaces(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0202_event_node_on_delete")]
 
     operations = [migrations.RunPython(delete_duplicate_interfaces)]

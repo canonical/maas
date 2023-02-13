@@ -18,7 +18,6 @@ def drop_all_funcs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0029_add_rdns_mode")]
 
     operations = [migrations.RunPython(drop_all_funcs)]

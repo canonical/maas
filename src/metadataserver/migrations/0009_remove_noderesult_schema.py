@@ -23,7 +23,6 @@ class DeleteModel(migrations.DeleteModel):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0008_remove-commissioningscripts")]
 
     operations = [DeleteModel(name="NodeResult")]

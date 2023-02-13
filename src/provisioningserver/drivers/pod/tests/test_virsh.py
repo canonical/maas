@@ -2565,7 +2565,6 @@ class TestVirsh(MAASTestCase):
 
 
 class TestVirshPodDriver(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_missing_packages(self):

@@ -16,7 +16,6 @@ SUPPORT_VIEWS = (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0259_add_hardware_sync_flag"),
     ]

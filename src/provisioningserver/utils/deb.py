@@ -63,7 +63,10 @@ def get_deb_versions_info(apt_pkg=None) -> Optional[DebVersionsInfo]:
     policy = apt_pkg.Policy(cache)
     policy.init_defaults()
 
-    current, update, = (
+    (
+        current,
+        update,
+    ) = (
         None,
         None,
     )

@@ -384,7 +384,7 @@ class TestBlockDevice(MAASServerTestCase):
             (1000 * 1000 * 1000 * 1000, "1.0 TB"),
         )
         block_device = BlockDevice()
-        for (size, display_size) in sizes:
+        for size, display_size in sizes:
             block_device.size = size
             self.expectThat(block_device.display_size(), Equals(display_size))
 
@@ -558,7 +558,6 @@ class TestBlockDevice(MAASServerTestCase):
 
 
 class TestBlockDeviceBlockNameIdx(MAASTestCase):
-
     scenarios = (
         ("0", {"idx": 0, "name": "sda"}),
         ("25", {"idx": 25, "name": "sdz"}),
@@ -585,7 +584,6 @@ class TestBlockDeviceBlockNameIdx(MAASTestCase):
 
 
 class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
-
     scenarios = [
         ("BlockDevice", {"factory": factory.make_BlockDevice}),
         ("PhysicalBlockDevice", {"factory": factory.make_PhysicalBlockDevice}),

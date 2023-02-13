@@ -22,7 +22,8 @@ class ForwardDNSServerManager(Manager):
 class ForwardDNSServer(CleanSave, TimestampedModel):
     """A `ForwardDNSServer`.
     :ivar ip_address: The IP address of the forward DNS server to forward queries to.
-    :ivar domains: A many to many reference to domains that forward to this server."""
+    :ivar domains: A many to many reference to domains that forward to this server.
+    """
 
     objects = ForwardDNSServerManager()
 

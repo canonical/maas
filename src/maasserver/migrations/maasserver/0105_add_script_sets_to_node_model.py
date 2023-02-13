@@ -3,7 +3,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0002_script_models"),
         ("maasserver", "0104_notifications_dismissals"),

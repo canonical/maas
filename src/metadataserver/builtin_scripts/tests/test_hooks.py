@@ -1118,7 +1118,6 @@ def make_lldp_output(macs):
 
 
 class TestDetectSwitchVendorModelDMIScenarios(MAASServerTestCase):
-
     scenarios = (
         (
             "accton_wedge40_1",
@@ -1209,7 +1208,6 @@ TEST_MODALIASES = [
 
 
 class TestFilterModaliases(MAASTestCase):
-
     scenarios = (
         (
             "modalias_wildcard_multiple_match",
@@ -1349,7 +1347,6 @@ class TestFilterModaliases(MAASTestCase):
 
 
 class TestDetectHardware(MAASServerTestCase):
-
     scenarios = (
         (
             "caffeine_fueled_ubuntu_classic",
@@ -1518,7 +1515,6 @@ class TestAddSwitchVendorModelTags(MAASServerTestCase):
 
 
 class TestCreateMetadataByModalias(MAASServerTestCase):
-
     scenarios = (
         (
             "switch_trident2",
@@ -1568,7 +1564,6 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
 
 
 class TestUpdateFruidMetadata(MAASServerTestCase):
-
     # This is an actual response returned by a Facebook Wedge 100.
     SAMPLE_RESPONSE = b"""
 {

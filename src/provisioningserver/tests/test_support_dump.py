@@ -13,7 +13,6 @@ from provisioningserver import support_dump
 
 
 class TestUpdateMaasClusterConf(MAASTestCase):
-
     # Test to ensure that if exceptions are thrown during the dump, the dump
     # continues through all the items to dump anyway.
     scenarios = (

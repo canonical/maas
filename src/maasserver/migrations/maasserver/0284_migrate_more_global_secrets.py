@@ -31,7 +31,6 @@ def move_secrets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0283_migrate_tls_secrets"),
     ]

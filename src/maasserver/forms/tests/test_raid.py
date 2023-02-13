@@ -251,7 +251,6 @@ class TestCreateRaidForm(MAASServerTestCase):
 
 
 class TestUpdateRaidForm(MAASServerTestCase):
-
     # Add devices and partitions
     def test_add_valid_blockdevice(self):
         raid = factory.make_FilesystemGroup(

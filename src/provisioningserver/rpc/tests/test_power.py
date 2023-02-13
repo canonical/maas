@@ -63,7 +63,6 @@ def suppress_reporting(test):
 
 
 class TestPowerHelpers(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -160,7 +159,6 @@ class TestPowerHelpers(MAASTestCase):
 
 
 class TestChangePowerState(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -439,7 +437,6 @@ class TestChangePowerState(MAASTestCase):
 
 
 class TestMaybeChangePowerState(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -758,7 +755,6 @@ class TestMaybeChangePowerState(MAASTestCase):
 
 
 class TestPowerQuery(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -927,7 +923,6 @@ class TestPowerQuery(MAASTestCase):
 
 
 class TestPowerQueryExceptions(MAASTestCase):
-
     scenarios = tuple(
         (
             driver.name,
@@ -1030,7 +1025,6 @@ class TestPowerQueryExceptions(MAASTestCase):
 
 
 class TestPowerQueryAsync(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

@@ -4,7 +4,6 @@ from django.utils import timezone
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("contenttypes", "__first__")]
 
     operations = [

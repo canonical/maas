@@ -479,7 +479,6 @@ class DNSReverseZoneConfig(DomainConfigBase):
             zone_rest = ".".join(split_zone[rest_limit:-1])
             base = int(split_zone[rest_limit - 1])
         while first <= last:
-
             (first, base) = cls._skip_if_overlaps(
                 first, base, step, network, exclude
             )

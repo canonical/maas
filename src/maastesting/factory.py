@@ -61,7 +61,6 @@ def network_clashes(network, other_networks):
 
 
 class Factory:
-
     random_letters = map(
         random.choice, repeat(string.ascii_letters + string.digits)
     )

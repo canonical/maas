@@ -490,7 +490,6 @@ EndSection
         self.assertRaises(SystemExit, self.ipmi.add_bmc_user)
 
     def test_set_ipmi_lan_channel_setting_verifies(self):
-
         for channel in [
             "Lan_Channel",
             "Lan_Channel_Channel_1",

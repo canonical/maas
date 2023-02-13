@@ -20,7 +20,6 @@ def add_kflavor_to_boot_source_cache(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0081_allow_larger_bootsourcecache_fields")]
 
     operations = [

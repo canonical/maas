@@ -8,7 +8,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0218_images_maas_io_daily_to_stable"),
     ]

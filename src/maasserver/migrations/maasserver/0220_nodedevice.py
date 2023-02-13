@@ -10,7 +10,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0219_vm_nic_link"),
     ]

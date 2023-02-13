@@ -3,7 +3,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0015_migrate_storage_tests")]
 
     operations = [

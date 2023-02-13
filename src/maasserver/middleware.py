@@ -207,7 +207,6 @@ class ExceptionMiddleware:
 
 
 class DebuggingLoggerMiddleware:
-
     log_level = logging.DEBUG
 
     def __init__(self, get_response):

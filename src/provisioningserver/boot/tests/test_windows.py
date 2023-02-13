@@ -145,7 +145,6 @@ class TestBcd(MAASTestCase):
 
 
 class TestRequestNodeInfoByMACAddress(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_returns_None_when_MAC_is_None(self):
@@ -173,7 +172,6 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
 
 
 class TestWindowsPXEBootMethod(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

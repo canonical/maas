@@ -69,7 +69,6 @@ def move_secrets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0289_vault_secret"),
     ]

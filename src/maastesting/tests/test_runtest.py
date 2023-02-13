@@ -11,7 +11,6 @@ class TestExecutors:
     @pytest.mark.parametrize("executor", [MAASRunTest, MAASTwistedRunTest])
     def test_catches_generator_tests(self, executor):
         class BrokenTests(TestCase):
-
             run_tests_with = executor
 
             def test(self):

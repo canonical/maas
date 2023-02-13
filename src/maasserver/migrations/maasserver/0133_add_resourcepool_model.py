@@ -5,7 +5,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0132_consistent_model_name_validation")]
 
     operations = [

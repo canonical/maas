@@ -5,7 +5,6 @@ import maasserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0049_add_external_dhcp_present_to_vlan")]
 
     operations = [

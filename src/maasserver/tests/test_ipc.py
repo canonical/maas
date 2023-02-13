@@ -72,7 +72,6 @@ class TestGetIPCSocketPath(MAASTestCase):
 
 
 class TestIPCCommunication(MAASTransactionServerTestCase):
-
     run_tests_with = MAASCrochetRunTest
 
     def setUp(self):

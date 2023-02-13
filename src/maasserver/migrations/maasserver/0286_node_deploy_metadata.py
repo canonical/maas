@@ -35,7 +35,6 @@ def migrate_node_metadata(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0285_migrate_external_auth_secrets"),
     ]

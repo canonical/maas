@@ -9,7 +9,6 @@ def fix_spelling(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0046_add_bridge_interface_type")]
 
     operations = [

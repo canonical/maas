@@ -13,7 +13,6 @@ def v2_to_v3(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0090_bootloaders")]
 
     operations = [migrations.RunPython(v2_to_v3)]

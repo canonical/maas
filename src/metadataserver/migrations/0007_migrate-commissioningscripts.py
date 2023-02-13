@@ -29,7 +29,6 @@ def commissioningscript_to_script(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0006_scriptresult_combined_output")]
 
     operations = [migrations.RunPython(commissioningscript_to_script)]

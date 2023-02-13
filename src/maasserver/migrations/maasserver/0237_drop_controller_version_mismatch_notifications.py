@@ -11,7 +11,6 @@ def drop_notifications(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0236_controllerinfo_update_first_reported"),
     ]

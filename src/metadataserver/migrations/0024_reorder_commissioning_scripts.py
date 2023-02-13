@@ -24,7 +24,6 @@ def reorder_commissioning_scripts(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0023_reorder_network_scripts")]
 
     operations = [migrations.RunPython(reorder_commissioning_scripts)]

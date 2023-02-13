@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     # This depends on the latest (at time of writing) patch in 2.6,
     # since this patch is to be backported there.
     dependencies = [("maasserver", "0192_event_node_no_set_null")]

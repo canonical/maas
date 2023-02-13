@@ -366,7 +366,6 @@ class ScriptSetManager(Manager):
 
 
 class ScriptSet(CleanSave, Model):
-
     objects = ScriptSetManager()
 
     last_ping = DateTimeField(blank=True, null=True)

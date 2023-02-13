@@ -5,7 +5,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0124_staticipaddress_address_family_index")
     ]

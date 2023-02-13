@@ -164,7 +164,6 @@ class TestWebClientContextFactory(MAASTestCase):
 
 
 class TestRedfishPowerDriver(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )

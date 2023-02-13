@@ -102,7 +102,6 @@ def return_args(*args, **kwargs):
 
 
 class TestAsynchronousDecorator(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_calls_in_current_thread_when_current_thread_is_reactor(self):
@@ -143,7 +142,6 @@ def noop():
 
 
 class TestThreadDeferred(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -157,7 +155,6 @@ class TestThreadDeferred(MAASTestCase):
 
 
 class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_timeout_cannot_be_None(self):
@@ -180,7 +177,6 @@ class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
 
 
 class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = (
@@ -238,7 +234,6 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
 
 
 class TestSynchronousDecorator(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @synchronous
@@ -451,7 +446,6 @@ class TestRetries(MAASTestCase):
 
 
 class TestPause(MAASTestCase):
-
     p_deferred_called = AfterPreprocessing(lambda d: bool(d.called), Is(True))
     p_deferred_cancelled = AfterPreprocessing(
         lambda d: d.result,
@@ -1254,7 +1248,6 @@ class TestRPCFetcher(MAASTestCase):
 
 
 class TestDeferToNewThread(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -1860,7 +1853,6 @@ class TestThreadPoolLimiter(MAASTestCase):
 
 
 class TestMakeDeferredWithProcessProtocol(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks

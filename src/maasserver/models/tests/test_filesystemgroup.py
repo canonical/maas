@@ -1681,7 +1681,6 @@ class TestFilesystemGroup(MAASServerTestCase):
 
 
 class TestFilesystemGroupGetNiceName(MAASServerTestCase):
-
     scenarios = [
         (
             FILESYSTEM_GROUP_TYPE.LVM_VG,
@@ -1728,7 +1727,6 @@ class TestFilesystemGroupGetNiceName(MAASServerTestCase):
 
 
 class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
-
     scenarios = [
         (
             FILESYSTEM_GROUP_TYPE.LVM_VG,
@@ -1772,7 +1770,6 @@ class TestFilesystemGroupGetNamePrefix(MAASServerTestCase):
 
 
 class TestFilesystemGroupGetVirtualBlockDeviceBlockSize(MAASServerTestCase):
-
     scenarios = [
         (
             FILESYSTEM_GROUP_TYPE.LVM_VG,

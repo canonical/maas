@@ -28,7 +28,6 @@ class EatonFunction:
 
 
 class EatonPowerDriver(PowerDriver):
-
     name = "eaton"
     chassis = True
     can_probe = False

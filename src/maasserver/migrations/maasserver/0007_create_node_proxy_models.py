@@ -5,7 +5,6 @@ import maasserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0006_add_lease_time_to_staticipaddress")]
 
     operations = [

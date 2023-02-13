@@ -15,7 +15,6 @@ def convert_installable_to_node_type(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0003_add_node_type_to_node")]
 
     operations = [migrations.RunPython(convert_installable_to_node_type)]

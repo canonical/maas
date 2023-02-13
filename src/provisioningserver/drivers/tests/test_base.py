@@ -34,7 +34,6 @@ from provisioningserver.utils.testing import RegistryFixture
 
 
 class TestIpExtractor(MAASTestCase):
-
     scenarios = (
         (
             "no-name",

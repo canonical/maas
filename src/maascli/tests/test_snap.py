@@ -129,7 +129,6 @@ class TestHelpers(MAASTestCase):
 
 
 class TestRenderSupervisord:
-
     TEST_TEMPLATE = dedent(
         """\
     {{if regiond}}

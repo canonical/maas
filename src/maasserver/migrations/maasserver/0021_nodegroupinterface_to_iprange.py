@@ -85,7 +85,6 @@ def create_ipranges_from_nodegroupinterfaces(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0020_nodegroup_to_rackcontroller")]
 
     operations = [

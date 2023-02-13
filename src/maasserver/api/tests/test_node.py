@@ -605,7 +605,6 @@ class TestPowerParameters(APITestCase.ForUser):
 
 
 class TestSetWorkloadAnnotations(APITestCase.ForUser):
-
     scenarios = (
         (
             "machine",

@@ -208,7 +208,6 @@ class TestDiscoverAndSyncVMHost(MAASServerTestCase):
 
 
 class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
-
     wait_for_reactor = wait_for()
 
     @wait_for_reactor
@@ -307,7 +306,7 @@ class TestCleanPowerAddress(MAASServerTestCase):
                 "qemu+ssh://10.0.0.1:2200/system",
             ),
         ]
-        for (case, output) in cases:
+        for case, output in cases:
             ret = vmhost_module._clean_power_address(case)
             self.assertEqual(output, ret)
 
@@ -703,7 +702,6 @@ class TestSyncVMCluster(MAASServerTestCase):
 
 
 class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
-
     wait_for_reactor = wait_for()
 
     @wait_for_reactor
@@ -1063,7 +1061,6 @@ class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
 
 
 class TestRequestCommissioningResults(MAASTransactionServerTestCase):
-
     wait_for_reactor = wait_for()
 
     @wait_for_reactor

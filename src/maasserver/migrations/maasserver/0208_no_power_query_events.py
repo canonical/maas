@@ -17,7 +17,6 @@ def delete_power_query_events(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0207_notification_dismissable")]
 
     operations = [migrations.RunPython(delete_power_query_events)]

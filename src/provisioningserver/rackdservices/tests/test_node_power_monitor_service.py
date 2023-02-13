@@ -29,7 +29,6 @@ from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 
 
 class TestNodePowerMonitorService(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )

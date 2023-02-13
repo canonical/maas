@@ -12,7 +12,6 @@ def rename_dhcp_unconfigured_ifaces(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0013_scriptresult_physicalblockdevice")
     ]

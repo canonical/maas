@@ -80,7 +80,6 @@ def migrate_static_ranges_to_admin_reserved(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0026_create_zone_serial_sequence")]
 
     operations = [

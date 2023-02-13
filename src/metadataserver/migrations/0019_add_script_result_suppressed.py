@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0018_script_result_skipped")]
 
     operations = [

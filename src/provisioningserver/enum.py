@@ -44,7 +44,6 @@ CONTROLLER_INSTALL_TYPE_CHOICES = enum_choices(CONTROLLER_INSTALL_TYPE)
 
 
 class MACVLAN_MODE:
-
     BRIDGE = "bridge"
     PASSTHRU = "passthru"
     PRIVATE = "private"
@@ -55,7 +54,6 @@ MACVLAN_MODE_CHOICES = enum_choices(MACVLAN_MODE)
 
 
 class LIBVIRT_NETWORK:
-
     DEFAULT = "default"
     MAAS = "maas"
 

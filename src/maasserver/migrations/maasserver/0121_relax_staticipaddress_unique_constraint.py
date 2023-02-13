@@ -11,7 +11,6 @@ staticipaddress_unique_index_create = (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0120_bootsourcecache_extra")]
 
     operations = [

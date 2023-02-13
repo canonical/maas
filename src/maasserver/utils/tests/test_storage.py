@@ -16,7 +16,6 @@ from maasserver.utils.storage import get_effective_filesystem, used_for
 
 
 class TestGetEffectiveFilesystem(MAASServerTestCase):
-
     scenarios = (
         (
             "BlockDevice",

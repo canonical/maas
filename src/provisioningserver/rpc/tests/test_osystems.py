@@ -186,7 +186,6 @@ class TestGetPreseedDataErrors(MAASTestCase):
 
 
 class TestGetPreseedData(MAASTestCase):
-
     # Check for every OS.
     scenarios = [
         (osystem.name, {"osystem": osystem})

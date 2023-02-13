@@ -1307,7 +1307,6 @@ class TestSubnetGetLeastRecentlySeenUnknownNeighbour(MAASServerTestCase):
 
 
 class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
-
     scenarios = (
         ("managed", {"managed": True}),
         ("unmanaged", {"managed": False}),

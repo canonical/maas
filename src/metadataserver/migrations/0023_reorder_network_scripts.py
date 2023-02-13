@@ -20,7 +20,6 @@ def reorder_network_scripts(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0022_internet-connectivity-network-validation")
     ]

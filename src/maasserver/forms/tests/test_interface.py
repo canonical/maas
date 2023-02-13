@@ -28,7 +28,6 @@ from maasserver.utils.forms import compose_invalid_choice_text
 
 
 class TestGetInterfaceForm(MAASServerTestCase):
-
     scenarios = [
         (
             "physical",
@@ -51,7 +50,6 @@ class TestGetInterfaceFormError(MAASServerTestCase):
 
 
 class TestControllerInterfaceForm(MAASServerTestCase):
-
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),

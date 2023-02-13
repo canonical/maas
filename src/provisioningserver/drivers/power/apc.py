@@ -42,7 +42,6 @@ APC_PDU_TYPE_OUTLET_SUFFIX = {
 
 
 class APCPowerDriver(PowerDriver):
-
     name = "apc"
     chassis = True
     can_probe = False

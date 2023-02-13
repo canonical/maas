@@ -21,7 +21,6 @@ from provisioningserver.dns.commands.edit_named_options import (
 
 
 class Command(BaseCommand):
-
     help = " ".join(
         dedent(
             """\

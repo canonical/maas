@@ -21,6 +21,7 @@ def get_endpoints():
     Each tuple corresponds to somewhere an event-loop is listening
     within the whole region. The `name` is the event-loop name.
     """
+
     # Each regiond might be running a local bridge that duplicates the
     # same IP address across region controllers. Each region controller
     # must output a set of unique of IP addresses, to prevent the rack

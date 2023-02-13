@@ -26,7 +26,6 @@ def extract_ucsm_parameters(context):
 
 
 class UCSMPowerDriver(PowerDriver):
-
     name = "ucsm"
     chassis = True
     can_probe = True

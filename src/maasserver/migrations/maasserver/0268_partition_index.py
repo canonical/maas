@@ -139,7 +139,6 @@ def partitions_size_match(actual_sizes, expected_sizes):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0267_add_machine_specific_sync_interval_fields"),
     ]

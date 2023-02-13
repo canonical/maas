@@ -17,7 +17,6 @@ def set_size_on_all_largefiles(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0066_allow_squashfs")]
 
     operations = [

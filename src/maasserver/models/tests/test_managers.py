@@ -12,7 +12,6 @@ from maasserver.tests.models import (
 
 
 class TestBulkManager(MAASLegacyTransactionServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_manager_iterator_uses_cache(self):

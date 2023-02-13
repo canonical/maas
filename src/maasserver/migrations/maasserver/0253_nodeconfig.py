@@ -20,7 +20,6 @@ def create_default_nodeconfigs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0252_drop_fannetwork"),
     ]

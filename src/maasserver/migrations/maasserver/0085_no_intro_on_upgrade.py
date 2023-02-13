@@ -17,7 +17,6 @@ def no_intro_on_upgrade(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0084_add_default_user_to_node_model")]
 
     operations = [migrations.RunPython(no_intro_on_upgrade)]

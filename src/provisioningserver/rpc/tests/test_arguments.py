@@ -58,7 +58,6 @@ class TestChoice(MAASTestCase):
 
 
 class TestStructureAsJSON(MAASTestCase):
-
     example = {
         "an": "example",
         "structure": 12.34,
@@ -77,7 +76,6 @@ class TestStructureAsJSON(MAASTestCase):
 
 @attr.s
 class SampleAttrs:
-
     foo = attr.ib(converter=str)
     bar = attr.ib(converter=int)
 
@@ -164,7 +162,6 @@ class TestCompressedAmpList(MAASTestCase):
 
 
 class TestIPAddress(MAASTestCase):
-
     argument = arguments.IPAddress()
 
     def test_round_trips_ipv4_address(self):
@@ -193,7 +190,6 @@ class TestIPAddress(MAASTestCase):
 
 
 class TestIPNetwork(MAASTestCase):
-
     argument = arguments.IPNetwork()
 
     def test_round_trips_ipv4_address(self):

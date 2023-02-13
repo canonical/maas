@@ -103,7 +103,6 @@ class TestMACAddressField(MAASServerTestCase):
 
 
 class TestXMLField(MAASLegacyServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_loads_string(self):
@@ -149,7 +148,6 @@ class TestEditableBinaryField(MAASServerTestCase):
 
 
 class TestLargeObjectField(MAASLegacyServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_stores_data(self):
@@ -267,7 +265,6 @@ class TestLargeObjectField(MAASLegacyServerTestCase):
 
 
 class TestCIDRField(MAASLegacyServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_stores_cidr(self):
@@ -290,7 +287,6 @@ class TestCIDRField(MAASLegacyServerTestCase):
 
 
 class TestIPv4CIDRField(MAASLegacyServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_stores_cidr(self):

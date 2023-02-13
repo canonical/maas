@@ -15,7 +15,6 @@ from provisioningserver.utils.version import (
 
 
 class TestGetVersionFromPythonPackage(MAASTestCase):
-
     scenarios = [
         (
             "final",
@@ -76,7 +75,6 @@ class TestGetMAASRepoHash(MAASTestCase):
 
 
 class TestMAASVersionScenarios(MAASTestCase):
-
     scenarios = (
         (
             "version only",

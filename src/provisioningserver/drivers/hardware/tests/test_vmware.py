@@ -93,7 +93,6 @@ class FakeVmomiVM:
     def __init__(
         self, name=None, nics=None, has_instance_uuid=None, has_uuid=None
     ):
-
         if name is None:
             self._name = factory.make_hostname()
         else:

@@ -151,7 +151,6 @@ class RedfishPowerDriverBase(PowerDriver):
 
 # XXX ltrager - 2021-01-12 - Change parent class to WebhookPowerDriver.
 class RedfishPowerDriver(RedfishPowerDriverBase):
-
     chassis = True  # Redfish API endpoints can be probed and enlisted.
     can_probe = False
     can_set_boot_order = False

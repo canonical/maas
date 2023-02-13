@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0126_add_controllerinfo_model"),
         ("metadataserver", "0012_store_script_results"),

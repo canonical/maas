@@ -90,7 +90,6 @@ class EqualsXML(Equals):
 
 
 class TestMergeDetailsCleanly(MAASTestCase):
-
     do_merge_details = staticmethod(tags.merge_details_cleanly)
 
     def setUp(self):

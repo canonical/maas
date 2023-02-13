@@ -12,7 +12,6 @@ from provisioningserver.utils import tftp
 
 
 class TestAddressFunctions(MAASTestCase):
-
     scenarios = (
         (
             "get_local_address",

@@ -815,5 +815,4 @@ class ComposeMachineForPodsForm(forms.Form):
 
 
 class DeletePodForm(forms.Form):
-
     decompose = BooleanField(required=False, initial=False)

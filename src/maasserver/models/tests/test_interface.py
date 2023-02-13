@@ -1366,7 +1366,6 @@ class TestInterface(MAASServerTestCase):
 
 
 class TestUpdateInterfaceParentsOnSave(MAASServerTestCase):
-
     scenarios = (
         ("bond", {"iftype": INTERFACE_TYPE.BOND}),
         ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
@@ -4142,7 +4141,6 @@ class TestReportVID(MAASServerTestCase):
 
 
 class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):
-
     # Normally we would use scenarios for this, but this was copied and
     # pasted from Juju code in bridgepolicy_test.go.
     expected_bridge_names = {

@@ -4,7 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0017_store_requested_scripts")]
 
     operations = [

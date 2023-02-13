@@ -84,7 +84,6 @@ class VirtualBlockDevice(BlockDevice):
         # Check if the size of this is not larger than the free size of
         # its filesystem group if its lvm.
         if self.filesystem_group.is_lvm():
-
             # align virtual partition to partition alignment size
             # otherwise on creation it may be rounded up, overfilling group
             self.size = round_size_to_nearest_block(

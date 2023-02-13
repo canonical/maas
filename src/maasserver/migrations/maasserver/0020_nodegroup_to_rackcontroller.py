@@ -18,7 +18,6 @@ def grab_data(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0019_add_iprange")]
 
     operations = [

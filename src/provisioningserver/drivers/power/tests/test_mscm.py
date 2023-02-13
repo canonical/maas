@@ -295,7 +295,6 @@ class TestMSCMPowerDriver(MAASTestCase):
 
 
 class TestMSCMProbeAndEnlist(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )
@@ -400,7 +399,6 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
 
 
 class TestMSCMProbeAndEnlistCrashesNoMatch(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks

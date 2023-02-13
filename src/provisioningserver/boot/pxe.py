@@ -69,7 +69,6 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
 class PXEBootMethod(BootMethod):
-
     name = "pxe"
     bios_boot_method = "pxe"
     template_subdir = "pxe"

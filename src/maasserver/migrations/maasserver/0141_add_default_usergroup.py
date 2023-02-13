@@ -30,7 +30,6 @@ def forwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0140_add_usergroup_model")]
 
     operations = [migrations.RunPython(forwards)]

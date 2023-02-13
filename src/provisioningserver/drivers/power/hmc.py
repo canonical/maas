@@ -31,7 +31,6 @@ class HMCState:
 
 
 class HMCPowerDriver(PowerDriver):
-
     name = "hmc"
     chassis = True
     can_probe = False

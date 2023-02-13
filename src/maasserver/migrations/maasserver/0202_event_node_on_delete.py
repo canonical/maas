@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0201_merge_20191008_1426")]
 
     operations = [

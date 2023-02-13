@@ -20,7 +20,6 @@ def lxd_cpu_speed(data):
 
 @dataclass
 class NUMANode:
-
     memory: int = 0
     cores: List = field(default_factory=list)
     hugepages: int = 0

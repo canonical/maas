@@ -10,7 +10,6 @@ import metadataserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0104_notifications_dismissals"),
         ("metadataserver", "0001_initial"),

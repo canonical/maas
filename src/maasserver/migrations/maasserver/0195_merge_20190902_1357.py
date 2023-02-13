@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0193_merge_maasserver_0191_1092"),
         ("maasserver", "0194_machine_listing_event_index"),

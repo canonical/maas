@@ -26,7 +26,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestProxmoxPowerDriver(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -465,7 +464,6 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
 
 class TestProxmoxProbeAndEnlist(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

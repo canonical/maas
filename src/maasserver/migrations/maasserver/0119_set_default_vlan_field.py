@@ -2,7 +2,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0118_add_iscsi_storage_pod")]
 
     # convert this to a no-op as it was previously updating the Subnet.vlan

@@ -43,7 +43,6 @@ REQUIRED_PACKAGES = [["wsman", "wsmancli"]]
 
 
 class AMTPowerDriver(PowerDriver):
-
     name = "amt"
     chassis = False
     can_probe = False

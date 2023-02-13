@@ -156,7 +156,6 @@ class TestMTUParams(MAASServerTestCase):
 
 
 class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
-
     scenarios = (
         ("machine", {"maker": factory.make_Node}),
         ("device", {"maker": factory.make_Device}),
@@ -190,7 +189,6 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
 
 
 class TestInterfaceVLANUpdateController(MAASServerTestCase):
-
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),

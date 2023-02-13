@@ -10,7 +10,6 @@ def reorder_machine_resources_script(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0026_drop_ipaddr_script")]
 
     operations = [migrations.RunPython(reorder_machine_resources_script)]

@@ -224,7 +224,6 @@ class TestIPAddressesAPI(APITestCase.ForUserAndAdmin):
 
 
 class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
-
     scenarios = (
         ("normal", {"force": None}),
         ("without_force", {"force": False}),
@@ -445,7 +444,6 @@ class TestIPAddressesReleaseAPI(APITransactionTestCase.ForUserAndAdmin):
 
 
 class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
-
     scenarios = (
         ("with_ip_param", {"ip_param": "ip"}),
         ("with_ip_address_param", {"ip_param": "ip_address"}),

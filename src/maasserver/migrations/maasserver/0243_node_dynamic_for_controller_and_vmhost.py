@@ -19,7 +19,6 @@ def set_node_dynamic(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0242_forwarddnsserver"),
     ]

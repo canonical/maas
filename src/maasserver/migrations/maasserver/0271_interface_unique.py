@@ -10,7 +10,6 @@ OLD_INDEXES = (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0270_storage_uuid_drop_unique"),
     ]

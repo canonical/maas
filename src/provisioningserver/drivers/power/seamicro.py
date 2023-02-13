@@ -36,7 +36,6 @@ def extract_seamicro_parameters(context):
 
 
 class SeaMicroPowerDriver(PowerDriver):
-
     name = "sm15k"
     chassis = True
     can_probe = True

@@ -97,7 +97,6 @@ def copy_over_user_id_and_node_system_id(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0174_add_user_id_and_node_system_id_for_events")
     ]

@@ -50,7 +50,6 @@ class LXDBond:
 
 @dataclasses.dataclass
 class LXDAddress:
-
     address: str
     netmask: str
     family: str = "inet"
@@ -71,7 +70,6 @@ class LXDNetwork:
 
 @dataclasses.dataclass
 class LXDNetworkPort:
-
     id: str
     port: int
     address: str = dataclasses.field(default_factory=factory.make_mac_address)

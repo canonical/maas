@@ -38,7 +38,6 @@ def vault_regionconfig(mocker):
 
 
 class MockKVStore:
-
     expected_mount_point = "secret"
 
     def __init__(self):

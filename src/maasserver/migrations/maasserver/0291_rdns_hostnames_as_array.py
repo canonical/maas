@@ -30,7 +30,6 @@ QUERIES = (
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0290_migrate_node_power_parameters"),
     ]

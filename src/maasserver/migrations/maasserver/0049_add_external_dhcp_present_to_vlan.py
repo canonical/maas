@@ -3,7 +3,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0048_add_subnet_allow_proxy")]
 
     operations = [

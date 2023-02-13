@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         # depend on the latest patch in the 2.6 branch as this is meant to be
         # backported there.

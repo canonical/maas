@@ -5,7 +5,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0078_remove_packagerepository_description")
     ]

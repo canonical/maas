@@ -76,7 +76,6 @@ def capture_queries_while_holding_lock(lock):
 
 
 class TestDatabaseLock(MAASTransactionServerTestCase):
-
     scenarios = tuple(
         ("%s/%s" % mode, {"mode": mode})
         for mode in dblocks.DatabaseLock.MODE_CHOICES
@@ -252,7 +251,6 @@ class TestDatabaseLockVariations(MAASServerTestCase):
 
 
 class TestDatabaseXactLock(MAASTransactionServerTestCase):
-
     scenarios = tuple(
         ("%s/%s" % mode, {"mode": mode})
         for mode in dblocks.DatabaseXactLock.MODE_CHOICES

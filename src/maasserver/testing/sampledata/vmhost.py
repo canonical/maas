@@ -6,7 +6,6 @@ from .common import make_name
 
 
 def make_vmhosts(count: int):
-
     power_types = cycle(("virsh", "lxd"))
     vmhosts = []
 

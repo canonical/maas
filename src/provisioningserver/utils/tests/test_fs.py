@@ -176,7 +176,6 @@ class TestAtomicWrite(MAASTestCase):
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
     def test_atomic_write_sets_permissions_before_moving_into_place(self):
-
         recorded_modes = []
 
         def record_mode(source, dest):

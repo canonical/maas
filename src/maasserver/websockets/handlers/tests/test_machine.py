@@ -152,7 +152,6 @@ class FakeRequest:
 
 
 class TestMachineHandler(MAASServerTestCase):
-
     maxDiff = None
 
     def get_blockdevice_status(self, handler, blockdevice):

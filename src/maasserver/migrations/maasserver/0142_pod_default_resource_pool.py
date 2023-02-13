@@ -13,7 +13,6 @@ def set_pod_default_resource_pool(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0141_add_default_usergroup")]
 
     operations = [

@@ -1653,7 +1653,7 @@ node_fields = (
 @transactional
 def register_websocket_triggers():
     """Register all websocket triggers into the database."""
-    for (proc_name_prefix, event_name_prefix, node_type) in (
+    for proc_name_prefix, event_name_prefix, node_type in (
         ("machine", "machine", NODE_TYPE.MACHINE),
         ("rack_controller", "controller", NODE_TYPE.RACK_CONTROLLER),
         ("region_controller", "controller", NODE_TYPE.REGION_CONTROLLER),
@@ -1663,7 +1663,6 @@ def register_websocket_triggers():
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         ),
     ):
-
         # Non-Device Node types
         register_procedure(
             render_notification_procedure(

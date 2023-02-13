@@ -4,7 +4,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0126_add_controllerinfo_model")]
 
     operations = [

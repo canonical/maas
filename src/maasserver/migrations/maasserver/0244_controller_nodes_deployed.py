@@ -23,7 +23,6 @@ def set_node_deployed(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0243_node_dynamic_for_controller_and_vmhost"),
     ]

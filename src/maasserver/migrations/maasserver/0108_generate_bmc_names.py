@@ -15,7 +15,6 @@ def generate_bmc_names(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0107_chassis_to_pods")]
 
     operations = [migrations.RunPython(generate_bmc_names)]

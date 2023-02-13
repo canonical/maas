@@ -395,7 +395,6 @@ IPRANGE_TYPE_CHOICES = (
 
 
 class POWER_STATE:
-
     # Node is on
     ON = "on"
 
@@ -871,7 +870,6 @@ class NODE_METADATA:
 
 
 class ENDPOINT:
-
     API = 0
     UI = 1
     CLI = 2
@@ -885,7 +883,6 @@ ENDPOINT_CHOICES = (
 
 
 class NODE_DEVICE_BUS:
-
     PCIE = 1
     USB = 2
 

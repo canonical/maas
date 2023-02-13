@@ -5,7 +5,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0030_drop_all_old_funcs")]
 
     operations = [

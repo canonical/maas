@@ -759,7 +759,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             nets = t_case[0]
             expected = t_case[1]
             domain = factory.make_name("zone")
-            for (idx, net) in enumerate(nets):
+            for idx, net in enumerate(nets):
                 network = net[0]
                 other_subnets = net[1]
                 dns_zone_config = DNSReverseZoneConfig(

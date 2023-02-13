@@ -40,7 +40,6 @@ class TestMountFilesystemFormWithoutSubstrate(MAASServerTestCase):
 
 
 class TestMountFilesystemForm(MAASServerTestCase):
-
     scenarios = (
         (
             "partition",
@@ -208,7 +207,6 @@ class TestMountNonStorageFilesystemForm(MAASServerTestCase):
 
 
 class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
-
     scenarios = [
         (displayname, {"fstype": name, "acquired": acquired})
         for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES
@@ -300,7 +298,6 @@ class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
 
 
 class TestUnmountNonStorageFilesystemFormScenarios(MAASServerTestCase):
-
     scenarios = [
         (displayname, {"fstype": name})
         for name, displayname in FILESYSTEM_FORMAT_TYPE_CHOICES

@@ -83,7 +83,6 @@ class AssertStorageConfigMixin:
 
 
 class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -136,7 +135,6 @@ class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestExt4MetadataCSUM(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -207,7 +205,6 @@ class TestExt4MetadataCSUM(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -377,7 +374,6 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -589,7 +585,6 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
 class TestSimpleWithEmptyDiskLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -671,7 +666,6 @@ class TestSimpleWithEmptyDiskLayout(
 class TestMBRWithBootDiskWithoutPartitionsLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -756,7 +750,6 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
 class TestGPTWithBootDiskWithoutPartitionsLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -851,7 +844,6 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
 class TestGPTPXELargeBootDiskLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -935,7 +927,6 @@ class TestGPTPXELargeBootDiskLayout(
 
 
 class TestLVMOnlyVG(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -998,7 +989,6 @@ class TestLVMOnlyVG(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1352,7 +1342,6 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1435,7 +1424,6 @@ class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestPower8ExtraSpaceLayout(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1516,7 +1504,6 @@ class TestPower8ExtraSpaceLayout(MAASServerTestCase, AssertStorageConfigMixin):
 class TestPower8NoPartitionTableLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1675,7 +1662,6 @@ class TestMountOrdering(MAASServerTestCase):
 
 
 class TestBootableRaidLayoutMBR(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1819,7 +1805,6 @@ class TestBootableRaidLayoutMBR(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestBootableRaidLayoutUEFI(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -1947,7 +1932,6 @@ class TestBootableRaidLayoutUEFI(MAASServerTestCase, AssertStorageConfigMixin):
 
 
 class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -2097,7 +2081,6 @@ class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
 class TestBootableRaidLayoutGPTWithPartition(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -2265,7 +2248,6 @@ class TestBootableRaidLayoutGPTWithPartition(
 
 
 class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
-
     STORAGE_CONFIG = dedent(
         """\
         config:

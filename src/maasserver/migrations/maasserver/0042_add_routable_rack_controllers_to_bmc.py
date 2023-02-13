@@ -4,7 +4,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0041_change_bmc_on_delete_to_set_null")]
 
     operations = [

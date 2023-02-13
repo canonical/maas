@@ -25,7 +25,6 @@ log = LegacyLogger()
 
 
 class RegionSyslogService(TimerService):
-
     interval = timedelta(seconds=30).total_seconds()
 
     _configuration = None

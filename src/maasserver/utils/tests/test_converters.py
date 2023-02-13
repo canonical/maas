@@ -42,7 +42,6 @@ class TestXMLToYAML(MAASTestCase):
 
 
 class TestHumanReadableBytes(MAASTestCase):
-
     scenarios = [
         ("bytes", dict(size=987, output="987", suffix="bytes")),
         ("kB", dict(size=1000 * 35 + 500, output="35.5", suffix="kB")),

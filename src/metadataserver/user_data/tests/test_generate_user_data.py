@@ -178,7 +178,6 @@ class TestGenerateUserData(MAASServerTestCase):
 
 
 class TestDiskErasingUserData(MAASServerTestCase):
-
     scenarios = (
         (
             "secure_and_quick",

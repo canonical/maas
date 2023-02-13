@@ -1315,7 +1315,6 @@ class AcquireNodeForm(FilterNodeForm):
 
 
 class ReadNodesForm(FilterNodeForm):
-
     id = UnconstrainedMultipleChoiceField(
         label="System IDs to filter on", required=False
     )
@@ -1431,7 +1430,6 @@ class ReadNodesForm(FilterNodeForm):
 
 
 class FreeTextFilterNodeForm(ReadNodesForm):
-
     free_text = UnconstrainedMultipleChoiceField(
         label="Free-text search on all string fields",
         required=False,
@@ -1861,7 +1859,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
     def filter_by_storage(self, filtered_nodes):
         storage = self.cleaned_data.get("storage")
         node_ids = []
-        for (size, tags) in storage:
+        for size, tags in storage:
             if "partition" in tags:
                 part_tags = list(tags)
                 part_tags.remove("partition")

@@ -9,7 +9,6 @@ def drop_rsd_pods(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0224_virtual_machine_disk"),
     ]

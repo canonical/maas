@@ -550,7 +550,6 @@ class TestUCSMPowerState(MAASTestCase):
 
 
 class TestProbeAndEnlistUCSM(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )
@@ -631,7 +630,6 @@ def make_boot_order_scenarios(size):
 
 
 class TestGetFirstBooter(MAASTestCase):
-
     scenarios, minimum = make_boot_order_scenarios(3)
 
     def test_first_booter(self):

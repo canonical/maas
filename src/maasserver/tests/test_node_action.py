@@ -329,7 +329,6 @@ class TestDeleteAction(MAASServerTestCase):
 
 
 class TestCommissionAction(MAASServerTestCase):
-
     scenarios = (
         ("NEW", {"status": NODE_STATUS.NEW}),
         ("FAILED_COMMISSIONING", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
@@ -1383,7 +1382,6 @@ ACTIONABLE_STATUSES = [
 
 
 class TestReleaseAction(MAASServerTestCase):
-
     scenarios = [
         (NODE_STATUS_CHOICES_DICT[status], dict(actionable_status=status))
         for status in ACTIONABLE_STATUSES

@@ -45,7 +45,6 @@ def remove_duplicate_physical_interfaces(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0196_numa_model")]
 
     operations = [migrations.RunPython(remove_duplicate_physical_interfaces)]

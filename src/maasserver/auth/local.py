@@ -60,7 +60,6 @@ ADMIN_PERMISSIONS = (
 
 
 class MAASAuthorizationBackend(ModelBackend):
-
     supports_object_permissions = True
 
     def authenticate(self, request, username=None, password=None, **kwargs):

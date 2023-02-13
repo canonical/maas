@@ -39,7 +39,6 @@ def sync_vm_disks(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0223_virtualmachine_blank_project"),
     ]

@@ -39,7 +39,6 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
 
 
 class TestNodeDevicesAPIFilter(APITestCase.ForUser):
-
     scenarios = [
         ("filter=bus", {"choices": NODE_DEVICE_BUS_CHOICES, "key": "bus"}),
         (

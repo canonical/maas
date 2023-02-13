@@ -38,13 +38,11 @@ class FakeDriver(PowerDriver):
 
 
 class TestPowerDriverCommand(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(
         timeout=get_testing_timeout()
     )
 
     def test_create_subparser(self):
-
         parser = ArgumentParser()
         driver_settings = [
             {
@@ -69,7 +67,6 @@ class TestPowerDriverCommand(MAASTestCase):
         self.assertEqual(args.version, "1")
 
     def test_parse_args_virsh(self):
-
         args = power_driver_command._parse_args(
             [
                 "on",
@@ -109,7 +106,6 @@ class TestPowerDriverCommand(MAASTestCase):
 
     @inlineCallbacks
     def test_run(self):
-
         args = Namespace()
         args.command = "on"
         args.driver = "fake"

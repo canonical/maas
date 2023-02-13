@@ -143,7 +143,6 @@ class TestXSSBugs(APITestCase.ForUser):
 
 
 class TestAccountAPI(APITestCase.ForUser):
-
     clientfactories = {
         "user+pass": MAASSensibleClient,
         "oauth": MAASSensibleOAuthClient,
@@ -619,7 +618,6 @@ class TestMAASAPIAnon(APITestCase.ForAnonymous):
 
 
 class TestMAASAPIVersioning(APITestCase.ForAnonymousAndUserAndAdmin):
-
     clientfactories = {
         "user+pass": MAASSensibleClient,
         "oauth": MAASSensibleOAuthClient,
@@ -649,7 +647,6 @@ class TestMAASAPIVersioning(APITestCase.ForAnonymousAndUserAndAdmin):
 
 
 class TestMAASAPI(APITestCase.ForUser):
-
     clientfactories = {
         "user+pass": MAASSensibleClient,
         "oauth": MAASSensibleOAuthClient,

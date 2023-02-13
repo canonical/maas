@@ -45,7 +45,6 @@ class TestGather(MAASTestCase):
 
 
 class TestGatherScenarios(MAASTestCase):
-
     scenarios = (
         (
             "synchronous",

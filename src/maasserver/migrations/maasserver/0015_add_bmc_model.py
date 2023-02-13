@@ -6,7 +6,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0014_add_region_models")]
 
     operations = [

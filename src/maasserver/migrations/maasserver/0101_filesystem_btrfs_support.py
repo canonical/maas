@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0100_migrate_spaces_from_subnet_to_vlan")]
 
     operations = [

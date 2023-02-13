@@ -3,7 +3,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0069_add_previous_node_status_to_node")]
 
     operations = [

@@ -64,7 +64,6 @@ class TestLargeFileManager(MAASServerTestCase):
 
 
 class TestLargeFile(MAASServerTestCase):
-
     mock_delete_large_object_content_later = False
 
     def test_content(self):
@@ -157,7 +156,6 @@ class TestLargeFile(MAASServerTestCase):
 
 
 class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
-
     mock_delete_large_object_content_later = False
 
     def test_schedules_unlink(self):

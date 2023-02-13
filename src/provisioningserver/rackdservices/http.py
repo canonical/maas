@@ -58,7 +58,6 @@ class HTTPConfigFail(Exception):
 
 
 class RackHTTPService(TimerService):
-
     # Initial start the interval is low so that proxy_pass of nginx gets
     # at least one region controller. When no region controllers are set
     # on the proxy_pass the interval is always set to the lower setting.

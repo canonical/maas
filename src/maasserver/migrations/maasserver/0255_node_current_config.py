@@ -17,7 +17,6 @@ def link_current_node_configs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0254_default_nodeconfig_devices"),
     ]

@@ -36,7 +36,6 @@ def create_and_link_numa_nodes(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0195_merge_20190902_1357")]
 
     operations = [

@@ -260,7 +260,6 @@ class TestRunImport(MAASTestCase):
 
 
 class TestImportBootImages(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -410,7 +409,6 @@ class TestImportBootImages(MAASTestCase):
 
 
 class TestIsImportBootImagesRunning(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @defer.inlineCallbacks

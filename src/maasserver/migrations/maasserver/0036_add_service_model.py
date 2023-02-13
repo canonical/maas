@@ -4,7 +4,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0035_convert_ether_wake_to_manual_power_type")
     ]

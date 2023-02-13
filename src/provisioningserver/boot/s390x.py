@@ -67,7 +67,6 @@ def format_bootif(mac):
 
 
 class S390XBootMethod(BootMethod):
-
     name = "s390x"
     bios_boot_method = "s390x"
     template_subdir = "pxe"

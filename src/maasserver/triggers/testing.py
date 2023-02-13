@@ -945,7 +945,6 @@ class RBACHelpersMixin:
 
 
 class NotifyHelperMixin:
-
     channels = ()
     channel_queues = {}
     postgres_listener_service = None

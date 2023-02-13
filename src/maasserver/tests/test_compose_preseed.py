@@ -66,7 +66,6 @@ def _enable_dhcp(subnet, primary_rack, secondary_rack=None, relay_vlan=None):
 
 
 class TestAptProxyScenarios(MAASServerTestCase):
-
     scenarios = (
         (
             "ipv6",
@@ -356,7 +355,6 @@ class TestAptProxy(MAASServerTestCase):
         self.assertEqual("http://10.10.0.2:8000/", apt_proxy)
 
     def test_enlist_rack_proxy_no_rack_subnet(self):
-
         Config.objects.set_config("enable_http_proxy", True)
         Config.objects.set_config("use_peer_proxy", False)
         Config.objects.set_config("use_rack_proxy", True)

@@ -47,7 +47,6 @@ SIGNAL_STATUS_CHOICES = (
 
 
 class SCRIPT_TYPE:
-
     COMMISSIONING = 0
     # 1 is skipped to keep numbering the same as RESULT_TYPE
     TESTING = 2
@@ -60,7 +59,6 @@ SCRIPT_TYPE_CHOICES = (
 
 
 class RESULT_TYPE:
-
     COMMISSIONING = 0
     INSTALLATION = 1
     TESTING = 2
@@ -74,7 +72,6 @@ RESULT_TYPE_CHOICES = (
 
 
 class SCRIPT_STATUS:
-
     PENDING = 0
     RUNNING = 1
     PASSED = 2
@@ -130,7 +127,6 @@ SCRIPT_STATUS_FAILED = {
 
 
 class HARDWARE_TYPE:
-
     NODE = 0
     CPU = 1
     MEMORY = 2
@@ -151,7 +147,6 @@ HARDWARE_TYPE_CHOICES = (
 
 
 class SCRIPT_PARALLEL:
-
     DISABLED = 0
     INSTANCE = 1
     ANY = 2

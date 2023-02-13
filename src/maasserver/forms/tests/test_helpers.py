@@ -134,7 +134,6 @@ class TestHelpers(MAASServerTestCase):
 
 
 class TestMAASModelForm(MAASLegacyTransactionServerTestCase):
-
     apps = ["maasserver.tests"]
 
     def test_model_class_from_UI_has_hidden_field(self):
@@ -173,7 +172,6 @@ class TestMAASModelForm(MAASLegacyTransactionServerTestCase):
                 self.fields["early_field"] = CharField(required=False)
 
         class TestForm(EarlyFieldMixin, MAASModelForm):
-
             extra_field = CharField(required=False)
 
             def clean_early_field(self, *args, **kwargs):

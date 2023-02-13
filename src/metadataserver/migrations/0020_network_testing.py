@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0188_network_testing"),
         ("metadataserver", "0019_add_script_result_suppressed"),

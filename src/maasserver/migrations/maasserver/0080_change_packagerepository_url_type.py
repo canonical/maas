@@ -4,7 +4,6 @@ import maasserver.fields
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0079_add_keysource_model")]
 
     operations = [

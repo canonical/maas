@@ -5,7 +5,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0162_storage_pools_notification")]
 
     operations = [

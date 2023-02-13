@@ -132,7 +132,6 @@ class ScriptManager(Manager):
 
 
 class Script(CleanSave, TimestampedModel):
-
     objects = ScriptManager()
 
     name = CharField(max_length=255, unique=True)

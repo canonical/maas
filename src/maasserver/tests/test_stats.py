@@ -870,7 +870,6 @@ class TestGetBrownfieldStats(MAASServerTestCase):
         machine.bmc = factory.make_BMC()
         machine.save()
         for _ in range(2):
-
             machine = self._make_brownfield_machine()
             machine.bmc = None
             machine.save()

@@ -24,7 +24,6 @@ log = LegacyLogger()
 
 
 class RegionNetworkTimeProtocolService(TimerService):
-
     interval = timedelta(seconds=30).total_seconds()
 
     _configuration = None

@@ -7,7 +7,6 @@ def drop_ipaddr_scripts(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0025_nodedevice"),
     ]

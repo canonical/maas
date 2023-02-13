@@ -107,7 +107,6 @@ class TestComposeURL(MAASTestCase):
 
 
 class TestSplithost(MAASTestCase):
-
     scenarios = (
         ("ipv4", {"host": "192.168.1.1:21", "result": ("192.168.1.1", 21)}),
         ("ipv6", {"host": "[::f]:21", "result": ("[::f]", 21)}),

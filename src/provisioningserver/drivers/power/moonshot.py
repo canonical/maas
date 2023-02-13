@@ -21,7 +21,6 @@ from provisioningserver.utils.shell import (
 
 
 class MoonshotIPMIPowerDriver(PowerDriver):
-
     name = "moonshot"
     chassis = True
     can_probe = False

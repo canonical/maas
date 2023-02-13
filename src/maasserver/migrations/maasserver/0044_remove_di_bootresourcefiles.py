@@ -24,7 +24,6 @@ def remove_di_bootresourcefiles(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0043_dhcpsnippet")]
 
     operations = [

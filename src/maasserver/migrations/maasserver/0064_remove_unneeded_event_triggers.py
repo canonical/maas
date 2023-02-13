@@ -14,7 +14,6 @@ def remove_unneeded_event_triggers(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0063_remove_orphaned_bmcs_and_ips")]
 
     operations = [migrations.RunPython(remove_unneeded_event_triggers)]

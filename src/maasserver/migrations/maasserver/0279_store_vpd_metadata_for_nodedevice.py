@@ -7,7 +7,6 @@ import maasserver.models.cleansave
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0278_generic_jsonfield"),
     ]

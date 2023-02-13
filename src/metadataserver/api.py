@@ -1312,7 +1312,6 @@ def get_script_result_properties(script_result):
 
 
 class MAASScriptsHandler(OperationsHandler):
-
     anonymous = AnonMAASScriptsHandler
 
     def _add_script_set_to_tar(

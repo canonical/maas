@@ -997,7 +997,6 @@ class TestTFTPService(MAASTestCase):
 
 
 class FakeStreamSession:
-
     cancelled = False
 
     def cancel(self):
@@ -1052,7 +1051,6 @@ class TestTransferTimeTrackingTFTP(MAASTestCase):
 
 
 class TestTransferTimeTrackingTFTPStartSession(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -1156,7 +1154,6 @@ class TestPort(MAASTestCase):
 
 
 class TestUDPServer(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_getPort_calls__listenUDP_with_args_from_constructor(self):

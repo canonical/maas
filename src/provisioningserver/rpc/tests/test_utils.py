@@ -26,7 +26,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestCreateNode(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -186,7 +185,6 @@ class TestCreateNode(MAASTestCase):
 
 
 class TestCommissionNode(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

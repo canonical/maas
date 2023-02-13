@@ -79,7 +79,6 @@ class TestConfigurationGet(MAASTestCase):
 
 
 class TestConfigurationReset(MAASTestCase):
-
     scenarios = tuple(
         (option, {"option": option.lstrip("-").replace("-", "_")})
         for option, args in config.gen_configuration_options_for_resetting()
@@ -105,7 +104,6 @@ class TestConfigurationReset(MAASTestCase):
 
 
 class TestConfigurationSet(MAASTestCase):
-
     scenarios = tuple(
         (option, {"option": option.lstrip("-").replace("-", "_")})
         for option, args in config.gen_configuration_options_for_setting()
@@ -189,7 +187,6 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
 
 
 class TestConfigurationCommon(MAASTestCase):
-
     is_string = IsInstance(str)
     is_single_line = AfterPreprocessing(str.splitlines, HasLength(1))
     is_help_string = MatchesAll(is_string, is_single_line, first_only=True)

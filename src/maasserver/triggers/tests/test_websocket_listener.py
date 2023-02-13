@@ -915,7 +915,6 @@ class TestNodeTagListener(
 class TestOwnerDataTriggers(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
-
     scenarios = (
         (
             "machine",
@@ -4347,7 +4346,6 @@ class TestIPRangeSubnetListener(
 class TestBMCListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
-
     scenarios = (
         (
             "machine",
@@ -4656,7 +4654,6 @@ class TestPodListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("pod", lambda *args: dv.set(args))

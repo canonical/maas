@@ -4,7 +4,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0031_add_region_rack_rpc_conn_model")]
 
     operations = [

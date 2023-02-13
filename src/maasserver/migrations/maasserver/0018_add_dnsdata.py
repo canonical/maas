@@ -5,7 +5,6 @@ import maasserver.models.dnsdata
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0017_remove_node_power_type")]
 
     operations = [

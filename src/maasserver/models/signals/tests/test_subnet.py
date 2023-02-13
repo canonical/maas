@@ -10,7 +10,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestSubnetSignals(MAASServerTestCase):
-
     scenarios = (
         ("ipv4", {"network_maker": factory.make_ipv4_network}),
         ("ipv6", {"network_maker": factory.make_ipv6_network}),

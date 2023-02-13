@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0262_nodeconfig_link_replace_node"),
     ]

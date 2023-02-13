@@ -28,7 +28,6 @@ sequence_drop = "DROP SEQUENCE IF EXISTS maasserver_node_system_id_seq"
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0024_remove_nodegroupinterface")]
 
     operations = [migrations.RunSQL(sequence_create, sequence_drop)]

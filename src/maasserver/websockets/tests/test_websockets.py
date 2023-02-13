@@ -50,7 +50,6 @@ from maastesting.twisted import TwistedLoggerFixture
 
 
 class DummyRequest(DummyRequestBase):
-
     content = None
 
     def _cleanup(self):

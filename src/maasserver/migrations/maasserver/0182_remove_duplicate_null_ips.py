@@ -70,7 +70,6 @@ REMOVE_NULL_IPS_MAX = REMOVE_NULL_IPS_TEMPLATE.format("max")
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0181_packagerepository_disable_sources")]
 
     # We run the query first using max() and then min(). The reason for

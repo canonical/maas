@@ -94,7 +94,6 @@ def create_cidr(network, subnet_mask=None):
 
 
 class SubnetQueriesMixin(MAASQueriesMixin):
-
     find_subnets_with_ip_query = """
         SELECT DISTINCT subnet.*, masklen(subnet.cidr) "prefixlen"
         FROM

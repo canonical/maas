@@ -69,7 +69,6 @@ IN_LXC_CONTAINER = dedent(
 
 
 class TestIsPIDRunning(MAASTestCase):
-
     scenarios = (
         ("running", {"result": True, "exception": None}),
         ("lookup-error", {"result": False, "exception": ProcessLookupError()}),
@@ -83,7 +82,6 @@ class TestIsPIDRunning(MAASTestCase):
 
 
 class TestIsPIDInContainer(MAASTestCase):
-
     scenarios = (
         ("not_in_container", {"result": False, "cgroup": NOT_IN_CONTAINER}),
         (

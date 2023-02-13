@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0263_vlan_racks_on_delete"),
     ]

@@ -180,7 +180,6 @@ class Bcd:
 
 
 class WindowsPXEBootMethod(BootMethod):
-
     name = "windows"
     bios_boot_method = "pxe"
     template_subdir = "windows"

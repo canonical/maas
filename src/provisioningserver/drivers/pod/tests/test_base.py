@@ -294,7 +294,6 @@ class TestRequestClasses(MAASTestCase):
 
 
 class FakePodDriverBase(PodDriverBase):
-
     name = ""
     chassis = True
     can_probe = True
@@ -530,7 +529,6 @@ class TestPodDriverBase(MAASTestCase):
 
 
 class TestGetErrorMessage(MAASTestCase):
-
     scenarios = [
         (
             "auth",

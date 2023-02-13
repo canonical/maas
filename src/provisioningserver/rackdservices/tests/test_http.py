@@ -381,7 +381,6 @@ class TestHTTPLogResource(MAASTestCase):
 
 
 class TestHTTPBootResource(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

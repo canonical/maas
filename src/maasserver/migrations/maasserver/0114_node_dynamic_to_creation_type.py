@@ -2,7 +2,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0113_set_filepath_limit_to_linux_max")]
 
     operations = [

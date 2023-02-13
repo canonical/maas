@@ -15,7 +15,6 @@ def lxd_bmcs_add_project(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0220_nodedevice"),
     ]

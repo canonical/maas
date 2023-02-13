@@ -370,7 +370,6 @@ class TestIPRange(MAASServerTestCase):
 
 
 class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
-
     overlaps = "Requested %s range conflicts with an existing %srange."
     dynamic_overlaps = overlaps % (IPRANGE_TYPE.DYNAMIC, "IP address or ")
     reserved_overlaps = overlaps % (IPRANGE_TYPE.RESERVED, "")

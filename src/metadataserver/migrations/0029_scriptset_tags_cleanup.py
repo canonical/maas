@@ -6,7 +6,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0028_scriptset_requested_scripts_rename"),
     ]

@@ -33,7 +33,6 @@ from provisioningserver.refresh.node_info_scripts import (
 
 
 class IBuiltinScript(Interface):
-
     name = Attribute("Name")
     filename = Attribute("Filename")
     substitutes = Attribute("Substitutes")
@@ -43,7 +42,6 @@ class IBuiltinScript(Interface):
 @implementer(IBuiltinScript)
 @attr.s
 class BuiltinScript:
-
     name = attr.ib(default=None, validator=instance_of(str))
     filename = attr.ib(default=None, validator=instance_of(str))
     substitutes = attr.ib(default={}, validator=optional(instance_of(dict)))

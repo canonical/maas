@@ -14,7 +14,6 @@ def forwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0153_add_skip_bmc_config")]
 
     operations = [

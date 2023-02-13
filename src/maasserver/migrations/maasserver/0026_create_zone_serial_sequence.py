@@ -22,7 +22,6 @@ sequence_drop = "DROP SEQUENCE IF EXISTS maasserver_zone_serial_seq"
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0025_create_node_system_id_sequence")]
 
     operations = [migrations.RunSQL(sequence_create, sequence_drop)]

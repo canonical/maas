@@ -31,7 +31,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestHMCZPowerDriver(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -516,7 +515,6 @@ class TestHMCZPowerDriver(MAASTestCase):
 
 @dataclass
 class FakeNode:
-
     architecture: str
     power_type: str
     power_parameters: dict
@@ -579,7 +577,6 @@ class FakeRPCService:
 
 
 class TestProbeHMCZAndEnlist(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

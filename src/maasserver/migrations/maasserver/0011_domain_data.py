@@ -115,7 +115,6 @@ def migrate_staticipaddress_hostname(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0010_add_dns_models")]
 
     operations = [

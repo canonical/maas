@@ -23,7 +23,6 @@ def deprecated_for(new_option):
     """
 
     class DeprecatedAction(argparse.Action):
-
         _new_option = new_option
         _deprecation_message = (
             'Note: "{option_string}" is deprecated and will be removed, '

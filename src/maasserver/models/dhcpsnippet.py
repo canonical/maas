@@ -70,7 +70,6 @@ class DHCPSnippetManager(Manager, DHCPSnippetQueriesMixin):
 
 
 class DHCPSnippet(CleanSave, TimestampedModel):
-
     name = CharField(max_length=255)
 
     value = ForeignKey(VersionedTextFile, on_delete=CASCADE)

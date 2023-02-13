@@ -1452,7 +1452,6 @@ class TestServiceMonitor(MAASTestCase):
 class TestToggleableService(MAASTestCase):
     def make_toggleable_service(self):
         class FakeToggleableService(ToggleableService):
-
             name = factory.make_name("name")
             service_name = factory.make_name("service")
             snap_service_name = factory.make_name("service")

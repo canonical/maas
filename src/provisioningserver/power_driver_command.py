@@ -77,7 +77,6 @@ def _parse_args(argv):
 
 
 async def _run(reactor, args, driver_registry=PowerDriverRegistry):
-
     command = args.command
     driver = driver_registry[args.driver]
     context = _collect_context(driver.settings, args)
@@ -99,7 +98,6 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
 
 
 def run(argv=None):
-
     if argv is None:
         argv = sys.argv[1:]
 

@@ -61,7 +61,6 @@ def noderesult_to_scriptresult(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("metadataserver", "0002_script_models")]
 
     operations = [migrations.RunPython(noderesult_to_scriptresult)]

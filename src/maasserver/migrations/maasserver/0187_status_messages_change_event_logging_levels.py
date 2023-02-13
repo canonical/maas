@@ -48,7 +48,6 @@ def change_event_levels_from_info_to_debug(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0186_node_description")]
 
     operations = [migrations.RunPython(change_event_levels_from_info_to_debug)]

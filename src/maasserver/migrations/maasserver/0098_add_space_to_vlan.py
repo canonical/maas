@@ -5,7 +5,6 @@ import maasserver.models.subnet
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0097_node_chassis_storage_hints")]
 
     operations = [

@@ -40,7 +40,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class FakeBootMethod(BootMethod):
-
     name = factory.make_name("name")
     bios_boot_method = factory.make_name("bios_boot_method")
     template_subdir = factory.make_name("template_subdir")
@@ -374,7 +373,6 @@ class TestBootMethod(MAASTestCase):
 
 
 class TestGetArchiveUrl(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):

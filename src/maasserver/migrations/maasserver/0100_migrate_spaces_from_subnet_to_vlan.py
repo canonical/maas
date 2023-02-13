@@ -34,7 +34,6 @@ def migrate_spaces_from_subnet_to_vlan(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0099_set_default_vlan_field")]
 
     operations = [migrations.RunPython(migrate_spaces_from_subnet_to_vlan)]

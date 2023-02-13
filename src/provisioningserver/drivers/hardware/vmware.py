@@ -415,7 +415,6 @@ def probe_vmware_and_enlist(
     accept_all: bool = False,
     domain: str = None,
 ):
-
     # Both '' and None mean the same thing, so normalize it.
     if prefix_filter is None:
         prefix_filter = ""

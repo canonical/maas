@@ -65,7 +65,6 @@ def migrate_power_data_from_node_to_bmc(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0015_add_bmc_model")]
 
     operations = [migrations.RunPython(migrate_power_data_from_node_to_bmc)]

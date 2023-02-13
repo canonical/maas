@@ -2489,7 +2489,6 @@ class TestConvertHostToUriStr(MAASTestCase):
 
 
 class TestGetIfnameForLabel(MAASTestCase):
-
     scenarios = [
         ("numeric", {"input": "0", "expected": "eth0"}),
         (

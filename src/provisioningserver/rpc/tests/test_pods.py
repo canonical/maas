@@ -38,7 +38,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestDiscoverPodProjects(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -79,7 +78,6 @@ class TestDiscoverPodProjects(MAASTestCase):
 
 
 class TestDiscoverPod(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -199,7 +197,6 @@ class TestDiscoverPod(MAASTestCase):
 
 
 class TestComposeMachine(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def make_requested_machine(self):
@@ -389,7 +386,6 @@ class TestComposeMachine(MAASTestCase):
 
 
 class TestSendPodCommissioningResults(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
@@ -580,7 +576,6 @@ class TestSendPodCommissioningResults(MAASTestCase):
 
 
 class TestDecomposeMachine(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks

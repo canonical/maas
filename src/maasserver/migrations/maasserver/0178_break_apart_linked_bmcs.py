@@ -41,7 +41,6 @@ def break_apart_linked_bmcs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0177_remove_unique_together_on_bmc")]
 
     operations = [migrations.RunPython(break_apart_linked_bmcs)]

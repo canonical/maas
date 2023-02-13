@@ -11,7 +11,6 @@ def set_machines_default_resource_pool(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0134_create_default_resourcepool")]
 
     operations = [

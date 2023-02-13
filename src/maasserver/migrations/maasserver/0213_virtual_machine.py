@@ -35,7 +35,6 @@ def create_virtual_machines(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0212_notifications_fields")]
 
     operations = [

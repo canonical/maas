@@ -32,7 +32,6 @@ class AlterUniqueTogetherNoDB(migrations.AlterUniqueTogether):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0176_rename_user_id_migrate_to_user_id_for_events")
     ]

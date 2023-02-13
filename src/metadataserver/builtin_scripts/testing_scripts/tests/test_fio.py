@@ -103,7 +103,6 @@ fio_test: (groupid=0, jobs=1): err= 0: pid=2235: Tue Jul 17 17:10:30 2018
 
 
 class TestFioTestRunCmd(MAASTestCase):
-
     scenarios = [
         (
             "old_read",
@@ -177,7 +176,6 @@ class TestFioTestRunCmd(MAASTestCase):
 
 
 class TestFioTestRunFio(MAASTestCase):
-
     scenarios = [
         (
             "old",

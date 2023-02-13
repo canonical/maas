@@ -7,7 +7,6 @@ import maasserver.models.node
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0247_auto_20210915_1545"),
     ]

@@ -182,7 +182,6 @@ class FakeRefresher:
 
 
 class SampleSingleInstanceService(SingleInstanceService):
-
     SERVICE_NAME = "sample"
     LOCK_NAME = "sample-lock"
     INTERVAL = timedelta(minutes=1)

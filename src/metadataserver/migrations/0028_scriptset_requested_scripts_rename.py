@@ -4,7 +4,6 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("metadataserver", "0027_reorder_machine_resources_script"),
     ]

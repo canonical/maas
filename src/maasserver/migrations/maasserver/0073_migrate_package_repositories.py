@@ -66,7 +66,6 @@ def move_package_repositories(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0072_packagerepository")]
 
     operations = [migrations.RunPython(move_package_repositories)]

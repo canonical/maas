@@ -11,7 +11,6 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 
 
 class S390XPartitionBootMethod(BootMethod):
-
     name = "s390x_partition"
     bios_boot_method = "s390x_partition"
     template_subdir = "s390x_partition"

@@ -48,7 +48,6 @@ KernelParametersBase = namedtuple(
 
 
 class KernelParameters(KernelParametersBase):
-
     # foo._replace() is just ugly, so alias it to __call__.
     __call__ = KernelParametersBase._replace
 

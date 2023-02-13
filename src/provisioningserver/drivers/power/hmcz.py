@@ -38,7 +38,6 @@ maaslog = get_maas_logger("drivers.power.hmcz")
 
 
 class HMCZPowerDriver(PowerDriver):
-
     name = "hmcz"
     chassis = True
     can_probe = True

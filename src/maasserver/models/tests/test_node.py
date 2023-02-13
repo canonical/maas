@@ -714,7 +714,6 @@ class TestRegionControllerManager(MAASServerTestCase):
 class TestRegionControllerManagerGetOrCreateRunningController(
     MAASServerTestCase
 ):
-
     scenarios_hosts = (
         ("rack", dict(make_host_node=factory.make_RackController)),
         ("region", dict(make_host_node=factory.make_RegionController)),
@@ -11727,7 +11726,6 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
 class TestNodeStorageClone_SimpleMBRLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -11948,7 +11946,6 @@ class TestNodeStorageClone_SimpleMBRLayout(
 class TestNodeStorageClone_ComplexDiskLayout(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:
@@ -12338,7 +12335,6 @@ class TestNodeStorageClone_ComplexDiskLayout(
 class TestNodeStorageClone_SpecialFilesystems(
     MAASServerTestCase, AssertStorageConfigMixin
 ):
-
     STORAGE_CONFIG = dedent(
         """\
         config:

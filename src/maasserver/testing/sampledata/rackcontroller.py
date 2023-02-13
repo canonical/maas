@@ -27,7 +27,6 @@ def make_rackcontroller_infos(count: int, hostname_prefix: str):
 def make_rackcontrollers(
     rackcontroller_infos: List[FakeCommissioningData], tags: List[Tag]
 ):
-
     rackcontrollers = []
     running_version = version.get_running_version()
 

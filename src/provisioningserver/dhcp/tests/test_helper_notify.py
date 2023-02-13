@@ -24,7 +24,6 @@ TIMEOUT = get_testing_timeout()
 
 
 class TestDHCPNotify(MAASTestCase):
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def patch_socket_path(self):

@@ -253,7 +253,6 @@ class TestGetMAASUserAgent(MAASServerTestCase):
 
 
 class TestGetHostWithoutPort(MAASTestCase):
-
     scenarios = (
         ("ipv4", {"host": "127.0.0.1", "expected": "127.0.0.1"}),
         (

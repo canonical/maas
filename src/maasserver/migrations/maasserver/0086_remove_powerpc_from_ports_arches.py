@@ -13,7 +13,6 @@ def remove_powerpc_from_ports_arches(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [("maasserver", "0085_no_intro_on_upgrade")]
 
     operations = [migrations.RunPython(remove_powerpc_from_ports_arches)]

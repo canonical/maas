@@ -31,7 +31,6 @@ def get_commands(module):
 
 
 class TestDocs(MAASTestCase):
-
     scenarios = sorted(
         (command.__name__, {"command": command})
         for command in chain(

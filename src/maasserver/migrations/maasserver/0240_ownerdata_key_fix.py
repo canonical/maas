@@ -34,7 +34,6 @@ def fix_ownerdata_keys(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0239_add_iprange_specific_dhcp_snippets"),
     ]

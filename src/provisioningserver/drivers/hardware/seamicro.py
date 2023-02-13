@@ -40,7 +40,6 @@ class SeaMicroAPIV09Error(SeaMicroError):
 
 
 class SeaMicroAPIV09:
-
     allowed_codes = [
         http.client.OK,
         http.client.ACCEPTED,

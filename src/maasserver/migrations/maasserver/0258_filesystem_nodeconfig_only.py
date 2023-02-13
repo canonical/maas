@@ -5,7 +5,6 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("maasserver", "0257_filesystem_populate_node_config_id"),
     ]

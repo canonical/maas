@@ -284,7 +284,6 @@ class VirshError(Exception):
 
 
 class VirshSSH(pexpect.spawn):
-
     PROMPT = r"virsh \#"
     PROMPT_SSHKEY = "(?i)are you sure you want to continue connecting"
     PROMPT_PASSWORD = "(?i)(?:password)|(?:passphrase for key)"
@@ -1273,7 +1272,6 @@ class VirshSSH(pexpect.spawn):
 
 
 class VirshPodDriver(PodDriver):
-
     name = "virsh"
     description = "Virsh (virtual systems)"
     can_probe = True

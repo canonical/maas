@@ -740,7 +740,6 @@ class ThreadUnpool:
         self.started = False
 
     def callInThread(self, func, *args, **kwargs):
-
         """See :class:`twisted.python.threadpool.ThreadPool`.
 
         :return: a `Deferred`, which is mainly intended for testing.

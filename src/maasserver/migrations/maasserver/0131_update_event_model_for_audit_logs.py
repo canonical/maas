@@ -6,7 +6,6 @@ import maasserver.utils.dns
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
         ("maasserver", "0130_node_locked_flag"),
