@@ -20,14 +20,12 @@ import provisioningserver.utils.beaconing
 import provisioningserver.utils.dhcp
 import provisioningserver.utils.scan_network
 from provisioningserver.utils.script import MainScript
-import provisioningserver.utils.send_beacons
 
 COMMON_COMMANDS = {
     "observe-arp": provisioningserver.utils.arp,
     "observe-beacons": provisioningserver.utils.beaconing,
     "observe-mdns": provisioningserver.utils.avahi,
     "observe-dhcp": provisioningserver.utils.dhcp,
-    "send-beacons": provisioningserver.utils.send_beacons,
     "scan-network": provisioningserver.utils.scan_network,
     "setup-dns": provisioningserver.dns.commands.setup_dns,
     "get-named-conf": provisioningserver.dns.commands.get_named_conf,

@@ -1182,26 +1182,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
 
     @inlineCallbacks
     def test_send_multicast_beacon_sets_ipv6_source(self):
-        # Due to issues beyond my control, this test doesn't do what I expected
-        # it to do. But it's still useful for code coverage (to make sure no
-        # blatant exceptions occur in the IPv6 path).
-        # self.skipTest(
-        #    "IPv6 loopback multicast isn't working, for whatever reason.")
-        # Since we can't test IPv6 multicast on the loopback interface, another
-        # method can be used to verify that it's working:
-        # (1) sudo tcpdump -i <physical-interface> 'udp and port == 5240'
-        # (2) bin/maas-rack send-beacons -p 5240
-        # Verifying IPv6 (and IPv4) multicast group join behavior can be
-        # validated by doing something like:
-        # (1) bin/maas-rack send-beacons -t 600
-        #     (the high timeout will cause it to wait for 10 minutes)
-        # (2) ip maddr show | egrep 'ff02::15a|224.0.0.118|$'
-        # The expected result from command (2) will be that 'egrep' will
-        # highlight the MAAS multicast groups in red text. Any Ethernet
-        # interface with an assigned IPv4 address should have joined the
-        # 224.0.0.118 group. All Ethernet interfaces should have joined the
-        # 'ff02::15a' group.
-        # Note: Always use a random port for testing. (port=0)
+        self.skipTest("IPv6 loopback multicast isn't working")
         protocol = BeaconingSocketProtocol(
             reactor,
             port=0,
@@ -1217,8 +1198,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         # The loopback interface ifindex should always be 1; this is saying
         # to send an IPv6 multicast on ifIndex == 1.
         protocol.send_multicast_beacon(1, beacon, port=listen_port)
-        # Instead of skipping the test, just don't expect to receive anything.
-        # yield wait_for_rx_packets(protocol, 1)
+        yield wait_for_rx_packets(protocol, 1)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
