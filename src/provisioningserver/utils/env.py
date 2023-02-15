@@ -42,9 +42,12 @@ class FileBackedValue:
 
     def __init__(self, name):
         self.name = name
-        self.path = Path(get_maas_data_path(self.name))
         self._value = None
         self._lock = threading.Lock()
+
+    @property
+    def path(self) -> Path:
+        return self._path()
 
     def clear_cached(self):
         """Clear cached value so that next get call reads it again from disk."""
@@ -84,6 +87,10 @@ class FileBackedValue:
         if value:
             value = value.strip()
         return value if value else None
+
+    def _path(self) -> Path:
+        # separate function so that it can be overridden in tests
+        return Path(get_maas_data_path(self.name))
 
 
 MAAS_ID = FileBackedValue("maas_id")

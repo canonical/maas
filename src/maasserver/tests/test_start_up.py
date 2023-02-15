@@ -58,7 +58,7 @@ class TestStartUp(MAASTransactionServerTestCase):
         self.useFixture(RegionEventLoopFixture())
         self.patch(ipaddr, "get_ip_addr").return_value = {}
         temp_dir = Path(self.make_dir())
-        self.patch(MAAS_SHARED_SECRET, "path", temp_dir / "secret")
+        self.patch(MAAS_SHARED_SECRET, "_path", lambda: temp_dir / "secret")
         MAAS_SECRET.set(factory.make_bytes())
 
     def tearDown(self):
@@ -141,7 +141,7 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up, "get_versions_info"
         ).return_value = self.versions_info
         temp_dir = Path(self.make_dir())
-        self.patch(MAAS_SHARED_SECRET, "path", temp_dir / "secret")
+        self.patch(MAAS_SHARED_SECRET, "_path", lambda: temp_dir / "secret")
         MAAS_SECRET.set(factory.make_bytes())
 
     def test_calls_dns_kms_setting_changed_if_master(self):

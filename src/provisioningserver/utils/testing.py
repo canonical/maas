@@ -30,12 +30,14 @@ class MAASFileBackedValueFixture(Fixture):
 
     def _setUp(self):
         super()._setUp()
-        self.FILE_BACKED_VALUE.path = (
+        orig_path = self.FILE_BACKED_VALUE._path
+        self.FILE_BACKED_VALUE._path = lambda: (
             Path(self.useFixture(TempDir()).path) / self.FILE_BACKED_VALUE.name
         )
         self.addCleanup(
             self.FILE_BACKED_VALUE.set, self.FILE_BACKED_VALUE.get()
         )
+        self.addCleanup(setattr, self.FILE_BACKED_VALUE, "_path", orig_path)
         self.FILE_BACKED_VALUE.set(self.value)
 
 

@@ -4364,7 +4364,9 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
     def test_remove_shared_secret(self):
         root_path = Path(self.useFixture(TempDir()).path)
         shared_secret_path = root_path / "secret"
-        self.patch(utils_env.MAAS_SHARED_SECRET, "path", shared_secret_path)
+        self.patch(
+            utils_env.MAAS_SHARED_SECRET, "_path", lambda: shared_secret_path
+        )
         self.patch(clusterservice, "call_and_check")
         shared_secret_path.write_text("secret")
         response = call_responder(

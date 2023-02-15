@@ -24,7 +24,7 @@ def clean_globals(tmpdir):
     base_path = Path(tmpdir)
     for var in (MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET):
         var.clear_cached()
-        var.path = base_path / var.name
+        var._path = lambda: base_path / var.name
 
     MAAS_SECRET.set(None)
     yield

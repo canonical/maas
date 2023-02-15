@@ -47,7 +47,9 @@ class TestInstallSharedSecretScript(MAASTestCase):
         super().setUp()
         tempdir = Path(self.make_dir())
         utils_env.MAAS_SHARED_SECRET.clear_cached()
-        self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        self.patch(
+            utils_env.MAAS_SHARED_SECRET, "_path", lambda: tempdir / "secret"
+        )
         self._mock_print = self.patch(security, "print")
 
     def read_secret_from_fs(self):
@@ -167,7 +169,9 @@ class TestCheckForSharedSecretScript(MAASTestCase):
         super().setUp()
         tempdir = Path(self.make_dir())
         utils_env.MAAS_SHARED_SECRET.clear_cached()
-        self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        self.patch(
+            utils_env.MAAS_SHARED_SECRET, "_path", lambda: tempdir / "secret"
+        )
         self._mock_print = self.patch(security, "print")
 
     def test_has_add_arguments(self):

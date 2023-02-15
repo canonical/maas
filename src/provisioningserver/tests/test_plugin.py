@@ -95,7 +95,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             plugin_module, "generate_certificate_if_needed"
         )
         tempdir = Path(self.make_dir())
-        self.patch(MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        self.patch(MAAS_SHARED_SECRET, "_path", lambda: tempdir / "secret")
         # by default, define a shared secret so that sevices are populated
         MAAS_SHARED_SECRET.set(to_hex(factory.make_bytes()))
 
