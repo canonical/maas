@@ -855,6 +855,8 @@ class LXDPodDriver(PodDriver):
                 cert=cert,
                 verify=False,
             )
+            # Don't inherit proxy environment variables
+            client.api.session.trust_env = False
             if not client.trusted and password:
                 try:
                     client.authenticate(password)

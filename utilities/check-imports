@@ -418,6 +418,7 @@ checks = [
         RackControllerRule
         | Rule(
             Allow("apiclient.testing.credentials.make_api_credentials"),
+            Allow("requests|requests.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
