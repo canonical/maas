@@ -362,7 +362,7 @@ def update_vlan_interface(node, name, network, links):
     parent_nic = Interface.objects.get(
         node_config=node.current_config, name=parent_name
     )
-    links_vlan = get_interface_vlan_from_links(node, links)
+    links_vlan = get_interface_vlan_from_links(links)
     if links_vlan:
         vlan = links_vlan
         if parent_nic.vlan.fabric_id != vlan.fabric_id:
@@ -511,7 +511,7 @@ def guess_vlan_for_interface(node, links):
     # links exists on this interface we place it into the correct
     # VLAN. If it cannot be determined and its a new interface it
     # gets placed on its own fabric.
-    new_vlan = get_interface_vlan_from_links(node, links)
+    new_vlan = get_interface_vlan_from_links(links)
     if new_vlan is None:
         # If the default VLAN on the default fabric has no interfaces
         # associated with it, the first interface will be placed there
@@ -536,7 +536,7 @@ def configure_vlan_from_links(node, interface, parent_nics, links):
     # links exists on this interface we place it into the correct
     # VLAN. If it cannot be determined it is placed on the same fabric
     # as its first parent interface.
-    vlan = get_interface_vlan_from_links(node, links)
+    vlan = get_interface_vlan_from_links(links)
     if not vlan and parent_nics:
         # Not connected to any known subnets. We add it to the same
         # VLAN as its first parent.
@@ -577,7 +577,7 @@ def find_related_interface(
     return related_interface
 
 
-def get_interface_vlan_from_links(node, links):
+def get_interface_vlan_from_links(links):
     """Return the VLAN for an interface from its links.
 
     It's assumed that all subnets for VLAN links are on the same VLAN.
