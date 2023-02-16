@@ -49,7 +49,7 @@ def make_network_interfaces(
     def make_network_ip(vlan: VLAN, network: LXDNetwork):
         ip_network = ip_networks[vlan]
         ip = factory.pick_ip_in_network(ip_network)
-        network.addresses = [LXDAddress(str(ip), str(ip_network.prefixlen))]
+        network.addresses = [LXDAddress(str(ip), ip_network.prefixlen)]
         return ip
 
     for fabric_vlans in vlans.values():

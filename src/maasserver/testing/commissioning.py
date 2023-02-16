@@ -51,7 +51,7 @@ class LXDBond:
 @dataclasses.dataclass
 class LXDAddress:
     address: str
-    netmask: str
+    netmask: int
     family: str = "inet"
     scope: str = "global"
 

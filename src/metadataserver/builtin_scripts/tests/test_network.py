@@ -1998,7 +1998,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             vlan_network = data1.create_vlan_network(
                 f"ens5.{vid}", parent=ens5_network
             )
-            vlan_network.addresses = [LXDAddress(f"10.{vid}.0.2", "20")]
+            vlan_network.addresses = [LXDAddress(f"10.{vid}.0.2", 20)]
 
         data2 = FakeCommissioningData()
         ens3_network = data2.create_physical_network(
@@ -2020,7 +2020,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             vlan_network = data2.create_vlan_network(
                 f"ens5.{vid}", parent=ens5_network
             )
-            vlan_network.addresses = [LXDAddress(f"10.{vid}.0.3", "20")]
+            vlan_network.addresses = [LXDAddress(f"10.{vid}.0.3", 20)]
 
         controller1 = self.create_empty_controller()
         controller2 = self.create_empty_controller()
