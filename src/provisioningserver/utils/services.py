@@ -514,24 +514,6 @@ class BeaconingSocketProtocol(DatagramProtocol):
             all_hints |= hints
         return all_hints
 
-    def getJSONTopologyHints(self):
-        """Returns all topology hints as a list of dictionaries.
-
-        This method is used for sending data via the RPC layer, so be cautious
-        when modifying. In addition, keys with no value are filtered out
-        of the resulting dictionary, so that the hints are smaller on the wire.
-        """
-        all_hints = self.getAllTopologyHints()
-        json_hints = [
-            {
-                key: value
-                for key, value in hint._asdict().items()
-                if value is not None
-            }
-            for hint in all_hints
-        ]
-        return json_hints
-
     def stopProtocol(self):
         super().stopProtocol()
         if self.listen_port is not None:
@@ -599,10 +581,10 @@ class BeaconingSocketProtocol(DatagramProtocol):
         :param verbose: If True, will log the payload of each beacon sent.
         """
         for ifname, ifdata in interfaces.items():
-            if self.debug:
-                log.msg("Sending multicast beacon on '%s'." % ifname)
             if not ifdata["enabled"]:
                 continue
+            if self.debug:
+                log.msg(f"Sending multicast beacon on '{ifname}'.")
             remote = interface_info_to_beacon_remote_payload(ifname, ifdata)
             # We'll make slight adjustments to the beacon payload depending
             # on the configured source subnet (if any), but the basic payload
@@ -610,7 +592,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             payload = {"remote": remote}
             if_index = socket.if_nametoindex(ifname)
             links = ifdata["links"]
-            if len(links) == 0:
+            if not links:
                 # No configured links, so try sending out a link-local IPv6
                 # multicast beacon.
                 beacon = create_beacon_payload(beacon_type, payload)
@@ -646,7 +628,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         Replies to each soliciation with a corresponding advertisement.
         """
         remote = interface_info_to_beacon_remote_payload(
-            beacon.ifname, beacon.ifinfo, beacon.vid
+            beacon.ifname, beacon.ifinfo, rx_vid=beacon.vid
         )
         # Construct the reply payload.
         payload = {"remote": remote, "acks": beacon.uuid}
@@ -723,7 +705,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
         remote_ifinfo = rx.json.get("payload", {}).get("remote", None)
         if remote_ifinfo is not None and not own_beacon:
             self._add_remote_fabric_hints(hints, remote_ifinfo, rx)
-        if len(hints) > 0:
+        if hints:
             self.topology_hints[rx.uuid] = hints
             if self.debug:
                 all_hints = self.getAllTopologyHints()
@@ -1154,6 +1136,18 @@ class NetworksMonitoringService(SingleInstanceService):
             self.beaconing_protocol.stopProtocol()
         return super().stopService()
 
+    def _get_topology_hints(self):
+        # serialize hints and remove empty values to make the payload
+        # smaller
+        return [
+            {
+                key: value
+                for key, value in hint._asdict().items()
+                if value is not None
+            }
+            for hint in self.beaconing_protocol.getAllTopologyHints()
+        ]
+
     @inlineCallbacks
     def _updateInterfaces(self, interfaces):
         """Record `interfaces` if they've changed."""
@@ -1169,7 +1163,8 @@ class NetworksMonitoringService(SingleInstanceService):
                     solicitation=True
                 )
                 yield pause(3.0)
-                hints = self.beaconing_protocol.getJSONTopologyHints()
+                hints = self._get_topology_hints()
+
             maas_url, system_id, credentials = yield self.getRefreshDetails()
             yield self._run_refresh(
                 maas_url,

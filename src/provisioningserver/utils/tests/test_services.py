@@ -435,10 +435,9 @@ class TestNetworksMonitoringService(MAASTestCase):
             "hints": {"my-hint": "foo"},
         }
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
-        beaconing_mock = self.patch(services.BeaconingSocketProtocol)
-        beaconing_mock.return_value.getJSONTopologyHints.return_value = (
-            network_extra["hints"]
-        )
+        self.patch(
+            service, "_get_topology_hints"
+        ).return_value = network_extra["hints"]
 
         yield service.startService()
         service.clock.advance(0)
@@ -1413,52 +1412,6 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             )
         }
         self.assertEqual(hints, expected_hints)
-        yield protocol.stopProtocol()
-
-    @inlineCallbacks
-    def test_getJSONTopologyHints_converts_hints_to_dictionary(self):
-        # Note: Always use a random port for testing. (port=0)
-        protocol = BeaconingSocketProtocol(
-            reactor,
-            port=0,
-            process_incoming=False,
-            loopback=True,
-            interface="::",
-            debug=True,
-        )
-        # Don't try to send out any replies.
-        self.patch(services, "create_beacon_payload")
-        self.patch(protocol, "send_beacon")
-        # Need to generate a real UUID with the current time, so it doesn't
-        # get aged out.
-        uuid = str(uuid1())
-        # Make the protocol think we sent a beacon with this UUID already.
-        tx_mac = factory.make_mac_address()
-        fake_tx_beacon = FakeBeaconPayload(
-            uuid, ifname="eth1", mac=tx_mac, vid=100
-        )
-        fake_rx_beacon = {
-            "source_ip": "127.0.0.1",
-            "source_port": 5240,
-            "destination_ip": "224.0.0.118",
-            "interface": "eth0",
-            "type": "solicitation",
-            "payload": fake_tx_beacon.payload,
-        }
-        protocol.beaconReceived(fake_rx_beacon)
-        all_hints = protocol.getJSONTopologyHints()
-        expected_hints = [
-            # Note: since vid=None on the received beacon, we expect that
-            # the hint won't have a 'vid' field.
-            dict(
-                ifname="eth0",
-                hint="on_remote_network",
-                related_ifname="eth1",
-                related_vid=100,
-                related_mac=tx_mac,
-            )
-        ]
-        self.assertEqual(all_hints, expected_hints)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
