@@ -29,17 +29,19 @@ def get_fabric_uri(fabric):
 
 
 def make_complex_fabric():
+    # use a single space for all VLANs to avoid extra queries based on whether
+    # other spaces are created
+    space = factory.make_Space()
     fabric = factory.make_Fabric()
     vlans = [fabric.get_default_vlan()]
     for _ in range(3):
-        vlan = factory.make_VLAN(fabric=fabric)
+        vlan = factory.make_VLAN(fabric=fabric, dhcp_on=True, space=space)
         rack_controller = factory.make_RackController(vlan=vlan)
-        vlan.dhcp_on = True
         vlan.primary_rack = rack_controller
         vlan.save()
         vlans.append(vlan)
     for vlan in vlans:
-        factory.make_VLAN(fabric=fabric, relay_vlan=vlan)
+        factory.make_VLAN(fabric=fabric, relay_vlan=vlan, space=space)
     return fabric
 
 
