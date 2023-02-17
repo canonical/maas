@@ -29,7 +29,7 @@ from provisioningserver.utils.debug import (
 
 log = LegacyLogger()
 
-PGSQL_MIN_VERSION = 14
+PGSQL_MIN_VERSION = 12
 
 
 class UnsupportedDBException(Exception):
