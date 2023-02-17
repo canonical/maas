@@ -1,7 +1,6 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.utils.orm import postgresql_major_version
 from provisioningserver.logger import LegacyLogger
 
 DEPRECATION_URL = "https://maas.io/deprecations/{id}"
@@ -27,24 +26,13 @@ class Deprecation:
         )
 
 
-# all known deprecation notices
-DEPRECATIONS = {
-    "POSTGRES_OLDER_THAN_14": Deprecation(
-        id="MD3",
-        since="3.3",
-        description="The PostgreSQL version in use is older than 14.",
-        link_text="How to upgrade the PostgreSQL server",
-    )
-}
+# all known deprecation notices, mapping symbolic name to the deprecation info
+DEPRECATIONS: dict[str, Deprecation] = {}
 
 
-def get_deprecations():
+def get_deprecations() -> list[Deprecation]:
     """Return a list of currently active deprecation notices."""
-
-    deprecations = []
-    if postgresql_major_version() < 14:
-        deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_14"])
-    return deprecations
+    return []
 
 
 def log_deprecations(logger=None):

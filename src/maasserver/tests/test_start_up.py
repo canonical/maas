@@ -264,7 +264,14 @@ class TestInnerStartUp(MAASServerTestCase):
         )
 
     def test_logs_deprecation_notifications(self):
-        self.patch(deprecations, "postgresql_major_version").return_value = 12
+        self.patch(deprecations, "get_deprecations").return_value = [
+            deprecations.Deprecation(
+                id="MD100",
+                since="3.3",
+                description="deprecation",
+                link_text="deprecation",
+            )
+        ]
         mock_log = self.patch(start_up, "log")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)

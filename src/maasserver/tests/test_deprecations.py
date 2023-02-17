@@ -1,7 +1,6 @@
 from maasserver import deprecations
 from maasserver.deprecations import (
     Deprecation,
-    DEPRECATIONS,
     get_deprecations,
     log_deprecations,
     sync_deprecation_notifications,
@@ -15,12 +14,6 @@ from provisioningserver.logger import LegacyLogger
 class TestGetDeprecations(MAASServerTestCase):
     def test_empty(self):
         self.assertEqual(get_deprecations(), [])
-
-    def test_old_postgres_version(self):
-        self.patch(deprecations, "postgresql_major_version").return_value = 12
-        self.assertEqual(
-            get_deprecations(), [DEPRECATIONS["POSTGRES_OLDER_THAN_14"]]
-        )
 
 
 class TestLogDeprecations(MAASTestCase):
