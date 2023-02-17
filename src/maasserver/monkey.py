@@ -7,7 +7,6 @@ Monkey patch for the MAAS region server, with code for region server patching.
 
 
 from collections import OrderedDict
-import inspect
 
 from twisted.web import http
 import yaml
@@ -43,46 +42,6 @@ def fix_django_deferred_attribute():
     from django.db.models.query_utils import DeferredAttribute
 
     DeferredAttribute.__get__ = DeferredAttributePreventer__get__
-
-
-def fix_piston_emitter_related():
-    """Fix Piston so it uses cached data for the `_related`.
-
-    Piston emitter code is all one large function. Instead of including that
-    large chunk of code in MAAS to fix this one issue we modify the source of
-    the function and re-evaluate it.
-
-    The `_related` function uses `iterator` which skips precached relations,
-    changing it to `all` provides the same behaviour while using the precached
-    data.
-    """
-    from piston3 import emitters
-
-    bad_line = "return [_model(m, fields) for m in data.iterator()]"
-    new_line = "return [_model(m, fields) for m in data.all()]"
-
-    try:
-        source = inspect.getsource(emitters.Emitter.construct)
-    except OSError:
-        # Fails with 'could not get source code' if its already patched. So we
-        # allow this error to occur.
-        pass
-    else:
-        if source.find(bad_line) > 0:
-            source = source.replace(bad_line, new_line, 1)
-            func_body = [line[4:] for line in source.splitlines()[1:]]
-            new_source = ["def emitter_new_construct(self):"] + func_body
-            new_source = "\n".join(new_source)
-            local_vars = {}
-            exec(new_source, emitters.__dict__, local_vars)
-            emitters.Emitter.construct = local_vars["emitter_new_construct"]
-
-
-def fix_piston_consumer_delete():
-    """Fix Piston so it doesn't try to send an email when a user is delete."""
-    from piston3 import signals
-
-    signals.send_consumer_mail = lambda consumer: None
 
 
 def fix_ordereddict_yaml_representer():
@@ -128,7 +87,5 @@ def fix_twisted_disconnect_write():
 def add_patches():
     add_patches_to_twisted()
     fix_django_deferred_attribute()
-    fix_piston_emitter_related()
-    fix_piston_consumer_delete()
     fix_ordereddict_yaml_representer()
     fix_twisted_disconnect_write()
