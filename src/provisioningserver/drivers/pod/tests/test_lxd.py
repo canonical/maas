@@ -127,6 +127,7 @@ class FakeClient:
     project: str
     cert: Optional[Tuple[str, str]]
     verify: bool
+    session: Session
 
     _PROXIES = (
         "host_info",
@@ -143,7 +144,7 @@ class FakeClient:
         self.trusted = False
         self._fail_auth = False
         self.host_info = self.fake_lxd.host_info
-        self.api = FakeAPINode()
+        self.api = FakeAPINode(self.session)
 
     def authenticate(self, password):
         if self._fail_auth:
@@ -157,11 +158,11 @@ class FakeClient:
         raise AttributeError(name)
 
 
+@dataclasses.dataclass
 class FakeAPINode:
     """A fake pylxd.client._APINode"""
 
-    def __init__(self):
-        self.session = Session()
+    session: Session
 
 
 class FakeLXD:
@@ -201,8 +202,16 @@ class FakeLXD:
         project="default",
         cert=None,
         verify=False,
+        session=None,
     ):
-        client = FakeClient(self, endpoint, project, cert, verify)
+        client = FakeClient(
+            fake_lxd=self,
+            endpoint=endpoint,
+            project=project,
+            cert=cert,
+            verify=verify,
+            session=session,
+        )
 
         if self._client_behaviors is not None:
             try:
@@ -264,10 +273,13 @@ class FakeLXDCluster:
         project="default",
         cert=None,
         verify=False,
+        session=None,
     ):
         if self.client_idx == len(self.clients):
             self.client_idx = 0
-        client = self.clients[self.client_idx](endpoint, project, cert, verify)
+        client = self.clients[self.client_idx](
+            endpoint, project, cert, verify, session
+        )
         client._PROXIES += ("cluster", "cluster/members")
         self.client_idx += 1
         return client
