@@ -352,7 +352,7 @@ class DHCPRequestMonitor:
                     continue
                 else:
                     offer = DHCP(data)
-                    if not offer.is_valid():
+                    if not offer.valid:
                         log.info(
                             "Invalid DHCP response received from {address} "
                             "on '{ifname}': {reason}",

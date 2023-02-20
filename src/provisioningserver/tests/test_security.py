@@ -164,40 +164,6 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
 
 
-class TestCheckForSharedSecretScript(MAASTestCase):
-    def setUp(self):
-        super().setUp()
-        tempdir = Path(self.make_dir())
-        utils_env.MAAS_SHARED_SECRET.clear_cached()
-        self.patch(
-            utils_env.MAAS_SHARED_SECRET, "_path", lambda: tempdir / "secret"
-        )
-        self._mock_print = self.patch(security, "print")
-
-    def test_has_add_arguments(self):
-        # It doesn't do anything, but it's there to fulfil the contract with
-        # ActionScript/MainScript.
-        security.CheckForSharedSecretScript.add_arguments(sentinel.parser)
-        self.assertIsNotNone("Obligatory assertion.")
-
-    def test_exits_non_zero_if_secret_does_not_exist(self):
-        error = self.assertRaises(
-            SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
-        )
-        self.assertEqual(1, error.code)
-        self._mock_print.assert_called_once_with(
-            "Shared-secret is NOT installed."
-        )
-
-    def test_exits_zero_if_secret_exists(self):
-        utils_env.MAAS_SHARED_SECRET.set(security.to_hex(factory.make_bytes()))
-        error = self.assertRaises(
-            SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
-        )
-        self.assertEqual(0, error.code)
-        self._mock_print.assert_called_once_with("Shared-secret is installed.")
-
-
 class TestFernetEncryption(SharedSecretTestCase):
     def setUp(self):
         super().setUp()

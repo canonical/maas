@@ -200,31 +200,3 @@ class InstallSharedSecretScript:
             MAAS_SHARED_SECRET.set(secret_hex)
             print(f"Secret installed to {MAAS_SHARED_SECRET.path}.")
             raise SystemExit(0)
-
-
-class CheckForSharedSecretScript:
-    """Check for the presence of a shared-secret on a cluster.
-
-    This class conforms to the contract that :py:func:`MainScript.register`
-    requires.
-    """
-
-    @staticmethod
-    def add_arguments(parser):
-        """Initialise options for checking the presence of a shared-secret.
-
-        :param parser: An instance of :class:`ArgumentParser`.
-        """
-
-    @staticmethod
-    def run(args):
-        """Check for the presence of a shared-secret on this cluster.
-
-        Exits 0 (zero) if a shared-secret has been installed.
-        """
-        if MAAS_SHARED_SECRET.get() is None:
-            print("Shared-secret is NOT installed.")
-            raise SystemExit(1)
-        else:
-            print("Shared-secret is installed.")
-            raise SystemExit(0)
