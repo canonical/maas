@@ -17,6 +17,7 @@ from zlib import crc32
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import RegexValidator
 from django.db.models import (
     BooleanField,
     CASCADE,
@@ -48,11 +49,7 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import (
-    mac_validator,
-    MACAddressField,
-    VerboseRegexValidator,
-)
+from maasserver.fields import mac_validator, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -551,7 +548,7 @@ class Interface(CleanSave, TimestampedModel):
         blank=False,
         editable=True,
         max_length=255,
-        validators=[VerboseRegexValidator(INTERFACE_NAME_REGEXP)],
+        validators=[RegexValidator(regex=INTERFACE_NAME_REGEXP)],
         help_text="Interface name.",
     )
 

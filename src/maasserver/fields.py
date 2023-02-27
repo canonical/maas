@@ -14,7 +14,6 @@ __all__ = [
     "MACAddressFormField",
     "MODEL_NAME_VALIDATOR",
     "NodeChoiceField",
-    "VerboseRegexValidator",
     "VersionedTextFileField",
 ]
 
@@ -57,27 +56,7 @@ MAC_RE = re.compile(
 MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
 
 
-class VerboseRegexValidator(RegexValidator):
-    """A verbose `RegexValidator`.
-
-    This `RegexValidator` includes the checked value in the rendered error
-    message when the validation fails.
-    """
-
-    # Set a bugus code to circumvent Django's attempt to re-interpret a
-    # validator's error message using the field's message it is attached
-    # to.
-    code = "bogus-code"
-
-    def __call__(self, value):
-        """Validates that the input matches the regular expression."""
-        if not self.regex.search(force_str(value)):
-            raise ValidationError(
-                self.message % {"value": value}, code=self.code
-            )
-
-
-mac_validator = VerboseRegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
+mac_validator = RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
 
 
 class StrippedCharField(forms.CharField):
@@ -108,24 +87,14 @@ class UnstrippedCharField(forms.CharField):
             parent_init(*args, **kwargs)
 
 
-class VerboseRegexField(forms.CharField):
-    def __init__(self, regex, message, *args, **kwargs):
-        """A field that validates its value with a regular expression.
-
-        :param regex: Either a string or a compiled regular expression object.
-        :param message: Error message to use when the validation fails.
-        """
-        super().__init__(*args, **kwargs)
-        self.validators.append(
-            VerboseRegexValidator(regex=regex, message=message)
-        )
-
-
-class MACAddressFormField(VerboseRegexField):
+class MACAddressFormField(forms.CharField):
     """Form field type: MAC address."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(regex=MAC_RE, message=MAC_ERROR_MSG, *args, **kwargs)
+        super().__init__(*args, **kwargs)
+        self.validators.append(
+            RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
+        )
 
 
 class MACAddressField(Field):

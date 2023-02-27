@@ -780,7 +780,7 @@ class Migration(migrations.Migration):
                         help_text="Interface name.",
                         max_length=255,
                         validators=[
-                            maasserver.fields.VerboseRegexValidator(
+                            django.core.validators.RegexValidator(
                                 "^[\\w\\-_.:]+$"
                             )
                         ],
@@ -1220,7 +1220,7 @@ class Migration(migrations.Migration):
                         max_length=255,
                         blank=True,
                         validators=[
-                            maasserver.fields.VerboseRegexValidator(
+                            django.core.validators.RegexValidator(
                                 "^[\\w:.-]+$"
                             )
                         ],
