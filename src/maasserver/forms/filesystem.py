@@ -11,10 +11,9 @@ __all__ = [
 
 from typing import Optional
 
-from django.forms import ChoiceField, Form
+from django.forms import CharField, ChoiceField, Form
 
 from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
-from maasserver.fields import StrippedCharField
 from maasserver.forms import AbsolutePathField
 from maasserver.models import Filesystem, Node
 
@@ -31,7 +30,7 @@ class MountFilesystemForm(Form):
         if self.filesystem is not None:
             if self.filesystem.uses_mount_point:
                 self.fields["mount_point"] = AbsolutePathField(required=True)
-            self.fields["mount_options"] = StrippedCharField(required=False)
+            self.fields["mount_options"] = CharField(required=False)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -61,7 +60,7 @@ class MountNonStorageFilesystemForm(Form):
     """Form used to create and mount a non-storage filesystem."""
 
     mount_point = AbsolutePathField(required=True)
-    mount_options = StrippedCharField(required=False)
+    mount_options = CharField(required=False)
     fstype = ChoiceField(
         required=True,
         choices=[

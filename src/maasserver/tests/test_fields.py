@@ -6,13 +6,11 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
-from django.db.models import BinaryField
 from psycopg2 import OperationalError
 from testtools import ExpectedException
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
-    EditableBinaryField,
     HostListFormField,
     IPListFormField,
     LargeObjectField,
@@ -107,14 +105,6 @@ class TestXMLField(MAASLegacyServerTestCase):
         XMLFieldModel.objects.create(value=None)
         test_instance = XMLFieldModel.objects.get(value__isnull=True)
         self.assertIsNone(test_instance.value)
-
-
-class TestEditableBinaryField(MAASServerTestCase):
-    def test_is_BinaryField(self):
-        self.assertIsInstance(EditableBinaryField(), BinaryField)
-
-    def test_is_editable(self):
-        self.assertTrue(EditableBinaryField().editable)
 
 
 class TestLargeObjectField(MAASLegacyServerTestCase):

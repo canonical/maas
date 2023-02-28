@@ -231,7 +231,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "keyring_data",
-                    maasserver.fields.EditableBinaryField(
+                    maasserver.migrations.fields.EditableBinaryField(
                         help_text="The GPG keyring for this BootSource, as a binary blob.",
                         blank=True,
                     ),

@@ -5,9 +5,8 @@
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import CharField, URLField
+from django.db.models import BinaryField, CharField, URLField
 
-from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -25,9 +24,10 @@ class BootSource(CleanSave, TimestampedModel):
         help_text="The path to the keyring file for this BootSource.",
     )
 
-    keyring_data = EditableBinaryField(
+    keyring_data = BinaryField(
         blank=True,
         help_text="The GPG keyring for this BootSource, as a binary blob.",
+        editable=True,
     )
 
     def clean(self, *args, **kwargs):

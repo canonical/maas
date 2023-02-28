@@ -5,7 +5,21 @@
 from copy import deepcopy
 import json
 
-from django.db.models import Field
+from django.db.models import BinaryField, Field
+
+
+class EditableBinaryField(BinaryField):
+    """An editable binary field."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.editable = True
+
+    def deconstruct(self):
+        # Override deconstruct not to fail on the removal of the 'editable'
+        # field: the Django migration module assumes the field has its default
+        # value (False).
+        return Field.deconstruct(self)
 
 
 class JSONObjectField(Field):

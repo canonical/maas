@@ -111,11 +111,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.fields import (
-    LargeObjectFile,
-    MACAddressFormField,
-    UnstrippedCharField,
-)
+from maasserver.fields import LargeObjectFile, MACAddressFormField
 from maasserver.forms.settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
@@ -1293,11 +1289,7 @@ class KeyForm(MAASModelForm):
 
 
 class SSHKeyForm(MAASModelForm):
-    key = UnstrippedCharField(
-        label="Public key",
-        widget=forms.Textarea(attrs={"rows": "5", "cols": "30"}),
-        required=True,
-    )
+    key = forms.CharField(label="Public key", strip=False)
 
     class Meta:
         model = SSHKey
@@ -1324,11 +1316,7 @@ class SSHKeyForm(MAASModelForm):
 
 
 class SSLKeyForm(KeyForm):
-    key = UnstrippedCharField(
-        label="SSL key",
-        widget=forms.Textarea(attrs={"rows": "15", "cols": "30"}),
-        required=True,
-    )
+    key = forms.CharField(label="SSL key", strip=False)
 
     class Meta:
         model = SSLKey

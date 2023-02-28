@@ -5,7 +5,6 @@
 
 __all__ = [
     "CIDRField",
-    "EditableBinaryField",
     "Field",
     "HostListFormField",
     "IPListFormField",
@@ -24,7 +23,6 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.core.validators import RegexValidator, URLValidator
 from django.db import connections
 from django.db.models import (
-    BinaryField,
     CharField,
     Field,
     GenericIPAddressField,
@@ -57,34 +55,6 @@ MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
 
 
 mac_validator = RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
-
-
-class StrippedCharField(forms.CharField):
-    """A CharField that will strip surrounding whitespace before validation."""
-
-    def clean(self, value):
-        value = self.to_python(value).strip()
-        return super().clean(value)
-
-
-class UnstrippedCharField(forms.CharField):
-    """A version of forms.CharField that never strips the whitespace.
-
-    Django 1.9 has introduced a strip argument that controls stripping of
-    whitespace *and* which defaults to True, thus breaking compatibility with
-    1.8 and earlier.
-    """
-
-    def __init__(self, *args, **kwargs):
-        # Instead of relying on a version check, we check for CharField
-        # constructor having a strip kwarg instead.
-        parent_init = super().__init__
-        if "strip" in parent_init.__code__.co_varnames:
-            parent_init(*args, strip=False, **kwargs)
-        else:
-            # In Django versions that do not support strip, False was the
-            # default.
-            parent_init(*args, **kwargs)
 
 
 class MACAddressFormField(forms.CharField):
@@ -126,23 +96,6 @@ class XMLField(Field):
 
     def db_type(self, connection):
         return "xml"
-
-
-class EditableBinaryField(BinaryField):
-    """An editable binary field.
-
-    An editable version of Django's BinaryField.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.editable = True
-
-    def deconstruct(self):
-        # Override deconstruct not to fail on the removal of the 'editable'
-        # field: the Django migration module assumes the field has its default
-        # value (False).
-        return Field.deconstruct(self)
 
 
 class LargeObjectFile:
