@@ -3,19 +3,6 @@
 
 """Custom model and form fields."""
 
-__all__ = [
-    "CIDRField",
-    "Field",
-    "HostListFormField",
-    "IPListFormField",
-    "IPv4CIDRField",
-    "MACAddressField",
-    "MACAddressFormField",
-    "MODEL_NAME_VALIDATOR",
-    "NodeChoiceField",
-    "VersionedTextFileField",
-]
-
 import re
 
 from django import forms
@@ -42,19 +29,15 @@ from maasserver.utils.orm import get_one, validate_in_transaction
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
 
-
 MAC_RE = re.compile(
-    r"^\s*("
-    r"([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|"
-    r"([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|"
-    r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"
-    r")\s*$"
+    r"^"
+    r"([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|"  # aa:bb:cc:dd:ee:ff
+    r"([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|"  # aa-bb-cc-dd-ee-ff
+    r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"  # aabb.ccdd.eeff
+    r"$"
 )
-
 MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
-
-
-mac_validator = RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
+MAC_VALIDATOR = RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
 
 
 class MACAddressFormField(forms.CharField):
@@ -72,7 +55,7 @@ class MACAddressField(Field):
 
     description = "MAC address"
 
-    default_validators = [mac_validator]
+    default_validators = [MAC_VALIDATOR]
 
     def db_type(self, *args, **kwargs):
         return "macaddr"

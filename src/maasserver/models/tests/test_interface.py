@@ -1008,7 +1008,7 @@ class TestInterface(MAASServerTestCase):
         # twice: once as part of Interface.clean() resulting in the __all__
         # error, and once as part of field validation that happens after a
         # few queries are done, so we cannot easily get rid of
-        # mac_validator() in clean().
+        # MAC_VALIDATOR() in clean().
         self.assertThat(
             exception.message_dict,
             MatchesDict(
