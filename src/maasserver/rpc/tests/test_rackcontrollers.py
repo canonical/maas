@@ -212,7 +212,7 @@ class TestRegisterRackController(MAASServerTestCase):
 
     def test_creates_new_rackcontroller(self):
         existing_machine = factory.make_Machine()
-        rack_mac = (factory.make_mac_address(),)
+        rack_mac = factory.make_mac_address()
         interfaces = {
             factory.make_name("eth0"): {
                 "type": "physical",

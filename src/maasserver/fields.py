@@ -36,8 +36,9 @@ MAC_RE = re.compile(
     r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"  # aabb.ccdd.eeff
     r"$"
 )
-MAC_ERROR_MSG = "'%(value)s' is not a valid MAC address."
-MAC_VALIDATOR = RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
+MAC_VALIDATOR = RegexValidator(
+    regex=MAC_RE, message="'%(value)s' is not a valid MAC address."
+)
 
 
 class MACAddressFormField(forms.CharField):
@@ -45,9 +46,7 @@ class MACAddressFormField(forms.CharField):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.validators.append(
-            RegexValidator(regex=MAC_RE, message=MAC_ERROR_MSG)
-        )
+        self.validators.append(MAC_VALIDATOR)
 
 
 class MACAddressField(Field):

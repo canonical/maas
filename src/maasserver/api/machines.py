@@ -13,7 +13,7 @@ import json
 import re
 
 from django.conf import settings
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import (
     HttpResponse,
@@ -62,7 +62,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
 )
-from maasserver.fields import MAC_VALIDATOR
+from maasserver.fields import MAC_RE
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,
@@ -1914,9 +1914,7 @@ class AnonMachinesHandler(AnonNodesHandler):
             # caught.
             macs_valid = True
             for mac_address in mac_addresses:
-                try:
-                    MAC_VALIDATOR(mac_address)
-                except ValidationError:
+                if not MAC_RE.match(mac_address):
                     macs_valid = False
                     break
             if macs_valid:
