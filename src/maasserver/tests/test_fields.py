@@ -9,7 +9,6 @@ from django.db import connection, DatabaseError
 from psycopg2 import OperationalError
 from testtools import ExpectedException
 
-from maasserver.enum import INTERFACE_TYPE
 from maasserver.fields import (
     HostListFormField,
     IPListFormField,
@@ -23,7 +22,7 @@ from maasserver.fields import (
     URLOrPPAValidator,
     VersionedTextFileField,
 )
-from maasserver.models import Interface, Node, VersionedTextFile
+from maasserver.models import Node, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASLegacyServerTestCase,
@@ -59,15 +58,6 @@ class TestModelNameValidator(MAASServerTestCase):
         self.assertRaises(
             ValidationError, MODEL_NAME_VALIDATOR, "-not-at-start"
         )
-
-
-class TestMACAddressField(MAASServerTestCase):
-    def test_mac_address_is_stored_normalized_and_loaded(self):
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, mac_address=" AA-bb-CC-dd-EE-Ff "
-        )
-        loaded_mac = Interface.objects.get(id=interface.id)
-        self.assertEqual("aa:bb:cc:dd:ee:ff", loaded_mac.mac_address)
 
 
 class TestXMLField(MAASLegacyServerTestCase):

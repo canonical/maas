@@ -2,6 +2,7 @@ import django.contrib.postgres.fields
 from django.db import migrations, models
 
 import maasserver.fields
+import maasserver.migrations.fields
 
 
 class Migration(migrations.Migration):
@@ -68,7 +69,7 @@ class Migration(migrations.Migration):
             name="routers",
             field=django.contrib.postgres.fields.ArrayField(
                 size=None,
-                base_field=maasserver.fields.MACAddressField(),
+                base_field=maasserver.migrations.fields.MACAddressField(),
                 null=True,
                 blank=True,
                 default=list,

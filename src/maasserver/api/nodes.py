@@ -41,7 +41,7 @@ from maasserver.exceptions import (
     NoScriptsFound,
     StaticIPAddressExhaustion,
 )
-from maasserver.fields import MAC_RE
+from maasserver.fields import MAC_FIELD_RE, normalise_macaddress
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
 from maasserver.models import Filesystem, Interface, Node, OwnerData
@@ -172,7 +172,9 @@ def filtered_nodes_list_from_request(request, model=None):
 
     match_macs = get_optional_list(request.GET, "mac_address")
     if match_macs is not None:
-        invalid_macs = [mac for mac in match_macs if MAC_RE.match(mac) is None]
+        invalid_macs = [
+            mac for mac in match_macs if not MAC_FIELD_RE.match(mac)
+        ]
         if len(invalid_macs) != 0:
             raise MAASAPIValidationError(
                 "Invalid MAC address(es): %s" % ", ".join(invalid_macs)
@@ -209,13 +211,17 @@ def filtered_nodes_list_from_request(request, model=None):
 
 def is_registered(request, ignore_statuses=None):
     """Used by both `NodesHandler` and `AnonNodesHandler`."""
-    mac_address = get_mandatory_param(request.GET, "mac_address")
-    interfaces = Interface.objects.filter(mac_address=mac_address)
-    interfaces = interfaces.exclude(node_config__node__isnull=True)
     if ignore_statuses is None:
         ignore_statuses = [NODE_STATUS.RETIRED]
-    interfaces = interfaces.exclude(
-        node_config__node__status__in=ignore_statuses
+
+    mac_address = normalise_macaddress(
+        get_mandatory_param(request.GET, "mac_address")
+    )
+
+    interfaces = (
+        Interface.objects.filter(mac_address=mac_address)
+        .exclude(node_config__node__isnull=True)
+        .exclude(node_config__node__status__in=ignore_statuses)
     )
     return interfaces.exists()
 

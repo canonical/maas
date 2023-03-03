@@ -24,7 +24,7 @@ from maasserver.enum import (
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
 )
-from maasserver.fields import MAC_VALIDATOR, MODEL_NAME_VALIDATOR
+from maasserver.fields import MAC_FIELD_VALIDATOR, MODEL_NAME_VALIDATOR
 import maasserver.forms as maasserver_forms
 from maasserver.forms import (
     ConstrainedMultipleChoiceField,
@@ -1332,7 +1332,7 @@ class ReadNodesForm(FilterNodeForm):
     )
 
     mac_address = ValidatorMultipleChoiceField(
-        validator=MAC_VALIDATOR,
+        validator=MAC_FIELD_VALIDATOR,
         label="MAC addresses to filter on",
         required=False,
         error_messages={

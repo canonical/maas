@@ -81,7 +81,7 @@ class Migration(migrations.Migration):
                 ("count", models.IntegerField(default=1)),
                 (
                     "mac_address",
-                    maasserver.fields.MACAddressField(
+                    maasserver.migrations.fields.MACAddressField(
                         null=True, blank=True, editable=False
                     ),
                 ),

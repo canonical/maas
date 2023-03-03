@@ -10,10 +10,11 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
+    TextField,
 )
 from django.db.models.query import QuerySet
 
-from maasserver.fields import MACAddressField
+from maasserver.fields import MAC_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -171,9 +172,7 @@ class Neighbour(CleanSave, TimestampedModel):
     )
 
     # Observed MAC address.
-    mac_address = MACAddressField(
-        unique=False, null=True, blank=True, editable=False
-    )
+    mac_address = TextField(null=True, blank=True, validators=[MAC_VALIDATOR])
 
     objects = NeighbourManager()
 

@@ -1004,23 +1004,9 @@ class TestInterface(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL,
             mac_address="invalid",
         )
-        # XXX Danilo 2017-05-26 bug #1696108: we validate the MAC address
-        # twice: once as part of Interface.clean() resulting in the __all__
-        # error, and once as part of field validation that happens after a
-        # few queries are done, so we cannot easily get rid of
-        # MAC_VALIDATOR() in clean().
-        self.assertThat(
+        self.assertEqual(
             exception.message_dict,
-            MatchesDict(
-                {
-                    "__all__": MatchesListwise(
-                        [Equals("'invalid' is not a valid MAC address.")]
-                    ),
-                    "mac_address": MatchesListwise(
-                        [Equals("'invalid' is not a valid MAC address.")]
-                    ),
-                }
-            ),
+            {"mac_address": ["'invalid' is not a valid MAC address."]},
         )
 
     def test_allows_blank_mac_address(self):

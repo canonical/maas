@@ -30,7 +30,7 @@ from django.db.models import (
 from django.db.models.constraints import UniqueConstraint
 from django.db.models.functions import Coalesce
 
-from maasserver.fields import MACAddressField
+from maasserver.fields import MAC_VALIDATOR
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
@@ -125,7 +125,7 @@ class VirtualMachineInterface(CleanSave, TimestampedModel):
         on_delete=CASCADE,
         related_name="+",
     )
-    mac_address = MACAddressField(null=True, blank=True)
+    mac_address = TextField(null=True, blank=True, validators=[MAC_VALIDATOR])
     host_interface = ForeignKey(Interface, null=True, on_delete=SET_NULL)
     attachment_type = CharField(
         max_length=10,

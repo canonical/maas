@@ -62,7 +62,7 @@ from maasserver.exceptions import (
     NodeStateViolation,
     Unauthorized,
 )
-from maasserver.fields import MAC_RE
+from maasserver.fields import MAC_FIELD_RE
 from maasserver.forms import (
     AdminMachineForm,
     get_machine_create_form,
@@ -1909,14 +1909,10 @@ class AnonMachinesHandler(AnonNodesHandler):
         # that has an Interface with one of the given MAC addresses.
         if machine is None and mac_addresses:
             interface = None
-            # Validate all given MACs. If one isn't in a proper format filting
-            # on Interfaces below will give an InternalError that can't be
-            # caught.
-            macs_valid = True
-            for mac_address in mac_addresses:
-                if not MAC_RE.match(mac_address):
-                    macs_valid = False
-                    break
+            macs_valid = all(
+                MAC_FIELD_RE.match(mac_address)
+                for mac_address in mac_addresses
+            )
             if macs_valid:
                 interface = Interface.objects.filter(
                     mac_address__in=mac_addresses,

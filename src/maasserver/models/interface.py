@@ -49,7 +49,7 @@ from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
     StaticIPAddressUnavailable,
 )
-from maasserver.fields import MAC_VALIDATOR, MACAddressField
+from maasserver.fields import MAC_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -575,7 +575,7 @@ class Interface(CleanSave, TimestampedModel):
         "StaticIPAddress", editable=True, blank=True
     )
 
-    mac_address = MACAddressField(unique=False, null=True, blank=True)
+    mac_address = TextField(null=True, blank=True, validators=[MAC_VALIDATOR])
 
     ipv4_params = JSONField(blank=True, default=dict)
 
@@ -1481,13 +1481,6 @@ class Interface(CleanSave, TimestampedModel):
         for ancestor in ancestors:
             all_related |= ancestor.get_successors()
         return all_related
-
-    def clean(self):
-        super().clean()
-
-        # Verify that the MAC address is legal if it is not empty.
-        if self.mac_address:
-            MAC_VALIDATOR(self.mac_address)
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to

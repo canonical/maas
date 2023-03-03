@@ -4,6 +4,7 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -29,7 +30,9 @@ class Migration(migrations.Migration):
                 ("updated", models.DateTimeField(editable=False)),
                 (
                     "mac_address",
-                    maasserver.fields.MACAddressField(blank=True, null=True),
+                    maasserver.migrations.fields.MACAddressField(
+                        blank=True, null=True
+                    ),
                 ),
                 (
                     "attachment_type",

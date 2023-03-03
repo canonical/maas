@@ -3,6 +3,7 @@
 
 """Custom model and form fields."""
 
+from itertools import chain
 import re
 
 from django import forms
@@ -29,39 +30,59 @@ from maasserver.utils.orm import get_one, validate_in_transaction
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
 
-MAC_RE = re.compile(
+# supported input MAC formats
+MAC_FIELD_RE = re.compile(
     r"^"
     r"([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}|"  # aa:bb:cc:dd:ee:ff
     r"([0-9a-fA-F]{1,2}-){5}[0-9a-fA-F]{1,2}|"  # aa-bb-cc-dd-ee-ff
     r"([0-9a-fA-F]{3,4}.){2}[0-9a-fA-F]{3,4}"  # aabb.ccdd.eeff
     r"$"
 )
+# MAC format for DB storage
+MAC_RE = re.compile(r"^([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}$")
+
+MAC_FIELD_VALIDATOR = RegexValidator(
+    regex=MAC_FIELD_RE, message="'%(value)s' is not a valid MAC address."
+)
+# validate that the MAC is in the expected format for DB storage
+# (colon-separated)
 MAC_VALIDATOR = RegexValidator(
     regex=MAC_RE, message="'%(value)s' is not a valid MAC address."
 )
+MAC_SPLIT_RE = re.compile(r"[-:.]")
+
+
+def normalise_macaddress(mac: str) -> str:
+    """Return a colon-separated format for the specified MAC.
+
+    This supports converting from input formats matching the MAC_FIELD_RE
+    regexp.
+
+    """
+
+    tokens = MAC_SPLIT_RE.split(mac.lower())
+    match len(tokens):
+        case 1:  # no separator
+            tokens = re.findall("..", tokens[0])
+        case 3:  # each token is two bytes
+            tokens = chain(
+                *(re.findall("..", token.zfill(4)) for token in tokens)
+            )
+        case _:  # single-byte tokens
+            tokens = (token.zfill(2) for token in tokens)
+    return ":".join(tokens)
 
 
 class MACAddressFormField(forms.CharField):
     """Form field type: MAC address."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.validators.append(MAC_VALIDATOR)
+    def validate(self, value):
+        if value:
+            MAC_FIELD_VALIDATOR(value)
 
-
-class MACAddressField(Field):
-    """Model field type: MAC address."""
-
-    description = "MAC address"
-
-    default_validators = [MAC_VALIDATOR]
-
-    def db_type(self, *args, **kwargs):
-        return "macaddr"
-
-    def get_prep_value(self, value):
-        # Convert empty string to None.
-        return super().get_prep_value(value) or None
+    def clean(self, value):
+        value = super().clean(value)
+        return normalise_macaddress(value)
 
 
 class XMLField(Field):

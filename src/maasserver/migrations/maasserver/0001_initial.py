@@ -802,7 +802,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "mac_address",
-                    maasserver.fields.MACAddressField(null=True, blank=True),
+                    maasserver.migrations.fields.MACAddressField(
+                        null=True, blank=True
+                    ),
                 ),
                 (
                     "ipv4_params",
@@ -1029,7 +1031,7 @@ class Migration(migrations.Migration):
                     "routers",
                     django.contrib.postgres.fields.ArrayField(
                         size=None,
-                        base_field=maasserver.fields.MACAddressField(),
+                        base_field=maasserver.migrations.fields.MACAddressField(),
                         null=True,
                         blank=True,
                         default=list,

@@ -13,10 +13,11 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
+    TextField,
 )
 from django.db.models.query import QuerySet
 
-from maasserver.fields import CIDRField, DomainNameField, MACAddressField
+from maasserver.fields import CIDRField, DomainNameField, MAC_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.viewmodel import ViewModel
 from maasserver.utils.orm import MAASQueriesMixin
@@ -208,8 +209,11 @@ class Discovery(CleanSave, ViewModel):
         verbose_name="IP",
     )
 
-    mac_address = MACAddressField(
-        unique=False, null=True, blank=True, editable=False
+    mac_address = TextField(
+        unique=False,
+        null=True,
+        blank=True,
+        validators=[MAC_VALIDATOR],
     )
 
     first_seen = DateTimeField(editable=False)

@@ -67,3 +67,13 @@ class JSONObjectField(Field):
         if form_class is None:
             form_class = forms.Field
         return super().formfield(form_class=form_class, **kwargs)
+
+
+class MACAddressField(Field):
+    """Model for MAC addresses."""
+
+    def db_type(self, *args, **kwargs):
+        return "macaddr"
+
+    def get_prep_value(self, value):
+        return super().get_prep_value(value) or None

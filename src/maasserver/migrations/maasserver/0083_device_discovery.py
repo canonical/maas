@@ -2,6 +2,7 @@ import django
 from django.db import migrations, models
 
 import maasserver.fields
+import maasserver.migrations.fields
 import maasserver.models.cleansave
 
 
@@ -39,7 +40,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "mac_address",
-                    maasserver.fields.MACAddressField(
+                    maasserver.migrations.fields.MACAddressField(
                         blank=True, null=True, editable=False
                     ),
                 ),

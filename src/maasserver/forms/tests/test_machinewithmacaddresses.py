@@ -62,6 +62,22 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
         )
         self.assertEqual(architecture, form.cleaned_data["architecture"])
 
+    def test_valid_values_normalised(self):
+        architecture = make_usable_architecture(self)
+        form = MachineWithMACAddressesForm(
+            data=self.make_params(
+                mac_addresses=["aabbccddeeff", "9a-bb-c3-33-e5-7f"],
+                architecture=architecture,
+            )
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            ["aa:bb:cc:dd:ee:ff", "9a:bb:c3:33:e5:7f"],
+            form.cleaned_data["mac_addresses"],
+        )
+        self.assertEqual(architecture, form.cleaned_data["architecture"])
+
     def test_simple_invalid(self):
         # If the form only has one (invalid) MAC address field to validate,
         # the error message in form.errors['mac_addresses'] is the

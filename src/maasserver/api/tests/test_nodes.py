@@ -63,20 +63,14 @@ class TestIsRegisteredAnonAPI(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_is_registered_normalizes_mac_address(self):
         node = self.make_node()
-        # These two non-normalized MAC addresses are the same.
-        non_normalized_mac_address = "AA-bb-cc-dd-ee-ff"
-        non_normalized_mac_address2 = "aabbccddeeff"
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
-            mac_address=non_normalized_mac_address,
+            mac_address="aa:bb:cc:dd:ee:ff",
             node=node,
         )
         response = self.client.get(
             reverse("nodes_handler"),
-            {
-                "op": "is_registered",
-                "mac_address": non_normalized_mac_address2,
-            },
+            {"op": "is_registered", "mac_address": "aabbccddeeff"},
         )
         self.assertEqual(
             (http.client.OK.value, "true"),
