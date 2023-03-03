@@ -13,13 +13,12 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
+    Model,
     TextField,
 )
 from django.db.models.query import QuerySet
 
 from maasserver.fields import CIDRField, DomainNameField, MAC_VALIDATOR
-from maasserver.models.cleansave import CleanSave
-from maasserver.models.viewmodel import ViewModel
 from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
@@ -164,7 +163,7 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
         return delete_result
 
 
-class Discovery(CleanSave, ViewModel):
+class Discovery(Model):
     """A `Discovery` object represents the combined data for a network entity
     that MAAS believes has been discovered.
 
