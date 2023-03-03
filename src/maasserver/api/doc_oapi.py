@@ -214,14 +214,16 @@ def _oapi_item_from_docstring(
         for param in ap_dict["params"]:
             description = _prettify(param["description_stripped"])
             name = param["name"].strip("}{")
+            path_var = name in uri_params
             required = (
                 param["options"]["required"].lower() == "true"
                 or name != param["name"]
             )
-            if param["name"][0] == "{":
+            # params with special charcters in names don't form part of the request body
+            if name != param["name"]:
                 param_dict = {
                     "name": name,
-                    "in": "path" if name in uri_params else "query",
+                    "in": "path" if path_var else "query",
                     "description": description,
                     "schema": {
                         "type": _type_to_string(param["type"]),
@@ -229,15 +231,11 @@ def _oapi_item_from_docstring(
                     "required": required,
                 }
                 oper_obj.setdefault("parameters", []).append(param_dict)
-            elif http_method.lower() in ("put", "post"):
-                body.setdefault("properties", {}).update(
-                    {
-                        name: {
-                            "description": description,
-                            "type": _type_to_string(param["type"]),
-                        }
-                    }
-                )
+            else:
+                body.setdefault("properties", {})[name] = {
+                    "description": description,
+                    "type": _type_to_string(param["type"]),
+                }
                 if required:
                     body.setdefault("required", []).append(name)
 
