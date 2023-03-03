@@ -22,6 +22,11 @@ from maasserver.djangosettings import settings
 from maasserver.models.config import Config
 from maasserver.utils import build_absolute_uri
 
+# LP 2009140: Match a par of brackets enclosing a string, return only the string within the brackets.
+# Functions as a more context aware equivalent to string.strip("}{")
+# ie: '{param}' returns 'param', 'param_{test}' is unnafected
+PARAM_RE = re.compile(r"(?<=\{)\.+(?<=\})")
+
 
 def landing_page(request):
     """Render a landing page with pointers for the MAAS API.
@@ -213,8 +218,11 @@ def _oapi_item_from_docstring(
             oper_obj["deprecated"] = True
         for param in ap_dict["params"]:
             description = _prettify(param["description_stripped"])
-            name = param["name"].strip("}{")
-            path_var = name in uri_params
+            # LP 2009140
+            stripped_name = PARAM_RE.match(param["name"])
+            name = (
+                param["name"] if not stripped_name else stripped_name.group()
+            )
             required = (
                 param["options"]["required"].lower() == "true"
                 or name != param["name"]
@@ -223,7 +231,7 @@ def _oapi_item_from_docstring(
             if name != param["name"]:
                 param_dict = {
                     "name": name,
-                    "in": "path" if path_var else "query",
+                    "in": "path" if name in uri_params else "query",
                     "description": description,
                     "schema": {
                         "type": _type_to_string(param["type"]),
