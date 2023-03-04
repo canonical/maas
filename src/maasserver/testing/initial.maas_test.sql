@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.6 (Ubuntu 14.6-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.6 (Ubuntu 14.6-0ubuntu0.22.04.1)
+-- Dumped from database version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6871,7 +6871,7 @@ CREATE TABLE public.maasserver_interface (
     updated timestamp with time zone NOT NULL,
     name character varying(255) NOT NULL,
     type character varying(20) NOT NULL,
-    mac_address macaddr,
+    mac_address text,
     ipv4_params jsonb NOT NULL,
     ipv6_params jsonb NOT NULL,
     params jsonb NOT NULL,
@@ -6923,7 +6923,7 @@ CREATE TABLE public.maasserver_neighbour (
     "time" integer NOT NULL,
     vid integer,
     count integer NOT NULL,
-    mac_address macaddr,
+    mac_address text,
     interface_id integer NOT NULL
 );
 
@@ -6972,7 +6972,7 @@ CREATE TABLE public.maasserver_subnet (
 
 CREATE VIEW public.maasserver_discovery AS
  SELECT DISTINCT ON (neigh.mac_address, neigh.ip) neigh.id,
-    replace(encode((((TRIM(TRAILING '/32'::text FROM (neigh.ip)::text) || ','::text) || (neigh.mac_address)::text))::bytea, 'base64'::text), chr(10), ''::text) AS discovery_id,
+    replace(encode((((TRIM(TRAILING '/32'::text FROM (neigh.ip)::text) || ','::text) || neigh.mac_address))::bytea, 'base64'::text), chr(10), ''::text) AS discovery_id,
     neigh.id AS neighbour_id,
     neigh.ip,
     neigh.mac_address,
@@ -9135,7 +9135,7 @@ CREATE TABLE public.maasserver_virtualmachineinterface (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    mac_address macaddr,
+    mac_address text,
     attachment_type character varying(10) NOT NULL,
     host_interface_id integer,
     vm_id integer NOT NULL
@@ -11234,6 +11234,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 345	metadataserver	0034_use_builtin_json_field	2023-01-24 03:29:54.467889+00
 346	maasserver	0293_drop_verbose_regex_validator	2023-02-28 03:29:15.412014+00
 347	maasserver	0294_keyring_data_binary_field	2023-03-01 03:29:34.859599+00
+348	maasserver	0295_macaddress_text_field	2023-03-04 03:29:30.976082+00
 \.
 
 
@@ -12050,7 +12051,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 347, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 348, true);
 
 
 --
