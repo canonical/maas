@@ -74,6 +74,14 @@ class TestRunSmartCTL(MAASTestCase):
         )
         self.assertThat(self.mock_print, MockCalledOnce())
 
+    def test_output_invalid_utf8_replaced(self):
+        # invalid UTF-8 input
+        self.mock_check_output.return_value = b"foo\x99bar"
+        self.assertEqual(
+            "foo\ufffdbar",
+            smartctl.run_smartctl(self.blockdevice, self.args, output=True),
+        )
+
 
 class TestRunStorCLI(MAASTestCase):
     def setUp(self):
