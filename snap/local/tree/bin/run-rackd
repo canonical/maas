@@ -30,6 +30,7 @@ export MAAS_HTTP_CONFIG_DIR="$SNAP_DATA/http"
 
 # Set up perl so that amttool can run.
 export PERL5LIB
-PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/5.30:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/5.30"
+PERLVER=$(perl -MConfig -e 'printf("%d.%d", $Config{"PERL_REVISION"}, $Config{PERL_VERSION});')
+PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/${PERLVER}"
 
 exec "$SNAP/bin/rackd"
