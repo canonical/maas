@@ -66,7 +66,9 @@ def run_smartctl(blockdevice, args, device=None, output=False, **kwargs):
     cmd += [blockdevice]
     if output:
         print("INFO: Running command: %s" % " ".join(cmd))
-    return check_output(cmd, timeout=TIMEOUT, **kwargs).decode()
+    return check_output(cmd, timeout=TIMEOUT, **kwargs).decode(
+        errors="replace"
+    )
 
 
 def run_storcli(args, output=False, **kwargs):
@@ -78,7 +80,9 @@ def run_storcli(args, output=False, **kwargs):
     cmd = ["sudo", "-n", storcli] + args
     if output:
         print("INFO: Running command: %s" % " ".join(cmd))
-    return check_output(cmd, timeout=TIMEOUT, **kwargs).decode()
+    return check_output(cmd, timeout=TIMEOUT, **kwargs).decode(
+        errors="replace"
+    )
 
 
 def make_device_name(blockdevice, device=None):
@@ -188,7 +192,7 @@ def check_SMART_support(blockdevice, device=None):
             )
             raise
         else:
-            output = e.output.decode()
+            output = e.output.decode(errors="replace")
 
     if (
         re.search(
@@ -281,7 +285,7 @@ def check_smartctl(blockdevice, device=None):
             )
             raise
         else:
-            output = e.output.decode()
+            output = e.output.decode(errors="replace")
 
     print("SUCCESS: SMART validation has PASSED for: %s" % device_name)
     if output is not None:
