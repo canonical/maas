@@ -196,6 +196,8 @@ parts:
       - usr/share/keyrings
       - usr/share/maas
       - usr/share/nginx
+      - usr/share/perl
+      - usr/share/perl5
       - usr/share/squid*
       - var/lib/ieee-data
     override-build: |
