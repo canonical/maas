@@ -304,7 +304,8 @@ class TestAction(MAASTestCase):
             "name": factory.make_name("handler"),
             "handler_name": factory.make_name("handler"),
             "params": [],
-            "uri": "http://example.com/api/2.0/",
+            "path": "/MAAS/api/2.0",
+            "uri": "http://example.com/MAAS/api/2.0/",
         }
         action = {"name": "action", "op": "test", "method": "GET"}
         action_name = safe_name(action["name"])
@@ -341,6 +342,29 @@ class TestAction(MAASTestCase):
         self.patch(utils, "print_response_content")
         action_parser(options)
         mock_materializer.assert_called_once()
+
+    def test_action_build_correct_uri(self):
+        handler = {
+            "name": factory.make_name("handler"),
+            "handler_name": factory.make_name("handler"),
+            "params": [],
+            "path": "/MAAS/api/2.0/resource",
+        }
+        action = {"name": "action", "op": "test", "method": "GET"}
+        action_name = safe_name(action["name"])
+        action_bases = api.get_action_class_bases(handler, action)
+        profile = make_profile()
+        profile["url"] = "http://localhost:5240/MAAS"
+
+        action_ns = {"action": action, "handler": handler, "profile": profile}
+        action_class = type(action_name, action_bases, action_ns)
+
+        parser = ArgumentParser()
+        action_parser = action_class(parser)
+
+        self.assertEqual(
+            "http://localhost:5240/MAAS/api/2.0/resource", action_parser.uri
+        )
 
 
 class TestActionHelp(MAASTestCase):

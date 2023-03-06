@@ -90,7 +90,10 @@ class Action(Command):
     # Override these in subclasses; see `register_actions`.
     profile = handler = action = None
 
-    uri = property(lambda self: self.handler["uri"])
+    _maas_url = property(lambda self: urlparse(self.profile["url"]))
+    uri = property(
+        lambda self: f"{self._maas_url.scheme}://{self._maas_url.netloc}{self.handler['path']}"
+    )
     method = property(lambda self: self.action["method"])
     credentials = property(lambda self: self.profile["credentials"])
     op = property(lambda self: self.action["op"])
