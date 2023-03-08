@@ -216,7 +216,10 @@ class TestConfig(MAASServerTestCase):
 class TestSettingConfig(MAASServerTestCase):
     """Testing of the :class:`Config` model and setting each option."""
 
-    scenarios = tuple((name, {"name": name}) for name in get_default_config())
+    scenarios = tuple(
+        (name, {"name": name, "value": value})
+        for name, value in get_default_config().items()
+    )
 
     def setUp(self):
         super().setUp()
@@ -232,9 +235,8 @@ class TestSettingConfig(MAASServerTestCase):
 
     def test_can_be_modified_from_None_without_crashing(self):
         Config.objects.set_config(self.name, None)
-        something = factory.make_name("value")
-        Config.objects.set_config(self.name, something)
-        self.assertEqual(something, Config.objects.get_config(self.name))
+        Config.objects.set_config(self.name, self.value)
+        self.assertEqual(self.value, Config.objects.get_config(self.name))
 
 
 class TestEnsureUUIDInConfig(MAASServerTestCase):

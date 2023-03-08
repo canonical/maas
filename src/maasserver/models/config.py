@@ -254,6 +254,7 @@ class ConfigManager(Manager):
             SecretManager().set_simple_secret(secret_name, value)
         else:
             self.update_or_create(name=name, defaults={"value": value})
+        self._handle_config_value_changed(name, value)
         notify_action("config", "update", name)
         if endpoint is not None and request is not None:
             create_audit_event(
@@ -312,6 +313,20 @@ class ConfigManager(Manager):
         return self.get_network_discovery_config_from_value(
             self.get_config("network_discovery")
         )
+
+    def _handle_config_value_changed(self, name, value):
+        """Hook handlers for changes in specific config parameters."""
+        from maasserver.sessiontimeout import clear_existing_sessions
+
+        # XXX eventually we should move away from signals for performing tasks
+        # on config changes, and call all handlers here.
+        handlers = {
+            "session_length": lambda _name, _value: clear_existing_sessions(),
+        }
+
+        handler = handlers.get(name)
+        if handler:
+            handler(name, value)
 
 
 class Config(Model):
