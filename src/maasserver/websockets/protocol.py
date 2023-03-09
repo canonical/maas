@@ -75,6 +75,7 @@ class WebSocketProtocol(Protocol):
     def __init__(self):
         self.messages = deque()
         self.user = None
+        self.session = None
         self.request = None
         self.cache = {}
         self.sequence_number = 0
@@ -88,13 +89,12 @@ class WebSocketProtocol(Protocol):
         # from an authenticated user.
 
         cookies = self.transport.cookies.decode("ascii")
-        user = yield self.authenticate(
+        authenticated = yield self.authenticate(
             get_cookie(cookies, "sessionid"), get_cookie(cookies, "csrftoken")
         )
-        if not user:
+        if not authenticated:
             return
 
-        self.user = user
         # XXX newell 2018-10-17 bug=1798479:
         # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
         # 'SERVER_NAME' and 'SERVER_PORT' are required so
@@ -109,6 +109,7 @@ class WebSocketProtocol(Protocol):
         # Create the request for the handlers for this connection.
         self.request = HttpRequest()
         self.request.user = self.user
+        self.request.session = self.session
         self.request.META.update(
             {
                 "HTTP_USER_AGENT": self.transport.user_agent,
@@ -152,17 +153,17 @@ class WebSocketProtocol(Protocol):
 
     @synchronous
     @transactional
-    def getUserFromSessionId(self, session_id):
-        """Return the user from `session_id`."""
+    def get_user_and_session(self, session_id):
+        """Return the user and its session from the session ID."""
         session_engine = self.factory.getSessionEngine()
-        session_wrapper = session_engine.SessionStore(session_key=session_id)
-        user_id = session_wrapper.get(SESSION_KEY)
-        backend = session_wrapper.get(BACKEND_SESSION_KEY)
+        session = session_engine.SessionStore(session_key=session_id)
+        backend = session.get(BACKEND_SESSION_KEY)
         if backend is None:
             return None
         auth_backend = load_backend(backend)
+        user_id = session.get(SESSION_KEY)
         if user_id is not None and auth_backend is not None:
-            return auth_backend.get_user(user_id)
+            return auth_backend.get_user(user_id), session
 
         return None
 
@@ -173,8 +174,7 @@ class WebSocketProtocol(Protocol):
         - Check that the CSRF token is valid.
         - Authenticate the user using the session id.
 
-        This returns the authenticated user or ``None``. The latter means that
-        the connection is being dropped, and that processing should cease.
+        It returns whether authentication succeeded.
         """
         # Check the CSRF token.
         tokens = parse_qs(urlparse(self.transport.uri).query).get(b"csrftoken")
@@ -185,24 +185,31 @@ class WebSocketProtocol(Protocol):
         if tokens is None or csrftoken not in tokens:
             # No csrftoken in the request or the token does not match.
             self.loseConnection(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
-            return None
+            returnValue(False)
+            return
 
         try:
-            user = yield deferToDatabase(self.getUserFromSessionId, session_id)
+            result = yield deferToDatabase(
+                self.get_user_and_session, session_id
+            )
         except Exception as error:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, f"Error authenticating user: {error}"
             )
-            returnValue(None)
+            returnValue(False)
             return
+        if result:
+            self.user, self.session = result
+        else:
+            self.user = self.session = None
 
-        if user is None or user.id is None:
+        if self.user is None or self.user.id is None:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
             )
-            returnValue(None)
+            returnValue(False)
         else:
-            returnValue(user)
+            returnValue(True)
 
     def dataReceived(self, data):
         """Received message from client and queue up the message."""

@@ -133,15 +133,14 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual(protocol.request.META["SERVER_NAME"], "localhost")
         self.assertEqual(protocol.request.META["SERVER_PORT"], 5248)
 
-    def test_connectionMade_sets_user_and_processes_messages(self):
+    def test_connectionMade_processes_messages(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
         self.patch_autospec(protocol, "processMessages")
-        protocol.authenticate.return_value = defer.succeed(sentinel.user)
+        protocol.authenticate.return_value = defer.succeed(True)
         protocol.connectionMade()
         self.addCleanup(protocol.connectionLost, "")
-        self.assertIs(protocol.user, sentinel.user)
-        self.assertThat(protocol.processMessages, MockCalledOnceWith())
+        protocol.processMessages.assert_called_once_with()
 
     def test_connectionMade_adds_self_to_factory_if_auth_succeeds(self):
         protocol, factory = self.make_protocol()
@@ -249,19 +248,20 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_getUserFromSessionId_returns_User(self):
+    def test_get_user_and_session_returns_user_and_session(self):
         user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         protocol, _ = self.make_protocol()
-        protocol_user = yield deferToDatabase(
-            lambda: protocol.getUserFromSessionId(session_id)
+        protocol_user, session = yield deferToDatabase(
+            lambda: protocol.get_user_and_session(session_id)
         )
         self.assertEqual(user, protocol_user)
+        self.assertEqual(session.session_key, session_id)
 
-    def test_getUserFromSessionId_returns_None_for_invalid_key(self):
+    def test_get_user_and_session_returns_None_for_invalid_key(self):
         self.client.login(user=maas_factory.make_User())
         session_id = maas_factory.make_name("sessionid")
         protocol, _ = self.make_protocol()
-        self.assertIsNone(protocol.getUserFromSessionId(session_id))
+        self.assertIsNone(protocol.get_user_and_session(session_id))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -272,19 +272,16 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        mock_getUserFromSessionId = self.patch_autospec(
-            protocol, "getUserFromSessionId"
+        mock_get_user_and_session = self.patch_autospec(
+            protocol, "get_user_and_session"
         )
-        mock_getUserFromSessionId.return_value = None
+        mock_get_user_and_session.return_value = None
 
         yield protocol.authenticate(
             maas_factory.make_name("sessionid"), csrftoken
         )
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
-            ),
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
         )
 
     @wait_for_reactor
@@ -296,28 +293,25 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        mock_getUserFromSessionId = self.patch_autospec(
-            protocol, "getUserFromSessionId"
+        mock_get_user_and_session = self.patch_autospec(
+            protocol, "get_user_and_session"
         )
-        mock_getUserFromSessionId.side_effect = maas_factory.make_exception(
+        mock_get_user_and_session.side_effect = maas_factory.make_exception(
             "unknown reason"
         )
 
         yield protocol.authenticate(
             maas_factory.make_name("sessionid"), csrftoken
         )
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR,
-                "Error authenticating user: unknown reason",
-            ),
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR,
+            "Error authenticating user: unknown reason",
         )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_invalid_csrftoken(self):
-        user, session_id = yield deferToDatabase(self.get_user_and_session_id)
+        _, session_id = yield deferToDatabase(self.get_user_and_session_id)
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
         protocol, _ = self.make_protocol(
@@ -755,8 +749,12 @@ class MakeProtocolFactoryMixin:
         protocol.transport.cookies = b""
         if user is None:
             user = maas_factory.make_User()
-        mock_authenticate = self.patch(protocol, "authenticate")
-        mock_authenticate.return_value = defer.succeed(user)
+
+        def authenticate(*args):
+            protocol.user = user
+            return defer.succeed(True)
+
+        self.patch(protocol, "authenticate", authenticate)
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
         return protocol, factory
