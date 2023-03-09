@@ -533,12 +533,12 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         for chunk in data:
             self.write(chunk)
 
-    def loseConnection(self):
+    def loseConnection(self, *args, **kwargs):
         """
         Try to lose the connection gracefully when closing by sending a close
         frame.
         """
-        self._receiver._transport.loseConnection()
+        self._receiver._transport.loseConnection(*args, **kwargs)
 
     def __getattr__(self, name):
         """

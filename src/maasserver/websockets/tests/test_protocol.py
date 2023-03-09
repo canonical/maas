@@ -1,7 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `maasserver.websockets.protocol`"""
 
 
 from collections import deque
@@ -213,24 +211,23 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_loseConnection_calls_loseConnection_with_status_and_reason(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         status = random.randint(1000, 1010)
         reason = maas_factory.make_name("reason")
         protocol.loseConnection(status, reason)
-        self.assertThat(
-            protocol.transport._receiver._transport.loseConnection,
-            MockCalledOnceWith(status, reason.encode("utf-8")),
+        protocol.transport.loseConnection.assert_called_once_with(
+            status, reason.encode("utf-8")
         )
 
     def test_getMessageField_returns_value_in_message(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         key = maas_factory.make_name("key")
         value = maas_factory.make_name("value")
         message = {key: value}
         self.assertEqual(value, protocol.getMessageField(message, key))
 
     def test_getMessageField_calls_loseConnection_if_key_missing(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         key = maas_factory.make_name("key")
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         self.expectThat(protocol.getMessageField({}, key), Is(None))
@@ -254,7 +251,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_getUserFromSessionId_returns_User(self):
         user, session_id = yield deferToDatabase(self.get_user_and_session_id)
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol_user = yield deferToDatabase(
             lambda: protocol.getUserFromSessionId(session_id)
         )
@@ -263,7 +260,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_getUserFromSessionId_returns_None_for_invalid_key(self):
         self.client.login(user=maas_factory.make_User())
         session_id = maas_factory.make_name("sessionid")
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         self.assertIsNone(protocol.getUserFromSessionId(session_id))
 
     @wait_for_reactor
@@ -271,7 +268,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_authenticate_calls_loseConnection_if_user_is_None(self):
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
-        protocol, factory = self.make_protocol(
+        protocol, _ = self.make_protocol(
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
@@ -295,7 +292,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_authenticate_calls_loseConnection_if_error_getting_user(self):
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
-        protocol, factory = self.make_protocol(
+        protocol, _ = self.make_protocol(
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
@@ -323,7 +320,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         csrftoken = maas_factory.make_name("csrftoken")
         uri = self.make_ws_uri(csrftoken)
-        protocol, factory = self.make_protocol(
+        protocol, _ = self.make_protocol(
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
@@ -342,7 +339,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_authenticate_calls_loseConnection_if_csrftoken_is_missing(self):
         user, session_id = yield deferToDatabase(self.get_user_and_session_id)
         uri = self.make_ws_uri(csrftoken=None)
-        protocol, factory = self.make_protocol(
+        protocol, _ = self.make_protocol(
             patch_authenticate=False, transport_uri=uri
         )
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
@@ -357,7 +354,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_dataReceived_calls_loseConnection_if_json_error(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         self.expectThat(protocol.dataReceived(b"{{{{"), Is(""))
         self.expectThat(
@@ -368,7 +365,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_dataReceived_adds_message_to_queue(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
         self.expectThat(
@@ -378,7 +375,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.expectThat(protocol.messages, Equals(deque([message])))
 
     def test_dataReceived_calls_processMessages(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         mock_processMessages = self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
         self.expectThat(
@@ -398,7 +395,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual([], protocol.processMessages())
 
     def test_processMessages_process_all_messages_in_the_queue(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         self.patch_autospec(
             protocol, "handleRequest"
@@ -411,7 +408,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual(messages, protocol.processMessages())
 
     def test_processMessages_calls_loseConnection_if_missing_type_field(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         self.patch_autospec(
@@ -432,7 +429,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_processMessages_calls_loseConnection_if_type_not_request(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         self.patch_autospec(
@@ -452,7 +449,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_processMessages_stops_processing_msgs_handleRequest_fails(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         self.patch_autospec(protocol, "handleRequest").return_value = None
         messages = [
@@ -463,7 +460,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.expectThat([messages[0]], Equals(protocol.processMessages()))
 
     def test_processMessages_calls_handleRequest_with_message(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_handleRequest = self.patch_autospec(protocol, "handleRequest")
         mock_handleRequest.return_value = NOT_DONE_YET
@@ -475,7 +472,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_handleRequest_calls_loseConnection_if_missing_request_id(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {"type": MSG_TYPE.REQUEST}
@@ -489,7 +486,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_handleRequest_calls_loseConnection_if_missing_method(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {"type": MSG_TYPE.REQUEST, "request_id": 1}
@@ -503,7 +500,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_handleRequest_calls_loseConnection_if_bad_method(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {
@@ -520,7 +517,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_handleRequest_calls_loseConnection_if_unknown_handler(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {
@@ -609,7 +606,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
 
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = MagicMock()
         message = {
             "type": MSG_TYPE.REQUEST,
@@ -631,7 +628,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = MagicMock()
 
         error_dict = {"error": ["bad"]}
@@ -659,7 +656,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = MagicMock()
 
         self.patch(Handler, "execute").return_value = fail(
@@ -686,7 +683,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         node = yield deferToDatabase(self.make_node)
         # Need to delete the node as the transaction is committed
         self.addCleanup(self.clean_node, node)
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = MagicMock()
 
         self.patch(Handler, "execute").return_value = fail(
@@ -710,7 +707,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handleRequest_sends_ping_reply_on_ping(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         protocol.user = MagicMock()
 
         request_id = random.choice([1, 3, 5, 7, 9])
@@ -726,7 +723,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.expectThat(sent_obj["result"], Equals(seq + 1))
 
     def test_sendNotify_sends_correct_json(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         name = maas_factory.make_name("name")
         action = maas_factory.make_name("action")
         data = maas_factory.make_name("data")

@@ -15,8 +15,7 @@ from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-from twisted.internet import defer
-from twisted.internet.defer import fail, inlineCallbacks
+from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 from twisted.internet.protocol import Factory, Protocol
 from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
@@ -27,7 +26,7 @@ from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import deferred, synchronous
+from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.url import splithost
 
 log = LegacyLogger()
@@ -80,6 +79,7 @@ class WebSocketProtocol(Protocol):
         self.cache = {}
         self.sequence_number = 0
 
+    @inlineCallbacks
     def connectionMade(self):
         """Connection has been made to client."""
         # Using the provided cookies on the connection request, authenticate
@@ -88,51 +88,40 @@ class WebSocketProtocol(Protocol):
         # from an authenticated user.
 
         cookies = self.transport.cookies.decode("ascii")
-        d = self.authenticate(
+        user = yield self.authenticate(
             get_cookie(cookies, "sessionid"), get_cookie(cookies, "csrftoken")
         )
+        if not user:
+            return
 
-        # Only add the client to the list of known clients if/when the
-        # authentication succeeds.
-        def authenticated(user):
-            if user is None:
-                # This user could not be authenticated. No further interaction
-                # should take place. The connection is already being dropped.
-                pass
-            else:
-                # This user is a keeper. Record it and process any message
-                # that have already been received.
-                self.user = user
+        self.user = user
+        # XXX newell 2018-10-17 bug=1798479:
+        # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
+        # 'SERVER_NAME' and 'SERVER_PORT' are required so
+        # `build_absolure_uri` can create an actual absolute URI so
+        # that the curtin configuration is valid.  See the bug and
+        # maasserver.node_actions for more details.
+        #
+        # `splithost` will split the host and port from either an
+        # ipv4 or an ipv6 address.
+        host, port = splithost(str(self.transport.host))
 
-                # XXX newell 2018-10-17 bug=1798479:
-                # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
-                # 'SERVER_NAME' and 'SERVER_PORT' are required so
-                # `build_absolure_uri` can create an actual absolute URI so
-                # that the curtin configuration is valid.  See the bug and
-                # maasserver.node_actions for more details.
-                #
-                # `splithost` will split the host and port from either an
-                # ipv4 or an ipv6 address.
-                host, port = splithost(str(self.transport.host))
+        # Create the request for the handlers for this connection.
+        self.request = HttpRequest()
+        self.request.user = self.user
+        self.request.META.update(
+            {
+                "HTTP_USER_AGENT": self.transport.user_agent,
+                "REMOTE_ADDR": self.transport.ip_address,
+                "SERVER_NAME": host or "localhost",
+                "SERVER_PORT": port or 5248,
+            }
+        )
 
-                # Create the request for the handlers for this connection.
-                self.request = HttpRequest()
-                self.request.user = self.user
-                self.request.META.update(
-                    {
-                        "HTTP_USER_AGENT": self.transport.user_agent,
-                        "REMOTE_ADDR": self.transport.ip_address,
-                        "SERVER_NAME": host or "localhost",
-                        "SERVER_PORT": port or 5248,
-                    }
-                )
-
-                # Be sure to process messages after the metadata is populated,
-                # in order to avoid bug #1802390.
-                self.processMessages()
-                self.factory.clients.append(self)
-
-        d.addCallback(authenticated)
+        # Be sure to process messages after the metadata is populated,
+        # in order to avoid bug #1802390.
+        self.processMessages()
+        self.factory.clients.append(self)
 
     def connectionLost(self, reason):
         """Connection to the client has been lost."""
@@ -145,9 +134,7 @@ class WebSocketProtocol(Protocol):
         """Close connection with status and reason."""
         msgFormat = "Closing connection: {status!r} ({reason!r})"
         log.debug(msgFormat, status=status, reason=reason)
-        self.transport._receiver._transport.loseConnection(
-            status, reason.encode("utf-8")
-        )
+        self.transport.loseConnection(status, reason.encode("utf-8"))
 
     def getMessageField(self, message, field):
         """Get `field` value from `message`.
@@ -168,7 +155,7 @@ class WebSocketProtocol(Protocol):
     def getUserFromSessionId(self, session_id):
         """Return the user from `session_id`."""
         session_engine = self.factory.getSessionEngine()
-        session_wrapper = session_engine.SessionStore(session_id)
+        session_wrapper = session_engine.SessionStore(session_key=session_id)
         user_id = session_wrapper.get(SESSION_KEY)
         backend = session_wrapper.get(BACKEND_SESSION_KEY)
         if backend is None:
@@ -179,7 +166,7 @@ class WebSocketProtocol(Protocol):
 
         return None
 
-    @deferred
+    @inlineCallbacks
     def authenticate(self, session_id, csrftoken):
         """Authenticate the connection.
 
@@ -200,27 +187,22 @@ class WebSocketProtocol(Protocol):
             self.loseConnection(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token.")
             return None
 
-        # Authenticate user.
-        def got_user(user):
-            if user is None:
-                self.loseConnection(
-                    STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
-                )
-                return None
-            else:
-                return user
-
-        def got_user_error(failure):
+        try:
+            user = yield deferToDatabase(self.getUserFromSessionId, session_id)
+        except Exception as error:
             self.loseConnection(
-                STATUSES.PROTOCOL_ERROR,
-                "Error authenticating user: %s" % failure.getErrorMessage(),
+                STATUSES.PROTOCOL_ERROR, f"Error authenticating user: {error}"
             )
-            return None
+            returnValue(None)
+            return
 
-        d = deferToDatabase(self.getUserFromSessionId, session_id)
-        d.addCallbacks(got_user, got_user_error)
-
-        return d
+        if user is None or user.id is None:
+            self.loseConnection(
+                STATUSES.PROTOCOL_ERROR, "Failed to authenticate user."
+            )
+            returnValue(None)
+        else:
+            returnValue(user)
 
     def dataReceived(self, data):
         """Received message from client and queue up the message."""
@@ -274,7 +256,7 @@ class WebSocketProtocol(Protocol):
 
         if msg_type == MSG_TYPE.PING:
             self.sequence_number += 1
-            return defer.succeed(
+            return succeed(
                 self.sendResult(
                     request_id=request_id,
                     result=self.sequence_number,
@@ -346,13 +328,11 @@ class WebSocketProtocol(Protocol):
                 error = failure.value.message
         else:
             error = failure.getErrorMessage()
-        why = "Error on request ({}) {}.{}: {}".format(
-            request_id,
-            handler._meta.handler_name,
-            method,
-            error,
+        log.err(
+            failure,
+            f"Error on request ({request_id}) "
+            f"{handler._meta.handler_name}.{method}: {error}",
         )
-        log.err(failure, why)
 
         error_msg = {
             "type": MSG_TYPE.RESPONSE,
