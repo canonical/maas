@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, sentinel
 
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
-from testtools.matchers import Equals, Is
 from twisted.internet import defer
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.server import NOT_DONE_YET
@@ -34,11 +33,6 @@ from maasserver.websockets.protocol import (
 from maasserver.websockets.websockets import STATUSES
 from maastesting.crochet import wait_for
 from maastesting.factory import factory as maastesting_factory
-from maastesting.matchers import (
-    IsFiredDeferred,
-    MockCalledOnceWith,
-    MockCalledWith,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
@@ -177,9 +171,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         mock_authenticate = self.patch(protocol, "authenticate")
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
-        self.assertThat(
-            mock_authenticate, MockCalledOnceWith(sessionid, csrftoken)
-        )
+        mock_authenticate.assert_called_once_with(sessionid, csrftoken)
 
     def test_connectionLost_removes_self_from_factory(self):
         protocol, factory = self.make_protocol()
@@ -200,14 +192,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         reason = maas_factory.make_name("reason")
         with TwistedLoggerFixture() as logger:
             protocol.loseConnection(status, reason)
-        self.assertThat(
-            logger.messages,
-            Equals(
-                [
-                    "Closing connection: %(status)r (%(reason)r)"
-                    % dict(status=status, reason=reason)
-                ]
-            ),
+        self.assertEqual(
+            logger.messages, [f"Closing connection: {status!r} ({reason!r})"]
         )
 
     def test_loseConnection_calls_loseConnection_with_status_and_reason(self):
@@ -230,13 +216,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol, _ = self.make_protocol()
         key = maas_factory.make_name("key")
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        self.expectThat(protocol.getMessageField({}, key), Is(None))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR,
-                "Missing %s field in the received message." % key,
-            ),
+        self.assertIsNone(protocol.getMessageField({}, key))
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR,
+            f"Missing {key} field in the received message.",
         )
 
     @synchronous
@@ -322,11 +305,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         other_csrftoken = maas_factory.make_name("csrftoken")
         yield protocol.authenticate(session_id, other_csrftoken)
-        self.expectThat(protocol.user, Equals(None))
-
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token."),
+        self.assertIsNone(protocol.user)
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Invalid CSRF token."
         )
 
     @wait_for_reactor
@@ -341,43 +322,38 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         other_csrftoken = maas_factory.make_name("csrftoken")
         yield protocol.authenticate(session_id, other_csrftoken)
-        self.expectThat(protocol.user, Equals(None))
-
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(STATUSES.PROTOCOL_ERROR, "Invalid CSRF token."),
+        self.assertIsNone(protocol.user)
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Invalid CSRF token."
         )
 
     def test_dataReceived_calls_loseConnection_if_json_error(self):
         protocol, _ = self.make_protocol()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        self.expectThat(protocol.dataReceived(b"{{{{"), Is(""))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR, "Invalid data expecting JSON object."
-            ),
+        self.assertEqual(protocol.dataReceived(b"{{{{"), "")
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Invalid data expecting JSON object."
         )
 
     def test_dataReceived_adds_message_to_queue(self):
         protocol, _ = self.make_protocol()
         self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
-        self.expectThat(
+        self.assertEqual(
             protocol.dataReceived(json.dumps(message).encode("ascii")),
-            Is(NOT_DONE_YET),
+            NOT_DONE_YET,
         )
-        self.expectThat(protocol.messages, Equals(deque([message])))
+        self.assertEqual(protocol.messages, deque([message]))
 
     def test_dataReceived_calls_processMessages(self):
         protocol, _ = self.make_protocol()
         mock_processMessages = self.patch_autospec(protocol, "processMessages")
         message = {"type": MSG_TYPE.REQUEST}
-        self.expectThat(
+        self.assertEqual(
             protocol.dataReceived(json.dumps(message).encode("ascii")),
-            Is(NOT_DONE_YET),
+            NOT_DONE_YET,
         )
-        self.expectThat(mock_processMessages, MockCalledOnceWith())
+        mock_processMessages.assert_called_once_with()
 
     def test_processMessages_does_nothing_if_no_user(self):
         protocol = WebSocketProtocol()
@@ -414,13 +390,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
         ]
         protocol.messages = deque(messages)
-        self.expectThat([messages[0]], Equals(protocol.processMessages()))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR,
-                "Missing type field in the received message.",
-            ),
+        self.assertEqual([messages[0]], protocol.processMessages())
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR,
+            "Missing type field in the received message.",
         )
 
     def test_processMessages_calls_loseConnection_if_type_not_request(self):
@@ -435,12 +408,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
         ]
         protocol.messages = deque(messages)
-        self.expectThat([messages[0]], Equals(protocol.processMessages()))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR, "Invalid message type."
-            ),
+        self.assertEqual([messages[0]], protocol.processMessages())
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Invalid message type."
         )
 
     def test_processMessages_stops_processing_msgs_handleRequest_fails(self):
@@ -452,7 +422,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
         ]
         protocol.messages = deque(messages)
-        self.expectThat([messages[0]], Equals(protocol.processMessages()))
+        self.assertEqual([messages[0]], protocol.processMessages())
 
     def test_processMessages_calls_handleRequest_with_message(self):
         protocol, _ = self.make_protocol()
@@ -461,23 +431,18 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         mock_handleRequest.return_value = NOT_DONE_YET
         message = {"type": MSG_TYPE.REQUEST, "request_id": 1}
         protocol.messages = deque([message])
-        self.expectThat([message], Equals(protocol.processMessages()))
-        self.expectThat(
-            mock_handleRequest, MockCalledOnceWith(message, MSG_TYPE.REQUEST)
-        )
+        self.assertEqual([message], protocol.processMessages())
+        mock_handleRequest.assert_called_once_with(message, MSG_TYPE.REQUEST)
 
     def test_handleRequest_calls_loseConnection_if_missing_request_id(self):
         protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {"type": MSG_TYPE.REQUEST}
-        self.expectThat(protocol.handleRequest(message), Is(None))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR,
-                "Missing request_id field in the received message.",
-            ),
+        self.assertIsNone(protocol.handleRequest(message))
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR,
+            "Missing request_id field in the received message.",
         )
 
     def test_handleRequest_calls_loseConnection_if_missing_method(self):
@@ -485,13 +450,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
         message = {"type": MSG_TYPE.REQUEST, "request_id": 1}
-        self.expectThat(protocol.handleRequest(message), Is(None))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR,
-                "Missing method field in the received message.",
-            ),
+        self.assertIsNone(protocol.handleRequest(message))
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR,
+            "Missing method field in the received message.",
         )
 
     def test_handleRequest_calls_loseConnection_if_bad_method(self):
@@ -503,12 +465,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             "request_id": 1,
             "method": "nodes",
         }
-        self.expectThat(protocol.handleRequest(message), Is(None))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR, "Invalid method formatting."
-            ),
+        self.assertIsNone(protocol.handleRequest(message))
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Invalid method formatting."
         )
 
     def test_handleRequest_calls_loseConnection_if_unknown_handler(self):
@@ -520,12 +479,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             "request_id": 1,
             "method": "unknown.list",
         }
-        self.expectThat(protocol.handleRequest(message), Is(None))
-        self.expectThat(
-            mock_loseConnection,
-            MockCalledOnceWith(
-                STATUSES.PROTOCOL_ERROR, "Handler unknown does not exist."
-            ),
+        self.assertIsNone(protocol.handleRequest(message))
+        mock_loseConnection.assert_called_once_with(
+            STATUSES.PROTOCOL_ERROR, "Handler unknown does not exist."
         )
 
     @synchronous
@@ -581,12 +537,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             }
         )
 
-        self.assertThat(d, IsFiredDeferred())
-        self.assertThat(
-            handler_class,
-            MockCalledOnceWith(
-                protocol.user, protocol.cache[handler_name], protocol.request
-            ),
+        self.assertTrue(d.called)
+        handler_class.assert_called_once_with(
+            protocol.user, protocol.cache[handler_name], protocol.request
         )
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
@@ -612,10 +565,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         yield protocol.handleRequest(message)
         sent_obj = self.get_written_transport_message(protocol)
-        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
-        self.expectThat(sent_obj["request_id"], Equals(1))
-        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.SUCCESS))
-        self.expectThat(sent_obj["result"]["hostname"], Equals(node.hostname))
+        self.assertEqual(sent_obj["type"], MSG_TYPE.RESPONSE)
+        self.assertEqual(sent_obj["request_id"], 1)
+        self.assertEqual(sent_obj["rtype"], RESPONSE_TYPE.SUCCESS)
+        self.assertEqual(sent_obj["result"]["hostname"], node.hostname)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -640,10 +593,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         yield protocol.handleRequest(message)
         sent_obj = self.get_written_transport_message(protocol)
-        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
-        self.expectThat(sent_obj["request_id"], Equals(1))
-        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
-        self.expectThat(sent_obj["error"], Equals(json.dumps(error_dict)))
+        self.assertEqual(sent_obj["type"], MSG_TYPE.RESPONSE)
+        self.assertEqual(sent_obj["request_id"], 1)
+        self.assertEqual(sent_obj["rtype"], RESPONSE_TYPE.ERROR)
+        self.assertEqual(sent_obj["error"], json.dumps(error_dict))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -667,10 +620,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         yield protocol.handleRequest(message)
         sent_obj = self.get_written_transport_message(protocol)
-        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
-        self.expectThat(sent_obj["request_id"], Equals(1))
-        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
-        self.expectThat(sent_obj["error"], Equals("bad"))
+        self.assertEqual(sent_obj["type"], MSG_TYPE.RESPONSE)
+        self.assertEqual(sent_obj["request_id"], 1)
+        self.assertEqual(sent_obj["rtype"], RESPONSE_TYPE.ERROR)
+        self.assertEqual(sent_obj["error"], "bad")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -694,10 +647,10 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         yield protocol.handleRequest(message)
         sent_obj = self.get_written_transport_message(protocol)
-        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.RESPONSE))
-        self.expectThat(sent_obj["request_id"], Equals(1))
-        self.expectThat(sent_obj["rtype"], Equals(RESPONSE_TYPE.ERROR))
-        self.expectThat(sent_obj["error"], Equals("error"))
+        self.assertEqual(sent_obj["type"], MSG_TYPE.RESPONSE)
+        self.assertEqual(sent_obj["request_id"], 1)
+        self.assertEqual(sent_obj["rtype"], RESPONSE_TYPE.ERROR)
+        self.assertEqual(sent_obj["error"], "error")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -713,9 +666,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
 
         yield protocol.handleRequest(message, msg_type=MSG_TYPE.PING)
         sent_obj = self.get_written_transport_message(protocol)
-        self.expectThat(sent_obj["type"], Equals(MSG_TYPE.PING_REPLY))
-        self.expectThat(sent_obj["request_id"], Equals(request_id))
-        self.expectThat(sent_obj["result"], Equals(seq + 1))
+        self.assertEqual(sent_obj["type"], MSG_TYPE.PING_REPLY)
+        self.assertEqual(sent_obj["request_id"], request_id)
+        self.assertEqual(sent_obj["result"], seq + 1)
 
     def test_sendNotify_sends_correct_json(self):
         protocol, _ = self.make_protocol()
@@ -838,12 +791,11 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         factory = self.make_factory()
         factory.getSessionEngine()
         # A reference to the module was obtained via getModule.
-        self.assertThat(
-            getModule,
-            MockCalledOnceWith(protocol_module.settings.SESSION_ENGINE),
+        getModule.assert_called_once_with(
+            protocol_module.settings.SESSION_ENGINE
         )
         # It was then loaded via that reference.
-        self.assertThat(getModule.return_value.load, MockCalledOnceWith())
+        getModule.return_value.load.assert_called_once_with()
 
     def test_getHandler_returns_None_on_missing_handler(self):
         factory = self.make_factory()
@@ -868,13 +820,11 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         factory = self.make_factory(rpc_service)
         factory.startFactory()
         try:
-            self.expectThat(
-                rpc_service.events.connected.registerHandler,
-                MockCalledOnceWith(factory.updateRackController),
+            rpc_service.events.connected.registerHandler.assert_called_once_with(
+                factory.updateRackController
             )
-            self.expectThat(
-                rpc_service.events.disconnected.registerHandler,
-                MockCalledOnceWith(factory.updateRackController),
+            rpc_service.events.disconnected.registerHandler.assert_called_once_with(
+                factory.updateRackController
             )
         finally:
             factory.stopFactory()
@@ -884,13 +834,11 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
         factory = self.make_factory(rpc_service)
         factory.startFactory()
         factory.stopFactory()
-        self.expectThat(
-            rpc_service.events.connected.unregisterHandler,
-            MockCalledOnceWith(factory.updateRackController),
+        rpc_service.events.connected.unregisterHandler.assert_called_once_with(
+            factory.updateRackController
         )
-        self.expectThat(
-            rpc_service.events.disconnected.unregisterHandler,
-            MockCalledOnceWith(factory.updateRackController),
+        rpc_service.events.disconnected.unregisterHandler.assert_called_once_with(
+            factory.updateRackController
         )
 
     def test_registerNotifiers_registers_all_notifiers(self):
@@ -928,13 +876,10 @@ class TestWebSocketFactoryTransactional(
         yield factory.onNotify(
             handler_class, sentinel.channel, sentinel.action, sentinel.obj_id
         )
-        self.assertThat(
-            handler_class,
-            MockCalledOnceWith(
-                user,
-                protocol.cache[handler_class._meta.handler_name],
-                protocol.request,
-            ),
+        handler_class.assert_called_once_with(
+            user,
+            protocol.cache[handler_class._meta.handler_name],
+            protocol.request,
         )
         # The cache passed into the handler constructor *is* the one found in
         # the protocol's cache; they're not merely equal.
@@ -948,15 +893,14 @@ class TestWebSocketFactoryTransactional(
     @inlineCallbacks
     def test_onNotify_calls_handler_class_on_listen(self):
         user = yield deferToDatabase(self.make_user)
-        protocol, factory = self.make_protocol_with_factory(user=user)
+        _, factory = self.make_protocol_with_factory(user=user)
         mock_class = MagicMock()
         mock_class.return_value.on_listen.return_value = None
         yield factory.onNotify(
             mock_class, sentinel.channel, sentinel.action, sentinel.obj_id
         )
-        self.assertThat(
-            mock_class.return_value.on_listen,
-            MockCalledWith(sentinel.channel, sentinel.action, sentinel.obj_id),
+        mock_class.return_value.on_listen.assert_called_with(
+            sentinel.channel, sentinel.action, sentinel.obj_id
         )
 
     @wait_for_reactor
@@ -973,7 +917,7 @@ class TestWebSocketFactoryTransactional(
         yield factory.onNotify(
             mock_class, sentinel.channel, action, sentinel.obj_id
         )
-        self.assertThat(mock_sendNotify, MockCalledWith(name, action, data))
+        mock_sendNotify.assert_called_with(name, action, data)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -987,14 +931,11 @@ class TestWebSocketFactoryTransactional(
         controller_handler = MagicMock()
         factory.handlers["controller"] = controller_handler
         yield factory.updateRackController(controller.system_id)
-        self.assertThat(
-            mock_onNotify,
-            MockCalledOnceWith(
-                controller_handler,
-                "controller",
-                "update",
-                controller.system_id,
-            ),
+        mock_onNotify.assert_called_once_with(
+            controller_handler,
+            "controller",
+            "update",
+            controller.system_id,
         )
 
     @wait_for_reactor
