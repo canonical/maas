@@ -5,6 +5,7 @@
 
 
 from collections import deque
+from contextlib import ExitStack
 from functools import partial
 from http.cookies import SimpleCookie
 import json
@@ -15,8 +16,10 @@ from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from django.utils import timezone
 from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.task import LoopingCall
 from twisted.python.modules import getModule
 from twisted.web.server import NOT_DONE_YET
 
@@ -380,16 +383,20 @@ class WebSocketFactory(Factory):
         self.handlers = {}
         self.clients = []
         self.listener = listener
+        self.session_checker = LoopingCall(self._check_sessions)
+        self.session_checker_done = None
         self.cacheHandlers()
         self.registerNotifiers()
 
     def startFactory(self):
-        """Register for RPC events."""
+        self._cleanup_stack = ExitStack()
         self.registerRPCEvents()
+        self._cleanup_stack.callback(self.unregisterRPCEvents)
+        self.session_checker_done = self.session_checker.start(5, now=True)
+        self._cleanup_stack.callback(self.session_checker.stop)
 
     def stopFactory(self):
-        """Unregister RPC events."""
-        self.unregisterRPCEvents()
+        self._cleanup_stack.close()
 
     def getSessionEngine(self):
         """Returns the session engine being used by Django.
@@ -491,3 +498,33 @@ class WebSocketFactory(Factory):
             )
         else:
             return fail("Unable to get the 'controller' handler.")
+
+    @inlineCallbacks
+    def _check_sessions(self):
+        client_sessions = {
+            client.session.session_key: client
+            for client in self.clients
+            if client.session is not None
+        }
+        client_session_keys = set(client_sessions)
+
+        def get_valid_sessions(session_keys):
+            session_engine = self.getSessionEngine()
+            Session = session_engine.SessionStore.get_model_class()
+            return set(
+                Session.objects.filter(
+                    session_key__in=session_keys,
+                    expire_date__gt=timezone.now(),
+                ).values_list("session_key", flat=True)
+            )
+
+        valid_session_keys = yield deferToDatabase(
+            get_valid_sessions,
+            client_session_keys,
+        )
+        # drop connections for expired sessions
+        for session_key in client_session_keys - valid_session_keys:
+            if client := client_sessions.get(session_key):
+                client.loseConnection(STATUSES.NORMAL, "Session expired")
+
+        returnValue(None)

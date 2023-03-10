@@ -3,6 +3,7 @@
 
 
 from collections import deque
+from datetime import datetime, timedelta
 import json
 import random
 from unittest.mock import MagicMock, sentinel
@@ -93,7 +94,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         return json.loads(call[0][0].decode("ascii"))
 
     def test_connectionMade_sets_the_request(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        protocol, _ = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
         # Be sure the request field is populated by the time that
         # processMessages() is called.
@@ -122,7 +123,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         )
 
     def test_connectionMade_sets_the_request_default_server_name_port(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        protocol, _ = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
         self.patch_autospec(protocol, "processMessages")
         mock_splithost = self.patch_autospec(protocol_module, "splithost")
@@ -134,7 +135,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual(protocol.request.META["SERVER_PORT"], 5248)
 
     def test_connectionMade_processes_messages(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        protocol, _ = self.make_protocol(patch_authenticate=False)
         self.patch_autospec(protocol, "authenticate")
         self.patch_autospec(protocol, "processMessages")
         protocol.authenticate.return_value = defer.succeed(True)
@@ -161,7 +162,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertNotIn(protocol, factory.clients)
 
     def test_connectionMade_extracts_sessionid_and_csrftoken(self):
-        protocol, factory = self.make_protocol(patch_authenticate=False)
+        protocol, _ = self.make_protocol(patch_authenticate=False)
         sessionid = maas_factory.make_name("sessionid")
         csrftoken = maas_factory.make_name("csrftoken")
         cookies = {
@@ -194,7 +195,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         self.assertEqual([], factory.clients)
 
     def test_loseConnection_writes_to_log(self):
-        protocol, factory = self.make_protocol()
+        protocol, _ = self.make_protocol()
         status = random.randint(1000, 1010)
         reason = maas_factory.make_name("reason")
         with TwistedLoggerFixture() as logger:
@@ -331,7 +332,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_authenticate_calls_loseConnection_if_csrftoken_is_missing(self):
-        user, session_id = yield deferToDatabase(self.get_user_and_session_id)
+        _, session_id = yield deferToDatabase(self.get_user_and_session_id)
         uri = self.make_ws_uri(csrftoken=None)
         protocol, _ = self.make_protocol(
             patch_authenticate=False, transport_uri=uri
@@ -981,7 +982,7 @@ class TestWebSocketFactoryTransactional(
         controller = yield deferToDatabase(
             transactional(maas_factory.make_RackController)
         )
-        protocol, factory = self.make_protocol_with_factory(user=user)
+        _, factory = self.make_protocol_with_factory(user=user)
         mock_onNotify = self.patch(factory, "onNotify")
         controller_handler = MagicMock()
         factory.handlers["controller"] = controller_handler
@@ -995,3 +996,72 @@ class TestWebSocketFactoryTransactional(
                 controller.system_id,
             ),
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_check_sessions(self):
+        factory = self.make_factory()
+
+        session_engine = factory.getSessionEngine()
+        Session = session_engine.SessionStore.get_model_class()
+        key1 = maas_factory.make_string()
+        key2 = maas_factory.make_string()
+
+        def make_sessions():
+            now = datetime.utcnow()
+            delta = timedelta(hours=1)
+            # first session is expired, second one is valid
+            return (
+                Session.objects.create(
+                    session_key=key1, expire_date=now - delta
+                ),
+                Session.objects.create(
+                    session_key=key2, expire_date=now + delta
+                ),
+            )
+
+        expired_session, active_session = yield deferToDatabase(make_sessions)
+
+        def make_protocol_with_session(session):
+            protocol = factory.buildProtocol(None)
+            protocol.transport = MagicMock()
+            protocol.transport.cookies = b""
+
+            def authenticate(*args):
+                protocol.session = session
+                return defer.succeed(True)
+
+            self.patch(protocol, "authenticate", authenticate)
+            self.patch(protocol, "loseConnection")
+            return protocol
+
+        expired_proto = make_protocol_with_session(expired_session)
+        active_proto = make_protocol_with_session(active_session)
+
+        yield expired_proto.connectionMade()
+        self.addCleanup(expired_proto.connectionLost, "")
+        yield active_proto.connectionMade()
+        self.addCleanup(active_proto.connectionLost, "")
+
+        yield factory.startFactory()
+        factory.stopFactory()
+        # wait until it's stopped, sessions are checked
+        yield factory.session_checker_done
+        # the first client gets disconnected
+        expired_proto.loseConnection.assert_called_once_with(
+            STATUSES.NORMAL, "Session expired"
+        )
+        active_proto.loseConnection.assert_not_called()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_session_checker_stopped_with_previous_failure(self):
+        factory = self.make_factory()
+        mock_session_checker = self.patch(factory, "session_checker")
+        self.patch(factory, "unregisterRPCEvents").side_effect = Exception(
+            "err"
+        )
+        yield factory.startFactory()
+        err = self.assertRaises(Exception, factory.stopFactory)
+        self.assertEqual(str(err), "err")
+        mock_session_checker.stop.assert_called_once()
