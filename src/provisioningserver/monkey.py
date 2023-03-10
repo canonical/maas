@@ -12,7 +12,7 @@ def fix_tftp_requests():
 
     Specifically, look at addr[0] and pass iface to listenUDP based on that.
 
-    See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/1614581
+    See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/+bug/1614581
     """
     from netaddr import IPAddress
     from tftp.bootstrap import (
