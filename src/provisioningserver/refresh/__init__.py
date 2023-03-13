@@ -15,21 +15,12 @@ from provisioningserver.refresh.maas_api_helper import (
     Credentials,
     MD_VERSION,
     signal,
-    SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
-
-
-def signal_wrapper(*args, **kwargs):
-    """Wrapper to capture and log any SignalException from signal."""
-    try:
-        signal(*args, **kwargs)
-    except SignalException as e:
-        maaslog.error("Error during controller refresh: %s" % e)
 
 
 @synchronous
@@ -72,11 +63,11 @@ def refresh(
         )
 
     if failed_scripts:
-        signal_wrapper(
+        signal(
             url, creds, "FAILED", f"Failed refreshing {system_id}", retry=False
         )
     else:
-        signal_wrapper(
+        signal(
             url, creds, "OK", f"Finished refreshing {system_id}", retry=False
         )
 
@@ -104,7 +95,7 @@ def runscripts(
         (parsed_url.scheme, parsed_url.netloc, "", "", "", "")
     )
     for script_name in sorted(scripts.keys()):
-        signal_wrapper(
+        signal(
             url,
             creds,
             "WORKING",
@@ -149,7 +140,7 @@ def runscripts(
             if result == b"":
                 result = b"Unable to execute script"
             files = {script_name: result, stderr_name: result}
-            signal_wrapper(
+            signal(
                 url,
                 creds,
                 "WORKING",
@@ -165,7 +156,7 @@ def runscripts(
                 stdout_name: open(stdout_path, "rb").read(),
                 stderr_name: open(stderr_path, "rb").read(),
             }
-            signal_wrapper(
+            signal(
                 url,
                 creds,
                 "TIMEDOUT",
@@ -186,7 +177,7 @@ def runscripts(
             }
             if os.path.exists(result_path):
                 files[result_name] = open(result_path, "rb").read()
-            signal_wrapper(
+            signal(
                 url,
                 creds,
                 "WORKING",

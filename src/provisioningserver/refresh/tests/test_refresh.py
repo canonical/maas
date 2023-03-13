@@ -10,14 +10,12 @@ from unittest.mock import ANY, patch, sentinel
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh import maas_api_helper
 from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
-    SignalException,
     TimeoutExpired,
 )
 from provisioningserver.refresh.node_info_scripts import (
@@ -400,28 +398,6 @@ class TestRefresh(MAASTestCase):
         self.assertNotIn(tmpdir_during, tmpdirs_before)
         self.assertIn(tmpdir_during, tmpdirs_during)
         self.assertNotIn(tmpdir_during, tmpdirs_after)
-
-    def test_refresh_logs_error(self):
-        signal = self.patch(refresh, "signal")
-        maaslog = self.patch(refresh.maaslog, "error")
-        error = factory.make_string()
-        signal.side_effect = SignalException(error)
-        info_scripts = self.create_scripts_failure()
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-
-        self.assertThat(
-            maaslog, MockAnyCall("Error during controller refresh: %s" % error)
-        )
 
     def test_refresh_runs_script_no_sudo_snap(self):
         mock_popen = self.patch(refresh, "Popen")
