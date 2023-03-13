@@ -32,6 +32,7 @@ from zope.interface.verify import verifyObject
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh import refresh
+from provisioningserver.refresh.maas_api_helper import SignalException
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -1171,17 +1172,23 @@ class NetworksMonitoringService(SingleInstanceService):
                 yield pause(3.0)
                 hints = self.beaconing_protocol.getJSONTopologyHints()
             maas_url, system_id, credentials = yield self.getRefreshDetails()
-            yield self._run_refresh(
-                maas_url,
-                system_id,
-                credentials,
-                interfaces,
-                hints,
-            )
-            # Note: _interfacesRecorded() will reconfigure discovery after
-            # recording the interfaces, so there is no need to call
-            # _configureNetworkDiscovery() here.
-            self._interfacesRecorded(interfaces)
+            try:
+                yield self._run_refresh(
+                    maas_url,
+                    system_id,
+                    credentials,
+                    interfaces,
+                    hints,
+                )
+            except SignalException as exc:
+                # Most likely a transient networking error. We'll retry the
+                # next time the service runs the scripts.
+                log.warn(f"Couldn't report test results: {exc}")
+            else:
+                # Note: _interfacesRecorded() will reconfigure discovery after
+                # recording the interfaces, so there is no need to call
+                # _configureNetworkDiscovery() here.
+                self._interfacesRecorded(interfaces)
         else:
             # Send out beacons unsolicited once every 30 seconds. (Use
             # solicitations so that replies will be received, that way peers

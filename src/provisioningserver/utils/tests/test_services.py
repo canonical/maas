@@ -28,6 +28,7 @@ from twisted.internet.error import (
     ProcessTerminated,
 )
 from twisted.internet.task import Clock
+from twisted.logger import formatEvent, LogLevel
 from twisted.python import threadable
 from twisted.python.failure import Failure
 
@@ -36,6 +37,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver import refresh as refresh_module
+from provisioningserver.refresh.maas_api_helper import SignalException
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -531,6 +533,41 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.assert_has_calls(calls=[call(), call()])
 
     @inlineCallbacks
+    def test_recordInterfaces_not_called_after_signal_error(self):
+        get_interfaces = self.patch(services, "get_all_interfaces_definition")
+        my_interfaces = {"foo": {"parents": [], "enabled": True}}
+        get_interfaces.return_value = my_interfaces
+
+        service = self.makeService()
+        service.running = 1
+        self.assertEqual(service.interfaces, [])
+
+        with TwistedLoggerFixture() as logger:
+            self.fake_refresher.mock_signal.side_effect = SignalException(
+                "boom"
+            )
+            yield service._do_action()
+            self.assertEqual(service.interfaces, [])
+            self.assertEqual(
+                ["Couldn't report test results: boom"],
+                [
+                    formatEvent(event)
+                    for event in logger.events
+                    if event.get("log_level") == LogLevel.warn
+                ],
+            )
+
+        # The next time it's run, and no signal error occurs, the interfaces get recorded.
+        self.fake_refresher.reset()
+        self.fake_refresher.mock_signal.side_effect = (
+            self.fake_refresher.fake_signal
+        )
+        yield service._do_action()
+        self.assertEqual(service.interfaces, [my_interfaces])
+
+        get_interfaces.assert_has_calls(calls=[call(), call()])
+
+    @inlineCallbacks
     def test_recordInterfaces_not_called_when_interfaces_not_changed(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         # Configuration does NOT change between the first and second call.
@@ -547,7 +584,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.assert_has_calls(calls=[call(), call()])
 
     @inlineCallbacks
-    def test_recordInterfaces_called_after_failure(self):
+    def test_recordInterfaces_called_after_unexpected_failure(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         get_interfaces.return_value = {}
 
