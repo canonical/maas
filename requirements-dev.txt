@@ -9,5 +9,6 @@ pytest-xdist==2.5.0
 python-subunit==1.4.0
 testresources==2.0.1
 testscenarios==0.5.0
+testtools==2.5.0
 # Install MAAS itself in editable mode
 -e .
