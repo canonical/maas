@@ -29,8 +29,11 @@ from maasserver.rpc.boot import (
     get_boot_config_for_machine,
     get_boot_filenames,
 )
+from maasserver.rpc.boot import (
+    get_node_from_mac_or_hardware_uuid,
+    merge_kparams_with_extra,
+)
 from maasserver.rpc.boot import get_config as orig_get_config
-from maasserver.rpc.boot import merge_kparams_with_extra
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -1624,3 +1627,36 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(osystem, configs["commissioning_osystem"])
         self.assertEqual(series, configs["commissioning_distro_series"])
         self.assertEqual(config_arch, "generic")
+
+
+class TestGetNodeFromMacOrHardwareUUID(MAASServerTestCase):
+    def test_get_node_from_mac_or_hardware_uuid_with_regular_mac(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        result = get_node_from_mac_or_hardware_uuid(mac=iface.mac_address)
+        self.assertEqual(node, result)
+
+    def test_get_node_from_mac_or_hardware_uuid_with_dash_mac(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        result = get_node_from_mac_or_hardware_uuid(
+            mac=iface.mac_address.replace(":", "-")
+        )
+        self.assertEqual(node, result)
+
+    def test_get_node_from_mac_or_hardware_uuid_with_mac_and_hardware_uuid(
+        self,
+    ):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = node.current_config.interface_set.first()
+        result = get_node_from_mac_or_hardware_uuid(
+            mac=iface.mac_address, hardware_uuid=node.hardware_uuid
+        )
+        self.assertEqual(node, result)
+
+    def test_get_node_from_mac_or_hardware_uuid_with_hardware_uuid(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        result = get_node_from_mac_or_hardware_uuid(
+            hardware_uuid=node.hardware_uuid
+        )
+        self.assertEqual(node, result)

@@ -13,6 +13,7 @@ from django.db.models import Q
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
+from maasserver.fields import normalise_macaddress
 from maasserver.models import (
     BootResource,
     Config,
@@ -49,19 +50,19 @@ def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
     Returns a Node object or None if no node with the given MAC address or
     hardware UUID exists.
     """
-    if mac and hardware_uuid:
-        node = Node.objects.filter(
-            Q(
-                current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
-                current_config__interface__mac_address=mac,
-            )
-            | Q(hardware_uuid__iexact=hardware_uuid)
-        )
-    elif mac:
-        node = Node.objects.filter(
+    if mac:
+        if "-" in mac:
+            mac = normalise_macaddress(mac)
+
+        q = Q(
             current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
             current_config__interface__mac_address=mac,
         )
+
+        if hardware_uuid:
+            q |= Q(hardware_uuid__iexact=hardware_uuid)
+
+        node = Node.objects.filter(q)
     elif hardware_uuid:
         node = Node.objects.filter(hardware_uuid__iexact=hardware_uuid)
     else:
