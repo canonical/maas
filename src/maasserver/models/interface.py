@@ -891,7 +891,7 @@ class Interface(CleanSave, TimestampedModel):
                     # so that the user gets a chance to configure it. Note,
                     # however, that if this is already a managed cluster
                     # interface, a Fabric/VLAN will already have been created.
-                    subnet = Subnet.objects.create_from_cidr(cidr)
+                    subnet = Subnet.objects.create_from_cidr(cidr, vlan=self.vlan)
                     maaslog.info(
                         f"Creating subnet {cidr} connected to interface "
                         f"{self} of node {self.get_node()}."
