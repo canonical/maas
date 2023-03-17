@@ -893,3 +893,57 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             ],
         )
         self.assertCountEqual(service._queued_updates, [])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_is_set_to_update_when_queued_updates_are_present(self):
+        domain = yield deferToDatabase(factory.make_Domain)
+        update_result = (random.randint(0, 10), True, [domain.name])
+        record = yield deferToDatabase(factory.make_DNSResource, domain=domain)
+        service = RegionControllerService(sentinel.listener)
+
+        update_zones = self.patch(region_controller, "dns_update_all_zones")
+        update_zones.return_value = update_result
+        check_serial = self.patch(service, "_checkSerial")
+        check_serial.return_value = succeed(update_result)
+
+        service._dns_update_in_progress = True
+        service.queueDynamicDNSUpdate(
+            factory.make_name(),
+            f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
+        )
+        self.assertCountEqual(service._dns_updates, [])
+        expected_updates = [
+            DynamicDNSUpdate(
+                operation="INSERT",
+                name=f"{record.name}.{domain.name}",
+                zone=domain.name,
+                rectype="A",
+                ttl=30,
+                answer="10.10.10.10",
+            )
+        ]
+        self.assertCountEqual(
+            service._queued_updates,
+            expected_updates,
+        )
+        service.needsDNSUpdate = True
+
+        # 3 times, first to queue the update, second to process the update,
+        # third to ensure it doesn't flag for update without updates queued
+        for i in range(3):
+            if i == 2:
+                # should fail on assert that the loop is running when stopping
+                try:
+                    yield service.process()
+                except AssertionError:
+                    pass
+            else:
+                yield service.process()
+
+        update_zones.assert_has_calls(
+            [
+                call(dynamic_updates=[], requires_reload=True),
+                call(dynamic_updates=expected_updates, requires_reload=False),
+            ]
+        )

@@ -225,6 +225,7 @@ class RegionControllerService(Service):
             if len(self._queued_updates) > 0:
                 self._dns_updates = self._queued_updates
                 self._queued_updates = []
+                self.needsDNSUpdate = True
             else:
                 self._dns_updates = []
             self._dns_requires_full_reload = False
