@@ -49,10 +49,11 @@ def http_request(
         if isinstance(url, bytes):
             url = url.decode("ascii")
         return http.request(url, method, body=body, headers=headers)
-    except httplib2.ssl.SSLError:
+    except httplib2.ssl.SSLError as error:
         raise CommandError(
             "Certificate verification failed, use --insecure/-k to "
             "disable the certificate check."
+            f"{getattr(error, 'reason', '')}"
         )
 
 
