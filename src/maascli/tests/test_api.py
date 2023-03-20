@@ -129,7 +129,14 @@ class TestFunctions(MAASTestCase):
 
     def test_http_request_raises_error_if_cert_verify_fails(self):
         self.patch(
-            httplib2.Http, "request", Mock(side_effect=httplib2.ssl.SSLError())
+            httplib2.Http,
+            "request",
+            Mock(
+                side_effect=httplib2.ssl.SSLError(
+                    997,
+                    "ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]",
+                )
+            ),
         )
         error = self.assertRaises(
             CommandError,
@@ -139,7 +146,8 @@ class TestFunctions(MAASTestCase):
         )
         error_expected = (
             "Certificate verification failed, use --insecure/-k to "
-            "disable the certificate check."
+            "disable the certificate check.\n"
+            "ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED]"
         )
         self.assertEqual(error_expected, "%s" % error)
 
