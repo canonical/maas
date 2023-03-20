@@ -519,17 +519,20 @@ def materialize_certificate(profile, cert_dir="~/.maascli.certs"):
     File is needed for httplib2 ca_cert (for server cert validation)
     """
 
+    profile_name = profile.get("name")
+    if profile_name is None:
+        return None
+
+    cert_path = Path(cert_dir).expanduser() / (profile_name + ".pem")
+
+    if cert_path.exists():
+        return cert_path
+
     cacerts = profile.get("cacerts")
     if cacerts is None:
         return None
 
-    cert_dir = Path(cert_dir).expanduser()
-    if not cert_dir.exists():
-        cert_dir.mkdir()
-
-    profile_name = profile["name"]
-    cert_path = cert_dir / (profile_name + ".pem")
-    cert_path = Path(cert_path)
-
+    cert_path.parent.mkdir(exist_ok=True, parents=True)
     cert_path.write_text(cacerts)
+
     return cert_path
