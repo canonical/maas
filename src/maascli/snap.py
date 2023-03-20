@@ -31,7 +31,6 @@ from maascli.init import (
     prompt_for_choices,
     read_input,
 )
-from maasserver.vault import prepare_wrapped_approle, VaultError
 
 ARGUMENTS = OrderedDict(
     [
@@ -568,6 +567,8 @@ def get_vault_settings(options) -> dict:
     if not options.vault_uri:
         return {}
 
+    from maasserver.vault import prepare_wrapped_approle, VaultError
+
     required_arguments = [
         "vault-approle-id",
         "vault-wrapped-token",
@@ -582,6 +583,7 @@ def get_vault_settings(options) -> dict:
         raise CommandError(
             f"Missing required vault arguments: {', '.join(missing_arguments)}"
         )
+
     try:
         secret_id = prepare_wrapped_approle(
             url=options.vault_uri,
