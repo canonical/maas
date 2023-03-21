@@ -203,11 +203,3 @@ def get_maas_cert_tuple():
     if not private_key.exists() or not certificate.exists():
         return None
     return str(certificate), str(private_key)
-
-
-def check_certificate(material):
-    """Check if certificate is a valid PEM format certificate"""
-    try:
-        crypto.load_certificate(crypto.FILETYPE_PEM, material)
-    except crypto.Error:
-        raise CertificateError("Invalid PEM material")

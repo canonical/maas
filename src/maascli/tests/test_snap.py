@@ -19,6 +19,7 @@ import pytest
 from maascli import snap
 from maascli.command import CommandError
 from maascli.parser import ArgumentParser
+import maasserver.vault
 from maasserver.vault import VaultError
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -577,7 +578,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
 
-        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.return_value = secret_id
 
         assert snap.get_vault_settings(options) == {
@@ -620,7 +621,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
 
-        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.return_value = secret_id
 
         assert snap.get_vault_settings(options) == {
@@ -659,7 +660,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
 
-        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         prepare_mock.side_effect = [VaultError()]
 
         self.assertRaises(CommandError, snap.get_vault_settings, options)
@@ -685,7 +686,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
 
-        prepare_mock = self.patch(snap, "prepare_wrapped_approle")
+        prepare_mock = self.patch(maasserver.vault, "prepare_wrapped_approle")
         exc = factory.make_exception()
         prepare_mock.side_effect = [exc]
         self.assertRaises(type(exc), snap.get_vault_settings, options)
