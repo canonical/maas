@@ -52,8 +52,7 @@ def http_request(
     except httplib2.ssl.SSLError as error:
         raise CommandError(
             "Certificate verification failed, use --insecure/-k to "
-            "disable the certificate check."
-            f"{getattr(error, 'reason', '')}"
+            "disable the certificate check.\n" + str(error)
         )
 
 
