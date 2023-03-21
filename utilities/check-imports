@@ -180,6 +180,8 @@ def files(*patterns):
 
 
 APIClient = files("src/apiclient/**/*.py")
+MAASCLI = files("src/maascli/**/*.py")
+
 
 PerfTestHarness = files("src/maastesting/perftest.py")
 PerfTestMigrations = files("src/maastesting/migrations/**/*.py")
@@ -381,6 +383,25 @@ checks = [
             Allow("piston3|piston3.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
+        ),
+    ),
+    #
+    # MAAS CLI
+    #
+    (
+        MAASCLI - Tests,
+        Rule(
+            Allow("maascli|maascli.**"),
+            Allow("apiclient.creds.*"),
+            Allow("apiclient.**"),
+            Allow("httplib2"),
+            Allow("macaroonbakery|macaroonbakery.**"),
+            Allow("netifaces|netifaces.*"),
+            Allow("OpenSSL|OpenSSL.**"),
+            Allow("psycopg2|psycopg2.**"),
+            Allow("tempita"),
+            Allow("yaml"),
+            Allow(StandardLibraries),
         ),
     ),
     #

@@ -11,6 +11,8 @@ import pkgutil
 import sys
 from textwrap import fill
 
+from OpenSSL import crypto
+
 from apiclient.creds import convert_tuple_to_string
 from maascli.api import fetch_api_description
 from maascli.auth import (
@@ -18,7 +20,7 @@ from maascli.auth import (
     obtain_credentials,
     UnexpectedResponse,
 )
-from maascli.command import Command
+from maascli.command import Command, CommandError
 from maascli.config import ProfileConfig
 from maascli.init import (
     add_candid_options,
@@ -27,7 +29,6 @@ from maascli.init import (
     init_maas,
 )
 from maascli.utils import api_url, parse_docstring, safe_name
-from provisioningserver.certificates import check_certificate
 
 CERTS_DIR = Path("~/.maascli.certs").expanduser()
 
@@ -96,7 +97,10 @@ class cmd_login(Command):
         cacerts_path = None
         if options.cacerts is not None:
             cacerts = options.cacerts.read()
-            check_certificate(cacerts)
+            try:
+                crypto.load_certificate(crypto.FILETYPE_PEM, cacerts)
+            except crypto.Error:
+                raise CommandError("Invalid PEM material")
 
             if not CERTS_DIR.exists():
                 CERTS_DIR.mkdir()
