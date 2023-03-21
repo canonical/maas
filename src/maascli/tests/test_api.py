@@ -220,6 +220,17 @@ class TestFunctions(MAASTestCase):
             cert_path = temp_dir = temp_dir / (profile["name"] + ".pem")
             self.assertEqual(cert, cert_path.open().read())
 
+    def test_materialize_certificate_should_return_existing_cert(self):
+        mock_write_cert = self.patch(Path, "write_text")
+        profile = make_profile()
+        with tempfile.TemporaryDirectory() as tmp:
+            cert_file = Path(tmp) / (profile["name"] + ".pem")
+            cert_file.touch()
+            self.assertEqual(
+                cert_file, api.materialize_certificate(profile, tmp)
+            )
+            mock_write_cert.assert_not_called()
+
 
 class TestAction(MAASTestCase):
     """Tests for :class:`maascli.api.Action`."""
