@@ -1,7 +1,8 @@
 [build-system]
-# With setuptools 50.0.0, 'make .ve' fails.
-requires = ["setuptools < 50.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools",
+]
 
 [tool.black]
 line-length = 79
@@ -33,6 +34,12 @@ provisioningserver
 snippets
 """
 order_by_type = false
+
+[tool.flake8]
+ignore = ["E203", "E266", "E501", "W503", "W504"]
+exclude = [
+  "src/*/migrations/*",
+]
 
 [tool.pytest.ini_options]
 filterwarnings = "error::BytesWarning"
