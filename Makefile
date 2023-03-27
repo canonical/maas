@@ -328,9 +328,11 @@ packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
 go_bins_vendor := src/host-info/vendor
 
+$(packaging-build-area):
+	mkdir -p $@
+
 -packaging-clean:
 	rm -rf $(packaging-build-area)
-	mkdir -p $(packaging-build-area)
 .PHONY: -packaging-clean
 
 -packaging-export-orig: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
