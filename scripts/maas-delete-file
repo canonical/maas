@@ -14,7 +14,6 @@ import pipes
 
 from provisioningserver.utils.fs import atomic_delete
 
-
 DELETABLE_FILES = {
     os.path.join(os.getenv("MAAS_DATA", "/var/lib/maas"), path)
     for path in ("dhcpd.conf", "dhcpd6.conf")
@@ -25,15 +24,14 @@ arg_parser.add_argument("filename", help="The file to delete.")
 
 
 def main(args):
-
     # Validate the filename here because using a `choices` argument in the
     # parser results in ugly help and error text.
     if args.filename not in DELETABLE_FILES:
         arg_parser.error(
-            "Given filename %s is not in the allowed list. "
-            "Choose from: %s." % (
-                pipes.quote(args.filename), ", ".join(
-                    map(pipes.quote, sorted(DELETABLE_FILES)))))
+            f"Given filename {pipes.quote(args.filename)} is not in the "
+            "allowed list. "
+            f"Choose from: {', '.join(map(pipes.quote, sorted(DELETABLE_FILES)))} ."
+        )
 
     # Okay, good to go.
     else:

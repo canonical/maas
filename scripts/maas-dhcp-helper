@@ -24,27 +24,45 @@ def notify_add_arguments(parser):
     :param parser: An instance of :class:`ArgumentParser`.
     """
     parser.add_argument(
-        "--action", action="store", required=True,
-        choices=['commit', 'expiry', 'release'], help=(
-            "Action taken by DHCP server for the lease."))
+        "--action",
+        action="store",
+        required=True,
+        choices=["commit", "expiry", "release"],
+        help=("Action taken by DHCP server for the lease."),
+    )
     parser.add_argument(
-        "--mac", action="store", required=True, help=(
-            "MAC address for lease."))
+        "--mac", action="store", required=True, help=("MAC address for lease.")
+    )
     parser.add_argument(
-        "--ip-family", action="store", required=True, choices=['ipv4', 'ipv6'],
-        help="IP address family for lease.")
+        "--ip-family",
+        action="store",
+        required=True,
+        choices=["ipv4", "ipv6"],
+        help="IP address family for lease.",
+    )
     parser.add_argument(
-        "--ip", action="store", required=True, help=(
-            "IP address for lease."))
+        "--ip", action="store", required=True, help=("IP address for lease.")
+    )
     parser.add_argument(
-        "--lease-time", action="store", type=int, required=False, help=(
-            "Length of time before the lease expires."))
+        "--lease-time",
+        action="store",
+        type=int,
+        required=False,
+        help=("Length of time before the lease expires."),
+    )
     parser.add_argument(
-        "--hostname", action="store", required=False, help=(
-            "Hostname of the machine for the lease."))
+        "--hostname",
+        action="store",
+        required=False,
+        help=("Hostname of the machine for the lease."),
+    )
     parser.add_argument(
-        "--socket", action="store", required=False,
-        default="/var/lib/maas/dhcpd.sock", help=argparse.SUPPRESS)
+        "--socket",
+        action="store",
+        required=False,
+        default="/var/lib/maas/dhcpd.sock",
+        help=argparse.SUPPRESS,
+    )
 
 
 def notify(args):
@@ -69,9 +87,10 @@ def notify(args):
         notify_packet["lease_time"] = args.lease_time
         hostname = args.hostname
         has_hostname = (
-            hostname is not None and
-            len(hostname) > 0 and
-            not hostname.isspace())
+            hostname is not None
+            and len(hostname) > 0
+            and not hostname.isspace()
+        )
         if has_hostname:
             notify_packet["hostname"] = hostname
 
@@ -89,8 +108,10 @@ def clean_add_arguments(parser):
     :param parser: An instance of :class:`ArgumentParser`.
     """
     parser.add_argument(
-        "leases_file", action="store",
-        help=("Leases file to remove host entries from."))
+        "leases_file",
+        action="store",
+        help=("Leases file to remove host entries from."),
+    )
 
 
 def clean(args):
@@ -99,7 +120,7 @@ def clean(args):
     # each command.
     import re
 
-    with open(args.leases_file, "r", encoding="utf-8") as fp:
+    with open(args.leases_file, encoding="utf-8") as fp:
         content = fp.read()
     cleaned_content = re.sub("host [^{]+{[^}]+}\n", "", content)
     with open(args.leases_file, "w", encoding="utf-8") as fp:
@@ -115,13 +136,15 @@ def main():
 
     # Notify.
     notify_parser = subparsers.add_parser(
-        "notify", help="Write DHCP action notification to the `dhcpd.sock`.")
+        "notify", help="Write DHCP action notification to the `dhcpd.sock`."
+    )
     notify_parser.set_defaults(handler=notify)
     notify_add_arguments(notify_parser)
 
     # Clean.
     clean_parser = subparsers.add_parser(
-        "clean", help="Remove all host entries from leases file.")
+        "clean", help="Remove all host entries from leases file."
+    )
     clean_parser.set_defaults(handler=clean)
     clean_add_arguments(clean_parser)
 
