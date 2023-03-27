@@ -5,6 +5,7 @@
 
 
 from collections import defaultdict, deque
+from contextlib import contextmanager
 from errno import ENOENT
 import json
 import threading
@@ -535,6 +536,17 @@ class PostgresListenerService(Service):
         # Delete the contents of the connection's notifies list so
         # that we don't process them a second time.
         del notifies[:]
+
+    @contextmanager
+    def listen(self, channel, handler):
+        """
+        Helper for processes that register their channels temporarily
+        """
+        self.register(channel, handler)
+        try:
+            yield
+        finally:
+            self.unregister(channel, handler)
 
 
 def notify_action(target: str, action: str, identifier: Any):

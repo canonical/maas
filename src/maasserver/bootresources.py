@@ -1227,34 +1227,33 @@ def download_all_boot_resources(
         if needs_cancel:
             store.cancel_finalize()
 
-    listener.register("sys_stop_import", stop_import)
+    with listener.listen("sys_stop_import", stop_import):
+        for source in sources:
+            msg = "Importing images from source: %s" % source["url"]
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_INFO, msg
+            )
+            maaslog.info(msg)
+            download_boot_resources(
+                source["url"],
+                store,
+                product_mapping,
+                keyring_file=source.get("keyring"),
+            )
 
-    # Download all of the metadata first.
-    for source in sources:
-        msg = "Importing images from source: %s" % source["url"]
-        Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
-        maaslog.info(msg)
-        download_boot_resources(
-            source["url"],
-            store,
-            product_mapping,
-            keyring_file=source.get("keyring"),
-        )
-
-    # Start finalizing or cancel finalizing.
-    with lock:
-        stopped = stop
-    if stopped:
-        log.debug(
-            "Finalizing BootResourceStore was cancelled before starting."
-        )
-        store.cancel_finalize(notify=notify)
-    else:
-        log.debug("Finalizing BootResourceStore.")
+        # Start finalizing or cancel finalizing.
         with lock:
-            finalizing = True
-        store.finalize(notify=notify)
-    listener.unregister("sys_stop_import", stop_import)
+            stopped = stop
+        if stopped:
+            log.debug(
+                "Finalizing BootResourceStore was cancelled before starting."
+            )
+            store.cancel_finalize(notify=notify)
+        else:
+            log.debug("Finalizing BootResourceStore.")
+            with lock:
+                finalizing = True
+            store.finalize(notify=notify)
     return not stop
 
 

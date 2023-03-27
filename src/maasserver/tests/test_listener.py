@@ -659,3 +659,28 @@ class TestPostgresListenerService(MAASServerTestCase):
                 call("UNLISTEN %s_update;" % channel),
             ),
         )
+
+    def test_listen_registers_and_unregisters_channel(self):
+        listener = PostgresListenerService()
+        listener.register = MagicMock()
+        listener.unregister = MagicMock()
+        channel = factory.make_name("sys", sep="_").lower()
+        with listener.listen(channel, sentinel.handler):
+            listener.register.assert_called_once_with(
+                channel, sentinel.handler
+            )
+        listener.unregister.assert_called_once_with(channel, sentinel.handler)
+
+    def test_listen_unregisters_channel_when_exception_raised(self):
+        listener = PostgresListenerService()
+        listener.register = MagicMock()
+        listener.unregister = MagicMock()
+        channel = factory.make_name("sys", sep="_").lower()
+        exception_text = "Expected exception"
+        with ExpectedException(Exception, exception_text):
+            with listener.listen(channel, sentinel.handler):
+                listener.register.assert_called_once_with(
+                    channel, sentinel.handler
+                )
+                raise Exception(exception_text)
+        listener.unregister.assert_called_once_with(channel, sentinel.handler)

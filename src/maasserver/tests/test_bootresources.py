@@ -22,6 +22,7 @@ from django.db import connections, transaction
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from fixtures import FakeLogger, Fixture
+from testtools import ExpectedException
 from testtools.matchers import ContainsAll, Equals, HasLength, Not
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
@@ -1716,9 +1717,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         download_all_boot_resources(
             sources=[], product_mapping=product_mapping, store=store
         )
-        self.assertThat(
-            listener.register, MockCalledOnceWith("sys_stop_import", ANY)
-        )
+        listener.listen.assert_called_once_with("sys_stop_import", ANY)
 
     def test_download_all_boot_resources_calls_cancel_finalize(self):
         product_mapping = ProductMapping()
@@ -1730,7 +1729,7 @@ class TestImportImages(MAASTransactionServerTestCase):
 
         # Call the stop_import function register with the listener.
         def call_stop(*args, **kwargs):
-            listener.register.call_args[0][1]("sys_stop_import", "")
+            listener.listen.call_args[0][1]("sys_stop_import", "")
 
         self.patch(
             bootresources, "download_boot_resources"
@@ -1758,7 +1757,7 @@ class TestImportImages(MAASTransactionServerTestCase):
 
         # Call the stop_import function when finalize is called.
         def call_stop(*args, **kwargs):
-            listener.register.call_args[0][1]("sys_stop_import", "")
+            listener.listen.call_args[0][1]("sys_stop_import", "")
 
         mock_finalize = self.patch(store, "finalize")
         mock_finalize.side_effect = call_stop
@@ -1772,6 +1771,49 @@ class TestImportImages(MAASTransactionServerTestCase):
         self.assertThat(mock_finalize, MockCalledOnce())
         self.assertThat(mock_cancel, MockCalledOnce())
         self.assertFalse(success)
+
+    def test_download_all_boot_resources_reraises_download_failure(self):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = MagicMock()
+        exc_text = "Expected"
+        self.patch(
+            bootresources, "download_boot_resources"
+        ).side_effect = Exception(exc_text)
+
+        with ExpectedException(Exception, msg=exc_text):
+            download_all_boot_resources(
+                sources=[{"url": "", "keyring": ""}],
+                product_mapping=product_mapping,
+                store=store,
+            )
+
+    def test_download_all_boot_resources_unregisters_listener_on_download_failure(
+        self,
+    ):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        listener = PostgresListenerService()
+        listener.register = MagicMock()
+        listener.unregister = MagicMock()
+        self.patch(
+            bootresources.services, "getServiceNamed"
+        ).return_value = listener
+        exc_text = "Expected"
+        self.patch(
+            bootresources, "download_boot_resources"
+        ).side_effect = Exception(exc_text)
+
+        with ExpectedException(Exception, msg=exc_text):
+            download_all_boot_resources(
+                sources=[{"url": "", "keyring": ""}],
+                product_mapping=product_mapping,
+                store=store,
+            )
+        listener.register.assert_called_once_with("sys_stop_import", ANY)
+        listener.unregister.assert_called_once_with("sys_stop_import", ANY)
 
     def test_import_resources_exits_early_if_lock_held(self):
         set_simplestreams_env = self.patch_autospec(
