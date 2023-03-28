@@ -1,7 +1,0 @@
-http-region     5240/tcp        # regiond-http
-tftp            5244/udp        # rackd-tftp
-domain          5245/tcp        # DNS
-domain          5245/udp        # DNS
-rndc            5246/tcp        # DNS RNDC
-syslog          5247/tcp        # rsyslog
-cluster         5248/tcp        # rackd-http
