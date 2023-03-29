@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd. This software is licensed under the GNU
 # Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maastesting.fixtures`."""
-
-
 import builtins
 from itertools import repeat
 import os
@@ -15,7 +12,6 @@ from testtools.matchers import Equals, Is, Not, PathExists, SamePath
 from testtools.testcase import ExpectedException
 
 from maastesting import dev_root
-from maastesting import fixtures as fixtures_module
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -25,7 +21,7 @@ from maastesting.fixtures import (
     TempDirectory,
     TempWDFixture,
 )
-from maastesting.matchers import DocTestMatches, MockCallsMatch
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 
@@ -258,6 +254,7 @@ class TestMAASRootFixture(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.skel = os.path.join(dev_root, "run-skel")
+        self.package_files = os.path.join(dev_root, "package-files")
         self.useFixture(EnvironmentVariable("MAAS_ROOT", "/"))
 
     def test_creates_populates_and_removes_new_directory(self):
@@ -265,7 +262,9 @@ class TestMAASRootFixture(MAASTestCase):
         with fixture:
             self.assertThat(fixture.path, PathExists())
             self.assertThat(fixture.path, Not(SamePath(self.skel)))
-            files_expected = set(listdirs(self.skel))
+            files_expected = set(listdirs(self.skel)) | set(
+                listdirs(self.package_files)
+            )
             files_observed = set(listdirs(fixture.path))
             self.assertEqual(files_expected, files_observed)
         self.assertThat(fixture.path, Not(PathExists()))
@@ -275,12 +274,3 @@ class TestMAASRootFixture(MAASTestCase):
         with MAASRootFixture() as fixture:
             self.assertThat(os.environ["MAAS_ROOT"], SamePath(fixture.path))
         self.assertThat(os.environ["MAAS_ROOT"], Not(SamePath(self.skel)))
-
-    def test_breaks_when_MAAS_ROOT_is_not_a_directory(self):
-        self.patch(fixtures_module, "dev_root", self.make_file())
-        fixture = MAASRootFixture()
-        error = self.assertRaises(NotADirectoryError, fixture._setUp)
-        self.assertThat(
-            str(error),
-            DocTestMatches("Skeleton MAAS_ROOT (...) is not a directory."),
-        )

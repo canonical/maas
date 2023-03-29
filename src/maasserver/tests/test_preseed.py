@@ -1329,7 +1329,9 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
     # Try rendering each driver in drivers.yaml.
     scenarios = [
         (driver["comment"], {"driver": driver})
-        for driver in DriversConfig.load_from_cache()["drivers"]
+        for driver in DriversConfig.load_from_cache(
+            filename="package-files/etc/maas/drivers.yaml"
+        )["drivers"]
     ]
 
     def test_render_curtin_preseed_with_third_party_driver(self):

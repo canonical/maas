@@ -137,7 +137,9 @@ class TestDriversConfig(MAASServerTestCase):
         self.assertEqual({"drivers": []}, observed)
 
     def test_load_from_yaml(self):
-        filename = os.path.join(dev_root, "etc", "maas", "drivers.yaml")
+        filename = os.path.join(
+            dev_root, "package-files", "etc", "maas", "drivers.yaml"
+        )
         for entry in DriversConfig.load(filename)["drivers"]:
             self.assertEqual(
                 {

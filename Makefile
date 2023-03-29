@@ -64,7 +64,6 @@ swagger-css: file := src/maasserver/templates/dist/swagger-ui.css
 swagger-css: url := "https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css"
 
 build: \
-  .run \
   $(VENV) \
   $(BIN_SCRIPTS) \
   bin/py
@@ -242,9 +241,6 @@ openapi.yaml: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 
 doc: api-docs.rst openapi.yaml swagger-css swagger-js
 .PHONY: doc
-
-.run: run-skel
-	@cp --archive --verbose $^ $@
 
 clean-ui:
 	$(MAKE) -C src/maasui clean

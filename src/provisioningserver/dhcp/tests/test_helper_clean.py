@@ -92,5 +92,11 @@ lease 192.168.10.69 {
 class TestDHCPClean(MAASTestCase):
     def test_removes_hosts_from_leases_file(self):
         path = self.make_file(contents=LEASES_FILE_WITH_HOSTS)
-        call_and_check([f"{dev_root}/scripts/maas-dhcp-helper", "clean", path])
+        call_and_check(
+            [
+                f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
+                "clean",
+                path,
+            ]
+        )
         self.assertEqual(LEASES_FILE_WITHOUT_HOSTS, read_text_file(path))

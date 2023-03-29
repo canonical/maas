@@ -1,30 +1,24 @@
 debian/extras/99-maas-common-sudoers etc/sudoers.d
 debian/extras/nginx.conf var/lib/maas/http
-debian/tmp/usr/lib/maas/maas-delete-file
-debian/tmp/usr/lib/maas/maas-write-file
+package-files/usr/lib/maas/maas-delete-file usr/lib/maas
+package-files/usr/lib/maas/maas-write-file usr/lib/maas
 
 # Install network monitoring scripts
-debian/tmp/usr/lib/maas/network-monitor
-debian/tmp/usr/lib/maas/beacon-monitor
-debian/tmp/usr/lib/maas/dhcp-monitor
+package-files/usr/lib/maas/network-monitor usr/lib/maas
+package-files/usr/lib/maas/beacon-monitor usr/lib/maas
+package-files/usr/lib/maas/dhcp-monitor usr/lib/maas
 
 # Install unverified-ssh
 # This is used for KVM host communication:
 # https://bugs.launchpad.net/maas/+bug/1807231
-debian/tmp/usr/lib/maas/unverified-ssh
+package-files/usr/lib/maas/unverified-ssh usr/lib/maas
 
 # Install commissioning binaries
-debian/tmp/usr/share/maas/machine-resources/amd64 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/arm64 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/armhf usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/i386 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/ppc64el usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/s390x usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources usr/share/maas
 
 usr/bin/maas-common /usr/lib/maas
 etc/maas/certificates
 
 # Install MAAS observability sample configs
-debian/tmp/usr/share/maas/grafana_agent/agent.yaml.example usr/share/maas/grafana_agent
-debian/tmp/usr/share/maas/grafana_agent/env usr/share/maas/grafana_agent
-debian/tmp/usr/share/maas/promtail/promtail.yaml.example usr/share/maas/promtail
+package-files/usr/share/maas/grafana_agent usr/share/maas
+package-files/usr/share/maas/promtail usr/share/maas

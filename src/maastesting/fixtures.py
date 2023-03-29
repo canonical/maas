@@ -10,6 +10,7 @@ from io import BytesIO, TextIOWrapper
 import logging
 import os
 from pathlib import Path
+from shutil import copytree
 import sys
 
 import fixtures
@@ -282,34 +283,12 @@ class MAASRootFixture(fixtures.Fixture):
     """
 
     def _setUp(self):
-        skel = Path(dev_root).joinpath("run-skel")
-        if skel.is_dir():
-            self.path = self.useFixture(TempDirectory()).join("run")
-            # Work only in `run`; reference the old $MAAS_ROOT.
-            etc = Path(self.path).joinpath("etc")
-            # Create and populate $MAAS_ROOT/run/etc/{chrony,c/chrony.conf}.
-            # The `.keep` file is not strictly necessary, but it's created for
-            # consistency with the source tree's `run` directory.
-            ntp = etc.joinpath("chrony")
-            ntp.mkdir(parents=True)
-            ntp.joinpath(".keep").touch()
-            ntp_conf = ntp.joinpath("chrony.conf")
-            ntp_conf.write_bytes(
-                skel.joinpath("etc", "chrony", "chrony.conf").read_bytes()
-            )
-            # Create and populate $MAAS_ROOT/run/etc/maas.
-            maas = etc.joinpath("maas")
-            maas.mkdir(parents=True)
-            maas.joinpath("drivers.yaml").symlink_to(
-                skel.joinpath("etc", "maas", "drivers.yaml").resolve()
-            )
-            maas.joinpath("templates").mkdir()
-            # Update the environment.
-            self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
-        else:
-            raise NotADirectoryError(
-                "Skeleton MAAS_ROOT (%s) is not a directory." % skel
-            )
+        self.path = self.useFixture(TempDirectory()).join("run")
+        # copy all package files into the run dir
+        repo_dir = Path(dev_root)
+        copytree(repo_dir / "run-skel", self.path, dirs_exist_ok=True)
+        copytree(repo_dir / "package-files", self.path, dirs_exist_ok=True)
+        self.useFixture(EnvironmentVariable("MAAS_ROOT", self.path))
 
 
 class MAASDataFixture(fixtures.Fixture):

@@ -70,15 +70,15 @@ def get_library_script_path(name):
     hence the term "library script".
 
     In production mode this will return ``/usr/lib/maas/$name``, but in
-    development mode it will return ``$dev_root/scripts/$name``.
+    development mode it will return
+    ``$dev_root/package-files/usr/lib/maas/$name``.
     """
-    # Avoid circular imports.
     from provisioningserver.config import is_dev_environment
 
     if is_dev_environment():
         from maastesting import dev_root
 
-        return os.path.join(dev_root, "scripts", name)
+        return os.path.join(dev_root, "package-files/usr/lib/maas", name)
     else:
         return os.path.join(get_path("/usr/lib/maas"), name)
 

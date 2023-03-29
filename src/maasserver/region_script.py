@@ -53,9 +53,12 @@ def run_django(is_snap, is_devenv):
             }
         )
     elif is_devenv:
-        os.environ[
-            "DJANGO_SETTINGS_MODULE"
-        ] = "maasserver.djangosettings.development"
+        os.environ.update(
+            {
+                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.development",
+                "MAAS_THIRD_PARTY_DRIVER_SETTINGS": "package-files/etc/maas/drivers.yaml",
+            }
+        )
     else:
         os.environ[
             "DJANGO_SETTINGS_MODULE"

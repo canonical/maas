@@ -2,6 +2,7 @@ graft src/maasserver/templates
 graft src/metadataserver/templates
 graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
+graft package-files
 include src/provisioningserver/drivers/power/*.xml
 include src/provisioningserver/refresh/*maas-*
 include src/maasserver/storage_custom_schema.yaml

@@ -82,10 +82,7 @@ INTERNAL_IPS = ("127.0.0.1", "::1")
 ALLOW_UNSAFE_METADATA_ACCESS = True
 
 # Use in-branch preseed templates.
-PRESEED_TEMPLATE_LOCATIONS = (
-    abspath("etc/preseeds"),
-    abspath("contrib/preseeds_v2"),
-)
+PRESEED_TEMPLATE_LOCATIONS = [abspath("package-files/etc/maas/preseeds")]
 
 # Prevent migrations from running in development mode. This causes django to
 # fallback to the syncdb behaviour. This is faster for development and a

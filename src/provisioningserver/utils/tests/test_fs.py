@@ -453,7 +453,7 @@ class TestGetLibraryScriptPath(MAASTestCase):
         provisioningserver.config.is_dev_environment.return_value = True
         script_name = factory.make_name("script")
         self.assertEqual(
-            dev_root.rstrip("/") + "/scripts/" + script_name,
+            f"{dev_root}/package-files/usr/lib/maas/{script_name}",
             get_library_script_path(script_name),
         )
 
@@ -599,7 +599,9 @@ class TestSudoWriteFileScript(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.script_path = os.path.join(dev_root, "scripts/maas-write-file")
+        self.script_path = os.path.join(
+            dev_root, "package-files/usr/lib/maas/maas-write-file"
+        )
         self.script = load_script(self.script_path)
         self.script.atomic_write = create_autospec(self.script.atomic_write)
 
@@ -666,7 +668,9 @@ class TestSudoDeleteFileScript(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.script_path = os.path.join(dev_root, "scripts/maas-delete-file")
+        self.script_path = os.path.join(
+            dev_root, "package-files/usr/lib/maas/maas-delete-file"
+        )
         self.script = load_script(self.script_path)
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)
 

@@ -2,13 +2,13 @@
 debian/tmp/usr/share/maas/web/static
 
 # Install Apache Config
-debian/tmp/usr/share/maas/maas-http.conf
+package-files/usr/share/maas/maas-http.conf usr/share/maas/
 
 # Install new preseed files
-debian/tmp/etc/maas/preseeds
+package-files/etc/maas/preseeds /etc/maas
 
 # Install driver configuration file
-debian/tmp/etc/maas/drivers.yaml
+package-files/etc/maas/drivers.yaml etc/maas
 
 # Install all other stuff
 usr/bin/maas-region usr/sbin

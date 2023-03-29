@@ -61,7 +61,7 @@ class TestDHCPNotify(MAASTestCase):
 
         call_and_check(
             [
-                f"{dev_root}/scripts/maas-dhcp-helper",
+                f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
                 "notify",
                 "--action",
                 action,
