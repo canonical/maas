@@ -7,7 +7,6 @@ from collections.abc import Iterable
 from functools import lru_cache, reduce
 from itertools import chain
 import os
-from pipes import quote
 from typing import Tuple
 
 import tempita
@@ -55,53 +54,6 @@ def dict_depth(d, depth=0):
     if not isinstance(d, dict) or not d:
         return depth
     return max(dict_depth(v, depth + 1) for _, v in d.items())
-
-
-def split_lines(input, separator):
-    """Split each item from `input` into a key/value pair."""
-    return (line.split(separator, 1) for line in input if line.strip() != "")
-
-
-def strip_pairs(input):
-    """Strip whitespace of each key/value pair in input."""
-    return ((key.strip(), value.strip()) for (key, value) in input)
-
-
-class Safe:
-    """An object that is safe to render as-is."""
-
-    __slots__ = ("value",)
-
-    def __init__(self, value):
-        self.value = value
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.value!r}>"
-
-
-class ShellTemplate(tempita.Template):
-    """A Tempita template specialised for writing shell scripts.
-
-    By default, substitutions will be escaped using `pipes.quote`, unless
-    they're marked as safe. This can be done using Tempita's filter syntax::
-
-      {{foobar|safe}}
-
-    or as a plain Python expression::
-
-      {{safe(foobar)}}
-
-    """
-
-    default_namespace = dict(tempita.Template.default_namespace, safe=Safe)
-
-    def _repr(self, value, pos):
-        """Shell-quote the value by default."""
-        rep = super()._repr
-        if isinstance(value, Safe):
-            return rep(value.value, pos)
-        else:
-            return quote(rep(value, pos))
 
 
 def classify(func, subjects):
@@ -152,12 +104,6 @@ def flatten(*things):
             return iter((things,))
 
     return _flatten(things)
-
-
-def is_true(value):
-    if value is None:
-        return False
-    return value.lower() in ("yes", "true", "t", "1")
 
 
 def sudo(command_args):
@@ -219,52 +165,6 @@ def is_instance_or_subclass(test, *query):
         return issubclass(test, query_tuple)
     except TypeError:
         return False
-
-
-# Capacity units supported by convert_size_to_bytes() function.
-CAPACITY_UNITS = {
-    "KiB": 2**10,
-    "MiB": 2**20,
-    "GiB": 2**30,
-    "TiB": 2**40,
-    "PiB": 2**50,
-    "EiB": 2**60,
-    "ZiB": 2**70,
-    "YiB": 2**80,
-}
-
-
-class UnknownCapacityUnitError(Exception):
-    """Unknown capacity unit used."""
-
-
-def convert_size_to_bytes(value):
-    """
-    Converts storage size values with units (GiB, TiB...) to bytes.
-
-    :param value: A string containing a number and unit separated by at least
-        one space character.  If unit is not specified, defaults to bytes.
-    :return: An integer indicating the number of bytes for the given value in
-        any other size unit.
-    :raises UnknownCapacityUnitError: unsupported capacity unit.
-    """
-    # Split value on the first space.
-    capacity_def = value.split(" ", 1)
-    if len(capacity_def) == 1:
-        # No unit specified, default to bytes.
-        return int(capacity_def[0])
-
-    capacity_value, capacity_unit = capacity_def
-    capacity_value = float(capacity_value)
-    capacity_unit = capacity_unit.strip()
-    if capacity_unit in CAPACITY_UNITS:
-        multiplier = CAPACITY_UNITS[capacity_unit]
-    else:
-        raise UnknownCapacityUnitError(
-            "Unknown capacity unit '%s'" % capacity_unit
-        )
-    # Convert value to bytes.
-    return int(capacity_value * multiplier)
 
 
 # Architectures as defined by:

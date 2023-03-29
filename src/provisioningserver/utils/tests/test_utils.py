@@ -20,18 +20,14 @@ import provisioningserver.utils
 from provisioningserver.utils import (
     CircularDependency,
     classify,
-    convert_size_to_bytes,
     debian_to_kernel_architecture,
     flatten,
     is_instance_or_subclass,
     kernel_to_debian_architecture,
     locate_config,
     locate_template,
-    Safe,
-    ShellTemplate,
     sorttop,
     sudo,
-    UnknownCapacityUnitError,
 )
 
 
@@ -91,45 +87,6 @@ class TestLocateTemplate(MAASTestCase):
             ),
             locate_template(""),
         )
-
-
-class TestSafe(MAASTestCase):
-    """Test `Safe`."""
-
-    def test_value(self):
-        something = object()
-        safe = Safe(something)
-        self.assertIs(something, safe.value)
-
-    def test_repr(self):
-        string = factory.make_string()
-        safe = Safe(string)
-        self.assertEqual("<Safe %r>" % string, repr(safe))
-
-
-class TestShellTemplate(MAASTestCase):
-    """Test `ShellTemplate`."""
-
-    def test_substitute_escapes(self):
-        # Substitutions are shell-escaped.
-        template = ShellTemplate("{{a}}")
-        expected = "'1 2 3'"
-        observed = template.substitute(a="1 2 3")
-        self.assertEqual(expected, observed)
-
-    def test_substitute_does_not_escape_safe(self):
-        # Substitutions will not be escaped if they're marked with `safe`.
-        template = ShellTemplate("{{a|safe}}")
-        expected = "$ ! ()"
-        observed = template.substitute(a="$ ! ()")
-        self.assertEqual(expected, observed)
-
-    def test_substitute_does_not_escape_safe_objects(self):
-        # Substitutions will not be escaped if they're `safe` objects.
-        template = ShellTemplate("{{safe(a)}}")
-        expected = "$ ! ()"
-        observed = template.substitute(a="$ ! ()")
-        self.assertEqual(expected, observed)
 
 
 class TestClassify(MAASTestCase):
@@ -331,46 +288,6 @@ class TestIsInstanceOrSubclass(MAASTestCase):
         self.assertTrue(
             is_instance_or_subclass(self.bar, *[Baz, [Bar, [Foo]]])
         )
-
-
-class TestConvertSizeToBytes(MAASTestCase):
-    """Tests for `convert_size_to_bytes`."""
-
-    scenarios = (
-        ("bytes", {"value": "24111", "expected": 24111}),
-        ("KiB", {"value": "2.21 KiB", "expected": int(2.21 * 2**10)}),
-        ("MiB", {"value": "2.21 MiB", "expected": int(2.21 * 2**20)}),
-        ("GiB", {"value": "2.21 GiB", "expected": int(2.21 * 2**30)}),
-        ("TiB", {"value": "2.21 TiB", "expected": int(2.21 * 2**40)}),
-        ("PiB", {"value": "2.21 PiB", "expected": int(2.21 * 2**50)}),
-        ("EiB", {"value": "2.21 EiB", "expected": int(2.21 * 2**60)}),
-        ("ZiB", {"value": "2.21 ZiB", "expected": int(2.21 * 2**70)}),
-        ("YiB", {"value": "2.21 YiB", "expected": int(2.21 * 2**80)}),
-        (
-            "whitespace",
-            {"value": "2.21   GiB", "expected": int(2.21 * 2**30)},
-        ),
-        ("zero", {"value": "0 TiB", "expected": 0}),
-    )
-
-    def test_convert_size_to_bytes(self):
-        self.assertEqual(self.expected, convert_size_to_bytes(self.value))
-
-
-class TestConvertSizeToBytesErrors(MAASTestCase):
-    """Error handling tests for `convert_size_to_bytes`."""
-
-    def test_unknown_capacity_unit(self):
-        error = self.assertRaises(
-            UnknownCapacityUnitError, convert_size_to_bytes, "200 superbytes"
-        )
-        self.assertEqual("Unknown capacity unit 'superbytes'", str(error))
-
-    def test_empty_string(self):
-        self.assertRaises(ValueError, convert_size_to_bytes, "")
-
-    def test_empty_value(self):
-        self.assertRaises(ValueError, convert_size_to_bytes, " KiB")
 
 
 class TestKernelToDebianArchitecture(MAASTestCase):
