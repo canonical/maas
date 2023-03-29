@@ -42,10 +42,10 @@ from provisioningserver.path import get_path
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import (
+from provisioningserver.utils import shell
+from provisioningserver.utils.arch import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
-    shell,
 )
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale

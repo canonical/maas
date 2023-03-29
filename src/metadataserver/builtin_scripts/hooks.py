@@ -52,7 +52,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
-from provisioningserver.utils import kernel_to_debian_architecture
+from provisioningserver.utils.arch import kernel_to_debian_architecture
 from provisioningserver.utils.ipaddr import is_ipoib_mac
 from provisioningserver.utils.lxd import parse_lxd_cpuinfo, parse_lxd_networks
 

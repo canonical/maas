@@ -20,6 +20,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import virsh
+from provisioningserver.utils.arch import KERNEL_TO_DEBIAN_ARCHITECTURES
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import asynchronous
 
@@ -223,15 +224,15 @@ class TestVirshSSH(MAASTestCase):
         arch = factory.make_name("arch")
         output = SAMPLE_DUMPXML % arch
         conn = self.configure_virshssh(output)
-        expected = conn.get_arch("")
+        expected = conn.get_arch("machine")
         self.assertEqual(arch, expected)
 
     def test_get_arch_returns_valid_fixed(self):
-        arch = random.choice(list(virsh.ARCH_FIX))
-        fixed_arch = virsh.ARCH_FIX[arch]
+        arch = random.choice(list(KERNEL_TO_DEBIAN_ARCHITECTURES))
+        fixed_arch = f"{KERNEL_TO_DEBIAN_ARCHITECTURES[arch]}/generic"
         output = SAMPLE_DUMPXML % arch
         conn = self.configure_virshssh(output)
-        expected = conn.get_arch("")
+        expected = conn.get_arch("machine")
         self.assertEqual(fixed_arch, expected)
 
     def test_resets_locale(self):

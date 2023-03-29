@@ -41,7 +41,7 @@ from provisioningserver.testing.certificates import (
     get_sample_cert,
     SampleCertificateFixture,
 )
-from provisioningserver.utils import (
+from provisioningserver.utils.arch import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
 )

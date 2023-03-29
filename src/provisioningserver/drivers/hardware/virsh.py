@@ -9,6 +9,7 @@ import pexpect
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
+from provisioningserver.utils.arch import kernel_to_debian_architecture
 from provisioningserver.utils.shell import get_env_with_locale
 from provisioningserver.utils.twisted import synchronous
 
@@ -17,17 +18,6 @@ maaslog = get_maas_logger("drivers.virsh")
 XPATH_ARCH = "/domain/os/type/@arch"
 XPATH_BOOT = "/domain/os/boot"
 XPATH_OS = "/domain/os"
-
-# Virsh stores the architecture with a different
-# label then MAAS. This maps virsh architecture to
-# MAAS architecture.
-ARCH_FIX = {
-    "x86_64": "amd64",
-    "ppc64": "ppc64el",
-    "ppc64le": "ppc64el",
-    "i686": "i386",
-    "aarch64": "arm64",
-}
 
 
 class VirshVMState:
@@ -192,9 +182,11 @@ class VirshSSH(pexpect.spawn):
         evaluator = etree.XPathEvaluator(doc)
         arch = evaluator(XPATH_ARCH)[0]
 
-        # Fix architectures that need to be referenced by a different
-        # name, that MAAS understands.
-        return ARCH_FIX.get(arch, arch)
+        # Report arch as debian architecture name
+        try:
+            return kernel_to_debian_architecture(arch)
+        except KeyError:
+            return arch
 
     def configure_pxe_boot(self, machine):
         """Given the specified machine, reads the XML dump and determines

@@ -200,7 +200,7 @@ def create_node(
     # It is possible that the enlistment code did not provide a subarchitecture
     # for the give architecture; assume 'generic'.
     if "/" not in architecture:
-        architecture = "%s/generic" % architecture
+        architecture += "/generic"
 
     data = {
         "power_type": power_type,

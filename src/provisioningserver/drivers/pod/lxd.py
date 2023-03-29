@@ -48,7 +48,7 @@ from provisioningserver.refresh.node_info_scripts import (
     RUN_MACHINE_RESOURCES,
 )
 from provisioningserver.rpc.exceptions import PodInvalidResources
-from provisioningserver.utils import (
+from provisioningserver.utils.arch import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
 )

@@ -41,7 +41,7 @@ from provisioningserver.drivers.pod.virsh import (
 )
 from provisioningserver.enum import LIBVIRT_NETWORK, MACVLAN_MODE_CHOICES
 from provisioningserver.rpc.exceptions import PodInvalidResources
-from provisioningserver.utils import (
+from provisioningserver.utils.arch import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
     KERNEL_TO_DEBIAN_ARCHITECTURES,

@@ -5,7 +5,7 @@ import random
 from typing import Dict, List, Optional
 
 from maasserver.testing.factory import factory
-from provisioningserver.utils import kernel_to_debian_architecture
+from provisioningserver.utils.arch import kernel_to_debian_architecture
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
     get_default_monitored_interfaces,
