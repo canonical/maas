@@ -26,6 +26,7 @@ ARCH_FIX = {
     "ppc64": "ppc64el",
     "ppc64le": "ppc64el",
     "i686": "i386",
+    "aarch64": "arm64",
 }
 
 
