@@ -2,7 +2,7 @@ Source: maas
 Section: net
 Priority: optional
 Maintainer: MAAS developers <maas-devel@lists.ubuntu.com>
-Build-Depends: debhelper (>= 10),
+Build-Depends: debhelper (>= 13),
                dh-apport,
                dh-exec,
                dh-python,

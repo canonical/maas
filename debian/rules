@@ -4,32 +4,25 @@ BUILDHOME = $(CURDIR)/debian/build
 PYTHON3 = $(shell py3versions -d)
 
 %:
-	dh $@ --with python3,apport,systemd --buildsystem=pybuild
+	dh $@ --with python3,apport --buildsystem=pybuild
 
 override_dh_auto_test:
 	# do nothing as we don't want the tests to run because they require
 	# internet access
 
-override_dh_systemd_enable:
-	dh_systemd_enable -p maas-common --name=maas-syslog
-	dh_systemd_enable -p maas-region-api --name=maas-regiond
-	dh_systemd_enable -p maas-rack-controller --name=maas-rackd
-	dh_systemd_enable -p maas-common --name=maas-http
-	dh_systemd_enable -p maas-proxy --name=maas-proxy
-	dh_systemd_enable -p maas-dhcp --name=maas-dhcpd
-	dh_systemd_enable -p maas-dhcp --name=maas-dhcpd6
-
-override_dh_systemd_start:
-	dh_systemd_start -p maas-common --no-start maas-syslog.service
-	dh_systemd_start -p maas-region-api --no-start --restart-after-upgrade maas-regiond.service
-	dh_systemd_start -p maas-rack-controller --no-start maas-rackd.service
-	dh_systemd_start -p maas-common maas-http.service
-	dh_systemd_start -p maas-proxy maas-proxy.service
-	dh_systemd_start -p maas-dhcp maas-dhcpd.service
-	dh_systemd_start -p maas-dhcp maas-dhcpd6.service
+override_dh_installsystemd:
+	dh_installsystemd -p maas-common --no-start --name=maas-syslog maas-syslog.service
+	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-regiond maas-regiond.service
+	dh_installsystemd -p maas-rack-controller --no-start --name=maas-rackd maas-rackd.service
+	dh_installsystemd -p maas-common --name=maas-http maas-http.service
+	dh_installsystemd -p maas-proxy --name=maas-proxy maas-proxy.service
+	dh_installsystemd -p maas-dhcp --name=maas-dhcpd maas-dhcpd.service
+	dh_installsystemd -p maas-dhcp --name=maas-dhcpd6 maas-dhcpd6.service
 
 override_dh_auto_install:
 	dh_auto_install
+	# remove unneeded test scripts
+	rm $(CURDIR)/debian/tmp/usr/bin/test.*
 
 	# Collect static files
 	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/web/
@@ -42,12 +35,11 @@ override_dh_auto_install:
 	# install the apparmor profile
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d
 	install -m 644 $(CURDIR)/debian/maas-dhcp.apparmor \
-	    $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d/maas
+		$(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d/maas
 
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/maas/certificates
 
 	mv $(CURDIR)/debian/tmp/usr/bin/maas-power $(CURDIR)/debian/tmp/usr/bin/maas.power
-	dh_missing
 
 override_dh_auto_clean:
 	dh_auto_clean
