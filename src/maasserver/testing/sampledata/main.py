@@ -17,7 +17,7 @@ from .sampledata import generate
 
 def parse_args() -> Namespace:
     parser = ArgumentParser(
-        description="Configure storage for a machine",
+        description="Generate sample data in a MAAS database",
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--db-name", help="database name")
