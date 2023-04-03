@@ -305,16 +305,8 @@ sampledata: syncdb bin/maas-sampledata
 .PHONY: sampledata
 
 #
-# Package building
+# deb packages building
 #
-
-# This ought to be as simple as using
-#   gbp buildpackage --git-debian-branch=packaging
-# but it is not: without investing more time, we manually pre-build the source
-# tree and run debuild.
-
-packaging-repo = https://git.launchpad.net/maas/
-packaging-branch = "packaging"
 
 packaging-build-area := $(abspath ../build-area)
 packaging-version := $(shell utilities/package-version)
@@ -322,7 +314,7 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-go_bins_vendor := src/host-info/vendor
+go-bins-vendor := src/host-info/vendor
 
 $(packaging-build-area):
 	mkdir -p $@
@@ -331,34 +323,29 @@ $(packaging-build-area):
 	rm -rf $(packaging-build-area)
 .PHONY: -packaging-clean
 
--packaging-export-orig: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
+-packaging-export-tree:
+ifeq ($(packaging-export-uncommitted),true)
+	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
+		xargs tar --transform 's,^,$(packaging-dir)/,' \
+			-cf $(packaging-build-area)/$(packaging-orig-tar)
+else
 	git archive --format=tar $(packaging-export-extra) \
 		--prefix=$(packaging-dir)/ \
 		-o $(packaging-build-area)/$(packaging-orig-tar) HEAD
+endif
+.PHONY: -packaging-export-tree
+
+-packaging-tarball:
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) -C src/host-info vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go-bins-vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
-.PHONY: -packaging-export-orig
-
--packaging-export-orig-uncommitted: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
-	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
-		xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
-		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) -C src/host-info vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
-		--transform 's,^,$(packaging-dir)/,'
-	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
-.PHONY: -packaging-export-orig-uncommitted
-
--packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
-.PHONY: -packaging-export
+.PHONY: -packaging-tarball
 
 -package-tree: changelog := $(packaging-build-area)/$(packaging-dir)/debian/changelog
--package-tree: -packaging-export
+-package-tree: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area) -packaging-export-tree -packaging-tarball
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
 	cp -r debian $(packaging-build-area)/$(packaging-dir)
 	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
@@ -373,52 +360,15 @@ package: package-tree
 	@echo Binary packages built, see $(packaging-build-area).
 .PHONY: package
 
-# To build binary packages from uncommitted changes call "make package-dev".
 package-dev:
-	$(MAKE) export-uncommitted=yes package
+	$(MAKE) packaging-export-uncommitted=true package
 .PHONY: package-dev
 
-source-package: -package-tree
-	(cd $(packaging-build-area)/$(packaging-dir) && debuild -S -uc -us)
-	@echo Source package built, see $(packaging-build-area).
-.PHONY: source-package
-
-# To build source packages from uncommitted changes call "make package-dev".
-source-package-dev:
-	$(MAKE) export-uncommitted=yes source-package
-.PHONY: source-package-dev
-
-# To rebuild packages (i.e. from a clean slate):
-package-rebuild: package-clean package
-.PHONY: package-rebuild
-
-package-dev-rebuild: package-clean package-dev
-.PHONY: package--dev-rebuild
-
-source-package-rebuild: source-package-clean source-package
-.PHONY: source-package-rebuild
-
-source-package-dev-rebuild: source-package-clean source-package-dev
-.PHONY: source-package-dev-rebuild
-
-# To clean built packages away:
 package-clean: patterns := *.deb *.udeb *.dsc *.build *.changes
 package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
 package-clean:
-	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
+	$(RM) -f $(addprefix $(packaging-build-area)/,$(patterns))
 .PHONY: package-clean
-
-source-package-clean: patterns := *.dsc *.build *.changes
-source-package-clean: patterns += *.debian.tar.xz *.orig.tar.gz
-source-package-clean:
-	@$(RM) -v $(addprefix $(packaging-build-area)/,$(patterns))
-.PHONY: source-package-clean
-
-# Debugging target. Allows printing of any variable.
-# As an example, try:
-#     make print-BIN_SCRIPTS
-print-%:
-	@echo $* = $($*)
 
 #
 # Snap building
