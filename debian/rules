@@ -23,6 +23,7 @@ override_dh_auto_install:
 	dh_auto_install
 	# remove unneeded test scripts
 	rm $(CURDIR)/debian/tmp/usr/bin/test.*
+	rm $(CURDIR)/debian/tmp/usr/bin/maas-sampledata
 
 	# Collect static files
 	install -d -m 755  $(CURDIR)/debian/tmp/usr/share/maas/web/

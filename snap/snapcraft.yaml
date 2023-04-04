@@ -176,6 +176,7 @@ parts:
       - bin
       - -bin/activate*
       - -bin/Activate*
+      - -bin/maas-sampledata
       - etc/bind
       - etc/chrony
       - etc/freeipmi
