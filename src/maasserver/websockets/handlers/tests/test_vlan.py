@@ -48,6 +48,9 @@ class TestVLANHandler(MAASServerTestCase):
                 }
             )
         )
+        data["subnet_ids"] = list(
+            vlan.subnet_set.values_list("id", flat=True).order_by("id")
+        )
         if not for_list:
             data["node_ids"] = sorted(
                 list(
