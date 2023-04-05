@@ -1,9 +1,6 @@
 # Install maas-dhcp-helper
 package-files/usr/sbin/maas-dhcp-helper usr/sbin
 
-# Install test scripts
-package-files/usr/lib/maas/maas-test-enlistment usr/lib/maas
-
 # Install all other stuff
 debian/extras/99-maas-sudoers etc/sudoers.d
 usr/bin/maas-rack usr/sbin
