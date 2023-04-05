@@ -190,6 +190,9 @@ lint-go:
 
 lint-shell:
 	@shellcheck -x \
+		package-files/usr/lib/maas/beacon-monitor \
+		package-files/usr/lib/maas/network-monitor \
+		package-files/usr/lib/maas/unverified-ssh \
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
