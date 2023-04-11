@@ -16,11 +16,12 @@ __all__ = [
     "list_osystem_choices",
     "list_release_choices",
     "make_hwe_kernel_ui_text",
+    "parse_subarch_kernel_string",
     "release_a_newer_than_b",
     "validate_hwe_kernel",
 ]
 
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 from operator import itemgetter
 
 from distro_info import UbuntuDistroInfo
@@ -403,78 +404,182 @@ def get_release(string):
     return release
 
 
-def get_release_version_from_string(string):
-    """Convert an Ubuntu release, version, or kernel into a version tuple.
+class InvalidSubarchKernelStringError(Exception):
+    """Raised when subarch/kernel string does not match
+    any of the supported formats"""
 
-    Takes a string input represneting an Ubuntu release, version, or hwe_kernel
-    and returns a version tuple. The return value is a three integer tuple
-    representing an Ubuntu major, minor values(e.g 16, 4 for Xenial) and a
-    weight. The weight is used to give hwe and edge kernels a higher value when
-    compared to a ga kernels. Rolling kernels and releases are given a
-    very high value (999, 999) to always be the higher value during comparison.
 
-    Input: ga-16.04, ga-16.04-lowlatency
-    Output: (16, 4, 0)
+ParsedKernelString = namedtuple(
+    "ParsedKernelString", ["channel", "release", "platform", "kflavor"]
+)
 
-    Input: xenial, 16.04, hwe-16.04, hwe-16.04-lowlatency
-    Output: (16, 4, 1)
 
-    Input: hwe-16.04-edge
-    Output: (16, 4, 2)
+def parse_subarch_kernel_string(kernel_string: str) -> ParsedKernelString:
+    """Extracts meaningful info from the 3.4-ish subarch kernel string
+    with the following format:
+    ```
+        [platform-](ga|hwe[-edge])-(release)-[flavour-][edge]
+    ```
 
-    Input: rolling, hwe-rolling, hwe-rolling-lowlatency
-    Output: (999, 999, 0)
+    This format matches all the older kernel subarches, but also
+    allows having the platform specified. Examples of supported strings:
+      - `hwe-x`
+      - `ga-22.04`
+      - `hwe-22.04-lowlatency`
+      - `nvidia-ga-22.04`
+      - `raspi-hwe-edge-22.04-lowlatency`
 
-    Input: hwe-rolling-edge, hwe-rolling-lowlatency-edge
-    Output: (999, 999, 1)
+    :param kernel_string: kernel subarch string
+    :return named tuple (release channel, release, platform, flavour)
+
+    FIXME: This is a workaround for 3.4, it is not intended to become
+      a long-term solution (unless we fail spectacularly with improved
+      kernel model)
     """
-    parts = string.split("-")
-    parts_len = len(parts)
-    if parts_len == 1:
-        # Just the release name, e.g xenial or 16.04
-        release = string
-        weight = 0
-    elif parts_len == 2:
-        # hwe kernel, e.g hwe-x or hwe-16.04
-        release = parts[1]
-        weight = 0
-    elif parts_len == 3:
-        # hwe edge or lowlatency kernel,
-        # e.g hwe-16.04-edge or hwe-16.04-lowlatency
-        release = parts[1]
-        if parts[2] == "edge":
-            weight = 1
-        else:
-            weight = 0
-    elif parts_len == 4:
-        # hwe edge lowlatency kernel, e.g hwe-16.04-lowlatency-edge
-        release = parts[1]
-        if parts[3] == "edge":
-            weight = 1
-        else:
-            weight = 0
-    else:
-        raise ValueError("Unknown release or kernel %s!" % string)
+    # Kernel string is dash-separated in this format
+    parts = kernel_string.split("-")
 
-    # hwe kernels should only have a higher weight when using the new format
-    # which is hwe-<version>. This ensures the old format maps to the ga
-    # kernel.
-    if parts[0] == "hwe" and len(parts[1]) > 1:
-        weight += 1
+    if len(parts) == 1:
+        # Legacy format (v1 probably?): subarch is an actual subarch!
+        # (now called platform because of "subarch" being abused)
+        return ParsedKernelString(
+            channel="", release="", platform=kernel_string, kflavor=""
+        )
+
+    # Figure out the kernel channel
+    channel_index = None
+    channels_found = 0
+    for possible_channel in ("hwe", "ga"):
+        try:
+            channel_index = parts.index(possible_channel)
+        except ValueError:
+            # We expect ValueError
+            pass
+        else:
+            channel = possible_channel
+            channels_found += 1
+    if channels_found > 1:
+        raise InvalidSubarchKernelStringError(
+            f"Kernel {kernel_string} has multiple channels specified!"
+        )
+    if channel_index is None:
+        # Once again, subarch is an actual subarch! We don't do that
+        # anymore though.
+        return ParsedKernelString(
+            channel="", release="", platform=kernel_string, kflavor=""
+        )
+
+    # Everything before channel is considered as platform
+    platform = ""
+    if channel_index > 0:
+        platform = "-".join(parts[:channel_index])
+        parts = parts[channel_index:]
+
+    # HWE channel could be also "hwe-edge", let's check if that is the case
+    if channel == "hwe":
+        if len(parts) > 1 and parts[1] == "edge":
+            channel = "hwe-edge"
+            # Get rid of that extra element so that release will be
+            # at index 1
+            parts = parts[1:]
+        elif parts[-1] == "edge":
+            channel = "hwe-edge"
+            parts = parts[:-1]
+
+    # By this moment we should have release in parts[1] and flavour
+    # as the rest of the parts.
+    if len(parts) < 2:
+        raise ValueError(f"Kernel {kernel_string} has no release specified")
+    release = parts[1]
+    kflavor = "-".join(parts[2:])
+    return ParsedKernelString(
+        channel=channel, release=release, platform=platform, kflavor=kflavor
+    )
+
+
+# Coefficients for release sorting:
+FLAVOURED_WEIGHT = 10
+NOT_OLD_HWE_WEIGHT = 100  # New format kernels should weigh more
+PLATFORM_WEIGHT = 1000
+HWE_CHANNEL_WEIGHT = 10000
+HWE_EDGE_CHANNEL_WEIGHT = 100000
+
+
+def get_release_version_from_string(kernel_string: str):
+    """Convert an Ubuntu release, version, or kernel into a version tuple.
+    Also calculates "weight" of each release that is used to give
+    certain kernels a higher value when compared to other kernels.
+
+    Rolling kernels and releases are given a very high value (999, 999)
+    to always be the higher value during comparison.
+
+    :param kernel_string: kernel string to get release version from
+    :return Ubuntu version tuple (year, month, weight), where weight
+    """
+    parts = kernel_string.split("-")
+    parts_len = len(parts)
+    ubuntu_release = None
+    platform = ""
+    release = ""
+    kflavor = ""
+    if parts_len == 1:
+        # Just the release name, e.g xenial or 16.04 (always GA)
+        if kernel_string != "rolling":
+            ubuntu_release = get_release(kernel_string)
+            if ubuntu_release is None:
+                raise ValueError(
+                    "%s not found amongst the known Ubuntu releases!"
+                    % kernel_string
+                )
+            else:
+                release = kernel_string
+        channel = "ga"
+        weight = 0
+    else:
+        parsed = parse_subarch_kernel_string(kernel_string)
+        channel, release, platform, kflavor = (
+            parsed.channel,
+            parsed.release,
+            parsed.platform,
+            parsed.kflavor,
+        )
+        weight = 0
+
+        # hwe kernels should only have a higher weight when using hwe-<version>
+        # format. This ensures the old (hwe-{letter}) format maps to the ga kernel.
+        if channel == "hwe":
+            # `hwe-{letter}` should not get HWE weight bump
+            weight = HWE_CHANNEL_WEIGHT if len(release) > 1 else 0
+        elif channel == "hwe-edge":
+            weight = HWE_EDGE_CHANNEL_WEIGHT
+
+    # Newer format kernel strings should weigh more
+    # First condition is to bump platform-optimised kernels too
+    if (parts_len > 1 or platform) and (channel != "hwe" or len(release) > 1):
+        weight += NOT_OLD_HWE_WEIGHT
 
     if release == "rolling":
         # Rolling kernels are always the latest
         version = [999, 999]
     else:
-        ubuntu_release = get_release(release)
+        ubuntu_release = ubuntu_release or get_release(release)
         if ubuntu_release is None:
             raise ValueError(
-                "%s not found amongst the known Ubuntu releases!" % string
+                "%s not found amongst the known Ubuntu releases!"
+                % kernel_string
             )
         # Remove 'LTS' from version if it exists
         version = ubuntu_release["version"].split(" ")[0]
         # Convert the version into a list of ints
         version = [int(seg) for seg in version.split(".")]
+
+    if kflavor and kflavor != "generic":
+        weight += FLAVOURED_WEIGHT
+
+    if platform and platform != "generic":
+        # Platform-specific kernels should have higher weight over
+        # generic ones.
+        weight += PLATFORM_WEIGHT
 
     return tuple(version + [weight])
 

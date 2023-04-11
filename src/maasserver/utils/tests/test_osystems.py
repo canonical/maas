@@ -21,11 +21,14 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.osystems import (
+    FLAVOURED_WEIGHT,
     get_distro_series_initial,
     get_release_from_db,
     get_release_from_distro_info,
     get_release_requires_key,
     get_release_version_from_string,
+    HWE_CHANNEL_WEIGHT,
+    HWE_EDGE_CHANNEL_WEIGHT,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
     list_all_usable_releases,
@@ -33,6 +36,8 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
     make_hwe_kernel_ui_text,
+    NOT_OLD_HWE_WEIGHT,
+    PLATFORM_WEIGHT,
     release_a_newer_than_b,
     validate_hwe_kernel,
     validate_min_hwe_kernel,
@@ -514,7 +519,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 },
             ),
             (
-                "Old style kernel",
+                "Old style HWE kernel",
                 {
                     "string": "hwe-%s" % release["series"][0],
                     "expected": version_tuple + tuple([0]),
@@ -524,67 +529,194 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 "GA kernel",
                 {
                     "string": "ga-%s" % version_str,
-                    "expected": version_tuple + tuple([0]),
+                    "expected": version_tuple + tuple([NOT_OLD_HWE_WEIGHT]),
                 },
             ),
             (
                 "GA low latency kernel",
                 {
                     "string": "ga-%s-lowlatency" % version_str,
-                    "expected": version_tuple + tuple([0]),
+                    "expected": version_tuple
+                    + tuple([NOT_OLD_HWE_WEIGHT + FLAVOURED_WEIGHT]),
                 },
             ),
             (
-                "New style kernel",
+                "GA platform-optimised kernel",
+                {
+                    "string": "xgene-uboot-mustang-ga-%s" % version_str,
+                    "expected": version_tuple
+                    + tuple([NOT_OLD_HWE_WEIGHT + PLATFORM_WEIGHT]),
+                },
+            ),
+            (
+                "GA platform-optimised low latency kernel",
+                {
+                    "string": "xgene-uboot-mustang-ga-%s-lowlatency"
+                    % version_str,
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT
+                            + PLATFORM_WEIGHT
+                        ]
+                    ),
+                },
+            ),
+            (
+                "HWE kernel",
                 {
                     "string": "hwe-%s" % version_str,
-                    "expected": version_tuple + tuple([1]),
+                    "expected": version_tuple
+                    + tuple([HWE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]),
                 },
             ),
             (
-                "New style edge kernel",
+                "HWE edge kernel",
                 {
                     "string": "hwe-%s-edge" % version_str,
-                    "expected": version_tuple + tuple([2]),
+                    "expected": version_tuple
+                    + tuple([HWE_EDGE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]),
                 },
             ),
             (
-                "New style low latency kernel",
+                "HWE low latency kernel",
                 {
                     "string": "hwe-%s-lowlatency" % version_str,
-                    "expected": version_tuple + tuple([1]),
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT
+                        ]
+                    ),
                 },
             ),
             (
-                "New style edge low latency kernel",
+                "HWE edge low latency kernel",
                 {
                     "string": "hwe-%s-lowlatency-edge" % version_str,
-                    "expected": version_tuple + tuple([2]),
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_EDGE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT
+                        ]
+                    ),
+                },
+            ),
+            (
+                "Platform-optimised HWE kernel",
+                {
+                    "string": "xgene-uboot-mustang-hwe-%s" % version_str,
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + PLATFORM_WEIGHT
+                        ]
+                    ),
+                },
+            ),
+            (
+                "Platform-optimised HWE edge kernel",
+                {
+                    "string": "xgene-uboot-mustang-hwe-%s-edge" % version_str,
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_EDGE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + PLATFORM_WEIGHT
+                        ]
+                    ),
+                },
+            ),
+            (
+                "Platform-optimised HWE low latency kernel",
+                {
+                    "string": "xgene-uboot-mustang-hwe-%s-lowlatency"
+                    % version_str,
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT
+                            + PLATFORM_WEIGHT
+                        ]
+                    ),
+                },
+            ),
+            (
+                "Platform-optimised HWE edge low latency kernel",
+                {
+                    "string": "xgene-uboot-mustang-hwe-%s-lowlatency-edge"
+                    % version_str,
+                    "expected": version_tuple
+                    + tuple(
+                        [
+                            HWE_EDGE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT
+                            + PLATFORM_WEIGHT
+                        ]
+                    ),
                 },
             ),
             (
                 "Rolling kernel",
-                {"string": "hwe-rolling", "expected": tuple([999, 999, 1])},
+                {
+                    "string": "hwe-rolling",
+                    "expected": tuple(
+                        [999, 999, HWE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]
+                    ),
+                },
             ),
             (
                 "Rolling edge kernel",
                 {
                     "string": "hwe-rolling-edge",
-                    "expected": tuple([999, 999, 2]),
+                    "expected": tuple(
+                        [
+                            999,
+                            999,
+                            HWE_EDGE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT,
+                        ]
+                    ),
                 },
             ),
             (
                 "Rolling lowlatency kernel",
                 {
                     "string": "hwe-rolling-lowlatency",
-                    "expected": tuple([999, 999, 1]),
+                    "expected": tuple(
+                        [
+                            999,
+                            999,
+                            HWE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT,
+                        ]
+                    ),
                 },
             ),
             (
                 "Rolling lowlatency edge kernel",
                 {
                     "string": "hwe-rolling-lowlatency-edge",
-                    "expected": tuple([999, 999, 2]),
+                    "expected": tuple(
+                        [
+                            999,
+                            999,
+                            HWE_EDGE_CHANNEL_WEIGHT
+                            + NOT_OLD_HWE_WEIGHT
+                            + FLAVOURED_WEIGHT,
+                        ]
+                    ),
                 },
             ),
         )
@@ -621,8 +753,11 @@ class TestReleaseANewerThanB(MAASServerTestCase):
             release_a_newer_than_b("hwe-rolling", "hwe-rolling-edge")
         )
 
-    def test_kernel_flavor_doesnt_make_difference(self):
+    def test_flavoured_kernel_newer_than_flavourless(self):
         self.assertTrue(
+            release_a_newer_than_b("hwe-rolling-lowlatency", "hwe-rolling")
+        )
+        self.assertFalse(
             release_a_newer_than_b("hwe-rolling", "hwe-rolling-lowlatency")
         )
 
