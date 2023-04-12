@@ -91,9 +91,9 @@ install-dependencies:
 	if [ -x /usr/bin/snap ]; then cat required-packages/snaps | xargs -L1 sudo snap install; fi
 .PHONY: install-dependencies
 
-$(VENV): requirements-dev.txt
+$(VENV):
 	python3 -m venv --system-site-packages --clear $@
-	$(VENV)/bin/pip install -r $<
+	$(VENV)/bin/pip install -e .[testing]
 
 bin:
 	mkdir $@
