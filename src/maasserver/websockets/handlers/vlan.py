@@ -67,6 +67,9 @@ class VLANHandler(TimestampedModelHandler):
         data["rack_sids"] = sorted(
             node.system_id for node in nodes if node.is_rack_controller
         )
+        data["subnet_ids"] = list(
+            obj.subnet_set.values_list("id", flat=True).order_by("id")
+        )
         if not for_list:
             data["node_ids"] = sorted(node.id for node in nodes)
             data["space_ids"] = sorted(
