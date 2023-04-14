@@ -1,5 +1,0 @@
-debhelper
-dh-apport
-dh-exec
-dh-python
-fakeroot

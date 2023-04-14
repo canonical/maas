@@ -291,7 +291,6 @@ RegionControllerRule = Rule(
     Allow("dbus"),
     Allow("distro_info|distro_info.*"),
     Allow("django|django.**"),
-    Allow("docutils.core"),
     Allow("formencode|formencode.**"),
     Allow("hvac|hvac.**"),
     Allow("jsonschema|jsonschema.**"),

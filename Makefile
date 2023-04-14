@@ -72,23 +72,22 @@ build: \
 all: build ui go-bins doc
 .PHONY: all
 
-REQUIRED_DEPS_FILES = base build dev doc
-FORBIDDEN_DEPS_FILES = forbidden
-
-# list package names from a required-packages/ file
-list_required = $(shell sort -u required-packages/$1 | sed '/^\#/d')
-
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
-install-dependencies: release := $(shell lsb_release -c -s)
-install-dependencies: apt_install := sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y
+install-dependencies: required_deps_files := base dev
+# list package names from a required-packages/ file
+install-dependencies: list_packages = $(shell sort -u required-packages/$1 | sed '/^\#/d')
+install-dependencies: apt := sudo DEBIAN_FRONTEND=noninteractive apt -y
+install-dependencies: apt_install := $(apt) install --no-install-recommends
 install-dependencies:
 	$(apt_install) software-properties-common gpg-agent
-	if [ -n "$(MAAS_PPA)" ]; then sudo apt-add-repository -y $(MAAS_PPA); fi
-	$(apt_install) $(foreach deps,$(REQUIRED_DEPS_FILES),$(call list_required,$(deps)))
-	sudo DEBIAN_FRONTEND=noninteractive apt purge -y \
-		$(foreach deps,$(FORBIDDEN_DEPS_FILES),$(call list_required,$(deps)))
-	if [ -x /usr/bin/snap ]; then cat required-packages/snaps | xargs -L1 sudo snap install; fi
+ifneq ($(MAAS_PPA),)
+	sudo apt-add-repository -y $(MAAS_PPA)
+endif
+	$(apt) build-dep .
+	$(apt_install) $(foreach deps,$(required_deps_files),$(call list_packages,$(deps)))
+	$(apt) purge $(call list_packages,forbidden)
+	if [ -x /usr/bin/snap ]; then xargs -L1 sudo snap install < required-packages/snaps; fi
 .PHONY: install-dependencies
 
 $(VENV):
