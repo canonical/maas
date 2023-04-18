@@ -139,19 +139,15 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = [random.randint(2, 999) for _ in range(3)]
+        pids_running_command = random.sample(range(2, 1000), 3)
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
-        pids_not_running_command = {
-            random.randint(1000, 1999) for _ in range(3)
-        }
+        pids_not_running_command = random.sample(range(1000, 2000), 3)
         for pid in pids_not_running_command:
             self.make_process(
                 proc_path, pid, command=factory.make_name("command")
             )
-        pids_running_command_in_container = {
-            random.randint(2000, 2999) for _ in range(3)
-        }
+        pids_running_command_in_container = random.sample(range(2000, 3000), 3)
         for pid in pids_running_command_in_container:
             self.make_process(
                 proc_path, pid, in_container=True, command=command
@@ -169,7 +165,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = [random.randint(2, 999) for _ in range(3)]
+        pids_running_command = random.sample(range(2, 1000), 3)
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
             # Remove the comm file to test the exception handling.
@@ -182,14 +178,12 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path, in_container=True)
         command = factory.make_name("command")
-        pids_running_command = [random.randint(2, 999) for _ in range(3)]
+        pids_running_command = random.sample(range(2, 1000), 3)
         for pid in pids_running_command:
             self.make_process(
                 proc_path, pid, in_container=True, command=command
             )
-        pids_not_running_command = {
-            random.randint(1000, 1999) for _ in range(3)
-        }
+        pids_not_running_command = random.sample(range(1000, 2000), 3)
         for pid in pids_not_running_command:
             self.make_process(
                 proc_path,
