@@ -29,6 +29,7 @@ from maasserver.utils.osystems import (
     get_release_version_from_string,
     HWE_CHANNEL_WEIGHT,
     HWE_EDGE_CHANNEL_WEIGHT,
+    InvalidSubarchKernelStringError,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
     list_all_usable_releases,
@@ -37,6 +38,8 @@ from maasserver.utils.osystems import (
     list_release_choices,
     make_hwe_kernel_ui_text,
     NOT_OLD_HWE_WEIGHT,
+    parse_subarch_kernel_string,
+    ParsedKernelString,
     PLATFORM_WEIGHT,
     release_a_newer_than_b,
     validate_hwe_kernel,
@@ -44,6 +47,7 @@ from maasserver.utils.osystems import (
     validate_osystem_and_distro_series,
 )
 from maastesting.matchers import MockAnyCall, MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
 
 
 class TestOsystems(MAASServerTestCase):
@@ -1070,3 +1074,275 @@ class TestGetReleaseFromDB(MAASServerTestCase):
 
     def test_returns_none_when_not_found(self):
         self.assertIsNone(get_release_from_db(factory.make_name("string")))
+
+
+class TestParseSubarchKernelString(MAASTestCase):
+    def _expect(
+        self, kernel_string, *, channel="", release="", platform="", kflavor=""
+    ):
+        result = parse_subarch_kernel_string(kernel_string)
+        self.assertEqual(
+            ParsedKernelString(
+                channel=channel,
+                release=release,
+                platform=platform,
+                kflavor=kflavor,
+            ),
+            result,
+        )
+
+    def test_supports_subarch_being_subarch(self):
+        self._expect("highbank", platform="highbank")
+
+    def test_supports_subarch_being_multipart_subarch(self):
+        self._expect("xgene-uboot-mustang", platform="xgene-uboot-mustang")
+
+    def test_supports_ga_version_format_without_platform(self):
+        self._expect(
+            "ga-16.04",
+            channel="ga",
+            release="16.04",
+            platform="",
+            kflavor="",
+        )
+
+    def test_supports_ga_version_flavoured_format_without_platform(self):
+        self._expect(
+            "ga-16.04-lowlatency",
+            channel="ga",
+            release="16.04",
+            platform="",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_ga_version_format_with_platform(self):
+        self._expect(
+            "platform-ga-16.04",
+            channel="ga",
+            release="16.04",
+            platform="platform",
+            kflavor="",
+        )
+        self._expect(
+            "multi-part-platform-ga-16.04",
+            channel="ga",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="",
+        )
+
+    def test_supports_ga_version_flavoured_format_with_platform(self):
+        self._expect(
+            "platform-ga-16.04-lowlatency",
+            channel="ga",
+            release="16.04",
+            platform="platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "multi-part-platform-ga-16.04-lowlatency",
+            channel="ga",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_release_letter(self):
+        self._expect(
+            "hwe-x", channel="hwe", release="x", platform="", kflavor=""
+        )
+
+    def test_supports_hwe_release_letter_flavoured(self):
+        self._expect(
+            "hwe-x-lowlatency",
+            channel="hwe",
+            release="x",
+            platform="",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_release_letter_with_platform(self):
+        self._expect(
+            "platform-hwe-x",
+            channel="hwe",
+            release="x",
+            platform="platform",
+            kflavor="",
+        )
+        self._expect(
+            "multi-part-platform-hwe-x",
+            channel="hwe",
+            release="x",
+            platform="multi-part-platform",
+            kflavor="",
+        )
+
+    def test_supports_hwe_release_letter_flavoured_with_platform(self):
+        self._expect(
+            "platform-hwe-x-lowlatency",
+            channel="hwe",
+            release="x",
+            platform="platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "multi-part-platform-hwe-x-lowlatency",
+            channel="hwe",
+            release="x",
+            platform="multi-part-platform",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_release_version(self):
+        self._expect(
+            "hwe-16.04",
+            channel="hwe",
+            release="16.04",
+            platform="",
+            kflavor="",
+        )
+
+    def test_supports_hwe_release_version_flavoured(self):
+        self._expect(
+            "hwe-16.04-lowlatency",
+            channel="hwe",
+            release="16.04",
+            platform="",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_release_version_with_platform(self):
+        self._expect(
+            "platform-hwe-16.04",
+            channel="hwe",
+            release="16.04",
+            platform="platform",
+            kflavor="",
+        )
+        self._expect(
+            "multi-part-platform-hwe-16.04",
+            channel="hwe",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="",
+        )
+
+    def test_supports_hwe_release_version_flavoured_with_platform(self):
+        self._expect(
+            "platform-hwe-16.04-lowlatency",
+            channel="hwe",
+            release="16.04",
+            platform="platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "multi-part-platform-hwe-16.04-lowlatency",
+            channel="hwe",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_edge_release_version(self):
+        self._expect(
+            "hwe-16.04-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="",
+            kflavor="",
+        )
+        self._expect(
+            "hwe-edge-16.04",
+            channel="hwe-edge",
+            release="16.04",
+            platform="",
+            kflavor="",
+        )
+
+    def test_supports_hwe_edge_release_version_flavoured(self):
+        self._expect(
+            "hwe-16.04-lowlatency-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "hwe-edge-16.04-lowlatency",
+            channel="hwe-edge",
+            release="16.04",
+            platform="",
+            kflavor="lowlatency",
+        )
+
+    def test_supports_hwe_edge_release_version_with_platform(self):
+        self._expect(
+            "platform-hwe-16.04-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="platform",
+            kflavor="",
+        )
+        self._expect(
+            "multi-part-platform-hwe-16.04-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="",
+        )
+        self._expect(
+            "platform-hwe-edge-16.04",
+            channel="hwe-edge",
+            release="16.04",
+            platform="platform",
+            kflavor="",
+        )
+        self._expect(
+            "multi-part-platform-hwe-edge-16.04",
+            channel="hwe-edge",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="",
+        )
+
+    def test_supports_hwe_edge_release_version_flavoured_with_platform(self):
+        self._expect(
+            "platform-hwe-16.04-lowlatency-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "multi-part-platform-hwe-16.04-lowlatency-edge",
+            channel="hwe-edge",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "platform-hwe-edge-16.04-lowlatency",
+            channel="hwe-edge",
+            release="16.04",
+            platform="platform",
+            kflavor="lowlatency",
+        )
+        self._expect(
+            "multi-part-platform-hwe-edge-16.04-lowlatency",
+            channel="hwe-edge",
+            release="16.04",
+            platform="multi-part-platform",
+            kflavor="lowlatency",
+        )
+
+    def test_raises_when_multiple_channels_specified(self):
+        self.assertRaises(
+            InvalidSubarchKernelStringError,
+            parse_subarch_kernel_string,
+            "hwe-ga-20.04",
+        )
+
+    def test_raises_when_no_release(self):
+        self.assertRaises(
+            ValueError, parse_subarch_kernel_string, "some-platform-hwe"
+        )
