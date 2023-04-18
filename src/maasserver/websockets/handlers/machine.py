@@ -4,6 +4,7 @@
 """The machine handler for the WebSocket connection."""
 
 
+from collections import defaultdict
 from functools import partial
 import logging
 from operator import itemgetter
@@ -1012,25 +1013,27 @@ class MachineHandler(NodeHandler):
 
     def _bulk_action(
         self, filter_params, action_name, extra_params
-    ) -> tuple[int, list[str]]:
+    ) -> tuple[int, list[str], dict[list[str]]]:
         """Find nodes that match the filter, then apply the given action to them."""
         machines = self._filter(
             self.get_queryset(for_list=True), None, filter_params
         )
         success_count = 0
         failed_system_ids = []
+        failure_details = defaultdict(list)
         for machine in machines:
             try:
                 self._action(machine, action_name, extra_params)
             except NodeActionError as e:
                 failed_system_ids.append(machine.system_id)
+                failure_details[str(e)].append(machine.system_id)
                 log.error(
                     f"Bulk action ({action_name}) for {machine.system_id} failed: {e}"
                 )
             else:
                 success_count += 1
 
-        return success_count, failed_system_ids
+        return success_count, failed_system_ids, failure_details
 
     def _bulk_clone(self, source, filter_params, extra_params):
         """Bulk clone - special case of bulk_action."""
@@ -1054,12 +1057,15 @@ class MachineHandler(NodeHandler):
                 self.get_object(params), params["filter"], extra_params
             )
         if "filter" in params:
-            success_count, failed_system_ids = self._bulk_action(
-                params["filter"], action_name, extra_params
-            )
+            (
+                success_count,
+                failed_system_ids,
+                failure_details,
+            ) = self._bulk_action(params["filter"], action_name, extra_params)
             return {
                 "success_count": success_count,
                 "failed_system_ids": failed_system_ids,
+                "failure_details": failure_details,
             }
         obj = self.get_object(params)
         return self._action(obj, action_name, extra_params)
