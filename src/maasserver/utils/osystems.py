@@ -696,7 +696,7 @@ def validate_hwe_kernel(
                 kflavor = kernel_part
                 break
         usable_kernels = BootResource.objects.get_usable_hwe_kernels(
-            os_release, arch, kflavor
+            os_release, architecture=arch, kflavor=kflavor
         )
         for i in usable_kernels:
             if release_a_newer_than_b(
@@ -708,7 +708,7 @@ def validate_hwe_kernel(
             % (distro_series, min_hwe_kernel)
         )
     for kernel in BootResource.objects.get_usable_hwe_kernels(
-        os_release, arch, "generic"
+        os_release, architecture=arch, kflavor="generic"
     ):
         if release_a_newer_than_b(kernel, distro_series):
             return kernel

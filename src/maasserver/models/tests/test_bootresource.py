@@ -882,7 +882,10 @@ class TestGetUsableKernels(MAASServerTestCase):
         self.assertEqual(
             generic_kernels,
             BootResource.objects.get_usable_hwe_kernels(
-                self.name, self.arch, "generic"
+                name=self.name,
+                architecture=self.arch,
+                platform=None,
+                kflavor="generic",
             ),
             "%s should return %s as its usable kernel"
             % (self.name, generic_kernels),

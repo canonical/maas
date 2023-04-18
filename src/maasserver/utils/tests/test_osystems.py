@@ -928,7 +928,9 @@ class TestValidateHweKernel(MAASServerTestCase):
         self.assertEqual("hwe-16.04-edge", kernel)
         self.assertThat(
             mock_get_usable_hwe_kernels,
-            MockCalledOnceWith("ubuntu/xenial", arch, "generic"),
+            MockCalledOnceWith(
+                "ubuntu/xenial", architecture=arch, kflavor="generic"
+            ),
         )
 
     def test_validate_hwe_kern_uses_base_image_for_lookup_with_custom_images(

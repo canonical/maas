@@ -258,11 +258,19 @@ class BootResourceManager(Manager):
         self,
         name=None,
         architecture=None,
+        platform=None,
         kflavor=None,
         include_subarches=False,
     ):
-        """Return the set of kernels."""
-        from maasserver.utils.osystems import get_release_version_from_string
+        """Return the set of kernels.
+
+        UPD: because of 3.4 transition from "subarches" to "platforms",
+        expect some confusion ahead.
+        """
+        from maasserver.utils.osystems import (
+            get_release_version_from_string,
+            parse_subarch_kernel_string,
+        )
 
         if not name:
             name = ""
@@ -293,27 +301,57 @@ class BootResourceManager(Manager):
             ):
                 continue
             subarch = resource.split_arch()[1]
-            if subarch.startswith("hwe-") or subarch.startswith("ga-"):
+            channel, _, kplatform, flavor = parse_subarch_kernel_string(
+                subarch
+            )
+
+            # Skip non-generic platform-specific kernels
+            if platform:
+                resource_platform = resource.extra.get("platform", kplatform)
+                if not resource_platform:
+                    # Somewhat reasonable assumption, since the
+                    # `parse_subarch_kernel_string` will figure out
+                    # platform from all kernels that are currently
+                    # in the stream
+                    resource_platform = "generic"
+
+                resource_supported_platforms = resource.extra.get(
+                    "supported_platforms", ""
+                ).split(",")
+                if (
+                    resource_platform != platform
+                    and platform not in resource_supported_platforms
+                ):
+                    continue
+
+            if channel.startswith("hwe") or channel == "ga":
                 kernels.add(subarch)
                 if resource.rolling:
-                    subarch_parts = subarch.split("-")
-                    subarch_parts[1] = "rolling"
-                    kernels.add("-".join(subarch_parts))
+                    kernels.add(
+                        "-".join(
+                            (kplatform, channel, "rolling", flavor)
+                        ).strip("-")
+                    )
 
+            # Add resource compatibility levels to the set
             if include_subarches and "subarches" in resource.extra:
-                for subarch in resource.extra["subarches"].split(","):
-                    if subarch.startswith("hwe-") or subarch.startswith("ga-"):
-                        if kflavor is None:
-                            kernels.add(subarch)
-                        else:
-                            # generic kflavors are not included in the subarch.
-                            if kflavor == "generic":
-                                kparts = subarch.split("-")
-                                if len(kparts) == 2:
-                                    kernels.add(subarch)
-                            else:
-                                if kflavor in subarch:
-                                    kernels.add(subarch)
+                for extra_subarch in resource.extra["subarches"].split(","):
+                    channel, _, _, flavor = parse_subarch_kernel_string(
+                        extra_subarch
+                    )
+                    if channel != "ga" and not channel.startswith("hwe"):
+                        continue
+
+                    if kflavor is None:
+                        kernels.add(extra_subarch)
+                    elif flavor == "generic":
+                        # generic kflavors are not included in the subarch.
+                        kparts = extra_subarch.split("-")
+                        if len(kparts) == 2:
+                            kernels.add(extra_subarch)
+                    elif flavor == kflavor:
+                        kernels.add(extra_subarch)
+
         # Make sure kernels named with a version come after the kernels named
         # with the first letter of release. This switched in Xenial so this
         # preserves the chronological order of the kernels.
@@ -322,18 +360,25 @@ class BootResourceManager(Manager):
         )
 
     def get_usable_hwe_kernels(
-        self, name=None, architecture=None, kflavor=None
+        self, name=None, architecture=None, platform=None, kflavor=None
     ):
-        """Return the set of usable kernels for the given name, arch, kflavor.
+        """Return the set of usable kernels for the given name, arch,
+        platform, and kflavor.
 
         Returns only the list of kernels which MAAS has downloaded. For example
         if Trusty and Xenial have been downloaded this will return hwe-t,
         ga-16.04, hwe-16.04, hwe-16.04-edge, hwe-16.04-lowlatency, and
         hwe-16.04-lowlatency-edge."""
-        return self.get_hwe_kernels(name, architecture, kflavor, False)
+        return self.get_hwe_kernels(
+            name,
+            architecture=architecture,
+            platform=platform,
+            kflavor=kflavor,
+            include_subarches=False,
+        )
 
     def get_supported_hwe_kernels(
-        self, name=None, architecture=None, kflavor=None
+        self, name=None, architecture=None, platform=None, kflavor=None
     ):
         """Return the set of supported kernels for the given name, arch,
         kflavor.
@@ -343,7 +388,13 @@ class BootResourceManager(Manager):
         downloaded this will return hwe-p, hwe-q, hwe-r, hwe-s, hwe-t, hwe-u,
         hwe-v, hwe-w, ga-16.04, hwe-16.04, hwe-16.04-edge,
         hwe-16.04-lowlatency, and hwe-16.04-lowlatency-edge."""
-        return self.get_hwe_kernels(name, architecture, kflavor, True)
+        return self.get_hwe_kernels(
+            name,
+            architecture=architecture,
+            platform=platform,
+            kflavor=kflavor,
+            include_subarches=True,
+        )
 
     def get_kpackage_for_node(self, node):
         """Return the kernel package name for the kernel specified."""
