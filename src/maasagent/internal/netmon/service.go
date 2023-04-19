@@ -1,0 +1,3 @@
+package netmon
+
+func NewService() {}

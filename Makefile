@@ -1,6 +1,7 @@
 python := python3
 snapcraft := SNAPCRAFT_BUILD_INFO=1 snapcraft -v
 
+BIN_DIR := bin
 VENV := .ve
 
 # PPA used by MAAS dependencies. It can be overridden by the env.
@@ -10,6 +11,8 @@ VENV := .ve
 ifeq ($(MAAS_PPA),)
 	MAAS_PPA = ppa:maas-committers/latest-deps
 endif
+
+export PATH := $(PWD)/$(BIN_DIR):$(PATH)
 
 # pkg_resources makes some incredible noise about version numbers. They
 # are not indications of bugs in MAAS so we silence them everywhere.
@@ -128,9 +131,10 @@ swagger-css: $(swagger-dist)
 
 go-bins:
 	$(MAKE) -j -C src/host-info build
+	$(MAKE) -j -C src/maasagent build
 .PHONY: go-bins
 
-test: test-missing-migrations test-py lint-oapi
+test: test-missing-migrations test-py lint-oapi test-go
 .PHONY: test
 
 test-missing-migrations: bin/database bin/maas-region
@@ -140,6 +144,10 @@ test-missing-migrations: bin/database bin/maas-region
 test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
 	@utilities/run-py-tests-ci
 .PHONY: test-py
+
+test-go:
+	@find src/ -type f -name go.mod -maxdepth 3 -execdir make test \;
+.PHONY: test-go
 
 test-perf: bin/pytest
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
@@ -182,9 +190,9 @@ lint-oapi: openapi.yaml
 
 # Go fmt
 lint-go:
-	@find src/ \( -name pkg -o -name vendor \) -prune -o -name '*.go' -exec gofmt -l {} + | \
-		tee /tmp/gofmt.lint
-	@test ! -s /tmp/gofmt.lint
+	@find src -type f -name go.mod -maxdepth 3 -execdir golangci-lint run -v ./... \; | \
+		tee /tmp/golangci-lint.lint
+	@test ! -s /tmp/golangci-lint.lint
 .PHONY: lint-go
 
 lint-shell:
@@ -424,3 +432,9 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		src/host-info/bin/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
 .PHONY: snap-tree-sync
+
+$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.51.2
+$(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
+	GOBIN="$(realpath $(dir $@))"
+	sh utilities/get_golangci-lint.sh "v${GOLANGCI_VERSION}"
+	touch $@
