@@ -146,7 +146,7 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 .PHONY: test-py
 
 test-go:
-	@find src/ -type f -name go.mod -maxdepth 3 -execdir make test \;
+	@find src -maxdepth 3 -type f -name go.mod -execdir make test \;
 .PHONY: test-go
 
 test-perf: bin/pytest
@@ -189,8 +189,8 @@ lint-oapi: openapi.yaml
 .PHONY: lint-oapi
 
 # Go fmt
-lint-go:
-	@find src -type f -name go.mod -maxdepth 3 -execdir golangci-lint run -v ./... \; | \
+lint-go: $(BIN_DIR)/golangci-lint
+	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run -v ./... \; | \
 		tee /tmp/golangci-lint.lint
 	@test ! -s /tmp/golangci-lint.lint
 .PHONY: lint-go
@@ -436,5 +436,5 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 $(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.51.2
 $(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
 	GOBIN="$(realpath $(dir $@))"
-	sh utilities/get_golangci-lint.sh "v${GOLANGCI_VERSION}"
+	sh utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
 	touch $@

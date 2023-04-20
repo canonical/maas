@@ -13,7 +13,7 @@ export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache 
 export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
 export GOFLAGS := -mod=vendor
 
-default: build test lint
+default: build test
 
 $(BIN_DIR): ; mkdir -p $@
 
