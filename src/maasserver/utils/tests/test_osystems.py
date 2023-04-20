@@ -27,6 +27,7 @@ from maasserver.utils.osystems import (
     get_release_from_distro_info,
     get_release_requires_key,
     get_release_version_from_string,
+    get_working_kernel,
     HWE_CHANNEL_WEIGHT,
     HWE_EDGE_CHANNEL_WEIGHT,
     InvalidSubarchKernelStringError,
@@ -42,7 +43,6 @@ from maasserver.utils.osystems import (
     ParsedKernelString,
     PLATFORM_WEIGHT,
     release_a_newer_than_b,
-    validate_hwe_kernel,
     validate_min_hwe_kernel,
     validate_osystem_and_distro_series,
 )
@@ -766,38 +766,40 @@ class TestReleaseANewerThanB(MAASServerTestCase):
         )
 
 
-class TestValidateHweKernel(MAASServerTestCase):
-    def test_validate_hwe_kernel_returns_default_kernel(self):
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-u")
-        hwe_kernel = validate_hwe_kernel(
+class TestGetWorkingKernel(MAASServerTestCase):
+    def test_get_working_kernel_returns_default_kernel(self):
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-u",
+        )
+        hwe_kernel = get_working_kernel(
             None, None, "amd64/generic", "ubuntu", "trusty"
         )
         self.assertEqual(hwe_kernel, "hwe-t")
 
-    def test_validate_hwe_kernel_set_kernel(self):
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-v")
-        hwe_kernel = validate_hwe_kernel(
+    def test_get_working_kernel_set_kernel(self):
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-v",
+        )
+        hwe_kernel = get_working_kernel(
             "hwe-v", None, "amd64/generic", "ubuntu", "trusty"
         )
         self.assertEqual(hwe_kernel, "hwe-v")
 
-    def test_validate_hwe_kernel_accepts_ga_kernel(self):
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("ga-16.04",)
-        hwe_kernel = validate_hwe_kernel(
+    def test_get_working_kernel_accepts_ga_kernel(self):
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "ga-16.04",
+        )
+        hwe_kernel = get_working_kernel(
             "ga-16.04", None, "amd64/generic", "ubuntu", "xenial"
         )
         self.assertEqual(hwe_kernel, "ga-16.04")
 
-    def test_validate_hwe_kernel_fails_with_nongeneric_arch_and_kernel(self):
+    def test_get_working_kernel_fails_with_nongeneric_arch_and_kernel(self):
         exception_raised = False
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 "hwe-v", None, "armfh/hardbank", "ubuntu", "trusty"
             )
         except ValidationError as e:
@@ -809,13 +811,14 @@ class TestValidateHweKernel(MAASServerTestCase):
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kernel_fails_with_missing_hwe_kernel(self):
+    def test_get_working_kernel_fails_with_missing_hwe_kernel(self):
         exception_raised = False
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-u")
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-u",
+        )
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 "hwe-v", None, "amd64/generic", "ubuntu", "trusty"
             )
         except ValidationError as e:
@@ -826,13 +829,14 @@ class TestValidateHweKernel(MAASServerTestCase):
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kernel_fails_with_old_kernel_and_newer_release(self):
+    def test_get_working_kernel_fails_with_old_kernel_and_newer_release(self):
         exception_raised = False
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-v")
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-v",
+        )
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 "hwe-t", None, "amd64/generic", "ubuntu", "vivid"
             )
         except ValidationError as e:
@@ -842,44 +846,48 @@ class TestValidateHweKernel(MAASServerTestCase):
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kern_fails_with_old_kern_and_new_min_hwe_kern(self):
+    def test_get_working_kernel_fails_with_old_kern_and_new_min_hwe_kern(self):
         exception_raised = False
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-v")
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-v",
+        )
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 "hwe-t", "hwe-v", "amd64/generic", "ubuntu", "precise"
             )
         except ValidationError as e:
             self.assertEqual(
-                "hwe_kernel(hwe-t) is older than min_hwe_kernel(hwe-v).",
+                "chosen kernel (hwe-t) is older than minimal kernel required by the machine (hwe-v).",
                 e.message,
             )
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kernel_fails_with_no_avalible_kernels(self):
+    def test_get_working_kernel_fails_with_no_avalible_kernels(self):
         exception_raised = False
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-v")
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-v",
+        )
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 "hwe-t", "hwe-v", "amd64/generic", "ubuntu", "precise"
             )
         except ValidationError as e:
             self.assertEqual(
-                "hwe_kernel(hwe-t) is older than min_hwe_kernel(hwe-v).",
+                "chosen kernel (hwe-t) is older than minimal kernel required by the machine (hwe-v).",
                 e.message,
             )
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kern_fails_with_old_release_and_newer_hwe_kern(self):
+    def test_get_working_kernel_fails_with_old_release_and_newer_hwe_kern(
+        self,
+    ):
         exception_raised = False
         try:
-            validate_hwe_kernel(
+            get_working_kernel(
                 None, "hwe-v", "amd64/generic", "ubuntu", "trusty"
             )
         except ValidationError as e:
@@ -891,13 +899,14 @@ class TestValidateHweKernel(MAASServerTestCase):
             exception_raised = True
         self.assertTrue(exception_raised)
 
-    def test_validate_hwe_kern_always_sets_kern_with_commissionable_os(self):
-        self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        ).return_value = ("hwe-t", "hwe-v")
+    def test_get_working_kernel_always_sets_kern_with_commissionable_os(self):
+        self.patch(BootResource.objects, "get_kernels").return_value = (
+            "hwe-t",
+            "hwe-v",
+        )
         mock_get_config = self.patch(Config.objects, "get_config")
         mock_get_config.return_value = "trusty"
-        kernel = validate_hwe_kernel(
+        kernel = get_working_kernel(
             None,
             "hwe-v",
             "%s/generic" % factory.make_name("arch"),
@@ -910,30 +919,28 @@ class TestValidateHweKernel(MAASServerTestCase):
         )
         self.assertEqual("hwe-v", kernel)
 
-    def test_validate_hwe_kern_sets_hwe_kern_to_min_hwe_kern_for_edge(self):
+    def test_get_working_kernel_sets_hwe_kern_to_min_hwe_kern_for_edge(self):
         # Regression test for LP:1654412
-        mock_get_usable_hwe_kernels = self.patch(
-            BootResource.objects, "get_usable_hwe_kernels"
-        )
-        mock_get_usable_hwe_kernels.return_value = (
+        mock_get_kernels = self.patch(BootResource.objects, "get_kernels")
+        mock_get_kernels.return_value = (
             "hwe-16.04",
             "hwe-16.04-edge",
         )
         arch = factory.make_name("arch")
 
-        kernel = validate_hwe_kernel(
+        kernel = get_working_kernel(
             None, "hwe-16.04-edge", "%s/generic" % arch, "ubuntu", "xenial"
         )
 
         self.assertEqual("hwe-16.04-edge", kernel)
         self.assertThat(
-            mock_get_usable_hwe_kernels,
+            mock_get_kernels,
             MockCalledOnceWith(
                 "ubuntu/xenial", architecture=arch, kflavor="generic"
             ),
         )
 
-    def test_validate_hwe_kern_uses_base_image_for_lookup_with_custom_images(
+    def test_get_working_kernel_uses_base_image_for_lookup_with_custom_images(
         self,
     ):
         factory.make_usable_boot_resource(
@@ -949,7 +956,7 @@ class TestValidateHweKernel(MAASServerTestCase):
         )
         osystem = "custom"
         series = custom_resource.name
-        kernel = validate_hwe_kernel(
+        kernel = get_working_kernel(
             None, None, custom_resource.architecture, osystem, series
         )
         self.assertEqual("ga-18.04", kernel)
@@ -959,7 +966,7 @@ class TestValidateMinHweKernel(MAASServerTestCase):
     def test_validates_kernel(self):
         kernel = factory.make_kernel_string(generic_only=True)
         self.patch(
-            BootResource.objects, "get_supported_hwe_kernels"
+            BootResource.objects, "get_supported_kernel_compatibility_levels"
         ).return_value = (kernel,)
         self.assertEqual(kernel, validate_min_hwe_kernel(kernel))
 

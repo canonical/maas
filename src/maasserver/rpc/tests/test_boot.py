@@ -630,7 +630,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
             None,
         )
-        self.patch(boot_module, "validate_hwe_kernel").return_value = None
+        self.patch(boot_module, "get_working_kernel").return_value = None
         factory.make_default_ubuntu_release_bootable(arch)
         self.patch_autospec(boot_module, "event_log_pxe_request")
         observed_config = get_config(

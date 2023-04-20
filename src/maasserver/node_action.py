@@ -46,7 +46,7 @@ from maasserver.permissions import NodePermission
 from maasserver.preseed import get_base_osystem_series, get_curtin_config
 from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
-    validate_hwe_kernel,
+    get_working_kernel,
     validate_osystem_and_distro_series,
 )
 from metadataserver.enum import SCRIPT_STATUS
@@ -547,7 +547,7 @@ class Deploy(NodeAction):
             self.node.distro_series = configs["default_distro_series"]
             self.node.save()
         try:
-            self.node.hwe_kernel = validate_hwe_kernel(
+            self.node.hwe_kernel = get_working_kernel(
                 hwe_kernel,
                 self.node.min_hwe_kernel,
                 self.node.architecture,

@@ -177,7 +177,7 @@ def make_default_min_hwe_kernel_field(*args, **kwargs):
         kernel_choices += list_hwe_kernel_choices(
             [
                 kernel
-                for kernel in BootResource.objects.get_usable_hwe_kernels(
+                for kernel in BootResource.objects.get_kernels(
                     commissioning_os_release
                 )
                 if release_a_newer_than_b(kernel, commissioning_series)

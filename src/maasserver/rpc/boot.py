@@ -30,7 +30,7 @@ from maasserver.preseed import (
 )
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import transactional
-from maasserver.utils.osystems import validate_hwe_kernel
+from maasserver.utils.osystems import get_working_kernel
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
@@ -106,7 +106,7 @@ def get_boot_filenames(
         # MAAS doesn't store in the BootResource table what subarch is the
         # generic subarch so lookup what the generic subarch maps to.
         try:
-            boot_resource_subarch = validate_hwe_kernel(
+            boot_resource_subarch = get_working_kernel(
                 subarch,
                 None,
                 f"{arch}/{subarch}",
@@ -277,7 +277,7 @@ def get_boot_config_for_machine(machine, configs, purpose):
         and machine.min_hwe_kernel
     ):
         try:
-            subarch = validate_hwe_kernel(
+            subarch = get_working_kernel(
                 None,
                 machine.min_hwe_kernel,
                 machine.architecture,
@@ -583,11 +583,11 @@ def get_config(
         # converts between the two formats to make sure a bootable subarch is
         # selected.
         if subarch is None:
-            min_hwe_kernel = validate_hwe_kernel(
+            min_hwe_kernel = get_working_kernel(
                 None, min_hwe_kernel, "%s/generic" % arch, osystem, series
             )
         else:
-            min_hwe_kernel = validate_hwe_kernel(
+            min_hwe_kernel = get_working_kernel(
                 None,
                 min_hwe_kernel,
                 f"{arch}/{subarch}",

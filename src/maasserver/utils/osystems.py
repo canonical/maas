@@ -18,7 +18,7 @@ __all__ = [
     "make_hwe_kernel_ui_text",
     "parse_subarch_kernel_string",
     "release_a_newer_than_b",
-    "validate_hwe_kernel",
+    "get_working_kernel",
 ]
 
 from collections import namedtuple, OrderedDict
@@ -139,7 +139,7 @@ def list_all_usable_hwe_kernels(releases):
         for release in osystems:
             os_release = osystem + "/" + release["name"]
             kernels[osystem][release["name"]] = list_hwe_kernel_choices(
-                sorted(BootResource.objects.get_usable_hwe_kernels(os_release))
+                sorted(BootResource.objects.get_kernels(os_release))
             )
             if len(kernels[osystem][release["name"]]) == 0:
                 kernels[osystem].pop(release["name"])
@@ -596,46 +596,46 @@ def release_a_newer_than_b(a, b):
     return ver_a >= ver_b
 
 
-def validate_hwe_kernel(
-    hwe_kernel,
-    min_hwe_kernel,
+def get_working_kernel(
+    requested_kernel,
+    min_compatibility_level,
     architecture,
     osystem,
     distro_series,
     commissioning_osystem=undefined,
     commissioning_distro_series=undefined,
 ):
-    """Validates that hwe_kernel works on the selected os/release/arch.
+    """Returns ID of kernel that works on the selected os/release/arch.
 
-    Checks that the current hwe_kernel is avalible for the selected
+    Checks that the requested kernel is available for the selected
     os/release/architecture combination, and that the selected hwe_kernel is >=
     min_hwe_kernel. If no hwe_kernel is selected one will be chosen.
     """
 
     def validate_kernel_str(kstr):
-        return kstr.startswith("hwe-") or kstr.startswith("ga-")
+        ksplit = kstr.split("-")
+        return "hwe" in ksplit or "ga" in ksplit
 
     if not all((osystem, architecture, distro_series)):
-        return hwe_kernel
+        return requested_kernel
+
+    arch, platform = architecture.split("/")
 
     # If we are dealing with an ephemeral image, just return the hwe_kernel
     # as-is, i.e. just stick with generic.
     osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
     if osystem_obj is not None:
-        arch, subarch = architecture.split("/")
         purposes = osystem_obj.get_boot_image_purposes(
-            arch, subarch, distro_series, "*"
+            arch, platform, distro_series, "*"
         )
         if "ephemeral" in purposes:
-            return hwe_kernel
-
-    arch, subarch = architecture.split("/")
+            return requested_kernel
 
     # if we're deploying a custom image, we'll want to fetch info for the base image
     # for the purpose of booting the ephemeral OS installer
     if osystem == "custom" and distro_series:
         boot_resource = BootResource.objects.get_resource_for(
-            osystem, arch, subarch, distro_series
+            osystem, arch, platform, distro_series
         )
         if boot_resource is not None:
             osystem, distro_series = boot_resource.split_base_image()
@@ -652,62 +652,77 @@ def validate_hwe_kernel(
                 "commissioning_distro_series"
             )
 
-    if subarch != "generic" and (
-        (hwe_kernel and validate_kernel_str(hwe_kernel))
-        or (min_hwe_kernel and validate_kernel_str(min_hwe_kernel))
+    if platform != "generic" and (
+        (requested_kernel and validate_kernel_str(requested_kernel))
+        or (
+            min_compatibility_level
+            and validate_kernel_str(min_compatibility_level)
+        )
     ):
         raise ValidationError(
             "Subarchitecture(%s) must be generic when setting hwe_kernel."
-            % subarch
+            % platform
         )
 
     os_release = osystem + "/" + distro_series
 
-    if hwe_kernel and validate_kernel_str(hwe_kernel):
-        usable_kernels = BootResource.objects.get_usable_hwe_kernels(
-            os_release, arch
+    if requested_kernel and validate_kernel_str(requested_kernel):
+        # Specific kernel was requested -- check whether it will work
+        usable_kernels = BootResource.objects.get_kernels(
+            os_release, architecture=arch
         )
-        if hwe_kernel not in usable_kernels:
+        if requested_kernel not in usable_kernels:
             raise ValidationError(
                 "%s is not available for %s on %s."
-                % (hwe_kernel, os_release, architecture)
+                % (requested_kernel, os_release, architecture)
             )
-        if not release_a_newer_than_b(hwe_kernel, distro_series):
+        if not release_a_newer_than_b(requested_kernel, distro_series):
             raise ValidationError(
-                f"{hwe_kernel} is too old to use on {os_release}."
+                f"{requested_kernel} is too old to use on {os_release}."
             )
-        if (min_hwe_kernel and validate_kernel_str(min_hwe_kernel)) and (
-            not release_a_newer_than_b(hwe_kernel, min_hwe_kernel)
+        if (
+            min_compatibility_level
+            and validate_kernel_str(min_compatibility_level)
+        ) and (
+            not release_a_newer_than_b(
+                requested_kernel, min_compatibility_level
+            )
         ):
             raise ValidationError(
-                "hwe_kernel(%s) is older than min_hwe_kernel(%s)."
-                % (hwe_kernel, min_hwe_kernel)
+                "chosen kernel (%s) is older than minimal kernel required by the machine (%s)."
+                % (requested_kernel, min_compatibility_level)
             )
-        return hwe_kernel
-    elif min_hwe_kernel and validate_kernel_str(min_hwe_kernel):
+        return requested_kernel
+    elif min_compatibility_level and validate_kernel_str(
+        min_compatibility_level
+    ):
+        # No specific kernel was requested, but there is a minimal
+        # compatibility level restriction. Look for kernels that could
+        # fit the description.
+
         # Determine what kflavor is being used by check against a list of
         # known kflavors.
         valid_kflavors = {
             br.kflavor for br in BootResource.objects.exclude(kflavor=None)
         }
         kflavor = "generic"
-        for kernel_part in min_hwe_kernel.split("-"):
+        for kernel_part in min_compatibility_level.split("-"):
             if kernel_part in valid_kflavors:
                 kflavor = kernel_part
                 break
-        usable_kernels = BootResource.objects.get_usable_hwe_kernels(
+        usable_kernels = BootResource.objects.get_kernels(
             os_release, architecture=arch, kflavor=kflavor
         )
         for i in usable_kernels:
             if release_a_newer_than_b(
-                i, min_hwe_kernel
+                i, min_compatibility_level
             ) and release_a_newer_than_b(i, distro_series):
                 return i
         raise ValidationError(
             "%s has no kernels available which meet min_hwe_kernel(%s)."
-            % (distro_series, min_hwe_kernel)
+            % (distro_series, min_compatibility_level)
         )
-    for kernel in BootResource.objects.get_usable_hwe_kernels(
+    for kernel in BootResource.objects.get_kernels(
         os_release, architecture=arch, kflavor="generic"
     ):
         if release_a_newer_than_b(kernel, distro_series):
@@ -719,8 +734,12 @@ def validate_min_hwe_kernel(min_hwe_kernel):
     """Check that the min_hwe_kernel is avalible."""
     if not min_hwe_kernel or min_hwe_kernel == "":
         return ""
-    usable_kernels = BootResource.objects.get_supported_hwe_kernels()
-    if min_hwe_kernel not in usable_kernels:
-        raise ValidationError("%s is not a usable kernel." % min_hwe_kernel)
+    compatibility_levels = (
+        BootResource.objects.get_supported_kernel_compatibility_levels()
+    )
+    if min_hwe_kernel not in compatibility_levels:
+        raise ValidationError(
+            'No kernel matches ">=%s" requirement.' % min_hwe_kernel
+        )
     else:
         return min_hwe_kernel

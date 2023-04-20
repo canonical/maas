@@ -90,9 +90,7 @@ class GeneralHandler(Handler):
 
     def hwe_kernels(self, params):
         """Return all supported hwe_kernels."""
-        return list_hwe_kernel_choices(
-            BootResource.objects.get_usable_hwe_kernels()
-        )
+        return list_hwe_kernel_choices(BootResource.objects.get_kernels())
 
     def min_hwe_kernels(self, params):
         """Return all supported min_hwe_kernels.
@@ -101,7 +99,7 @@ class GeneralHandler(Handler):
         the flavor during deployment.
         """
         return list_hwe_kernel_choices(
-            BootResource.objects.get_supported_hwe_kernels()
+            BootResource.objects.get_supported_kernel_compatibility_levels()
         )
 
     def default_min_hwe_kernel(self, params):

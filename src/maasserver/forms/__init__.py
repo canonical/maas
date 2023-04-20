@@ -171,12 +171,12 @@ from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
+    get_working_kernel,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
     list_all_usable_releases,
     list_osystem_choices,
     list_release_choices,
-    validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
@@ -867,7 +867,7 @@ class MachineForm(NodeForm):
             min_hwe_kernel = cleaned_data.get("min_hwe_kernel")
             hwe_kernel = cleaned_data.get("hwe_kernel")
             try:
-                cleaned_data["hwe_kernel"] = validate_hwe_kernel(
+                cleaned_data["hwe_kernel"] = get_working_kernel(
                     hwe_kernel,
                     min_hwe_kernel,
                     architecture,

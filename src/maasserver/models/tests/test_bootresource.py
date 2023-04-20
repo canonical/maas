@@ -187,23 +187,23 @@ class TestBootResourceManager(MAASServerTestCase):
         self.assertIsInstance(usable_arches, list)
         self.assertCountEqual(arches, usable_arches)
 
-    def test_get_usable_hwe_kernel_doesnt_include_all_subarches(self):
+    def test_get_kernels_doesnt_include_all_subarches(self):
         factory.make_usable_boot_resource(
             architecture="amd64/hwe-16.04",
             extra={"subarches": "hwe-p,hwe-t,hwe-16.04,hwe-16.10"},
         )
-        self.assertEqual(
-            ["hwe-16.04"], BootResource.objects.get_usable_hwe_kernels()
-        )
+        self.assertEqual(["hwe-16.04"], BootResource.objects.get_kernels())
 
-    def test_get_supported_hwe_kernel_includes_all_subarches(self):
+    def test_get_supported_kernel_compatibility_levels_includes_all_subarches(
+        self,
+    ):
         factory.make_usable_boot_resource(
             architecture="amd64/hwe-16.04",
             extra={"subarches": "hwe-p,hwe-t,hwe-16.04,hwe-16.10"},
         )
         self.assertEqual(
             ["hwe-p", "hwe-t", "hwe-16.04", "hwe-16.10"],
-            BootResource.objects.get_supported_hwe_kernels(),
+            BootResource.objects.get_supported_kernel_compatibility_levels(),
         )
 
     def test_get_commissionable_resource_returns_iterable(self):
@@ -786,7 +786,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
 
 
 class TestGetUsableKernels(MAASServerTestCase):
-    """Tests for `get_usable_hwe_kernels`."""
+    """Tests for `get_kernels`."""
 
     scenarios = (
         (
@@ -875,13 +875,13 @@ class TestGetUsableKernels(MAASServerTestCase):
             )
         self.assertCountEqual(
             self.kernels,
-            BootResource.objects.get_usable_hwe_kernels(self.name, self.arch),
+            BootResource.objects.get_kernels(self.name, self.arch),
             "%s should return %s as its usable kernel"
             % (self.name, self.kernels),
         )
         self.assertEqual(
             generic_kernels,
-            BootResource.objects.get_usable_hwe_kernels(
+            BootResource.objects.get_kernels(
                 name=self.name,
                 architecture=self.arch,
                 platform=None,

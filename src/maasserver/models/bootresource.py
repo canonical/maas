@@ -359,7 +359,7 @@ class BootResourceManager(Manager):
             kernels, key=lambda k: get_release_version_from_string(k)
         )
 
-    def get_usable_hwe_kernels(
+    def get_kernels(
         self, name=None, architecture=None, platform=None, kflavor=None
     ):
         """Return the set of usable kernels for the given name, arch,
@@ -377,17 +377,28 @@ class BootResourceManager(Manager):
             include_subarches=False,
         )
 
-    def get_supported_hwe_kernels(
+    def get_supported_kernel_compatibility_levels(
         self, name=None, architecture=None, platform=None, kflavor=None
     ):
         """Return the set of supported kernels for the given name, arch,
         kflavor.
 
-        Returns the list of kernels downloaded by MAAS and the subarches each
-        of those kernels support. For example if Trusty and Xenial have been
-        downloaded this will return hwe-p, hwe-q, hwe-r, hwe-s, hwe-t, hwe-u,
-        hwe-v, hwe-w, ga-16.04, hwe-16.04, hwe-16.04-edge,
-        hwe-16.04-lowlatency, and hwe-16.04-lowlatency-edge."""
+        Returns the list of kernels' "subarch" values for all downloaded
+        kernels, as well as subarchitectures those kernels support.
+        Think of it as a list of "compatibility levels", where each
+        comma-separated value in "subarches" simplestream property
+        is a separate compatibility level. Useful for setting minimal
+        supported kernel version.
+
+        For example if Trusty and Xenial have been
+        downloaded this will return
+            - ga-16.04
+            - hwe-16.04
+            - hwe-16.04-edge
+            - hwe-16.04-lowlatency
+            - hwe-16.04-lowlatency-edge (all these are values of "subarch" field)
+            - hwe-[pqrstuvw] (all these are from "subarches" comma-separated list)
+        """
         return self.get_hwe_kernels(
             name,
             architecture=architecture,
