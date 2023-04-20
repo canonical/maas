@@ -971,6 +971,23 @@ class TestRegionService(MAASTestCase):
             ),
         )
 
+    def test_rack_controller_is_disconnected_returns_True_with_no_connections(
+        self,
+    ):
+        service = RegionService(sentinel.ipcWorker)
+        rack_ident = factory.make_UUID()
+        self.assertTrue(service.rack_controller_is_disconnected(rack_ident))
+
+    def test_rack_controller_is_disconnected_returns_False_with_connections(
+        self,
+    ):
+        service = RegionService(sentinel.ipcWorker)
+        rack_ident = factory.make_UUID()
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+        service.connections[rack_ident].update({c1, c2})
+        self.assertFalse(service.rack_controller_is_disconnected(rack_ident))
+
     def test_addConnectionFor_adds_connection(self):
         service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
