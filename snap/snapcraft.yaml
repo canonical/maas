@@ -241,6 +241,16 @@ parts:
     build-packages:
       - golang-go
 
+  maas-netmon:
+    plugin: make
+    source: src/maasagent
+    make-parameters:
+      - OUT_PREFIX=maas-
+    build-packages:
+      - golang-go
+    prime:
+      - bin/maas-netmon
+
   tree:
     plugin: dump
     source: snap/local/tree
