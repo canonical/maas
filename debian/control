@@ -213,6 +213,7 @@ Depends: avahi-utils,
          maas-common (=${binary:Version}),
          maas-dhcp (=${binary:Version}),
          maas-proxy (= ${binary:Version}),
+         maas-netmon (= ${binary:Version}),
          chrony,
          pxelinux | syslinux-common (<< 3:6.00~pre4+dfsg-5),
          python3-httplib2,
@@ -294,3 +295,8 @@ Conflicts: squid-deb-proxy
 Description: MAAS Caching Proxy
  This package installs and configures a Caching Proxy server that can be
  used by MAAS. It enhances the overall MAAS user experience.
+
+Package: maas-netmon
+Architecture: any
+Description: MAAS Network Monitor
+ This package provides MAAS Network Monitor binary that is used by MAAS.

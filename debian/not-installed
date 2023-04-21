@@ -1,0 +1,7 @@
+# Remove unneeded test scripts
+/usr/bin/test.*
+/usr/bin/maas-sampledata
+
+# Temporary exclude maas-agent
+/bin/maas-agent
+

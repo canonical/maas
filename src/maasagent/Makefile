@@ -13,15 +13,21 @@ export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache 
 export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
 export GOFLAGS := -mod=vendor
 
-default: build test
+default: build
 
 $(BIN_DIR): ; mkdir -p $@
 
 ARTIFACTS := $(subst /,,$(subst cmd/,,$(wildcard cmd/*/)))
+
+.PHONY: build
 build: vendor $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
-	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
+	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(OUT_PREFIX)$* $(LDFLAGS) cmd/$*/*.go
+
+.PHONY: install
+install: build
+	install -t $(DESTDIR)/bin -D $(BUILD_DIR)/*
 
 .PHONY: test
 test:
