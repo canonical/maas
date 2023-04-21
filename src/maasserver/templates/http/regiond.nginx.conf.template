@@ -24,7 +24,7 @@ server {
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
 
-    add_header Strict-Transport-Security 'max-age=86400; includeSubdomains' always;
+    add_header Strict-Transport-Security 'max-age=15552000; includeSubdomains' always;
     {{else}}
     listen [::]:{{http_port}};
     listen {{http_port}};
