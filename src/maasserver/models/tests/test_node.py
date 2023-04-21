@@ -22,6 +22,7 @@ from fixtures import LoggerFixture
 from netaddr import IPAddress, IPNetwork
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
+from testtools.content import text_content
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
@@ -136,6 +137,7 @@ from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import FakeRBACClient, rbac
+from maasserver.routablepairs import get_routable_address_map
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import (
@@ -8799,6 +8801,29 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
     def test_uses_rack_ipv4_if_dual_stack_with_no_gateway(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
+        )
+        # XXX this test fails randomly, this is to get more info if it does
+        self.addDetail(
+            "node.get_default_gateways",
+            text_content(repr(node.get_default_gateways())),
+        )
+        self.addDetail(
+            "node.get_boot_rack_controller",
+            text_content(repr(node.get_boot_rack_controller())),
+        )
+        self.addDetail(
+            "use_rack_proxy",
+            text_content(repr(Config.objects.get_config("use_rack_proxy"))),
+        )
+        self.addDetail(
+            "routable_address_map",
+            text_content(
+                repr(
+                    get_routable_address_map(
+                        RackController.objects.all(), node
+                    )
+                )
+            ),
         )
         self.assertEqual([rack_v4], node.get_default_dns_servers())
 
