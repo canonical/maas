@@ -113,5 +113,5 @@ def reduce_routable_address_map(
     for information on how that's derived) so this simply chooses the first.
     """
     for addresses in routable_addrs_map.values():
-        assert len(addresses) >= 1
-        yield addresses[0]
+        if addresses:
+            yield addresses[0]

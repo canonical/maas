@@ -11,7 +11,10 @@ from testtools import ExpectedException
 from testtools.matchers import AfterPreprocessing, Equals
 
 from maasserver.models.node import Node
-from maasserver.routablepairs import find_addresses_between_nodes
+from maasserver.routablepairs import (
+    find_addresses_between_nodes,
+    reduce_routable_address_map,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -288,3 +291,26 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             find_addresses_between_nodes({origin}, {node_no_match})
         )
         self.assertEqual([], no_matches)
+
+
+class TestReduceRoutableAddressMap(MAASServerTestCase):
+    def test_first_address(self):
+        address_map = {
+            factory.make_Node(): ["1.1.1.1", "2.2.2.2"],
+            factory.make_Node(): ["3.3.3.3"],
+        }
+        self.assertEqual(
+            list(reduce_routable_address_map(address_map)),
+            ["1.1.1.1", "3.3.3.3"],
+        )
+
+    def test_ignore_empty_address_list(self):
+        address_map = {
+            factory.make_Node(): ["1.1.1.1", "2.2.2.2"],
+            factory.make_Node(): [],
+            factory.make_Node(): ["3.3.3.3"],
+        }
+        self.assertEqual(
+            list(reduce_routable_address_map(address_map)),
+            ["1.1.1.1", "3.3.3.3"],
+        )

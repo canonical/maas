@@ -5240,7 +5240,6 @@ class Node(CleanSave, TimestampedModel):
         if Config.objects.get_config("use_rack_proxy"):
             # LP:1847537 - Filter out MAAS DNS servers running on subnets
             # which do not allow DNS to be provided from MAAS.
-            routable_addrs_map = {}
             for node, addresses in get_routable_address_map(
                 RackController.objects.all(), self
             ).items():
@@ -5306,11 +5305,14 @@ class Node(CleanSave, TimestampedModel):
         # Routable rack controllers come before the region controllers when
         # using the rack DNS proxy.
         maas_dns_servers = list(
-            OrderedDict.fromkeys([str(ip) for ip in maas_dns_servers])
+            OrderedDict.fromkeys(str(ip) for ip in maas_dns_servers)
         )
-        if routable_addrs_map:
-            routable_addrs = reduce_routable_address_map(routable_addrs_map)
-            routable_addrs = list(map(str, routable_addrs))
+
+        routable_addrs = [
+            str(addr)
+            for addr in reduce_routable_address_map(routable_addrs_map)
+        ]
+        if routable_addrs:
             return routable_addrs + [
                 ip for ip in maas_dns_servers if ip not in routable_addrs
             ]
