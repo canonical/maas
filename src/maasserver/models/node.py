@@ -5716,7 +5716,7 @@ class Node(CleanSave, TimestampedModel):
         from maasserver.clusterrpc.boot_images import (
             get_common_available_boot_images,
         )
-        from metadataserver.models import NodeUserData
+        from maasserver.models import NodeUserData
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
@@ -6108,7 +6108,7 @@ class Node(CleanSave, TimestampedModel):
         """Start rescue mode."""
         # Avoid circular imports.
         from maasserver.models.event import Event
-        from metadataserver.models import NodeUserData
+        from maasserver.models.nodeuserdata import NodeUserData
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter rescue mode on a node you don't own,
@@ -6487,8 +6487,7 @@ class Controller(Node):
 
     @transactional
     def _get_token_for_controller(self):
-        # Avoid circular imports.
-        from metadataserver.models import NodeKey
+        from maasserver.models import NodeKey
 
         token = NodeKey.objects.get_token_for_node(self)
         # Pull consumer into memory so it can be accessed outside a

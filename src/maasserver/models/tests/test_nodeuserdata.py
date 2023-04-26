@@ -4,9 +4,9 @@
 """Tests for :class:`NodeUserData` and manager."""
 
 
+from maasserver.models import NodeUserData
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.models import NodeUserData
 
 
 class TestNodeUserDataManager(MAASServerTestCase):

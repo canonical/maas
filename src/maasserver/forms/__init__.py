@@ -1207,7 +1207,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
 
     def _setup_deployed_machine(self, machine):
         """Configure the Machine before it has been saved."""
-        from metadataserver.models import NodeKey
+        from maasserver.models import NodeKey
         from metadataserver.models.scriptset import ScriptSet
 
         machine.update_status(NODE_STATUS.DEPLOYED, validate_transition=False)

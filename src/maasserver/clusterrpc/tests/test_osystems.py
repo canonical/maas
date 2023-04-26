@@ -23,12 +23,12 @@ from maasserver.clusterrpc.osystems import (
     validate_license_key,
 )
 from maasserver.enum import BOOT_RESOURCE_TYPE, PRESEED_TYPE
+from maasserver.models import NodeKey
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.models import NodeKey
 from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 
 

@@ -67,6 +67,7 @@ from maasserver.models import (
     VolumeGroup,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.nodekey import NodeKey
 from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
@@ -132,7 +133,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
-from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,

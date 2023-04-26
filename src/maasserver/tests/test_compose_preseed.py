@@ -28,7 +28,7 @@ from maasserver.enum import (
     POWER_STATE,
     PRESEED_TYPE,
 )
-from maasserver.models import PackageRepository
+from maasserver.models import NodeKey, PackageRepository
 from maasserver.models.config import Config
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
@@ -36,7 +36,6 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.http import make_HttpRequest
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.models import NodeKey
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,

@@ -19,7 +19,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
-from maasserver.models import Event, Pod
+from maasserver.models import Event, NodeKey, Pod
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout
@@ -52,7 +52,6 @@ from metadataserver.api_twisted import (
     StatusWorkerService,
 )
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.testing.certificates import get_sample_cert
 

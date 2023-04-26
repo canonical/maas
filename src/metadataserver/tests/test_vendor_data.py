@@ -10,7 +10,7 @@ from testtools.matchers import ContainsDict, Equals, KeysEqual, MatchesDict
 import yaml
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Config, ControllerInfo
+from maasserver.models import Config, ControllerInfo, NodeKey
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
@@ -20,7 +20,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
-from metadataserver.models import NodeKey
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
     DEPLOY_SECRETS_LXD_KEY,

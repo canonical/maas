@@ -33,7 +33,7 @@ from maasserver.compose_preseed import (
 )
 from maasserver.enum import FILESYSTEM_TYPE, PRESEED_TYPE
 from maasserver.exceptions import ClusterUnavailable, MissingBootImage
-from maasserver.models import BootResource, Config, PackageRepository
+from maasserver.models import BootResource, Config, NodeKey, PackageRepository
 from maasserver.models.filesystem import Filesystem
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.preseed_network import compose_curtin_network_config
@@ -48,7 +48,6 @@ from maasserver.utils.curtin import (
     curtin_supports_webhook_events,
 )
 from maasserver.utils.osystems import get_release_version_from_string
-from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger

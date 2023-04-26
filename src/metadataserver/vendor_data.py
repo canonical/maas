@@ -17,7 +17,7 @@ import tempita
 import yaml
 
 from maasserver import ntp
-from maasserver.models import Config, NodeMetadata
+from maasserver.models import Config, NodeKey, NodeMetadata
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
@@ -27,7 +27,6 @@ from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import systemd_interval_to_calendar
-from metadataserver.models import NodeKey
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 

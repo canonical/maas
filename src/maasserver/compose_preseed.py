@@ -620,8 +620,7 @@ def compose_preseed(request, preseed_type, node):
     :return: Preseed data containing the information the node needs in order
         to access the metadata service: its URL and auth token.
     """
-    # Circular import.
-    from metadataserver.models import NodeKey
+    from maasserver.models import NodeKey
 
     token = NodeKey.objects.get_token_for_node(node)
     if preseed_type == PRESEED_TYPE.COMMISSIONING:

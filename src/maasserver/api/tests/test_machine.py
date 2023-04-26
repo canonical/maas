@@ -42,7 +42,7 @@ from maasserver.enum import (
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Domain, Filesystem, Machine, Node
 from maasserver.models import node as node_module
-from maasserver.models import StaticIPAddress
+from maasserver.models import NodeKey, NodeUserData, StaticIPAddress
 from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
@@ -74,7 +74,6 @@ from maastesting.matchers import (
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_TYPE
-from metadataserver.models import NodeKey, NodeUserData
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.enum import map_enum

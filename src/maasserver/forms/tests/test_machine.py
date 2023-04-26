@@ -14,6 +14,7 @@ from maasserver.forms import (
     MachineForm,
     pick_default_architecture,
 )
+from maasserver.models import NodeKey
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -25,7 +26,6 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
-from metadataserver.models import NodeKey
 from provisioningserver.certificates import Certificate
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,

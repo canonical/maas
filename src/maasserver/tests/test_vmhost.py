@@ -11,7 +11,7 @@ from twisted.internet.defer import succeed
 from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
-from maasserver.models import Pod, PodHints, VMCluster
+from maasserver.models import NodeKey, Pod, PodHints, VMCluster
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -21,7 +21,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.models.nodekey import NodeKey
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
     DiscoveredPod,

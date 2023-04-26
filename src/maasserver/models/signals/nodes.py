@@ -17,9 +17,9 @@ from maasserver.models import (
     Service,
 )
 from maasserver.models.nodeconfig import create_default_nodeconfig
+from maasserver.models.nodekey import NodeKey
 from maasserver.models.numa import create_default_numanode
 from maasserver.utils.signals import SignalsManager
-from metadataserver.models.nodekey import NodeKey
 
 NODE_CLASSES = [
     Node,

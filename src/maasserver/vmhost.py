@@ -13,6 +13,7 @@ from maasserver.exceptions import PodProblem
 from maasserver.models import (
     BMCRoutableRackControllerRelationship,
     Event,
+    NodeKey,
     Pod,
     RackController,
     Tag,
@@ -23,7 +24,6 @@ from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import NodeKey
 from provisioningserver.drivers.pod import DiscoveredCluster, DiscoveredPod
 from provisioningserver.events import EVENT_TYPES
 

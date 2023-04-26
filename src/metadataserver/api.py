@@ -59,7 +59,9 @@ from maasserver.models import (
     Config,
     Interface,
     Node,
+    NodeKey,
     NodeMetadata,
+    NodeUserData,
     SSHKey,
     SSLKey,
 )
@@ -88,13 +90,7 @@ from metadataserver.enum import (
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
 )
-from metadataserver.models import (
-    NodeKey,
-    NodeUserData,
-    Script,
-    ScriptResult,
-    ScriptSet,
-)
+from metadataserver.models import Script, ScriptResult, ScriptSet
 from metadataserver.user_data import (
     generate_user_data_for_poweroff,
     generate_user_data_for_status,

@@ -18,7 +18,7 @@ from twisted.web.server import NOT_DONE_YET
 from maasserver.api.utils import extract_oauth_key_from_auth_header
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.forms.pods import PodForm
-from maasserver.models import Interface, Node
+from maasserver.models import Interface, Node, NodeKey
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import (
@@ -31,7 +31,6 @@ from maasserver.vmhost import discover_and_sync_vmhost
 from metadataserver import logger
 from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import NodeKey
 from metadataserver.vendor_data import (
     DEPLOY_SECRETS_LXD_KEY,
     DEPLOY_SECRETS_VIRSH_KEY,

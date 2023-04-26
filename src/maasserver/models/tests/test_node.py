@@ -93,6 +93,7 @@ from maasserver.models import (
 )
 from maasserver.models import (
     NodeDevice,
+    NodeUserData,
     OwnerData,
     PhysicalInterface,
     RackController,
@@ -182,7 +183,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import NodeUserData, ScriptResult, ScriptSet
+from metadataserver.models import ScriptResult, ScriptSet
 from provisioningserver.drivers.pod import Capabilities, DiscoveredPodHints
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry

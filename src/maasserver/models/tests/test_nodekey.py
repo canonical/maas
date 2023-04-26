@@ -6,10 +6,10 @@
 
 from testtools.matchers import HasLength
 
+from maasserver.models import NodeKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.djangotestcase import CountQueries
-from metadataserver.models import NodeKey
 
 
 class TestNodeKeyManager(MAASServerTestCase):

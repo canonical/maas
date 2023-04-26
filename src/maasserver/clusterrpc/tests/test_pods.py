@@ -27,6 +27,7 @@ from maasserver.clusterrpc.pods import (
     send_pod_commissioning_results,
 )
 from maasserver.exceptions import PodProblem
+from maasserver.models import NodeKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -35,7 +36,6 @@ from maasserver.testing.testcase import (
 from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from metadataserver.models import NodeKey
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
     DiscoveredPod,
