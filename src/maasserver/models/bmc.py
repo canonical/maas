@@ -1691,7 +1691,7 @@ class Pod(BMC):
             if node.is_device:
                 update["node_type"] = NODE_TYPE.MACHINE
             if not node.current_commissioning_script_set:
-                from metadataserver.models import ScriptSet
+                from maasserver.models import ScriptSet
 
                 # ScriptResults will be created on upload.
                 update[

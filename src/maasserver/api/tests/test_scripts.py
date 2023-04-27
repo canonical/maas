@@ -13,7 +13,7 @@ import random
 from django.urls import reverse
 from testtools.matchers import ContainsAll
 
-from maasserver.models import Event, VersionedTextFile
+from maasserver.models import Event, Script, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -24,7 +24,6 @@ from metadataserver.enum import (
     SCRIPT_PARALLEL_CHOICES,
     SCRIPT_TYPE_CHOICES,
 )
-from metadataserver.models import Script
 from provisioningserver.events import AUDIT
 
 

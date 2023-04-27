@@ -26,6 +26,7 @@ import maasserver.forms as forms_module
 from maasserver.forms.pods import ComposeMachineForm, ComposeMachineForPodsForm
 from maasserver.models import Config, Domain, Machine, Node
 from maasserver.models import node as node_module
+from maasserver.models import ScriptSet
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
@@ -50,7 +51,6 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with
 from metadataserver.enum import SCRIPT_TYPE
-from metadataserver.models import ScriptSet
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.utils.enum import map_enum
 

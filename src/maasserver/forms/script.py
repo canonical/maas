@@ -25,14 +25,14 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.fields import VersionedTextFileField
 from maasserver.forms.parameters import ParametersForm
-from maasserver.utils.forms import set_form_error
-from metadataserver.enum import HARDWARE_TYPE, SCRIPT_PARALLEL, SCRIPT_TYPE
-from metadataserver.models import Script
-from metadataserver.models.script import (
+from maasserver.models import Script
+from maasserver.models.script import (
     translate_hardware_type,
     translate_script_parallel,
     translate_script_type,
 )
+from maasserver.utils.forms import set_form_error
+from metadataserver.enum import HARDWARE_TYPE, SCRIPT_PARALLEL, SCRIPT_TYPE
 from provisioningserver.events import EVENT_TYPES
 
 

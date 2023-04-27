@@ -22,6 +22,8 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.event import Event
 from maasserver.models.interface import Interface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.script import Script
+from maasserver.models.scriptset import ScriptSet
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
 from metadataserver import logger
@@ -34,8 +36,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin, BinaryField
-from metadataserver.models.script import Script
-from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.events import EVENT_TYPES
 
 

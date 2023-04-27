@@ -4,7 +4,7 @@
 """Emit ScriptResult status transition event."""
 
 
-from maasserver.models import Event
+from maasserver.models import Event, ScriptResult
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.utils.signals import SignalsManager
 from metadataserver.enum import (
@@ -14,7 +14,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_STATUS_RUNNING,
 )
-from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.events import EVENT_TYPES
 
 signals = SignalsManager()

@@ -764,8 +764,7 @@ class RegionControllerManager(ControllerManager):
         # A region needs to have a commissioning_script_set available to
         # allow commissioning data to be sent on start.
         if node.current_commissioning_script_set is None:
-            # Avoid circular dependencies
-            from metadataserver.models import ScriptSet
+            from maasserver.models import ScriptSet
 
             script_set = ScriptSet.objects.create_commissioning_script_set(
                 node
@@ -1221,7 +1220,7 @@ class Node(CleanSave, TimestampedModel):
     # The ScriptSet for the currently running, or last run, commissioning
     # ScriptSet.
     current_commissioning_script_set = ForeignKey(
-        "metadataserver.ScriptSet",
+        "maasserver.ScriptSet",
         blank=True,
         null=True,
         on_delete=SET_NULL,
@@ -1230,7 +1229,7 @@ class Node(CleanSave, TimestampedModel):
 
     # The ScriptSet for the currently running, or last run, installation.
     current_installation_script_set = ForeignKey(
-        "metadataserver.ScriptSet",
+        "maasserver.ScriptSet",
         blank=True,
         null=True,
         on_delete=SET_NULL,
@@ -1239,7 +1238,7 @@ class Node(CleanSave, TimestampedModel):
 
     # The ScriptSet for the currently running, or last run, test ScriptSet.
     current_testing_script_set = ForeignKey(
-        "metadataserver.ScriptSet",
+        "maasserver.ScriptSet",
         blank=True,
         null=True,
         on_delete=SET_NULL,
@@ -1758,9 +1757,8 @@ class Node(CleanSave, TimestampedModel):
 
     def _start_deployment(self):
         """Mark a node as being deployed."""
-        # Avoid circular dependencies
         from maasserver.models.event import Event
-        from metadataserver.models import ScriptSet
+        from maasserver.models.scriptset import ScriptSet
 
         if not self.on_network():
             raise ValidationError(
@@ -2227,8 +2225,7 @@ class Node(CleanSave, TimestampedModel):
     @classmethod
     @transactional
     def _abort_all_tests(self, script_set_id):
-        # Avoid circular imports.
-        from metadataserver.models import ScriptSet
+        from maasserver.models import ScriptSet
 
         try:
             script_set = ScriptSet.objects.get(id=script_set_id)
@@ -2259,9 +2256,8 @@ class Node(CleanSave, TimestampedModel):
             registered as a post-commit hook; it should not be added a second
             time.
         """
-        # Avoid circular imports.
         from maasserver.models.event import Event
-        from metadataserver.models import ScriptSet
+        from maasserver.models.scriptset import ScriptSet
 
         # Only commission if power type is configured.
         if self.power_type == "":
@@ -2468,9 +2464,8 @@ class Node(CleanSave, TimestampedModel):
         self, user, enable_ssh=False, testing_scripts=None, script_input=None
     ):
         """Run tests on a node."""
-        # Avoid circular imports.
         from maasserver.models.event import Event
-        from metadataserver.models import ScriptSet
+        from maasserver.models.scriptset import ScriptSet
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter test mode on a node you don't own,
@@ -3884,8 +3879,7 @@ class Node(CleanSave, TimestampedModel):
             user, event_type, action="mark_failed", comment=comment
         )
 
-        # Avoid circular dependencies
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         qs = ScriptResult.objects.filter(
             script_set__in=[
@@ -3974,7 +3968,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
     def get_latest_failed_testing_script_results(self) -> List[int]:
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         script_results = (
             ScriptResult.objects.filter(
@@ -5792,8 +5786,7 @@ class Node(CleanSave, TimestampedModel):
         elif self.status in COMMISSIONING_LIKE_STATUSES:
             if old_status is None:
                 old_status = self.status
-            # Avoid circular dependencies
-            from metadataserver.models import ScriptResult
+            from maasserver.models import ScriptResult
 
             # Claim AUTO IP addresses if a script will be running in the
             # ephemeral environment which needs network configuration applied.
@@ -6311,8 +6304,7 @@ class Node(CleanSave, TimestampedModel):
     @property
     def get_latest_script_results(self):
         """Returns a QuerySet of the latest results from all runs."""
-        # Avoid circular dependencies
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         qs = ScriptResult.objects.filter(script_set__node_id=self.id)
         qs = qs.select_related("script_set", "script")

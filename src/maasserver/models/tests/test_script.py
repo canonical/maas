@@ -7,7 +7,12 @@ import random
 
 from django.core.exceptions import ValidationError
 
-from maasserver.models import VersionedTextFile
+from maasserver.models import Script, VersionedTextFile
+from maasserver.models.script import (
+    translate_hardware_type,
+    translate_script_parallel,
+    translate_script_type,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -16,12 +21,6 @@ from metadataserver.enum import (
     HARDWARE_TYPE_CHOICES,
     SCRIPT_PARALLEL,
     SCRIPT_TYPE,
-)
-from metadataserver.models import Script
-from metadataserver.models.script import (
-    translate_hardware_type,
-    translate_script_parallel,
-    translate_script_type,
 )
 
 

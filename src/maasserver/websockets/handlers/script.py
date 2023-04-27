@@ -4,6 +4,7 @@
 """The Script handler for the WebSocket connection."""
 
 
+from maasserver.models import Script
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
@@ -12,7 +13,6 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
-from metadataserver.models import Script
 
 
 class ScriptHandler(TimestampedModelHandler):

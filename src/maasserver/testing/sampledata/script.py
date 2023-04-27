@@ -1,5 +1,5 @@
 from maasserver.enum import NODE_STATUS
-from metadataserver.models import ScriptSet
+from maasserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )

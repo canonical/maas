@@ -8,7 +8,7 @@ import random
 
 from testtools.matchers import ContainsAll
 
-from maasserver.models import ControllerInfo, VersionedTextFile
+from maasserver.models import ControllerInfo, Script, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -17,7 +17,6 @@ from metadataserver.builtin_scripts import (
     load_builtin_scripts,
 )
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
-from metadataserver.models import Script
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 

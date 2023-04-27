@@ -27,6 +27,8 @@ from maasserver.models import (
     Fabric,
     Machine,
     OwnerData,
+    ScriptResult,
+    ScriptSet,
     Space,
     Subnet,
     VLAN,
@@ -61,8 +63,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
-from metadataserver.models.scriptresult import ScriptResult
-from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.drivers.pod import DiscoveredPod
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,

@@ -25,6 +25,7 @@ from maasserver.models import (
     NodeMetadata,
     NUMANode,
     PhysicalInterface,
+    ScriptSet,
     Tag,
     VLAN,
 )
@@ -69,7 +70,6 @@ from metadataserver.enum import (
     HARDWARE_TYPE,
     SCRIPT_TYPE,
 )
-from metadataserver.models import ScriptSet
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     KERNEL_CMDLINE_OUTPUT_NAME,

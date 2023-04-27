@@ -21,6 +21,7 @@ from maasserver.models.partitiontable import (
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
+from maasserver.models.scriptset import ScriptSet
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BlankStorageLayout,
@@ -49,7 +50,6 @@ from maasserver.utils.converters import round_size_to_nearest_block
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
-from metadataserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )

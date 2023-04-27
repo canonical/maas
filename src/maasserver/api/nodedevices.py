@@ -11,8 +11,8 @@ from maasserver.api.utils import get_optional_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.models import Node, NodeDevice
 from maasserver.models.nodedevice import translate_bus
+from maasserver.models.script import translate_hardware_type
 from maasserver.permissions import NodePermission
-from metadataserver.models.script import translate_hardware_type
 
 
 class NodeDevicesHandler(OperationsHandler):

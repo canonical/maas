@@ -8,7 +8,7 @@ from operator import attrgetter
 
 from django.core.exceptions import ValidationError
 
-from maasserver.models.node import Node
+from maasserver.models import Node, ScriptResult
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerDoesNotExistError,
@@ -18,7 +18,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 from metadataserver.enum import HARDWARE_TYPE
-from metadataserver.models import ScriptResult
 
 
 class NodeResultHandler(TimestampedModelHandler):

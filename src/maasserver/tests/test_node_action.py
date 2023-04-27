@@ -25,7 +25,13 @@ from maasserver.enum import (
     POWER_STATE,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.models import Config, Event, signals, StaticIPAddress
+from maasserver.models import (
+    Config,
+    Event,
+    ScriptSet,
+    signals,
+    StaticIPAddress,
+)
 from maasserver.models.signals.testing import SignalsDisabled
 import maasserver.node_action as node_action_module
 from maasserver.node_action import (
@@ -77,7 +83,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
-from metadataserver.models import ScriptSet
 from provisioningserver.events import AUDIT
 from provisioningserver.utils.shell import ExternalProcessError
 

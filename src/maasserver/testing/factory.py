@@ -90,6 +90,9 @@ from maasserver.models import (
     RegionRackRPCConnection,
     ResourcePool,
     RootKey,
+    Script,
+    ScriptResult,
+    ScriptSet,
     Service,
     Space,
     SSHKey,
@@ -139,7 +142,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE_CHOICES,
 )
 from metadataserver.fields import Bin
-from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.security import to_hex

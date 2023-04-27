@@ -46,6 +46,7 @@ from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
 from maasserver.models import Filesystem, Interface, Node, OwnerData
 from maasserver.models.nodeprobeddetails import get_single_probed_details
+from maasserver.models.scriptset import get_status_from_qs
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.utils.forms import compose_invalid_choice_text
@@ -56,7 +57,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
 )
-from metadataserver.models.scriptset import get_status_from_qs
 
 NODES_SELECT_RELATED = (
     "bmc",

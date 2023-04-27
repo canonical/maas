@@ -19,8 +19,8 @@ from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.script import ScriptForm
-from metadataserver.models import Script
-from metadataserver.models.script import (
+from maasserver.models import Script
+from maasserver.models.script import (
     translate_hardware_type,
     translate_script_type,
 )

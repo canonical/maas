@@ -10,6 +10,7 @@ from django.db.models import Prefetch
 from twisted.application.internet import TimerService
 
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
+from maasserver.models import Script, ScriptResult, ScriptSet
 from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
@@ -17,7 +18,6 @@ from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.twisted import synchronous

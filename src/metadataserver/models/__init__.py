@@ -4,8 +4,4 @@
 """Model export and helpers for metadataserver.
 """
 
-__all__ = ["Script", "ScriptResult", "ScriptSet"]
-
-from metadataserver.models.script import Script
-from metadataserver.models.scriptresult import ScriptResult
-from metadataserver.models.scriptset import ScriptSet
+__all__ = []

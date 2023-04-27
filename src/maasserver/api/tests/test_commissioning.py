@@ -12,7 +12,7 @@ import random
 from django.urls import reverse
 from piston3.utils import rc
 
-from maasserver.models import Event
+from maasserver.models import Event, Script
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
@@ -24,7 +24,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
 )
 from metadataserver.fields import Bin
-from metadataserver.models import Script
 from provisioningserver.events import AUDIT
 
 

@@ -1572,7 +1572,7 @@ def render_script_result_notify(proc_name, script_set_id):
             system_id, node_type INTO node
           FROM
             maasserver_node AS nodet,
-            metadataserver_scriptset AS scriptset
+            maasserver_scriptset AS scriptset
           WHERE
             scriptset.id = {script_set_id} AND
             scriptset.node_id = nodet.id;
@@ -2384,10 +2384,10 @@ def register_websocket_triggers():
         )
     )
     register_trigger(
-        "metadataserver_scriptset", "nd_scriptset_link_notify", "insert"
+        "maasserver_scriptset", "nd_scriptset_link_notify", "insert"
     )
     register_trigger(
-        "metadataserver_scriptset", "nd_scriptset_unlink_notify", "delete"
+        "maasserver_scriptset", "nd_scriptset_unlink_notify", "delete"
     )
 
     # ScriptResult triggers to the node for the nodes-listing page.
@@ -2407,15 +2407,15 @@ def register_websocket_triggers():
         )
     )
     register_trigger(
-        "metadataserver_scriptresult", "nd_scriptresult_link_notify", "insert"
+        "maasserver_scriptresult", "nd_scriptresult_link_notify", "insert"
     )
     register_trigger(
-        "metadataserver_scriptresult",
+        "maasserver_scriptresult",
         "nd_scriptresult_update_notify",
         "update",
     )
     register_trigger(
-        "metadataserver_scriptresult",
+        "maasserver_scriptresult",
         "nd_scriptresult_unlink_notify",
         "delete",
     )
@@ -2436,7 +2436,7 @@ def register_websocket_triggers():
             "scriptresult_delete_notify", "scriptresult_delete", "OLD.id"
         )
     )
-    register_triggers("metadataserver_scriptresult", "scriptresult")
+    register_triggers("maasserver_scriptresult", "scriptresult")
 
     # Interface address table, update to linked node.
     register_procedure(
@@ -2886,7 +2886,7 @@ def register_websocket_triggers():
             "script_delete_notify", "script_delete", "OLD.id"
         )
     )
-    register_triggers("metadataserver_script", "script")
+    register_triggers("maasserver_script", "script")
 
     # NodeDevice table
     register_procedure(

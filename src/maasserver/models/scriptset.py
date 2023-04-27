@@ -27,7 +27,7 @@ from django.db.models.query import QuerySet
 from maasserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from maasserver.exceptions import NoScriptsFound
 from maasserver.forms.parameters import ParametersForm
-from maasserver.models import Config, Event
+from maasserver.models import Config, Event, Script
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from metadataserver import logger
@@ -42,7 +42,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models.script import Script
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -210,7 +209,7 @@ class ScriptSetManager(Manager):
     def create_installation_script_set(self, node):
         """Create a new installation ScriptSet with a ScriptResult."""
         # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         script_set = self.create(
             node=node,
@@ -302,8 +301,7 @@ class ScriptSetManager(Manager):
                 raise
 
     def _clean_old(self, node, result_type, new_script_set):
-        # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         config_var = {
             RESULT_TYPE.COMMISSIONING: "max_node_commissioning_results",
@@ -572,8 +570,7 @@ class ScriptSet(CleanSave, Model):
         storage parameter. Used after commissioning has completed when there
         are tests to be run.
         """
-        # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
+        from maasserver.models import ScriptResult
 
         regenerate_scripts = {}
         for script_result in (

@@ -76,6 +76,7 @@ from maasserver.models.partition import (
     MIN_PARTITION_SIZE,
     PARTITION_ALIGNMENT_SIZE,
 )
+from maasserver.models.scriptset import get_status_from_qs
 import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
@@ -133,7 +134,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
-from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,

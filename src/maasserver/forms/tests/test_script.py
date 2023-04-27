@@ -17,7 +17,7 @@ from maasserver.forms.script import (
     ScriptForm,
     TestingScriptForm,
 )
-from maasserver.models import Event, VersionedTextFile
+from maasserver.models import Event, Script, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.enum import (
@@ -28,7 +28,6 @@ from metadataserver.enum import (
     SCRIPT_TYPE,
     SCRIPT_TYPE_CHOICES,
 )
-from metadataserver.models import Script
 from provisioningserver.events import AUDIT
 
 

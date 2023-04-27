@@ -74,8 +74,8 @@ def get_probed_details(nodes):
               script_set.node_id, script_result.script_name,
               script_result.stdout
             FROM
-              metadataserver_scriptresult AS script_result,
-              metadataserver_scriptset AS script_set,
+              maasserver_scriptresult AS script_result,
+              maasserver_scriptset AS script_set,
               maasserver_node AS node
             WHERE
               script_set.node_id IN %s AND

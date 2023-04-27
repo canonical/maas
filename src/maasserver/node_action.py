@@ -41,6 +41,7 @@ from maasserver.exceptions import (
 from maasserver.forms.clone import CloneForm
 from maasserver.models import Config, ResourcePool, Zone
 from maasserver.models.bootresource import LINUX_OSYSTEMS
+from maasserver.models.scriptresult import ScriptResult
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_base_osystem_series, get_curtin_config
@@ -50,7 +51,6 @@ from maasserver.utils.osystems import (
     validate_osystem_and_distro_series,
 )
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models.scriptresult import ScriptResult
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,

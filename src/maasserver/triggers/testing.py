@@ -11,6 +11,7 @@ from twisted.internet.defer import DeferredQueue, inlineCallbacks, returnValue
 
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
 from maasserver.listener import PostgresListenerService
+from maasserver.models import Script, ScriptSet
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC, Pod
 from maasserver.models.cacheset import CacheSet
@@ -56,7 +57,6 @@ from maasserver.triggers import register_trigger
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from metadataserver.models import Script, ScriptSet
 
 wait_for_reactor = wait_for()
 

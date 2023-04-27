@@ -23,12 +23,12 @@ from maasserver.models import (
     NodeGroupToRackController,
     RackController,
     RegionController,
+    ScriptSet,
     StaticIPAddress,
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
-from metadataserver.models import ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
 from provisioningserver.utils.deb import DebVersionsInfo

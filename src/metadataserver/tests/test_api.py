@@ -44,6 +44,8 @@ from maasserver.models import (
     NodeKey,
     NodeMetadata,
     NodeUserData,
+    Script,
+    ScriptSet,
     SSHKey,
     VersionedTextFile,
 )
@@ -92,7 +94,6 @@ from metadataserver.enum import (
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
 )
-from metadataserver.models import Script, ScriptSet
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.events import (
     EVENT_DETAILS,

@@ -959,8 +959,7 @@ class MachineForm(NodeForm):
         self.data["enable_hw_sync"] = enable_hw_sync
 
     def save(self, *args, **kwargs):
-        # Prevent circular imports
-        from metadataserver.models import ScriptSet
+        from maasserver.models import ScriptSet
 
         # LP:1807991 - If requested when creating a new Machine, set the status
         # to COMMISSIONING when the object is created.
@@ -1207,8 +1206,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
 
     def _setup_deployed_machine(self, machine):
         """Configure the Machine before it has been saved."""
-        from maasserver.models import NodeKey
-        from metadataserver.models.scriptset import ScriptSet
+        from maasserver.models import NodeKey, ScriptSet
 
         machine.update_status(NODE_STATUS.DEPLOYED, validate_transition=False)
         machine.owner = self.request.user

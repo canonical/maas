@@ -76,6 +76,9 @@ __all__ = [
     "RegionRackRPCConnection",
     "ResourcePool",
     "RootKey",
+    "Script",
+    "ScriptResult",
+    "ScriptSet",
     "Service",
     "signals",
     "Space",
@@ -189,6 +192,9 @@ from maasserver.models.regioncontrollerprocessendpoint import (
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.rootkey import RootKey
+from maasserver.models.script import Script
+from maasserver.models.scriptresult import ScriptResult
+from maasserver.models.scriptset import ScriptSet
 from maasserver.models.secret import Secret, VaultSecret
 from maasserver.models.service import Service
 from maasserver.models.space import Space

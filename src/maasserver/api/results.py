@@ -11,10 +11,9 @@ from formencode.validators import Int
 
 from maasserver.api.support import OperationsHandler
 from maasserver.api.utils import get_optional_list, get_optional_param
-from maasserver.models import Node
+from maasserver.models import Node, ScriptResult
 from maasserver.permissions import NodePermission
 from metadataserver.enum import SCRIPT_STATUS
-from metadataserver.models import ScriptResult
 
 
 class NodeResultsHandler(OperationsHandler):

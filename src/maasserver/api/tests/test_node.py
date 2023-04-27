@@ -16,6 +16,7 @@ from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES, POWER_STATE
 from maasserver.models import Config, Node
 from maasserver.models import node as node_module
 from maasserver.models import NodeKey
+from maasserver.models.scriptset import get_status_from_qs
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -35,7 +36,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_CHOICES,
     SCRIPT_TYPE,
 )
-from metadataserver.models.scriptset import get_status_from_qs
 from metadataserver.nodeinituser import get_node_init_user
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,

@@ -1461,7 +1461,7 @@ class TestScriptSetListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
     """End-to-end test of both the listeners code and the triggers on
-    metadataserver_scriptset table that notifies its node."""
+    maasserver_scriptset table that notifies its node."""
 
     scenarios = (
         (
@@ -1538,7 +1538,7 @@ class TestDeviceWithParentScriptSetListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
     """End-to-end test of both the listeners code and the triggers on
-    metadataserver_scriptset table that notifies its node."""
+    maasserver_scriptset table that notifies its node."""
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1580,7 +1580,7 @@ class TestNDScriptResultListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
     """End-to-end test of both the listeners code and the triggers on
-    metadataserver_scriptresult table that notifies its node."""
+    maasserver_scriptresult table that notifies its node."""
 
     scenarios = (
         (
@@ -1684,7 +1684,7 @@ class TestScriptResultListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):
     """End-to-end test of both the listers code and the triggers on
-    the metadataserver_Scriptresult table that notifies the node-results
+    the maasserver_scriptresult table that notifies the node-results
     websocket."""
 
     @wait_for_reactor

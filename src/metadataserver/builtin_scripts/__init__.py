@@ -14,7 +14,7 @@ from zope.interface.verify import verifyObject
 
 from maasserver.forms.script import ScriptForm
 from maasserver.models.controllerinfo import get_maas_version
-from metadataserver.models import Script
+from maasserver.models.script import Script
 from provisioningserver.refresh.node_info_scripts import (
     BMC_DETECTION,
     COMMISSIONING_OUTPUT_NAME,

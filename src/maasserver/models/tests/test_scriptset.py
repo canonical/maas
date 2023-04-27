@@ -12,7 +12,17 @@ from django.db.models import Q
 
 from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
-from maasserver.models import Config, Event, EventType, Node
+from maasserver.models import (
+    Config,
+    Event,
+    EventType,
+    Node,
+    Script,
+    ScriptResult,
+    ScriptSet,
+)
+from maasserver.models import scriptset as scriptset_module
+from maasserver.models.scriptset import translate_result_type
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -25,9 +35,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import Script, ScriptResult, ScriptSet
-from metadataserver.models import scriptset as scriptset_module
-from metadataserver.models.scriptset import translate_result_type
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 

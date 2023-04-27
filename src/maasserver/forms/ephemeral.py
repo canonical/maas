@@ -19,10 +19,10 @@ from django.forms import (
 from django.http import QueryDict
 
 from maasserver.enum import NODE_STATUS
+from maasserver.models import Script
 from maasserver.node_action import get_node_action
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import SCRIPT_TYPE
-from metadataserver.models import Script
 
 
 class TestForm(Form):

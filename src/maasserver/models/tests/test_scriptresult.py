@@ -10,7 +10,8 @@ from django.core.exceptions import ValidationError
 import yaml
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Event, EventType
+from maasserver.models import Event, EventType, ScriptResult
+from maasserver.models import scriptresult as scriptresult_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -24,8 +25,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import ScriptResult
-from metadataserver.models import scriptresult as scriptresult_module
 from provisioningserver.events import EVENT_TYPES
 
 
