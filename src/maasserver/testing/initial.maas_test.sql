@@ -7939,6 +7939,17 @@ ALTER SEQUENCE public.maasserver_nodegrouptorackcontroller_id_seq OWNED BY publi
 
 
 --
+-- Name: maasserver_nodekey; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_nodekey (
+    id integer NOT NULL,
+    node_id integer NOT NULL,
+    token_id integer NOT NULL
+);
+
+
+--
 -- Name: maasserver_nodemetadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7970,6 +7981,17 @@ CREATE SEQUENCE public.maasserver_nodemetadata_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_nodemetadata_id_seq OWNED BY public.maasserver_nodemetadata.id;
+
+
+--
+-- Name: maasserver_nodeuserdata; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_nodeuserdata (
+    id integer NOT NULL,
+    data text NOT NULL,
+    node_id integer NOT NULL
+);
 
 
 --
@@ -9307,17 +9329,6 @@ ALTER SEQUENCE public.maastesting_perftestbuild_id_seq OWNED BY public.maastesti
 
 
 --
--- Name: metadataserver_nodekey; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.metadataserver_nodekey (
-    id integer NOT NULL,
-    node_id integer NOT NULL,
-    token_id integer NOT NULL
-);
-
-
---
 -- Name: metadataserver_nodekey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -9333,18 +9344,7 @@ CREATE SEQUENCE public.metadataserver_nodekey_id_seq
 -- Name: metadataserver_nodekey_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.metadataserver_nodekey_id_seq OWNED BY public.metadataserver_nodekey.id;
-
-
---
--- Name: metadataserver_nodeuserdata; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.metadataserver_nodeuserdata (
-    id integer NOT NULL,
-    data text NOT NULL,
-    node_id integer NOT NULL
-);
+ALTER SEQUENCE public.metadataserver_nodekey_id_seq OWNED BY public.maasserver_nodekey.id;
 
 
 --
@@ -9363,7 +9363,7 @@ CREATE SEQUENCE public.metadataserver_nodeuserdata_id_seq
 -- Name: metadataserver_nodeuserdata_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.metadataserver_nodeuserdata_id_seq OWNED BY public.metadataserver_nodeuserdata.id;
+ALTER SEQUENCE public.metadataserver_nodeuserdata_id_seq OWNED BY public.maasserver_nodeuserdata.id;
 
 
 --
@@ -9950,10 +9950,24 @@ ALTER TABLE ONLY public.maasserver_nodegrouptorackcontroller ALTER COLUMN id SET
 
 
 --
+-- Name: maasserver_nodekey id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodekey ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_nodekey_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_nodemetadata id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_nodemetadata ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodemetadata_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_nodeuserdata id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodeuserdata ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_nodeuserdata_id_seq'::regclass);
 
 
 --
@@ -10213,20 +10227,6 @@ ALTER TABLE ONLY public.maasserver_zone ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.maastesting_perftestbuild ALTER COLUMN id SET DEFAULT nextval('public.maastesting_perftestbuild_id_seq'::regclass);
-
-
---
--- Name: metadataserver_nodekey id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_nodekey ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_nodekey_id_seq'::regclass);
-
-
---
--- Name: metadataserver_nodeuserdata id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_nodeuserdata ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_nodeuserdata_id_seq'::regclass);
 
 
 --
@@ -10736,6 +10736,14 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 442	Can change vault secret	111	change_vaultsecret
 443	Can delete vault secret	111	delete_vaultsecret
 444	Can view vault secret	111	view_vaultsecret
+445	Can add node key	112	add_nodekey
+446	Can change node key	112	change_nodekey
+447	Can delete node key	112	delete_nodekey
+448	Can view node key	112	view_nodekey
+449	Can add node user data	113	add_nodeuserdata
+450	Can change node user data	113	change_nodeuserdata
+451	Can delete node user data	113	delete_nodeuserdata
+452	Can view node user data	113	view_nodeuserdata
 \.
 
 
@@ -10879,6 +10887,8 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 109	maasserver	nodedevicevpd
 110	maasserver	secret
 111	maasserver	vaultsecret
+112	maasserver	nodekey
+113	maasserver	nodeuserdata
 \.
 
 
@@ -11235,6 +11245,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 346	maasserver	0293_drop_verbose_regex_validator	2023-02-28 03:29:15.412014+00
 347	maasserver	0294_keyring_data_binary_field	2023-03-01 03:29:34.859599+00
 348	maasserver	0295_macaddress_text_field	2023-03-04 03:29:30.976082+00
+349	metadataserver	0035_move_metadata_node_models	2023-04-27 03:30:37.453124+00
+350	maasserver	0296_move_metadata_node_models	2023-04-27 03:30:37.656471+00
 \.
 
 
@@ -11595,10 +11607,26 @@ COPY public.maasserver_nodegrouptorackcontroller (id, uuid, subnet_id) FROM stdi
 
 
 --
+-- Data for Name: maasserver_nodekey; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_nodekey (id, node_id, token_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_nodemetadata; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.maasserver_nodemetadata (id, created, updated, key, value, node_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_nodeuserdata; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_nodeuserdata (id, data, node_id) FROM stdin;
 \.
 
 
@@ -11935,22 +11963,6 @@ COPY public.maastesting_perftestbuild (id, created, updated, start_ts, end_ts, g
 
 
 --
--- Data for Name: metadataserver_nodekey; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.metadataserver_nodekey (id, node_id, token_id) FROM stdin;
-\.
-
-
---
--- Data for Name: metadataserver_nodeuserdata; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.metadataserver_nodeuserdata (id, data, node_id) FROM stdin;
-\.
-
-
---
 -- Data for Name: metadataserver_script; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -12016,7 +12028,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 444, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 452, true);
 
 
 --
@@ -12044,14 +12056,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 111, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 113, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 348, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 350, true);
 
 
 --
@@ -14006,42 +14018,42 @@ ALTER TABLE ONLY public.maastesting_perftestbuild
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_node_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodekey metadataserver_nodekey_node_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodekey
+ALTER TABLE ONLY public.maasserver_nodekey
     ADD CONSTRAINT metadataserver_nodekey_node_id_key UNIQUE (node_id);
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodekey metadataserver_nodekey_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodekey
+ALTER TABLE ONLY public.maasserver_nodekey
     ADD CONSTRAINT metadataserver_nodekey_pkey PRIMARY KEY (id);
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_token_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodekey metadataserver_nodekey_token_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodekey
+ALTER TABLE ONLY public.maasserver_nodekey
     ADD CONSTRAINT metadataserver_nodekey_token_id_key UNIQUE (token_id);
 
 
 --
--- Name: metadataserver_nodeuserdata metadataserver_nodeuserdata_node_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodeuserdata metadataserver_nodeuserdata_node_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodeuserdata
+ALTER TABLE ONLY public.maasserver_nodeuserdata
     ADD CONSTRAINT metadataserver_nodeuserdata_node_id_key UNIQUE (node_id);
 
 
 --
--- Name: metadataserver_nodeuserdata metadataserver_nodeuserdata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodeuserdata metadataserver_nodeuserdata_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodeuserdata
+ALTER TABLE ONLY public.maasserver_nodeuserdata
     ADD CONSTRAINT metadataserver_nodeuserdata_pkey PRIMARY KEY (id);
 
 
@@ -16348,26 +16360,26 @@ ALTER TABLE ONLY public.maasserver_vmcluster
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_node_id_d16c985e_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodekey metadataserver_nodekey_node_id_d16c985e_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodekey
+ALTER TABLE ONLY public.maasserver_nodekey
     ADD CONSTRAINT metadataserver_nodekey_node_id_d16c985e_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_nodekey metadataserver_nodekey_token_id_e6cac4c9_fk_piston3_token_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodekey metadataserver_nodekey_token_id_e6cac4c9_fk_piston3_token_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodekey
+ALTER TABLE ONLY public.maasserver_nodekey
     ADD CONSTRAINT metadataserver_nodekey_token_id_e6cac4c9_fk_piston3_token_id FOREIGN KEY (token_id) REFERENCES public.piston3_token(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_nodeuserdata metadataserver_nodeu_node_id_40aa2a4e_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodeuserdata metadataserver_nodeu_node_id_40aa2a4e_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_nodeuserdata
+ALTER TABLE ONLY public.maasserver_nodeuserdata
     ADD CONSTRAINT metadataserver_nodeu_node_id_40aa2a4e_fk_maasserve FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
