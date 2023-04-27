@@ -15,6 +15,7 @@ from django.db.models import (
     CharField,
     Count,
     F,
+    IntegerField,
     OuterRef,
     Subquery,
     Sum,
@@ -128,6 +129,15 @@ class MachineHandler(NodeHandler):
                 "partitiontable_set__partitions"
             )
         )
+        node_total_storage_query_set = (
+            Machine.objects.select_related("current_config")
+            .annotate(
+                storage=Sum(
+                    "current_config__blockdevice__physicalblockdevice__size"
+                )
+            )
+            .filter(pk=OuterRef("pk"))
+        )
         list_queryset = (
             Machine.objects.all()
             .select_related("owner", "zone", "domain", "bmc", "current_config")
@@ -173,10 +183,12 @@ class MachineHandler(NodeHandler):
                     .values("message")[:1]
                 ),
                 physical_disk_count=Count(
-                    "current_config__blockdevice__physicalblockdevice"
+                    "current_config__blockdevice__physicalblockdevice",
+                    distinct=True,
                 ),
-                total_storage=Sum(
-                    "current_config__blockdevice__physicalblockdevice__size"
+                total_storage=Subquery(
+                    node_total_storage_query_set.values("storage"),
+                    output_field=IntegerField(),
                 ),
                 pxe_mac=F("boot_interface__mac_address"),
                 fabric_name=F("boot_interface__vlan__fabric__name"),
