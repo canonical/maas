@@ -540,6 +540,79 @@ class TestSysDNSUpdates(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_dns_dynamic_update_interface_static_ip_address_ignores_controllers(
+        self,
+    ):
+        listener = self.make_listener_without_delay()
+        yield self.set_service(listener)
+        yield deferToDatabase(
+            self.register_trigger,
+            "maasserver_interface_ip_addresses",
+            "sys_dns_updates",
+            ops=("delete",),
+            trigger="sys_dns_updates_interface_ip_delete",
+        )
+        vlan = yield deferToDatabase(self.create_vlan)
+        subnet1 = yield deferToDatabase(
+            self.create_subnet, params={"vlan": vlan}
+        )
+        subnet2 = yield deferToDatabase(
+            self.create_subnet, params={"vlan": vlan}
+        )
+        node1 = yield deferToDatabase(
+            self.create_node_with_interface,
+            params={
+                "node_type": NODE_TYPE.RACK_CONTROLLER,
+                "subnet": subnet1,
+                "status": NODE_STATUS.DEPLOYED,
+            },
+        )
+        node2 = yield deferToDatabase(
+            self.create_node_with_interface,
+            params={"subnet": subnet2, "status": NODE_STATUS.DEPLOYED},
+        )
+        domain = yield deferToDatabase(Domain.objects.get_default_domain)
+        iface1 = yield deferToDatabase(
+            lambda: node1.current_config.interface_set.first()
+        )
+        iface2 = yield deferToDatabase(
+            lambda: node2.current_config.interface_set.first()
+        )
+        ip1 = yield deferToDatabase(
+            lambda: self.create_staticipaddress(
+                params={
+                    "ip": subnet1.get_next_ip_for_allocation()[0],
+                    "interface": iface1,
+                    "subnet": subnet1,
+                }
+            )
+        )
+        ip2 = yield deferToDatabase(
+            lambda: self.create_staticipaddress(
+                params={
+                    "ip": subnet2.get_next_ip_for_allocation()[0],
+                    "interface": iface2,
+                    "subnet": subnet2,
+                }
+            )
+        )
+        self.start_reading()
+        try:
+            yield deferToDatabase(iface1.unlink_ip_address, ip1)
+            yield deferToDatabase(iface2.unlink_ip_address, ip2)
+            expected_msgs = (
+                f"DELETE {domain.name} {node2.hostname} A {ip2.ip}",
+                f"DELETE {domain.name} {iface2.name}.{node2.hostname} A {ip2.ip}",
+            )
+            for exp in expected_msgs:
+                msg = yield self.get_notify("sys_dns_updates")
+                self.assertEqual(msg, exp)
+        finally:
+            self.stop_reading()
+            yield self.postgres_listener_service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_dns_dynamc_update_ip_update(self):
         listener = self.make_listener_without_delay()
         yield self.set_service(listener)
