@@ -6041,6 +6041,24 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertEqual(2, result["count"])
         self.assertEqual(2, result["groups"][0]["count"])
 
+    def test_filter_storage_counters(self):
+        user = factory.make_User()
+        node = factory.make_Machine(owner=user)
+        [node.tags.add(factory.make_Tag()) for _ in range(2)]
+
+        handler = MachineHandler(user, {}, None)
+        result = handler.list({"filter": {"free_text": node.hostname}})
+
+        self.assertEqual(1, result["count"])
+        self.assertEqual(
+            node.physicalblockdevice_set.count(),
+            result["groups"][0]["items"][0]["physical_disk_count"],
+        )
+        self.assertEqual(
+            round(node.physicalblockdevice_set.first().size / (1000**3), 1),
+            result["groups"][0]["items"][0]["storage"],
+        )
+
     def test_sort_alias(self):
         user = factory.make_User()
         fabrics = [factory.make_Fabric() for _ in range(2)]
