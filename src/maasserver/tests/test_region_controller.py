@@ -163,6 +163,11 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones"
         )
+        mock_dns_update_all_zones.returnValue = (
+            random.randint(1, 1000),
+            True,
+            [factory.make_name("domain") for _ in range(3)],
+        )
         service.startProcessing()
         yield service.processingDefer
         mock_dns_update_all_zones.assert_called_once()
@@ -947,3 +952,18 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
                 call(dynamic_updates=expected_updates, requires_reload=False),
             ]
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_check_serial_is_skipped_if_a_newer_serial_exists(self):
+        domain = yield deferToDatabase(factory.make_Domain)
+        update_result = (random.randint(0, 10), True, [domain.name])
+        service = RegionControllerService(sentinel.listener)
+
+        query = self.patch(service.dnsResolver, "lookupAuthority")
+
+        service._dns_latest_serial = update_result[0] + 1
+
+        yield service._checkSerial(update_result)
+
+        query.assert_not_called()

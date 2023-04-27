@@ -966,13 +966,13 @@ class NotifyHelperMixin:
 
     @inlineCallbacks
     def listen(self, channel, msg):
-        if msg:
+        if msg and channel in self.channel_queues:
             yield self.channel_queues[channel].put(msg)
 
-    @inlineCallbacks
     def get_notify(self, channel):
-        msg = yield self.channel_queues[channel].get()
-        return msg
+        if channel in self.channel_queues:
+            return self.channel_queues[channel].get()
+        return None
 
     def start_reading(self):
         for channel in self.channels:

@@ -2061,6 +2061,7 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
         CREATE OR REPLACE FUNCTION sys_dns_updates_interface_ip_{op}()
         RETURNS trigger as $$
         DECLARE
+          node_type int;
           current_hostname text;
           domain text;
           iface_name text;
@@ -2070,26 +2071,30 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
           ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
           ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
           IF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
-            SELECT iface.name, node.hostname, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, domain, address_ttl
+            SELECT iface.name, node.hostname, node.node_type, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, node_type, domain, address_ttl
               FROM maasserver_interface AS iface
               JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
               JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=NEW.interface_id;
             SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
-            PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
-            PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+            IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
+                PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+            END IF;
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
             IF EXISTS(SELECT id FROM maasserver_interface WHERE id=OLD.interface_id) THEN
-                SELECT iface.name, node.hostname, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, domain, address_ttl
+                SELECT iface.name, node.hostname, node.node_type, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, node_type, domain, address_ttl
                   FROM maasserver_interface AS iface
                   JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
                   JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=OLD.interface_id;
-                IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
-                  SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || ip_addr);
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || ip_addr);
-                ELSE
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' A ' || OLD.interface_id);
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' AAAA ' || OLD.interface_id);
+                IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
+                    IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
+                      SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
+                      PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || ip_addr);
+                      PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || ip_addr);
+                    ELSE
+                      PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' A ' || OLD.interface_id);
+                      PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' AAAA ' || OLD.interface_id);
+                    END IF;
                 END IF;
             END IF;
           END IF;

@@ -101,6 +101,7 @@ class RegionControllerService(Service):
         self._queued_updates = []
         self._dns_update_in_progress = False
         self._dns_requires_full_reload = True
+        self._dns_latest_serial = None
         self.postgresListener = postgresListener
         self.dnsResolver = Resolver(
             resolv=None,
@@ -232,6 +233,16 @@ class RegionControllerService(Service):
             self._dns_update_in_progress = False
             return d
 
+        def _set_latest_serial(result):
+            if result:
+                (serial, _, _) = result
+                if (
+                    not self._dns_latest_serial
+                    or self._dns_latest_serial < serial
+                ):
+                    self._dns_latest_serial = serial
+            return result
+
         defers = []
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
@@ -244,6 +255,7 @@ class RegionControllerService(Service):
                 requires_reload=self._dns_requires_full_reload,
             )
             d.addCallback(_clear_dynamic_dns_updates)
+            d.addCallback(_set_latest_serial)
             d.addCallback(self._checkSerial)
             d.addCallback(self._logDNSReload)
             # Order here matters, first needsDNSUpdate is set then pass the
@@ -284,6 +296,11 @@ class RegionControllerService(Service):
         if result is None:
             return None
         serial, reloaded, domain_names = result
+
+        # check that there is not a newer serial we should query instead
+        if self._dns_latest_serial and self._dns_latest_serial > serial:
+            return result
+
         if not reloaded:
             raise DNSReloadError(
                 "Failed to reload DNS; timeout or rdnc command failed."
