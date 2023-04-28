@@ -264,9 +264,11 @@ class ScriptResult(CleanSave, TimestampedModel):
         # rack controller to create a new ScriptSet.
         if self.script_set.node.is_commissioning():
             # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
-            # incase the node didn't inform MAAS the Script was being run, it
+            # in case the node didn't inform MAAS the Script was being run, it
             # just uploaded results.
-            assert self.status in SCRIPT_STATUS_RUNNING_OR_PENDING
+            assert (
+                self.status in SCRIPT_STATUS_RUNNING_OR_PENDING
+            ), f"Status for scriptresult {self.id} is not running or pending ({self.status})"
 
         if timedout:
             self.status = SCRIPT_STATUS.TIMEDOUT
