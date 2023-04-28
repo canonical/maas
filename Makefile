@@ -190,7 +190,7 @@ lint-oapi: openapi.yaml
 
 # Go fmt
 lint-go: $(BIN_DIR)/golangci-lint
-	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run -v ./... \; | \
+	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run ./... \; | \
 		tee /tmp/golangci-lint.lint
 	@test ! -s /tmp/golangci-lint.lint
 .PHONY: lint-go

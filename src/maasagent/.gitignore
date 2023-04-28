@@ -20,5 +20,4 @@ vendor/
 # BINDIR used for various tools
 bin/
 
-# DISTDIR
-dist/
+build/
