@@ -8709,6 +8709,76 @@ CREATE VIEW public.maasserver_routable_pairs AS
 
 
 --
+-- Name: maasserver_script; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_script (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(255) NOT NULL,
+    description text NOT NULL,
+    tags text[],
+    script_type integer NOT NULL,
+    timeout interval NOT NULL,
+    destructive boolean NOT NULL,
+    "default" boolean NOT NULL,
+    script_id integer NOT NULL,
+    title character varying(255) NOT NULL,
+    hardware_type integer NOT NULL,
+    packages jsonb NOT NULL,
+    parallel integer NOT NULL,
+    parameters jsonb NOT NULL,
+    results jsonb NOT NULL,
+    for_hardware character varying(255)[] NOT NULL,
+    may_reboot boolean NOT NULL,
+    recommission boolean NOT NULL,
+    apply_configured_networking boolean NOT NULL
+);
+
+
+--
+-- Name: maasserver_scriptresult; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_scriptresult (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    status integer NOT NULL,
+    exit_status integer,
+    script_name character varying(255),
+    stdout text NOT NULL,
+    stderr text NOT NULL,
+    result text NOT NULL,
+    script_id integer,
+    script_set_id integer NOT NULL,
+    script_version_id integer,
+    output text NOT NULL,
+    ended timestamp with time zone,
+    started timestamp with time zone,
+    parameters jsonb NOT NULL,
+    physical_blockdevice_id integer,
+    suppressed boolean NOT NULL,
+    interface_id integer
+);
+
+
+--
+-- Name: maasserver_scriptset; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_scriptset (
+    id integer NOT NULL,
+    last_ping timestamp with time zone,
+    result_type integer NOT NULL,
+    node_id integer NOT NULL,
+    power_state_before_transition character varying(10) NOT NULL,
+    tags text[]
+);
+
+
+--
 -- Name: maasserver_secret; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9367,35 +9437,6 @@ ALTER SEQUENCE public.metadataserver_nodeuserdata_id_seq OWNED BY public.maasser
 
 
 --
--- Name: metadataserver_script; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.metadataserver_script (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    description text NOT NULL,
-    tags text[],
-    script_type integer NOT NULL,
-    timeout interval NOT NULL,
-    destructive boolean NOT NULL,
-    "default" boolean NOT NULL,
-    script_id integer NOT NULL,
-    title character varying(255) NOT NULL,
-    hardware_type integer NOT NULL,
-    packages jsonb NOT NULL,
-    parallel integer NOT NULL,
-    parameters jsonb NOT NULL,
-    results jsonb NOT NULL,
-    for_hardware character varying(255)[] NOT NULL,
-    may_reboot boolean NOT NULL,
-    recommission boolean NOT NULL,
-    apply_configured_networking boolean NOT NULL
-);
-
-
---
 -- Name: metadataserver_script_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -9411,34 +9452,7 @@ CREATE SEQUENCE public.metadataserver_script_id_seq
 -- Name: metadataserver_script_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.metadataserver_script_id_seq OWNED BY public.metadataserver_script.id;
-
-
---
--- Name: metadataserver_scriptresult; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.metadataserver_scriptresult (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    status integer NOT NULL,
-    exit_status integer,
-    script_name character varying(255),
-    stdout text NOT NULL,
-    stderr text NOT NULL,
-    result text NOT NULL,
-    script_id integer,
-    script_set_id integer NOT NULL,
-    script_version_id integer,
-    output text NOT NULL,
-    ended timestamp with time zone,
-    started timestamp with time zone,
-    parameters jsonb NOT NULL,
-    physical_blockdevice_id integer,
-    suppressed boolean NOT NULL,
-    interface_id integer
-);
+ALTER SEQUENCE public.metadataserver_script_id_seq OWNED BY public.maasserver_script.id;
 
 
 --
@@ -9457,21 +9471,7 @@ CREATE SEQUENCE public.metadataserver_scriptresult_id_seq
 -- Name: metadataserver_scriptresult_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.metadataserver_scriptresult_id_seq OWNED BY public.metadataserver_scriptresult.id;
-
-
---
--- Name: metadataserver_scriptset; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.metadataserver_scriptset (
-    id integer NOT NULL,
-    last_ping timestamp with time zone,
-    result_type integer NOT NULL,
-    node_id integer NOT NULL,
-    power_state_before_transition character varying(10) NOT NULL,
-    tags text[]
-);
+ALTER SEQUENCE public.metadataserver_scriptresult_id_seq OWNED BY public.maasserver_scriptresult.id;
 
 
 --
@@ -9490,7 +9490,7 @@ CREATE SEQUENCE public.metadataserver_scriptset_id_seq
 -- Name: metadataserver_scriptset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.metadataserver_scriptset_id_seq OWNED BY public.metadataserver_scriptset.id;
+ALTER SEQUENCE public.metadataserver_scriptset_id_seq OWNED BY public.maasserver_scriptset.id;
 
 
 --
@@ -10104,6 +10104,27 @@ ALTER TABLE ONLY public.maasserver_rootkey ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: maasserver_script id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_script ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_script_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_scriptresult id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_scriptresult ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_scriptresult_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_scriptset id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_scriptset ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_scriptset_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_service id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10227,27 +10248,6 @@ ALTER TABLE ONLY public.maasserver_zone ALTER COLUMN id SET DEFAULT nextval('pub
 --
 
 ALTER TABLE ONLY public.maastesting_perftestbuild ALTER COLUMN id SET DEFAULT nextval('public.maastesting_perftestbuild_id_seq'::regclass);
-
-
---
--- Name: metadataserver_script id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_script ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_script_id_seq'::regclass);
-
-
---
--- Name: metadataserver_scriptresult id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_scriptresult ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_scriptresult_id_seq'::regclass);
-
-
---
--- Name: metadataserver_scriptset id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_scriptset ALTER COLUMN id SET DEFAULT nextval('public.metadataserver_scriptset_id_seq'::regclass);
 
 
 --
@@ -10744,6 +10744,18 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 450	Can change node user data	113	change_nodeuserdata
 451	Can delete node user data	113	delete_nodeuserdata
 452	Can view node user data	113	view_nodeuserdata
+453	Can add script set	114	add_scriptset
+454	Can change script set	114	change_scriptset
+455	Can delete script set	114	delete_scriptset
+456	Can view script set	114	view_scriptset
+457	Can add script	115	add_script
+458	Can change script	115	change_script
+459	Can delete script	115	delete_script
+460	Can view script	115	view_script
+461	Can add script result	116	add_scriptresult
+462	Can change script result	116	change_scriptresult
+463	Can delete script result	116	delete_scriptresult
+464	Can view script result	116	view_scriptresult
 \.
 
 
@@ -10889,6 +10901,9 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 111	maasserver	vaultsecret
 112	maasserver	nodekey
 113	maasserver	nodeuserdata
+114	maasserver	scriptset
+115	maasserver	script
+116	maasserver	scriptresult
 \.
 
 
@@ -11247,6 +11262,11 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 348	maasserver	0295_macaddress_text_field	2023-03-04 03:29:30.976082+00
 349	metadataserver	0035_move_metadata_node_models	2023-04-27 03:30:37.453124+00
 350	maasserver	0296_move_metadata_node_models	2023-04-27 03:30:37.656471+00
+351	metadataserver	0036_move_metadata_script_models	2023-04-28 03:30:33.711429+00
+352	maasserver	0297_move_metadata_script_models	2023-04-28 03:30:34.516888+00
+353	maasserver	0298_current_script_set_foreign_keys_drop_indexes	2023-04-28 03:30:34.954887+00
+354	maasserver	0299_current_script_set_foreign_keys_cleanup	2023-04-28 03:30:34.967579+00
+355	maasserver	0300_current_script_set_foreign_keys_readd	2023-04-28 03:30:35.35594+00
 \.
 
 
@@ -11794,6 +11814,30 @@ COPY public.maasserver_rootkey (created, updated, id, expiration) FROM stdin;
 
 
 --
+-- Data for Name: maasserver_script; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_script (id, created, updated, name, description, tags, script_type, timeout, destructive, "default", script_id, title, hardware_type, packages, parallel, parameters, results, for_hardware, may_reboot, recommission, apply_configured_networking) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_scriptresult; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_scriptresult (id, created, updated, status, exit_status, script_name, stdout, stderr, result, script_id, script_set_id, script_version_id, output, ended, started, parameters, physical_blockdevice_id, suppressed, interface_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_scriptset; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_scriptset (id, last_ping, result_type, node_id, power_state_before_transition, tags) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_secret; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -11963,30 +12007,6 @@ COPY public.maastesting_perftestbuild (id, created, updated, start_ts, end_ts, g
 
 
 --
--- Data for Name: metadataserver_script; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.metadataserver_script (id, created, updated, name, description, tags, script_type, timeout, destructive, "default", script_id, title, hardware_type, packages, parallel, parameters, results, for_hardware, may_reboot, recommission, apply_configured_networking) FROM stdin;
-\.
-
-
---
--- Data for Name: metadataserver_scriptresult; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.metadataserver_scriptresult (id, created, updated, status, exit_status, script_name, stdout, stderr, result, script_id, script_set_id, script_version_id, output, ended, started, parameters, physical_blockdevice_id, suppressed, interface_id) FROM stdin;
-\.
-
-
---
--- Data for Name: metadataserver_scriptset; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.metadataserver_scriptset (id, last_ping, result_type, node_id, power_state_before_transition, tags) FROM stdin;
-\.
-
-
---
 -- Data for Name: piston3_consumer; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -12028,7 +12048,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 452, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 464, true);
 
 
 --
@@ -12056,14 +12076,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 113, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 350, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 355, true);
 
 
 --
@@ -14058,42 +14078,42 @@ ALTER TABLE ONLY public.maasserver_nodeuserdata
 
 
 --
--- Name: metadataserver_script metadataserver_script_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_script metadataserver_script_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_script
+ALTER TABLE ONLY public.maasserver_script
     ADD CONSTRAINT metadataserver_script_name_key UNIQUE (name);
 
 
 --
--- Name: metadataserver_script metadataserver_script_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_script metadataserver_script_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_script
+ALTER TABLE ONLY public.maasserver_script
     ADD CONSTRAINT metadataserver_script_pkey PRIMARY KEY (id);
 
 
 --
--- Name: metadataserver_script metadataserver_script_script_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_script metadataserver_script_script_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_script
+ALTER TABLE ONLY public.maasserver_script
     ADD CONSTRAINT metadataserver_script_script_id_key UNIQUE (script_id);
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scriptresult_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scriptresult_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptresult
+ALTER TABLE ONLY public.maasserver_scriptresult
     ADD CONSTRAINT metadataserver_scriptresult_pkey PRIMARY KEY (id);
 
 
 --
--- Name: metadataserver_scriptset metadataserver_scriptset_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptset metadataserver_scriptset_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptset
+ALTER TABLE ONLY public.maasserver_scriptset
     ADD CONSTRAINT metadataserver_scriptset_pkey PRIMARY KEY (id);
 
 
@@ -15267,49 +15287,49 @@ CREATE INDEX maastesting_perftestbuild_git_hash_07335de3_like ON public.maastest
 -- Name: metadataserver_script_name_b2be1ba5_like; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_script_name_b2be1ba5_like ON public.metadataserver_script USING btree (name varchar_pattern_ops);
+CREATE INDEX metadataserver_script_name_b2be1ba5_like ON public.maasserver_script USING btree (name varchar_pattern_ops);
 
 
 --
 -- Name: metadataserver_scriptresult_interface_id_a120e25e; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptresult_interface_id_a120e25e ON public.metadataserver_scriptresult USING btree (interface_id);
+CREATE INDEX metadataserver_scriptresult_interface_id_a120e25e ON public.maasserver_scriptresult USING btree (interface_id);
 
 
 --
 -- Name: metadataserver_scriptresult_physical_blockdevice_id_c728b2ad; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptresult_physical_blockdevice_id_c728b2ad ON public.metadataserver_scriptresult USING btree (physical_blockdevice_id);
+CREATE INDEX metadataserver_scriptresult_physical_blockdevice_id_c728b2ad ON public.maasserver_scriptresult USING btree (physical_blockdevice_id);
 
 
 --
 -- Name: metadataserver_scriptresult_script_id_c5ff7318; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptresult_script_id_c5ff7318 ON public.metadataserver_scriptresult USING btree (script_id);
+CREATE INDEX metadataserver_scriptresult_script_id_c5ff7318 ON public.maasserver_scriptresult USING btree (script_id);
 
 
 --
 -- Name: metadataserver_scriptresult_script_set_id_625a037b; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptresult_script_set_id_625a037b ON public.metadataserver_scriptresult USING btree (script_set_id);
+CREATE INDEX metadataserver_scriptresult_script_set_id_625a037b ON public.maasserver_scriptresult USING btree (script_set_id);
 
 
 --
 -- Name: metadataserver_scriptresult_script_version_id_932ffdd1; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptresult_script_version_id_932ffdd1 ON public.metadataserver_scriptresult USING btree (script_version_id);
+CREATE INDEX metadataserver_scriptresult_script_version_id_932ffdd1 ON public.maasserver_scriptresult USING btree (script_version_id);
 
 
 --
 -- Name: metadataserver_scriptset_node_id_72b6537b; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX metadataserver_scriptset_node_id_72b6537b ON public.metadataserver_scriptset USING btree (node_id);
+CREATE INDEX metadataserver_scriptset_node_id_72b6537b ON public.maasserver_scriptset USING btree (node_id);
 
 
 --
@@ -15808,11 +15828,35 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_node maasserver_node_current_commissionin_9ae2ec39_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_commissionin_9ae2ec39_fk_maasserve FOREIGN KEY (current_commissioning_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_node maasserver_node_current_config_id_d9cbacad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_current_config_id_d9cbacad_fk_maasserve FOREIGN KEY (current_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_installation_a6e40738_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_installation_a6e40738_fk_maasserve FOREIGN KEY (current_installation_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_testing_scri_4636f4f9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_testing_scri_4636f4f9_fk_maasserve FOREIGN KEY (current_testing_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -16384,58 +16428,58 @@ ALTER TABLE ONLY public.maasserver_nodeuserdata
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scrip_interface_id_a120e25e_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scrip_interface_id_a120e25e_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptresult
+ALTER TABLE ONLY public.maasserver_scriptresult
     ADD CONSTRAINT metadataserver_scrip_interface_id_a120e25e_fk_maasserve FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scrip_physical_blockdevice_c728b2ad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scrip_physical_blockdevice_c728b2ad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptresult
+ALTER TABLE ONLY public.maasserver_scriptresult
     ADD CONSTRAINT metadataserver_scrip_physical_blockdevice_c728b2ad_fk_maasserve FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_script metadataserver_scrip_script_id_422cbda8_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_script metadataserver_scrip_script_id_422cbda8_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_script
+ALTER TABLE ONLY public.maasserver_script
     ADD CONSTRAINT metadataserver_scrip_script_id_422cbda8_fk_maasserve FOREIGN KEY (script_id) REFERENCES public.maasserver_versionedtextfile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scrip_script_version_id_932ffdd1_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scrip_script_version_id_932ffdd1_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptresult
+ALTER TABLE ONLY public.maasserver_scriptresult
     ADD CONSTRAINT metadataserver_scrip_script_version_id_932ffdd1_fk_maasserve FOREIGN KEY (script_version_id) REFERENCES public.maasserver_versionedtextfile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scriptresult_script_id_c5ff7318_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scriptresult_script_id_c5ff7318_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptresult
-    ADD CONSTRAINT metadataserver_scriptresult_script_id_c5ff7318_fk FOREIGN KEY (script_id) REFERENCES public.metadataserver_script(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: metadataserver_scriptresult metadataserver_scriptresult_script_set_id_625a037b_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_scriptresult
-    ADD CONSTRAINT metadataserver_scriptresult_script_set_id_625a037b_fk FOREIGN KEY (script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.maasserver_scriptresult
+    ADD CONSTRAINT metadataserver_scriptresult_script_id_c5ff7318_fk FOREIGN KEY (script_id) REFERENCES public.maasserver_script(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: metadataserver_scriptset metadataserver_scriptset_node_id_72b6537b_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_scriptresult metadataserver_scriptresult_script_set_id_625a037b_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.metadataserver_scriptset
+ALTER TABLE ONLY public.maasserver_scriptresult
+    ADD CONSTRAINT metadataserver_scriptresult_script_set_id_625a037b_fk FOREIGN KEY (script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_scriptset metadataserver_scriptset_node_id_72b6537b_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_scriptset
     ADD CONSTRAINT metadataserver_scriptset_node_id_72b6537b_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
