@@ -304,44 +304,26 @@ class Partition(CleanSave, TimestampedModel):
                         }
                     )
 
-    def is_vmfs6_partition(self):
-        # Avoid circular imports.
-        from maasserver.storage_layouts import VMFS6StorageLayout
-
-        vmfs_layout = VMFS6StorageLayout(self.get_node())
-        vmfs_bd = vmfs_layout.is_layout()
-        if vmfs_bd is None:
-            return False
-        if vmfs_bd.id != self.partition_table.block_device_id:
-            return False
-        if self.index >= len(vmfs_layout.base_partitions) + 2:
-            # A user may apply the VMFS6 layout and leave space at the end of
-            # the disk for additional VMFS datastores. Those partitions may be
-            # deleted, the base partitions may not as they are part of the DD.
-            # The + 2 is to account for partition 4 being skipped.
-            return False
-        return True
-
-    def is_vmfs7_partition(self):
-        # Avoid circular imports.
-        from maasserver.storage_layouts import VMFS7StorageLayout
-
-        vmfs_layout = VMFS7StorageLayout(self.get_node())
-        vmfs_bd = vmfs_layout.is_layout()
-        if vmfs_bd is None:
-            return False
-        if vmfs_bd.id != self.partition_table.block_device_id:
-            return False
-        if self.index < len(vmfs_layout.base_partitions) + 3:
-            # A user may apply the VMFS7 layout and leave space at the end of
-            # the disk for additional VMFS datastores. Those partitions may be
-            # deleted, the base partitions may not as they are part of the DD.
-            # The + 3 is to account for partition 2-4 being skipped.
-            return True
-        return False
-
     def is_vmfs_partition(self):
-        return self.is_vmfs6_partition() or self.is_vmfs7_partition()
+        # Avoid circular imports.
+        from maasserver.storage_layouts import (
+            VMFS6StorageLayout,
+            VMFS7StorageLayout,
+        )
+
+        node = self.get_node()
+        part_blk_dev_id = self.partition_table.block_device_id
+        for layout_class in (VMFS7StorageLayout, VMFS6StorageLayout):
+            vmfs_layout = layout_class(node)
+            vmfs_bd = vmfs_layout.is_layout()
+            if vmfs_bd is None or vmfs_bd.id != part_blk_dev_id:
+                continue
+            if self.index <= vmfs_layout.last_base_partition_index:
+                # A user may apply the VMFS layout and leave space at the end of
+                # the disk for additional VMFS datastores. Those partitions may be
+                # deleted, the base partitions may not as they are part of the DD.
+                return True
+        return False
 
     def delete(self):
         """Delete the partition.

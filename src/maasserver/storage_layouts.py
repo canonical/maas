@@ -798,25 +798,29 @@ class VMFS6StorageLayout(StorageLayoutBase):
     name = "vmfs6"
     title = "VMFS6 layout"
 
-    base_partitions = [
-        # EFI System
-        {"index": 1, "size": 3 * 1024**2, "bootable": True},
-        # Basic Data
-        {"index": 2, "size": 4 * 1024**3},
-        # VMFS Datastore, size is 0 so the partition order is correct, its
-        # fixed after everything is applied.
-        {"index": 3, "size": 0},
-        # Basic Data
-        {"index": 5, "size": 249 * 1024**2},
-        # Basic Data
-        {"index": 6, "size": 249 * 1024**2},
-        # VMKCore Diagnostic
-        {"index": 7, "size": 109 * 1024**2},
-        # Basic Data
-        {"index": 8, "size": 285 * 1024**2},
-        # VMKCore Diagnostic
-        {"index": 9, "size": 2560 * 1024**2},
-    ]
+    _default_layout = "default"
+
+    base_partitions = {
+        "default": [
+            # EFI System
+            {"index": 1, "size": 3 * 1024**2, "bootable": True},
+            # Basic Data
+            {"index": 2, "size": 4 * 1024**3},
+            # VMFS Datastore, size is 0 so the partition order is correct, its
+            # fixed after everything is applied.
+            {"index": 3, "size": 0},
+            # Basic Data
+            {"index": 5, "size": 249 * 1024**2},
+            # Basic Data
+            {"index": 6, "size": 249 * 1024**2},
+            # VMKCore Diagnostic
+            {"index": 7, "size": 109 * 1024**2},
+            # Basic Data
+            {"index": 8, "size": 285 * 1024**2},
+            # VMKCore Diagnostic
+            {"index": 9, "size": 2560 * 1024**2},
+        ],
+    }
 
     def _clean_boot_disk(self):
         if self.boot_disk.size < (10 * 1024**3):
@@ -854,7 +858,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
                     updated=now,
                     **partition,
                 )
-                for partition in self.base_partitions
+                for partition in self.base_partitions[self._default_layout]
             ]
         )
         vmfs_part = boot_partition_table.partitions.get(size=0)
@@ -877,22 +881,29 @@ class VMFS6StorageLayout(StorageLayoutBase):
             if pt.table_type != PARTITION_TABLE_TYPE.GPT:
                 continue
             partitions = sorted(pt.partitions.all(), key=attrgetter("id"))
-            if len(partitions) < len(self.base_partitions):
-                continue
-            for i, (partition, base_partition) in enumerate(
-                zip(partitions, self.base_partitions)
-            ):
-                if (i + 1) == len(self.base_partitions):
-                    return bd
-                if partition.bootable != base_partition.get("bootable", False):
-                    break
-                # Skip checking the size of the Datastore partition as that
-                # changes based on available disk size/user input.
-                if base_partition["size"] == 0:
+            for layout in self.base_partitions.values():
+                if len(partitions) < len(layout):
                     continue
-                if partition.size != base_partition["size"]:
-                    break
+                for i, (partition, base_partition) in enumerate(
+                    zip(partitions, layout)
+                ):
+                    if (i + 1) == len(layout):
+                        return bd
+                    if partition.bootable != base_partition.get(
+                        "bootable", False
+                    ):
+                        break
+                    # Skip checking the size of the Datastore partition as that
+                    # changes based on available disk size/user input.
+                    if base_partition["size"] == 0:
+                        continue
+                    if partition.size != base_partition["size"]:
+                        break
         return None
+
+    @property
+    def last_base_partition_index(self):
+        return self.base_partitions[self._default_layout][-1]["index"]
 
 
 class VMFS7StorageLayout(VMFS6StorageLayout):
@@ -900,31 +911,47 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
 
     The VMware ESXi 7+ image is a DD. The image has 5 partitions which are
     in order but not linear. Users may only change the last partition which
-    is partition 8 and stored at the end of the disk.
+    is partition 8 and stored at the end of the disk. In recent ESXi 7 ISOs
+    and version 8 onwards, the 32GB minimum disk size is being enforced,
+    so the Packer template has been updated.
 
-    NAME                PARTITION   SIZE      START BLOCK   END BLOCK
-    EFI System          1           105MB     0             105
-    Basic Data          5           1074MB    106           1180
-    Basic Data          6           1074MB    1181          2255
-    VMFSL               7           8.5GB     2256          10959
-    VMFS                8           Remaining 10960         End of disk
+    NAME                PARTITION   SIZE
+    EFI System          1           100MB
+    Basic Data          5           4GB
+    Basic Data          6           4GB
+    VMFSL               7           23.8GB
+    VMFS                8           Remaining
     """
 
     name = "vmfs7"
     title = "VMFS7 layout"
 
-    base_partitions = [
-        # EFI System
-        {"index": 1, "size": 105 * 1024**2, "bootable": True},
-        # Basic Data
-        {"index": 5, "size": 1074 * 1024**2},
-        # Basic Data
-        {"index": 6, "size": 1074 * 1024**2},
-        # VMFSL
-        {"index": 7, "size": 8704 * 1024**2},
-        # VMFS
-        {"index": 8, "size": 0},
-    ]
+    base_partitions = {
+        "default": [
+            # EFI System
+            {"index": 1, "size": 100 * 1024**2, "bootable": True},
+            # Basic Data
+            {"index": 5, "size": 4 * 1024**3},
+            # Basic Data
+            {"index": 6, "size": 4 * 1024**3},
+            # VMFSL
+            {"index": 7, "size": 24320 * 1024**2},
+            # VMFS
+            {"index": 8, "size": 0},
+        ],
+        "legacy": [
+            # EFI System
+            {"index": 1, "size": 105 * 1024**2, "bootable": True},
+            # Basic Data
+            {"index": 5, "size": 1074 * 1024**2},
+            # Basic Data
+            {"index": 6, "size": 1074 * 1024**2},
+            # VMFSL
+            {"index": 7, "size": 8704 * 1024**2},
+            # VMFS
+            {"index": 8, "size": 0},
+        ],
+    }
 
     def _clean_boot_disk(self):
         """https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.install.doc/GUID-DEB8086A-306B-4239-BF76-E354679202FC.html
@@ -939,9 +966,10 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
                 self, "boot_size", "Boot disk must be at least 32Gb."
             )
 
-    def configure_storage(self, allow_fallback):
-        super().configure_storage(allow_fallback)
-        return self.name
+    @property
+    def last_base_partition_index(self):
+        # VMFS partition can be modified by the user
+        return self.base_partitions[self._default_layout][-2]["index"]
 
 
 class CustomStorageLayout(StorageLayoutBase):

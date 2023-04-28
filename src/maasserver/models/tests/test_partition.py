@@ -544,45 +544,39 @@ class TestPartition(MAASServerTestCase):
             [partition.index for partition in partitions],
         )
 
-    def test_is_vmfs6_partition(self):
+    def test_is_vmfs_partition_layout6(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node)
-        layout.configure()
+        layout_name = layout.configure()
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
-            self.assertTrue(partition.is_vmfs6_partition())
+            self.assertTrue(
+                partition.is_vmfs_partition(),
+                f"{layout_name} index {partition.index} is VMFS",
+            )
 
-    def test_is_vmfs7_partition(self):
+    def test_is_vmfs_partition_layout7p(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS7StorageLayout(node)
-        layout.configure()
-        pt = bd.get_partitiontable()
-        for partition in pt.partitions.all():
-            if partition.index >= 8:
-                self.assertFalse(partition.is_vmfs7_partition())
-            else:
-                self.assertTrue(partition.is_vmfs7_partition())
-
-    def test_is_vmfs_partition(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        vmfs_layout = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
-        layout = vmfs_layout(node)
         layout_name = layout.configure()
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
-            if layout_name == "vmfs7" and partition.index >= 8:
-                self.assertFalse(partition.is_vmfs_partition())
+            if partition.index >= 8:
+                self.assertFalse(
+                    partition.is_vmfs_partition(),
+                    f"{layout_name} index {partition.index} is VMFS",
+                )
             else:
-                self.assertTrue(partition.is_vmfs_partition())
+                self.assertTrue(
+                    partition.is_vmfs_partition(),
+                    f"{layout_name} index {partition.index} is VMFS",
+                )
 
     def test_is_vmfs_partition_false_no_vmfs(self):
         partition = factory.make_Partition()

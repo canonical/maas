@@ -163,7 +163,7 @@ class TestIsPercentageHelper(MAASServerTestCase):
         self.assertEqual(
             self.is_percentage,
             is_percentage(self.value),
-            "%s gave incorrect result." % self.value,
+            f"{self.value} gave incorrect result.",
         )
 
 
@@ -192,7 +192,7 @@ class TestCalculateSizeFromPercentHelper(MAASServerTestCase):
         self.assertEqual(
             self.output,
             calculate_size_from_percentage(self.input, self.percent),
-            "%s gave incorrect result." % self.percent,
+            f"{self.percent} gave incorrect result.",
         )
 
 
@@ -228,8 +228,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEqual(
             {
                 "boot_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_BOOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_BOOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -245,8 +244,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEqual(
             {
                 "boot_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_BOOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_BOOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -261,15 +259,11 @@ class TestStorageLayoutBase(MAASServerTestCase):
             boot_disk.size - EFI_PARTITION_SIZE - MIN_ROOT_PARTITION_SIZE
         )
         to_high_percent = max_size / float(boot_disk.size)
-        to_high_percent = "%s%%" % ((to_high_percent + 1) * 100)
+        to_high_percent = f"{(to_high_percent + 1) * 100}%"
         layout = StorageLayoutBase(node, {"boot_size": to_high_percent})
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {
-                "boot_size": [
-                    "Size is too large. Maximum size is %s." % max_size
-                ]
-            },
+            {"boot_size": [f"Size is too large. Maximum size is {max_size}."]},
             error.message_dict,
         )
 
@@ -284,11 +278,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         layout = StorageLayoutBase(node, {"boot_size": max_size + 1})
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {
-                "boot_size": [
-                    "Size is too large. Maximum size is %s." % max_size
-                ]
-            },
+            {"boot_size": [f"Size is too large. Maximum size is {max_size}."]},
             error.message_dict,
         )
 
@@ -300,8 +290,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEqual(
             {
                 "root_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_ROOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_ROOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -317,8 +306,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         self.assertEqual(
             {
                 "root_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_ROOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_ROOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -333,15 +321,11 @@ class TestStorageLayoutBase(MAASServerTestCase):
             boot_disk.size - EFI_PARTITION_SIZE - MIN_BOOT_PARTITION_SIZE
         )
         to_high_percent = max_size / float(boot_disk.size)
-        to_high_percent = "%s%%" % ((to_high_percent + 1) * 100)
+        to_high_percent = f"{((to_high_percent + 1) * 100)}%"
         layout = StorageLayoutBase(node, {"root_size": to_high_percent})
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {
-                "root_size": [
-                    "Size is too large. Maximum size is %s." % max_size
-                ]
-            },
+            {"root_size": [f"Size is too large. Maximum size is {max_size}."]},
             error.message_dict,
         )
 
@@ -356,11 +340,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         layout = StorageLayoutBase(node, {"root_size": max_size + 1})
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {
-                "root_size": [
-                    "Size is too large. Maximum size is %s." % max_size
-                ]
-            },
+            {"root_size": [f"Size is too large. Maximum size is {max_size}."]},
             error.message_dict,
         )
 
@@ -1074,8 +1054,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEqual(
             {
                 "lv_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_ROOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_ROOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -1091,8 +1070,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         self.assertEqual(
             {
                 "lv_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_ROOT_PARTITION_SIZE
+                    f"Size is too small. Minimum size is {MIN_ROOT_PARTITION_SIZE}."
                 ]
             },
             error.message_dict,
@@ -1109,11 +1087,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {
-                "lv_size": [
-                    "Size is too large. Maximum size is %s." % root_size
-                ]
-            },
+            {"lv_size": [f"Size is too large. Maximum size is {root_size}."]},
             error.message_dict,
         )
 
@@ -1126,7 +1100,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         layout = LVMStorageLayout(node, {"lv_size": max_size + 1})
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {"lv_size": ["Size is too large. Maximum size is %s." % max_size]},
+            {"lv_size": [f"Size is too large. Maximum size is {max_size}."]},
             error.message_dict,
         )
 
@@ -1491,8 +1465,8 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         self.assertEqual(
             {
                 "cache_device": [
-                    "'%s' is not a valid cache_device.  It should be one "
-                    "of: '%s'." % (boot_disk.id, ssd.id)
+                    f"'{boot_disk.id}' is not a valid cache_device.  It should be one "
+                    f"of: '{ssd.id}'."
                 ]
             },
             layout.errors,
@@ -1531,8 +1505,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         self.assertEqual(
             {
                 "cache_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_BLOCK_DEVICE_SIZE
+                    f"Size is too small. Minimum size is {MIN_BLOCK_DEVICE_SIZE}."
                 ]
             },
             error.message_dict,
@@ -1552,8 +1525,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         self.assertEqual(
             {
                 "cache_size": [
-                    "Size is too small. Minimum size is %s."
-                    % MIN_BLOCK_DEVICE_SIZE
+                    f"Size is too small. Minimum size is {MIN_BLOCK_DEVICE_SIZE}."
                 ]
             },
             error.message_dict,
@@ -1571,7 +1543,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         self.assertEqual(
             {
                 "cache_size": [
-                    "Size is too large. Maximum size is %s." % ssd.size
+                    f"Size is too large. Maximum size is {ssd.size}."
                 ]
             },
             error.message_dict,
@@ -1589,7 +1561,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         self.assertEqual(
             {
                 "cache_size": [
-                    "Size is too large. Maximum size is %s." % ssd.size
+                    f"Size is too large. Maximum size is {ssd.size}."
                 ]
             },
             error.message_dict,
@@ -1844,10 +1816,9 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % node.boot_disk.name: 3 * 1024**2,
-                "%s-part2" % node.boot_disk.name: 4 * 1024**3,
-                "%s-part3"
-                % node.boot_disk.name: (
+                f"{node.boot_disk.name}-part1": 3 * 1024**2,
+                f"{node.boot_disk.name}-part2": 4 * 1024**3,
+                f"{node.boot_disk.name}-part3": (
                     node.boot_disk.size
                     - 3 * 1024**2
                     - 4 * 1024**3
@@ -1858,11 +1829,11 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
                     - 2560 * 1024**2
                     - 5 * 1024**2
                 ),
-                "%s-part5" % node.boot_disk.name: 249 * 1024**2,
-                "%s-part6" % node.boot_disk.name: 249 * 1024**2,
-                "%s-part7" % node.boot_disk.name: 109 * 1024**2,
-                "%s-part8" % node.boot_disk.name: 285 * 1024**2,
-                "%s-part9" % node.boot_disk.name: 2560 * 1024**2,
+                f"{node.boot_disk.name}-part5": 249 * 1024**2,
+                f"{node.boot_disk.name}-part6": 249 * 1024**2,
+                f"{node.boot_disk.name}-part7": 109 * 1024**2,
+                f"{node.boot_disk.name}-part8": 285 * 1024**2,
+                f"{node.boot_disk.name}-part9": 2560 * 1024**2,
             },
             {part.name: part.size for part in pt.partitions.all()},
         )
@@ -1893,10 +1864,9 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         pt = root_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % root_disk.name: 3 * 1024**2,
-                "%s-part2" % root_disk.name: 4 * 1024**3,
-                "%s-part3"
-                % root_disk.name: (
+                f"{root_disk.name}-part1": 3 * 1024**2,
+                f"{root_disk.name}-part2": 4 * 1024**3,
+                f"{root_disk.name}-part3": (
                     root_disk.size
                     - 3 * 1024**2
                     - 4 * 1024**3
@@ -1907,11 +1877,11 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
                     - 2560 * 1024**2
                     - 5 * 1024**2
                 ),
-                "%s-part5" % root_disk.name: 249 * 1024**2,
-                "%s-part6" % root_disk.name: 249 * 1024**2,
-                "%s-part7" % root_disk.name: 109 * 1024**2,
-                "%s-part8" % root_disk.name: 285 * 1024**2,
-                "%s-part9" % root_disk.name: 2560 * 1024**2,
+                f"{root_disk.name}-part5": 249 * 1024**2,
+                f"{root_disk.name}-part6": 249 * 1024**2,
+                f"{root_disk.name}-part7": 109 * 1024**2,
+                f"{root_disk.name}-part8": 285 * 1024**2,
+                f"{root_disk.name}-part9": 2560 * 1024**2,
             },
             {part.name: part.size for part in pt.partitions.all()},
         )
@@ -1926,14 +1896,14 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % node.boot_disk.name: 3 * 1024**2,
-                "%s-part2" % node.boot_disk.name: 4 * 1024**3,
-                "%s-part3" % node.boot_disk.name: 10 * 1024**3,
-                "%s-part5" % node.boot_disk.name: 249 * 1024**2,
-                "%s-part6" % node.boot_disk.name: 249 * 1024**2,
-                "%s-part7" % node.boot_disk.name: 109 * 1024**2,
-                "%s-part8" % node.boot_disk.name: 285 * 1024**2,
-                "%s-part9" % node.boot_disk.name: 2560 * 1024**2,
+                f"{node.boot_disk.name}-part1": 3 * 1024**2,
+                f"{node.boot_disk.name}-part2": 4 * 1024**3,
+                f"{node.boot_disk.name}-part3": 10 * 1024**3,
+                f"{node.boot_disk.name}-part5": 249 * 1024**2,
+                f"{node.boot_disk.name}-part6": 249 * 1024**2,
+                f"{node.boot_disk.name}-part7": 109 * 1024**2,
+                f"{node.boot_disk.name}-part8": 285 * 1024**2,
+                f"{node.boot_disk.name}-part9": 2560 * 1024**2,
             },
             {part.name: part.size for part in pt.partitions.all()},
         )
@@ -1992,18 +1962,17 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % node.boot_disk.name: 105 * 1024**2,
-                "%s-part5" % node.boot_disk.name: 1074 * 1024**2,
-                "%s-part6" % node.boot_disk.name: 1074 * 1024**2,
-                "%s-part7" % node.boot_disk.name: 8704 * 1024**2,
-                "%s-part8"
-                % node.boot_disk.name: (
+                f"{node.boot_disk.name}-part1": 100 * 1024**2,
+                f"{node.boot_disk.name}-part5": 4 * 1024**3,
+                f"{node.boot_disk.name}-part6": 4 * 1024**3,
+                f"{node.boot_disk.name}-part7": 24320 * 1024**2,
+                f"{node.boot_disk.name}-part8": (
                     node.boot_disk.size
-                    - 105 * 1024**2
-                    - 1074 * 1024**2
-                    - 1074 * 1024**2
-                    - 8704 * 1024**2
-                    - 7 * 1024**2
+                    - 100 * 1024**2
+                    - 4 * 1024**3
+                    - 4 * 1024**3
+                    - 24320 * 1024**2
+                    - 8 * 1024**2  # rounding
                 ),
             },
             {part.name: part.size for part in pt.partitions.all()},
@@ -2035,18 +2004,17 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         pt = root_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % root_disk.name: 105 * 1024**2,
-                "%s-part5" % root_disk.name: 1074 * 1024**2,
-                "%s-part6" % root_disk.name: 1074 * 1024**2,
-                "%s-part7" % root_disk.name: 8704 * 1024**2,
-                "%s-part8"
-                % root_disk.name: (
+                f"{root_disk.name}-part1": 100 * 1024**2,
+                f"{root_disk.name}-part5": 4 * 1024**3,
+                f"{root_disk.name}-part6": 4 * 1024**3,
+                f"{root_disk.name}-part7": 24320 * 1024**2,
+                f"{root_disk.name}-part8": (
                     root_disk.size
-                    - 105 * 1024**2
-                    - 1074 * 1024**2
-                    - 1074 * 1024**2
-                    - 8704 * 1024**2
-                    - 7 * 1024**2
+                    - 100 * 1024**2
+                    - 4 * 1024**3
+                    - 4 * 1024**3
+                    - 24320 * 1024**2
+                    - 8 * 1024**2
                 ),
             },
             {part.name: part.size for part in pt.partitions.all()},
@@ -2062,11 +2030,11 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
-                "%s-part1" % node.boot_disk.name: 105 * 1024**2,
-                "%s-part5" % node.boot_disk.name: 1074 * 1024**2,
-                "%s-part6" % node.boot_disk.name: 1074 * 1024**2,
-                "%s-part7" % node.boot_disk.name: 8704 * 1024**2,
-                "%s-part8" % node.boot_disk.name: 10 * 1024**3,
+                f"{node.boot_disk.name}-part1": 100 * 1024**2,
+                f"{node.boot_disk.name}-part5": 4 * 1024**3,
+                f"{node.boot_disk.name}-part6": 4 * 1024**3,
+                f"{node.boot_disk.name}-part7": 24320 * 1024**2,
+                f"{node.boot_disk.name}-part8": 10 * 1024**3,
             },
             {part.name: part.size for part in pt.partitions.all()},
         )
@@ -2077,6 +2045,16 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS7StorageLayout(node)
+        layout.configure()
+        self.assertEqual(bd, layout.is_layout())
+
+    def test_is_layout_legacy(self):
+        node = make_Node_with_uefi_boot_method()
+        bd = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
+        layout = VMFS7StorageLayout(node)
+        layout._default_layout = "legacy"
         layout.configure()
         self.assertEqual(bd, layout.is_layout())
 
