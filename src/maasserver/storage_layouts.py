@@ -919,7 +919,7 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
     EFI System          1           100MB
     Basic Data          5           4GB
     Basic Data          6           4GB
-    VMFSL               7           23.8GB
+    VMFSL               7           23.9GB
     VMFS                8           Remaining
     """
 
@@ -931,11 +931,11 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
             # EFI System
             {"index": 1, "size": 100 * 1024**2, "bootable": True},
             # Basic Data
-            {"index": 5, "size": 4 * 1024**3},
+            {"index": 5, "size": 4095 * 1024**2},
             # Basic Data
-            {"index": 6, "size": 4 * 1024**3},
+            {"index": 6, "size": 4095 * 1024**2},
             # VMFSL
-            {"index": 7, "size": 24320 * 1024**2},
+            {"index": 7, "size": 25662832128},
             # VMFS
             {"index": 8, "size": 0},
         ],

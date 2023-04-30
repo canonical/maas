@@ -1945,6 +1945,23 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
 
 
 class TestVMFS7StorageLayout(MAASServerTestCase):
+    def gen_partition_map(self, disk, disk_size=None):
+        dstore_size = disk_size or (
+            disk.size
+            - 100 * 1024**2
+            - 4095 * 1024**2
+            - 4095 * 1024**2
+            - 25662832128
+            - 8405504  # total rounding
+        )
+        return {
+            f"{disk.name}-part1": 100 * 1024**2,
+            f"{disk.name}-part5": 4095 * 1024**2,
+            f"{disk.name}-part6": 4095 * 1024**2,
+            f"{disk.name}-part7": 25662832128,
+            f"{disk.name}-part8": dstore_size,
+        }
+
     def test_init_sets_up_all_fields(self):
         node = factory.make_Node(with_boot_disk=False)
         layout = VMFS7StorageLayout(node)
@@ -1961,20 +1978,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         self.assertEqual("vmfs7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
-            {
-                f"{node.boot_disk.name}-part1": 100 * 1024**2,
-                f"{node.boot_disk.name}-part5": 4 * 1024**3,
-                f"{node.boot_disk.name}-part6": 4 * 1024**3,
-                f"{node.boot_disk.name}-part7": 24320 * 1024**2,
-                f"{node.boot_disk.name}-part8": (
-                    node.boot_disk.size
-                    - 100 * 1024**2
-                    - 4 * 1024**3
-                    - 4 * 1024**3
-                    - 24320 * 1024**2
-                    - 8 * 1024**2  # rounding
-                ),
-            },
+            self.gen_partition_map(node.boot_disk),
             {part.name: part.size for part in pt.partitions.all()},
         )
 
@@ -2003,20 +2007,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         self.assertEqual("vmfs7", layout.configure())
         pt = root_disk.get_partitiontable()
         self.assertEqual(
-            {
-                f"{root_disk.name}-part1": 100 * 1024**2,
-                f"{root_disk.name}-part5": 4 * 1024**3,
-                f"{root_disk.name}-part6": 4 * 1024**3,
-                f"{root_disk.name}-part7": 24320 * 1024**2,
-                f"{root_disk.name}-part8": (
-                    root_disk.size
-                    - 100 * 1024**2
-                    - 4 * 1024**3
-                    - 4 * 1024**3
-                    - 24320 * 1024**2
-                    - 8 * 1024**2
-                ),
-            },
+            self.gen_partition_map(root_disk),
             {part.name: part.size for part in pt.partitions.all()},
         )
 
@@ -2029,13 +2020,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         self.assertEqual("vmfs7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
-            {
-                f"{node.boot_disk.name}-part1": 100 * 1024**2,
-                f"{node.boot_disk.name}-part5": 4 * 1024**3,
-                f"{node.boot_disk.name}-part6": 4 * 1024**3,
-                f"{node.boot_disk.name}-part7": 24320 * 1024**2,
-                f"{node.boot_disk.name}-part8": 10 * 1024**3,
-            },
+            self.gen_partition_map(node.boot_disk, 10 * 1024**3),
             {part.name: part.size for part in pt.partitions.all()},
         )
 
