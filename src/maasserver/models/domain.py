@@ -18,7 +18,13 @@ import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
-from django.db.models import BooleanField, Manager, PositiveIntegerField, Q
+from django.db.models import (
+    AutoField,
+    BooleanField,
+    Manager,
+    PositiveIntegerField,
+    Q,
+)
 from django.db.models.query import QuerySet
 from netaddr import IPAddress
 
@@ -172,12 +178,11 @@ class Domain(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`DomainManager`.
     """
 
-    class Meta:
-        verbose_name = "Domain"
-        verbose_name_plural = "Domains"
-
     objects = DomainManager()
 
+    # explicitly define the AutoField since default is BigAutoField which
+    # doesn't allow 0 as a value (used for the default domain)
+    id = AutoField(primary_key=True)
     name = DomainNameField(
         max_length=256,
         editable=True,

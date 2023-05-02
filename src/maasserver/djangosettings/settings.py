@@ -272,7 +272,7 @@ MIDDLEWARE = (
 
 ROOT_URLCONF = "maasserver.djangosettings.urls"
 
-DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MIGRATION_MODULES = {
     # Migrations for MAAS >=2.0.

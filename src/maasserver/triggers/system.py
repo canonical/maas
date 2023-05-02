@@ -743,7 +743,7 @@ DHCP_UPDATE_ALL_VLANS = dedent(
     CREATE OR REPLACE FUNCTION sys_dhcp_update_all_vlans()
     RETURNS void as $$
     DECLARE
-      rack INTEGER;
+      rack BIGINT;
     BEGIN
       FOR rack IN (
         WITH racks AS (
@@ -767,7 +767,7 @@ DHCP_UPDATE_ALL_VLANS = dedent(
 DHCP_SNIPPET_UPDATE_SUBNET = dedent(
     """\
     CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_subnet(
-      _subnet_id INTEGER)
+      _subnet_id BIGINT)
     RETURNS void as $$
     DECLARE
       vlan maasserver_vlan;
@@ -793,10 +793,10 @@ DHCP_SNIPPET_UPDATE_SUBNET = dedent(
 
 DHCP_SNIPPET_UPDATE_NODE = dedent(
     """\
-    CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_node(_node_id INTEGER)
+    CREATE OR REPLACE FUNCTION sys_dhcp_snippet_update_node(_node_id BIGINT)
     RETURNS void as $$
     DECLARE
-      rack INTEGER;
+      rack BIGINT;
     BEGIN
       FOR rack IN (
         WITH racks AS (

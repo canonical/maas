@@ -393,8 +393,8 @@ INTERFACE_POD_NOTIFY = dedent(
     """\
     CREATE OR REPLACE FUNCTION interface_pod_notify() RETURNS TRIGGER AS $$
     DECLARE
-        _node_id integer;
-        _pod_id integer;
+        _node_id BIGINT;
+        _pod_id BIGINT;
     BEGIN
         IF TG_OP = 'INSERT' then
             SELECT INTO _pod_id pod_id

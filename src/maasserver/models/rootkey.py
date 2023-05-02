@@ -4,7 +4,7 @@
 """RootKey model."""
 
 
-from django.db.models import BigAutoField, DateTimeField
+from django.db.models import DateTimeField
 
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -12,5 +12,4 @@ from maasserver.models.timestampedmodel import TimestampedModel
 class RootKey(TimestampedModel):
     """A root key for signing macaroons."""
 
-    id = BigAutoField(primary_key=True, verbose_name="ID")
     expiration = DateTimeField()

@@ -6,7 +6,7 @@
 
 from datetime import datetime
 
-from django.db.models import ForeignKey, Manager, PROTECT
+from django.db.models import AutoField, ForeignKey, Manager, PROTECT
 
 from maasserver.enum import ALLOCATED_NODE_STATUSES, NODE_STATUS
 from maasserver.models.cleansave import CleanSave
@@ -36,6 +36,10 @@ class GlobalDefault(CleanSave, TimestampedModel):
     """Represents global default objects in MAAS."""
 
     objects = GlobalDefaultManager()
+
+    # explicitly define the AutoField since default is BigAutoField which
+    # doesn't allow 0 as a value
+    id = AutoField(primary_key=True)
 
     domain = ForeignKey(
         Domain, null=False, blank=False, editable=True, on_delete=PROTECT

@@ -12,7 +12,7 @@ __all__ = [
 from datetime import datetime
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import CharField, Manager, TextField
+from django.db.models import AutoField, CharField, Manager, TextField
 
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
@@ -108,6 +108,9 @@ class ResourcePool(CleanSave, TimestampedModel):
 
     objects = ResourcePoolManager()
 
+    # explicitly define the AutoField since default is BigAutoField which
+    # doesn't allow 0 as a value (used for the default resource pool)
+    id = AutoField(primary_key=True)
     name = CharField(
         max_length=256,
         unique=True,
