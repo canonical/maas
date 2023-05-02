@@ -76,13 +76,11 @@ linters:
     - errcheck
     - exportloopref
     - gocritic
-    - godot
     - gofmt
     - goimports
     - gosec
     - gosimple
     - govet
-    # - loggercheck
     - nilerr
     - nilnil
     - noctx
@@ -90,12 +88,50 @@ linters:
     - nonamedreturns
     - revive
     - staticcheck
+    - stylecheck
     - tagliatelle
     - unused
     - whitespace
     - wsl
 
 linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+  gosimple:
+    checks: ["all"]
+  govet:
+    enable-all: true
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+  revive:
+    ignore-generated-header: true
+    rules:
+      - name: time-equal
+        severity: warning
+        disabled: false
+      - name: errorf
+        severity: warning
+        disabled: false
+      - name: context-as-argument
+        severity: warning
+        disabled: false
+      - name: error-return
+        severity: warning
+        disabled: false
+      - name: datarace
+        severity: warning
+        disabled: false
+  staticcheck:
+    checks: ["all"]
+  stylecheck:
+    checks: ["all"]
+  tagliatelle:
+    case:
+      rules:
+        json: snake
+        yaml: snake
 
 
 issues:
@@ -127,6 +163,25 @@ issues:
         - lll
       source: "^//go:generate "
 
+    - path: internal/
+      text: "ST1000:"
+      linters:
+        - stylecheck
+
+    - path: internal/
+      text: "package-comments:"
+      linters:
+        - revive
+
+    - path: internal/
+      text: "exported:"
+      linters:
+        - revive
+    
+    - path: main.go
+      text: "package-comments:"
+      linters:
+        - revive
   # Independently of option `exclude` we use default exclude patterns,
   # it can be disabled by this option.
   # To list all excluded by default patterns execute `golangci-lint run --help`.
@@ -148,14 +203,8 @@ issues:
   # Default: false.
   new: false
 
-  # Show only new issues created after git revision `REV`.
-  new-from-rev: HEAD
-
-  # Show only new issues created in git patch with set file path.
-  # new-from-patch: path/to/patch/file
-
   # Fix found issues (if it's supported by the linter).
-  fix: true
+  fix: false
 
 
 severity:

@@ -15,6 +15,7 @@ func checkError(err error) {
 	if err == nil {
 		return
 	}
+
 	fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 	os.Exit(1)
 }
@@ -22,6 +23,7 @@ func checkError(err error) {
 func main() {
 	data, err := info.GetInfo()
 	checkError(err)
+
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "    ")

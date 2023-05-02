@@ -1,12 +1,14 @@
 // Copyright 2022 Canonical Ltd.  This software is licensed under the
 // GNU Affero General Public License version 3 (see the file LICENSE).
 
+//nolint:stylecheck // ignore ST1000
 package info
 
 import (
 	"bufio"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/lxc/lxd/lxd/resources"
@@ -15,12 +17,13 @@ import (
 	"github.com/lxc/lxd/shared/version"
 )
 
+// OSInfo represents OS information
 type OSInfo struct {
 	OSName    string `json:"os_name" yaml:"os_name"`
 	OSVersion string `json:"os_version" yaml:"os_version"`
 }
 
-// Subset of github.com/lxc/lxd/shared/api/server.ServerEnvironment
+// ServerEnvironment is a subset of github.com/lxc/lxd/shared/api/server.ServerEnvironment
 type ServerEnvironment struct {
 	Kernel             string `json:"kernel" yaml:"kernel"`
 	KernelArchitecture string `json:"kernel_architecture" yaml:"kernel_architecture"`
@@ -31,26 +34,32 @@ type ServerEnvironment struct {
 	ServerVersion string `json:"server_version" yaml:"server_version"`
 }
 
-// Subset of github.com/lxc/lxd/shared/api/server.HostInfo
+// HostInfo is a subset of github.com/lxc/lxd/shared/api/server.HostInfo
 type HostInfo struct {
-	APIExtensions []string          `json:"api_extensions" yaml:"api_extensions"`
-	APIVersion    string            `json:"api_version" yaml:"api_version"`
 	Environment   ServerEnvironment `json:"environment" yaml:"environment"`
+	APIVersion    string            `json:"api_version" yaml:"api_version"`
+	APIExtensions []string          `json:"api_extensions" yaml:"api_extensions"`
 }
 
 type AllInfo struct {
-	HostInfo
 	Resources *lxdapi.Resources      `json:"resources" yaml:"resources"`
 	Networks  map[string]interface{} `json:"networks" yaml:"networks"`
+	HostInfo
 }
 
 func parseKeyValueFile(path string) (map[string]string, error) {
-	parsed_file := make(map[string]string)
-	file, err := os.Open(path)
+	parsedFile := make(map[string]string)
+
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
-		return parsed_file, err
+		return parsedFile, err
 	}
-	defer file.Close()
+
+	defer func() {
+		if err := file.Close(); err != nil {
+			panic(err)
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -63,27 +72,28 @@ func parseKeyValueFile(path string) (map[string]string, error) {
 		if len(tokens) != 2 {
 			continue
 		}
-		parsed_file[strings.Trim(tokens[0], `'"`)] = strings.Trim(tokens[1], `'"`)
+
+		parsedFile[strings.Trim(tokens[0], `'"`)] = strings.Trim(tokens[1], `'"`)
 	}
 
-	return parsed_file, nil
+	return parsedFile, nil
 }
 
 func getOSNameVersion() OSInfo {
 	// Search both pathes as suggested by
 	// https://www.freedesktop.org/software/systemd/man/os-release.html
 	for _, path := range []string{"/etc/os-release", "/usr/lib/os-release"} {
-		parsed_file, err := parseKeyValueFile(path)
+		parsedFile, err := parseKeyValueFile(path)
 		// LP:1876217 - As of 2.44 snapd only gives confined Snaps
 		// access to /etc/lsb-release from the host OS. /etc/os-release
 		// currently contains the Ubuntu Core version the Snap is
 		// running. Try /etc/os-release first for controllers installed
 		// with the Debian packages. At some point in the future snapd
 		// may provide the host OS version of /etc/os-release.
-		if err == nil && parsed_file["ID"] != "ubuntu-core" {
+		if err == nil && parsedFile["ID"] != "ubuntu-core" {
 			return OSInfo{
-				OSName:    strings.ToLower(parsed_file["ID"]),
-				OSVersion: strings.ToLower(parsed_file["VERSION_ID"]),
+				OSName:    strings.ToLower(parsedFile["ID"]),
+				OSVersion: strings.ToLower(parsedFile["VERSION_ID"]),
 			}
 		}
 	}
@@ -91,20 +101,18 @@ func getOSNameVersion() OSInfo {
 	// version try to get OS information from /etc/lsb-release as this
 	// file is passed from the running host OS. Only Ubuntu and Manjaro
 	// provide /etc/lsb-release.
-	parsed_file, err := parseKeyValueFile("/etc/lsb-release")
-	if err == nil {
-		return OSInfo{
-			OSName:    strings.ToLower(parsed_file["DISTRIB_ID"]),
-			OSVersion: strings.ToLower(parsed_file["DISTRIB_RELEASE"]),
-		}
-	} else {
-		// If the OS information isn't detectable don't send anything.
-		// MAAS will keep the current OS information.
+	parsedFile, err := parseKeyValueFile("/etc/lsb-release")
+	if err != nil {
 		return OSInfo{}
+	}
+
+	return OSInfo{
+		OSName:    strings.ToLower(parsedFile["DISTRIB_ID"]),
+		OSVersion: strings.ToLower(parsedFile["DISTRIB_RELEASE"]),
 	}
 }
 
-func GetHostInfo() (*HostInfo, error) {
+func getHostInfo() (*HostInfo, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -153,38 +161,42 @@ func GetHostInfo() (*HostInfo, error) {
 	}, nil
 }
 
-func GetResources() (*lxdapi.Resources, error) {
+func getResources() (*lxdapi.Resources, error) {
 	return resources.GetResources()
 }
 
-func GetNetworks() (map[string]interface{}, error) {
+func getNetworks() (map[string]interface{}, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
+
 	data := make(map[string]interface{}, len(ifaces))
+
 	for _, iface := range ifaces {
 		netDetails, err := resources.GetNetworkState(iface.Name)
 		if err != nil {
 			return nil, err
 		}
+
 		data[iface.Name] = netDetails
 	}
+
 	return data, nil
 }
 
 func GetInfo() (*AllInfo, error) {
-	hostInfo, err := GetHostInfo()
+	hostInfo, err := getHostInfo()
 	if err != nil {
 		return nil, err
 	}
 
-	resInfo, err := GetResources()
+	resInfo, err := getResources()
 	if err != nil {
 		return nil, err
 	}
 
-	netInfo, err := GetNetworks()
+	netInfo, err := getNetworks()
 	if err != nil {
 		return nil, err
 	}
