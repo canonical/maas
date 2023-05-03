@@ -190,10 +190,14 @@ lint-oapi: openapi.yaml
 
 # Go fmt
 lint-go: $(BIN_DIR)/golangci-lint
-	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run ./... \; | \
+	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run $(if $(LINT_AUTOFIX),--fix,) ./... \; | \
 		tee /tmp/golangci-lint.lint
 	@test ! -s /tmp/golangci-lint.lint
 .PHONY: lint-go
+
+lint-go-fix: LINT_AUTOFIX=true
+lint-go-fix: lint-go
+.PHONY: lint-go-fix
 
 lint-shell:
 	@shellcheck -x \

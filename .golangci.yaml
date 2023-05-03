@@ -36,7 +36,6 @@ run:
   # If false (default) - golangci-lint acquires file lock on start.
   allow-parallel-runners: false
 
-
 # output configuration options
 output:
   # Format: colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions|teamcity
@@ -67,7 +66,6 @@ output:
 
   # Sort results by: filepath, line and column.
   sort-results: false
-
 
 linters:
   disable-all: true
@@ -133,7 +131,6 @@ linters-settings:
         json: snake
         yaml: snake
 
-
 issues:
   # List of regexps of issue texts to exclude.
   #
@@ -177,7 +174,7 @@ issues:
       text: "exported:"
       linters:
         - revive
-    
+
     - path: main.go
       text: "package-comments:"
       linters:
@@ -191,7 +188,7 @@ issues:
   # If set to true exclude and exclude-rules regular expressions become case-sensitive.
   # Default: false
   exclude-case-sensitive: false
-  
+
   max-same-issues: 0
 
   # Show only new issues: if there are unstaged changes or untracked files,
@@ -205,7 +202,6 @@ issues:
 
   # Fix found issues (if it's supported by the linter).
   fix: false
-
 
 severity:
   # Set the default severity for issues.
