@@ -9,7 +9,7 @@ import tempita
 from testtools.matchers import ContainsDict, Equals, KeysEqual, MatchesDict
 import yaml
 
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, ControllerInfo, NodeKey
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.secrets import SecretManager
@@ -29,6 +29,7 @@ from metadataserver.vendor_data import (
     generate_hardware_sync_systemd_configuration,
     generate_kvm_pod_configuration,
     generate_ntp_configuration,
+    generate_openvswitch_configuration,
     generate_rack_controller_configuration,
     generate_snap_configuration,
     generate_system_info,
@@ -314,6 +315,37 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                     ],
                 ),
             ],
+        )
+
+
+class TestGenerateOpenVSwitchConfiguration(MAASServerTestCase):
+    def test_yields_empty_without_ovs(self):
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        iface = factory.make_Interface(node=node)
+        # regular bridge
+        factory.make_Interface(
+            node=node,
+            iftype=INTERFACE_TYPE.BRIDGE,
+            parents=[iface],
+            params={"bridge_type": BRIDGE_TYPE.STANDARD},
+        )
+        self.assertCountEqual(
+            generate_openvswitch_configuration(node),
+            [],
+        )
+
+    def test_yields_openvswitch_configuration_when_ovs_bridge(self):
+        node = factory.make_Node(status=NODE_STATUS.TESTING)
+        iface = factory.make_Interface(node=node)
+        factory.make_Interface(
+            node=node,
+            iftype=INTERFACE_TYPE.BRIDGE,
+            parents=[iface],
+            params={"bridge_type": BRIDGE_TYPE.OVS},
+        )
+        self.assertCountEqual(
+            generate_openvswitch_configuration(node),
+            [("packages", ["openvswitch-switch"])],
         )
 
 
