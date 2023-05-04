@@ -20,7 +20,8 @@ $(BIN_DIR): ; mkdir -p $@
 ARTIFACTS := $(subst /,,$(subst cmd/,,$(wildcard cmd/*/)))
 
 .PHONY: build
-build: vendor $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
+build: vendor
+	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
 	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(OUT_PREFIX)$* $(LDFLAGS) cmd/$*/*.go
