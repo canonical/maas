@@ -17,6 +17,7 @@ import tempita
 import yaml
 
 from maasserver import ntp
+from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE
 from maasserver.models import Config, NodeMetadata
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
@@ -48,6 +49,7 @@ def get_vendor_data(node, proxy):
         generate_kvm_pod_configuration(node),
         generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
+        generate_openvswitch_configuration(node),
         generate_vcenter_configuration(node),
         generate_hardware_sync_systemd_configuration(node),
     )
@@ -55,7 +57,8 @@ def get_vendor_data(node, proxy):
     for key, value in chain(*generators):
         # some keys can be returned by different generators. In that case,
         # collect entries from each generator.
-        if key in ("runcmd", "write_files"):
+        # XXX we should use the cloud-init API to merge configurations
+        if key in ("runcmd", "write_files", "packages"):
             vendor_data.setdefault(key, []).extend(value)
         else:
             assert (
@@ -192,6 +195,21 @@ def generate_ephemeral_deployment_network_configuration(node):
         "rm -rf /etc/netplan/50-cloud-init.yaml",
         "netplan apply --debug",
     ]
+
+
+def generate_openvswitch_configuration(node):
+    """Install OpenVSwitch package if needed."""
+    if node.status not in COMMISSIONING_LIKE_STATUSES:
+        return
+
+    has_ovs = any(
+        params.get("bridge_type") == BRIDGE_TYPE.OVS
+        for params in node.current_config.interface_set.filter(
+            type=INTERFACE_TYPE.BRIDGE
+        ).values_list("params", flat=True)
+    )
+    if has_ovs:
+        yield "packages", ["openvswitch-switch"]
 
 
 def generate_kvm_pod_configuration(node):
