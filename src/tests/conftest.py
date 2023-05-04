@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from provisioningserver.utils.env import MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET, MAAS_SECRET
+from provisioningserver.utils.env import (
+    MAAS_ID,
+    MAAS_SECRET,
+    MAAS_SHARED_SECRET,
+    MAAS_UUID,
+)
 
 
 @pytest.fixture(autouse=True)

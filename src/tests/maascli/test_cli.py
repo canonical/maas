@@ -21,10 +21,11 @@ from maascli.auth import UnexpectedResponse
 from maascli.cli import CERTS_DIR
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
-from maascli.tests.test_auth import make_credentials, make_options
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.certificates import get_sample_cert
+
+from .test_auth import make_credentials, make_options
 
 
 class TestRegisterCommands(MAASTestCase):

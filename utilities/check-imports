@@ -186,15 +186,13 @@ MAASCLI = files("src/maascli/**/*.py")
 PerfTestHarness = files("src/maastesting/perftest.py")
 PerfTestMigrations = files("src/maastesting/migrations/**/*.py")
 PerfTestModel = files("src/maastesting/models.py")
-PerfTestTests = files("src/maastesting/tests/test_perftest.py")
-PerfTestPerf = files("src/**/perf/test_*.py")
+PerfTestTests = files("src/tests/maastesting/**/*.py")
 PerfTestConftest = files("src/**/perf/conftest.py")
 PerfTests = (
     PerfTestHarness
     & PerfTestMigrations
     & PerfTestModel
     & PerfTestTests
-    & PerfTestPerf
     & PerfTestConftest
 )
 PerfTestHarnessRule = Rule(
@@ -326,7 +324,6 @@ Tests = files(
     "src/**/test_*.py",
     "src/**/testing/**/*.py",
     "src/**/testing.py",
-    "src/**/conftest.py",
 )
 
 

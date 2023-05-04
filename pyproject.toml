@@ -44,21 +44,5 @@ exclude = [
 [tool.pytest.ini_options]
 filterwarnings = "error::BytesWarning"
 testpaths = [
-  "src/apiclient",
-  "src/maascli",
-  "src/maastesting",
-  "src/maasperf",
-  # [[[cog
-  # import cog
-  # from pathlib import Path
-  # for path in sorted(Path("src").glob("**/pytest_tests")):
-  #    cog.outl(f'"{path}",')
-  # ]]]
-  "src/maasserver/djangosettings/pytest_tests",
-  "src/maasserver/management/commands/pytest_tests",
-  "src/maasserver/models/pytest_tests",
-  "src/maasserver/pytest_tests",
-  "src/metadataserver/builtin_scripts/pytest_tests",
-  "src/provisioningserver/utils/pytest_tests",
-  # [[[end]]]
+  "src/tests",
 ]

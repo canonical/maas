@@ -152,13 +152,13 @@ test-go:
 test-perf: bin/pytest
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \
-	bin/pytest src/maasperf/
+	bin/pytest src/tests/maasperf/
 .PHONY: test-perf
 
 test-perf-quiet: bin/pytest
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \
-	bin/pytest -q --disable-warnings --show-capture=no --no-header --no-summary src/maasperf/
+	bin/pytest -q --disable-warnings --show-capture=no --no-header --no-summary src/tests/maasperf/
 .PHONY: test-perf-quiet
 
 update-initial-sql: bin/database bin/maas-region cleandb

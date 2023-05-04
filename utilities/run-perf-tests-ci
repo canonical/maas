@@ -34,5 +34,5 @@ bin/pytest \
     --maas-recreate-initial-db \
     --maas-initial-db "${DB_DUMP}" \
     --perf-output-dir "$OUTPUT_DIR" \
-    ./src/maasperf/
+    ./src/tests/maasperf/
 cp "$OUTPUT_DIR/results.json" "$OUTPUT_FILE"

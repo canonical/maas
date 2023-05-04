@@ -50,8 +50,6 @@ def run_region():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
-        # exclude pytest tests
-        "--exclude-dir-file=src/maastesting/pytest.dirs",
         # Reduce the logging level to INFO here as
         # DebuggingLoggerMiddleware logs the content of all the
         # requests at DEBUG level: we don't want this in the
@@ -94,8 +92,6 @@ def run_region_legacy():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
-        # exclude pytest tests
-        "--exclude-dir-file=src/maastesting/pytest.dirs",
         # Reduce the logging level to INFO here as DebuggingLoggerMiddleware
         # logs the content of all the requests at DEBUG level: we don't want
         # this in the tests as it's too verbose.
@@ -122,8 +118,6 @@ def run_rack():
         "--select-dir=src/provisioningserver",
         "--cover-package=provisioningserver",
         "--cover-branches",
-        # exclude pytest tests
-        "--exclude-dir-file=src/maastesting/pytest.dirs",
     ]
     inject_test_options(options)
     update_environ()
