@@ -266,6 +266,7 @@ clean-ui-build:
 
 clean-go-bins:
 	$(MAKE) -C src/host-info clean
+	$(MAKE) -C src/maasagent clean
 .PHONY: clean-go-bins
 
 clean: clean-ui clean-go-bins

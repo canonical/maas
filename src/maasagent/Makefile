@@ -12,6 +12,7 @@ LDFLAGS := -ldflags '-s -w -extldflags "-static"'
 export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
 export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
 export GOFLAGS := -mod=vendor
+export OUT_PREFIX
 
 default: build
 
@@ -21,7 +22,6 @@ ARTIFACTS := $(subst /,,$(subst cmd/,,$(wildcard cmd/*/)))
 
 .PHONY: build
 build: vendor
-	export OUT_PREFIX
 	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
