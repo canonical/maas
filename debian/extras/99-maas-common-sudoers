@@ -2,7 +2,6 @@ maas ALL= NOPASSWD: /usr/bin/lshw
 maas ALL= NOPASSWD: /sbin/blockdev
 
 # MAAS network monitoring tools.
-maas ALL= NOPASSWD: /usr/lib/maas/network-monitor
 maas ALL= NOPASSWD: /usr/lib/maas/beacon-monitor
 
 # Control of the HTTP server: MAAS needs to reconfigure it after editing

@@ -4,7 +4,6 @@ package-files/usr/lib/maas/maas-delete-file usr/lib/maas
 package-files/usr/lib/maas/maas-write-file usr/lib/maas
 
 # Install network monitoring scripts
-package-files/usr/lib/maas/network-monitor usr/lib/maas
 package-files/usr/lib/maas/beacon-monitor usr/lib/maas
 
 # Install unverified-ssh

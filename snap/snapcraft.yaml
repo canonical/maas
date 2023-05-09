@@ -248,8 +248,10 @@ parts:
       - OUT_PREFIX=maas-
     build-packages:
       - golang-go
+    organize:
+      bin/maas-netmon: usr/sbin/maas-netmon
     prime:
-      - bin/maas-netmon
+      - usr/sbin/maas-netmon
 
   tree:
     plugin: dump
