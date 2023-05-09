@@ -22,106 +22,94 @@ func uint16Pointer(v uint16) *uint16 {
 	return &v
 }
 
-type isValidARPPacketCase struct {
-	In   *ethernet.ARPPacket
-	Name string
-	Out  bool
-}
-
 func TestIsValidARPPacket(t *testing.T) {
-	table := []isValidARPPacketCase{
-		{
-			Name: "ValidARPPacket",
-			In: &ethernet.ARPPacket{
+	t.Parallel()
+
+	testcases := map[string]struct {
+		in  *ethernet.ARPPacket
+		out bool
+	}{
+		"valid ARP packet": {
+			in: &ethernet.ARPPacket{
 				HardwareType:    ethernet.HardwareTypeEthernet,
 				ProtocolType:    ethernet.ProtocolTypeIPv4,
 				HardwareAddrLen: 6,
 				ProtocolAddrLen: 4,
 			},
-			Out: true,
+			out: true,
 		},
-		{
-			Name: "InvalidHardwareTypeARPPacket",
-			In: &ethernet.ARPPacket{
+		"invalid hardware type ARP packet": {
+			in: &ethernet.ARPPacket{
 				HardwareType:    ethernet.HardwareTypeChaos,
 				ProtocolType:    ethernet.ProtocolTypeIPv4,
 				HardwareAddrLen: 6,
 				ProtocolAddrLen: 4,
 			},
-			Out: false,
+			out: false,
 		},
-		{
-			Name: "InvalidProtocolTypeARPPacket",
-			In: &ethernet.ARPPacket{
+		"invalid protocol type ARP packet": {
+			in: &ethernet.ARPPacket{
 				HardwareType:    ethernet.HardwareTypeEthernet,
 				ProtocolType:    ethernet.ProtocolTypeIPv6,
 				HardwareAddrLen: 6,
 				ProtocolAddrLen: 4,
 			},
-			Out: false,
+			out: false,
 		},
-		{
-			Name: "InvalidHardwareAddrLenARPPacket",
-			In: &ethernet.ARPPacket{
+		"invalid hardware address length ARP packet": {
+			in: &ethernet.ARPPacket{
 				HardwareType:    ethernet.HardwareTypeEthernet,
 				ProtocolType:    ethernet.ProtocolTypeIPv4,
 				HardwareAddrLen: 8,
 				ProtocolAddrLen: 4,
 			},
-			Out: false,
+			out: false,
 		},
-		{
-			Name: "InvalidProtocolAddrLenARPPacket",
-			In: &ethernet.ARPPacket{
+		"invalid protocol address lenth ARP packet": {
+			in: &ethernet.ARPPacket{
 				HardwareType:    ethernet.HardwareTypeEthernet,
 				ProtocolType:    ethernet.ProtocolTypeIPv4,
 				HardwareAddrLen: 6,
 				ProtocolAddrLen: 16,
 			},
-			Out: false,
+			out: false,
 		},
 	}
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			assert.Equalf(tt, tcase.Out, isValidARPPacket(tcase.In), "expected the result to be %v", tcase.Out)
+
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.out, isValidARPPacket(tc.in))
 		})
 	}
 }
 
-type updateBindingsArgs struct {
-	Pkt  *ethernet.ARPPacket
-	VID  *uint16
-	Time time.Time
-}
-
-type updateBindingsCase struct {
-	Name            string
-	BindingsFixture map[string]Binding
-	In              updateBindingsArgs
-	Out             []Result
-}
-
 func TestUpdateBindings(t *testing.T) {
+	t.Parallel()
+
 	timestamp := time.Now()
-	testIP1 := net.ParseIP("10.0.0.1").To4()
-	testIP2 := net.ParseIP("10.0.0.2").To4()
-	table := []updateBindingsCase{
-		{
-			Name: "NewRequestPacket",
-			In: updateBindingsArgs{
-				Pkt: &ethernet.ARPPacket{
-					HardwareType:    ethernet.HardwareTypeEthernet,
-					ProtocolType:    ethernet.ProtocolTypeIPv4,
-					HardwareAddrLen: 6,
-					ProtocolAddrLen: 4,
-					OpCode:          ethernet.OpRequest,
-					SendHwdAddr:     net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					SendIPAddr:      netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					TgtIPAddr:       netip.AddrFrom4([4]byte{testIP2[0], testIP2[1], testIP2[2], testIP2[3]}),
+
+	type in struct {
+		p               func(p *ethernet.ARPPacket)
+		vid             *uint16
+		time            time.Time
+		bindingsFixture map[string]Binding
+	}
+
+	testcases := map[string]struct {
+		in  in
+		out []Result
+	}{
+		"new request packet": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
 				},
-				Time: timestamp,
+				time: timestamp,
 			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "10.0.0.1",
 					MAC:   "c0:ff:ee:15:c0:01",
@@ -130,23 +118,16 @@ func TestUpdateBindings(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "NewReplyPacket",
-			In: updateBindingsArgs{
-				Pkt: &ethernet.ARPPacket{
-					HardwareType:    ethernet.HardwareTypeEthernet,
-					ProtocolType:    ethernet.ProtocolTypeIPv4,
-					HardwareAddrLen: 6,
-					ProtocolAddrLen: 4,
-					OpCode:          ethernet.OpReply,
-					SendHwdAddr:     net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					SendIPAddr:      netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					TgtHwdAddr:      net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x1d},
-					TgtIPAddr:       netip.AddrFrom4([4]byte{testIP2[0], testIP2[1], testIP2[2], testIP2[3]}),
+		"new reply packet": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.OpCode = ethernet.OpReply
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
+					p.TgtHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x1d}
 				},
-				Time: timestamp,
+				time: timestamp,
 			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "10.0.0.1",
 					MAC:   "c0:ff:ee:15:c0:01",
@@ -161,23 +142,15 @@ func TestUpdateBindings(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "NewVLANPacket",
-			In: updateBindingsArgs{
-				Pkt: &ethernet.ARPPacket{
-					HardwareType:    ethernet.HardwareTypeEthernet,
-					ProtocolType:    ethernet.ProtocolTypeIPv4,
-					HardwareAddrLen: 6,
-					ProtocolAddrLen: 4,
-					OpCode:          ethernet.OpRequest,
-					SendHwdAddr:     net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					SendIPAddr:      netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					TgtIPAddr:       netip.AddrFrom4([4]byte{testIP2[0], testIP2[1], testIP2[2], testIP2[3]}),
+		"new VLAN packet": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
 				},
-				VID:  uint16Pointer(2),
-				Time: timestamp,
+				vid:  uint16Pointer(2),
+				time: timestamp,
 			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "10.0.0.1",
 					MAC:   "c0:ff:ee:15:c0:01",
@@ -187,29 +160,21 @@ func TestUpdateBindings(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "Refresh",
-			BindingsFixture: map[string]Binding{
-				"0_10.0.0.1": {
-					IP:   netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					MAC:  net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					Time: timestamp,
+		"refresh": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01}
+				},
+				time: timestamp.Add(seenAgainThreshold + time.Second),
+				bindingsFixture: map[string]Binding{
+					"0_10.0.0.1": {
+						IP:   netip.MustParseAddr("10.0.0.1"),
+						MAC:  net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
+						Time: timestamp,
+					},
 				},
 			},
-			In: updateBindingsArgs{
-				Pkt: &ethernet.ARPPacket{
-					HardwareType:    ethernet.HardwareTypeEthernet,
-					ProtocolType:    ethernet.ProtocolTypeIPv4,
-					HardwareAddrLen: 6,
-					ProtocolAddrLen: 4,
-					OpCode:          ethernet.OpRequest,
-					SendHwdAddr:     net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					SendIPAddr:      netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					TgtIPAddr:       netip.AddrFrom4([4]byte{testIP2[0], testIP2[1], testIP2[2], testIP2[3]}),
-				},
-				Time: timestamp.Add(seenAgainThreshold + time.Second),
-			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "10.0.0.1",
 					MAC:   "c0:ff:ee:15:c0:01",
@@ -218,76 +183,77 @@ func TestUpdateBindings(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "Move",
-			BindingsFixture: map[string]Binding{
-				"0_10.0.0.1": {
-					IP:   netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					MAC:  net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
-					Time: timestamp,
+		"move": {
+			in: in{
+				p: func(p *ethernet.ARPPacket) {
+					p.SendHwAddr = net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x1d}
+				},
+				time: timestamp,
+				bindingsFixture: map[string]Binding{
+					"0_10.0.0.1": {
+						IP:   netip.MustParseAddr("10.0.0.1"),
+						MAC:  net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x01},
+						Time: timestamp,
+					},
 				},
 			},
-			In: updateBindingsArgs{
-				Pkt: &ethernet.ARPPacket{
-					HardwareType:    ethernet.HardwareTypeEthernet,
-					ProtocolType:    ethernet.ProtocolTypeIPv4,
-					HardwareAddrLen: 6,
-					ProtocolAddrLen: 4,
-					OpCode:          ethernet.OpRequest,
-					SendHwdAddr:     net.HardwareAddr{0xc0, 0xff, 0xee, 0x15, 0xc0, 0x1d},
-					SendIPAddr:      netip.AddrFrom4([4]byte{testIP1[0], testIP1[1], testIP1[2], testIP1[3]}),
-					TgtIPAddr:       netip.AddrFrom4([4]byte{testIP2[0], testIP2[1], testIP2[2], testIP2[3]}),
-				},
-				Time: timestamp,
-			},
-			Out: []Result{
+			out: []Result{
 				{
-					IP:    "10.0.0.1",
-					MAC:   "c0:ff:ee:15:c0:1d",
-					Time:  timestamp.Unix(),
-					Event: EventMoved,
+					IP:          "10.0.0.1",
+					MAC:         "c0:ff:ee:15:c0:1d",
+					PreviousMAC: "c0:ff:ee:15:c0:01",
+					Time:        timestamp.Unix(),
+					Event:       EventMoved,
 				},
 			},
 		},
 	}
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			packet := testARPPacket()
+			if tc.in.p != nil {
+				tc.in.p(packet)
+			}
 			svc := NewService("lo")
-			if tcase.BindingsFixture != nil {
-				svc.bindings = tcase.BindingsFixture
+			if tc.in.bindingsFixture != nil {
+				svc.bindings = tc.in.bindingsFixture
 			}
 
-			res := svc.updateBindings(tcase.In.Pkt, tcase.In.VID, tcase.In.Time)
-			for i, expected := range tcase.Out {
-				var expectedVID int
-				if expected.VID != nil {
-					expectedVID = int(*expected.VID)
-				}
-
-				assert.Equalf(tt, expected.IP, res[i].IP, "expected Result at index of %d to have the IP %s", i, expected.IP)
-				assert.Equalf(tt, expected.MAC, res[i].MAC, "expected Result at index of %d to have the MAC %s", i, expected.MAC)
-				assert.Equalf(tt, expected.VID, res[i].VID, "expected Result at index of %d to have the VID %d", i, expectedVID)
-				assert.Equalf(tt, expected.Time, res[i].Time, "expected Result at index of %d to have the Time of %d", i, int(expected.Time))
-				assert.Equalf(tt, expected.Event, res[i].Event, "expected Result at index of %d to have the Event of %s", i, expected.Event)
+			res := svc.updateBindings(packet, tc.in.vid, tc.in.time)
+			for i, expected := range tc.out {
+				assert.Equal(t, expected, res[i])
 			}
 		})
 	}
 }
 
-type handlePacketCase struct {
-	Err  error
-	In   pcap.Packet
-	Name string
-	Out  []Result
+func testARPPacket() *ethernet.ARPPacket {
+	return &ethernet.ARPPacket{
+		HardwareType:    ethernet.HardwareTypeEthernet,
+		ProtocolType:    ethernet.ProtocolTypeIPv4,
+		HardwareAddrLen: 6,
+		ProtocolAddrLen: 4,
+		OpCode:          ethernet.OpRequest,
+		SendIPAddr:      netip.MustParseAddr("10.0.0.1"),
+		TgtIPAddr:       netip.MustParseAddr("10.0.0.2"),
+	}
 }
 
 func TestServiceHandlePacket(t *testing.T) {
+	t.Parallel()
+
 	timestamp := time.Now()
-	table := []handlePacketCase{
-		{
-			Name: "ValidRequestPacket",
-			In: pcap.Packet{
+	testcases := map[string]struct {
+		in  pcap.Packet
+		out []Result
+		err error
+	}{
+		"valid request packet": {
+			in: pcap.Packet{
 				// generated from tcpdump
 				B: []byte{
 					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x84, 0x39, 0xc0, 0x0b, 0x22, 0x25, 0x81, 0x00, 0x00, 0x02,
@@ -299,7 +265,7 @@ func TestServiceHandlePacket(t *testing.T) {
 					Timestamp: timestamp,
 				},
 			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "192.168.10.26",
 					MAC:   "84:39:c0:0b:22:25",
@@ -309,16 +275,15 @@ func TestServiceHandlePacket(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "ValidReplyPacket",
-			In: pcap.Packet{
+		"valid reply packet": {
+			in: pcap.Packet{
 				B: []byte{
 					0x24, 0x4b, 0xfe, 0xe1, 0xea, 0x26, 0x80, 0x61, 0x5f, 0x08, 0xfc, 0x16, 0x08, 0x06, 0x00, 0x01,
 					0x08, 0x00, 0x06, 0x04, 0x00, 0x02, 0x80, 0x61, 0x5f, 0x08, 0xfc, 0x16, 0xc0, 0xa8, 0x01, 0x6c,
 					0x24, 0x4b, 0xfe, 0xe1, 0xea, 0x26, 0xc0, 0xa8, 0x01, 0x50,
 				},
 			},
-			Out: []Result{
+			out: []Result{
 				{
 					IP:    "192.168.1.108",
 					MAC:   "80:61:5f:08:fc:16",
@@ -335,13 +300,11 @@ func TestServiceHandlePacket(t *testing.T) {
 				},
 			},
 		},
-		{
-			Name: "EmptyPacket",
-			Err:  ErrEmptyPacket,
+		"empty packet": {
+			err: ErrEmptyPacket,
 		},
-		{
-			Name: "MalformedPacket",
-			In: pcap.Packet{
+		"malformed packet": {
+			in: pcap.Packet{
 				B: []byte{
 					0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x84, 0x39, 0xc0, 0x0b, 0x22,
 					0x08, 0x06, 0x00, 0x01, 0x08, 0x06, 0x04, 0x00, 0x01, 0x84,
@@ -349,37 +312,34 @@ func TestServiceHandlePacket(t *testing.T) {
 					0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				},
 			},
-			// should return nil, nil
 		},
-		{
-			Name: "ShortPacket",
-			In: pcap.Packet{
+		"short packet": {
+			in: pcap.Packet{
 				B: []byte{
 					0x24, 0x4b, 0xfe, 0xe1, 0xea, 0x26, 0x80, 0x61, 0x5f, 0x08, 0xfc, 0x16, 0x08, 0x06, 0x00, 0x01,
 					0x08, 0x00, 0x06, 0x04, 0x00, 0x02, 0x80, 0xfc, 0x16, 0xc0, 0xa8, 0x01, 0x6c,
 					0x24, 0x4b, 0xfe, 0xe1, 0xea, 0x26, 0xc0, 0xa8, 0x01, 0x50,
 				},
 			},
-			Err: ethernet.ErrMalformedARPPacket,
+			err: ethernet.ErrMalformedARPPacket,
 		},
 	}
 
-	svc := NewService("")
+	for name, tc := range testcases {
+		tc := tc
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			res, err := svc.handlePacket(tcase.In)
-			assert.ErrorIsf(tt, err, tcase.Err, "expected handlePacket to return an error of: %s", tcase.Err)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			svc := NewService("")
+			res, err := svc.handlePacket(tc.in)
+			assert.ErrorIs(t, err, tc.err)
 
-			if tcase.Out != nil {
-				for i, expected := range tcase.Out {
-					assert.Equalf(tt, expected.IP, res[i].IP, "expected result at index %d to have an IP address of %s", i, expected.IP)
-					assert.Equalf(tt, expected.MAC, res[i].MAC, "expected result at index %d to have a MAC address of %s", i, expected.MAC)
-					assert.Equalf(tt, expected.VID, res[i].VID, "expected result at index %d to have a VID of %v", i, expected.VID)
-					assert.Equalf(tt, expected.Time, res[i].Time, "expected result at index %d to have a Time of %s", i, expected.Time)
+			if err == nil {
+				for i, expected := range tc.out {
+					assert.Equal(t, expected, res[i])
 				}
 			} else {
-				assert.Nil(tt, res)
+				assert.Nil(t, res)
 			}
 		})
 	}

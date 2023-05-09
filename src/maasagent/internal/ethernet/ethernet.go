@@ -16,22 +16,26 @@ const (
 	minEthernetLen = 14
 )
 
+type EthernetType uint16
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=EthernetType -trimprefix=EthernetType
+
 const (
 	// EthernetTypeLLC is a special ethernet type, if found the frame is truncated
-	EthernetTypeLLC uint16 = 0
+	EthernetTypeLLC EthernetType = 0
 	// EthernetTypeIPv4 is the ethernet type for a frame containing an IPv4 packet
-	EthernetTypeIPv4 uint16 = 0x0800
+	EthernetTypeIPv4 EthernetType = 0x0800
 	// EthernetTypeARP is the ethernet type for a frame containing an ARP packet
-	EthernetTypeARP uint16 = 0x0806
+	EthernetTypeARP EthernetType = 0x0806
 	// EthernetTypeIPv6 is the ethernet type for a frame containing an IPv6 packet
-	EthernetTypeIPv6 uint16 = 0x86dd
+	EthernetTypeIPv6 EthernetType = 0x86dd
 	// EthernetTypeVLAN is the ethernet type for a frame containing a VLAN tag,
 	// the VLAN tag bytes will indicate the actual type of packet the frame contains
-	EthernetTypeVLAN uint16 = 0x8100
+	EthernetTypeVLAN EthernetType = 0x8100
 
 	// NonStdLenEthernetTypes is a magic number to find any non-standard types
 	// and mark them as EthernetTypeLLC
-	NonStdLenEthernetTypes uint16 = 0x600
+	NonStdLenEthernetTypes EthernetType = 0x600
 )
 
 var (
@@ -51,7 +55,7 @@ type VLAN struct {
 	Priority     uint8
 	DropEligible bool
 	ID           uint16
-	EthernetType uint16
+	EthernetType EthernetType
 }
 
 // UnmarshalBinary will take the ethernet frame's payload
@@ -68,7 +72,7 @@ func (v *VLAN) UnmarshalBinary(buf []byte) error {
 	// extract the next 12 bits for an ID
 	v.ID = binary.BigEndian.Uint16(buf[:2]) & 0x0fff
 	// last 2 bytes are ethernet type
-	v.EthernetType = binary.BigEndian.Uint16(buf[2:])
+	v.EthernetType = EthernetType(binary.BigEndian.Uint16(buf[2:]))
 
 	return nil
 }
@@ -79,7 +83,7 @@ type EthernetFrame struct {
 	DstMAC       net.HardwareAddr
 	Payload      []byte
 	Len          uint16
-	EthernetType uint16
+	EthernetType EthernetType
 }
 
 // ExtractARPPacket will extract an ARP packet from the ethernet frame's
@@ -131,14 +135,14 @@ func (e *EthernetFrame) UnmarshalBinary(buf []byte) error {
 
 	e.DstMAC = buf[0:6]
 	e.SrcMAC = buf[6:12]
-	e.EthernetType = binary.BigEndian.Uint16(buf[12:14])
+	e.EthernetType = EthernetType(binary.BigEndian.Uint16(buf[12:14]))
 	e.Payload = buf[14:]
 
 	if e.EthernetType < NonStdLenEthernetTypes {
 		// see IEEE 802.3, non-standard ethernet may contain padding
 		// this calculation is used to truncate the payload to the length
 		// specified for that ethernet type
-		e.Len = e.EthernetType
+		e.Len = uint16(e.EthernetType)
 		e.EthernetType = EthernetTypeLLC
 
 		cmp := len(e.Payload) - int(e.Len)

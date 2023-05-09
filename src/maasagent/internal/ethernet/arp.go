@@ -14,49 +14,57 @@ import (
 	"net/netip"
 )
 
+type HardwareType uint16
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=HardwareType -trimprefix=HardwareType
+
 const (
 	// HardwareTypeReserved is a special value for hardware type
-	HardwareTypeReserved uint16 = 0 // see RFC5494
+	HardwareTypeReserved HardwareType = 0 // see RFC5494
 	// HardwareTypeEthernet is the hardware type value for Ethernet
 	// we only care about ethernet, but additional types are defined for
 	// testing and possible future use
-	HardwareTypeEthernet uint16 = 1
+	HardwareTypeEthernet HardwareType = 1
 	// HardwareTypeExpEth is the hardware type for experimental ethernet
-	HardwareTypeExpEth uint16 = 2
+	HardwareTypeExpEth HardwareType = 2
 	// HardwareTypeAX25 is the hardware type for Radio AX.25
-	HardwareTypeAX25 uint16 = 3
+	HardwareTypeAX25 HardwareType = 3
 	// HardwareTypeChaos is a chaos value for hardware type
-	HardwareTypeChaos uint16 = 4
+	HardwareTypeChaos HardwareType = 4
 	// HardwareTypeIEEE802 is for IEEE 802 networks
-	HardwareTypeIEEE802 uint16 = 5
+	HardwareTypeIEEE802 HardwareType = 5
 
 	// skipping propriatary networks
 
 	// HardwareTypeFiberChannel is the hardware type for fiber channel
-	HardwareTypeFiberChannel uint16 = 18
+	HardwareTypeFiberChannel HardwareType = 18
 	// HardwareTypeSerialLine is the hardware type for serial line
-	HardwareTypeSerialLine uint16 = 19
+	HardwareTypeSerialLine HardwareType = 19
 	// HardwareTypeHIPARP is the hardware type for HIPARP
-	HardwareTypeHIPARP uint16 = 28
+	HardwareTypeHIPARP HardwareType = 28
 	// HardwareTypeIPARPISO7163 is the hardware type for IP and ARP over ISO 7816-3
-	HardwareTypeIPARPISO7163 uint16 = 29
+	HardwareTypeIPARPISO7163 HardwareType = 29
 	// HardwareTypeARPSec is the hardware type for ARPSec
-	HardwareTypeARPSec uint16 = 30
+	HardwareTypeARPSec HardwareType = 30
 	// HardwareTypeIPSec is the hardware type for IPSec tunnel
-	HardwareTypeIPSec uint16 = 31
+	HardwareTypeIPSec HardwareType = 31
 	// HardwareTypeInfiniBand is the hardware type for InfiniBand
-	HardwareTypeInfiniBand uint16 = 32
+	HardwareTypeInfiniBand HardwareType = 32
 )
+
+type ProtocolType uint16
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=ProtocolType -trimprefix=ProtocolType
 
 const (
 	// ProtocolTypeIPv4 is the value for IPv4 ARP packets
-	ProtocolTypeIPv4 uint16 = 0x0800
+	ProtocolTypeIPv4 ProtocolType = 0x0800
 	// ProtocolTypeIPv6 is the value for IPv6 ARP packets,
 	// which shouldn't be used, this is defined for testing purposes
-	ProtocolTypeIPv6 uint16 = 0x86dd
+	ProtocolTypeIPv6 ProtocolType = 0x86dd
 	// ProtocolTypeARP is the value for ARP packets with a protocol
 	// value of ARP itself
-	ProtocolTypeARP uint16 = 0x0806
+	ProtocolTypeARP ProtocolType = 0x0806
 )
 
 const (
@@ -77,11 +85,11 @@ var (
 type ARPPacket struct {
 	SendIPAddr      netip.Addr
 	TgtIPAddr       netip.Addr
-	SendHwdAddr     net.HardwareAddr
-	TgtHwdAddr      net.HardwareAddr
-	HardwareType    uint16
+	SendHwAddr      net.HardwareAddr
+	TgtHwAddr       net.HardwareAddr
+	HardwareType    HardwareType
 	OpCode          uint16
-	ProtocolType    uint16
+	ProtocolType    ProtocolType
 	HardwareAddrLen uint8
 	ProtocolAddrLen uint8
 }
@@ -109,8 +117,8 @@ func (pkt *ARPPacket) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("%w: packet missing initial ARP fields", err)
 	}
 
-	pkt.HardwareType = binary.BigEndian.Uint16(buf[0:2])
-	pkt.ProtocolType = binary.BigEndian.Uint16(buf[2:4])
+	pkt.HardwareType = HardwareType(binary.BigEndian.Uint16(buf[0:2]))
+	pkt.ProtocolType = ProtocolType(binary.BigEndian.Uint16(buf[2:4]))
 	pkt.HardwareAddrLen = buf[4]
 	pkt.ProtocolAddrLen = buf[5]
 	pkt.OpCode = binary.BigEndian.Uint16(buf[6:8])
@@ -124,9 +132,9 @@ func (pkt *ARPPacket) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("%w: packet too short for sender hardware address", err)
 	}
 
-	sendHwdAddrBuf := make([]byte, hwdAddrLen)
-	copy(sendHwdAddrBuf, buf[bytesRead:bytesRead+hwdAddrLen])
-	pkt.SendHwdAddr = sendHwdAddrBuf
+	sendHwAddrBuf := make([]byte, hwdAddrLen)
+	copy(sendHwAddrBuf, buf[bytesRead:bytesRead+hwdAddrLen])
+	pkt.SendHwAddr = sendHwAddrBuf
 	bytesRead += hwdAddrLen
 
 	err = checkPacketLen(buf, bytesRead, ipAddrLen)
@@ -151,10 +159,10 @@ func (pkt *ARPPacket) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("%w: packet too short for target hardware address", err)
 	}
 
-	tgtHwdAddrBuf := make([]byte, hwdAddrLen)
-	copy(tgtHwdAddrBuf, buf[bytesRead:bytesRead+hwdAddrLen])
+	tgtHwAddrBuf := make([]byte, hwdAddrLen)
+	copy(tgtHwAddrBuf, buf[bytesRead:bytesRead+hwdAddrLen])
 
-	pkt.TgtHwdAddr = tgtHwdAddrBuf
+	pkt.TgtHwAddr = tgtHwAddrBuf
 	bytesRead += hwdAddrLen
 
 	err = checkPacketLen(buf, bytesRead, ipAddrLen)

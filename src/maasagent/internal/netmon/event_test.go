@@ -7,166 +7,121 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type eventStringCase struct {
-	Name string
-	Out  string
-	In   Event
-}
-
 func TestEventString(t *testing.T) {
-	table := []eventStringCase{
-		{
-			Name: "EventNew",
-			In:   EventNew,
-			Out:  eventNewStr,
+	t.Parallel()
+
+	testcases := map[string]struct {
+		in  Event
+		out string
+		err error
+	}{
+		"event new": {
+			in:  EventNew,
+			out: eventNewStr,
 		},
-		{
-			Name: "EventRefreshed",
-			In:   EventRefreshed,
-			Out:  eventRefreshedStr,
+		"event refreshed": {
+			in:  EventRefreshed,
+			out: eventRefreshedStr,
 		},
-		{
-			Name: "EventMoved",
-			In:   EventMoved,
-			Out:  eventMovedStr,
+		"event moved": {
+			in:  EventMoved,
+			out: eventMovedStr,
 		},
-		{
-			Name: "Unknown",
-			In:   Event(0xff),
-			Out:  "UNKNOWN",
+		"unknown": {
+			in:  Event(0xff),
+			out: "UNKNOWN",
+			err: errInvalidEvent,
 		},
 	}
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			assert.Equalf(tt, tcase.Out, tcase.In.String(), "expected a string of %s", tcase.Out)
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tc.out, tc.in.String())
+			_, err := tc.in.ValidString()
+			if err != nil {
+				assert.ErrorIs(t, err, tc.err)
+			}
 		})
 	}
-}
-
-type eventValidStringCase struct {
-	Err error
-	eventStringCase
-}
-
-func TestEventValidString(t *testing.T) {
-	table := []eventValidStringCase{
-		{
-			eventStringCase: eventStringCase{
-				Name: "EventNew",
-				In:   EventNew,
-				Out:  eventNewStr,
-			},
-		},
-		{
-			eventStringCase: eventStringCase{
-				Name: "EventRefreshed",
-				In:   EventRefreshed,
-				Out:  eventRefreshedStr,
-			},
-		},
-		{
-			eventStringCase: eventStringCase{
-				Name: "EventMoved",
-				In:   EventMoved,
-				Out:  eventMovedStr,
-			},
-		},
-		{
-			eventStringCase: eventStringCase{
-				Name: "Unknown",
-				In:   Event(0xff),
-			},
-			Err: errInvalidEvent,
-		},
-	}
-
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			str, err := tcase.In.ValidString()
-			assert.Equalf(tt, tcase.Out, str, "expected a string of %s", tcase.Out)
-			assert.ErrorIs(tt, err, tcase.Err)
-		})
-	}
-}
-
-type eventMarshalJSONCase struct {
-	Err  error
-	Name string
-	Out  []byte
-	In   Event
 }
 
 func TestMarshalJSON(t *testing.T) {
-	table := []eventMarshalJSONCase{
-		{
-			Name: "EventNew",
-			In:   EventNew,
-			Out:  []byte("\"" + eventNewStr + "\""),
+	t.Parallel()
+
+	testcases := map[string]struct {
+		in  Event
+		out []byte
+		err error
+	}{
+		"event new": {
+			in:  EventNew,
+			out: []byte("\"" + eventNewStr + "\""),
 		},
-		{
-			Name: "EventRefreshed",
-			In:   EventRefreshed,
-			Out:  []byte("\"" + eventRefreshedStr + "\""),
+		"event refreshed": {
+			in:  EventRefreshed,
+			out: []byte("\"" + eventRefreshedStr + "\""),
 		},
-		{
-			Name: "EventMoved",
-			In:   EventMoved,
-			Out:  []byte("\"" + eventMovedStr + "\""),
+		"event moved": {
+			in:  EventMoved,
+			out: []byte("\"" + eventMovedStr + "\""),
 		},
-		{
-			Name: "Uknown",
-			In:   Event(0xff),
-			Err:  errInvalidEvent,
+		"unknown": {
+			in:  Event(0xff),
+			err: errInvalidEvent,
 		},
 	}
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			b, err := tcase.In.MarshalJSON()
-			assert.Equalf(tt, b, tcase.Out, "expected event to marshal to %s", tcase.Out)
-			assert.ErrorIs(tt, err, tcase.Err)
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			b, err := tc.in.MarshalJSON()
+			assert.Equal(t, tc.out, b)
+			assert.ErrorIs(t, err, tc.err)
 		})
 	}
 }
 
-type eventUnmarshalJSONCase struct {
-	Name string
-	Err  error
-	In   []byte
-	Out  Event
-}
-
 func TestEventUnmarshalJSON(t *testing.T) {
-	table := []eventUnmarshalJSONCase{
-		{
-			Name: "EventNew",
-			In:   []byte("\"NEW\""),
-			Out:  EventNew,
+	t.Parallel()
+
+	testcases := map[string]struct {
+		in  []byte
+		out Event
+		err error
+	}{
+		"event new": {
+			in:  []byte("\"NEW\""),
+			out: EventNew,
 		},
-		{
-			Name: "EventRefreshed",
-			In:   []byte("\"REFRESHED\""),
-			Out:  EventRefreshed,
+		"event refreshed": {
+			in:  []byte("\"REFRESHED\""),
+			out: EventRefreshed,
 		},
-		{
-			Name: "EventMoved",
-			In:   []byte("\"MOVED\""),
-			Out:  EventMoved,
+		"event moved": {
+			in:  []byte("\"MOVED\""),
+			out: EventMoved,
 		},
-		{
-			Name: "Empty",
-			Err:  &json.SyntaxError{},
+		"unknown": {
+			err: &json.SyntaxError{},
 		},
 	}
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			var e Event
-			err := e.UnmarshalJSON(tcase.In)
-			assert.Equalf(tt, tcase.Out, e, "expected event to equal %s", tcase.Out)
-			if tcase.Err != nil {
-				assert.ErrorAs(tt, err, &tcase.Err)
+			err := e.UnmarshalJSON(tc.in)
+			if err == nil {
+				assert.Equal(t, tc.out, e)
+			} else {
+				assert.IsType(t, tc.err, err)
 			}
 		})
 	}

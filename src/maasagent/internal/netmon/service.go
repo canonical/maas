@@ -95,7 +95,7 @@ func (s *Service) updateBindings(pkt *ethernet.ARPPacket, vid *uint16, timestamp
 	discoveredBindings := []Binding{
 		{
 			IP:   pkt.SendIPAddr,
-			MAC:  pkt.SendHwdAddr,
+			MAC:  pkt.SendHwAddr,
 			VID:  vid,
 			Time: timestamp,
 		},
@@ -104,7 +104,7 @@ func (s *Service) updateBindings(pkt *ethernet.ARPPacket, vid *uint16, timestamp
 	if pkt.OpCode == ethernet.OpReply {
 		discoveredBindings = append(discoveredBindings, Binding{
 			IP:   pkt.TgtIPAddr,
-			MAC:  pkt.TgtHwdAddr,
+			MAC:  pkt.TgtHwAddr,
 			VID:  vid,
 			Time: timestamp,
 		})

@@ -36,21 +36,14 @@ test:
 	CGO_ENABLED=1 $(GO) test -race ./...
 
 .PHONY: generate
-generate: $(BIN_DIR)/mockgen
+generate:
 	$(GO) generate ./...
-
-.PHONY: tools
-tools: $(BIN_DIR)/mockgen
 
 .PHONY: vendor
 vendor: $(VENDOR_DIR)/modules.txt
 
 $(VENDOR_DIR)/modules.txt: go.mod
 	$(GO) mod vendor
-
-$(BIN_DIR)/mockgen: MOCKGEN_VERSION=1.6.0
-$(BIN_DIR)/mockgen: | $(BIN_DIR)
-	GOFLAGS="" GOBIN="$(realpath $(dir $@))" $(GO) install github.com/golang/mock/mockgen@v$(MOCKGEN_VERSION)
 
 .PHONY: clean
 clean:
