@@ -419,7 +419,8 @@ $(SNAP_FILE):
 snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
 snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'maasui' --exclude 'machine-resources' --exclude 'host-info' --exclude 'maas-offline-docs' \
+		--exclude 'maasui' --exclude 'maasagent' --exclude 'machine-resources' \
+		--exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ \
 		$(SNAP_UNPACKED_DIR)/lib/python3.10/site-packages/
@@ -435,6 +436,9 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) \
 		src/host-info/bin/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
+	$(RSYNC) \
+		src/maasagent/build/ \
+		$(SNAP_UNPACKED_DIR)/usr/sbin/
 .PHONY: snap-tree-sync
 
 $(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.51.2

@@ -12,7 +12,6 @@ LDFLAGS := -ldflags '-s -w -extldflags "-static"'
 export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
 export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
 export GOFLAGS := -mod=vendor
-export OUT_PREFIX
 
 default: build
 
@@ -25,7 +24,7 @@ build: vendor
 	$(MAKE) $(addprefix $(BUILD_DIR)/,$(ARTIFACTS))
 
 $(BUILD_DIR)/%:
-	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$(OUT_PREFIX)$* $(LDFLAGS) cmd/$*/*.go
+	CGO_ENABLED=0 $(GO) build -o $(BUILD_DIR)/$* $(LDFLAGS) cmd/$*/*.go
 
 .PHONY: install
 install: build

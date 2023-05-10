@@ -1,3 +1,3 @@
-# agent
+# maas-agent
 
 MAAS Agent.

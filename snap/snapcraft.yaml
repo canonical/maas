@@ -244,8 +244,6 @@ parts:
   maas-netmon:
     plugin: make
     source: src/maasagent
-    make-parameters:
-      - OUT_PREFIX=maas-
     build-packages:
       - golang-go
     organize:

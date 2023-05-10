@@ -31,7 +31,7 @@ override_dh_auto_install:
 	make -C $(CURDIR)/src/host-info install DESTDIR=$(CURDIR)/debian/tmp
 
 	# Build MAAS Agent binaries
-	make -C $(CURDIR)/src/maasagent install DESTDIR=$(CURDIR)/debian/tmp OUT_PREFIX=maas-
+	make -C $(CURDIR)/src/maasagent install DESTDIR=$(CURDIR)/debian/tmp
 
 	# install the apparmor profile
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/apparmor.d/dhcpd.d
