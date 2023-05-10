@@ -23,6 +23,7 @@ __all__ = [
 
 from collections import namedtuple, OrderedDict
 from operator import itemgetter
+from typing import List
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -497,12 +498,26 @@ def parse_subarch_kernel_string(kernel_string: str) -> ParsedKernelString:
     )
 
 
-# Coefficients for release sorting:
+# Coefficients for release sorting in multiple "buckets":
+#
+# 1. Release name/version only: "warty", "20.04"
+# 2. Old-style HWE kernels: "hwe-u", "hwe-x-lowlatency"
+# 3. New-style GA kernels
+#   3.1 New-style kernels: "ga-20.04"
+#   3.2 Flavoured new-style kernels: "ga-22.04-lowlatency"
+#   3.3 Platform-optimised kernels: "highbank", "nvidia-ga-22.04"
+#   3.4 Platform-optimised flavoured kernels: "nvidia-ga-22.04-lowlatency"
+# 4. HWE kernels: same as GA, but with "hwe" instead of "ga" and no "highbank"
+# 5. HWE edge kernels: same as HWE
+#
+HWE_EDGE_CHANNEL_WEIGHT = 10000000
+HWE_CHANNEL_WEIGHT = 1000000
+PLATFORM_OPTIMISED_WEIGHT = 100000
+NEW_STYLE_KERNEL_WEIGHT = 10000
+PLATFORM_ONLY_STRING_WEIGHT = NEW_STYLE_KERNEL_WEIGHT
+OLD_STYLE_HWE_WEIGHT = 1000
+# A small bump for in-bucket priority of non-flavoured kernels
 FLAVOURED_WEIGHT = 10
-NOT_OLD_HWE_WEIGHT = 100  # New format kernels should weigh more
-PLATFORM_WEIGHT = 1000
-HWE_CHANNEL_WEIGHT = 10000
-HWE_EDGE_CHANNEL_WEIGHT = 100000
 
 
 def get_release_version_from_string(kernel_string: str):
@@ -522,20 +537,26 @@ def get_release_version_from_string(kernel_string: str):
     platform = ""
     release = ""
     kflavor = ""
-    if parts_len == 1:
-        # Just the release name, e.g xenial or 16.04 (always GA)
-        if kernel_string != "rolling":
-            ubuntu_release = get_release(kernel_string)
-            if ubuntu_release is None:
-                raise ValueError(
-                    "%s not found amongst the known Ubuntu releases!"
-                    % kernel_string
-                )
-            else:
-                release = kernel_string
-        channel = "ga"
-        weight = 0
-    else:
+    channel = "ga"
+    weight = 0
+
+    # Subarch kernel string parser will treat single-part strings as
+    # platforms. For this method, however, we want to also check if
+    # the string is a known release name first.
+    if kernel_string == "rolling":
+        release = "rolling"
+    elif parts_len == 1:
+        # Might be (always GA):
+        # - Just the release name, e.g xenial or 16.04
+        # - Single-part-platform, e.g. highbank
+        ubuntu_release = get_release(kernel_string)
+        if ubuntu_release:
+            release = kernel_string
+        else:
+            platform = kernel_string
+            weight += PLATFORM_ONLY_STRING_WEIGHT
+
+    if not (release or platform):
         parsed = parse_subarch_kernel_string(kernel_string)
         channel, release, platform, kflavor = (
             parsed.channel,
@@ -543,35 +564,47 @@ def get_release_version_from_string(kernel_string: str):
             parsed.platform,
             parsed.kflavor,
         )
-        weight = 0
 
         # hwe kernels should only have a higher weight when using hwe-<version>
         # format. This ensures the old (hwe-{letter}) format maps to the ga kernel.
         if channel == "hwe":
             # `hwe-{letter}` should not get HWE weight bump
-            weight = HWE_CHANNEL_WEIGHT if len(release) > 1 else 0
+            weight += HWE_CHANNEL_WEIGHT if len(release) > 1 else 0
         elif channel == "hwe-edge":
-            weight = HWE_EDGE_CHANNEL_WEIGHT
+            weight += HWE_EDGE_CHANNEL_WEIGHT
+        elif not channel and platform:
+            weight += PLATFORM_ONLY_STRING_WEIGHT
 
-    # Newer format kernel strings should weigh more
-    # First condition is to bump platform-optimised kernels too
-    if (parts_len > 1 or platform) and (channel != "hwe" or len(release) > 1):
-        weight += NOT_OLD_HWE_WEIGHT
+    # Old-style HWE strings > release-only strings
+    if channel == "hwe" and len(release) == 1:
+        weight += OLD_STYLE_HWE_WEIGHT
+    # New-style strings > Old-style HWE strings
+    elif parts_len > 1 and release:
+        weight += NEW_STYLE_KERNEL_WEIGHT
 
     if release == "rolling":
         # Rolling kernels are always the latest
         version = [999, 999]
     else:
-        ubuntu_release = ubuntu_release or get_release(release)
-        if ubuntu_release is None:
+        if release and not ubuntu_release:
+            ubuntu_release = get_release(release)
+        old_style_platform = not release and platform and platform != "generic"
+        if ubuntu_release:
+            # Remove 'LTS' from version if it exists
+            version = ubuntu_release["version"].split(" ")[0]
+            # Convert the version into a list of ints
+            version = [int(seg) for seg in version.split(".")]
+        elif old_style_platform or parts_len == 1:
+            # TODO this is a hack: for an old style platform-specific
+            #  kernel, we don't know the version it matches. So we
+            #  return the (0, 0) so that the kernel will be returned as
+            #  available.
+            version = [0, 0]
+        else:
             raise ValueError(
                 "%s not found amongst the known Ubuntu releases!"
                 % kernel_string
             )
-        # Remove 'LTS' from version if it exists
-        version = ubuntu_release["version"].split(" ")[0]
-        # Convert the version into a list of ints
-        version = [int(seg) for seg in version.split(".")]
 
     if kflavor and kflavor != "generic":
         weight += FLAVOURED_WEIGHT
@@ -579,7 +612,7 @@ def get_release_version_from_string(kernel_string: str):
     if platform and platform != "generic":
         # Platform-specific kernels should have higher weight over
         # generic ones.
-        weight += PLATFORM_WEIGHT
+        weight += PLATFORM_OPTIMISED_WEIGHT
 
     return tuple(version + [weight])
 
@@ -652,26 +685,20 @@ def get_working_kernel(
                 "commissioning_distro_series"
             )
 
-    if platform != "generic" and (
-        (requested_kernel and validate_kernel_str(requested_kernel))
-        or (
-            min_compatibility_level
-            and validate_kernel_str(min_compatibility_level)
-        )
-    ):
-        raise ValidationError(
-            "Subarchitecture(%s) must be generic when setting hwe_kernel."
-            % platform
-        )
-
     os_release = osystem + "/" + distro_series
+    kernel_str_valid = requested_kernel and validate_kernel_str(
+        requested_kernel
+    )
+    min_compat_lvl_valid = min_compatibility_level and validate_kernel_str(
+        min_compatibility_level
+    )
 
-    if requested_kernel and validate_kernel_str(requested_kernel):
+    if kernel_str_valid:
         # Specific kernel was requested -- check whether it will work
-        usable_kernels = BootResource.objects.get_kernels(
-            os_release, architecture=arch
+        available_kernels = get_available_kernels_prioritising_platform(
+            arch, os_release, platform
         )
-        if requested_kernel not in usable_kernels:
+        if requested_kernel not in available_kernels:
             raise ValidationError(
                 "%s is not available for %s on %s."
                 % (requested_kernel, os_release, architecture)
@@ -680,10 +707,7 @@ def get_working_kernel(
             raise ValidationError(
                 f"{requested_kernel} is too old to use on {os_release}."
             )
-        if (
-            min_compatibility_level
-            and validate_kernel_str(min_compatibility_level)
-        ) and (
+        if min_compat_lvl_valid and (
             not release_a_newer_than_b(
                 requested_kernel, min_compatibility_level
             )
@@ -693,9 +717,7 @@ def get_working_kernel(
                 % (requested_kernel, min_compatibility_level)
             )
         return requested_kernel
-    elif min_compatibility_level and validate_kernel_str(
-        min_compatibility_level
-    ):
+    elif min_compat_lvl_valid:
         # No specific kernel was requested, but there is a minimal
         # compatibility level restriction. Look for kernels that could
         # fit the description.
@@ -705,13 +727,12 @@ def get_working_kernel(
         valid_kflavors = {
             br.kflavor for br in BootResource.objects.exclude(kflavor=None)
         }
-        kflavor = "generic"
-        for kernel_part in min_compatibility_level.split("-"):
-            if kernel_part in valid_kflavors:
-                kflavor = kernel_part
-                break
-        usable_kernels = BootResource.objects.get_kernels(
-            os_release, architecture=arch, kflavor=kflavor
+        _, _, _, kflavor = parse_subarch_kernel_string(min_compatibility_level)
+        if not kflavor or kflavor not in valid_kflavors:
+            kflavor = "generic"
+
+        usable_kernels = get_available_kernels_prioritising_platform(
+            arch, os_release, platform, kflavor=kflavor
         )
         for i in usable_kernels:
             if release_a_newer_than_b(
@@ -722,12 +743,93 @@ def get_working_kernel(
             "%s has no kernels available which meet min_hwe_kernel(%s)."
             % (distro_series, min_compatibility_level)
         )
-    for kernel in BootResource.objects.get_kernels(
-        os_release, architecture=arch, kflavor="generic"
-    ):
-        if release_a_newer_than_b(kernel, distro_series):
+
+    # No specific kernel, no requirements. Pick the first kernel suitable
+    # for the distro.
+    available_kernels = get_available_kernels_prioritising_platform(
+        arch, os_release, platform
+    )
+    for kernel in available_kernels:
+        # TODO We need to switch to dataclasses to describe kernels.
+        p = parse_subarch_kernel_string(kernel)
+        old_style_platform = (
+            not p.channel and p.platform and p.platform != "generic"
+        )
+        if old_style_platform and (
+            kernel == requested_kernel or kernel == platform
+        ):
+            # We can do that because we filtered for `os_release` above
+            return kernel
+        elif release_a_newer_than_b(kernel, distro_series):
             return kernel
     raise ValidationError("%s has no kernels available." % distro_series)
+
+
+def get_available_kernels_prioritising_platform(
+    arch: str, os_release: str, platform: str, kflavor: str = None
+) -> List[str]:
+    """Wrapper around `get_kernels` that prioritises platform-exact
+    kernels over platform-generic and generic kernels
+
+    This way we may have both "platform-exact" and "platform-generic"
+    kernels (e.g. `linux-raspi` generic and `linux-raspi-zero` exact)
+    in a way that allows MAAS to choose the best platform-supporting
+    kernel that is available to it.
+    """
+
+    # We cannot always use the generic kernels, because some platforms
+    # won't boot with them. However, we still need to fetch them because
+    # we want them at the end of the kernel list.
+    generic_kernels = BootResource.objects.get_kernels(
+        os_release,
+        architecture=arch,
+        platform="generic",
+        kflavor=kflavor,
+    )
+
+    # Save DB queries for the vast majority of the machines
+    if platform == "generic":
+        return generic_kernels
+
+    # Kernels are sorted by the rules of `get_release_version_from_string`,
+    # meaning that platform-optimised kernels will end up being the last
+    # on the list. While in other contexts this is reasonable, here we
+    # want them to have priority over the generic ones. The idea is
+    # simple: we fetch the kernels that match the platform exactly,
+    # then we fetch the ones that *support* the platform,
+    # "platform-generic" ones. The latter might also contain some
+    # simply-generic kernels that we want to end up the last, so we
+    # filter them out by using the simply-generic kernel list we fetch
+    # earlier.
+    #
+    # TODO This part adds 6 extra queries and we might want to fix it
+    platform_exact_kernels = BootResource.objects.get_kernels(
+        os_release,
+        architecture=arch,
+        platform=platform,
+        kflavor=kflavor,
+        strict_platform_match=True,
+    )
+    platform_generic_kernels = BootResource.objects.get_kernels(
+        os_release,
+        architecture=arch,
+        platform=platform,
+        kflavor=kflavor,
+        strict_platform_match=False,
+    )
+
+    # Generic kernel filtering, see above
+    platform_kernels = list(platform_exact_kernels)
+    generic_supporting_kernels = []
+    for k in platform_generic_kernels:
+        if k in generic_kernels:
+            generic_supporting_kernels.append(k)
+        else:
+            platform_kernels.append(k)
+
+    # Make [*platform-exact, *platform-generic, *generic]
+    available_kernels = platform_kernels + generic_supporting_kernels
+    return available_kernels
 
 
 def validate_min_hwe_kernel(min_hwe_kernel):

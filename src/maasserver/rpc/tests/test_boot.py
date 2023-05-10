@@ -47,7 +47,7 @@ from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
 
 
-def get_config(*args, query_count=36, **kwargs):
+def get_config(*args, query_count=42, **kwargs):
     count, result = count_queries(orig_get_config, *args, **kwargs)
     assert (
         count <= query_count

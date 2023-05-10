@@ -2364,6 +2364,8 @@ class Factory(maastesting.factory.Factory):
         bootloader_type=None,
         rolling=False,
         base_image="",
+        platform="generic",
+        supported_platforms="generic",
     ):
         if rtype is None:
             if base_image:
@@ -2377,6 +2379,7 @@ class Factory(maastesting.factory.Factory):
                 os = self.make_name("os")
                 series = self.make_name("series")
                 name = f"{os}/{series}"
+        subarch = None
         if architecture is None:
             arch = self.make_name("arch")
             subarch = self.make_name("subarch")
@@ -2386,7 +2389,21 @@ class Factory(maastesting.factory.Factory):
                 self.make_name("key"): self.make_name("value")
                 for _ in range(3)
             }
-        return BootResource.objects.create(
+
+        if "platform" in extra and platform is None:
+            del extra["platform"]
+        elif platform is not None:
+            extra.setdefault("platform", platform)
+
+        if "supported_platforms" in extra and supported_platforms is None:
+            del extra["supported_platforms"]
+        elif supported_platforms is not None:
+            extra.setdefault("supported_platforms", supported_platforms)
+
+        if subarch and "supported_platforms" in extra:
+            extra["supported_platforms"] += "," + subarch
+
+        result = BootResource.objects.create(
             rtype=rtype,
             name=name,
             architecture=architecture,
@@ -2396,6 +2413,7 @@ class Factory(maastesting.factory.Factory):
             rolling=rolling,
             base_image=base_image,
         )
+        return result
 
     def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
@@ -2460,6 +2478,8 @@ class Factory(maastesting.factory.Factory):
         rolling=False,
         filename=None,
         base_image="",
+        platform="generic",
+        supported_platforms="generic",
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2470,6 +2490,8 @@ class Factory(maastesting.factory.Factory):
             bootloader_type=bootloader_type,
             rolling=rolling,
             base_image=base_image,
+            platform=platform,
+            supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label
@@ -2510,6 +2532,8 @@ class Factory(maastesting.factory.Factory):
         filename=None,
         filetype=None,
         base_image="",
+        platform=None,
+        supported_platforms=None,
     ):
         resource = self.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
@@ -2517,6 +2541,8 @@ class Factory(maastesting.factory.Factory):
             architecture=architecture,
             extra=extra,
             base_image=base_image,
+            platform=platform,
+            supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label
@@ -2551,6 +2577,8 @@ class Factory(maastesting.factory.Factory):
         size=None,
         bootloader_type=None,
         filename=None,
+        platform=None,
+        supported_platforms=None,
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2559,6 +2587,8 @@ class Factory(maastesting.factory.Factory):
             extra=extra,
             kflavor=kflavor,
             bootloader_type=bootloader_type,
+            platform=platform,
+            supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label

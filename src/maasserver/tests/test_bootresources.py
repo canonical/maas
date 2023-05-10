@@ -610,7 +610,7 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
         )
 
 
-def make_product(ftype=None, kflavor=None, subarch=None):
+def make_product(ftype=None, kflavor=None, subarch=None, platform=None):
     """Make product dictionary that is just like the one provided
     from simplsetreams."""
     if ftype is None:
@@ -619,9 +619,14 @@ def make_product(ftype=None, kflavor=None, subarch=None):
         kflavor = "generic"
     if subarch is None:
         subarch = factory.make_name("subarch")
+    if platform is None:
+        platform = factory.make_name("platform")
     subarches = [factory.make_name("subarch") for _ in range(3)]
     subarches.insert(0, subarch)
     subarches = ",".join(subarches)
+    supported_platforms = ",".join(
+        [factory.make_name("platform") for _ in range(3)]
+    )
     name = factory.make_name("name")
     product = {
         "os": factory.make_name("os"),
@@ -637,6 +642,8 @@ def make_product(ftype=None, kflavor=None, subarch=None):
         "item_name": name,
         "path": "/path/to/%s" % name,
         "rolling": factory.pick_bool(),
+        "platform": platform,
+        "supported_platforms": supported_platforms,
     }
     name = "{}/{}".format(product["os"], product["release"])
     if kflavor == "generic":
@@ -742,6 +749,11 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(architecture, resource.architecture)
         self.assertEqual(product["kflavor"], resource.kflavor)
         self.assertEqual(product["subarches"], resource.extra["subarches"])
+        self.assertEqual(product["platform"], resource.extra["platform"])
+        self.assertEqual(
+            product["supported_platforms"],
+            resource.extra["supported_platforms"],
+        )
         self.assertEqual(product["rolling"], resource.rolling)
 
     def test_get_or_create_boot_resource_handles_bootloader(self):
@@ -785,6 +797,11 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(expected, resource)
         self.assertEqual(product["kflavor"], resource.kflavor)
         self.assertEqual(product["subarches"], resource.extra["subarches"])
+        self.assertEqual(product["platform"], resource.extra["platform"])
+        self.assertEqual(
+            product["supported_platforms"],
+            resource.extra["supported_platforms"],
+        )
 
     def test_get_or_create_boot_resource_calls_prevent_resource_deletion(self):
         name, architecture, product = make_product()

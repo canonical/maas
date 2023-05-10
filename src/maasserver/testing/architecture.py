@@ -20,13 +20,20 @@ def make_arch(
     """
     if arch_name is None:
         arch_name = factory.make_name("arch")
-    factory.make_default_ubuntu_release_bootable(arch_name, extra=extra)
     if with_subarch:
         if subarch_name is None:
             subarch_name = factory.make_name("sub")
-        return f"{arch_name}/{subarch_name}"
+        result = f"{arch_name}/{subarch_name}"
     else:
-        return arch_name
+        result = arch_name
+
+    if not extra:
+        extra = {}
+    extra.setdefault("platform", "generic")
+    extra.setdefault("supported_platforms", subarch_name)
+    factory.make_default_ubuntu_release_bootable(arch_name, extra=extra)
+
+    return result
 
 
 def patch_usable_architectures(testcase, architectures=None):

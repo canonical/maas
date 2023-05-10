@@ -491,10 +491,10 @@ class BootResourceStore(ObjectStore):
             # overwrite the generic kernel with each kernel flavor.
             subarch = product.get("subarch", "generic")
             has_kflavor = kflavor not in (None, "generic") and (
-                subarch.startswith("hwe-") or subarch.startswith("ga-")
+                "hwe-" in subarch or "ga-" in subarch
             )
-            if has_kflavor:
-                if "edge" in subarch:
+            if has_kflavor and kflavor not in subarch:
+                if subarch.endswith("-edge"):
                     subarch_parts = subarch.split("-")
                     subarch_parts.insert(-1, kflavor)
                     subarch = "-".join(subarch_parts)
@@ -549,9 +549,11 @@ class BootResourceStore(ObjectStore):
         # object store contains additional data that should not be stored into
         # the database. If subarches exist in the product then we store those
         # values to expose in the simplestreams endpoint on the region.
-        resource.extra = {}
-        if "subarches" in product:
-            resource.extra["subarches"] = product["subarches"]
+        resource.extra = {
+            key: product[key]
+            for key in ("subarches", "platform", "supported_platforms")
+            if key in product
+        }
 
         title = get_product_title(product)
         if title is not None:

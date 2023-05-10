@@ -22,6 +22,7 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.osystems import (
     FLAVOURED_WEIGHT,
+    get_available_kernels_prioritising_platform,
     get_distro_series_initial,
     get_release_from_db,
     get_release_from_distro_info,
@@ -38,15 +39,17 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
     make_hwe_kernel_ui_text,
-    NOT_OLD_HWE_WEIGHT,
+    NEW_STYLE_KERNEL_WEIGHT,
+    OLD_STYLE_HWE_WEIGHT,
     parse_subarch_kernel_string,
     ParsedKernelString,
-    PLATFORM_WEIGHT,
+    PLATFORM_ONLY_STRING_WEIGHT,
+    PLATFORM_OPTIMISED_WEIGHT,
     release_a_newer_than_b,
     validate_min_hwe_kernel,
     validate_osystem_and_distro_series,
 )
-from maastesting.matchers import MockAnyCall, MockCalledOnceWith
+from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 
 
@@ -526,14 +529,15 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 "Old style HWE kernel",
                 {
                     "string": "hwe-%s" % release["series"][0],
-                    "expected": version_tuple + tuple([0]),
+                    "expected": version_tuple + tuple([OLD_STYLE_HWE_WEIGHT]),
                 },
             ),
             (
                 "GA kernel",
                 {
                     "string": "ga-%s" % version_str,
-                    "expected": version_tuple + tuple([NOT_OLD_HWE_WEIGHT]),
+                    "expected": version_tuple
+                    + tuple([NEW_STYLE_KERNEL_WEIGHT]),
                 },
             ),
             (
@@ -541,7 +545,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "ga-%s-lowlatency" % version_str,
                     "expected": version_tuple
-                    + tuple([NOT_OLD_HWE_WEIGHT + FLAVOURED_WEIGHT]),
+                    + tuple([NEW_STYLE_KERNEL_WEIGHT + FLAVOURED_WEIGHT]),
                 },
             ),
             (
@@ -549,7 +553,9 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "xgene-uboot-mustang-ga-%s" % version_str,
                     "expected": version_tuple
-                    + tuple([NOT_OLD_HWE_WEIGHT + PLATFORM_WEIGHT]),
+                    + tuple(
+                        [NEW_STYLE_KERNEL_WEIGHT + PLATFORM_OPTIMISED_WEIGHT]
+                    ),
                 },
             ),
             (
@@ -560,9 +566,9 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     "expected": version_tuple
                     + tuple(
                         [
-                            NOT_OLD_HWE_WEIGHT
+                            NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT
-                            + PLATFORM_WEIGHT
+                            + PLATFORM_OPTIMISED_WEIGHT
                         ]
                     ),
                 },
@@ -572,7 +578,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "hwe-%s" % version_str,
                     "expected": version_tuple
-                    + tuple([HWE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]),
+                    + tuple([HWE_CHANNEL_WEIGHT + NEW_STYLE_KERNEL_WEIGHT]),
                 },
             ),
             (
@@ -580,7 +586,9 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "hwe-%s-edge" % version_str,
                     "expected": version_tuple
-                    + tuple([HWE_EDGE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]),
+                    + tuple(
+                        [HWE_EDGE_CHANNEL_WEIGHT + NEW_STYLE_KERNEL_WEIGHT]
+                    ),
                 },
             ),
             (
@@ -591,7 +599,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT
                         ]
                     ),
@@ -605,7 +613,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_EDGE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT
                         ]
                     ),
@@ -619,8 +627,8 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
-                            + PLATFORM_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
+                            + PLATFORM_OPTIMISED_WEIGHT
                         ]
                     ),
                 },
@@ -633,8 +641,8 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_EDGE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
-                            + PLATFORM_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
+                            + PLATFORM_OPTIMISED_WEIGHT
                         ]
                     ),
                 },
@@ -648,9 +656,9 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT
-                            + PLATFORM_WEIGHT
+                            + PLATFORM_OPTIMISED_WEIGHT
                         ]
                     ),
                 },
@@ -664,9 +672,9 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                     + tuple(
                         [
                             HWE_EDGE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT
-                            + PLATFORM_WEIGHT
+                            + PLATFORM_OPTIMISED_WEIGHT
                         ]
                     ),
                 },
@@ -676,7 +684,11 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                 {
                     "string": "hwe-rolling",
                     "expected": tuple(
-                        [999, 999, HWE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT]
+                        [
+                            999,
+                            999,
+                            HWE_CHANNEL_WEIGHT + NEW_STYLE_KERNEL_WEIGHT,
+                        ]
                     ),
                 },
             ),
@@ -688,7 +700,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                         [
                             999,
                             999,
-                            HWE_EDGE_CHANNEL_WEIGHT + NOT_OLD_HWE_WEIGHT,
+                            HWE_EDGE_CHANNEL_WEIGHT + NEW_STYLE_KERNEL_WEIGHT,
                         ]
                     ),
                 },
@@ -702,7 +714,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                             999,
                             999,
                             HWE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT,
                         ]
                     ),
@@ -717,8 +729,36 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
                             999,
                             999,
                             HWE_EDGE_CHANNEL_WEIGHT
-                            + NOT_OLD_HWE_WEIGHT
+                            + NEW_STYLE_KERNEL_WEIGHT
                             + FLAVOURED_WEIGHT,
+                        ]
+                    ),
+                },
+            ),
+            (
+                "Old-style platform-only kernel string",
+                {
+                    "string": "xgene-uboot-mustang",
+                    "expected": tuple(
+                        [
+                            0,
+                            0,
+                            PLATFORM_OPTIMISED_WEIGHT
+                            + PLATFORM_ONLY_STRING_WEIGHT,
+                        ]
+                    ),
+                },
+            ),
+            (
+                "highbank (old-style platform-only release-like)",
+                {
+                    "string": "highbank",
+                    "expected": tuple(
+                        [
+                            0,
+                            0,
+                            PLATFORM_OPTIMISED_WEIGHT
+                            + PLATFORM_ONLY_STRING_WEIGHT,
                         ]
                     ),
                 },
@@ -768,55 +808,51 @@ class TestReleaseANewerThanB(MAASServerTestCase):
 
 class TestGetWorkingKernel(MAASServerTestCase):
     def test_get_working_kernel_returns_default_kernel(self):
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-u",
-        )
+        ]
         hwe_kernel = get_working_kernel(
             None, None, "amd64/generic", "ubuntu", "trusty"
         )
         self.assertEqual(hwe_kernel, "hwe-t")
 
     def test_get_working_kernel_set_kernel(self):
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-v",
-        )
+        ]
         hwe_kernel = get_working_kernel(
             "hwe-v", None, "amd64/generic", "ubuntu", "trusty"
         )
         self.assertEqual(hwe_kernel, "hwe-v")
 
     def test_get_working_kernel_accepts_ga_kernel(self):
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "ga-16.04",
-        )
+        ]
         hwe_kernel = get_working_kernel(
             "ga-16.04", None, "amd64/generic", "ubuntu", "xenial"
         )
         self.assertEqual(hwe_kernel, "ga-16.04")
 
-    def test_get_working_kernel_fails_with_nongeneric_arch_and_kernel(self):
-        exception_raised = False
-        try:
-            get_working_kernel(
-                "hwe-v", None, "armfh/hardbank", "ubuntu", "trusty"
-            )
-        except ValidationError as e:
-            self.assertEqual(
-                "Subarchitecture(hardbank) must be generic when setting "
-                + "hwe_kernel.",
-                e.message,
-            )
-            exception_raised = True
-        self.assertTrue(exception_raised)
+    def test_get_working_kernel_returns_suitable_kernel_with_nongeneric_arch(
+        self,
+    ):
+        self.patch(BootResource.objects, "get_kernels").return_value = [
+            "ga-20.04",
+        ]
+        result = get_working_kernel(
+            "ga-20.04", None, "armhf/hardbank", "ubuntu", "trusty"
+        )
+        self.assertEqual("ga-20.04", result)
 
     def test_get_working_kernel_fails_with_missing_hwe_kernel(self):
         exception_raised = False
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-u",
-        )
+        ]
         try:
             get_working_kernel(
                 "hwe-v", None, "amd64/generic", "ubuntu", "trusty"
@@ -831,10 +867,10 @@ class TestGetWorkingKernel(MAASServerTestCase):
 
     def test_get_working_kernel_fails_with_old_kernel_and_newer_release(self):
         exception_raised = False
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-v",
-        )
+        ]
         try:
             get_working_kernel(
                 "hwe-t", None, "amd64/generic", "ubuntu", "vivid"
@@ -848,10 +884,10 @@ class TestGetWorkingKernel(MAASServerTestCase):
 
     def test_get_working_kernel_fails_with_old_kern_and_new_min_hwe_kern(self):
         exception_raised = False
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-v",
-        )
+        ]
         try:
             get_working_kernel(
                 "hwe-t", "hwe-v", "amd64/generic", "ubuntu", "precise"
@@ -866,10 +902,10 @@ class TestGetWorkingKernel(MAASServerTestCase):
 
     def test_get_working_kernel_fails_with_no_avalible_kernels(self):
         exception_raised = False
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-v",
-        )
+        ]
         try:
             get_working_kernel(
                 "hwe-t", "hwe-v", "amd64/generic", "ubuntu", "precise"
@@ -900,10 +936,10 @@ class TestGetWorkingKernel(MAASServerTestCase):
         self.assertTrue(exception_raised)
 
     def test_get_working_kernel_always_sets_kern_with_commissionable_os(self):
-        self.patch(BootResource.objects, "get_kernels").return_value = (
+        self.patch(BootResource.objects, "get_kernels").return_value = [
             "hwe-t",
             "hwe-v",
-        )
+        ]
         mock_get_config = self.patch(Config.objects, "get_config")
         mock_get_config.return_value = "trusty"
         kernel = get_working_kernel(
@@ -921,11 +957,15 @@ class TestGetWorkingKernel(MAASServerTestCase):
 
     def test_get_working_kernel_sets_hwe_kern_to_min_hwe_kern_for_edge(self):
         # Regression test for LP:1654412
-        mock_get_kernels = self.patch(BootResource.objects, "get_kernels")
-        mock_get_kernels.return_value = (
+        import maasserver.utils.osystems as osystems
+
+        mock_get_kernels = self.patch(
+            osystems, "get_available_kernels_prioritising_platform"
+        )
+        mock_get_kernels.return_value = [
             "hwe-16.04",
             "hwe-16.04-edge",
-        )
+        ]
         arch = factory.make_name("arch")
 
         kernel = get_working_kernel(
@@ -933,11 +973,8 @@ class TestGetWorkingKernel(MAASServerTestCase):
         )
 
         self.assertEqual("hwe-16.04-edge", kernel)
-        self.assertThat(
-            mock_get_kernels,
-            MockCalledOnceWith(
-                "ubuntu/xenial", architecture=arch, kflavor="generic"
-            ),
+        mock_get_kernels.assert_called_with(
+            arch, "ubuntu/xenial", "generic", kflavor="generic"
         )
 
     def test_get_working_kernel_uses_base_image_for_lookup_with_custom_images(
@@ -1355,3 +1392,116 @@ class TestParseSubarchKernelString(MAASTestCase):
         self.assertRaises(
             ValueError, parse_subarch_kernel_string, "some-platform-hwe"
         )
+
+
+class TestGetAvailableKernelsPrioritisingPlatform(MAASTestCase):
+    def test_correct_kernel_order(self):
+        platform_prefix = "test-platform"
+        expected_kflavor = factory.make_name("kflavor")
+        expected_platform = factory.make_name(platform_prefix)
+
+        platform_optimised = f"{expected_platform}-ga-20.04-{expected_kflavor}"
+        platform_generic = f"{platform_prefix}-ga-20.04-{expected_kflavor}"
+        generic = f"ga-20.04-{expected_kflavor}"
+
+        arch = factory.make_name("arch")
+        name = "ubuntu/whatever"
+
+        def get_kernel_side_effect(
+            os_release,
+            architecture=None,
+            platform=None,
+            kflavor=None,
+            strict_platform_match=False,
+        ):
+            if (
+                os_release != name
+                or architecture != arch
+                or kflavor != expected_kflavor
+            ):
+                return []
+            if strict_platform_match and platform == expected_platform:
+                return [platform_optimised]
+            elif not strict_platform_match and platform == expected_platform:
+                return [generic, platform_generic]
+            elif not strict_platform_match and platform == "generic":
+                return [generic]
+            raise Exception("Get kernel mock conditions failed")
+
+        self.patch(
+            BootResource.objects, "get_kernels"
+        ).side_effect = get_kernel_side_effect
+
+        result = get_available_kernels_prioritising_platform(
+            arch=arch,
+            os_release=name,
+            platform=expected_platform,
+            kflavor=expected_kflavor,
+        )
+        self.assertEqual(
+            [platform_optimised, platform_generic, generic], result
+        )
+
+    def test_no_generic_kernels_for_some_platforms(self):
+        platform_prefix = "test-platform"
+        expected_kflavor = factory.make_name("kflavor")
+        expected_platform = factory.make_name(platform_prefix)
+
+        platform_optimised = f"{expected_platform}-ga-20.04-{expected_kflavor}"
+        platform_generic = f"{platform_prefix}-ga-20.04-{expected_kflavor}"
+        generic = f"ga-20.04-{expected_kflavor}"
+
+        arch = factory.make_name("arch")
+        name = "ubuntu/whatever"
+
+        def get_kernel_side_effect(
+            os_release,
+            architecture=None,
+            platform=None,
+            kflavor=None,
+            strict_platform_match=False,
+        ):
+            if (
+                os_release != name
+                or architecture != arch
+                or kflavor != expected_kflavor
+            ):
+                return []
+            if strict_platform_match and platform == expected_platform:
+                return [platform_optimised]
+            elif not strict_platform_match and platform == expected_platform:
+                # This test emulates generic kernel not having
+                # the platform in its "supported_platforms" list...
+                return [platform_generic]
+            elif not strict_platform_match and platform == "generic":
+                # ...but we still need to return the generic kernel
+                # when asked to.
+                return [generic]
+            raise Exception("Get kernel mock conditions failed")
+
+        self.patch(
+            BootResource.objects, "get_kernels"
+        ).side_effect = get_kernel_side_effect
+
+        result = get_available_kernels_prioritising_platform(
+            arch=arch,
+            os_release=name,
+            platform=expected_platform,
+            kflavor=expected_kflavor,
+        )
+        self.assertEqual([platform_optimised, platform_generic], result)
+
+    def test_generic_platform_shortcut_works(self):
+        mock_get_kernels = self.patch(BootResource.objects, "get_kernels")
+        arch = factory.make_name("arch") + "/generic"
+        kflavor = factory.make_name("kflavor")
+        expected_resource = "ga-20.04"
+        name = "ubuntu/whatever"
+        mock_get_kernels.return_value = [expected_resource]
+        result = get_available_kernels_prioritising_platform(
+            arch=arch, os_release=name, platform="generic", kflavor=kflavor
+        )
+        mock_get_kernels.assert_called_once_with(
+            name, architecture=arch, platform="generic", kflavor=kflavor
+        )
+        self.assertEqual([expected_resource], result)

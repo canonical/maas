@@ -261,6 +261,7 @@ class BootResourceManager(Manager):
         platform=None,
         kflavor=None,
         include_subarches=False,
+        strict_platform_match=False,
     ):
         """Return the set of kernels.
 
@@ -305,6 +306,10 @@ class BootResourceManager(Manager):
                 subarch
             )
 
+            old_style_platform = (
+                not channel and platform and platform != "generic"
+            )
+
             # Skip non-generic platform-specific kernels
             if platform:
                 resource_platform = resource.extra.get("platform", kplatform)
@@ -318,9 +323,9 @@ class BootResourceManager(Manager):
                 resource_supported_platforms = resource.extra.get(
                     "supported_platforms", ""
                 ).split(",")
-                if (
-                    resource_platform != platform
-                    and platform not in resource_supported_platforms
+                if resource_platform != platform and (
+                    strict_platform_match
+                    or platform not in resource_supported_platforms
                 ):
                     continue
 
@@ -332,6 +337,9 @@ class BootResourceManager(Manager):
                             (kplatform, channel, "rolling", flavor)
                         ).strip("-")
                     )
+            elif old_style_platform:
+                # TODO A hack to pass through the old-style platform kernels
+                kernels.add(subarch)
 
             # Add resource compatibility levels to the set
             if include_subarches and "subarches" in resource.extra:
@@ -339,7 +347,15 @@ class BootResourceManager(Manager):
                     channel, _, _, flavor = parse_subarch_kernel_string(
                         extra_subarch
                     )
-                    if channel != "ga" and not channel.startswith("hwe"):
+                    # TODO This is a hack for old-style platform kernels
+                    old_style_platform = (
+                        not channel and platform and platform != "generic"
+                    )
+                    if (
+                        channel != "ga"
+                        and not channel.startswith("hwe")
+                        and not old_style_platform
+                    ):
                         continue
 
                     if kflavor is None:
@@ -355,12 +371,15 @@ class BootResourceManager(Manager):
         # Make sure kernels named with a version come after the kernels named
         # with the first letter of release. This switched in Xenial so this
         # preserves the chronological order of the kernels.
-        return sorted(
-            kernels, key=lambda k: get_release_version_from_string(k)
-        )
+        return sorted(kernels, key=get_release_version_from_string)
 
     def get_kernels(
-        self, name=None, architecture=None, platform=None, kflavor=None
+        self,
+        name=None,
+        architecture=None,
+        platform=None,
+        kflavor=None,
+        strict_platform_match=False,
     ):
         """Return the set of usable kernels for the given name, arch,
         platform, and kflavor.
@@ -375,6 +394,7 @@ class BootResourceManager(Manager):
             platform=platform,
             kflavor=kflavor,
             include_subarches=False,
+            strict_platform_match=strict_platform_match,
         )
 
     def get_supported_kernel_compatibility_levels(

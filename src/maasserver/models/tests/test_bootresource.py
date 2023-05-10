@@ -785,7 +785,7 @@ class TestBootImagesAreInSync(MAASServerTestCase):
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
 
-class TestGetUsableKernels(MAASServerTestCase):
+class TestGetKernels(MAASServerTestCase):
     """Tests for `get_kernels`."""
 
     scenarios = (
@@ -857,6 +857,8 @@ class TestGetUsableKernels(MAASServerTestCase):
                     architecture=f"{self.arch}/{i}",
                     kflavor=kflavor,
                     rolling=True,
+                    platform=None,
+                    supported_platforms=None,
                 )
                 factory.make_incomplete_boot_resource(
                     name=self.name,
@@ -872,6 +874,8 @@ class TestGetUsableKernels(MAASServerTestCase):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 architecture=f"{self.arch}/{self.subarch}",
                 rolling=True,
+                platform=None,
+                supported_platforms=None,
             )
         self.assertCountEqual(
             self.kernels,
