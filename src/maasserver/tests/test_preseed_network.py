@@ -378,7 +378,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
             )
             iface.params = {
                 "mtu": random.randint(600, 1400),
-                "accept_ra": factory.pick_bool(),
+                "accept-ra": factory.pick_bool(),
             }
             iface.save()
         extra_interface = node.current_config.interface_set.all()[1]
@@ -635,6 +635,18 @@ class TestNetplan(MAASServerTestCase):
             )
         }
         self.expectThat(netplan, Equals(expected_netplan))
+
+    def test_interface_with_accept_ra(self):
+        node = factory.make_Node()
+        factory.make_Interface(
+            node=node, name="eth0", params={"accept-ra": True}
+        )
+        netplan = self._render_netplan_dict(node)
+        v1_config = self._render_v1_dict(node)
+        self.assertIs(
+            netplan["network"]["ethernets"]["eth0"]["accept-ra"], True
+        )
+        self.assertIs(v1_config["network"]["config"][0]["accept-ra"], 1)
 
     def test_multiple_ethernet_interfaces(self):
         node = factory.make_Node()

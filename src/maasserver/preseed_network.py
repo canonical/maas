@@ -42,14 +42,12 @@ def _is_link_up(addresses):
     return False
 
 
-def _get_param_value(value):
-    """Return correct value based on type of `value`."""
-    if isinstance(value, (bytes, str)):
-        return value
-    elif isinstance(value, bool):
-        return 1 if value else 0
-    else:
-        return value
+def _get_param_value(value, version=2):
+    if version == 1 and isinstance(value, bool):
+        # YAML v1 used to require 0/1 for boolean values
+        return int(value)
+
+    return value
 
 
 def _generate_route_operation(route, version=1):
@@ -96,24 +94,22 @@ class InterfaceConfiguration:
         self.name = self.iface.name
 
         if self.type == INTERFACE_TYPE.PHYSICAL:
-            self.config = self._generate_physical_operation(version=version)
+            self.config = self._generate_physical_operation()
         elif self.type == INTERFACE_TYPE.VLAN:
-            self.config = self._generate_vlan_operation(version=version)
+            self.config = self._generate_vlan_operation()
         elif self.type == INTERFACE_TYPE.BOND:
-            self.config = self._generate_bond_operation(version=version)
+            self.config = self._generate_bond_operation()
         elif self.type == INTERFACE_TYPE.BRIDGE:
-            self.config = self._generate_bridge_operation(version=version)
+            self.config = self._generate_bridge_operation()
         else:
-            raise ValueError("Unknown interface type: %s" % self.type)
+            raise ValueError(f"Unknown interface type: {self.type}")
 
-        if version == 2:
+        if self.version == 2:
             if self.iface.vlan_id is None:
                 self.config["optional"] = True
             # Skip if routes have been already added to a policy routing table
             if self.table_id is None:
-                routes = self._generate_route_operations(
-                    self.matching_routes, version=version
-                )
+                routes = self._generate_route_operations(self.matching_routes)
             else:
                 routes = self.secondary_gateway_routes
             if routes:
@@ -121,19 +117,21 @@ class InterfaceConfiguration:
             if self.secondary_gateway_policies:
                 self.config["routing-policy"] = self.secondary_gateway_policies
 
-    def _generate_route_operations(self, matching_routes, version=1):
+    def _generate_route_operations(self, matching_routes):
         """Generate all route operations."""
         routes = []
         for route in sorted(matching_routes, key=attrgetter("id")):
-            routes.append(_generate_route_operation(route, version=version))
+            routes.append(
+                _generate_route_operation(route, version=self.version)
+            )
         return routes
 
-    def _generate_physical_operation(self, version=1):
+    def _generate_physical_operation(self):
         """Generate physical interface operation for `interface` and place in
         `network_config`."""
-        addrs = self._generate_addresses(version=version)
+        addrs = self._generate_addresses()
         physical_operation = self._get_initial_params()
-        if version == 1:
+        if self.version == 1:
             physical_operation.update(
                 {
                     "id": self.name,
@@ -144,7 +142,7 @@ class InterfaceConfiguration:
             )
             if addrs:
                 physical_operation["subnets"] = addrs
-        elif version == 2:
+        elif self.version == 2:
             physical_operation.update(
                 {
                     "match": {"macaddress": str(self.iface.mac_address)},
@@ -240,7 +238,7 @@ class InterfaceConfiguration:
                     return subnet.gateway_ip
         return None
 
-    def _set_default_gateway(self, subnet, config, version=1):
+    def _set_default_gateway(self, subnet, config):
         """Set the default gateway on the `subnet_operation` if it should
         be set."""
         network = subnet.get_ipnetwork()
@@ -253,17 +251,17 @@ class InterfaceConfiguration:
                 return
         gateway = self._get_default_gateway(subnet)
         if gateway is not None:
-            if version == 1:
+            if self.version == 1:
                 config["gateway"] = str(gateway)
             if family == IPADDRESS_FAMILY.IPv4:
                 node_config.gateway_ipv4_set = True
-                if version == 2:
+                if self.version == 2:
                     config["gateway4"] = str(gateway)
             elif family == IPADDRESS_FAMILY.IPv6:
                 node_config.gateway_ipv6_set = True
-                if version == 2:
+                if self.version == 2:
                     config["gateway6"] = str(gateway)
-        elif version == 2 and self.source_routing:
+        elif self.version == 2 and self.source_routing:
             # Check if we should select a secondary gateway for use with
             # source routing.
             secondary_gateway = self._get_default_gateway(
@@ -311,7 +309,7 @@ class InterfaceConfiguration:
         """Return all route objects matching `source`."""
         return {route for route in self.routes if route.source == source}
 
-    def _generate_addresses(self, version=1):
+    def _generate_addresses(self):
         """Generate the various addresses needed for this interface."""
         v1_config = []
         v2_cidrs = []
@@ -324,7 +322,7 @@ class InterfaceConfiguration:
         )
         dhcp_type = self._get_dhcp_type()
         if _is_link_up(addresses) and not dhcp_type:
-            if version == 1:
+            if self.version == 1:
                 v1_config.append({"type": "manual"})
         else:
             for address in addresses:
@@ -357,8 +355,9 @@ class InterfaceConfiguration:
                     # the v1 YAML, but it's per-interface for the v2 YAML.
                     self._set_default_gateway(
                         subnet,
-                        v1_subnet_operation if version == 1 else v2_config,
-                        version,
+                        v1_subnet_operation
+                        if self.version == 1
+                        else v2_config,
                     )
 
                     if "dns_nameservers" not in v1_subnet_operation:
@@ -406,11 +405,11 @@ class InterfaceConfiguration:
                         v1_subnet_operation["dns_nameservers"].append(ip)
                         v2_nameservers["addresses"].append(ip)
 
-                    if matching_subnet_routes and version == 1:
+                    if matching_subnet_routes and self.version == 1:
                         # For the v1 YAML, the list of routes is rendered
                         # within the context of each subnet.
                         routes = self._generate_route_operations(
-                            matching_subnet_routes, version=version
+                            matching_subnet_routes
                         )
                         v1_subnet_operation["routes"] = routes
 
@@ -428,19 +427,19 @@ class InterfaceConfiguration:
                     v2_config.update({"dhcp4": True})
                 elif dhcp_type == "dhcp6":
                     v2_config.update({"dhcp6": True})
-        if version == 1:
+        if self.version == 1:
             return v1_config
-        elif version == 2:
+        elif self.version == 2:
             return v2_config
 
-    def _generate_vlan_operation(self, version=1):
+    def _generate_vlan_operation(self):
         """Generate vlan operation for `iface` and place in
         `network_config`."""
         vlan = self.iface.vlan
         name = self.name
-        addrs = self._generate_addresses(version=version)
+        addrs = self._generate_addresses()
         vlan_operation = self._get_initial_params()
-        if version == 1:
+        if self.version == 1:
             vlan_operation.update(
                 {
                     "id": name,
@@ -452,19 +451,19 @@ class InterfaceConfiguration:
             )
             if addrs:
                 vlan_operation["subnets"] = addrs
-        elif version == 2:
+        elif self.version == 2:
             vlan_operation.update(
                 {"id": vlan.vid, "link": self.iface.parents.first().name}
             )
             vlan_operation.update(addrs)
         return vlan_operation
 
-    def _generate_bond_operation(self, version=1):
+    def _generate_bond_operation(self):
         """Generate bond operation for `iface` and place in
         `network_config`."""
-        addrs = self._generate_addresses(version=version)
+        addrs = self._generate_addresses()
         bond_operation = self._get_initial_params()
-        if version == 1:
+        if self.version == 1:
             bond_operation.update(
                 {
                     "id": self.name,
@@ -496,11 +495,11 @@ class InterfaceConfiguration:
             bond_operation.update(addrs)
         return bond_operation
 
-    def _generate_bridge_operation(self, version=1):
+    def _generate_bridge_operation(self):
         """Generate bridge operation for this interface."""
-        addrs = self._generate_addresses(version=version)
+        addrs = self._generate_addresses()
         bridge_operation = self._get_initial_params()
-        if version == 1:
+        if self.version == 1:
             bridge_operation.update(
                 {
                     "id": self.name,
@@ -511,12 +510,12 @@ class InterfaceConfiguration:
                         parent.name
                         for parent in self.iface.parents.order_by("name")
                     ],
-                    "params": self._get_bridge_params(version=version),
+                    "params": self._get_bridge_params(),
                 }
             )
             if addrs:
                 bridge_operation["subnets"] = addrs
-        elif version == 2:
+        elif self.version == 2:
             bridge_operation.update(
                 {
                     "macaddress": str(self.iface.mac_address),
@@ -533,7 +532,7 @@ class InterfaceConfiguration:
                 if bridge_type == BRIDGE_TYPE.OVS:
                     bridge_operation.update({"openvswitch": {}})
             bridge_params = get_netplan_bridge_parameters(
-                self._get_bridge_params(version=version)
+                self._get_bridge_params()
             )
             if bridge_params:
                 bridge_operation["parameters"] = bridge_params
@@ -556,7 +555,7 @@ class InterfaceConfiguration:
                     and not key.startswith("bridge_")
                     and key != "mtu"
                 ):
-                    params[key] = _get_param_value(value)
+                    params[key] = _get_param_value(value, version=self.version)
         params["mtu"] = self.iface.get_effective_mtu()
         return params
 
@@ -568,7 +567,9 @@ class InterfaceConfiguration:
                 if key.startswith("bond_"):
                     # Bond parameters are seperated with '-' instead of '_'
                     # which MAAS uses to keep consistent with bridges.
-                    params[key.replace("_", "-")] = _get_param_value(value)
+                    params[key.replace("_", "-")] = _get_param_value(
+                        value, version=self.version
+                    )
         bond_mode = params.get("bond-mode")
         if bond_mode is not None:
             # Bug #1730626: lacp-rate should only be set on 802.3ad bonds.
@@ -580,18 +581,13 @@ class InterfaceConfiguration:
                 params.pop("bond-num-unsol-na", None)
         return params
 
-    def _get_bridge_params(self, version=1):
+    def _get_bridge_params(self):
         params = {}
         if self.iface.params:
             for key, value in self.iface.params.items():
                 # Only include bridge parameters.
                 if key.startswith("bridge_") and key != "bridge_type":
-                    if version == 1:
-                        # The v1 YAML needs an extra translation layer (for
-                        # example, it changes bool to int).
-                        params[key] = _get_param_value(value)
-                    else:
-                        params[key] = value
+                    params[key] = _get_param_value(value, version=self.version)
         return params
 
 

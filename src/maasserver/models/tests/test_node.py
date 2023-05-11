@@ -12574,7 +12574,7 @@ class TestNodeInterfaceClone_SimpleNetworkLayout(
             )
             iface.params = {
                 "mtu": random.randint(600, 1400),
-                "accept_ra": factory.pick_bool(),
+                "accept-ra": factory.pick_bool(),
             }
             iface.save()
         extra_interface = node.current_config.interface_set.all()[1]
