@@ -281,6 +281,34 @@ class TestCommands(MAASServerTestCase):
             stderr=stderr,
             stdout=stdout,
         )
+        self.assertEqual(len(User.objects.filter(username=username)), 0)
+
+    def test_createadmin_user_already_exists(self):
+        stderr = StringIO()
+        stdout = StringIO()
+        username = factory.make_string()
+        password = factory.make_string()
+        email = "%s@example.com" % factory.make_string()
+        call_command(
+            "createadmin",
+            username=username,
+            password=password,
+            email=email,
+            stderr=stderr,
+            stdout=stdout,
+        )
+        self.assertEqual(len(User.objects.filter(username=username)), 1)
+
+        self.assertRaises(
+            createadmin.AlreadyExistingUser,
+            call_command,
+            "createadmin",
+            username=username,
+            password=password,
+            email=email,
+            stderr=stderr,
+            stdout=stdout,
+        )
 
     def test_prompt_for_password_returns_selected_password(self):
         password = factory.make_string()

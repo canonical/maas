@@ -6,6 +6,7 @@
 
 import http
 import logging
+from typing import List
 
 import requests
 
@@ -29,7 +30,7 @@ def get_proxies():
     return proxies
 
 
-def get_protocol_keys(protocol, auth_id):
+def get_protocol_keys(protocol: str, auth_id: str) -> List[str]:
     """Retrieve SSH Keys for auth_id using protocol."""
     if protocol == KEYS_PROTOCOL_TYPE.LP:
         keys = get_launchpad_ssh_keys(auth_id)
@@ -44,7 +45,7 @@ def get_protocol_keys(protocol, auth_id):
     return keys
 
 
-def get_launchpad_ssh_keys(auth_id):
+def get_launchpad_ssh_keys(auth_id: str) -> List[str]:
     """Retrieve SSH Keys from launchpad."""
     url = "https://launchpad.net/~%s/+sshkeys" % auth_id
     response = requests.get(url, proxies=get_proxies())
@@ -63,8 +64,8 @@ def get_launchpad_ssh_keys(auth_id):
     return [key for key in response.text.splitlines() if key]
 
 
-def get_github_ssh_keys(auth_id):
-    """Retrieve SSH Keys from github."""
+def get_github_ssh_keys(auth_id: str) -> List[str]:
+    """Retrieve SSH Keys from GitHub."""
     url = "https://api.github.com/users/%s/keys" % auth_id
     response = requests.get(url, proxies=get_proxies())
     # Check for 404 error which happens for an unknown user

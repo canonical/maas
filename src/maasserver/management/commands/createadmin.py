@@ -3,13 +3,12 @@
 
 """Django command: create an administrator account."""
 
-
 from getpass import getpass
 import re
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
-from django.db import DEFAULT_DB_ALIAS
+from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 import requests
 
 from maascli.init import read_input
@@ -31,11 +30,15 @@ class EmptyEmail(CommandError):
     """User did not provide an email."""
 
 
+class AlreadyExistingUser(CommandError):
+    """A user with the given email already exists."""
+
+
 class SSHKeysError(CommandError):
     """Error during SSH keys import."""
 
 
-def read_password(prompt):
+def read_password(prompt: str):
     while True:
         try:
             data = getpass(prompt)
@@ -53,7 +56,7 @@ def read_password(prompt):
             return data
 
 
-def prompt_for_username():
+def prompt_for_username() -> str:
     username = read_input("Username: ")
     if not username:
         raise EmptyUsername(
@@ -62,7 +65,7 @@ def prompt_for_username():
     return username
 
 
-def prompt_for_password():
+def prompt_for_password() -> str:
     """Prompt user for a choice of password, and confirm."""
     password = read_password("Password: ")
     confirm = read_password("Again: ")
@@ -73,7 +76,7 @@ def prompt_for_password():
     return password
 
 
-def prompt_for_email():
+def prompt_for_email() -> str:
     """Prompt user for an email."""
     email = read_input("Email: ")
     if not email:
@@ -81,12 +84,12 @@ def prompt_for_email():
     return email
 
 
-def prompt_for_ssh_import():
+def prompt_for_ssh_import() -> str:
     """Prompt user for protocal and user-id to import SSH keys."""
     return read_input("Import SSH keys [] (lp:user-id or gh:user-id): ")
 
 
-def validate_ssh_import(ssh_import):
+def validate_ssh_import(ssh_import: str):
     """Validate user's SSH import input."""
     if ssh_import.startswith(("lp", "gh")):
         import_regex = re.compile(r"^(?:lp|gh):[\w-]*$")
@@ -156,20 +159,27 @@ class Command(BaseCommand):
         if prompt_ssh_import:
             ssh_import = prompt_for_ssh_import()
 
-        User.objects.db_manager(DEFAULT_DB_ALIAS).create_superuser(
-            username, email=email, password=password
-        )
-
-        if ssh_import:  # User entered input
-            protocol, auth_id = validate_ssh_import(ssh_import)
-            user = User.objects.get(username=username)
+        with transaction.atomic():
             try:
-                KeySource.objects.save_keys_for_user(
-                    user=user, protocol=protocol, auth_id=auth_id
+                User.objects.db_manager(DEFAULT_DB_ALIAS).create_superuser(
+                    username, email=email, password=password
                 )
-            except ImportSSHKeysError as e:
-                return e.args[0]
-            except requests.exceptions.RequestException as e:
-                raise SSHKeysError(
-                    "Importing SSH keys failed.\n%s" % e.args[0]
+            except IntegrityError:
+                raise AlreadyExistingUser(
+                    "A user with the email %s already exists." % email
                 )
+
+            if ssh_import:  # User entered input
+                protocol, auth_id = validate_ssh_import(ssh_import)
+                user = User.objects.get(username=username)
+                try:
+                    KeySource.objects.save_keys_for_user(
+                        user=user, protocol=protocol, auth_id=auth_id
+                    )
+                except (
+                    ImportSSHKeysError,
+                    requests.exceptions.RequestException,
+                ) as e:
+                    raise SSHKeysError(
+                        "Importing SSH keys failed.\n%s" % e.args[0]
+                    )

@@ -3,6 +3,7 @@
 
 """:class:`KeySource` and friends."""
 
+from typing import TYPE_CHECKING
 
 from django.db.models import BooleanField, CharField, Manager
 
@@ -11,11 +12,14 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.keys import get_protocol_keys
 
+if TYPE_CHECKING:
+    from django.contrib.auth.models import User
+
 
 class KeySourceManager(Manager):
     """A utility to manage the colletion of `KeySource`s."""
 
-    def save_keys_for_user(self, user, protocol, auth_id):
+    def save_keys_for_user(self, user: "User", protocol: str, auth_id: str):
         """Save SSH Keys for user's protocol and auth_id.
 
         :param user: The user to save the SSH keys for.
@@ -60,7 +64,7 @@ class KeySource(CleanSave, TimestampedModel):
     def __str__(self):
         return f"{self.protocol}:{self.auth_id}"
 
-    def import_keys(self, user):
+    def import_keys(self, user: "User"):
         """Save SSH keys."""
         # Avoid circular imports.
         from maasserver.models.sshkey import SSHKey
