@@ -93,11 +93,12 @@ DOM_TEMPLATE_BRIDGE_INTERFACE = dedent(
 
 DOM_TEMPLATE_AMD64 = dedent(
     """\
-    <domain type='{type}'>
+    <domain type="{type}">
       <name>{name}</name>
       <uuid>{uuid}</uuid>
-      <memory unit='MiB'>{memory}</memory>
+      <memory unit="MiB">{memory}</memory>
       <vcpu>{cores}</vcpu>
+      <cpu mode="host-passthrough"/>
       <os>
         <type arch="{arch}">hvm</type>
       </os>
@@ -110,32 +111,32 @@ DOM_TEMPLATE_AMD64 = dedent(
       <on_reboot>restart</on_reboot>
       <on_crash>restart</on_crash>
       <pm>
-        <suspend-to-mem enabled='no'/>
-        <suspend-to-disk enabled='no'/>
+        <suspend-to-mem enabled="no"/>
+        <suspend-to-disk enabled="no"/>
       </pm>
       <devices>
         <emulator>{emulator}</emulator>
-        <controller type='pci' index='0' model='pci-root'/>
-        <controller type='virtio-serial' index='0'>
-          <address type='pci' domain='0x0000'
-            bus='0x00' slot='0x05' function='0x0'/>
+        <controller type="pci" index="0" model="pci-root"/>
+        <controller type="virtio-serial" index="0">
+          <address type="pci" domain="0x0000"
+            bus="0x00" slot="0x05" function="0x0"/>
         </controller>
-        <serial type='pty'>
+        <serial type="pty">
           <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
-          <target port='0'/>
+          <target port="0"/>
         </serial>
-        <console type='pty'>
-          <target type='serial' port='0'/>
+        <console type="pty">
+          <target type="serial" port="0"/>
         </console>
-        <channel type='spicevmc'>
-          <target type='virtio' name='com.redhat.spice.0'/>
-          <address type='virtio-serial' controller='0' bus='0' port='1'/>
+        <channel type="spicevmc">
+          <target type="virtio" name="com.redhat.spice.0"/>
+          <address type="virtio-serial" controller="0" bus="0" port="1"/>
         </channel>
-        <graphics type='spice' autoport='yes'>
-          <image compression='off'/>
+        <graphics type="spice" autoport="yes">
+          <image compression="off"/>
         </graphics>
-        <input type='mouse' bus='ps2'/>
-        <input type='keyboard' bus='ps2'/>
+        <input type="mouse" bus="ps2"/>
+        <input type="keyboard" bus="ps2"/>
       </devices>
     </domain>
     """
@@ -143,22 +144,22 @@ DOM_TEMPLATE_AMD64 = dedent(
 
 DOM_TEMPLATE_ARM64 = dedent(
     """\
-    <domain type='{type}'>
+    <domain type="{type}">
       <name>{name}</name>
       <uuid>{uuid}</uuid>
-      <memory unit='MiB'>{memory}</memory>
+      <memory unit="MiB">{memory}</memory>
       <vcpu>{cores}</vcpu>
-      <cpu mode='host-passthrough'/>
+      <cpu mode="host-passthrough"/>
       <os>
-        <type arch='{arch}' machine='virt'>hvm</type>
-        <loader readonly='yes' type='pflash'>{loader}</loader>
-        <nvram template='{loader}'>{nvram_path}/{name}_VARS.fd</nvram>
+        <type arch="{arch}" machine="virt">hvm</type>
+        <loader readonly="yes" type="pflash">{loader}</loader>
+        <nvram template="{loader}">{nvram_path}/{name}_VARS.fd</nvram>
       </os>
       <features>
         <acpi/>
         <apic/>
         <pae/>
-        <gic version='3'/>
+        <gic version="3"/>
       </features>
       <clock offset="utc"/>
       <on_poweroff>destroy</on_poweroff>
@@ -166,16 +167,16 @@ DOM_TEMPLATE_ARM64 = dedent(
       <on_crash>restart</on_crash>
       <devices>
         <emulator>{emulator}</emulator>
-        <controller type='pci' index='0' model='pcie-root'/>
-        <serial type='pty'>
+        <controller type="pci" index="0" model="pcie-root"/>
+        <serial type="pty">
           <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
-          <target port='0'/>
+          <target port="0"/>
         </serial>
-        <console type='pty'>
-          <target type='serial' port='0'/>
+        <console type="pty">
+          <target type="serial" port="0"/>
         </console>
-        <input type='mouse' bus='ps2'/>
-        <input type='keyboard' bus='ps2'/>
+        <input type="mouse" bus="ps2"/>
+        <input type="keyboard" bus="ps2"/>
       </devices>
     </domain>
     """
@@ -184,14 +185,14 @@ DOM_TEMPLATE_ARM64 = dedent(
 
 DOM_TEMPLATE_PPC64 = dedent(
     """\
-    <domain type='{type}'>
+    <domain type="{type}">
       <name>{name}</name>
       <uuid>{uuid}</uuid>
-      <memory unit='MiB'>{memory}</memory>
+      <memory unit="MiB">{memory}</memory>
       <vcpu>{cores}</vcpu>
-      <cpu mode='host-passthrough'/>
+      <cpu mode="host-passthrough"/>
       <os>
-        <type arch='{arch}'>hvm</type>
+        <type arch="{arch}">hvm</type>
       </os>
       <clock offset="utc"/>
       <on_poweroff>destroy</on_poweroff>
@@ -199,16 +200,16 @@ DOM_TEMPLATE_PPC64 = dedent(
       <on_crash>restart</on_crash>
       <devices>
         <emulator>{emulator}</emulator>
-        <controller type='pci' index='0' model='pci-root'/>
-        <serial type='pty'>
+        <controller type="pci" index="0" model="pci-root"/>
+        <serial type="pty">
           <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off" />
-          <target port='0'/>
+          <target port="0"/>
         </serial>
-        <console type='pty'>
-          <target type='serial' port='0'/>
+        <console type="pty">
+          <target type="serial" port="0"/>
         </console>
-        <input type='mouse' bus='ps2'/>
-        <input type='keyboard' bus='ps2'/>
+        <input type="mouse" bus="ps2"/>
+        <input type="keyboard" bus="ps2"/>
       </devices>
     </domain>
     """
@@ -216,11 +217,12 @@ DOM_TEMPLATE_PPC64 = dedent(
 
 DOM_TEMPLATE_S390X = dedent(
     """
-    <domain type='{type}'>
+    <domain type="{type}">
       <name>{name}</name>
       <uuid>{uuid}</uuid>
-      <memory unit='MiB'>{memory}</memory>
+      <memory unit="MiB">{memory}</memory>
       <vcpu>{cores}</vcpu>
+      <cpu mode="host-passthrough"/>
       <os>
         <type arch="{arch}">hvm</type>
       </os>
@@ -230,10 +232,10 @@ DOM_TEMPLATE_S390X = dedent(
         <pae/>
       </features>
       <devices>
-        <console type='pty'>
-          <log file='/var/log/libvirt/qemu/{name}-serial0.log' append='off'/>
-          <target type='sclp' port='0'/>
-          <alias name='console0'/>
+        <console type="pty">
+          <log file="/var/log/libvirt/qemu/{name}-serial0.log" append="off"/>
+          <target type="sclp" port="0"/>
+          <alias name="console0"/>
         </console>
       </devices>
     </domain>
