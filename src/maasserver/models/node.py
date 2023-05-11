@@ -4955,8 +4955,6 @@ class Node(CleanSave, TimestampedModel):
         for self_interface, source_interface in mapping.items():
             self_interface.vlan = source_interface.vlan
             self_interface.params = source_interface.params
-            self_interface.ipv4_params = source_interface.ipv4_params
-            self_interface.ipv6_params = source_interface.ipv6_params
             self_interface.enabled = source_interface.enabled
             self_interface.acquired = source_interface.acquired
             self_interface.save()

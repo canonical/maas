@@ -577,10 +577,6 @@ class Interface(CleanSave, TimestampedModel):
 
     mac_address = TextField(null=True, blank=True, validators=[MAC_VALIDATOR])
 
-    ipv4_params = JSONField(blank=True, default=dict)
-
-    ipv6_params = JSONField(blank=True, default=dict)
-
     params = JSONField(blank=True, default=dict)
 
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
