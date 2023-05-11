@@ -53,7 +53,6 @@ class InterfaceForm(MAASModelForm):
 
     # IPv6 parameters.
     accept_ra = forms.NullBooleanField(required=False)
-    autoconf = forms.NullBooleanField(required=False)
 
     # Device parameters
     ip_assignment = forms.MultipleChoiceField(
@@ -224,7 +223,6 @@ class InterfaceForm(MAASModelForm):
             interface.params = {}
         self._set_param(interface, "mtu")
         self._set_param(interface, "accept_ra", netplan_key="accept-ra")
-        self._set_param(interface, "autoconf")
 
 
 class ControllerInterfaceForm(MAASModelForm):

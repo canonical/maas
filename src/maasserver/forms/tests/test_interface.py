@@ -533,7 +533,6 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         tags = [factory.make_name("tag") for _ in range(3)]
         mtu = random.randint(1000, 2000)
         accept_ra = factory.pick_bool()
-        autoconf = factory.pick_bool()
         form = PhysicalInterfaceForm(
             node=node,
             data={
@@ -543,13 +542,12 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
                 "tags": ",".join(tags),
                 "mtu": mtu,
                 "accept_ra": accept_ra,
-                "autoconf": autoconf,
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
-            {"mtu": mtu, "accept-ra": accept_ra, "autoconf": autoconf},
+            {"mtu": mtu, "accept-ra": accept_ra},
             interface.params,
         )
 
@@ -559,11 +557,9 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         mtu = random.randint(1000, 2000)
         accept_ra = factory.pick_bool()
-        autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
             "accept-ra": accept_ra,
-            "autoconf": autoconf,
         }
         new_name = "eth1"
         new_vlan = factory.make_VLAN(vid=33)
@@ -579,7 +575,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
-            {"mtu": mtu, "accept-ra": accept_ra, "autoconf": autoconf},
+            {"mtu": mtu, "accept-ra": accept_ra},
             interface.params,
         )
 
@@ -589,21 +585,17 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         mtu = random.randint(1000, 2000)
         accept_ra = factory.pick_bool()
-        autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
             "accept-ra": accept_ra,
-            "autoconf": autoconf,
         }
         new_mtu = random.randint(1000, 2000)
         new_accept_ra = not accept_ra
-        new_autoconf = not autoconf
         form = PhysicalInterfaceForm(
             instance=interface,
             data={
                 "mtu": new_mtu,
                 "accept_ra": new_accept_ra,
-                "autoconf": new_autoconf,
             },
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
@@ -612,7 +604,6 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
             {
                 "mtu": new_mtu,
                 "accept-ra": new_accept_ra,
-                "autoconf": new_autoconf,
             },
             interface.params,
         )
@@ -623,15 +614,13 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         mtu = random.randint(1000, 2000)
         accept_ra = factory.pick_bool()
-        autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
             "accept-ra": accept_ra,
-            "autoconf": autoconf,
         }
         form = PhysicalInterfaceForm(
             instance=interface,
-            data={"mtu": "", "accept_ra": "", "autoconf": ""},
+            data={"mtu": "", "accept_ra": ""},
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()

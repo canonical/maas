@@ -192,9 +192,6 @@ class InterfacesHandler(OperationsHandler):
         @param (boolean) "accept_ra" [required=false] Accept router
         advertisements. (IPv6 only)
 
-        @param (boolean) "autoconf" [required=false] Perform stateless
-        autoconfiguration. (IPv6 only)
-
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new
         interface object.
@@ -325,9 +322,6 @@ class InterfacesHandler(OperationsHandler):
         @param (boolean) "accept_ra" [required=false] Accept router
         advertisements. (IPv6 only)
 
-        @param (boolean) "autoconf" [required=false] Perform stateless
-        autoconfiguration. (IPv6 only)
-
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new
         bond interface object.
@@ -370,9 +364,6 @@ class InterfacesHandler(OperationsHandler):
 
         @param (boolean) "accept_ra" [required=false] Accept router
         advertisements. (IPv6 only)
-
-        @param (boolean) "autoconf" [required=false] Perform stateless
-        autoconfiguration. (IPv6 only)
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new
@@ -438,9 +429,6 @@ class InterfacesHandler(OperationsHandler):
 
         @param (boolean) "accept_ra" [required=false] Accept router
         advertisements. (IPv6 only)
-
-        @param (boolean) "autoconf" [required=false] Perform stateless
-        autoconfiguration. (IPv6 only)
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new
@@ -696,9 +684,6 @@ class InterfaceHandler(OperationsHandler):
 
         @param (string) "accept_ra" [required=false] Accept router
         advertisements. (IPv6 only)
-
-        @param (string) "autoconf" [required=false] Perform stateless
-        autoconfiguration. (IPv6 only)
 
         @param (boolean) "link_connected" [required=false]
         (Physical interfaces) Whether or not the interface is physically
