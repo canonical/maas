@@ -6860,8 +6860,6 @@ CREATE TABLE public.maasserver_interface (
     name character varying(255) NOT NULL,
     type character varying(20) NOT NULL,
     mac_address text,
-    ipv4_params jsonb NOT NULL,
-    ipv6_params jsonb NOT NULL,
     params jsonb NOT NULL,
     tags text[],
     enabled boolean NOT NULL,
@@ -11293,6 +11291,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 356	maasserver	0301_discovery_ignore_fks	2023-05-03 03:30:38.164577+00
 357	maasserver	0302_big_auto_field	2023-05-03 03:30:46.026112+00
 358	piston3	0004_big_auto_field	2023-05-03 03:30:46.539848+00
+359	maasserver	0303_interface_params_cleanups	2023-05-12 03:30:35.152079+00
+360	maasserver	0304_interface_params_no_autoconf	2023-05-12 03:30:35.161528+00
 \.
 
 
@@ -11536,7 +11536,7 @@ COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdi
 -- Data for Name: maasserver_interface; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_interface (id, created, updated, name, type, mac_address, ipv4_params, ipv6_params, params, tags, enabled, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor, interface_speed, link_connected, link_speed, numa_node_id, sriov_max_vf, node_config_id) FROM stdin;
+COPY public.maasserver_interface (id, created, updated, name, type, mac_address, params, tags, enabled, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor, interface_speed, link_connected, link_speed, numa_node_id, sriov_max_vf, node_config_id) FROM stdin;
 \.
 
 
@@ -12109,7 +12109,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 358, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 360, true);
 
 
 --
