@@ -3,7 +3,8 @@ SHELL := /bin/bash
 BIN_DIR := bin
 BUILD_DIR := build
 
-GO := go # override to use alternative Go binary
+# override to use alternative Go binary
+GO := go
 VENDOR_DIR := vendor
 
 LDFLAGS := -ldflags '-s -w -extldflags "-static"'

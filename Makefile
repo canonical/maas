@@ -328,8 +328,6 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-go-bins-vendor := src/host-info/vendor
-
 $(packaging-build-area):
 	mkdir -p $@
 
@@ -353,7 +351,10 @@ endif
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) -C src/host-info vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go-bins-vendor) \
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/host-info/vendor \
+		--transform 's,^,$(packaging-dir)/,'
+	$(MAKE) -C src/maasagent vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasagent/vendor \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-tarball
