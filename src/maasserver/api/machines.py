@@ -194,6 +194,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "last_sync",
     "sync_interval",
     "next_sync",
+    "enable_hw_sync",
 )
 
 # Limited set of machine fields exposed on the anonymous API.
