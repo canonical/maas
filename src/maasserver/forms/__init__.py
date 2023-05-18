@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -154,7 +154,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.permissions import NodePermission, ResourcePoolPermission
-from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -2777,7 +2777,7 @@ class FormatPartitionForm(Form):
         cleaned_data = super().clean()
         if self.partition.is_vmfs_partition():
             set_form_error(
-                self, "VMFS", "Base VMFS partitions may not be formatted."
+                self, "VMFS6", "VMFS6 partitions may not be formatted."
             )
         return cleaned_data
 
@@ -4085,18 +4085,16 @@ class CreateVMFSForm(CreateVolumeGroupForm):
     """For validating and saving a new VMFS group."""
 
     def clean(self):
-        """Validate that the VMFS storage layout is applied."""
+        """Validate that the VMFS6 storage layout is applied."""
         cleaned_data = super().clean()
-        vmfs6_layout = VMFS6StorageLayout(self.node)
-        vmfs6_bd = vmfs6_layout.is_layout()
-        vmfs7_layout = VMFS7StorageLayout(self.node)
-        vmfs7_bd = vmfs7_layout.is_layout()
-        if vmfs6_bd is None and vmfs7_bd is None:
+        vmfs_layout = VMFS6StorageLayout(self.node)
+        vmfs_bd = vmfs_layout.is_layout()
+        if vmfs_bd is None:
             set_form_error(
                 self,
-                "VMFS",
+                "VMFS6",
                 "VMFS Datastores may only be created after the "
-                "VMFS6 or VMFS7 storage layout has been applied.",
+                "VMFS6 storage layout has been applied.",
             )
         return cleaned_data
 

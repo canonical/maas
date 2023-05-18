@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from lxml import etree
 from testtools import ExpectedException
-from testtools.content import text_content
 from testtools.matchers import (
     ContainsDict,
     Equals,
@@ -3503,16 +3502,14 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(with_boot_disk=False)
         node.boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=40 * 1024 ** 3
+            node=node, size=10 * 1024 ** 3
         )
-        factory.make_PhysicalBlockDevice(node=node, size=20 * 1024 ** 3)
-        storage_layout = factory.pick_choice(
-            get_storage_layout_choices(), but_not=("blank",)
-        )
-        self.addDetail("storage_layout", text_content(storage_layout))
+        factory.make_PhysicalBlockDevice(node=node, size=10 * 2024 ** 3)
         params = {
             "system_id": node.system_id,
-            "storage_layout": storage_layout,
+            "storage_layout": factory.pick_choice(
+                get_storage_layout_choices(), but_not="blank"
+            ),
         }
         handler.apply_storage_layout(params)
         self.assertTrue(node.boot_disk.partitiontable_set.exists())

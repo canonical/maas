@@ -160,7 +160,6 @@ from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
     VMFS6StorageLayout,
-    VMFS7StorageLayout,
 )
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
@@ -1516,10 +1515,8 @@ class Node(CleanSave, TimestampedModel):
             # layout is created with a datastore. If the user applied the VMFS
             # storage layout a datastore must be defined as one will always be
             # created.
-            if (
-                VMFS6StorageLayout(self).is_layout()
-                or VMFS7StorageLayout(self).is_layout()
-            ):
+            vmfs_layout = VMFS6StorageLayout(self)
+            if vmfs_layout.is_layout() is not None:
                 fs_groups = self.virtualblockdevice_set.filter(
                     filesystem_group__group_type=FILESYSTEM_GROUP_TYPE.VMFS6
                 )

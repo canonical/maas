@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `Partition`."""
@@ -29,7 +29,7 @@ from maasserver.models.partitiontable import (
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
-from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
+from maasserver.storage_layouts import VMFS6StorageLayout
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
@@ -470,7 +470,7 @@ class TestPartition(MAASServerTestCase):
             self.expectThat(idx, Equals(partition.get_partition_number()))
             idx += 1
 
-    def test_get_partition_number_returns_vmfs6_order(self):
+    def test_get_partition_number_returns_vmfs_order(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
@@ -480,19 +480,6 @@ class TestPartition(MAASServerTestCase):
         pt = bd.get_partitiontable()
         self.assertItemsEqual(
             [1, 2, 3, 5, 6, 7, 8, 9],
-            [part.get_partition_number() for part in pt.partitions.all()],
-        )
-
-    def test_get_partition_number_returns_vmfs7_order(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        layout = VMFS7StorageLayout(node)
-        layout.configure()
-        pt = bd.get_partitiontable()
-        self.assertItemsEqual(
-            [1, 5, 6, 7, 8],
             [part.get_partition_number() for part in pt.partitions.all()],
         )
 
@@ -543,54 +530,22 @@ class TestPartition(MAASServerTestCase):
                 # Skip the extended partition.
                 idx += 1
 
-    def test_is_vmfs6_partition(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        layout = VMFS6StorageLayout(node)
-        layout.configure()
-        pt = bd.get_partitiontable()
-        for partition in pt.partitions.all():
-            self.assertTrue(partition.is_vmfs6_partition())
-
-    def test_is_vmfs7_partition(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        layout = VMFS7StorageLayout(node)
-        layout.configure()
-        pt = bd.get_partitiontable()
-        for partition in pt.partitions.all():
-            if partition.get_partition_number() >= 8:
-                self.assertFalse(partition.is_vmfs7_partition())
-            else:
-                self.assertTrue(partition.is_vmfs7_partition())
-
     def test_is_vmfs_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
-        vmfs_layout = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
-        layout = vmfs_layout(node)
-        layout_name = layout.configure()
+        layout = VMFS6StorageLayout(node)
+        layout.configure()
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
-            if (
-                layout_name == "VMFS7"
-                and partition.get_partition_number() >= 8
-            ):
-                self.assertFalse(partition.is_vmfs_partition())
-            else:
-                self.assertTrue(partition.is_vmfs_partition())
+            self.assertTrue(partition.is_vmfs_partition())
 
     def test_is_vmfs_partition_false_no_vmfs(self):
         partition = factory.make_Partition()
         self.assertFalse(partition.is_vmfs_partition())
 
-    def test_is_vmfs6_partition_false_different_block_device(self):
+    def test_is_vmfs_partition_false_different_block_device(self):
         node = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
         layout = VMFS6StorageLayout(node)
@@ -598,31 +553,12 @@ class TestPartition(MAASServerTestCase):
         other_bd_part = factory.make_Partition(node=node)
         self.assertFalse(other_bd_part.is_vmfs_partition())
 
-    def test_is_vmfs7_partition_false_different_block_device(self):
-        node = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
-        layout = VMFS7StorageLayout(node)
-        layout.configure()
-        other_bd_part = factory.make_Partition(node=node)
-        self.assertFalse(other_bd_part.is_vmfs_partition())
-
-    def test_is_vmfs6_partition_false_extra_partition(self):
+    def test_is_vmfs_partition_false_extra_partition(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024 ** 3})
-        layout.configure()
-        pt = bd.get_partitiontable()
-        extra_partition = pt.add_partition()
-        self.assertFalse(extra_partition.is_vmfs_partition())
-
-    def test_is_vmfs7_partition_false_extra_partition(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        layout = VMFS7StorageLayout(node, {"root_size": 10 * 1024 ** 3})
         layout.configure()
         pt = bd.get_partitiontable()
         extra_partition = pt.add_partition()
@@ -641,23 +577,12 @@ class TestPartition(MAASServerTestCase):
             error.message,
         )
 
-    def test_delete_not_allowed_if_part_of_vmfs6_layout(self):
+    def test_delete_not_allowed_if_part_of_vmfs_layout(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node)
-        layout.configure()
-        pt = bd.get_partitiontable()
-        partition = random.choice(list(pt.partitions.all()))
-        self.assertRaises(ValidationError, partition.delete)
-
-    def test_delete_not_allowed_if_part_of_vmfs7_layout(self):
-        node = factory.make_Node(with_boot_disk=False)
-        bd = factory.make_PhysicalBlockDevice(
-            node=node, size=LARGE_BLOCK_DEVICE
-        )
-        layout = VMFS7StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
         partition = random.choice(list(pt.partitions.all()))
