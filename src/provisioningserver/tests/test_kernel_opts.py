@@ -310,19 +310,47 @@ class TestKernelOpts(MAASTestCase):
         # The result of compose_kernel_command_line includes the
         # options for apparmor. See LP: #1677336 and LP: #1408106
         params = self.make_kernel_parameters(
-            purpose="enlist", fs_host=factory.make_ipv4_address()
+            osystem="ubuntu",
+            release="focal",
+            purpose="enlist",
+            fs_host=factory.make_ipv4_address(),
         )
         cmdline = compose_kernel_command_line(params)
-        self.assertThat(cmdline, ContainsAll(["apparmor=0"]))
+        self.assertIn("apparmor=0", cmdline)
 
     def test_commissioning_compose_kernel_command_line_apparmor_disabled(self):
         # The result of compose_kernel_command_line includes the
         # options for apparmor. See LP: #1677336 and LP: #1408106
         params = self.make_kernel_parameters(
-            purpose="commissioning", fs_host=factory.make_ipv4_address()
+            osystem="ubuntu",
+            release="focal",
+            purpose="commissioning",
+            fs_host=factory.make_ipv4_address(),
         )
         cmdline = compose_kernel_command_line(params)
-        self.assertThat(cmdline, ContainsAll(["apparmor=0"]))
+        self.assertIn("apparmor=0", cmdline)
+
+    def test_enlist_compose_kernel_command_line_apparmor_default(self):
+        # For Jammy onwards, we should use the kernel default for apparmor
+        params = self.make_kernel_parameters(
+            osystem="ubuntu",
+            release="jammy",
+            purpose="enlist",
+            fs_host=factory.make_ipv4_address(),
+        )
+        cmdline = compose_kernel_command_line(params)
+        self.assertNotIn("apparmor=0", cmdline)
+
+    def test_commissioning_compose_kernel_command_line_apparmor_default(self):
+        # For Jammy onwards, we should use the kernel default for apparmor
+        params = self.make_kernel_parameters(
+            osystem="ubuntu",
+            release="jammy",
+            purpose="commissioning",
+            fs_host=factory.make_ipv4_address(),
+        )
+        cmdline = compose_kernel_command_line(params)
+        self.assertNotIn("apparmor=0", cmdline)
 
     def test_commissioning_compose_kernel_command_line_inc_extra_opts(self):
         mock_get_curtin_sep = self.patch(

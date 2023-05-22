@@ -8,6 +8,7 @@ from collections import namedtuple
 import os
 
 import curtin
+from distro_info import UbuntuDistroInfo
 from netaddr import IPAddress
 
 from provisioningserver.drivers import ArchitectureRegistry
@@ -111,11 +112,21 @@ def compose_purpose_opts(params):
         "cc:{'datasource_list': ['MAAS']}end_cc",
         # Read by cloud-init.
         "cloud-config-url=%s" % params.preseed_url,
-        # Disable apparmor in the ephemeral environment. This addresses
-        # MAAS bug LP: #1677336 due to LP: #1408106
-        "apparmor=0",
     ]
     return kernel_params
+
+
+def compose_apparmor_opts(params):
+    if params.osystem == "ubuntu":
+        di = UbuntuDistroInfo()
+        codenames = di.get_all()
+        if params.release in codenames and (
+            codenames.index(params.release) < codenames.index("jammy")
+        ):
+            # Disable apparmor in the ephemeral environment. This addresses
+            # MAAS bug LP: #1677336 due to LP: #1408106
+            return ["apparmor=0"]
+    return []
 
 
 def compose_arch_opts(params):
@@ -145,6 +156,7 @@ def compose_kernel_command_line(params):
     # nomodeset prevents video mode switching.
     options += ["nomodeset"]
     options += compose_purpose_opts(params)
+    options += compose_apparmor_opts(params)
     # Note: logging opts are not respected by ephemeral images, so
     #       these are actually "purpose_opts" but were left generic
     #       as it would be nice to have.
