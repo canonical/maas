@@ -38,6 +38,7 @@ from maasserver.models import (
     Space,
     StaticIPAddress,
     Subnet,
+    Tag,
     VLAN,
     VMCluster,
 )
@@ -446,6 +447,14 @@ def get_dhcp_snippets_stats():
     return dhcp_snippets
 
 
+def get_tags_stats():
+    return Tag.objects.aggregate(
+        total_count=Count("pk"),
+        automatic_tag_count=Count("pk", filter=~Q(definition="")),
+        with_kernel_opts_count=Count("pk", filter=~Q(kernel_opts="")),
+    )
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -498,6 +507,7 @@ def get_maas_stats():
         "tls_configuration": get_tls_configuration_stats(),
         "bmcs": get_bmc_stats(),
         "vault": get_vault_stats(),
+        "tags": get_tags_stats(),
     }
 
 

@@ -46,6 +46,7 @@ from maasserver.stats import (
     get_machines_by_architecture,
     get_request_params,
     get_storage_layouts_stats,
+    get_tags_stats,
     get_tls_configuration_stats,
     get_vault_stats,
     get_vm_hosts_stats,
@@ -476,6 +477,11 @@ class TestMAASStats(MAASServerTestCase):
                 "subnet_count": 0,
                 "global_count": 0,
             },
+            "tags": {
+                "total_count": 0,
+                "automatic_tag_count": 0,
+                "with_kernel_opts_count": 0,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -661,6 +667,11 @@ class TestMAASStats(MAASServerTestCase):
                 "subnet_count": 0,
                 "global_count": 0,
             },
+            "tags": {
+                "total_count": 0,
+                "automatic_tag_count": 0,
+                "with_kernel_opts_count": 0,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -834,6 +845,30 @@ class TestMAASStats(MAASServerTestCase):
         self.assertEqual(
             {"node_count": 3, "subnet_count": 4, "global_count": 5},
             get_dhcp_snippets_stats(),
+        )
+
+    def test_get_tags_stats(self):
+        for _ in range(2):
+            factory.make_Tag(definition="", kernel_opts="")
+
+        for _ in range(2):
+            factory.make_Tag(definition="//node", kernel_opts="")
+
+        for _ in range(3):
+            factory.make_Tag(definition="", kernel_opts=factory.make_name())
+
+        for _ in range(3):
+            factory.make_Tag(
+                definition="//node", kernel_opts=factory.make_name()
+            )
+
+        self.assertEqual(
+            {
+                "total_count": 10,
+                "automatic_tag_count": 5,
+                "with_kernel_opts_count": 6,
+            },
+            get_tags_stats(),
         )
 
 
