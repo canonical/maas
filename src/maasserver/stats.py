@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 import json
 
-from django.db.models import Case, Count, F, Max, When
+from django.db.models import Case, Count, F, Max, Q, When
 import requests
 from twisted.application.internet import TimerService
 
@@ -29,6 +29,7 @@ from maasserver.models import (
     BMC,
     BootResourceFile,
     Config,
+    DHCPSnippet,
     Fabric,
     Machine,
     Node,
@@ -435,6 +436,16 @@ def get_vault_stats():
     return {"enabled": Config.objects.get_config("vault_enabled", False)}
 
 
+def get_dhcp_snippets_stats():
+    dhcp_snippets = DHCPSnippet.objects.aggregate(
+        node_count=Count("pk", filter=(~Q(node=None) & Q(subnet=None))),
+        subnet_count=Count("pk", filter=(~Q(subnet=None) & Q(node=None))),
+        global_count=Count("pk", filter=(Q(subnet=None) & Q(node=None))),
+    )
+
+    return dhcp_snippets
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -461,6 +472,7 @@ def get_maas_stats():
             "regions": node_types.get(NODE_TYPE.REGION_CONTROLLER, 0),
             "racks": node_types.get(NODE_TYPE.RACK_CONTROLLER, 0),
         },
+        "dhcp_snippets": get_dhcp_snippets_stats(),
         "nodes": {
             "machines": node_types.get(NODE_TYPE.MACHINE, 0),
             "devices": node_types.get(NODE_TYPE.DEVICE, 0),

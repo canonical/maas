@@ -39,6 +39,7 @@ from maasserver.stats import (
     get_brownfield_stats,
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
+    get_dhcp_snippets_stats,
     get_lxd_initial_auth_stats,
     get_maas_stats,
     get_machine_stats,
@@ -470,6 +471,11 @@ class TestMAASStats(MAASServerTestCase):
             "vault": {
                 "enabled": False,
             },
+            "dhcp_snippets": {
+                "node_count": 0,
+                "subnet_count": 0,
+                "global_count": 0,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -650,6 +656,11 @@ class TestMAASStats(MAASServerTestCase):
             "vault": {
                 "enabled": False,
             },
+            "dhcp_snippets": {
+                "node_count": 0,
+                "subnet_count": 0,
+                "global_count": 0,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -807,6 +818,23 @@ class TestMAASStats(MAASServerTestCase):
     def test_get_vault_stats_vault_disabled(self):
         Config.objects.set_config("vault_enabled", False)
         self.assertEqual({"enabled": False}, get_vault_stats())
+
+    def test_get_dhcp_snippet_stats(self):
+        for _ in range(3):
+            node = factory.make_Node()
+            factory.make_DHCPSnippet(node=node)
+
+        for _ in range(4):
+            subnet = factory.make_Subnet()
+            factory.make_DHCPSnippet(subnet=subnet)
+
+        for _ in range(5):
+            factory.make_DHCPSnippet()
+
+        self.assertEqual(
+            {"node_count": 3, "subnet_count": 4, "global_count": 5},
+            get_dhcp_snippets_stats(),
+        )
 
 
 class FakeRequest:
