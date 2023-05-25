@@ -5251,14 +5251,14 @@ class Node(CleanSave, TimestampedModel):
             # node with no gateway can only use routable addrs
             maas_dns_servers = []
             routable_addrs_map = {
-                node: [
+                node: sorted(
                     address
                     for address in addresses
                     if (
                         (ipv4 and address.version == 4)
                         or (ipv6 and address.version == 6)
                     )
-                ]
+                )
                 for node, addresses in routable_addrs_map.items()
             }
         else:

@@ -22,7 +22,6 @@ from fixtures import LoggerFixture
 from netaddr import IPAddress, IPNetwork
 from testscenarios import multiply_scenarios
 from testtools import ExpectedException
-from testtools.content import text_content
 from testtools.matchers import (
     AfterPreprocessing,
     Contains,
@@ -140,7 +139,6 @@ from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.preseed_network import compose_curtin_network_config
 from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import FakeRBACClient, rbac
-from maasserver.routablepairs import get_routable_address_map
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.secrets import SecretManager
 from maasserver.storage_layouts import (
@@ -8804,29 +8802,6 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=True, ipv6_gateway=False
         )
-        # XXX this test fails randomly, this is to get more info if it does
-        self.addDetail(
-            "node.get_default_gateways",
-            text_content(repr(node.get_default_gateways())),
-        )
-        self.addDetail(
-            "node.get_boot_rack_controller",
-            text_content(repr(node.get_boot_rack_controller())),
-        )
-        self.addDetail(
-            "use_rack_proxy",
-            text_content(repr(Config.objects.get_config("use_rack_proxy"))),
-        )
-        self.addDetail(
-            "routable_address_map",
-            text_content(
-                repr(
-                    get_routable_address_map(
-                        RackController.objects.all(), node
-                    )
-                )
-            ),
-        )
         self.assertEqual([rack_v4], node.get_default_dns_servers())
 
     def test_uses_rack_ipv4_if_dual_stack_with_ipv4_gateway(self):
@@ -8966,9 +8941,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6=False, ipv4_subnet_dns=[ipv4_subnet_dns]
         )
         Subnet.objects.update(allow_dns=False)
-        self.assertCountEqual(
-            node.get_default_dns_servers(), [ipv4_subnet_dns]
-        )
+        self.assertEqual(node.get_default_dns_servers(), [ipv4_subnet_dns])
 
     def test_uses_subnet_ipv6_dns_only(self):
         # Regression test for LP:1847537
@@ -8977,29 +8950,17 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4=False, ipv6_subnet_dns=[ipv6_subnet_dns]
         )
         Subnet.objects.update(allow_dns=False)
-        self.assertCountEqual(
-            node.get_default_dns_servers(), [ipv6_subnet_dns]
-        )
+        self.assertEqual(node.get_default_dns_servers(), [ipv6_subnet_dns])
 
     def test_ignores_other_unroutable_rack_controllers_ipv4(self):
         # Regression test for LP:1896684
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
             ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False
         )
-        vlan = node.boot_interface.vlan
-        rack = vlan.primary_rack
-        rackif = rack.current_config.interface_set.first()
-        rack_ips = [rack_v4]
-        for _ in range(3):
-            subnet = factory.make_Subnet(vlan=vlan, version=4)
-            ip = factory.make_StaticIPAddress(subnet=subnet, interface=rackif)
-            rack_ips.append(ip.ip)
-        rack.save()
-        resolve_hostname = self.patch(server_address, "resolve_hostname")
-        resolve_hostname.side_effect = lambda hostname, version: set(
-            map(IPAddress, rack_ips)
-        )
-        self.assertCountEqual(node.get_default_dns_servers(), [rack_v4])
+        rack = node.boot_interface.vlan.primary_rack
+        mock_address_map = self.patch(node_module, "get_routable_address_map")
+        mock_address_map.return_value = {rack: [IPAddress(rack_v4)]}
+        self.assertEqual(node.get_default_dns_servers(), [rack_v4])
 
 
 class TestNode_Start(MAASTransactionServerTestCase):
