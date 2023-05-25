@@ -48,4 +48,10 @@ if storage_path and os.path.exists(storage_path):
     storage_config = read_json_file(storage_path)
     data["storage-extra"] = storage_config
 
+# add machine config hints if present
+hints_path = os.environ.get("MAAS_MACHINE_CONFIG_HINTS_FILE")
+if hints_path and os.path.exists(hints_path):
+    hints = read_json_file(hints_path)
+    data["machine-extra"] = hints
+
 print(json.dumps(data, indent=2))

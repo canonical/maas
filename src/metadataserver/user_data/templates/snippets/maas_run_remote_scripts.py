@@ -1062,6 +1062,7 @@ def run_script(script, scripts_dir, send_result=True):
         {
             "MAAS_BASE_URL": get_base_url(script["config"].metadata_url),
             "MAAS_RESOURCES_FILE": script["resources_file"],
+            "MAAS_MACHINE_EXTRA_FILE": "/machine-extra.json",
             "MAAS_STORAGE_CONFIG_FILE": "/storage-config.json",
             "OUTPUT_COMBINED_PATH": script["combined_path"],
             "OUTPUT_STDOUT_PATH": script["stdout_path"],

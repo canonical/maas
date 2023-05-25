@@ -25,6 +25,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LLDP_INSTALL_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
+    MACHINE_CONFIG_HINTS_NAME,
     NODE_INFO_SCRIPTS,
     RUN_MACHINE_RESOURCES,
     SERIAL_PORTS_OUTPUT_NAME,
@@ -82,6 +83,9 @@ BUILTIN_SCRIPTS = [
     ),
     BuiltinScript(name=BMC_DETECTION, filename="bmc_config.py"),
     BuiltinScript(name=RUN_MACHINE_RESOURCES, filename=RUN_MACHINE_RESOURCES),
+    BuiltinScript(
+        name=MACHINE_CONFIG_HINTS_NAME, filename=MACHINE_CONFIG_HINTS_NAME
+    ),
     BuiltinScript(
         name=COMMISSIONING_OUTPUT_NAME, filename=COMMISSIONING_OUTPUT_NAME
     ),

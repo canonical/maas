@@ -658,6 +658,21 @@ def _process_lxd_resources(node, data):
     _link_dpu(node)
 
 
+def _process_machine_extra(node, extra):
+    if extra is None:
+        logger.warning(
+            f"Machine configuration extra for `{node.system_id}` is None"
+        )
+        return
+
+    if "platform" in extra:
+        node.architecture = (
+            f'{node.architecture.split("/", 2)[0]}/{extra["platform"]}'
+        )
+
+    node.save()
+
+
 def _parse_memory(memory, numa_nodes):
     total_memory = memory.get("total", 0)
     # currently LXD only supports default size for hugepages
@@ -1119,6 +1134,7 @@ def process_lxd_results(node, output, exit_status):
     try:
         _process_lxd_environment(node, data["environment"])
         _process_lxd_resources(node, data)
+        _process_machine_extra(node, data.get("machine-extra", None))
     except Exception as e:
         log_failure_event(str(e))
         raise

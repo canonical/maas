@@ -22,6 +22,8 @@ DHCP_EXPLORE_OUTPUT_NAME = "20-maas-02-dhcp-unconfigured-ifaces"
 RUN_MACHINE_RESOURCES = "20-maas-03-machine-resources"
 # Run BMC config early as it will enlist new machines.
 BMC_DETECTION = "30-maas-01-bmc-config"
+# Collect machine configuration hints before commissioning output
+MACHINE_CONFIG_HINTS_NAME = "40-maas-01-machine-config-hints"
 COMMISSIONING_OUTPUT_NAME = "50-maas-01-commissioning"
 # The remaining scripts can run in parallel
 SUPPORT_INFO_OUTPUT_NAME = "maas-support-info"
@@ -77,6 +79,10 @@ NODE_INFO_SCRIPTS = OrderedDict(
         ),
         (
             RUN_MACHINE_RESOURCES,
+            {"hook": null_hook, "run_on_controller": True},
+        ),
+        (
+            MACHINE_CONFIG_HINTS_NAME,
             {"hook": null_hook, "run_on_controller": True},
         ),
         (

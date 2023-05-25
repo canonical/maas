@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+#
+# machine-config-hints - Generate hints for machine configuration.
+# Currently provides subarchitecture for DGX systems, but the idea is
+# to allow updating a subset of machine configuration from the
+# commissioning scripts without modifying the region source code.
+#
+# Copyright (C) 2023 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: 40-maas-01-machine-config-hints
+# title: Generate machine configuration hints
+# description: Generate machine configuration hints
+# script_type: commissioning
+# timeout: 60
+# --- End MAAS 1.0 script metadata ---
+import json
+import os
+import sys
+
+
+def read_json_file(path):
+    try:
+        with open(path) as fd:
+            return json.load(fd)
+    except OSError as e:
+        sys.exit(f"Failed to read {path}: {e}")
+    except json.JSONDecodeError as e:
+        sys.exit(f"Failed to parse {path}: {e}")
+
+
+def detect_nvidia_dgx(machine_resources):
+    """Returns whether machine-resources output suggests a DGX system"""
+    if "resources" not in machine_resources:
+        return False
+    if "system" not in machine_resources["resources"]:
+        return False
+    if "motherboard" not in machine_resources["resources"]["system"]:
+        return False
+    motherboard = machine_resources["resources"]["system"]["motherboard"]
+    vendor = motherboard.get("vendor", None)
+    product = motherboard.get("product", None)
+    return (
+        vendor.lower() == "nvidia"
+        and product.lower().removeprefix("nvidia ") == "dgx"
+    )
+
+
+PLATFORMS = {
+    "nvidia-dgx": detect_nvidia_dgx,
+}
+
+
+def detect_platform(machine_resources):
+    """Calls detection methods from PLATFORM and returns platform name"""
+    for platform_name, is_platform in PLATFORMS.items():
+        if is_platform(machine_resources):
+            return platform_name
+    return "generic"
+
+
+def provide_hints(resources):
+    """Returns a hints dictionary"""
+    return {"platform": detect_platform(resources), "tags": []}
+
+
+def main():
+    machine_resources = read_json_file(os.environ["MAAS_RESOURCES_FILE"])
+
+    hints_path = os.environ.get("MAAS_MACHINE_EXTRA_FILE")
+    result = provide_hints(machine_resources)
+    serialized = json.dumps(result, indent=4, sort_keys=True)
+    print(serialized)
+    with open(hints_path, "w") as f:
+        f.write(serialized)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
