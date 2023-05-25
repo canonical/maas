@@ -1,10 +1,9 @@
 # Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-
+import datetime
 from datetime import timedelta
 import random
-from unittest.mock import ANY
+from unittest.mock import ANY, DEFAULT
 
 from netaddr import IPNetwork
 from testtools.matchers import ContainsAll, StartsWith
@@ -38,6 +37,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import osystems
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maastesting.djangotestcase import count_queries
@@ -1219,6 +1219,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
         )
         commissioning_series = "bionic"
+        commissioning_subarch = "ga-18.04"
         Config.objects.set_config(
             "commissioning_distro_series", commissioning_series
         )
@@ -1234,13 +1235,19 @@ class TestGetConfig(MAASServerTestCase):
             arch_name="amd64",
             primary_rack=rack_controller,
         )
+        arch, platform = node.split_arch()
+        factory.make_usable_boot_resource(
+            name=f"ubuntu/{commissioning_series}",
+            architecture=f"{arch}/{commissioning_subarch}",
+            supported_platforms=f"generic,{platform}",
+        )
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual(observed_config["release"], commissioning_series)
-        self.assertEqual(observed_config["subarch"], "generic")
+        self.assertEqual(commissioning_series, observed_config["release"])
+        self.assertEqual(commissioning_subarch, observed_config["subarch"])
         self.assertEqual(node.distro_series, distro_series)
 
     # LP: #1768321 - Test to ensure commissioning os/kernel is used for
@@ -1271,31 +1278,61 @@ class TestGetConfig(MAASServerTestCase):
             arch_name="amd64",
             primary_rack=rack_controller,
         )
+        arch, platform = node.split_arch()
+        factory.make_usable_boot_resource(
+            name=f"ubuntu/{commissioning_series}",
+            architecture=f"{arch}/{default_min_hwe_kernel}",
+            supported_platforms=f"generic,{platform}",
+        )
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual(observed_config["release"], commissioning_series)
-        self.assertEqual(observed_config["subarch"], default_min_hwe_kernel)
-        self.assertEqual(node.distro_series, distro_series)
+        self.assertEqual(commissioning_series, observed_config["release"])
+        self.assertEqual(default_min_hwe_kernel, observed_config["subarch"])
+        self.assertEqual(distro_series, node.distro_series)
 
-    def test_commissioning_node_uses_hwe_kernel_when_series_is_newer(self):
+    def test_commissioning_node_uses_machine_hwe_kernel(self):
         # Regression test for LP: #1768321 and LP: #1730525, see comment
         # in boot.py
+        subarch = "ga-90.90"
+        mock_version = {
+            "version": "90.90",
+            "codename": "Miraculous Mockingbird",
+            "series": "miraculous",
+            "created": datetime.date(2090, 3, 5),
+            "release": datetime.date(2090, 10, 20),
+            "eol": datetime.date(2100, 4, 30),
+            "eol_lts": None,
+            "eol_elts": None,
+            "eol_esm": None,
+            "eol_server": None,
+        }
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node(
-            status=NODE_STATUS.DISK_ERASING, hwe_kernel="ga-90.90"
+            status=NODE_STATUS.DISK_ERASING, hwe_kernel=subarch
         )
+        arch, platform = node.split_arch()
+        factory.make_usable_boot_resource(
+            name="ubuntu/focal",
+            architecture=f"{arch}/{subarch}",
+            supported_platforms=f"generic,{platform}",
+        )
+
+        self.patch(osystems, "get_release_from_distro_info").side_effect = (
+            lambda s: mock_version if s == subarch else DEFAULT
+        )
+
         make_usable_architecture(self)
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual("ga-90.90", observed_config["subarch"])
+        self.assertEqual(subarch, observed_config["subarch"])
 
     def test_returns_ubuntu_os_series_for_ubuntu_xinstall(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
@@ -1351,8 +1388,8 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
         expected_osystem, expected_series = custom_image.base_image.split("/")
-        self.assertEqual(observed_config["osystem"], expected_osystem)
-        self.assertEqual(observed_config["release"], expected_series)
+        self.assertEqual(expected_osystem, observed_config["osystem"])
+        self.assertEqual(expected_series, observed_config["release"])
 
     # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
     # the commissioning ephemeral environment.
@@ -1381,8 +1418,8 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEqual(observed_config["release"], commissioning_series)
-        self.assertEqual(node.distro_series, distro_series)
+        self.assertEqual(commissioning_series, observed_config["release"])
+        self.assertEqual(distro_series, node.distro_series)
 
     def test_returns_commissioning_os_when_erasing_disks(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
@@ -1534,6 +1571,11 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",
             distro_series="focal",
+            architecture="amd64/generic",
+        )
+        subarch = "ga-20.04"
+        factory.make_usable_boot_resource(
+            name="ubuntu/focal", architecture=f"amd64/{subarch}"
         )
         configs = Config.objects.get_configs(
             [
@@ -1555,16 +1597,23 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             machine, configs, "xinstall"
         )
 
-        self.assertEqual(osystem, "ubuntu")
-        self.assertEqual(series, "focal")
-        self.assertEqual(config_arch, "generic")
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual("focal", series)
+        self.assertEqual(subarch, config_arch)
 
     def test_get_boot_config_for_machine_new_custom_image(self):
-        arch = make_usable_architecture(self)
-        boot_resource = factory.make_BootResource(
-            base_image="ubuntu/jammy", architecture=arch
+        subarch = "ga-22.04"
+        # We need a base image to be present. In fact, we always
+        # needed that for the new image to boot.
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+        )
+        boot_resource = factory.make_usable_boot_resource(
+            architecture="amd64/generic",
+            base_image="ubuntu/jammy",
         )
         machine = factory.make_Machine(
+            architecture="amd64/generic",
             status=NODE_STATUS.DEPLOYING,
             osystem="custom",
             distro_series=boot_resource.name,
@@ -1589,16 +1638,20 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             machine, configs, "xinstall"
         )
 
-        self.assertEqual(osystem, "ubuntu")
-        self.assertEqual(series, "jammy")
-        self.assertEqual(config_arch, "generic")
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual("jammy", series)
+        self.assertEqual(subarch, config_arch)
 
     def test_get_boot_config_for_machine_legacy_custom_image(self):
-        arch = make_usable_architecture(self)
+        subarch = "hwe-20.04"
+        factory.make_usable_boot_resource(
+            name="ubuntu/focal", architecture=f"amd64/{subarch}"
+        )
         boot_resource = factory.make_BootResource(
-            base_image="", architecture=arch
+            base_image="", architecture="amd64/generic"
         )
         machine = factory.make_Machine(
+            architecture="amd64/generic",
             status=NODE_STATUS.DEPLOYING,
             osystem="custom",
             distro_series=boot_resource.name,
@@ -1624,9 +1677,132 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         )
 
         # legacy custom images should use the default commissioning image as a base image
-        self.assertEqual(osystem, configs["commissioning_osystem"])
-        self.assertEqual(series, configs["commissioning_distro_series"])
-        self.assertEqual(config_arch, "generic")
+        self.assertEqual(configs["commissioning_osystem"], osystem)
+        self.assertEqual(configs["commissioning_distro_series"], series)
+        self.assertEqual(subarch, config_arch)
+
+    def test_get_boot_config_for_machine_ignores_machine_hwe_kernel_for_xinstall(
+        self,
+    ):
+        # See LP:2013529
+        subarch = "ga-22.04"
+        machine_hwe_kernel = "hwe-20.04"  # Should be ignored
+
+        # We need a base image to be present. In fact, we always
+        # needed that for the new image to boot.
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+        )
+        modern_custom_resource = factory.make_usable_boot_resource(
+            architecture="amd64/generic",
+            base_image="ubuntu/jammy",
+        )
+        modern_machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=modern_custom_resource.name,
+            hwe_kernel=machine_hwe_kernel,
+        )
+
+        legacy_custom_resource = factory.make_BootResource(
+            base_image="", architecture="amd64/generic"
+        )
+        legacy_machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=legacy_custom_resource.name,
+            hwe_kernel=machine_hwe_kernel,
+        )
+
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+        legacy_subarch = f"ga-{configs['default_distro_series']}"
+        factory.make_usable_boot_resource(
+            name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
+            architecture=f"amd64/{legacy_subarch}",
+        )
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            modern_machine, configs, "xinstall"
+        )
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual("jammy", series)
+        self.assertEqual(subarch, config_arch)
+        self.assertNotEqual(machine_hwe_kernel, config_arch)
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            legacy_machine, configs, "xinstall"
+        )
+        self.assertEqual("ubuntu", osystem)
+        self.assertEqual(configs["default_distro_series"], series)
+        self.assertEqual(legacy_subarch, config_arch)
+        self.assertNotEqual(machine_hwe_kernel, config_arch)
+
+    def test_get_boot_config_for_machine_ignores_machine_hwe_kernel_for_commissioning(
+        self,
+    ):
+        # See LP:2013529
+        subarch = "ga-22.04"
+        machine_hwe_kernel = "hwe-20.04"  # Should be ignored
+
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=f"amd64/{subarch}"
+        )
+        boot_resource = factory.make_usable_boot_resource(
+            architecture="amd64/generic",
+            base_image="ubuntu/jammy",
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=boot_resource.name,
+            hwe_kernel=machine_hwe_kernel,
+        )
+
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+        legacy_subarch = f"ga-{configs['default_distro_series']}"
+        factory.make_usable_boot_resource(
+            name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
+            architecture=f"amd64/{legacy_subarch}",
+        )
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            machine, configs, "commissioning"
+        )
+        self.assertEqual(configs["commissioning_osystem"], osystem)
+        self.assertEqual(configs["commissioning_distro_series"], series)
+        self.assertEqual(legacy_subarch, config_arch)
+        self.assertNotEqual(machine_hwe_kernel, config_arch)
 
 
 class TestGetNodeFromMacOrHardwareUUID(MAASServerTestCase):

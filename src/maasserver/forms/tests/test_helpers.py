@@ -53,9 +53,11 @@ class TestHelpers(MAASServerTestCase):
             (factory.make_name("arch"), factory.make_name("subarch"))
             for _ in range(3)
         ]
+        expected = []
         for arch, subarch in arches:
             self.make_usable_boot_resource(arch=arch, subarch=subarch)
-        expected = [f"{arch}/{subarch}" for arch, subarch in arches]
+            expected.append(f"{arch}/{subarch}")
+            expected.append(f"{arch}/generic")
         self.assertCountEqual(expected, list_all_usable_architectures())
 
     def test_list_all_usable_architectures_sorts_output(self):
@@ -63,9 +65,12 @@ class TestHelpers(MAASServerTestCase):
             (factory.make_name("arch"), factory.make_name("subarch"))
             for _ in range(3)
         ]
+        expected = []
         for arch, subarch in arches:
             self.make_usable_boot_resource(arch=arch, subarch=subarch)
-        expected = [f"{arch}/{subarch}" for arch, subarch in arches]
+            expected.append(f"{arch}/{subarch}")
+            expected.append(f"{arch}/generic")
+
         self.assertCountEqual(expected, list_all_usable_architectures())
 
     def test_list_all_usable_architectures_returns_no_duplicates(self):
@@ -74,7 +79,8 @@ class TestHelpers(MAASServerTestCase):
         self.make_usable_boot_resource(arch=arch, subarch=subarch)
         self.make_usable_boot_resource(arch=arch, subarch=subarch)
         self.assertEqual(
-            [f"{arch}/{subarch}"], list_all_usable_architectures()
+            [f"{arch}/generic", f"{arch}/{subarch}"],
+            list_all_usable_architectures(),
         )
 
     def test_pick_default_architecture_returns_empty_if_no_options(self):

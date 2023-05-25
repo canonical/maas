@@ -546,6 +546,7 @@ class Deploy(NodeAction):
             self.node.osystem = configs["default_osystem"]
             self.node.distro_series = configs["default_distro_series"]
             self.node.save()
+
         try:
             self.node.hwe_kernel = get_working_kernel(
                 hwe_kernel,
@@ -557,6 +558,7 @@ class Deploy(NodeAction):
             self.node.save()
         except ValidationError as e:
             raise NodeActionError(e)
+
         user_data = user_data.encode() if user_data else None
         request = self.request
         if request is None:

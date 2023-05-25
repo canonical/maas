@@ -130,11 +130,18 @@ class BootResourceManager(Manager):
                     and "ga-" not in resource.architecture
                 ):
                     arches.add(resource.architecture)
+                arch, _ = resource.split_arch()
                 if "subarches" in resource.extra:
-                    arch, _ = resource.split_arch()
                     for subarch in resource.extra["subarches"].split(","):
                         if "hwe-" not in subarch and "ga-" not in subarch:
                             arches.add(f"{arch}/{subarch.strip()}")
+                if "platform" in resource.extra:
+                    arches.add(f"{arch}/{resource.extra['platform']}")
+                if "supported_platforms" in resource.extra:
+                    for platform in resource.extra[
+                        "supported_platforms"
+                    ].split(","):
+                        arches.add(f"{arch}/{platform}")
         return sorted(arches)
 
     def get_commissionable_resource(self, osystem, series):
@@ -186,7 +193,9 @@ class BootResourceManager(Manager):
             architecture__startswith=architecture,
         )
         for resource in resources:
-            if resource.supports_subarch(subarchitecture):
+            if resource.supports_subarch(
+                subarchitecture
+            ) or resource.supports_platform(subarchitecture):
                 return resource
         return None
 
@@ -735,3 +744,15 @@ class BootResource(CleanSave, TimestampedModel):
             return False
         subarches = self.extra["subarches"].split(",")
         return subarch in subarches
+
+    def supports_platform(self, platform):
+        """Return True if the resource supports the given platform."""
+        _, self_subarch = self.split_arch()
+        if platform == self_subarch:
+            return True
+        if platform == self.extra.get("platform"):
+            return True
+        if "supported_platforms" not in self.extra:
+            return False
+        platforms = self.extra["supported_platforms"].split(",")
+        return platform in platforms

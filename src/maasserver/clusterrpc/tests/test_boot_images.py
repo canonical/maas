@@ -6,6 +6,7 @@
 
 import os
 import random
+from typing import Dict, List
 from unittest.mock import ANY, MagicMock, sentinel
 from urllib.parse import urlparse
 
@@ -297,9 +298,18 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
             test_tftppath.make_osystem(self, param["osystem"], purposes)
         return params
 
-    def make_rpc_boot_images(self, param):
+    def make_rpc_boot_images(self, param, remove_platform=False) -> List[Dict]:
         purposes = ["install", "commissioning", "xinstall"]
-        return [make_image(param, purpose) for purpose in purposes]
+        result = []
+        for purpose in purposes:
+            image = make_image(param, purpose)
+            if remove_platform:
+                if "platform" in image:
+                    del image["platform"]
+                if "supported_platforms" in image:
+                    del image["supported_platforms"]
+            result.append(image)
+        return result
 
     def test_returns_boot_images_matching_subarchitecture(self):
         rack = factory.make_RackController()
@@ -308,7 +318,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         param = params.pop()
 
         self.assertCountEqual(
-            self.make_rpc_boot_images(param),
+            self.make_rpc_boot_images(param, remove_platform=True),
             get_boot_images_for(
                 rack,
                 param["osystem"],
@@ -342,16 +352,21 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         resource.save()
 
         subarch = subarches.pop()
-        self.assertCountEqual(
-            self.make_rpc_boot_images(param),
-            get_boot_images_for(
-                rack,
-                param["osystem"],
-                param["architecture"],
-                subarch,
-                param["release"],
-            ),
+        expected = self.make_rpc_boot_images(param, remove_platform=True)
+        for image in expected:
+            image["platform"] = resource.extra["platform"]
+            image["supported_platforms"] = resource.extra[
+                "supported_platforms"
+            ]
+        observed = get_boot_images_for(
+            rack,
+            param["osystem"],
+            param["architecture"],
+            subarch,
+            param["release"],
         )
+
+        self.assertCountEqual(expected, observed)
 
 
 class TestRackControllersImporter(MAASServerTestCase):

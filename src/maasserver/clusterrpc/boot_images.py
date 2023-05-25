@@ -161,6 +161,12 @@ def get_boot_images_for(
                 osystem, architecture, subarchitecture, series
             )
             if resource is not None:
+                if "platform" in resource.extra:
+                    image["platform"] = resource.extra["platform"]
+                if "supported_platforms" in resource.extra:
+                    image["supported_platforms"] = resource.extra[
+                        "supported_platforms"
+                    ]
                 matching_images.append(image)
     return matching_images
 

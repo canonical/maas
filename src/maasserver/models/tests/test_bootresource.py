@@ -166,7 +166,9 @@ class TestBootResourceManager(MAASServerTestCase):
         incomplete_arch = arches.pop()
         factory.make_incomplete_boot_resource(architecture=incomplete_arch)
         for arch in arches:
-            factory.make_usable_boot_resource(architecture=arch)
+            factory.make_usable_boot_resource(
+                architecture=arch, platform=None, supported_platforms=None
+            )
         usable_arches = BootResource.objects.get_usable_architectures()
         self.assertIsInstance(usable_arches, list)
         self.assertCountEqual(arches, usable_arches)
@@ -182,7 +184,27 @@ class TestBootResourceManager(MAASServerTestCase):
             factory.make_usable_boot_resource(
                 architecture=architecture,
                 extra={"subarches": ",".join(subarches)},
+                platform=None,
+                supported_platforms=None,
             )
+        usable_arches = BootResource.objects.get_usable_architectures()
+        self.assertIsInstance(usable_arches, list)
+        self.assertCountEqual(arches, usable_arches)
+
+    def test_get_usable_architectures_supports_platform(self):
+        arches = set()
+        for _ in range(3):
+            arch = factory.make_name("arch")
+            platform = [factory.make_name("platform") for _ in range(3)]
+            for i, platform in enumerate(platform):
+                arches.add(f"{arch}/{platform}")
+                arches.add(f"{arch}/{platform}-supported")
+                arches.add(f"{arch}/{platform}-also-supported")
+                factory.make_usable_boot_resource(
+                    architecture=f"{arch}/hwe-{i}",
+                    platform=platform,
+                    supported_platforms=f"{platform}-supported,{platform}-also-supported",
+                )
         usable_arches = BootResource.objects.get_usable_architectures()
         self.assertIsInstance(usable_arches, list)
         self.assertCountEqual(arches, usable_arches)

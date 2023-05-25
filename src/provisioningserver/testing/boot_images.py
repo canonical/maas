@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test helpers for boot-image parameters."""
-
+from typing import Dict
 
 from maastesting.factory import factory
 
@@ -21,6 +21,7 @@ def make_boot_image_params():
         release=factory.make_name("release"),
         label=factory.make_name("label"),
         purpose=factory.make_name("purpose"),
+        platform=factory.make_name("platform"),
         supported_subarches=factory.make_name("sup_subarches"),
     )
 
@@ -43,7 +44,7 @@ def make_boot_image_storage_params():
 
 def make_image(
     params, purpose, metadata=None, xinstall_path=None, xinstall_type=None
-):
+) -> Dict:
     """Describe an image as a dict similar to what `list_boot_images` returns.
 
     The `params` are as returned from `make_boot_image_storage_params`.

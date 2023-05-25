@@ -15,6 +15,7 @@ from crochet import TimeoutError
 from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
+from django.core.exceptions import MultipleObjectsReturned
 from django.urls import reverse
 import tempita
 import yaml
@@ -384,25 +385,39 @@ def get_base_osystem_series(node):
 
     if osystem == "custom":
         arch, subarch = node.split_arch()
-        resource = BootResource.objects.get_resource_for(
-            osystem, arch, subarch, release
-        )
-        maaslog.info(f"got bootres {resource}")
-        if resource is not None:
-            osystem, release = resource.split_base_image()
-        else:
+        try:
+            resource = BootResource.objects.get(
+                name=release,
+                architecture__startswith=f"{arch}/",
+                base_image__isnull=False,
+            )
+        except BootResource.DoesNotExist:
             maaslog.warning(
                 "%s: cannot deploy '%s' ('%s'); cannot identify base image compatible with %s/%s."
                 % (
                     node.hostname,
-                    node.osystem,
-                    node.distro_series,
+                    osystem,
+                    release,
                     arch,
                     subarch,
                 )
             )
+        except MultipleObjectsReturned:
+            maaslog.warning(
+                "%s: cannot deploy '%s' ('%s'); multiple images found, cannot identify base image compatible with %s/%s."
+                % (
+                    node.hostname,
+                    osystem,
+                    release,
+                    arch,
+                    subarch,
+                )
+            )
+        else:
+            maaslog.info(f"got bootres {resource}")
+            osystem, release = resource.split_base_image()
 
-    return (osystem, release)
+    return osystem, release
 
 
 def get_curtin_merged_config(request, node):
@@ -429,15 +444,11 @@ def get_curtin_userdata(request, node):
     )
 
 
-def get_curtin_image(node, osystem=None, series=None):
+def get_curtin_image(rack_controller, arch, platform, osystem, series):
     """Return boot image that supports 'xinstall' for the given node."""
-    osystem = osystem or node.get_osystem()
-    series = series or node.get_distro_series()
-    arch, subarch = node.split_arch()
-    rack_controller = node.get_boot_rack_controller()
     try:
         images = get_boot_images_for(
-            rack_controller, osystem, arch, subarch, series
+            rack_controller, osystem, arch, platform, series
         )
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
@@ -453,20 +464,22 @@ def get_curtin_image(node, osystem=None, series=None):
     # an older one. e.g Xenial hwe-16.04 will match for ga-16.04. First
     # try to find the subarch we are deploying, if that isn't found allow
     # a newer version.
-    for image in images:
-        if (
-            image["purpose"] == "xinstall"
-            and image["subarchitecture"] == subarch
-        ):
-            return image
-    for image in images:
-        if image["purpose"] == "xinstall":
-            return image
+    for check in (
+        lambda i: i["subarchitecture"] == platform,
+        lambda i: "platform" in i and i["platform"] == platform,
+        lambda i: "supported_platforms" in i
+        and platform in i["supported_platforms"].split(","),
+        lambda i: True,
+    ):
+        for image in images:
+            if image["purpose"] == "xinstall" and check(image):
+                return image
+
     raise MissingBootImage(
         "Error generating the URL of curtin's image file.  "
         "No image could be found for the given selection: "
         "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall."
-        % (osystem, arch, subarch, series)
+        % (osystem, arch, platform, series)
     )
 
 
@@ -474,17 +487,37 @@ def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
     osystem = node.get_osystem()
     series = node.get_distro_series()
-    arch, subarch = node.split_arch()
+    arch, platform = node.split_arch()
+    precise = osystem == "ubuntu" and series == "precise"
+
+    image = None
+    rack = node.get_boot_rack_controller()
+    # Try to find an image for overriden kernel first
+    if node.hwe_kernel:
+        try:
+            image = get_curtin_image(
+                rack,
+                arch,
+                node.hwe_kernel,
+                osystem,
+                series,
+            )
+        except MissingBootImage:
+            pass
+
+    # As a last resort, search for an image using the machine platform
+    if not image:
+        image = get_curtin_image(rack, arch, platform, osystem, series)
+
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
-    image = get_curtin_image(node, osystem, series)
     if image["xinstall_type"] == "squashfs":
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and drop
         # of iscsi), precise is no longer deployable. To address a squashfs
         # image is made available allowing it to be deployed in the
         # commissioning ephemeral environment.
-        if series == "precise":
+        if precise:
             url_prepend = "fsimage:"
         else:
             return "cp:///media/root-ro"
@@ -492,11 +525,15 @@ def get_curtin_installer_url(node):
         url_prepend = ""
     else:
         url_prepend = "%s:" % image["xinstall_type"]
+
+    if precise:
+        # See above: it is the only squashfs available for precise
+        platform = "generic"
     dyn_uri = "/".join(
         [
             osystem,
             arch,
-            subarch,
+            platform,
             series,
             image["label"],
             image["xinstall_path"],

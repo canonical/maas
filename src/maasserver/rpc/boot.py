@@ -198,6 +198,7 @@ def get_boot_config_for_machine(machine, configs, purpose):
     """
     _, subarch = machine.split_arch()
     precise = False
+    use_machine_hwe_kernel = True
     if purpose == "commissioning":
         # LP: #1768321 - Fix a regression introduced by, and really fix
         # the issue that LP: #1730525 was meant to fix. This ensures that
@@ -219,6 +220,9 @@ def get_boot_config_for_machine(machine, configs, purpose):
         else:
             osystem = configs["commissioning_osystem"]
             series = configs["commissioning_distro_series"]
+            # LP:2013529, machine HWE kernel might not exist for
+            # commissioning osystem/series
+            use_machine_hwe_kernel = False
     else:
         osystem = machine.get_osystem(default=configs["default_osystem"])
         series = machine.get_distro_series(
@@ -228,12 +232,18 @@ def get_boot_config_for_machine(machine, configs, purpose):
         # drop of iscsi), precise is no longer deployable. To address a
         # squashfs image is made available allowing it to be deployed in
         # the commissioning ephemeral environment.
-        precise = True if series == "precise" else False
+        precise = series == "precise"
         if purpose == "xinstall" and (osystem != "ubuntu" or precise):
             install_image = None
+
             if osystem == "custom":
+                # Note: `series` actually contains a name of the
+                # custom image in this context.
                 install_image = BootResource.objects.get(name=series)
                 osystem, series = install_image.split_base_image()
+                # LP:2013529, machine HWE kernel might not exist for
+                # given base image
+                use_machine_hwe_kernel = False
 
             if install_image is None or osystem != "ubuntu":
                 # Use only the commissioning osystem and series, for operating
@@ -241,6 +251,9 @@ def get_boot_config_for_machine(machine, configs, purpose):
                 # and needs to use that kernel to perform the installation.
                 osystem = configs["commissioning_osystem"]
                 series = configs["commissioning_distro_series"]
+                # LP:2013529, machine HWE kernel might not exist for
+                # commissioning osystem/series
+                use_machine_hwe_kernel = False
 
     # Pre MAAS-1.9 the subarchitecture defined any kernel the machine
     # needed to be able to boot. This could be a hardware enablement
@@ -251,6 +264,15 @@ def get_boot_config_for_machine(machine, configs, purpose):
     # hardware enablement kernels(i.e a highbank hwe-t kernel on precise)
     # we give precedence to any kernel defined in the subarchitecture field
 
+    # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
+    # the deployment ephemeral env) when deploying precise, provided that
+    # it uses the commissioning distro_series and hwe kernels are not
+    # needed.
+
+    use_machine_hwe_kernel = use_machine_hwe_kernel and (
+        machine.hwe_kernel and not precise
+    )
+
     # If the machine is deployed, hardcode the use of the Minimum HWE Kernel
     # This is to ensure that machines can always do testing regardless of
     # what they were deployed with, using the defaults from the settings
@@ -259,33 +281,42 @@ def get_boot_config_for_machine(machine, configs, purpose):
         and machine.status == NODE_STATUS.TESTING
         and purpose == "commissioning"
     )
+
     if testing_from_deployed:
         subarch = (
             subarch
             if not configs["default_min_hwe_kernel"]
             else configs["default_min_hwe_kernel"]
         )
-    # XXX: roaksoax LP: #1739761 - Do not override the subarch (used for
-    # the deployment ephemeral env) when deploying precise, provided that
-    # it uses the commissioning distro_series and hwe kernels are not
-    # needed.
-    elif subarch == "generic" and machine.hwe_kernel and not precise:
+    elif use_machine_hwe_kernel:
         subarch = machine.hwe_kernel
-    elif (
-        subarch == "generic"
-        and purpose == "commissioning"
-        and machine.min_hwe_kernel
-    ):
-        try:
-            subarch = get_working_kernel(
-                None,
-                machine.min_hwe_kernel,
-                machine.architecture,
-                osystem,
-                series,
-            )
-        except ValidationError:
+
+    try:
+        subarch = get_working_kernel(
+            subarch,
+            machine.min_hwe_kernel,
+            machine.architecture,
+            osystem,
+            series,
+        )
+    except ValidationError:
+        # In case the kernel for that particular subarch
+        # was not found, and no specific kernel was requested,
+        # try our best to find a suitable one
+        if not use_machine_hwe_kernel:
+            try:
+                subarch = get_working_kernel(
+                    None,
+                    machine.min_hwe_kernel,
+                    machine.architecture,
+                    osystem,
+                    series,
+                )
+            except ValidationError:
+                subarch = "no-such-kernel"
+        else:
             subarch = "no-such-kernel"
+
     return osystem, series, subarch
 
 

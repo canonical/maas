@@ -2000,7 +2000,13 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         mock_get_boot_images_for.return_value = [
             make_rpc_boot_image(purpose="xinstall")
         ]
-        get_curtin_image(node)
+        get_curtin_image(
+            node.get_boot_rack_controller(),
+            arch,
+            subarch,
+            osystem,
+            series,
+        )
         self.assertThat(
             mock_get_boot_images_for,
             MockCalledOnceWith(
@@ -2014,15 +2020,33 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
     def test_get_curtin_image_raises_ClusterUnavailable(self):
         node = factory.make_Node_with_Interface_on_Subnet()
+        arch, platform = node.split_arch()
         self.patch(
             preseed_module, "get_boot_images_for"
         ).side_effect = NoConnectionsAvailable
-        self.assertRaises(ClusterUnavailable, get_curtin_image, node)
+        self.assertRaises(
+            ClusterUnavailable,
+            get_curtin_image,
+            node.get_boot_rack_controller(),
+            arch,
+            platform,
+            "",
+            "",
+        )
 
     def test_get_curtin_image_raises_MissingBootImage(self):
         node = factory.make_Node()
+        arch, platform = node.split_arch()
         self.patch(preseed_module, "get_boot_images_for").return_value = []
-        self.assertRaises(MissingBootImage, get_curtin_image, node)
+        self.assertRaises(
+            MissingBootImage,
+            get_curtin_image,
+            node.get_boot_rack_controller(),
+            arch,
+            platform,
+            "",
+            "",
+        )
 
     def test_get_curtin_image_returns_xinstall_image_for_subarch(self):
         arch = factory.make_name("arch")
@@ -2037,7 +2061,16 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
         images = other_images + [xinstall_image, other_xinstall_image]
         self.patch(preseed_module, "get_boot_images_for").return_value = images
-        self.assertEqual(xinstall_image, get_curtin_image(node))
+        self.assertEqual(
+            xinstall_image,
+            get_curtin_image(
+                node.get_boot_rack_controller(),
+                arch,
+                subarch,
+                node.get_osystem(),
+                node.get_distro_series(),
+            ),
+        )
 
     def test_get_curtin_image_returns_xinstall_image_for_newer(self):
         arch = factory.make_name("arch")
@@ -2049,7 +2082,16 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
         images = other_images + [xinstall_image]
         self.patch(preseed_module, "get_boot_images_for").return_value = images
-        self.assertEqual(xinstall_image, get_curtin_image(node))
+        self.assertEqual(
+            xinstall_image,
+            get_curtin_image(
+                node.get_boot_rack_controller(),
+                arch,
+                subarch,
+                node.get_osystem(),
+                node.get_distro_series(),
+            ),
+        )
 
     def test_get_curtin_installer_url_returns_url_for_tgz(self):
         osystem = make_usable_osystem(self)
@@ -2098,7 +2140,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
     # the commissioning ephemeral environment.
     def test_get_curtin_installer_url_returns_fsimage_precise_squashfs(self):
-        osystem = make_usable_osystem(self)
+        osystem = "ubuntu"
         series = "precise"
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name("xi_path")
@@ -2106,14 +2148,14 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller,
-            osystem=osystem["name"],
+            osystem=osystem,
             architecture=architecture,
             distro_series=series,
             boot_cluster_ip=cluster_ip,
         )
         arch, subarch = architecture.split("/")
         boot_image = make_rpc_boot_image(
-            osystem=osystem["name"],
+            osystem=osystem,
             release=series,
             architecture=arch,
             subarchitecture=subarch,
@@ -2131,9 +2173,9 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             % (
                 xinstall_type,
                 cluster_ip,
-                osystem["name"],
+                osystem,
                 arch,
-                subarch,
+                "generic",  # Precise will not boot with any other subarch
                 series,
                 boot_image["label"],
                 xinstall_path,

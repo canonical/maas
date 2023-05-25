@@ -94,12 +94,12 @@ class TestGeneralHandler(MAASServerTestCase):
         return kernels
 
     def test_architectures(self):
-        arches = [
-            "{}/{}".format(
-                factory.make_name("arch"), factory.make_name("subarch")
-            )
-            for _ in range(3)
-        ]
+        arches = []
+        for _ in range(3):
+            arch = factory.make_name("arch")
+            subarch = factory.make_name("subarch")
+            arches.append(f"{arch}/generic")
+            arches.append(f"{arch}/{subarch}")
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         handler = GeneralHandler(factory.make_User(), {}, None)
