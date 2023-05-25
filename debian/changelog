@@ -1,3 +1,9 @@
+maas (1:3.4.0~beta2-0ubuntu1) jammy; urgency=medium
+
+  * New upstream release, MAAS 3.4.0 beta2.
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Thu, 25 May 2023 06:58:54 +0000
+
 maas (1:3.4.0~beta1-0ubuntu1) jammy; urgency=medium
 
   * New upstream release, MAAS 3.4.0 beta1.
