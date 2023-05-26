@@ -98,14 +98,16 @@ def pytest_load_initial_conftests(early_config, parser, args):
     cluster = create_postgres_cluster()
     cluster.setUp()
     early_config.stash[cluster_stash] = cluster
-    os.environ[
-        "DJANGO_SETTINGS_MODULE"
-    ] = "maasserver.djangosettings.development"
+
+    if os.environ.get("DJANGO_SETTINGS_MODULE") is None:
+        os.environ[
+            "DJANGO_SETTINGS_MODULE"
+        ] = "maasserver.djangosettings.development"
+
     import django
+    from django.conf import settings
 
-    from maasserver.djangosettings import development
-
-    database = development.DATABASES["default"]
+    database = settings.DATABASES["default"]
     template = f"{database['NAME']}_test"
     early_config.stash[db_template_stash] = template
     database["NAME"] = "no_such_db"
