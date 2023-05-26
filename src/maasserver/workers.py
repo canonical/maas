@@ -74,7 +74,9 @@ class WorkersService(service.Service):
     def stopService(self):
         """Stop the workers."""
         self.stopping = True
-        for pid, worker in self.workers.items():
+        # get a list of the workers since they might unregister while this is
+        # running
+        for pid, worker in list(self.workers.items()):
             log.msg("Killing worker pid:%d." % pid)
             worker.signal("KILL")
 
