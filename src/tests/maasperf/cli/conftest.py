@@ -28,7 +28,7 @@ def cli_profile(maas_user):
                 handler["uri"] = "http://localhost:5240/MAAS" + handler["path"]
 
     return {
-        "name": maas_user.username,
+        "name": "localmaas",
         "url": "http://localhost:5240/MAAS",
         "credentials": [token.consumer.key, token.key, token.secret],
         "description": description,
