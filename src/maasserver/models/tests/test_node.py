@@ -1078,6 +1078,20 @@ class TestNode(MAASServerTestCase):
         )
         self.assertFalse(node.ephemeral_deployment)
 
+    def test_ephemeral_deploy_scriptstatus_no(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            ephemeral_deploy=True, status=NODE_STATUS.ALLOCATED
+        )
+        node._start_deployment()
+        self.assertTrue(node.current_installation_script_set is None)
+
+    def test_ephemeral_deploy_no_scriptstatus_yes(self):
+        node = factory.make_Node_with_Interface_on_Subnet(
+            ephemeral_deploy=False, status=NODE_STATUS.ALLOCATED
+        )
+        node._start_deployment()
+        self.assertTrue(node.current_installation_script_set is not None)
+
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
         self.assertThat(

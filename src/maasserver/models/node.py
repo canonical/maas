@@ -1771,8 +1771,9 @@ class Node(CleanSave, TimestampedModel):
         # and will already be in a DEPLOYED state.
         if self.status == NODE_STATUS.ALLOCATED:
             self.update_status(NODE_STATUS.DEPLOYING)
-        script_set = ScriptSet.objects.create_installation_script_set(self)
-        self.current_installation_script_set = script_set
+        if self.ephemeral_deployment is False:
+            script_set = ScriptSet.objects.create_installation_script_set(self)
+            self.current_installation_script_set = script_set
         self.save()
 
         # Create a status message for DEPLOYING.
