@@ -135,8 +135,6 @@ DOM_TEMPLATE_AMD64 = dedent(
         <graphics type="spice" autoport="yes">
           <image compression="off"/>
         </graphics>
-        <input type="mouse" bus="ps2"/>
-        <input type="keyboard" bus="ps2"/>
       </devices>
     </domain>
     """
@@ -175,8 +173,7 @@ DOM_TEMPLATE_ARM64 = dedent(
         <console type="pty">
           <target type="serial" port="0"/>
         </console>
-        <input type="mouse" bus="ps2"/>
-        <input type="keyboard" bus="ps2"/>
+        <input type="keyboard" bus="virtio"/>
       </devices>
     </domain>
     """
@@ -208,8 +205,7 @@ DOM_TEMPLATE_PPC64 = dedent(
         <console type="pty">
           <target type="serial" port="0"/>
         </console>
-        <input type="mouse" bus="ps2"/>
-        <input type="keyboard" bus="ps2"/>
+        <input type="keyboard" bus="virtio"/>
       </devices>
     </domain>
     """
@@ -237,6 +233,7 @@ DOM_TEMPLATE_S390X = dedent(
           <target type="sclp" port="0"/>
           <alias name="console0"/>
         </console>
+        <input type="keyboard" bus="virtio"/>
       </devices>
     </domain>
     """
