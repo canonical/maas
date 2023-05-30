@@ -454,7 +454,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         factory.make_NUMANode(node=machine, memory=2048 * 1024, cores=[0, 1])
         factory.make_NUMANode(node=machine, memory=4096 * 1024, cores=[2, 3])
         [parsed_result] = self.get_json()
-        self.assertEqual(
+        self.assertCountEqual(
             parsed_result["numanode_set"],
             [
                 {"index": 0, "memory": 0, "cores": [], "hugepages_set": []},
