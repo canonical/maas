@@ -83,7 +83,7 @@ NODE_INFO_SCRIPTS = OrderedDict(
         ),
         (
             MACHINE_CONFIG_HINTS_NAME,
-            {"hook": null_hook, "run_on_controller": True},
+            {"hook": null_hook, "run_on_controller": False},
         ),
         (
             COMMISSIONING_OUTPUT_NAME,
