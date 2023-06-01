@@ -6,6 +6,7 @@ from time import time
 
 from django.db import connections
 from django.db.backends.utils import CursorWrapper
+from django.urls import resolve, reverse
 
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 
@@ -56,13 +57,21 @@ class PrometheusRequestMetricsMiddleware:
         return response
 
     def _process_metrics(self, request, response, latency, query_latencies):
-        op = request.POST.get("op", request.GET.get("op", ""))
         labels = {
             "method": request.method,
-            "path": request.path,
             "status": response.status_code,
-            "op": op,
+            "op": request.POST.get("op", request.GET.get("op", "")),
+            "path": request.path,
         }
+        try:
+            match = resolve(request.path.removeprefix("/MAAS"))
+            args = [f":arg{i}" for i in range(len(match.args))]
+            kwargs = {k: f":{k}" for k in match.kwargs.keys()}
+            labels["path"] = reverse(match.url_name, None, args, kwargs)
+        except Exception:
+            # use the request path as-is
+            pass
+
         self.prometheus_metrics.update(
             "maas_http_request_latency",
             "observe",
