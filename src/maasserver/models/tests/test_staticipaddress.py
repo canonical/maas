@@ -50,7 +50,10 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils import orm
-from maasserver.utils.dns import get_ip_based_hostname
+from maasserver.utils.dns import (
+    get_iface_name_based_hostname,
+    get_ip_based_hostname,
+)
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.websockets.base import dehydrate_datetime
 
@@ -478,6 +481,47 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             ),
             "%s.%s"
             % (iface2.name, full_hostname): HostnameIPMapping(
+                node.system_id, 30, {sip2.ip}, node.node_type
+            ),
+        }
+        self.assertEqual(expected, mapping)
+
+    def test_get_hostname_ip_mapping_sanitized_iface_name(self):
+        hostname = factory.make_name("hostname")
+        domainname = factory.make_name("domain")
+        factory.make_Domain(name=domainname)
+        full_hostname = f"{hostname}.{domainname}"
+        subnet = factory.make_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            extra_ifnames=["eth_1"],
+            hostname=full_hostname,
+            interface_count=2,
+            subnet=subnet,
+        )
+        boot_interface = node.get_boot_interface()
+        staticip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=boot_interface,
+        )
+        iface2 = node.current_config.interface_set.exclude(
+            id=boot_interface.id
+        ).first()
+        sip2 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=iface2,
+        )
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(subnet)
+        sanitized_if2name = get_iface_name_based_hostname(iface2.name)
+        expected = {
+            full_hostname: HostnameIPMapping(
+                node.system_id, 30, {staticip.ip}, node.node_type
+            ),
+            "%s.%s"
+            % (sanitized_if2name, full_hostname): HostnameIPMapping(
                 node.system_id, 30, {sip2.ip}, node.node_type
             ),
         }
