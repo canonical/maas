@@ -8,6 +8,7 @@ from django.core.validators import URLValidator
 from testtools.matchers import Equals, HasLength
 
 from maasserver.utils.dns import (
+    get_iface_name_based_hostname,
     get_ip_based_hostname,
     validate_domain_name,
     validate_hostname,
@@ -244,3 +245,11 @@ class TestIpBasedHostnameGenerator(MAASTestCase):
             get_ip_based_hostname("2001:67c:1562::15"),
             Equals("2001-67c-1562--15"),
         )
+
+
+class TestIfaceBasedHostnameGenerator(MAASTestCase):
+    def test_interface_name_changed(self):
+        self.assertEqual(get_iface_name_based_hostname("eth_0"), "eth-0")
+
+    def test_interface_name_unchanged(self):
+        self.assertEqual(get_iface_name_based_hostname("eth0"), "eth0")

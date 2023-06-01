@@ -45,7 +45,10 @@ from maasserver.models.domain import Domain
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import orm
-from maasserver.utils.dns import get_ip_based_hostname
+from maasserver.utils.dns import (
+    get_iface_name_based_hostname,
+    get_ip_based_hostname,
+)
 from provisioningserver.utils.enum import map_enum_reverse
 
 _mapping_base_fields = (
@@ -748,7 +751,11 @@ class StaticIPAddressManager(Manager):
             # node, then consider adding the IP.
             if result.assigned or not assigned_ips[result.fqdn]:
                 if result.ip not in mapping[result.fqdn].ips:
-                    entry = mapping["%s.%s" % (result.iface_name, result.fqdn)]
+                    fqdn = "%s.%s" % (
+                        get_iface_name_based_hostname(result.iface_name),
+                        result.fqdn,
+                    )
+                    entry = mapping[fqdn]
                     entry.node_type = result.node_type
                     entry.system_id = result.system_id
                     if result.user_id is not None:
