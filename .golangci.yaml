@@ -91,6 +91,7 @@ linters:
     - unused
     - whitespace
     - wsl
+    - zerologlint
 
 linters-settings:
   errcheck:

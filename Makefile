@@ -442,7 +442,7 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		$(SNAP_UNPACKED_DIR)/usr/sbin/
 .PHONY: snap-tree-sync
 
-$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.51.2
+$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.53.1
 $(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
 	GOBIN="$(realpath $(dir $@))"
 	sh utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
