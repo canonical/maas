@@ -490,20 +490,25 @@ EndSection
         self.assertRaises(SystemExit, self.ipmi.add_bmc_user)
 
     def test_set_ipmi_lan_channel_setting_verifies(self):
-        self.ipmi._bmc_config = {
-            "Lan_Channel": {
-                "Volatile_Access_Mode": "Always_Available",
-                "Non_Volatile_Access_Mode": "Always_Available",
+
+        for channel in [
+            "Lan_Channel",
+            "Lan_Channel_Channel_1",
+            "Lan_Channel_Channel_2",
+            "Lan_Channel_Channel_3",
+        ]:
+            self.ipmi._bmc_config = {
+                channel: {
+                    "Volatile_Access_Mode": "Always_Available",
+                    "Non_Volatile_Access_Mode": "Always_Available",
+                },
             }
-        }
-        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
-        self.ipmi._config_ipmi_lan_channel_settings()
-        self.assertThat(mock_bmc_set, MockNotCalled())
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCalledOnceWith(
-                "Lan_Channel",
+            mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+            mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+            self.ipmi._config_ipmi_lan_channel_settings()
+            self.assertFalse(mock_bmc_set.called)
+            mock_bmc_set_keys.assert_called_once_with(
+                channel,
                 [
                     f"{auth_type}_{volatility}"
                     for auth_type in [
@@ -514,36 +519,36 @@ EndSection
                     for volatility in ["Volatile", "Non_Volatile"]
                 ],
                 "Yes",
-            ),
-        )
+            )
 
     def test_set_ipmi_lan_channel_setting_enables(self):
-        self.ipmi._bmc_config = {
-            "Lan_Channel": {
-                "Volatile_Access_Mode": "Disabled",
-                "Non_Volatile_Access_Mode": "Pre_Boot_only",
+        for channel in [
+            "Lan_Channel",
+            "Lan_Channel_Channel_1",
+            "Lan_Channel_Channel_2",
+            "Lan_Channel_Channel_3",
+        ]:
+            self.ipmi._bmc_config = {
+                channel: {
+                    "Volatile_Access_Mode": "Disabled",
+                    "Non_Volatile_Access_Mode": "Pre_Boot_only",
+                },
             }
-        }
-        mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
-        mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
-        self.ipmi._config_ipmi_lan_channel_settings()
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
-                call(
-                    "Lan_Channel", "Volatile_Access_Mode", "Always_Available"
-                ),
-                call(
-                    "Lan_Channel",
-                    "Non_Volatile_Access_Mode",
-                    "Always_Available",
-                ),
-            ),
-        )
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCalledOnceWith(
-                "Lan_Channel",
+            mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
+            mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+            self.ipmi._config_ipmi_lan_channel_settings()
+            mock_bmc_set.assert_has_calls(
+                (
+                    call(channel, "Volatile_Access_Mode", "Always_Available"),
+                    call(
+                        channel,
+                        "Non_Volatile_Access_Mode",
+                        "Always_Available",
+                    ),
+                )
+            )
+            mock_bmc_set_keys.assert_called_once_with(
+                channel,
                 [
                     f"{auth_type}_{volatility}"
                     for auth_type in [
@@ -554,8 +559,7 @@ EndSection
                     for volatility in ["Volatile", "Non_Volatile"]
                 ],
                 "Yes",
-            ),
-        )
+            )
 
     def test_config_lan_conf_auth(self):
         self.ipmi._bmc_config = {"Lan_Channel_Auth": {}}
@@ -718,7 +722,9 @@ EndSection
                 "MAC_Address": mac_address,
             }
         }
-        self.assertEqual((ip, mac_address), self.ipmi._get_bmc_ip())
+        self.assertEqual(
+            ("Lan_Conf", ip, mac_address), self.ipmi._get_bmc_ip()
+        )
 
     def test_get_bmc_ipv6_static(self):
         ip = factory.make_ipv6_address()
@@ -729,7 +735,9 @@ EndSection
                 "MAC_Address": mac_address,
             }
         }
-        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
+        self.assertEqual(
+            ("Lan6_Conf", f"[{ip}]", mac_address), self.ipmi._get_bmc_ip()
+        )
 
     def test_get_bmc_ipv6_dynamic(self):
         ip = factory.make_ipv6_address()
@@ -740,7 +748,9 @@ EndSection
                 "MAC_Address": mac_address,
             }
         }
-        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
+        self.assertEqual(
+            ("Lan6_Conf", f"[{ip}]", mac_address), self.ipmi._get_bmc_ip()
+        )
 
     def test_get_bmc_ipv6_gets_mac_From_ipv4(self):
         ip = factory.make_ipv6_address()
@@ -749,18 +759,20 @@ EndSection
             "Lan_Conf": {"MAC_Address": mac_address},
             "Lan6_Conf": {"IPv6_Dynamic_Addresses": ip},
         }
-        self.assertEqual((f"[{ip}]", mac_address), self.ipmi._get_bmc_ip())
+        self.assertEqual(
+            ("Lan6_Conf", f"[{ip}]", mac_address), self.ipmi._get_bmc_ip()
+        )
 
     def test_get_bmc_ip_finds_none(self):
         self.patch(self.ipmi, "_bmc_get").return_value = ""
-        self.assertEqual((None, None), self.ipmi._get_bmc_ip())
+        self.assertEqual((None, None, None), self.ipmi._get_bmc_ip())
 
     def test_get_bmc_ip(self):
         ip = factory.make_ip_address()
         mac_address = factory.make_mac_address()
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
-        mock_get_bmc_ip.return_value = ip, mac_address
+        mock_get_bmc_ip.return_value = None, ip, mac_address
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
         self.assertThat(mock_bmc_set, MockNotCalled())
@@ -772,9 +784,9 @@ EndSection
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
         mock_get_bmc_ip.side_effect = (
-            (None, mac_address),
-            (None, mac_address),
-            (ip, mac_address),
+            ("Lan_Conf", None, mac_address),
+            ("Lan_Conf", None, mac_address),
+            ("Lan_Conf", ip, mac_address),
         )
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
@@ -792,8 +804,8 @@ EndSection
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
         mock_get_bmc_ip.side_effect = (
-            *[(None, mac_address) for _ in range(8)],
-            (ip, mac_address),
+            *[("Lan_Conf", None, mac_address) for _ in range(8)],
+            ("Lan_Conf", ip, mac_address),
         )
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
@@ -804,6 +816,7 @@ EndSection
                 call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
             ),
         )
+
         self.assertThat(
             mock_get_bmc_ip,
             MockCallsMatch(call(), *[call(True) for _ in range(8)]),
@@ -812,7 +825,7 @@ EndSection
     def test_get_bmc_ip_fails(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_get_bmc_ip = self.patch(self.ipmi, "_get_bmc_ip")
-        mock_get_bmc_ip.return_value = (None, None)
+        mock_get_bmc_ip.return_value = ("Lan_Conf", None, None)
 
         self.assertRaises(SystemExit, self.ipmi.get_bmc_ip)
         self.assertThat(
