@@ -27,10 +27,14 @@
 # script_type: commissioning
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
+from functools import reduce
 import json
 import os
 import sys
 
+
+def get_by_path(dataDict, mapList):
+    return reduce(lambda a,b : a.get(b,{}), mapList, dataDict)
 
 def read_json_file(path):
     try:
@@ -44,15 +48,11 @@ def read_json_file(path):
 
 def detect_nvidia_dgx(machine_resources):
     """Returns whether machine-resources output suggests a DGX system"""
-    if "resources" not in machine_resources:
+    motherboard = get_by_path(machine_resources, ["resources", "system", "motherboard"])
+    if not motherboard:
         return False
-    if "system" not in machine_resources["resources"]:
-        return False
-    if "motherboard" not in machine_resources["resources"]["system"]:
-        return False
-    motherboard = machine_resources["resources"]["system"]["motherboard"]
-    vendor = motherboard.get("vendor", None)
-    product = motherboard.get("product", None)
+    vendor = motherboard.get("vendor", "")
+    product = motherboard.get("product", "")
     return (
         vendor.lower() == "nvidia"
         and product.lower().removeprefix("nvidia ") == "dgx"
