@@ -833,7 +833,8 @@ class RegionServer(Region):
                 log.err, "Failed to unregister the connection with the master."
             )
         self.factory.service._removeConnectionFor(self.ident, self)
-        log.msg("Rack controller '%s' disconnected." % self.ident)
+        if self.factory.service.rack_controller_is_disconnected(self.ident):
+            log.msg("Rack controller '%s' disconnected." % self.ident)
         super().connectionLost(reason)
 
 
@@ -984,6 +985,9 @@ class RegionService(service.Service):
             for ident in identifiers:
                 self.waiters[ident].add(d)
             return d
+
+    def rack_controller_is_disconnected(self, ident):
+        return len(self.connections[ident]) == 0
 
     def _addConnectionFor(self, ident, connection):
         """Adds `connection` to the set of connections for `ident`.
