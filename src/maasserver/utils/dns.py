@@ -91,6 +91,16 @@ def get_ip_based_hostname(ip):
     return hostname
 
 
+def get_iface_name_based_hostname(iface_name):
+    """Given the specified interface name, creates an automatically generated
+    hostname by converting the '_' characters in it to '-' characters.
+
+    :param iface_name: Input value for the interface name.
+    """
+    hostname = iface_name.replace("_", "-")
+    return hostname
+
+
 def validate_url(url, schemes=("http", "https")):
     """Validator for URLs.
 
