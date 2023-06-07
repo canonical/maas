@@ -1,3 +1,10 @@
+maas (1:2.9.3~rc2-0ubuntu1) lunar; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 RC2.
+  * Reapply 2.8.x fixes since MAAS 2.9.2.
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Wed, 07 Jun 2023 17:12:21 -0300
+
 maas (1:2.9.3~rc1-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 RC1.
