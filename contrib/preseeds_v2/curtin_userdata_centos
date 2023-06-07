@@ -5,5 +5,8 @@ debconf_selections:
   {{line}}
   {{endfor}}
 
+early_commands:
+  centos70_xfs_lp1958433: [ '/bin/sh', '-c', 'if [ "{{release}}" = "centos70" ] && mkfs.xfs 2>&1 | grep -q "reflink=0|1"; then WRAPPER=/usr/local/sbin/mkfs.xfs; echo "#!/bin/sh" >$WRAPPER && echo "exec $(which mkfs.xfs) -m reflink=0 \"\$@\"" >>$WRAPPER && chmod +x $WRAPPER && echo "Wrapper: $WRAPPER" && cat $WRAPPER; fi' ]
+
 late_commands:
   maas: [wget, '--no-proxy', '{{node_disable_pxe_url}}', '--post-data', '{{node_disable_pxe_data}}', '-O', '/dev/null']
