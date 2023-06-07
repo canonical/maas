@@ -65,6 +65,7 @@ import os
 import platform
 import random
 import re
+from shutil import which
 import ssl
 import string
 from subprocess import (
@@ -823,6 +824,9 @@ class Wedge(BMCConfig):
         return "Facebook Wedge"
 
     def _detect_known_switch(self):
+        if which("dmidecode") is None:
+            raise ConfigurationError("Missing 'dmidecode' binary")
+
         # This is based of https://github.com/lool/sonic-snap/blob/master/common/id-switch
         # try System Information > Manufacturer first
         # XXX ltrager 2020-09-16 - It would be better to get these values from
@@ -951,6 +955,10 @@ class Redfish(IPMIBase):
         # 		Redfish Service Port: 443
         # 		Redfish Service Vlan: 0
         # 		Redfish Service Hostname: garamond
+
+        if which("dmidecode") is None:
+            raise ConfigurationError("Missing 'dmidecode' binary")
+
         smbios_data = check_output(
             ["dmidecode", "-t", "42"], timeout=COMMAND_TIMEOUT
         ).decode()

@@ -1170,6 +1170,7 @@ class TestRedfish(MAASTestCase):
             Host Interface Type: OEM"""
         ).encode()
 
+        self.patch(bmc_config, "which").return_value = True
         self.mock_check_output.return_value = data
         self.assertIsNone(self.redfish._get_smbios_data())
 
@@ -1227,6 +1228,7 @@ class TestRedfish(MAASTestCase):
             Redfish Service Hostname:"""
         )
 
+        self.patch(bmc_config, "which").return_value = True
         self.mock_check_output.return_value = data
         self.assertEqual(expected, self.redfish._get_smbios_data())
 
@@ -1298,6 +1300,7 @@ class TestRedfish(MAASTestCase):
             Redfish Service Hostname: garamond"""
         )
 
+        self.patch(bmc_config, "which").return_value = True
         self.mock_check_output.return_value = data
         self.assertEqual(expected, self.redfish._get_smbios_data())
 
@@ -1531,6 +1534,12 @@ class TestRedfish(MAASTestCase):
         )
         self.assertFalse(self.redfish.detected())
 
+    def test_missing_dmidecode_exception(self):
+        self.patch(bmc_config, "which").return_value = None
+        self.assertRaises(
+            bmc_config.ConfigurationError, self.redfish._get_smbios_data
+        )
+
 
 class TestGetIPMILocateOutput(MAASTestCase):
     def test_get_ipmi_locate_output(self):
@@ -1591,6 +1600,7 @@ class TestWedge(MAASTestCase):
                 ),
             ]
         )
+        self.patch(bmc_config, "which").return_value = True
         self.assertEqual("accton", self.wedge._detect_known_switch())
 
     def test_detect_known_switch_false(self):
@@ -1599,6 +1609,7 @@ class TestWedge(MAASTestCase):
             factory.make_name("system-product-name").encode(),
             factory.make_name("baseboard-product-name").encode(),
         )
+        self.patch(bmc_config, "which").return_value = True
         self.assertIsNone(self.wedge._detect_known_switch())
 
     def test_detected_unknown_switch(self):
@@ -1690,6 +1701,12 @@ class TestWedge(MAASTestCase):
                 "power_pass": "0penBmc",
             },
             self.wedge.get_credentials(),
+        )
+
+    def test_missing_dmidecode_exception(self):
+        self.patch(bmc_config, "which").return_value = None
+        self.assertRaises(
+            bmc_config.ConfigurationError, self.wedge._detect_known_switch
         )
 
 
