@@ -5,6 +5,7 @@
 
 
 import os
+import random
 import re
 from unittest.mock import sentinel
 
@@ -269,6 +270,8 @@ class TestUEFIAMD64BootMethodRegex(MAASTestCase):
         )
 
     def test_re_config_file_does_not_match_default_grub_config_file(self):
+        # The default grub.cfg is on the filesystem let the normal handler
+        # grab it.
         self.assertIsNone(re_config_file.match(b"grub/grub.cfg"))
 
     def test_re_config_file_with_default(self):
@@ -300,6 +303,86 @@ class TestUEFIAMD64BootMethodRegex(MAASTestCase):
 
 class TestUEFIAMD64BootMethod(MAASTestCase):
     """Tests `provisioningserver.boot.uefi_amd64.UEFIAMD64BootMethod`."""
+
+    def test_match_path_none(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertIsNone(
+            method.match_path(backend, factory.make_string().encode())
+        )
+
+    def test_match_path_mac_colon(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        mac = factory.make_mac_address()
+        self.assertEqual(
+            {"mac": mac.replace(":", "-")},
+            method.match_path(backend, f"/grub/grub.cfg-{mac}".encode()),
+        )
+
+    def test_match_path_mac_dash(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        mac = factory.make_mac_address().replace(":", "-")
+        self.assertEqual(
+            {"mac": mac},
+            method.match_path(backend, f"/grub/grub.cfg-{mac}".encode()),
+        )
+
+    def test_match_path_arch(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        arch = factory.make_string()
+        self.assertEqual(
+            {"arch": arch},
+            method.match_path(
+                backend, f"/grub/grub.cfg-default-{arch}".encode()
+            ),
+        )
+
+    def test_match_path_arch_x86_64(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "amd64"},
+            method.match_path(backend, b"/grub/grub.cfg-default-x86_64"),
+        )
+
+    def test_match_path_arch_powerpc(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-powerpc"),
+        )
+
+    def test_match_path_arch_ppc64(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-ppc64"),
+        )
+
+    def test_match_path_arch_ppc64le(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-ppc64le"),
+        )
+
+    def test_match_path_arch_subarch(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        arch = factory.make_string()
+        subarch = factory.make_string()
+        self.assertEqual(
+            {"arch": arch, "subarch": subarch},
+            method.match_path(
+                backend, f"/grub/grub.cfg-default-{arch}-{subarch}".encode()
+            ),
+        )
 
     def test_link_bootloader_creates_grub_cfg(self):
         method = UEFIAMD64BootMethod()
