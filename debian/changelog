@@ -1,3 +1,9 @@
+maas (1:2.9.3~rc1-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 RC1.
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Tue, 06 Jun 2023 21:13:12 -0300
+
 maas (1:2.9.3~beta5-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta5.
