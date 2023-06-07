@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Configuration for the MAAS cluster.
@@ -104,6 +104,7 @@ It can be used like so::
 
 from contextlib import closing, contextmanager
 from copy import deepcopy
+from functools import lru_cache
 from itertools import islice
 import json
 import logging
@@ -812,3 +813,10 @@ def is_dev_environment():
         return False
     else:
         return True
+
+
+@lru_cache(1)
+def debug_enabled():
+    """Return and cache whether debug has been enabled."""
+    with ClusterConfiguration.open() as config:
+        return config.debug

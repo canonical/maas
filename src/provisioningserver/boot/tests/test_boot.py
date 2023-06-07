@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.boot`."""
@@ -30,6 +30,7 @@ from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import atomic_symlink, tempdir
 
@@ -330,6 +331,18 @@ class TestBootMethod(MAASTestCase):
             "%s/%s" % (image_dir, kernel_params.boot_dtb),
             template_namespace["dtb_path"](kernel_params),
         )
+
+    def test_compose_template_namespace_include_debug(self):
+        debug = factory.pick_bool()
+        boot.debug_enabled.cache_clear()
+        self.addClassCleanup(boot.debug_enabled.cache_clear)
+        self.useFixture(ClusterConfigurationFixture(debug=debug))
+        kernel_params = make_kernel_parameters()
+        method = FakeBootMethod()
+
+        template_namespace = method.compose_template_namespace(kernel_params)
+
+        self.assertEqual(debug, template_namespace["debug"])
 
 
 class TestGetArchiveUrl(MAASTestCase):
