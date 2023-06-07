@@ -1,6 +1,9 @@
 maas (1:2.9.3~rc1-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 RC1.
+  * Reapply SE fixes since MAAS 2.9.2.
+  * Reapply ui fixes since MAAS 2.9.2 and more
+    with maas-ui update to top of 2.9 branch.
 
  -- Mauricio Faria de Oliveira <mfo@canonical.com>  Tue, 06 Jun 2023 21:13:12 -0300
 
