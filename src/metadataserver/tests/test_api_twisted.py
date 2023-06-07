@@ -18,7 +18,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
-from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models import Event, NodeMetadata, Pod
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
@@ -1188,6 +1188,38 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
         self.assertIsNone(reload_object(virsh_password_meta))
         self.assertIsNone(reload_object(lxd_cert_meta))
+
+    def test_creates_vmhost_prefer_not_discovered_addresses(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
+            status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod",
+            install_kvm=True,
+            register_vmhost=True,
+        )
+        factory.make_StaticIPAddress(
+            interface=node.boot_interface,
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+        )
+        ip = factory.make_StaticIPAddress(
+            interface=node.boot_interface,
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+
+        NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123"
+        )
+        _create_vmhost_for_deployment(node)
+        vmhost = Pod.objects.get(power_type="virsh")
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        addr = ip.ip
+        if IPAddress(addr).version == 6:
+            addr = f"[{addr}]"
+        self.assertEqual(
+            vmhost.power_parameters.get("power_address"),
+            f"qemu+ssh://virsh@{addr}/system",
+        )
 
     def test_creates_vmhost_pick_right_interface_address(self):
         user = factory.make_User()
