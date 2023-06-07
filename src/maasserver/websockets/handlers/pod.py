@@ -97,33 +97,37 @@ class PodHandler(TimestampedModelHandler):
         """Add extra fields to `data`."""
         if self.user.is_superuser:
             data.update(obj.power_parameters)
-        data["type"] = obj.power_type
-        data["total"] = self.dehydrate_total(obj)
-        data["used"] = self.dehydrate_used(obj)
-        data["available"] = self.dehydrate_available(obj)
-        data["composed_machines_count"] = obj.node_set.filter(
-            node_type=NODE_TYPE.MACHINE
-        ).count()
-        data["owners_count"] = (
-            obj.node_set.exclude(owner=None)
-            .values_list("owner")
-            .distinct()
-            .count()
+        data.update(
+            {
+                "type": obj.power_type,
+                "total": self.dehydrate_total(obj),
+                "used": self.dehydrate_used(obj),
+                "available": self.dehydrate_available(obj),
+                "composed_machines_count": obj.node_set.filter(
+                    node_type=NODE_TYPE.MACHINE
+                ).count(),
+                "owners_count": (
+                    obj.node_set.exclude(owner=None)
+                    .values_list("owner")
+                    .distinct()
+                    .count()
+                ),
+                "hints": self.dehydrate_hints(obj.hints),
+                "storage_pools": [
+                    self.dehydrate_storage_pool(pool)
+                    for pool in obj.storage_pools.all()
+                ],
+                "default_storage_pool": (
+                    obj.default_storage_pool.pool_id
+                    if obj.default_storage_pool
+                    else None
+                ),
+                "host": obj.host.system_id if obj.host else None,
+                "numa_pinning": self.dehydrate_numa_pinning(obj),
+            }
         )
-        data["hints"] = self.dehydrate_hints(obj.hints)
-        storage_pools = obj.storage_pools.all()
-        if len(storage_pools) > 0:
-            pools_data = []
-            for pool in storage_pools:
-                pools_data.append(self.dehydrate_storage_pool(pool))
-            data["storage_pools"] = pools_data
-            data["default_storage_pool"] = obj.default_storage_pool.pool_id
-        if obj.host is not None:
-            data["host"] = obj.host.system_id
-        else:
-            data["host"] = None
         if not for_list:
-            if obj.host is not None:
+            if obj.host:
                 data["attached_vlans"] = list(
                     obj.host.interface_set.all().values_list(
                         "vlan_id", flat=True
@@ -140,8 +144,6 @@ class PodHandler(TimestampedModelHandler):
             else:
                 data["attached_vlans"] = []
                 data["boot_vlans"] = []
-
-        data["numa_pinning"] = self.dehydrate_numa_pinning(obj)
 
         if self.user.has_perm(PodPermission.compose, obj):
             data["permissions"].append("compose")
