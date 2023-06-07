@@ -42,7 +42,6 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
-from maasserver.models import Fabric
 from maasserver.models import interface as interface_module
 from maasserver.models.config import NetworkDiscoveryConfig
 from maasserver.models.interface import (
@@ -2519,25 +2518,22 @@ class TestUpdateIpAddresses(MAASServerTestCase):
 
     def test_creates_missing_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        self.assertEqual(0, interface.ip_addresses.count())
         network = factory.make_ip4_or_6_network()
         cidr = str(network)
         address = str(network.ip)
         interface.update_ip_addresses([cidr])
 
-        default_fabric = Fabric.objects.get_default_fabric()
         subnets = Subnet.objects.filter(
-            cidr=str(network.cidr), vlan__fabric=default_fabric
+            cidr=str(network.cidr), vlan=interface.vlan
         )
         self.assertEqual(1, len(subnets))
         self.assertEqual(1, interface.ip_addresses.count())
-        self.assertThat(
-            interface.ip_addresses.first(),
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                subnet=subnets[0],
-                ip=address,
-            ),
-        )
+
+        ip = interface.ip_addresses.first()
+        self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(ip.subnet, subnets[0])
+        self.assertEqual(ip.ip, address)
 
     def test_creates_discovered_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
