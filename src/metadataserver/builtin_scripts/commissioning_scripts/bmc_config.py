@@ -183,7 +183,7 @@ class IPMI(BMCConfig):
             )
             raise
         section = None
-        for line in proc.stdout.decode().splitlines():
+        for line in proc.stdout.decode(errors="surrogateescape").splitlines():
             line = line.split("#")[0].strip()
             if not line:
                 continue
