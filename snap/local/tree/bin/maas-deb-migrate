@@ -65,17 +65,21 @@ cleanup_data() {
 }
 
 apply_db_patches() {
-    if maas_snap_mode | grep -q "region"; then
-        snap_run "maas-region migrate"
+    if ! maas_snap_mode | grep -q "region"; then
+        return
     fi
 
+    snap_run "maas-region migrate"
     # patch the value of the default cloud images keyring to point to the one
     # in the snap
-    local keyring="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    cat <<EOF | pg_do psql maasdb
-UPDATE maasserver_bootsource
-SET keyring_filename = '${MAAS_SNAP}${keyring}'
-WHERE keyring_filename = '${keyring}'
+    cat <<EOF | snap_run "maas-region shell"
+from maasserver.models import BootSource
+keyring = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+(
+ BootSource.objects
+ .filter(keyring_filename=keyring)
+ .update(keyring_filename=f"/snap/maas/current{keyring}")
+)
 EOF
 }
 
