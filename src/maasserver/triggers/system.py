@@ -2067,30 +2067,69 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
           iface_name text;
           ip_addr text;
           address_ttl int;
+          iface_id bigint;
+          boot_iface_id bigint;
         BEGIN
           ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
           ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
           IF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
-            SELECT iface.name, node.hostname, node.node_type, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, node_type, domain, address_ttl
-              FROM maasserver_interface AS iface
-              JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
-              JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=NEW.interface_id;
+            SELECT
+              iface.name,
+              node.hostname,
+              node.node_type,
+              domain_tbl.name,
+              COALESCE(domain_tbl.ttl, 0),
+              iface.id,
+              node.boot_interface_id
+            INTO
+              iface_name,
+              current_hostname,
+              node_type, domain,
+              address_ttl,
+              iface_id,
+              boot_iface_id
+            FROM
+              maasserver_interface AS iface
+            JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
+            JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=NEW.interface_id;
             SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
             IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
-                PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
-                PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                IF (iface_id = boot_iface_id) THEN
+                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                ELSE
+                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                END IF;
             END IF;
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
             IF EXISTS(SELECT id FROM maasserver_interface WHERE id=OLD.interface_id) THEN
-                SELECT iface.name, node.hostname, node.node_type, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, node_type, domain, address_ttl
-                  FROM maasserver_interface AS iface
-                  JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
-                  JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=OLD.interface_id;
+                SELECT
+                  iface.name,
+                  node.hostname,
+                  node.node_type,
+                  domain_tbl.name,
+                  COALESCE(domain_tbl.ttl, 0),
+                  iface.id,
+                  node.boot_interface_id
+                INTO
+                  iface_name,
+                  current_hostname,
+                  node_type,
+                  domain,
+                  address_ttl,
+                  iface_id,
+                  boot_iface_id
+                FROM
+                  maasserver_interface AS iface
+                JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
+                JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=OLD.interface_id;
                 IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
                     IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
                       SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
-                      PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || ip_addr);
-                      PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || ip_addr);
+                      IF (iface_id = boot_iface_id) THEN
+                          PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || ip_addr);
+                      ELSE
+                          PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || ip_addr);
+                      END IF;
                     ELSE
                       PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' A ' || OLD.interface_id);
                       PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' AAAA ' || OLD.interface_id);
