@@ -26,18 +26,17 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
+from os.path import getmtime
+from subprocess import check_call
+from time import sleep, time
+
 
 def lldpd_capture(reference_file, time_delay):
     """Wait until `lldpd` has been running for `time_delay` seconds.
 
     On an Ubuntu system, `reference_file` is typically `lldpd`'s UNIX
     socket in `/var/run`. After waiting capture any output.
-
     """
-    from os.path import getmtime
-    from subprocess import check_call
-    from time import sleep, time
-
     time_ref = getmtime(reference_file)
     time_remaining = time_ref + time_delay - time()
     if time_remaining > 0:
