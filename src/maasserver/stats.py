@@ -13,6 +13,7 @@ import base64
 from collections import Counter, defaultdict
 from datetime import timedelta
 import json
+from pathlib import Path
 
 from django.db.models import Case, Count, F, Max, Q, When
 import requests
@@ -49,6 +50,7 @@ from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -437,6 +439,15 @@ def get_vault_stats():
     return {"enabled": Config.objects.get_config("vault_enabled", False)}
 
 
+def get_ansible_stats(path=None):
+    n_install = 0
+    if not path:
+        path = Path(get_maas_data_path(".ansible"))
+    if path.is_file():
+        n_install += 1
+    return {"ansible_installs": n_install}
+
+
 def get_dhcp_snippets_stats():
     dhcp_snippets = DHCPSnippet.objects.aggregate(
         node_count=Count("pk", filter=(~Q(node=None) & Q(subnet=None))),
@@ -508,6 +519,8 @@ def get_maas_stats():
         "bmcs": get_bmc_stats(),
         "vault": get_vault_stats(),
         "tags": get_tags_stats(),
+        # ansible installs?
+        "ansible": get_ansible_stats(),
     }
 
 

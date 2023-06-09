@@ -4,6 +4,7 @@
 
 import base64
 import json
+from pathlib import Path
 from random import randrange
 
 from django.db import transaction
@@ -35,6 +36,7 @@ from maasserver.models import (
 )
 from maasserver.secrets import SecretManager
 from maasserver.stats import (
+    get_ansible_stats,
     get_bmc_stats,
     get_brownfield_stats,
     get_custom_images_deployed_stats,
@@ -61,6 +63,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maastesting import get_testing_timeout
+from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -482,7 +485,11 @@ class TestMAASStats(MAASServerTestCase):
                 "automatic_tag_count": 0,
                 "with_kernel_opts_count": 0,
             },
+            "ansible": {
+                "ansible_installs": 0,
+            },
         }
+
         self.assertEqual(stats, expected)
 
     def test_get_machine_stats_only_physical_storage(self):
@@ -671,6 +678,9 @@ class TestMAASStats(MAASServerTestCase):
                 "total_count": 0,
                 "automatic_tag_count": 0,
                 "with_kernel_opts_count": 0,
+            },
+            "ansible": {
+                "ansible_installs": 0,
             },
         }
         self.assertEqual(get_maas_stats(), expected)
@@ -869,6 +879,17 @@ class TestMAASStats(MAASServerTestCase):
                 "with_kernel_opts_count": 6,
             },
             get_tags_stats(),
+        )
+
+    def test_ansible_stats(self):
+        tempdir = self.useFixture(TempDirectory())
+        stat = Path(tempdir.path + "/.ansible")
+        stat.write_text("")
+        self.assertEqual(
+            {
+                "ansible_installs": 1,
+            },
+            get_ansible_stats(stat),
         )
 
 
