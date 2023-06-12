@@ -32,7 +32,7 @@ install: build
 	install -t $(DESTDIR)/bin -D $(BUILD_DIR)/*
 
 .PHONY: test
-test:
+test: vendor
 	CGO_ENABLED=1 $(GO) test -race ./...
 
 .PHONY: generate
