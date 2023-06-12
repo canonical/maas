@@ -78,6 +78,46 @@ class TestValidateProduct(MAASTestCase):
             )
         )
 
+    def test_validates_ubuntu_with_platform(self):
+        self.assertTrue(
+            validate_product(
+                {"os": "ubuntu"},
+                "com.ubuntu.maas.daily:v3+platform:boot:%s:%s:%s"
+                % (
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("sub_arch"),
+                ),
+            )
+        )
+
+    def test_rejects_ubuntu_with_v4_platform(self):
+        self.assertFalse(
+            validate_product(
+                {"os": "ubuntu"},
+                "com.ubuntu.maas.daily:v4+platform:boot:%s:%s:%s"
+                % (
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("sub_arch"),
+                ),
+            )
+        )
+
+    def test_rejects_ubuntu_with_any_other_suffix(self):
+        self.assertFalse(
+            validate_product(
+                {"os": "ubuntu"},
+                "com.ubuntu.maas.daily:v3%s:boot:%s:%s:%s"
+                % (
+                    factory.make_name("suffix"),
+                    factory.make_name("version"),
+                    factory.make_name("arch"),
+                    factory.make_name("sub_arch"),
+                ),
+            )
+        )
+
     def test_validates_bootloaders(self):
         acceptable_bootloaders = [
             {"os": "pxelinux", "arch": "i386", "bootloader-type": "pxe"},

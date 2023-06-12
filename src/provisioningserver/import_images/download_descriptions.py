@@ -26,8 +26,8 @@ from provisioningserver.import_images.helpers import (
 )
 
 # Compile a regex to validate Ubuntu product names. This only allows V2 and V3
-# Ubuntu images.
-UBUNTU_REGEX = re.compile(".*:v[23]:.*", re.IGNORECASE)
+# Ubuntu images. "v3+platform" is intended for platform-optimised kernels.
+UBUNTU_REGEX = re.compile(r".*:v([23]|3\+platform):.*", re.IGNORECASE)
 # Compile a regex to validate Ubuntu Core. By having 'v4' in the
 # product name it is prevented from being shown in older versions of
 # MAAS which do not support Ubuntu Core.
