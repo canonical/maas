@@ -48,6 +48,10 @@ install: $(BINARIES)
 	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(BINARIES)
 .PHONY: install
 
+test: vendor
+	CGO_ENABLED=1 go test -race ./...
+.PHONY: test
+
 vendor: vendor/modules.txt
 .PHONY: vendor
 

@@ -146,7 +146,7 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 .PHONY: test-py
 
 test-go:
-	@find src -maxdepth 3 -type f -name go.mod -execdir make test \;
+	@find src -maxdepth 3 -type f -name go.mod -execdir sh -c "make test" {} +
 .PHONY: test-go
 
 test-perf: bin/pytest
@@ -190,9 +190,8 @@ lint-oapi: openapi.yaml
 
 # Go fmt
 lint-go: $(BIN_DIR)/golangci-lint
-	@find src -maxdepth 3 -type f -name go.mod -execdir golangci-lint run $(if $(LINT_AUTOFIX),--fix,) ./... \; | \
-		tee /tmp/golangci-lint.lint
-	@test ! -s /tmp/golangci-lint.lint
+	@find src -maxdepth 3 -type f -name go.mod -execdir \
+		sh -c "golangci-lint run $(if $(LINT_AUTOFIX),--fix,) ./..." {} +
 .PHONY: lint-go
 
 lint-go-fix: LINT_AUTOFIX=true
