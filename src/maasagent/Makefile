@@ -33,6 +33,10 @@ install: build
 
 .PHONY: test
 test: vendor
+	CGO_ENABLED=0 $(GO) test ./...
+
+.PHONY: test-race
+test-race: vendor
 	CGO_ENABLED=1 $(GO) test -race ./...
 
 .PHONY: generate
