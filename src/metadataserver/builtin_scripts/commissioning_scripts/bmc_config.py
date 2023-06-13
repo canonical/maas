@@ -162,7 +162,7 @@ class IPMI(BMCConfig):
         password=None,
         ipmi_k_g="",
         ipmi_privilege_level="",
-        **kwargs
+        **kwargs,
     ):
         self.username = username
         self.password = password
@@ -174,7 +174,7 @@ class IPMI(BMCConfig):
     def _bmc_get_config(self, section=None):
         """Fetch and cache all BMC settings."""
         print("INFO: Reading current IPMI BMC values...")
-        cmd = ["bmc-config", "--checkout"]
+        cmd = ["bmc-config", "--checkout", "--verbose"]
         if section:
             cmd += ["-S", section]
         try:
@@ -438,41 +438,53 @@ class IPMI(BMCConfig):
     def _config_ipmi_lan_channel_settings(self):
         """Enable IPMI-over-Lan (Lan_Channel) if it is disabled"""
         print("INFO: Configuring IPMI Lan_Channel...")
-        lan_channel = self._bmc_config.get("Lan_Channel", {})
 
-        for key in [
-            "Volatile_Access_Mode",
-            "Non_Volatile_Access_Mode",
-        ]:
-            if lan_channel.get(key) != "Always_Available":
-                print(
-                    "INFO: Enabling BMC network access - Lan_Channel:%s" % key
-                )
-                # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
-                # If that happens, it would cause the script to fail preventing
-                # the script from continuing. To address this, simply catch the
-                # error, return and allow the script to continue.
-                try:
-                    self._bmc_set("Lan_Channel", key, "Always_Available")
-                except Exception:
-                    print(
-                        "WARNING: Unable to set Lan_Channel:%s. "
-                        "BMC may be unavailable over the network!" % key
-                    )
-
-        self._bmc_set_keys(
+        for channel in [
             "Lan_Channel",
-            [
-                "%s_%s" % (auth_type, volatility)
-                for auth_type in [
-                    "Enable_User_Level_Auth",
-                    "Enable_Per_Message_Auth",
-                    "Enable_Pef_Alerting",
-                ]
-                for volatility in ["Volatile", "Non_Volatile"]
-            ],
-            "Yes",
-        )
+            "Lan_Channel_Channel_1",
+            "Lan_Channel_Channel_2",
+            "Lan_Channel_Channel_3",
+        ]:
+            lan_channel = self._bmc_config.get(channel, {})
+
+            if not lan_channel:
+                continue
+
+            for key in [
+                "Volatile_Access_Mode",
+                "Non_Volatile_Access_Mode",
+            ]:
+                if lan_channel.get(key) != "Always_Available":
+                    print(
+                        "INFO: Enabling BMC network access - %s:%s"
+                        % (channel, key)
+                    )
+                    # Some BMC's don't support setting Lan_Channel (see LP: #1287274).
+                    # If that happens, it would cause the script to fail preventing
+                    # the script from continuing. To address this, simply catch the
+                    # error, return and allow the script to continue.
+                    try:
+                        self._bmc_set(channel, key, "Always_Available")
+                    except Exception:
+                        print(
+                            "WARNING: Unable to set %s:%s. "
+                            "BMC may be unavailable over the network!"
+                            % (channel, key)
+                        )
+
+            self._bmc_set_keys(
+                channel,
+                [
+                    f"{auth_type}_{volatility}"
+                    for auth_type in [
+                        "Enable_User_Level_Auth",
+                        "Enable_Per_Message_Auth",
+                        "Enable_Pef_Alerting",
+                    ]
+                    for volatility in ["Volatile", "Non_Volatile"]
+                ],
+                "Yes",
+            )
 
     def _config_lan_conf_auth(self):
         """Configure Lan_Conf_Auth."""
@@ -707,6 +719,9 @@ class IPMI(BMCConfig):
         mac_address = None
         for section_name, key in [
             ("Lan_Conf", "IP_Address"),
+            ("Lan_Conf_Channel_1", "IP_Address"),
+            ("Lan_Conf_Channel_2", "IP_Address"),
+            ("Lan_Conf_Channel_3", "IP_Address"),
             ("Lan6_Conf", "IPv6_Static_Addresses"),
             ("Lan6_Conf", "IPv6_Dynamic_Addresses"),
         ]:
@@ -729,28 +744,28 @@ class IPMI(BMCConfig):
                     time.sleep(2)
                     continue
                 if section_name.startswith("Lan6_"):
-                    return "[%s]" % ip, mac_address
-                return ip, mac_address
+                    return section_name, "[%s]" % ip, mac_address
+                return section_name, ip, mac_address
             # No valid IP address was found.
-        return None, mac_address
+        return None, None, mac_address
 
     def get_bmc_ip(self):
         """Configure and retreive IPMI BMC IP."""
-        ip_address, mac_address = self._get_bmc_ip()
+        section_name, ip_address, mac_address = self._get_bmc_ip()
         if ip_address:
             return ip_address, mac_address
         print("INFO: Attempting to enable preconfigured static IP on BMC...")
-        self._bmc_set("Lan_Conf", "IP_Address_Source", "Static")
+        self._bmc_set(section_name, "IP_Address_Source", "Static")
         for _ in range(6):
             time.sleep(10)
-            ip_address, mac_address = self._get_bmc_ip(True)
+            _, ip_address, mac_address = self._get_bmc_ip(True)
             if ip_address:
                 return ip_address, mac_address
         print("INFO: Attempting to enable DHCP on BMC...")
-        self._bmc_set("Lan_Conf", "IP_Address_Source", "Use_DHCP")
+        self._bmc_set(section_name, "IP_Address_Source", "Use_DHCP")
         for _ in range(6):
             time.sleep(10)
-            ip_address, mac_address = self._get_bmc_ip(True)
+            _, ip_address, mac_address = self._get_bmc_ip(True)
             if ip_address:
                 print("WARNING: BMC is configured to use DHCP!")
                 return ip_address, mac_address
