@@ -237,13 +237,16 @@ class TestIpBasedHostnameGenerator(MAASTestCase):
         )
 
     def test_ipv6_text(self):
-        ipv4 = factory.make_ipv6_address()
-        self.expectThat(
-            get_ip_based_hostname(ipv4), Equals(ipv4.replace(":", "-"))
+        self.assertEqual(
+            get_ip_based_hostname("2001:67c8:1562:1511:1:1:1:1"),
+            "2001-67c8-1562-1511-1-1-1-1",
         )
-        self.expectThat(
-            get_ip_based_hostname("2001:67c:1562::15"),
-            Equals("2001-67c-1562--15"),
+
+    def test_ipv6_does_not_generate_invalid_name(self):
+        ipv6s = ["2001:67c:1562::15", "2001:67c:1562:15::"]
+        results = [get_ip_based_hostname(ipv6) for ipv6 in ipv6s]
+        self.assertEqual(
+            results, ["2001-67c-1562-0-0-0-0-15", "2001-67c-1562-15-0-0-0-0"]
         )
 
 

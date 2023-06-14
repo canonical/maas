@@ -8,7 +8,7 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import _lazy_re_compile, URLValidator
-from netaddr import AddrConversionError, IPAddress
+from netaddr import AddrFormatError, IPAddress, ipv6_full
 
 
 def validate_domain_name(name):
@@ -85,9 +85,9 @@ def get_ip_based_hostname(ip):
     :param ip: The IPv4 or IPv6 address (can be an integer or string)
     """
     try:
-        hostname = str(IPAddress(ip).ipv4()).replace(".", "-")
-    except AddrConversionError:
-        hostname = str(IPAddress(ip).ipv6()).replace(":", "-")
+        hostname = IPAddress(ip, version=4).format().replace(".", "-")
+    except AddrFormatError:
+        hostname = IPAddress(ip, version=6).format(ipv6_full).replace(":", "-")
     return hostname
 
 
