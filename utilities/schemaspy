@@ -20,7 +20,7 @@ wget https://github.com/schemaspy/schemaspy/releases/download/v${SCHEMASPY_VERSI
 make syncdb
 
 cat <<EOF > ${DEPS_DIR}/run
-socat -v tcp-l:${PORT}>,bind=localhost,reuseaddr,fork unix:db/.s.PGSQL.5432 &
+socat -v tcp-l:${PORT},bind=localhost,reuseaddr,fork unix:db/.s.PGSQL.5432 &
 java -jar ${DEPS_DIR}/${SCHEMASPY_JAR} -t pgsql -dp ${PGJDBC_JAR} -host localhost -port ${PORT} -imageformat svg -nopages -hq -o ${OUT_DIR} -u $USER -db maas
 EOF
 trap '$(jobs -p) | xargs -r kill' EXIT
