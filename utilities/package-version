@@ -1,22 +1,26 @@
-#!/bin/bash
+#!/bin/bash -e
 
-SCRIPT_PATH="$(realpath "$(dirname "$0")")"
+set -o pipefail
+
+# Return project version from Python package metadata
+python_version() {
+    if [ -e setup.cfg ]; then
+        sed  -n 's/^version = //p' setup.cfg
+    else
+        sed -n 's/^version = "\(.*\)"$/\1/p' pyproject.toml
+    fi
+}
 
 # Return a Debian-compatible version from the Python version
 to_debian() {
     sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end'
 }
 
-maas_version() {
-    # need the full path, otherwise the python from the stage area is used when
-    # run inside a snap.
-    /usr/bin/python3 "$SCRIPT_PATH/../setup.py" --version | to_debian
-}
 
 # need the full path, otherwise the python from the stage area is used when run
 # inside a snap.  Also, replace the first - with a ~ for debian version
 # compatibility.
-VERSION=$(maas_version)
+VERSION=$(python_version | to_debian)
 GIT_REF=HEAD
 GIT_HASH=$(git rev-parse --short "$GIT_REF" || echo "0000000000" )
 GIT_REV_COUNT=$(git rev-list --count "$GIT_REF" || echo "0")
