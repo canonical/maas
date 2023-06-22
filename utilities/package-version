@@ -16,13 +16,9 @@ to_debian() {
     sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end'
 }
 
-
-# need the full path, otherwise the python from the stage area is used when run
-# inside a snap.  Also, replace the first - with a ~ for debian version
-# compatibility.
 VERSION=$(python_version | to_debian)
 GIT_REF=HEAD
-GIT_HASH=$(git rev-parse --short "$GIT_REF" || echo "0000000000" )
-GIT_REV_COUNT=$(git rev-list --count "$GIT_REF" || echo "0")
+GIT_HASH=$(git rev-parse --short "$GIT_REF" || echo 0000000000)
+GIT_REV_COUNT=$(git rev-list --count "$GIT_REF" || echo 0)
 
 echo "${VERSION}-${GIT_REV_COUNT}-g.${GIT_HASH}"
