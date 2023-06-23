@@ -105,6 +105,7 @@ parts:
       - nginx-core
       - nmap
       - openssh-client
+      - python3-asyncpg
       - python3-attr
       - python3-babel
       - python3-bson
@@ -119,6 +120,7 @@ parts:
       - python3-distro-info
       - python3-django
       - python3-django-piston3
+      - python3-fastapi
       - python3-formencode
       - python3-httplib2
       - python3-hvac
@@ -149,11 +151,14 @@ parts:
       - python3-rfc3339 # for macaroonbakery
       - python3-seamicroclient
       - python3-simplestreams
+      - python3-sqlalchemy
+      - python3-starlette
       - python3-tempita
       - python3-twisted
       - python3-txtftp
       - python3-tz
       - python3-urllib3 # for macaroonbakery
+      - python3-uvicorn
       - python3-yaml
       - python3-zhmcclient
       - python3-zope.interface

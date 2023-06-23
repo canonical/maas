@@ -13,6 +13,7 @@ nginx-core
 postgresql
 pxelinux
 python3-apt
+python3-asyncpg
 python3-attr
 python3-bson
 python3-crochet
@@ -21,6 +22,7 @@ python3-curtin
 python3-dev
 python3-distro-info
 python3-django-piston3
+python3-fastapi
 python3-formencode
 python3-hivex
 python3-httplib2
@@ -45,8 +47,11 @@ python3-pyparsing
 python3-pypureomapi
 python3-pyvmomi
 python3-requests
+python3-requests-unixsocket
 python3-seamicroclient
 python3-simplestreams
+python3-sqlalchemy
+python3-starlette
 python3-tempita
 python3-txtftp
 python3-tz
