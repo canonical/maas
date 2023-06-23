@@ -23,7 +23,6 @@ import random
 import re
 import socket
 from socket import gethostname
-import time
 from typing import List
 from urllib.parse import urlparse
 
@@ -4645,19 +4644,9 @@ class Node(CleanSave, TimestampedModel):
                         ip_obj = ip_to_obj[ip_result["ip_address"]]
                         if ip_result["used"]:
                             attempted_ips.add(ip_obj.ip)
-                            # Create a Neighbour reference to the IP address
-                            # so the next loop will not use that IP address.
-                            rack_interface = Interface.objects.filter(
-                                node_config__node__system_id=rack_id,
-                                ip_addresses__subnet_id=ip_obj.subnet_id,
-                            )
-                            rack_interface = rack_interface.order_by("id")
-                            rack_interface = rack_interface.first()
-                            rack_interface.update_neighbour(
-                                ip_obj.ip,
-                                ip_result.get("mac_address"),
-                                time.time(),
-                            )
+                            # lp:2024242: Do not add the neighbour: the network
+                            # discovery service will detect the traffic and
+                            # create the record accordingly
                             ip_obj.ip = None
                             ip_obj.temp_expires_on = None
                             ip_obj.save()

@@ -9525,9 +9525,9 @@ class TestNode_Start(MAASTransactionServerTestCase):
         auto_ip = reload_object(auto_ip)
         self.assertEqual(ip2, auto_ip.ip)
         self.assertIsNone(auto_ip.temp_expires_on)
-        self.assertCountEqual(
-            [ip1], Neighbour.objects.values_list("ip", flat=True)
-        )
+        # lp:2024242: claims auto ip should not add any neighbour if the ip
+        # is already used.
+        self.assertEqual(0, Neighbour.objects.count())
 
     def test_claims_auto_ip_addresses_retries_on_failure_from_rack(self):
         user = factory.make_User()
