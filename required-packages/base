@@ -61,5 +61,6 @@ python3-yaml
 python3-zhmcclient
 python3-zope.interface
 syslinux-common
+temporal
 ubuntu-keyring
 wget

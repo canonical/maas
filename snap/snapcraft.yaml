@@ -166,6 +166,7 @@ parts:
       - snmp # APC
       - squid
       - tcpdump
+      - temporal
       - ubuntu-keyring
       - util-linux
       - wget # DLI
