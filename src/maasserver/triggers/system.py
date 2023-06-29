@@ -2094,7 +2094,7 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
             JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=NEW.interface_id;
             SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
             IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
-                IF (iface_id = boot_iface_id) THEN
+                IF (iface_id = boot_iface_id OR boot_iface_id is NULL) THEN
                     PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
                 ELSE
                     PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
@@ -2183,20 +2183,39 @@ def render_dns_dynamic_update_node(op):
         CREATE OR REPLACE FUNCTION sys_dns_updates_maasserver_node_{op}()
         RETURNS trigger as $$
         DECLARE
-          hostname text;
           domain text;
           address_ttl int;
+          old_iface_name text;
+          old_ip text;
+          iface_name text;
+          new_ip text;
         BEGIN
-          IF ((TG_OP = 'INSERT' OR TG_OP = 'UPDATE') AND TG_LEVEL = 'ROW') THEN
-              IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
-                  PERFORM pg_notify('sys_dns_updates', 'RELOAD');
-              END IF;
+          IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
+            PERFORM pg_notify('sys_dns_updates', 'RELOAD');
           ELSE
-              IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
+              IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
+                SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=NEW.domain_id;
+                IF (OLD.boot_interface_id <> NEW.boot_interface_id) THEN
+                  IF (OLD.boot_interface_id IS NOT NULL) THEN
+                    SELECT iface.name, host(ip_addr.ip) INTO old_iface_name, old_ip
+                      FROM maasserver_interface_ip_addresses AS link
+                      JOIN maasserver_interface AS iface ON link.interface_id = iface.id
+                      JOIN maasserver_staticipaddress AS ip_addr ON link.staticipaddress_id = ip_addr.id WHERE link.interface_id = OLD.boot_interface_id AND ip_addr.ip IS NOT NULL;
+                    PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A ' || old_ip);
+                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || old_iface_name || '.' || NEW.hostname || ' A ' || address_ttl || ' ' || old_ip);
+                  END IF;
+                  SELECT iface.name, host(ip_addr.ip) INTO iface_name, new_ip
+                    FROM maasserver_interface_ip_addresses AS link
+                    JOIN maasserver_interface AS iface ON link.interface_id = iface.id
+                    JOIN maasserver_staticipaddress AS ip_addr on link.staticipaddress_id = ip_addr.id WHERE link.interface_id = NEW.boot_interface_id AND ip_addr.ip IS NOT NULL;
+                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || OLD.hostname || ' A ' || new_ip);
+                  PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || NEW.hostname || ' A ' || address_ttl || ' ' || new_ip);
+                ELSIF (OLD.hostname <> NEW.hostname) THEN
                   PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+                END IF;
               ELSE
-                  SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=OLD.domain_id;
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A');
+                SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=OLD.domain_id;
+                PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A');
               END IF;
           END IF;
           RETURN NULL;
