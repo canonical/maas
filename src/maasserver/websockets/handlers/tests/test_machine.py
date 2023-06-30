@@ -329,7 +329,6 @@ class TestMachineHandler(MAASServerTestCase):
             if (node.bmc is not None)
             else 0,
             "power_state": node.power_state,
-            "power_type": node.power_type,
             "pxe_mac": (
                 ""
                 if boot_interface is None
@@ -369,10 +368,18 @@ class TestMachineHandler(MAASServerTestCase):
                 "module": driver["module"],
                 "comment": driver["comment"],
             }
+        data["vlan"] = None
         if boot_interface:
             data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
+
+        data["power_type"] = None
+        data["ip_addresses"] = None
+        if data["pxe_mac"] != "":
+            data["power_type"] = node.power_type
             data["ip_addresses"] = handler.dehydrate_all_ip_addresses(node)
+
         bmc = node.bmc
+        data["pod"] = None
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data["pod"] = {"id": bmc.id, "name": bmc.name}
         if for_list:
@@ -401,6 +408,7 @@ class TestMachineHandler(MAASServerTestCase):
                     "permissions",
                     "physical_disk_count",
                     "pod",
+                    "power_type",
                     "pxe_mac",
                     "pxe_mac_vendor",
                     "spaces",
@@ -2478,8 +2486,8 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        self.assertNotIn(
-            "vlan", self.dehydrate_node(node, handler, for_list=True)
+        self.assertIsNone(
+            self.dehydrate_node(node, handler, for_list=True)["vlan"]
         )
 
     def test_get_object_returns_node_if_super_user(self):
