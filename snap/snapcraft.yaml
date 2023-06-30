@@ -147,7 +147,7 @@ parts:
       - python3-pyrsistent # for jsonschema
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
-      - python3-requests-unixsocket  # for pylxd
+      - python3-requests-unixsocket
       - python3-rfc3339 # for macaroonbakery
       - python3-seamicroclient
       - python3-simplestreams

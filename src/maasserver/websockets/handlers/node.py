@@ -168,8 +168,8 @@ class NodeHandler(TimestampedModelHandler):
         pk_type = str
         use_paginated_list = False
 
-    def __init__(self, user, cache, request):
-        super().__init__(user, cache, request)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._script_results = {}
 
     def update(self, params):
@@ -856,7 +856,7 @@ class NodeHandler(TimestampedModelHandler):
         if interface.vlan is not None:
             return {
                 "id": interface.vlan_id,
-                "name": "%s" % interface.vlan.name,
+                "name": interface.vlan.name if interface.vlan.name else "",
                 "fabric_id": interface.vlan.fabric.id,
                 "fabric_name": "%s" % interface.vlan.fabric.name,
             }

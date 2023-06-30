@@ -26,6 +26,7 @@ profile = "black"
 line_length = 79
 known_first_party = """
 apiclient
+maasapiserver
 maascli
 maasserver
 maastesting
@@ -42,6 +43,7 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/tests",
