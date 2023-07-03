@@ -181,6 +181,8 @@ fi
 
 deb-systemd-helper enable 'maas-regiond.service' >/dev/null || true
 deb-systemd-invoke restart 'maas-regiond.service' >/dev/null || true
+deb-systemd-helper enable 'maas-apiserver.service' >/dev/null || true
+deb-systemd-invoke restart 'maas-apiserver.service' >/dev/null || true
 
 if [ -f /lib/systemd/system/maas-rackd.service ]; then
     deb-systemd-invoke restart 'maas-rackd.service' >/dev/null || true

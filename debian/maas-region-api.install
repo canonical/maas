@@ -14,3 +14,7 @@ package-files/etc/maas/drivers.yaml etc/maas
 usr/bin/maas-region usr/sbin
 usr/bin/regiond usr/sbin
 debian/extras/maas_remote_syslog_compress etc/cron.d
+
+# Install API application
+debian/tmp/usr/lib/python3*/dist-packages/maasapiserver
+usr/bin/maas-apiserver /usr/sbin

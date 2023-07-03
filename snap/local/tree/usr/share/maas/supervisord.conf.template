@@ -26,6 +26,15 @@ redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/regiond.log
 serverurl=unix://%(ENV_SNAP_DATA)s/supervisord/sock
 startsecs=10
+
+[program:apiserver]
+process_name=apiserver
+command=%(ENV_SNAP)s/bin/run-apiserver
+stopasgroup=true
+killasgroup=true
+redirect_stderr=true
+stdout_logfile=%(ENV_SNAP_COMMON)s/log/apiserver.log
+startsecs=10
 {{endif}}
 
 

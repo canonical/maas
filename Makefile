@@ -38,6 +38,7 @@ export PGDATABASE := maas
 
 define BIN_SCRIPTS
 bin/maas \
+bin/maas-apiserver \
 bin/maas-common \
 bin/maas-power \
 bin/maas-rack \

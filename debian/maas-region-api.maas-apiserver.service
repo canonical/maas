@@ -1,0 +1,20 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=MAAS Region API
+Documentation=https://maas.io/
+Requires=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/maas/regiond.conf
+
+[Service]
+User=maas
+Group=maas
+Restart=always
+RestartSec=10s
+KillMode=mixed
+Environment="LOGFILE=/var/log/maas/apiserver.log"
+ExecStart=/bin/sh -c \
+    'exec /usr/sbin/maas-apiserver 2>&1 | \
+     tee -a $LOGFILE'

@@ -13,6 +13,7 @@ override_dh_auto_test:
 override_dh_installsystemd:
 	dh_installsystemd -p maas-common --no-start --name=maas-syslog maas-syslog.service
 	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-regiond maas-regiond.service
+	dh_installsystemd -p maas-region-api --no-start --restart-after-upgrade --name=maas-apiserver maas-apiserver.service
 	dh_installsystemd -p maas-rack-controller --no-start --name=maas-rackd maas-rackd.service
 	dh_installsystemd -p maas-common --name=maas-http maas-http.service
 	dh_installsystemd -p maas-proxy --name=maas-proxy maas-proxy.service

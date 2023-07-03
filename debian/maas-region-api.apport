@@ -66,6 +66,8 @@ def add_info(report, ui):
     attach_journal_logs(
         report, "MAASRegionLog", "maas-regiond")
     attach_journal_logs(
+        report, "MAASAPIServerLog", "maas-apiserver")
+    attach_journal_logs(
         report, "MAASClusterLog", "maas-rackd")
 
     # Attaching related packages info
