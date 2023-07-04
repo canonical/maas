@@ -107,13 +107,8 @@ keyring = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 EOF
 }
 
-configure_supervisord() {
-    /snap/bin/maas reconfigure-supervisord
-}
-
 maas_snap_mode_set
 clear_services
 migrate_data
 cleanup_data
 apply_db_patches
-configure_supervisord

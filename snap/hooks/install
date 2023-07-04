@@ -1,12 +1,12 @@
 #!/bin/bash -e
-# Copyright 2017-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p \
       "$SNAP_COMMON/maas" \
       "$SNAP_DATA/preseeds" \
       "$SNAP_DATA/root" \
-      "$SNAP_DATA/supervisord"
+      "$SNAP_DATA/pebble/layers"
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
@@ -26,5 +26,3 @@ done
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
 "$SNAP/bin/maas" migrate --configure
-# Force reconfigure of supervisord as config template might have changed
-"$SNAP/bin/maas" reconfigure-supervisord

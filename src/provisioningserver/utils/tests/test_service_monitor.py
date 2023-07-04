@@ -2,13 +2,13 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.service_monitor`."""
-
-
+import json
+from json import JSONDecodeError
 import logging
 import os
 import random
 from textwrap import dedent
-from unittest.mock import call, Mock, sentinel
+from unittest.mock import MagicMock, Mock, sentinel
 
 from fixtures import FakeLogger
 from testscenarios import multiply_scenarios
@@ -21,7 +21,12 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
 )
+from twisted.internet.interfaces import IConsumer
 from twisted.internet.task import deferLater
+from twisted.web._newclient import Response
+from twisted.web.client import Agent
+from twisted.web.http_headers import Headers
+from zope.interface import implementer
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
@@ -173,11 +178,16 @@ class TestServiceMonitor(MAASTestCase):
 
     def run_under_snap(self):
         self.patch(snap, "running_in_snap").return_value = True
+        # Snap always uses pebble
+        self.patch(
+            service_monitor_module, "_running_under_pebble"
+        ).return_value = True
+        self.patch(os, "environ", {"PEBBLE": "/snap/data/pebble"})
 
-    def make_service_monitor(self, fake_services=None):
+    def make_service_monitor(self, fake_services=None, pebble_agent=None):
         if fake_services is None:
             fake_services = [make_fake_service() for _ in range(3)]
-        return ServiceMonitor(*fake_services)
+        return ServiceMonitor(*fake_services, pebble_agent=pebble_agent)
 
     @inlineCallbacks
     def test_getServiceLock_returns_lock_for_service(self):
@@ -586,93 +596,471 @@ class TestServiceMonitor(MAASTestCase):
         self.assertEqual(stderr, example_stderr)
 
     @inlineCallbacks
-    def test_execSupervisorServiceAction_calls_supervisorctl(self):
-        snap_path = factory.make_name("path")
-        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
-            snap=snap_path
+    def test_execPebbleServiceAction_calls_pebble_api(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        action = "start"
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        mock_pebble_request.return_value = succeed({})
+        result = yield service_monitor._execPebbleServiceAction(
+            service_name, action
         )
+        mock_pebble_request.assert_called_once_with(
+            # The environment contains LC_ALL and LANG too.
+            "POST",
+            "/v1/services",
+            payload={"action": action, "services": [service_name]},
+        )
+        self.assertEqual((0, None, None), result)
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_turns_kill_to_stop(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        yield service_monitor._execPebbleServiceAction(service_name, "kill")
+        mock_pebble_request.assert_called_once_with(
+            # The environment contains LC_ALL and LANG too.
+            "POST",
+            "/v1/services",
+            payload={"action": "stop", "services": [service_name]},
+        )
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_raises_on_unsupported_action(self):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
-        )
-        mock_getProcessOutputAndValue.return_value = succeed((b"", b"", 0))
-        extra_opts = ("--extra", factory.make_name("extra"))
-        yield service_monitor._execSupervisorServiceAction(
-            service_name, action, extra_opts=extra_opts
-        )
-        cmd = os.path.join(snap_path, "bin", "run-supervisorctl")
-        cmd = (cmd, action) + extra_opts + (service_name,)
-        mock_getProcessOutputAndValue.assert_called_once_with(
-            # The environment contains LC_ALL and LANG too.
-            cmd[0],
-            cmd[1:],
-            env=get_env_with_bytes_locale(),
-        )
+        with ExpectedException(ValueError):
+            yield service_monitor._execPebbleServiceAction(
+                service_name, action
+            )
 
     @inlineCallbacks
-    def test_execSupervisorServiceAction_emulates_kill(self):
-        snap_path = factory.make_name("path")
-        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
-            snap=snap_path
-        )
+    def test_execPebbleServiceAction_service_performs_valid_get_request(self):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
-        fake_pid = random.randint(1, 100)
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed(
+            {"result": {"name": service_name, "current": "active"}}
         )
-        mock_getProcessOutputAndValue.side_effect = [
-            succeed((("%s" % fake_pid).encode("utf-8"), b"", 0)),
-            succeed((b"", b"", 0)),
-        ]
-        extra_opts = ("-s", factory.make_name("SIGKILL"))
-        yield service_monitor._execSupervisorServiceAction(
-            service_name, "kill", extra_opts=extra_opts
+        yield service_monitor._execPebbleServiceAction(
+            service_name, "services"
         )
-        cmd = os.path.join(snap_path, "bin", "run-supervisorctl")
-        mock_getProcessOutputAndValue.assert_has_calls(
-            [
-                call(
-                    cmd, ("pid", service_name), env=get_env_with_bytes_locale()
-                ),
-                call(
-                    "kill",
-                    extra_opts + ("%s" % fake_pid,),
-                    env=get_env_with_bytes_locale(),
-                ),
-            ],
+        mock_pebble_request.assert_called_once_with(
+            "GET",
+            f"/v1/services?names={service_name}",
+            payload={},
         )
 
     @inlineCallbacks
-    def test_execSupervisorServiceAction_decodes_stdout_and_stderr(self):
-        # From https://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-demo.txt.
-        example_text = (
-            "\u16bb\u16d6 \u16b3\u16b9\u16ab\u16a6 \u16a6\u16ab\u16cf "
-            "\u16bb\u16d6 \u16d2\u16a2\u16de\u16d6 \u16a9\u16be \u16a6"
-            "\u16ab\u16d7 \u16da\u16aa\u16be\u16de\u16d6 \u16be\u16a9"
-            "\u16b1\u16a6\u16b9\u16d6\u16aa\u16b1\u16de\u16a2\u16d7 "
-            "\u16b9\u16c1\u16a6 \u16a6\u16aa \u16b9\u16d6\u16e5\u16ab"
-        )
-        example_stdout = example_text[: len(example_text) // 2]
-        example_stderr = example_text[len(example_text) // 2 :]
-        snap_path = factory.make_name("path")
-        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
-            snap=snap_path
-        )
+    def test_execPebbleServiceAction_reload_sends_sighup(self):
         service_monitor = self.make_service_monitor()
-        mock_getProcessOutputAndValue = self.patch(
-            service_monitor_module, "getProcessOutputAndValue"
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        yield service_monitor._execPebbleServiceAction(service_name, "reload")
+        mock_pebble_request.assert_called_once_with(
+            "POST",
+            "/v1/signals",
+            payload={"signal": "SIGHUP", "services": [service_name]},
         )
-        mock_getProcessOutputAndValue.return_value = succeed(
-            (example_stdout.encode("utf-8"), example_stderr.encode("utf-8"), 0)
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_signal_sends_signal(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        signal = "SIGWHATEVER"
+        yield service_monitor._execPebbleServiceAction(
+            service_name, "signal", extra_opts=[signal]
         )
-        _, stdout, stderr = yield service_monitor._execSupervisorServiceAction(
-            factory.make_name("service"), factory.make_name("action")
+        mock_pebble_request.assert_called_once_with(
+            "POST",
+            "/v1/signals",
+            payload={"signal": signal, "services": [service_name]},
         )
-        self.assertEqual(stdout, example_stdout)
-        self.assertEqual(stderr, example_stderr)
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_signal_raises_on_multiple_signals(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        with ExpectedException(ValueError):
+            yield service_monitor._execPebbleServiceAction(
+                service_name,
+                "signal",
+                extra_opts=["SIGWHATEVER", "SIGANYTHING"],
+            )
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_signal_raises_when_no_extra_opts_provided(
+        self,
+    ):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        with ExpectedException(ValueError):
+            yield service_monitor._execPebbleServiceAction(
+                service_name, "signal"
+            )
+        mock_pebble_request.assert_not_called()
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_signal_raises_when_no_signals_found_in_extra_opts(
+        self,
+    ):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        mock_pebble_request.return_value = succeed({})
+        with ExpectedException(ValueError):
+            yield service_monitor._execPebbleServiceAction(
+                service_name, "signal", extra_opts=["AAAA", "BBBB"]
+            )
+        mock_pebble_request.assert_not_called()
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_waits_for_change_to_be_ready(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        def pebble_request_side_effect(method, endpoint, payload=None):
+            if method == "GET" and endpoint.startswith("/v1/changes"):
+                return succeed({"result": {"status": "Done", "ready": True}})
+            elif (
+                method == "POST"
+                and endpoint.startswith("/v1/services")
+                and payload
+                and payload["action"] == "start"
+            ):
+                return succeed({"type": "async", "change": 42})
+            else:
+                raise AssertionError(
+                    f"Unexpected request: {method} {endpoint} {payload}"
+                )
+
+        mock_pebble_request.side_effect = pebble_request_side_effect
+        yield service_monitor._execPebbleServiceAction(service_name, "start")
+        self.assertEqual(2, len(mock_pebble_request.mock_calls))
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_raises_errors_predictably(self):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        error = "TEST"
+        mock_pebble_request.side_effect = [fail(ValueError(error))]
+        result = yield service_monitor._execPebbleServiceAction(
+            service_name, "start"
+        )
+        self.assertEqual((1, None, error), result)
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_wait_on_change_raises_when_no_change_id_present(
+        self,
+    ):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        action = "start"
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        mock_pebble_request.return_value = succeed({"type": "async"})
+        code, output, error = yield service_monitor._execPebbleServiceAction(
+            service_name, action
+        )
+        self.assertEqual(1, code)
+        self.assertIsNone(output)
+        self.assertEqual(
+            "Expected to have change id in async request response", error
+        )
+
+    @inlineCallbacks
+    def test_execPebbleServiceAction_extract_service_status_raises_when_no_results(
+        self,
+    ):
+        service_monitor = self.make_service_monitor()
+        service_name = factory.make_name("service")
+        action = "services"
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        mock_pebble_request.return_value = succeed({"result": []})
+        code, output, error = yield service_monitor._execPebbleServiceAction(
+            service_name, action
+        )
+        self.assertEqual(1, code)
+        self.assertIsNone(output)
+        self.assertEqual(
+            "Expected at least one result in services request response", error
+        )
+
+    @inlineCallbacks
+    def test_pebble_request_generates_valid_post_requests(self):
+        mock_agent = MagicMock(Agent)
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+        mock_response = MagicMock(Response)
+        mock_response.code = 200
+        mock_response.phrase = "OK"
+        mock_agent.request.return_value = succeed(mock_response)
+        mock_read_body = self.patch(service_monitor_module, "readBody")
+        mock_read_body.return_value = succeed(b"{}")
+
+        method = "POST"
+        endpoint = "/endpoint"
+        body = {"payload": "is_present", "boolean": False}
+
+        yield service_monitor._pebble_request(method, endpoint, body)
+        mock_agent.request.assert_called()
+        call_args = mock_agent.mock_calls[0].args
+        self.assertEqual(b"POST", call_args[0])
+        self.assertEqual(b"unix://localhost/endpoint", call_args[1])
+        self.assertEqual(
+            Headers({"Content-Type": ["application/json"]}), call_args[2]
+        )
+
+        consumed = b""
+
+        @implementer(IConsumer)
+        class Consumer:
+            def write(self, d):
+                nonlocal consumed
+                consumed += d
+
+        yield call_args[3].startProducing(Consumer())
+        self.assertEqual(body, json.loads(consumed.decode("utf-8")))
+
+    @inlineCallbacks
+    def test_pebble_request_generates_valid_get_requests(self):
+        mock_agent = MagicMock(Agent)
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+        mock_response = MagicMock(Response)
+        mock_response.code = 200
+        mock_response.phrase = "OK"
+        mock_agent.request.return_value = succeed(mock_response)
+        mock_read_body = self.patch(service_monitor_module, "readBody")
+        mock_read_body.return_value = succeed(b"{}")
+
+        yield service_monitor._pebble_request("GET", "/")
+        mock_agent.request.assert_called()
+        call_args = mock_agent.mock_calls[0].args
+        self.assertEqual(b"GET", call_args[0])
+        self.assertEqual(b"unix://localhost/", call_args[1])
+        self.assertIsNone(call_args[2])
+        self.assertIsNone(call_args[3])
+
+    @inlineCallbacks
+    def test_pebble_request_raises_for_endpoint_not_starting_with_slash(self):
+        mock_agent = MagicMock(Agent)
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+
+        with ExpectedException(
+            ValueError, value_re="Pebble endpoint does not start with '/'"
+        ):
+            yield service_monitor._pebble_request("GET", "endpoint")
+        mock_agent.request.assert_not_called()
+
+    @inlineCallbacks
+    def test_pebble_request_raises_on_non_2xx_code(self):
+        mock_agent = MagicMock(Agent)
+        mock_response = MagicMock(Response)
+        mock_response.code = 400
+        mock_response.phrase = "Bad Request"
+        mock_response.body = b"{}"
+        mock_agent.request.return_value = succeed(mock_response)
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+
+        with ExpectedException(
+            ValueError, value_re="Unexpected pebble response code"
+        ):
+            yield service_monitor._pebble_request("GET", "/400")
+
+    @inlineCallbacks
+    def test_pebble_request_deserializes_json(self):
+        mock_agent = MagicMock(Agent)
+        mock_response = MagicMock(Response)
+        mock_response.code = 200
+        mock_agent.request.return_value = succeed(mock_response)
+        mock_read_body = self.patch(service_monitor_module, "readBody")
+        mock_read_body.return_value = succeed(b'{"what": "ever"}')
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+
+        result = yield service_monitor._pebble_request("GET", "/json")
+        self.assertEqual({"what": "ever"}, result)
+
+    @inlineCallbacks
+    def test_pebble_request_raises_on_non_json_deserialisable_responses(self):
+        mock_agent = MagicMock(Agent)
+        mock_response = MagicMock(Response)
+        mock_response.code = 200
+        mock_agent.request.return_value = succeed(mock_response)
+        mock_read_body = self.patch(service_monitor_module, "readBody")
+        mock_read_body.return_value = succeed(b"OK!")
+        service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
+
+        with ExpectedException(JSONDecodeError):
+            yield service_monitor._pebble_request("GET", "/")
+
+    def test_service_monitor_creates_agent_if_not_provided(self):
+        service_monitor = self.make_service_monitor()
+        self.assertIsNotNone(service_monitor._agent)
+
+    def test_pebble_create_agent_creates_correct_snap_agent(self):
+        """Checks whether snap paths are used by _pebble_create_agents in snap env"""
+        self.run_under_snap()
+        paths = SnapPaths(
+            snap="/snap/base", data="/snap/data", common="/snap/common"
+        )
+        self.patch(snap.SnapPaths, "from_environ").return_value = paths
+        service_monitor = self.make_service_monitor()
+        agent = service_monitor._pebble_create_agent()
+
+        self.assertIsInstance(
+            agent._endpointFactory,
+            service_monitor_module.UnixClientEndpointFactory,
+        )
+        self.assertEqual(
+            os.path.join(paths.data, "pebble", ".pebble.socket"),
+            agent._endpointFactory._socket_path,
+        )
+
+    def test_pebble_create_agent_creates_correct_agent_from_pebble_env_vars(
+        self,
+    ):
+        """Checks whether $PEBBLE is used by _pebble_create_agents in non-snap env"""
+        env = {
+            "PEBBLE": "/var/run/pebble",
+        }
+        self.patch(os, "environ", env)
+        service_monitor = self.make_service_monitor()
+        agent = service_monitor._pebble_create_agent()
+
+        self.assertIsInstance(
+            agent._endpointFactory,
+            service_monitor_module.UnixClientEndpointFactory,
+        )
+        self.assertEqual(
+            os.path.join(env["PEBBLE"], ".pebble.socket"),
+            agent._endpointFactory._socket_path,
+        )
+
+    def test_pebble_create_agent_prioritises_pebble_socket_envvar_over_pebble(
+        self,
+    ):
+        """Checks whether $PEBBLE_SOCKET has priority over $PEBBLE in _pebble_create_agents in non-snap env"""
+        env = {
+            "PEBBLE": "/var/run/pebble",
+            "PEBBLE_SOCKET": "/any/other/path/to/pebble/.socket",
+        }
+        self.patch(os, "environ", env)
+        service_monitor = self.make_service_monitor()
+        agent = service_monitor._pebble_create_agent()
+
+        self.assertIsInstance(
+            agent._endpointFactory,
+            service_monitor_module.UnixClientEndpointFactory,
+        )
+        self.assertEqual(
+            env["PEBBLE_SOCKET"], agent._endpointFactory._socket_path
+        )
+
+    @inlineCallbacks
+    def test_pebble_wait_on_change_monitors_changes(self):
+        service_monitor = self.make_service_monitor()
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+
+        change_id = 42
+        request_count = 0
+
+        def pebble_request_side_effect(
+            method, endpoint, payload=None, agent=None
+        ):
+            nonlocal request_count
+            if method == "GET" and endpoint == f"/v1/changes/{change_id}":
+                request_count += 1
+                if request_count == 1:
+                    return succeed(
+                        {"result": {"status": "Doing", "ready": False}}
+                    )
+                else:
+                    return succeed(
+                        {"result": {"status": "Done", "ready": True}}
+                    )
+            else:
+                raise AssertionError(
+                    f"Unexpected request: {method} {endpoint} {payload}"
+                )
+
+        mock_pebble_request.side_effect = pebble_request_side_effect
+        yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
+        self.assertEqual(2, len(mock_pebble_request.mock_calls))
+
+    @inlineCallbacks
+    def test_pebble_wait_on_change_handles_error_status(self):
+        service_monitor = self.make_service_monitor()
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        change_id = 42
+        error = "Test"
+        mock_pebble_request.return_value = succeed(
+            {"result": {"status": "Error", "ready": True, "err": error}}
+        )
+        with ExpectedException(
+            ValueError,
+            value_re=f"Pebble change {change_id} failed with an error: {error}",
+        ):
+            yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
+
+    @inlineCallbacks
+    def test_pebble_wait_on_change_handles_hold_status(self):
+        service_monitor = self.make_service_monitor()
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        change_id = 42
+        mock_pebble_request.return_value = succeed(
+            {"result": {"status": "Hold", "ready": True}}
+        )
+        with ExpectedException(
+            ValueError, value_re=f"Pebble change {change_id} is on hold"
+        ):
+            yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
+
+    @inlineCallbacks
+    def test_pebble_wait_on_change_handles_undone_status(self):
+        service_monitor = self.make_service_monitor()
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        change_id = 42
+        mock_pebble_request.return_value = succeed(
+            {"result": {"status": "Undone", "ready": True}}
+        )
+        with ExpectedException(
+            ValueError, value_re=f"Pebble change {change_id} is undone"
+        ):
+            yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
+
+    @inlineCallbacks
+    def test_pebble_wait_on_change_handles_unknown_error_status(self):
+        service_monitor = self.make_service_monitor()
+        mock_pebble_request = self.patch(service_monitor, "_pebble_request")
+        change_id = 42
+        error = "Test"
+        status = "ImNotPebble"
+        mock_pebble_request.return_value = succeed(
+            {"result": {"status": status, "ready": True, "err": error}}
+        )
+        with ExpectedException(
+            ValueError,
+            value_re=f"Pebble change {change_id} finished with unknown error status `{status}`: {error}",
+        ):
+            yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
     @inlineCallbacks
     def test_performServiceAction_holds_lock_performs_systemd_action(self):
@@ -700,28 +1088,28 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_performServiceAction_holds_lock_perform_supervisor_action(self):
+    def test_performServiceAction_holds_lock_perform_pebble_action(self):
         self.run_under_snap()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         service_locks = service_monitor._serviceLocks
         service_lock = service_locks[service.name]
         service_lock = service_locks[service.name] = Mock(wraps=service_lock)
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (0, "", "")
-        action = factory.make_name("action")
+        mock_execPebbleServiceAction.return_value = (0, "", "")
+        action = "start"
         extra_opts = ("--option", factory.make_name("option"))
         setattr(service, "%s_extra_opts" % action, extra_opts)
         yield service_monitor._performServiceAction(service, action)
         service_lock.run.assert_called_once_with(
-            service_monitor._execSupervisorServiceAction,
+            service_monitor._execPebbleServiceAction,
             service.service_name,
             action,
             extra_opts=extra_opts,
         )
-        mock_execSupervisorServiceAction.assert_called_once_with(
+        mock_execPebbleServiceAction.assert_called_once_with(
             service.service_name, action, extra_opts=extra_opts
         )
 
@@ -770,17 +1158,19 @@ class TestServiceMonitor(MAASTestCase):
             sentinel.result, service_monitor._loadServiceState(service)
         )
 
-    def test_loadServiceState_uses_supervisor(self):
-        self.run_under_snap()
+    @inlineCallbacks
+    def test_loadServiceState_uses_pebble(self):
+        self.patch(
+            service_monitor_module, "_running_under_pebble"
+        ).return_value = True
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        mock_loadSupervisorServiceState = self.patch(
-            service_monitor, "_loadSupervisorServiceState"
+        mock_loadPebbleServiceState = self.patch(
+            service_monitor, "_loadPebbleServiceState"
         )
-        mock_loadSupervisorServiceState.return_value = sentinel.result
-        self.assertEqual(
-            sentinel.result, service_monitor._loadServiceState(service)
-        )
+        mock_loadPebbleServiceState.return_value = sentinel.result
+        result = yield service_monitor._loadServiceState(service)
+        self.assertEqual(sentinel.result, result)
 
     @inlineCallbacks
     def test_loadSystemDServiceState_status_calls_systemctl(self):
@@ -998,255 +1388,123 @@ class TestServiceMonitor(MAASTestCase):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_status_calls_supervisorctl(self):
+    def test_loadPebbleServiceState_status_calls_pebble_socket(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.side_effect = factory.make_exception()
+        mock_execPebbleServiceAction.side_effect = factory.make_exception()
         try:
-            yield service_monitor._loadSupervisorServiceState(service)
+            yield service_monitor._loadPebbleServiceState(service)
         except Exception:
             pass
-        mock_execSupervisorServiceAction.assert_called_once_with(
-            service.service_name, "status"
+        mock_execPebbleServiceAction.assert_called_once_with(
+            service.service_name, "services"
         )
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_exit_code_greater_than_3(self):
+    def test_loadPebbleServiceState_service_name_doesnt_match(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (4, "", "")
-        with ExpectedException(ServiceParsingError):
-            yield service_monitor._loadSupervisorServiceState(service)
-
-    @inlineCallbacks
-    def test_loadSupervisorServiceState_service_name_doesnt_match(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor()
-        supervisor_status_output = dedent(
-            """\
-            invalid              STARTING   pid 112588, uptime 11:11:11
-            """
-        )
-
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
-        )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
+        mock_execPebbleServiceAction.return_value = (
+            0,
+            "any_service active",
             "",
         )
         with ExpectedException(ServiceParsingError):
-            yield service_monitor._loadSupervisorServiceState(service)
+            yield service_monitor._loadPebbleServiceState(service)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_unknown_status(self):
+    def test_loadPebbleServiceState_unknown_status(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              UNKNOWN   pid 112588, uptime 11:11:11
-            """
-            )
-            % (service.snap_service_name)
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
-        )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
+        mock_execPebbleServiceAction.return_value = (
+            0,
+            f"{service.snap_service_name} unknown_status_for_maas",
             "",
         )
         with ExpectedException(ServiceParsingError):
-            yield service_monitor._loadSupervisorServiceState(service)
+            yield service_monitor._loadPebbleServiceState(service)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_starting_returns_on(self):
+    def test_loadPebbleServiceState_active_returns_on(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              STARTING   pid 112588, uptime 11:11:11
-            """
-            )
-            % (service.snap_service_name)
-        )
 
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (
+        mock_execPebbleServiceAction.return_value = (
             0,
-            supervisor_status_output,
+            f"{service.snap_service_name} active",
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
+            service_monitor._loadPebbleServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.ON, active_state)
         self.assertEqual("running", process_state)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_running_returns_on(self):
+    def test_loadPebbleServiceState_inactive_returns_off(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              RUNNING   pid 112588, uptime 11:11:11
-            """
-            )
-            % (service.snap_service_name)
-        )
 
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (
+        mock_execPebbleServiceAction.return_value = (
             0,
-            supervisor_status_output,
+            f"{service.snap_service_name} inactive",
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.ON, active_state)
-        self.assertEqual("running", process_state)
-
-    @inlineCallbacks
-    def test_loadSupervisorServiceState_stopped_returns_off(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              STOPPED   Not started
-            """
-            )
-            % (service.snap_service_name)
-        )
-
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
-        )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
+            service_monitor._loadPebbleServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.OFF, active_state)
         self.assertEqual("dead", process_state)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_stopping_returns_off(self):
+    def test_loadPebbleServiceState_backoff_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = f"{service.snap_service_name}              STOPPING   pid 12345, uptime 1:02:03"
 
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
+        mock_execPebbleServiceAction.return_value = (
+            0,
+            f"{service.snap_service_name} backoff",
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.OFF, active_state)
-        self.assertEqual("dead", process_state)
-
-    @inlineCallbacks
-    def test_loadSupervisorServiceState_fatal_returns_dead(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              FATAL   Failed to start
-            """
-            )
-            % (service.snap_service_name)
-        )
-
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
-        )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
+            service_monitor._loadPebbleServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)
 
     @inlineCallbacks
-    def test_loadSupervisorServiceState_exited_returns_dead(self):
+    def test_loadPebbleServiceState_error_returns_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              EXITED   Quit to early
-            """
-            )
-            % (service.snap_service_name)
-        )
 
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
+        mock_execPebbleServiceAction = self.patch(
+            service_monitor, "_execPebbleServiceAction"
         )
-        mock_execSupervisorServiceAction.return_value = (
-            2,
-            supervisor_status_output,
+        mock_execPebbleServiceAction.return_value = (
+            0,
+            f"{service.snap_service_name} error",
             "",
         )
         active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
-        )
-        self.assertEqual(SERVICE_STATE.DEAD, active_state)
-        self.assertEqual("Result: exit-code", process_state)
-
-    @inlineCallbacks
-    def test_loadSupervisorServiceState_backoff_returns_dead(self):
-        service = make_fake_service(SERVICE_STATE.ON)
-        service_monitor = self.make_service_monitor([service])
-        supervisor_status_output = (
-            dedent(
-                """\
-            %s              BACKOFF   Respawning too fast
-            """
-            )
-            % (service.snap_service_name)
-        )
-
-        mock_execSupervisorServiceAction = self.patch(
-            service_monitor, "_execSupervisorServiceAction"
-        )
-        mock_execSupervisorServiceAction.return_value = (
-            1,
-            supervisor_status_output,
-            "",
-        )
-        active_state, process_state = yield (
-            service_monitor._loadSupervisorServiceState(service)
+            service_monitor._loadPebbleServiceState(service)
         )
         self.assertEqual(SERVICE_STATE.DEAD, active_state)
         self.assertEqual("Result: exit-code", process_state)

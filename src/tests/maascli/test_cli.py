@@ -253,18 +253,6 @@ class TestCmdInit(MAASTestCase):
         self.assertEqual({}, kwargs2)
 
 
-class TestReconfigureSupervisord(MAASTestCase):
-    def test_cmd_configure_supervisord(self):
-        self.patch(snap, "get_current_mode").return_value = "region+rack"
-        mock_render_supervisord = self.patch(snap, "render_supervisord")
-        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
-        parser = ArgumentParser()
-        cmd = snap.cmd_reconfigure_supervisord(parser)
-        cmd(parser.parse_args([]))
-        mock_render_supervisord.assert_called_once_with("region+rack")
-        mock_sighup_supervisord.assert_called_once()
-
-
 class TestLogout(MAASTestCase):
     def test_cmd_logout_cleans_profile_cacerts(self):
         parser = ArgumentParser()

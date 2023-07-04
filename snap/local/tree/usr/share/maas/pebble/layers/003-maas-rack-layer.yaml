@@ -1,0 +1,28 @@
+summary: MAAS rack layer
+
+description: |
+  Services specific to MAAS rack / region+rack installation
+
+services:
+  rackd:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-rackd"
+    startup: enabled
+    before:
+      - http
+      - bind9
+      - ntp
+      - proxy
+      - syslog
+      - dhcpd
+      - dhcpd6
+
+  dhcpd:
+    override: replace
+    startup: disabled
+    command: sh -c "exec $SNAP/bin/run-dhcpd"
+
+  dhcpd6:
+    override: replace
+    startup: disabled
+    command: sh -c "exec $SNAP/bin/run-dhcpd6"

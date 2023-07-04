@@ -149,6 +149,9 @@ ARGUMENTS = OrderedDict(
 )
 
 NON_ROOT_USER = "snap_daemon"
+PEBBLE_LAYER_BASE = "001-maas-base-layer.yaml"
+PEBBLE_LAYER_REGION = "002-maas-region-layer.yaml"
+PEBBLE_LAYER_RACK = "003-maas-rack-layer.yaml"
 
 
 def get_default_gateway_ip():
@@ -198,72 +201,21 @@ def set_current_mode(mode):
         fp.write(mode.strip())
 
 
-def render_supervisord(mode):
-    """Render the 'supervisord.conf' based on the mode."""
-    conf_vars = {"regiond": False, "rackd": False}
-    if mode in ["region+rack", "region"]:
-        conf_vars["regiond"] = True
-    if mode in ["region+rack", "rack"]:
-        conf_vars["rackd"] = True
-    template = tempita.Template.from_filename(
-        os.path.join(
-            os.environ["SNAP"],
-            "usr",
-            "share",
-            "maas",
-            "supervisord.conf.template",
-        ),
-        encoding="UTF-8",
-    )
-    rendered = template.substitute(conf_vars)
-    conf_path = os.path.join(
-        os.environ["SNAP_DATA"], "supervisord", "supervisord.conf"
-    )
-    with open(conf_path, "w") as fp:
-        fp.write(rendered)
+def stop_pebble():
+    subprocess.run(["snapctl", "stop", "maas.pebble"])
 
 
-def get_supervisord_pid():
-    """Get the running supervisord pid."""
-    pid_path = os.path.join(
-        os.environ["SNAP_DATA"], "supervisord", "supervisord.pid"
-    )
-    if os.path.exists(pid_path):
-        with open(pid_path) as fp:
-            return int(fp.read().strip())
-    else:
-        return None
+def restart_pebble(restart_inactive=False):
+    """Cause pebble to stop all processes, reload configuration, and
+    start all processes. Will not issue restart command when service
+    is inactive and `restart_inactive` is False."""
 
+    if not restart_inactive:
+        status_call = subprocess.run(["snapctl", "services", "maas"], capture_output=True)
+        if b"inactive" in status_call.stdout:
+            return
 
-def sighup_supervisord():
-    """Cause supervisord to stop all processes, reload configuration, and
-    start all processes."""
-    pid = get_supervisord_pid()
-    if pid is None:
-        return
-
-    try:
-        os.kill(pid, signal.SIGHUP)
-    except ProcessLookupError:
-        return
-
-    # Wait for supervisord to be running successfully.
-    time.sleep(0.5)
-    while True:
-        process = subprocess.Popen(
-            [
-                os.path.join(os.environ["SNAP"], "bin", "run-supervisorctl"),
-                "status",
-            ],
-            stdout=subprocess.PIPE,
-        )
-        process.wait()
-        output = process.stdout.read().decode("utf-8")
-        # Error message is printed until supervisord is running correctly.
-        if "error:" in output:
-            time.sleep(1)
-        else:
-            break
+    subprocess.run(["snapctl", "restart", "maas.pebble"])
 
 
 def print_config_value(config, key, hidden=False):
@@ -720,8 +672,7 @@ class cmd_init(SnapCommand):
         if current_mode != "none":
 
             def stop_services():
-                render_supervisord("none")
-                sighup_supervisord()
+                stop_pebble()
 
             perform_work("Stopping services", stop_services)
 
@@ -743,9 +694,10 @@ class cmd_init(SnapCommand):
     def _finalize_init(self, mode):
         # Configure mode.
         def start_services():
-            render_supervisord(mode)
             set_current_mode(mode)
-            sighup_supervisord()
+            # From UX perspective, it makes sense to start MAAS after
+            # initialization even if it was stopped.
+            restart_pebble(restart_inactive=True)
 
         init_db = mode in ("region", "region+rack") and db_need_init()
         if init_db:
@@ -869,9 +821,6 @@ class cmd_config(SnapCommand):
             action="store_true",
             help="Output the current configuration in a parsable format.",
         )
-        parser.add_argument(
-            "--render", action="store_true", help=argparse.SUPPRESS
-        )
 
     def _validate_flags(self, options, running_mode):
         """
@@ -895,12 +844,6 @@ class cmd_config(SnapCommand):
             raise SystemExit("The 'config' command must be run by root.")
 
         config_manager = MAASConfiguration()
-
-        # Hidden option only called by the run-supervisord script. Renders
-        # the initial supervisord.conf based on the current mode.
-        if options.render:
-            render_supervisord(get_current_mode())
-            return
 
         # In config mode if --show is passed or none of the following flags
         # have been passed.
@@ -968,13 +911,13 @@ class cmd_config(SnapCommand):
                         config_manager.update({flag_key: flag_value})
                         restart_required = True
 
-            # Restart the supervisor as its required.
+            # Restart the pebble as its required.
             if restart_required:
                 perform_work(
                     "Restarting services"
                     if running_mode != "none"
                     else "Stopping services",
-                    sighup_supervisord,
+                    restart_pebble,
                 )
 
 
@@ -989,12 +932,11 @@ class cmd_status(SnapCommand):
             print_msg("MAAS is not configured")
             sys.exit(1)
         else:
-            process = subprocess.Popen(
-                [
+            process = subprocess.Popen([
                     os.path.join(
-                        os.environ["SNAP"], "bin", "run-supervisorctl"
+                        os.environ["SNAP"], "bin", "run-pebble"
                     ),
-                    "status",
+                    "services",
                 ],
                 stdout=subprocess.PIPE,
             )
@@ -1003,15 +945,12 @@ class cmd_status(SnapCommand):
             if ret == 0:
                 print_msg(output, newline=False)
             else:
-                if "error:" in output:
-                    print_msg(
-                        "MAAS supervisor is currently restarting. "
-                        "Please wait and try again."
-                    )
-                    sys.exit(-1)
-                else:
-                    print_msg(output, newline=False)
-                    sys.exit(ret)
+                print_msg(
+                    f"Pebble exited with error code {ret} "
+                    "and the following output:"
+                )
+                print_msg(output, newline=False)
+                sys.exit(ret)
 
 
 class cmd_migrate(SnapCommand):
@@ -1050,13 +989,3 @@ class cmd_migrate(SnapCommand):
             sys.exit(1)
         else:
             sys.exit(migrate_db())
-
-
-class cmd_reconfigure_supervisord(SnapCommand):
-    """Rewrite supervisord configuration and signal it to reload."""
-
-    hidden = True
-
-    def handle(self, options):
-        render_supervisord(get_current_mode())
-        sighup_supervisord()

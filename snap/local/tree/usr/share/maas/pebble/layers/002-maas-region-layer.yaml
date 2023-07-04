@@ -1,0 +1,28 @@
+summary: MAAS region layer
+
+description: | 
+  Services specific to MAAS region / region+rack installation
+
+services:
+  regiond:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-regiond"
+    startup: enabled
+    before:
+      - http
+      - bind9
+      - ntp
+      - proxy
+      - syslog
+      - apiserver
+
+  apiserver:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-apiserver"
+    startup: enabled
+    before:
+      - http
+      - bind9
+      - ntp
+      - proxy
+      - syslog

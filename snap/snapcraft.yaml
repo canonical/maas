@@ -15,7 +15,8 @@ system-usernames:
 # 1: (2.6) PostgreSQL 10
 # 2: (2.8) move MAAS data to $SNAP_COMMON
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
-epoch: 3
+# 4: (3.5) supervisord -> Pebble migration
+epoch: 4
 
 package-repositories:
   - type: apt
@@ -24,6 +25,7 @@ package-repositories:
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
+  PEBBLE: $SNAP_DATA/pebble
 
 plugs:
   test-db-socket:
@@ -38,9 +40,9 @@ slots:
       - $SNAP_COMMON/log
 
 apps:
-  supervisor:
+  pebble:
     daemon: simple
-    command: bin/run-supervisord
+    command: bin/run-pebble-daemon
     plugs:
       - avahi-observe
       - hardware-observe
@@ -68,6 +70,14 @@ apps:
       - network
 
 parts:
+  pebble:
+    plugin: go
+    build-packages:
+      - golang-go
+    source-type: git
+    source: https://github.com/canonical/pebble
+    source-tag: v1.2.0
+
   maas:
     plugin: python
     source: .

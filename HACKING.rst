@@ -421,7 +421,7 @@ To apply that migration, run::
 
 If you're developing using the snap, you can run::
 
-    $ sudo snap run --shell maas.supervisor -c "maas-region dbupgrade"
+    $ sudo snap run --shell maas.pebble -c "maas-region dbupgrade"
 
 to run pending migrations.
 

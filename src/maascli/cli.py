@@ -300,7 +300,6 @@ def register_cli_commands(parser):
             ("config", snap.cmd_config),
             ("status", snap.cmd_status),
             ("migrate", snap.cmd_migrate),
-            ("reconfigure-supervisord", snap.cmd_reconfigure_supervisord),
         ]
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]

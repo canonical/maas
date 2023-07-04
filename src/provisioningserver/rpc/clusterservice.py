@@ -916,7 +916,7 @@ class Cluster(RPCProtocol):
         MAAS_SHARED_SECRET.set(None)
         try:
             if running_in_snap():
-                call_and_check(["snapctl", "restart", "maas.supervisor"])
+                call_and_check(["snapctl", "restart", "maas.pebble"])
             else:
                 call_and_check(["sudo", "systemctl", "restart", "maas-rackd"])
         except ExternalProcessError as e:

@@ -4,17 +4,11 @@
 import io
 import os
 from pathlib import Path
-import random
-import signal
-import subprocess
 import sys
-from textwrap import dedent
-import time
 from unittest.mock import MagicMock
 
 from fixtures import EnvironmentVariableFixture
 import netifaces
-import pytest
 
 from maascli import snap
 from maascli.command import CommandError
@@ -127,116 +121,6 @@ class TestHelpers(MAASTestCase):
         snap.set_current_mode("all")
         snap.set_current_mode("none")
         self.assertEqual("none", snap.get_current_mode())
-
-
-class TestRenderSupervisord:
-    TEST_TEMPLATE = dedent(
-        """\
-    {{if regiond}}
-    HAS_REGIOND
-    {{endif}}
-    {{if rackd}}
-    HAS_RACKD
-    {{endif}}
-    """
-    )
-
-    @pytest.mark.parametrize(
-        "mode,has_regiond,has_rackd",
-        [
-            ("region+rack", True, True),
-            ("region", True, False),
-            ("rack", False, True),
-            ("none", False, False),
-        ],
-    )
-    def test_template_rendered_correctly(
-        self,
-        mocker,
-        monkeypatch,
-        tmp_path_factory,
-        mode,
-        has_regiond,
-        has_rackd,
-    ):
-        snap_dir = tmp_path_factory.mktemp("snap")
-        maas_share = snap_dir / "usr" / "share" / "maas"
-        maas_share.mkdir(parents=True)
-        (maas_share / "supervisord.conf.template").write_text(
-            self.TEST_TEMPLATE
-        )
-        snap_data = tmp_path_factory.mktemp("snap_data")
-        (snap_data / "supervisord").mkdir()
-        monkeypatch.setenv("SNAP", str(snap_dir))
-        monkeypatch.setenv("SNAP_DATA", str(snap_data))
-
-        snap.render_supervisord(mode)
-        output = (snap_data / "supervisord" / "supervisord.conf").read_text()
-        assert ("HAS_REGIOND" in output) == has_regiond
-        assert ("HAS_RACKD" in output) == has_rackd
-
-
-class TestSupervisordHelpers(MAASTestCase):
-    def test_get_supervisord_pid_returns_None(self):
-        snap_data = self.make_dir()
-        self.patch(os, "environ", {"SNAP_DATA": snap_data})
-        self.assertIsNone(snap.get_supervisord_pid())
-
-    def test_get_supervisord_pid_returns_pid(self):
-        pid = random.randint(2, 99)
-        snap_data = self.make_dir()
-        supervisord_dir = os.path.join(snap_data, "supervisord")
-        os.makedirs(supervisord_dir)
-        with open(
-            os.path.join(supervisord_dir, "supervisord.pid"), "w"
-        ) as stream:
-            stream.write("%s" % pid)
-        self.patch(os, "environ", {"SNAP_DATA": snap_data})
-        self.assertEqual(pid, snap.get_supervisord_pid())
-
-    def test_sighup_supervisord_sends_SIGHUP(self):
-        pid = random.randint(2, 99)
-        snap_dir = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap_dir})
-        self.patch(snap, "get_supervisord_pid").return_value = pid
-        mock_kill = self.patch(os, "kill")
-        self.patch(time, "sleep")  # Speed up the test.
-        mock_process = MagicMock()
-        mock_popen = self.patch(subprocess, "Popen")
-        mock_popen.return_value = mock_process
-        snap.sighup_supervisord()
-        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
-        mock_popen.assert_called_once_with(
-            [os.path.join(snap_dir, "bin", "run-supervisorctl"), "status"],
-            stdout=subprocess.PIPE,
-        )
-        mock_process.wait.assert_called_once_with()
-
-    def test_sighup_supervisord_nop_if_not_running(self):
-        pid = random.randint(2, 99)
-        snap_dir = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap_dir})
-        self.patch(snap, "get_supervisord_pid").return_value = pid
-        mock_kill = self.patch(os, "kill")
-        mock_kill.side_effect = ProcessLookupError()
-        # the command doesn't fail
-        snap.sighup_supervisord()
-        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
-
-    def test_sighup_supervisord_waits_until_no_error(self):
-        pid = random.randint(2, 99)
-        snap_dir = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap_dir})
-        self.patch(snap, "get_supervisord_pid").return_value = pid
-        mock_kill = self.patch(os, "kill")
-        self.patch(time, "sleep")  # Speed up the test.
-        mock_process = MagicMock()
-        mock_process.stdout.read.side_effect = [b"error:", b""]
-        mock_popen = self.patch(subprocess, "Popen")
-        mock_popen.return_value = mock_process
-        snap.sighup_supervisord()
-        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
-        self.assertEqual(2, mock_popen.call_count)
 
 
 class TestConfigHelpers(MAASTestCase):
@@ -723,7 +607,7 @@ class TestCmdConfig(MAASTestCase):
 
     def test_enable_debugging(self):
         mock_maas_configuration = self.patch(snap, "MAASConfiguration")
-        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
+        mock_restart_pebble = self.patch(snap, "restart_pebble")
         options = self.parser.parse_args(["--enable-debug"])
         stdout = io.StringIO()
         self.patch(sys, "stdout", stdout)
@@ -734,12 +618,12 @@ class TestCmdConfig(MAASTestCase):
         )
         # After config is changed, services are restarted
         self.assertEqual(stdout.getvalue(), "Stopping services\n")
-        mock_sighup_supervisord.assert_called_once_with()
+        mock_restart_pebble.assert_called_once_with()
 
     def test_reenable_debugging(self):
         mock_maas_configuration = self.patch(snap, "MAASConfiguration")
         config_manager = mock_maas_configuration()
-        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
+        mock_restart_pebble = self.patch(snap, "restart_pebble")
         options = self.parser.parse_args(["--enable-debug"])
         stdout = io.StringIO()
         self.patch(sys, "stdout", stdout)
@@ -751,7 +635,7 @@ class TestCmdConfig(MAASTestCase):
         self.cmd(options)
         config_manager.update.assert_not_called()
         self.assertEqual(stdout.getvalue(), "")
-        mock_sighup_supervisord.assert_not_called()
+        mock_restart_pebble.assert_not_called()
 
 
 class TestDBNeedInit(MAASTestCase):

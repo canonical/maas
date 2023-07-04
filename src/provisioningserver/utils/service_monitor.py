@@ -2,12 +2,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Services monitor ensures services are in their expected state."""
-
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict, namedtuple
 import enum
+from io import BytesIO
+import json
 import os
+from typing import Dict
+import urllib.parse
 
+from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     DeferredList,
@@ -16,9 +20,14 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
 )
+from twisted.internet.endpoints import UNIXClientEndpoint
+from twisted.internet.task import deferLater
+from twisted.web.client import Agent, FileBodyProducer, readBody
+from twisted.web.http_headers import Headers
+from twisted.web.iweb import IAgentEndpointFactory
+from zope.interface import implementer
 
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import snap
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -28,6 +37,16 @@ from provisioningserver.utils.twisted import (
 
 log = LegacyLogger()
 maaslog = get_maas_logger("service_monitor")
+
+
+@implementer(IAgentEndpointFactory)
+class UnixClientEndpointFactory:
+    def __init__(self, _reactor, socket_path: str):
+        self._reactor = _reactor
+        self._socket_path = socket_path
+
+    def endpointForURI(self, uri):
+        return UNIXClientEndpoint(self._reactor, self._socket_path)
 
 
 @enum.unique
@@ -70,6 +89,10 @@ def _check_service_state_expected(state):
         SERVICE_STATE.ANY,
     }:
         raise AssertionError(f"Expected state should not be {state!r}.")
+
+
+def _running_under_pebble():
+    return os.environ.get("PEBBLE") is not None
 
 
 ServiceStateBase = namedtuple(
@@ -119,8 +142,7 @@ class ServiceState(ServiceStateBase):
                 else:
                     return (
                         "dead",
-                        "%s failed to start, process result: (%s)"
-                        % (service.service_name, self.process_state),
+                        f"{service.service_name} failed to start, process result: ({self.process_state})",
                     )
             else:
                 return "off", status_info
@@ -228,15 +250,12 @@ class ServiceMonitor:
         "deactivating": SERVICE_STATE.OFF,
     }
 
-    # Used to convert the supervisor state to the `SERVICE_STATE` enum.
-    SUPERVISOR_TO_STATE = {
-        "STARTING": SERVICE_STATE.ON,
-        "BACKOFF": SERVICE_STATE.DEAD,
-        "RUNNING": SERVICE_STATE.ON,
-        "STOPPING": SERVICE_STATE.OFF,
-        "STOPPED": SERVICE_STATE.OFF,
-        "FATAL": SERVICE_STATE.DEAD,
-        "EXITED": SERVICE_STATE.DEAD,
+    # Used to convert the pebble state to the `SERVICE_STATE` enum.
+    PEBBLE_TO_STATE = {
+        "active": SERVICE_STATE.ON,
+        "inactive": SERVICE_STATE.OFF,
+        "backoff": SERVICE_STATE.DEAD,
+        "error": SERVICE_STATE.DEAD,
     }
 
     # Used to log when the process state is not expected for the active state.
@@ -246,12 +265,13 @@ class ServiceMonitor:
         SERVICE_STATE.DEAD: "Result: exit-code",
     }
 
-    def __init__(self, *services):
+    def __init__(self, *services, pebble_agent=None):
         for service in services:
             assert isinstance(service, Service)
         self._services = {service.name: service for service in services}
         self._serviceStates = defaultdict(ServiceState)
         self._serviceLocks = defaultdict(DeferredLock)
+        self._agent = pebble_agent or self._pebble_create_agent()
 
     def _getServiceLock(self, name):
         """Return the lock for the named service."""
@@ -262,7 +282,7 @@ class ServiceMonitor:
         """Return service from its name."""
         service = self._services.get(name)
         if service is None:
-            raise ServiceUnknownError("Service '%s' is not registered." % name)
+            raise ServiceUnknownError(f"Service '{name}' is not registered.")
         return service
 
     def _updateServiceState(self, name, active_state, process_state):
@@ -348,8 +368,7 @@ class ServiceMonitor:
             if if_on:
                 return
             raise ServiceNotOnError(
-                "Service '%s' is not expected to be on, unable to restart."
-                % (service.service_name)
+                f"Service '{service.service_name}' is not expected to be on, unable to restart."
             )
         yield self._performServiceAction(service, "restart")
 
@@ -394,8 +413,7 @@ class ServiceMonitor:
             if if_on is True:
                 return
             raise ServiceNotOnError(
-                "Service '%s' is not expected to be on, unable to reload."
-                % (service.service_name)
+                f"Service '{service.service_name}' is not expected to be on, unable to reload."
             )
         state = yield self.ensureService(name)
         if state.active_state != SERVICE_STATE.ON:
@@ -471,9 +489,8 @@ class ServiceMonitor:
                 if try_num == retries - 1:
                     # Failed on final retry.
                     raise ServiceActionError(
-                        "Service monitor timed out after '%d' "
-                        "seconds and '%s' retries running cmd: %s"
-                        % (timeout, retries, " ".join(cmd))
+                        f"Service monitor timed out after '{timeout}' "
+                        f"seconds and '{retries}' retries running cmd: {' '.join(cmd)}"
                     )
                 else:
                     # Try again.
@@ -493,65 +510,178 @@ class ServiceMonitor:
         cmd.append(service_name)
         return self._execCmd(cmd, env)
 
+    def _pebble_wait_on_change(self, change_id, backoff=1):
+        """Monitors /v1/changes pebble endpoint, waiting for its final
+        state"""
+
+        def cb_reschedule_if_not_done(body):
+            if "result" in body:
+                result = body["result"]
+                if (
+                    "status" in result
+                    and "ready" in result
+                    and result["ready"]
+                ):
+                    # Reference: https://github.com/canonical/pebble/blob/6276eaa533f414d091997f2ba9d7c83ca0e36038/internals/overlord/state/change.go#L73
+                    status = result["status"]
+                    msg = None
+                    match result:
+                        case {"status": "Error"}:
+                            msg = f"Pebble change {change_id} failed with an error"
+                        case {"status": "Hold"}:
+                            msg = f"Pebble change {change_id} is on hold (prerequisite action failed)"
+                        case {"status": "Undone"}:
+                            msg = f"Pebble change {change_id} is undone (error occurred in related task)"
+                        case {"err": str(err)} if err:
+                            msg = f"Pebble change {change_id} finished with unknown error status `{status}`"
+                    if msg:
+                        if "err" in result and result["err"]:
+                            msg += f": {result['err']}"
+                        raise ValueError(msg)
+
+                    return result["status"]
+            return deferLater(
+                reactor,
+                backoff,
+                self._pebble_wait_on_change,
+                change_id,
+                backoff=backoff,
+            )
+
+        d = self._pebble_request("GET", f"/v1/changes/{change_id}")
+        d.addCallback(cb_reschedule_if_not_done)
+        return d
+
     @asynchronous
-    def _execSupervisorServiceAction(
-        self, service_name, action, extra_opts=None
+    @inlineCallbacks
+    def _execPebbleServiceAction(
+        self, service_name, action, extra_opts=(), async_change_timeout=10
     ):
-        """Perform the action with the run-supervisorctl command.
+        """Perform the action with the run-pebble command.
 
         :return: tuple (exit code, std-output, std-error)
         """
-        env = get_env_with_bytes_locale()
+        endpoint = "/v1/services"
+        payload = {}
+        method = "POST"
 
-        cmd = os.path.join(
-            snap.SnapPaths.from_environ().snap, "bin", "run-supervisorctl"
+        if action == "kill":
+            # Pebble will send SIGTERM then SIGKILL after a while.
+            # Unfortunately, this means that hacks involving SIGKILL
+            # without SIGTERM will not work. Pebble will restart the
+            # process ASAP in case it was killed though, limiting the
+            # possibilities in that field anyway. Use `signal` instead
+            # if you need to send a signal to the service.
+            action = "stop"
+
+        if action in ("reload", "signal"):
+            endpoint = "/v1/signals"
+            if action == "reload":
+                signal = "SIGHUP"
+            else:
+                signals = [s for s in extra_opts if s.startswith("SIG")]
+                if not signals:
+                    raise ValueError(
+                        "Provide signal name in 'SIG.*' format in extra_opts"
+                    )
+                elif len(signals) > 1:
+                    raise ValueError("Multiple signal names provided")
+                signal = signals[0]
+            payload = {"signal": signal}
+        elif action in ["start", "stop", "restart"]:
+            payload["action"] = action
+        elif action == "services":
+            method = "GET"
+            endpoint += f"?{urllib.parse.urlencode({'names': service_name})}"
+        else:
+            raise ValueError(f"Unknown pebble action '{action}'")
+
+        if payload:
+            payload["services"] = [service_name]
+
+        output = None
+
+        try:
+            response = yield self._pebble_request(
+                method, endpoint, payload=payload
+            )
+            if action == "services":
+                result = response.get("result", None)
+                if not result:
+                    raise ValueError(
+                        "Expected at least one result in services request response"
+                    )
+                result = result[0]
+                output = f'{result["name"]} {result["current"]}'
+            else:
+                if "type" in response and response["type"] == "async":
+                    if "change" not in response:
+                        raise ValueError(
+                            "Expected to have change id in async request response"
+                        )
+                    yield self._pebble_wait_on_change(
+                        response["change"]
+                    ).addTimeout(async_change_timeout, reactor)
+            return 0, output, None
+        except Exception as e:
+            return 1, output, str(e)
+
+    def _pebble_create_agent(self):
+        """Creates twisted Agent for communication with Pebble"""
+        pebble_root = os.environ.get("PEBBLE", "")
+        socket = os.environ.get(
+            "PEBBLE_SOCKET", os.path.join(pebble_root, ".pebble.socket")
         )
 
-        # supervisord doesn't support native kill like systemd. Emulate this
-        # behaviour by getting the PID of the process and then killing the PID.
-        if action == "kill":
+        return Agent.usingEndpointFactory(
+            reactor,
+            UnixClientEndpointFactory(reactor, socket),
+        )
 
-            def _kill_pid(result):
-                exit_code, stdout, _ = result
-                if exit_code != 0:
-                    return result
-                try:
-                    pid = int(stdout.strip())
-                except ValueError:
-                    pid = 0
-                if pid == 0:
-                    # supervisorctl returns 0 when the process is already dead
-                    # or we where not able to get the actual pid. Nothing to
-                    # do, as its already dead.
-                    return 0, "", ""
-                cmd = ("kill",)
-                if extra_opts:
-                    cmd += extra_opts
-                cmd += ("%s" % pid,)
-                return self._execCmd(cmd, env)
+    @inlineCallbacks
+    def _pebble_request(
+        self, method: str, endpoint: str, payload: Dict = None
+    ):
+        """Makes a request to pebble via unix socket"""
+        if not endpoint.startswith("/"):
+            raise ValueError(
+                f"Pebble endpoint does not start with '/': {endpoint}"
+            )
 
-            d = self._execCmd((cmd, "pid", service_name), env)
-            d.addCallback(_kill_pid)
-            return d
+        headers = None
+        body = None
+        if payload:
+            headers = Headers({"Content-Type": ["application/json"]})
+            body = FileBodyProducer(
+                BytesIO(json.dumps(payload).encode("utf-8"))
+            )
 
-        cmd = (cmd, action)
-        if extra_opts is not None:
-            cmd += extra_opts
-        cmd += (service_name,)
-        return self._execCmd(cmd, env)
+        response = yield self._agent.request(
+            method.encode("ascii"),
+            f"unix://localhost{endpoint}".encode("ascii"),
+            headers,
+            body,
+        )
+
+        if not (200 <= response.code <= 299):
+            raise ValueError(
+                f"Unexpected pebble response code: {response.code}"
+            )
+        body_bytes = yield readBody(response)
+        return json.loads(body_bytes.decode("utf-8"))
 
     @inlineCallbacks
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
         lock = self._getServiceLock(service.name)
-        if snap.running_in_snap():
-            exec_action = self._execSupervisorServiceAction
+        if _running_under_pebble():
+            exec_action = self._execPebbleServiceAction
             service_name = service.snap_service_name
         else:
             exec_action = self._execSystemDServiceAction
             service_name = service.service_name
-        extra_opts = getattr(service, "%s_extra_opts" % action, None)
-        exit_code, output, error = yield lock.run(
+        extra_opts = getattr(service, f"{action}_extra_opts", None)
+        exit_code, _, error = yield lock.run(
             exec_action, service_name, action, extra_opts=extra_opts
         )
         if exit_code != 0:
@@ -565,8 +695,8 @@ class ServiceMonitor:
 
     def _loadServiceState(self, service):
         """Return service status."""
-        if snap.running_in_snap():
-            return self._loadSupervisorServiceState(service)
+        if _running_under_pebble():
+            return self._loadPebbleServiceState(service)
         else:
             return self._loadSystemDServiceState(service)
 
@@ -612,7 +742,7 @@ class ServiceMonitor:
                 load_status = line.split()[1]
                 if load_status != "loaded":
                     raise ServiceUnknownError(
-                        "'%s' is unknown to systemd." % (service.service_name)
+                        f"'{service.service_name}' is unknown to systemd."
                     )
             if line.startswith("Active"):
                 active_split = line.split(" ", 2)
@@ -624,44 +754,30 @@ class ServiceMonitor:
                 if active_state_enum is None:
                     raise ServiceParsingError(
                         "Unable to parse the active state from systemd for "
-                        "service '%s', active state reported as '%s'."
-                        % (service.service_name, active_state)
+                        f"service '{service.service_name}', active state reported as '{active_state}'."
                     )
                 returnValue((active_state_enum, process_state))
         raise ServiceParsingError(
-            "Unable to parse the output from systemd for service '%s'."
-            % (service.service_name)
+            f"Unable to parse the output from systemd for service '{service.service_name}'."
         )
 
     @inlineCallbacks
-    def _loadSupervisorServiceState(self, service):
-        """Return service status from supervisor."""
-        exit_code, output, error = yield self._execSupervisorServiceAction(
-            service.snap_service_name, "status"
+    def _loadPebbleServiceState(self, service):
+        """Return service status from pebble."""
+        exit_code, output, error = yield self._execPebbleServiceAction(
+            service.snap_service_name, "services"
         )
-        # Anything above 3 is a bad error. The error codes below 3
-        # do not provide a distinction between dead and fatal, so the parsed
-        # string is used instead.
-        if exit_code > 3:
-            raise ServiceParsingError(
-                "Unable to parse the output from supervisor for service '%s'; "
-                "supervisorctl exited '%d': %s"
-                % (service.name, exit_code, output)
-            )
-        output_split = output.split()
-        name, status = output_split[0], output_split[1]
+        name, status = output.split()
         if name != service.snap_service_name:
             raise ServiceParsingError(
-                "Unable to parse the output from supervisor for service '%s'; "
-                "supervisorctl returned status for '%s' instead of '%s'"
-                % (service.name, name, service.snap_service_name)
+                f"Unable to parse the output for service '{service.name}'; "
+                f"Pebble returned status for '{name}' instead of '{service.snap_service_name}'"
             )
-        active_state_enum = self.SUPERVISOR_TO_STATE.get(status)
+        active_state_enum = self.PEBBLE_TO_STATE.get(status)
         if active_state_enum is None:
             raise ServiceParsingError(
-                "Unable to parse the output from supervisor for service '%s'; "
-                "supervisorctl returned status as '%s'"
-                % (service.name, status)
+                f"Unable to parse the output for service '{service.name}'; "
+                f"Pebble returned status as '{status}'"
             )
         # Supervisor doesn't provide a process status, so make sure its correct
         # based on the active_state.

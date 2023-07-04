@@ -1,0 +1,36 @@
+#!/bin/bash -e
+# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+PEBBLE_LAYERS="$PEBBLE/layers"
+PEBBLE_ORIGINAL_LAYERS="$SNAP/usr/share/maas/pebble/layers"
+
+mkdir -p "$PEBBLE_LAYERS"
+find "$PEBBLE_LAYERS" -name "*.yaml" -type l -delete
+
+# Link layers for mode
+link_layer () {
+  if [ ! -f "$PEBBLE_LAYERS/$1" ]; then
+    ln -fs "$PEBBLE_ORIGINAL_LAYERS/$1" "$PEBBLE_LAYERS/$1"
+  fi
+}
+link_layer "001-maas-base-layer.yaml"
+
+MAAS_MODE_FILE="$SNAP_COMMON/snap_mode"
+if [ ! -f "$MAAS_MODE_FILE" ]; then
+  exit 0
+fi
+
+MAAS_MODE=$(<"$MAAS_MODE_FILE")
+case "$MAAS_MODE" in
+  "region")
+    link_layer "002-maas-region-layer.yaml"
+    ;;
+  "rack")
+    link_layer "003-maas-rack-layer.yaml"
+    ;;
+  "region+rack")
+    link_layer "002-maas-region-layer.yaml"
+    link_layer "003-maas-rack-layer.yaml"
+    ;;
+esac

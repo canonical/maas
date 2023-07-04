@@ -4383,7 +4383,7 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         )
         self.assertEqual({}, response.result)
         mock_call_and_check.assert_called_once_with(
-            ["snapctl", "restart", "maas.supervisor"]
+            ["snapctl", "restart", "maas.pebble"]
         )
 
     @inlineCallbacks

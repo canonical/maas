@@ -1,0 +1,30 @@
+summary: MAAS common services layer
+
+description: |
+  Services that are not specific to any MAAS deployment type
+
+services:
+  bind9:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-named"
+    startup: disabled
+
+  http:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-nginx"
+    startup: disabled
+
+  ntp:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-chronyd"
+    startup: disabled
+
+  proxy:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-squid"
+    startup: disabled
+
+  syslog:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-rsyslog"
+    startup: disabled

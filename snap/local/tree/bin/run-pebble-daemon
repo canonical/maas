@@ -1,5 +1,5 @@
 #!/bin/bash -e
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # for pci.ids database, used by the resources binary
@@ -11,8 +11,8 @@ export prometheus_multiproc_dir=/tmp/prometheus
 rm -rf "$prometheus_multiproc_dir"
 mkdir -p "$prometheus_multiproc_dir"
 
-# Render the supervisord.conf based on the current mode.
-"$SNAP/bin/maas" config --render
+"$SNAP/bin/reconfigure-pebble"
 
 # Run the supervisor for the snap.
-exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor-run.log" 2>&1
+export PEBBLE_DEBUG=1
+exec pebble run --verbose
