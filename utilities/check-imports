@@ -312,6 +312,7 @@ RegionControllerRule = Rule(
     Allow("pytz.UTC"),
     Allow("requests|requests.**"),
     Allow("simplestreams.**"),
+    Allow("sqlalchemy|sqlalchemy.**"),
     Allow("tempita"),
     Allow("twisted.**"),
     Allow("yaml"),
