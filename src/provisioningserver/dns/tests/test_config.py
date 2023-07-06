@@ -721,12 +721,13 @@ class TestDynamicDNSUpdate(MAASTestCase):
         subnet = factory.make_ip4_or_6_network(
             version=ip_version, host_bits=host_bits
         )
+        ip_answer = factory.pick_ip_in_network(subnet)
         fwd_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
             name=f"{factory.make_name()}.{domain}",
             rectype="A",
-            answer=str(IPAddress(subnet.next())),
+            answer=ip_answer,
         )
         expected_rev_update = DynamicDNSUpdate(
             operation="INSERT",
