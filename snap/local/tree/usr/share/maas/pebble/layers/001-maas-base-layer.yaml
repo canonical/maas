@@ -6,6 +6,7 @@ description: |
 services:
   bind9:
     override: replace
+    # Note: we use `sh -c` to expand the `$SNAP` environment variable
     command: sh -c "exec $SNAP/bin/run-named"
     startup: disabled
 

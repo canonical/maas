@@ -16,7 +16,7 @@ system-usernames:
 # 2: (2.8) move MAAS data to $SNAP_COMMON
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
 # 4: (3.5) supervisord -> Pebble migration
-epoch: 4
+epoch: 4*
 
 package-repositories:
   - type: apt
