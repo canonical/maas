@@ -169,7 +169,7 @@ def _get_lxd_network_states(client):
             continue
         except LXDAPIException as api_error:
             # Need to catch LXDAPIException due to
-            # https://github.com/lxc/lxd/issues/9191
+            # https://github.com/canonical/lxd/issues/9191
             if str(api_error).endswith("not found"):
                 continue
             else:

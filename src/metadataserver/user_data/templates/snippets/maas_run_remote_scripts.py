@@ -609,7 +609,7 @@ def udev_decode(string):
     Inverse of
     https://github.com/systemd/systemd/blob/master/src/basic/device-nodes.c#L22
     Go version in LXD
-    https://github.com/lxc/lxd/blob/master/lxd/resources/utils.go#L106
+    https://github.com/canonical/lxd/blob/main/lxd/resources/utils.go#L111
     """
     ret = ""
     i = 0

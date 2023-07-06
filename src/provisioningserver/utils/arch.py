@@ -7,7 +7,7 @@ from functools import lru_cache
 import os
 
 # Architectures as defined by:
-# https://github.com/lxc/lxd/blob/master/shared/osarch/architectures.go
+# https://github.com/canonical/lxd/blob/main/shared/osarch/architectures.go
 # https://www.debian.org/releases/bullseye/amd64/ch02s01.en.html
 DEBIAN_TO_KERNEL_ARCHITECTURES = {
     "i386": "i686",
