@@ -530,6 +530,13 @@ class Handler(metaclass=HandlerMetaclass):
         """Translate group id to DB"""
         return value
 
+    def _load_extra_data_before_dehydrate(self, objs, for_list=False):
+        """Load additional data before dehydrate logic.
+
+        Currently a NOP, override with the required logic.
+        """
+        return None
+
     def list(self, params):
         """List objects.
 
@@ -568,6 +575,7 @@ class Handler(metaclass=HandlerMetaclass):
         if "limit" in params:
             qs = qs[: params["limit"]]
         objs = self._cache_pks(qs)
+        self._load_extra_data_before_dehydrate(qs, True)
         return [self.full_dehydrate(obj, for_list=True) for obj in objs]
 
     def _build_list_grouping(self, qs, params):
@@ -617,6 +625,7 @@ class Handler(metaclass=HandlerMetaclass):
 
         current_page = pager.get_page(params.get("page_number", 1))
         page_objs = self._cache_pks(current_page)
+        self._load_extra_data_before_dehydrate(current_page, True)
 
         result = {
             "count": count,
@@ -697,6 +706,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         obj = self.get_object(params)
         self._cache_pks([obj])
+        self._load_extra_data_before_dehydrate([obj], False)
         return self.full_dehydrate(obj)
 
     def create(self, params):

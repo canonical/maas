@@ -58,18 +58,7 @@ def _get_hw_pairs(script_set):
     return [":".join(pair) for pair in hw_pairs_qs]
 
 
-def get_status_from_qs(qs):
-    """Given a QuerySet or list of ScriptResults return the set's status."""
-    # If no tests have been run the QuerySet or list has no status.
-    if isinstance(qs, QuerySet):
-        has_status = qs.exists()
-    else:
-        has_status = len(qs) > 0
-    if not has_status:
-        return -1
-    # The status order below represents the order of precedence.
-    # Skipped is omitted here otherwise one skipped test will show
-    # a warning icon in the UI on the test tab.
+def get_overall_status(script_result_statuses: list[int]) -> int:
     for status in (
         SCRIPT_STATUS.RUNNING,
         SCRIPT_STATUS.APPLYING_NETCONF,
@@ -82,8 +71,8 @@ def get_status_from_qs(qs):
         SCRIPT_STATUS.TIMEDOUT,
         SCRIPT_STATUS.DEGRADED,
     ):
-        for script_result in qs:
-            if script_result.status == status and not script_result.suppressed:
+        for script_result_status in script_result_statuses:
+            if script_result_status == status:
                 if status in SCRIPT_STATUS_RUNNING:
                     return SCRIPT_STATUS.RUNNING
                 elif status in SCRIPT_STATUS_FAILED:
@@ -91,6 +80,33 @@ def get_status_from_qs(qs):
                 else:
                     return status
     return SCRIPT_STATUS.PASSED
+
+
+def get_status_from_qs(qs):
+    """Given a QuerySet or list of ScriptResults return the set's status."""
+    # If no tests have been run the QuerySet or list has no status.
+    if isinstance(qs, QuerySet):
+        has_status = qs.exists()
+    else:
+        has_status = len(qs) > 0
+    if not has_status:
+        return -1
+    # The status order below represents the order of precedence.
+    # Skipped is omitted here otherwise one skipped test will show
+    # a warning icon in the UI on the test tab.
+    return get_overall_status(
+        [result.status for result in qs if not result.suppressed]
+    )
+
+
+def get_status_from_list_qs(script_result_statuses: list[int]) -> int:
+    """Given a list of ScriptResults return the set's status."""
+    # If no tests have been run the list has no status.
+
+    if not script_result_statuses:
+        return -1
+
+    return get_overall_status(script_result_statuses)
 
 
 def translate_result_type(result_type):

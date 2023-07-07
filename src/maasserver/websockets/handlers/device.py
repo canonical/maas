@@ -165,10 +165,9 @@ class DeviceHandler(NodeHandler):
         edit_permission = NodePermission.edit
         delete_permission = NodePermission.edit
 
-    def _cache_pks(self, objs):
-        """Cache all loaded object pks."""
-        # Use base.py's version as devices don't have ScriptResults
-        return super(NodeHandler, self)._cache_pks(objs)
+    def _load_extra_data_before_dehydrate(self, nodes, for_list=False):
+        # Overwrite nodehandler loader for extra data
+        return None
 
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""

@@ -168,6 +168,7 @@ class TestMachineHandler(MAASServerTestCase):
         # Prime handler._script_results
         handler._script_results = {}
         handler._cache_pks([node])
+        handler._load_extra_data_before_dehydrate([node])
 
         boot_interface = node.get_boot_interface()
         subnets = handler.get_all_subnets(node)
@@ -237,7 +238,6 @@ class TestMachineHandler(MAASServerTestCase):
                 commissioning_start_time
             ),
             "current_testing_script_set": node.current_testing_script_set_id,
-            "testing_status": handler.dehydrate_test_statuses(testing_scripts),
             "current_installation_script_set": (
                 node.current_installation_script_set_id
             ),
@@ -440,50 +440,92 @@ class TestMachineHandler(MAASServerTestCase):
                     "metadata": {},
                 }
             )
-
-        cpu_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.CPU, []
+        if not for_list:
+            data["testing_status"] = handler.dehydrate_test_statuses(
+                testing_scripts
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["cpu_test_status"] = handler.dehydrate_test_statuses(
-            cpu_script_results
-        )
 
-        memory_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.MEMORY, []
+            cpu_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.CPU, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["cpu_test_status"] = handler.dehydrate_test_statuses(
+                cpu_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["memory_test_status"] = handler.dehydrate_test_statuses(
-            memory_script_results
-        )
 
-        network_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.NETWORK, []
+            memory_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.MEMORY, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["memory_test_status"] = handler.dehydrate_test_statuses(
+                memory_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["network_test_status"] = handler.dehydrate_test_statuses(
-            network_script_results
-        )
 
-        storage_script_results = [
-            script_result
-            for script_result in handler._script_results.get(node.id, {}).get(
-                HARDWARE_TYPE.STORAGE, []
+            network_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.NETWORK, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["network_test_status"] = handler.dehydrate_test_statuses(
+                network_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["storage_test_status"] = handler.dehydrate_test_statuses(
-            storage_script_results
-        )
+
+            storage_script_results = [
+                script_result
+                for script_result in handler._script_results.get(
+                    node.id, {}
+                ).get(HARDWARE_TYPE.STORAGE, [])
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["storage_test_status"] = handler.dehydrate_test_statuses(
+                storage_script_results
+            )
+        else:
+            all_test_results = []
+            if node.id in handler._script_results_for_list:
+                for results in handler._script_results_for_list[
+                    node.id
+                ].values():
+                    all_test_results += results
+
+            data["testing_status"] = handler.dehydrate_test_statuses_for_list(
+                all_test_results
+            )
+
+            data["cpu_test_status"] = handler.dehydrate_test_statuses_for_list(
+                handler._script_results_for_list.get(node.id, {}).get(
+                    HARDWARE_TYPE.CPU, None
+                )
+            )
+            data[
+                "memory_test_status"
+            ] = handler.dehydrate_test_statuses_for_list(
+                handler._script_results_for_list.get(node.id, {}).get(
+                    HARDWARE_TYPE.MEMORY, None
+                )
+            )
+            data[
+                "network_test_status"
+            ] = handler.dehydrate_test_statuses_for_list(
+                handler._script_results_for_list.get(node.id, {}).get(
+                    HARDWARE_TYPE.NETWORK, None
+                )
+            )
+            data[
+                "storage_test_status"
+            ] = handler.dehydrate_test_statuses_for_list(
+                handler._script_results_for_list.get(node.id, {}).get(
+                    HARDWARE_TYPE.STORAGE
+                )
+            )
 
         if not for_list:
             interface_script_results = [
@@ -558,6 +600,7 @@ class TestMachineHandler(MAASServerTestCase):
             "dehydrate_script_set_status",
             "dehydrate_show_os_info",
             "dehydrate_test_statuses",
+            "dehydrate_test_statuses_for_list",
             "dehydrate_updated",
             "dehydrate_vlan",
             "dehydrate_volume_group",
@@ -621,6 +664,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {}, None)
         handler._script_results[cached_node.id] = cached_content
         handler._cache_pks([node])
+        handler._load_extra_data_before_dehydrate([node])
 
         self.assertEqual(
             script_result.id,
@@ -650,13 +694,13 @@ class TestMachineHandler(MAASServerTestCase):
         )
 
         handler = MachineHandler(owner, {}, None)
-        handler._script_results[node.id] = {
-            script_result.script.hardware_type: [script_result]
+        handler._script_results_for_list[node.id] = {
+            script_result.script.hardware_type: [script_result.status]
         }
         # Simulate aborting commissioning/testing
         script_result.status = SCRIPT_STATUS.ABORTED
         script_result.save()
-        handler._cache_pks([node])
+        handler._load_extra_data_before_dehydrate([node])
 
         self.assertEqual(
             [],
@@ -934,11 +978,12 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {}, None)
         handler.list({})
         handler.list({})
-        count = 0
-        for result_type in handler._script_results[node.id].values():
-            for _ in result_type:
-                count += 1
-        self.assertEqual(4, count)
+
+        result_set = set()
+        for result_type in handler._script_results_for_list[node.id].values():
+            for item in result_type:
+                result_set.add(item)
+        self.assertEqual([2], list(result_set))
 
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
@@ -2372,18 +2417,26 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         script_result = factory.make_ScriptResult(
-            script_set=factory.make_ScriptSet(node=node),
+            script_set=factory.make_ScriptSet(
+                node=node, result_type=RESULT_TYPE.TESTING
+            ),
             status=SCRIPT_STATUS.PASSED,
         )
         handler = MachineHandler(user, {}, None)
         factory.make_PhysicalBlockDevice(node=node)
         self.assertNotIn(node.id, handler._script_results.keys())
+        self.assertNotIn(node.id, handler._script_results_for_list.keys())
         list_results = handler.list({})
         list_items = list_results["groups"][0]["items"]
         self.assertDictEqual(
-            {node.id: {script_result.script.hardware_type: [script_result]}},
-            handler._script_results,
+            {
+                node.id: {
+                    script_result.script.hardware_type: [SCRIPT_STATUS.PASSED]
+                }
+            },
+            handler._script_results_for_list,
         )
+        self.assertNotIn(node.id, handler._script_results.keys())
         self.assertNotIn("commissioning_status", list_items[0])
         self.assertNotIn("commissioning_start_time", list_items[0])
         self.assertNotIn("cpu_speed", list_items[0])

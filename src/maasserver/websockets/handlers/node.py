@@ -3,15 +3,15 @@
 
 """The node handler for the WebSocket connection."""
 
-
 from collections import Counter
 from collections.abc import Iterable
 from itertools import chain
 import logging
 from operator import attrgetter, itemgetter
 
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import ValidationError
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Subquery
 from lxml import etree
 
 from maasserver.enum import (
@@ -64,7 +64,10 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.nodeprobeddetails import script_output_nsmap
-from maasserver.models.scriptset import get_status_from_qs
+from maasserver.models.scriptset import (
+    get_status_from_list_qs,
+    get_status_from_qs,
+)
 from maasserver.node_action import compile_node_actions
 from maasserver.node_constraint_filter_forms import (
     FreeTextFilterNodeForm,
@@ -171,6 +174,7 @@ class NodeHandler(TimestampedModelHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._script_results = {}
+        self._script_results_for_list = {}
 
     def update(self, params):
         data = super().update(params)
@@ -264,6 +268,18 @@ class NodeHandler(TimestampedModelHandler):
             "failed": failed,
         }
 
+    def dehydrate_test_statuses_for_list(self, results: list[int]):
+        return {
+            "status": get_status_from_list_qs(results),
+            # pending, running, passed and failed properties are not used by
+            # the UI. Set them to a default value of -1 until the api contract
+            # is reviewed
+            "pending": -1,
+            "running": -1,
+            "passed": -1,
+            "failed": -1,
+        }
+
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
         data["fqdn"] = obj.fqdn
@@ -301,49 +317,61 @@ class NodeHandler(TimestampedModelHandler):
                 )
             if not for_list:
                 data["storage_tags"] = self.get_all_storage_tags(blockdevices)
-            commissioning_script_results = []
-            testing_script_results = []
-            commissioning_start_time = None
-            log_results = set()
-            for hw_type in self._script_results.get(obj.id, {}).values():
-                for script_result in hw_type:
-                    if script_result.status == SCRIPT_STATUS.ABORTED:
-                        # LP: #1724235 - Ignore aborted scripts.
-                        continue
-                    elif (
-                        script_result.script_set.result_type
-                        == RESULT_TYPE.COMMISSIONING
-                    ):
-                        commissioning_script_results.append(script_result)
-                        if commissioning_start_time is None or (
-                            script_result.started is not None
-                            and script_result.started
-                            < commissioning_start_time
+                commissioning_script_results = []
+                testing_script_results = []
+                commissioning_start_time = None
+                log_results = set()
+                for hw_type in self._script_results.get(obj.id, {}).values():
+                    for script_result in hw_type:
+                        if script_result.status == SCRIPT_STATUS.ABORTED:
+                            # LP: #1724235 - Ignore aborted scripts.
+                            continue
+                        elif (
+                            script_result.script_set.result_type
+                            == RESULT_TYPE.COMMISSIONING
                         ):
-                            commissioning_start_time = script_result.started
-                        if (
-                            script_result.name in script_output_nsmap
-                            and script_result.status == SCRIPT_STATUS.PASSED
+                            commissioning_script_results.append(script_result)
+                            if commissioning_start_time is None or (
+                                script_result.started is not None
+                                and script_result.started
+                                < commissioning_start_time
+                            ):
+                                commissioning_start_time = (
+                                    script_result.started
+                                )
+                            if (
+                                script_result.name in script_output_nsmap
+                                and script_result.status
+                                == SCRIPT_STATUS.PASSED
+                            ):
+                                log_results.add(script_result.name)
+                        elif (
+                            script_result.script_set.result_type
+                            == RESULT_TYPE.TESTING
                         ):
-                            log_results.add(script_result.name)
-                    elif (
-                        script_result.script_set.result_type
-                        == RESULT_TYPE.TESTING
-                    ):
-                        testing_script_results.append(script_result)
-            if not for_list:
+                            testing_script_results.append(script_result)
                 data["commissioning_status"] = self.dehydrate_test_statuses(
                     commissioning_script_results
                 )
                 data["commissioning_start_time"] = dehydrate_datetime(
                     commissioning_start_time
                 )
-            data["testing_status"] = self.dehydrate_test_statuses(
-                testing_script_results
-            )
-            if not for_list:
+                data["testing_status"] = self.dehydrate_test_statuses(
+                    testing_script_results
+                )
                 data["has_logs"] = (
                     log_results.difference(script_output_nsmap.keys()) == set()
+                )
+            else:
+                all_test_results = []
+                if obj.id in self._script_results_for_list:
+                    for results in self._script_results_for_list[
+                        obj.id
+                    ].values():
+                        all_test_results += results
+
+                data["testing_status"] = self.dehydrate_test_statuses_for_list(
+                    all_test_results
                 )
         else:
             blockdevices = []
@@ -544,6 +572,50 @@ class NodeHandler(TimestampedModelHandler):
 
         return data
 
+    def _cache_script_results_for_list(self, nodes):
+        """
+        Refresh the script results status cache for the machine list action.
+        """
+
+        if nodes is None or not len(nodes):
+            return
+
+        script_results_subquery = (
+            ScriptResult.objects.filter(script_set__node__in=nodes)
+            .order_by(
+                "script_name",
+                "physical_blockdevice_id",
+                "interface_id",
+                "script_set__node_id",
+                "-id",
+            )
+            .distinct(
+                "script_name",
+                "physical_blockdevice_id",
+                "interface_id",
+                "script_set__node_id",
+            )
+            .values("id")
+        )
+
+        script_results_with_status_summary = (
+            ScriptResult.objects.filter(
+                id__in=Subquery(script_results_subquery)
+            )
+            .values_list("script_set__node_id", "script__hardware_type")
+            .annotate(statuses=ArrayAgg("status", distinct=True))
+        )
+
+        self._script_results_for_list = {}
+        for (
+            node_id,
+            hardware_type,
+            statuses,
+        ) in script_results_with_status_summary:
+            if node_id not in self._script_results_for_list:
+                self._script_results_for_list[node_id] = {}
+            self._script_results_for_list[node_id][hardware_type] = statuses
+
     def _cache_script_results(self, nodes):
         """Refresh the ScriptResult cache from the given node."""
         script_results = (
@@ -611,10 +683,15 @@ class NodeHandler(TimestampedModelHandler):
                     script_result
                 )
 
-    def _cache_pks(self, nodes):
-        node_list = super()._cache_pks(nodes)
-        self._cache_script_results(nodes)
-        return node_list
+    def _load_extra_data_before_dehydrate(self, nodes, for_list=False):
+        if not for_list:
+            self._cache_script_results(nodes)
+        else:
+            # For the list action we don't need to retrieve the entire
+            # script results objects. We just need the statuses. This is why we
+            # use a dedicated query to retrieve such information, reducing
+            # network traffic and increasing the performances.
+            self._cache_script_results_for_list(nodes)
 
     def on_listen_for_active_pk(self, action, pk, obj):
         self._cache_script_results([obj])

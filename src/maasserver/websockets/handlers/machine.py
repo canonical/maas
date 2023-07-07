@@ -351,49 +351,75 @@ class MachineHandler(NodeHandler):
         if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
             data["pod"] = self.dehydrate_pod(obj.bmc)
 
-        cpu_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.CPU, []
+        if not for_list:
+            cpu_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.CPU, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["cpu_test_status"] = self.dehydrate_test_statuses(
+                cpu_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["cpu_test_status"] = self.dehydrate_test_statuses(
-            cpu_script_results
-        )
 
-        memory_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.MEMORY, []
+            memory_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.MEMORY, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["memory_test_status"] = self.dehydrate_test_statuses(
+                memory_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["memory_test_status"] = self.dehydrate_test_statuses(
-            memory_script_results
-        )
 
-        network_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.NETWORK, []
+            network_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.NETWORK, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["network_test_status"] = self.dehydrate_test_statuses(
+                network_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["network_test_status"] = self.dehydrate_test_statuses(
-            network_script_results
-        )
 
-        storage_script_results = [
-            script_result
-            for script_result in self._script_results.get(obj.id, {}).get(
-                HARDWARE_TYPE.STORAGE, []
+            storage_script_results = [
+                script_result
+                for script_result in self._script_results.get(obj.id, {}).get(
+                    HARDWARE_TYPE.STORAGE, []
+                )
+                if script_result.script_set.result_type == RESULT_TYPE.TESTING
+            ]
+            data["storage_test_status"] = self.dehydrate_test_statuses(
+                storage_script_results
             )
-            if script_result.script_set.result_type == RESULT_TYPE.TESTING
-        ]
-        data["storage_test_status"] = self.dehydrate_test_statuses(
-            storage_script_results
-        )
+        else:
+            data["cpu_test_status"] = self.dehydrate_test_statuses_for_list(
+                self._script_results_for_list.get(obj.id, {}).get(
+                    HARDWARE_TYPE.CPU, None
+                )
+            )
+            data["memory_test_status"] = self.dehydrate_test_statuses_for_list(
+                self._script_results_for_list.get(obj.id, {}).get(
+                    HARDWARE_TYPE.MEMORY, None
+                )
+            )
+            data[
+                "network_test_status"
+            ] = self.dehydrate_test_statuses_for_list(
+                self._script_results_for_list.get(obj.id, {}).get(
+                    HARDWARE_TYPE.NETWORK, None
+                )
+            )
+            data[
+                "storage_test_status"
+            ] = self.dehydrate_test_statuses_for_list(
+                self._script_results_for_list.get(obj.id, {}).get(
+                    HARDWARE_TYPE.STORAGE
+                )
+            )
 
         if not for_list:
             # Add info specific to a machine.
