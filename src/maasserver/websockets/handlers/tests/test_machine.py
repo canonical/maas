@@ -2444,6 +2444,70 @@ class TestMachineHandler(MAASServerTestCase):
             [self.dehydrate_node(node, handler, for_list=True)], list_items
         )
 
+    def test_list_scriptresults(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        factory.make_ScriptResult(
+            script=factory.make_Script(hardware_type=HARDWARE_TYPE.STORAGE),
+            script_set=factory.make_ScriptSet(
+                result_type=SCRIPT_TYPE.TESTING, node=node
+            ),
+            status=SCRIPT_STATUS.PASSED,
+        )
+        # This one should be ignored as it's not of type RESULT_TYPE.TESTING
+        factory.make_ScriptResult(
+            script=factory.make_Script(hardware_type=HARDWARE_TYPE.NETWORK),
+            script_set=factory.make_ScriptSet(
+                result_type=SCRIPT_TYPE.COMMISSIONING, node=node
+            ),
+            status=SCRIPT_STATUS.FAILED,
+        )
+        # This one should be ignored as it's suppressed
+        factory.make_ScriptResult(
+            script=factory.make_Script(hardware_type=HARDWARE_TYPE.CPU),
+            script_set=factory.make_ScriptSet(
+                result_type=SCRIPT_TYPE.TESTING, node=node
+            ),
+            status=SCRIPT_STATUS.PASSED,
+            suppressed=True,
+        )
+
+        handler = MachineHandler(user, {}, None)
+        factory.make_PhysicalBlockDevice(node=node)
+        list_results = handler.list({})
+        self.assertEqual(len(list_results["groups"][0]["items"]), 1)
+        node_response = list_results["groups"][0]["items"][0]
+        self.assertEqual(
+            node_response["storage_test_status"],
+            {
+                "status": 2,
+                "pending": -1,
+                "running": -1,
+                "passed": -1,
+                "failed": -1,
+            },
+        )
+        self.assertEqual(
+            node_response["network_test_status"],
+            {
+                "status": -1,
+                "pending": -1,
+                "running": -1,
+                "passed": -1,
+                "failed": -1,
+            },
+        )
+        self.assertEqual(
+            node_response["cpu_test_status"],
+            {
+                "status": -1,
+                "pending": -1,
+                "running": -1,
+                "passed": -1,
+                "failed": -1,
+            },
+        )
+
     def test_list_ignores_devices(self):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)

@@ -581,7 +581,11 @@ class NodeHandler(TimestampedModelHandler):
             return
 
         script_results_subquery = (
-            ScriptResult.objects.filter(script_set__node__in=nodes)
+            ScriptResult.objects.filter(
+                script_set__node__in=nodes,
+                script_set__result_type=RESULT_TYPE.TESTING,
+                suppressed=False,
+            )
             .order_by(
                 "script_name",
                 "physical_blockdevice_id",
