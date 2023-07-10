@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
+from urllib.parse import urlencode
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.vault import (
@@ -10,6 +11,34 @@ from maasserver.vault import (
     VaultError,
 )
 from provisioningserver.path import get_maas_data_path
+
+
+@dataclass
+class DatabaseConfig:
+    name: str
+    host: str
+    username: str | None = None
+    password: str | None = None
+    port: int | None = None
+
+    @property
+    def dsn(self) -> str:
+        params = {
+            "host": self.host,
+            "user": self.username,
+            "password": self.password,
+            "port": self.port,
+        }
+        for key, value in list(params.items()):
+            if value is None:
+                del params[key]
+        return f"postgresql+asyncpg:///{self.name}?{urlencode(params)}"
+
+
+@dataclass
+class Config:
+    db: DatabaseConfig | None
+    debug_queries: bool
 
 
 def api_service_socket_path() -> Path:
@@ -22,20 +51,7 @@ def api_service_socket_path() -> Path:
     )
 
 
-def _construct_dsn(
-    database_name: str, user: str, password: str, host: str, port: int
-) -> str:
-    driver = "postgresql+asyncpg"
-    if host.startswith("/"):
-        # Unix socket connection
-        dsn = f"{driver}://{user}:{password}@localhost/{database_name}?host={host}&port={port}"
-    else:
-        # Hostname or IP address connection
-        dsn = f"{driver}://{user}:{password}@{host}:{port}/{database_name}"
-    return dsn
-
-
-def _get_default_db_config(config: RegionConfiguration) -> str:
+def _get_default_db_config(config: RegionConfiguration) -> DatabaseConfig:
     """
     Builds a default DSN based on region configuration.
     Adapted from maasserver.djangosettings.settings.
@@ -66,19 +82,13 @@ def _get_default_db_config(config: RegionConfiguration) -> str:
             )
             pass
 
-    return _construct_dsn(
+    return DatabaseConfig(
         database_name,
+        config.database_host,
         database_user,
         database_pass,
-        config.database_host,
         config.database_port,
     )
-
-
-@dataclass
-class Config:
-    dsn: str | None
-    debug_queries: bool
 
 
 def read_db_config() -> Config:

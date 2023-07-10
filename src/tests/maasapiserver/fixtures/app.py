@@ -4,13 +4,14 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.db import Database
 from maasapiserver.main import create_app
 
 
 @pytest.fixture
-def api_app() -> Iterable[FastAPI]:
+def api_app(db: Database) -> Iterable[FastAPI]:
     """The API application."""
-    yield create_app()
+    yield create_app(db=db)
 
 
 @pytest.fixture

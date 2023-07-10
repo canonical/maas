@@ -2,9 +2,9 @@ from pathlib import Path
 
 import maasapiserver.settings
 from maasapiserver.settings import (
-    _construct_dsn,
     _get_default_db_config,
     api_service_socket_path,
+    DatabaseConfig,
 )
 from maasserver.config import RegionConfiguration
 from provisioningserver.path import get_maas_data_path
@@ -28,17 +28,27 @@ class TestAPIServiceSocketPath:
         )
 
 
-class TestConstructDSN:
+class TestDatabaseConfig:
     def test_unix(self):
+        config = DatabaseConfig(
+            "maasdb",
+            username="user",
+            password="pass",
+            host="/unix.socket",
+            port=12345,
+        )
         assert (
-            _construct_dsn("maasdb", "user", "pass", "/unix.socket", 12345)
-            == "postgresql+asyncpg://user:pass@localhost/maasdb?host=/unix.socket&port=12345"
+            config.dsn
+            == "postgresql+asyncpg:///maasdb?host=%2Funix.socket&user=user&password=pass&port=12345"
         )
 
     def test_host(self):
+        config = DatabaseConfig(
+            "maasdb", username="user", password="pass", host="host", port=12345
+        )
         assert (
-            _construct_dsn("maasdb", "user", "pass", "host", 12345)
-            == "postgresql+asyncpg://user:pass@host:12345/maasdb"
+            config.dsn
+            == "postgresql+asyncpg:///maasdb?host=host&user=user&password=pass&port=12345"
         )
 
 
@@ -53,10 +63,12 @@ class TestGetDefaultDBConfig:
                 "database_port": 12345,
             }
         )
-        assert (
-            _get_default_db_config(region_config)
-            == "postgresql+asyncpg://user:pass@host:12345/maasdb"
-        )
+        config = _get_default_db_config(region_config)
+        assert config.name == "maasdb"
+        assert config.host == "host"
+        assert config.username == "user"
+        assert config.password == "pass"
+        assert config.port == 12345
 
     def test_vault(self, mocker):
         MAAS_ID.set("asdf")
@@ -75,7 +87,9 @@ class TestGetDefaultDBConfig:
             "pass": "pass",
         }
 
-        assert (
-            _get_default_db_config(region_config)
-            == "postgresql+asyncpg://user:pass@host:12345/maasdb"
-        )
+        config = _get_default_db_config(region_config)
+        assert config.name == "maasdb"
+        assert config.host == "host"
+        assert config.username == "user"
+        assert config.password == "pass"
+        assert config.port == 12345
