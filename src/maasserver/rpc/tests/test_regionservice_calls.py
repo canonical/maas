@@ -371,6 +371,7 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
                     "fs_host",
                     "log_host",
                     "extra_opts",
+                    "ephemeral_opts",
                 ]
             ),
         )

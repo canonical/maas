@@ -154,6 +154,7 @@ class GetBootConfig(amp.Command):
         # will try to use TGT as Twisted sets optional parameters to False when
         # not defined.
         (b"http_boot", amp.Boolean(optional=True)),
+        (b"ephemeral_opts", amp.Unicode(optional=True)),
     ]
     errors = {BootConfigNoResponse: b"BootConfigNoResponse"}
 
