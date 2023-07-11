@@ -14,13 +14,15 @@ from maastesting.pytest.database import cluster_stash
 
 
 @pytest.fixture
-def db(
+async def db(
     request: pytest.FixtureRequest, ensuremaasdb: str
 ) -> Iterator[Database]:
     """Set up the database schema."""
     echo = request.config.getoption("sqlalchemy_debug")
     db_config = DatabaseConfig(ensuremaasdb, host=abspath("db/"))
-    yield Database(db_config, echo=echo)
+    db = Database(db_config, echo=echo)
+    yield db
+    await db.engine.dispose()
 
 
 @pytest.fixture
@@ -37,9 +39,17 @@ async def db_connection(
             yield conn
         finally:
             await conn.close()
+            await db.engine.dispose()
             cluster = pytestconfig.stash[cluster_stash]
             cluster.dropdb(db.config.name)
     else:
+
+        def no_commit():
+            raise AssertionError(
+                "Commits are not allowed without the allow_transactions marker"
+            )
+
+        conn.sync_connection.commit = no_commit
         await conn.begin()
         try:
             yield conn
