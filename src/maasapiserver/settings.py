@@ -105,4 +105,4 @@ def read_db_config() -> Config:
         # connection is defined.
         database_config = None
         debug_queries = False
-    return Config(dsn=database_config, debug_queries=debug_queries)
+    return Config(database_config, debug_queries=debug_queries)

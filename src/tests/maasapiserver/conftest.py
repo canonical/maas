@@ -1,14 +1,23 @@
 import pytest
 
-from .fixtures.app import api_app, api_client
+from .fixtures.app import (
+    api_app,
+    api_client,
+    authenticated_api_client,
+    authenticated_user,
+    user_session_id,
+)
 from .fixtures.db import db, db_connection, fixture
 
 __all__ = [
     "api_app",
     "api_client",
+    "authenticated_api_client",
+    "authenticated_user",
     "db",
     "db_connection",
     "fixture",
+    "user_session_id",
 ]
 
 
