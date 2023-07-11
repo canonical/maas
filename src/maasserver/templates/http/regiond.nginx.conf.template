@@ -1,7 +1,11 @@
 # -*- mode: nginx -*-
 
 upstream regiond-webapp {
-    server unix:{{socket_path}};
+    server unix:{{regiond_socket_path}};
+}
+
+upstream apiserver {
+    server unix:{{apiserver_socket_path}};
 }
 
 proxy_http_version 1.1;
@@ -48,6 +52,12 @@ server {
         proxy_pass http://regiond-webapp;
         proxy_set_header Connection "Upgrade";
         proxy_set_header Upgrade $http_upgrade;
+    }
+
+    location /MAAS/a/ {
+        rewrite ^/MAAS/a/(.*)$ /api/$1 break;
+        proxy_pass http://apiserver;
+        proxy_redirect http://localhost/api/ $scheme://$host:$server_port/MAAS/a/;
     }
 
     # static assets

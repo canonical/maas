@@ -57,9 +57,13 @@ class RegionHTTPService(Service):
     def _configure(self, configuration):
         """Update the HTTP configuration for the region proxy service."""
         template = load_template("http", "regiond.nginx.conf.template")
-        socket_path = os.getenv(
+        regiond_socket_path = os.getenv(
             "MAAS_HTTP_SOCKET_PATH",
             get_maas_data_path("maas-regiond-webapp.sock"),
+        )
+        apiserver_socket_path = os.getenv(
+            "MAAS_APISERVER_HTTP_SOCKET_PATH",
+            get_maas_data_path("apiserver-http.sock"),
         )
 
         if configuration.tls_enabled:
@@ -72,7 +76,8 @@ class RegionHTTPService(Service):
             "tls_port": configuration.port,
             "tls_key_path": key_path,
             "tls_cert_path": cert_path,
-            "socket_path": socket_path,
+            "regiond_socket_path": regiond_socket_path,
+            "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
         }
         rendered = template.substitute(environ).encode()
