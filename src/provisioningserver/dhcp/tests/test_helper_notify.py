@@ -8,6 +8,7 @@ import os
 import random
 from unittest.mock import sentinel
 
+from testtools.content import text_content
 from twisted.internet import defer, reactor
 
 from maastesting import dev_root, get_testing_timeout
@@ -58,29 +59,31 @@ class TestDHCPNotify(MAASTestCase):
         socket_path, service, done = self.catch_packet_on_socket()
         service.startService()
         self.addCleanup(service.stopService)
-
-        call_and_check(
-            [
-                f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
-                "notify",
-                "--action",
-                action,
-                "--mac",
-                mac,
-                "--ip-family",
-                ip_family,
-                "--ip",
-                ip,
-                "--lease-time",
-                str(lease_time),
-                "--hostname",
-                hostname,
-                "--socket",
-                socket_path,
-            ]
-        )
+        cmd = [
+            f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
+            "notify",
+            "--action",
+            action,
+            "--mac",
+            mac,
+            "--ip-family",
+            ip_family,
+            "--ip",
+            ip,
+            "--lease-time",
+            str(lease_time),
+            "--hostname",
+            hostname,
+            "--socket",
+            socket_path,
+        ]
+        self.addDetail("cmd", text_content(repr(cmd)))
+        call_and_check(cmd)
         yield done.get(timeout=TIMEOUT)
 
+        self.addDetail(
+            "notifications", text_content(repr(service.notifications))
+        )
         self.assertEqual(1, len(done.value[0]["updates"]))
         update = done.value[0]["updates"][0]
         self.assertEqual(action, update["action"])

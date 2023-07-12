@@ -21,6 +21,10 @@ def get_testing_timeout(timeout=None):
     return float(wait_time)
 
 
+# get_testing_timeout is a test helper, not a test. This tells nose that it shouldn't be collected.
+# See https://nose.readthedocs.io/en/latest/finding_tests.html
+get_testing_timeout.__test__ = False
+
 # The root of the source tree.
 dev_root = abspath(join(dirname(realpath(__file__)), pardir, pardir))
 
