@@ -77,7 +77,7 @@ class FileBackedValue:
             else:
                 # ensure the parent dirs exist
                 self.path.parent.mkdir(exist_ok=True)
-                atomic_write(value.encode("ascii"), self.path)
+                atomic_write(value.encode("ascii"), self.path, mode=0o640)
                 self._value = value
 
     def _normalise_value(self, value: Optional[str]) -> Optional[str]:

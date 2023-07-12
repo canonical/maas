@@ -198,3 +198,8 @@ class TestFileBackedValue:
         file_value.path.write_text("new content")
         # the file is read again
         assert file_value.get() == "new content"
+
+    def test_set_default_permission(self, factory, file_value):
+        factory.make_name("contents")
+        file_value.set("content")
+        assert (file_value.path.stat().st_mode & 0o777) == 0o640
