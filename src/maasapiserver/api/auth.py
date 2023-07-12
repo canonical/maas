@@ -14,7 +14,7 @@ async def authenticated_user(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid session ID",
     )
-    session_id = request.cookies.get("session_id")
+    session_id = request.cookies.get("sessionid")
     if not session_id:
         raise unauthorized_error
 

@@ -16,7 +16,7 @@ class APIServerClient:
         version: int = 1,
     ):
         self.session = session or Session()
-        add_dict_to_cookiejar(self.session.cookies, {"session_id": session_id})
+        add_dict_to_cookiejar(self.session.cookies, {"sessionid": session_id})
         path = str(api_service_socket_path())
         self.socket_path = f"http+unix://{quote_plus(path)}"
         self.prefix = f"/api/v{version}/"

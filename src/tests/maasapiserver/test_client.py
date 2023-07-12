@@ -18,7 +18,7 @@ def client(mocker):
 class TestAPIServerClient:
     def test_session_cookie(self, client):
         assert dict_from_cookiejar(client.session.cookies) == {
-            "session_id": SAMPLE_SESSION_ID
+            "sessionid": SAMPLE_SESSION_ID
         }
 
     @pytest.mark.parametrize(

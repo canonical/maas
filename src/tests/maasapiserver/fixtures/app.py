@@ -83,5 +83,5 @@ async def authenticated_api_client(
 ) -> AsyncIterable[AsyncClient]:
     """Authenticated client for the API."""
     async with AsyncClient(app=api_app, base_url="http://test") as client:
-        client.cookies.set("session_id", user_session_id)
+        client.cookies.set("sessionid", user_session_id)
         yield client
