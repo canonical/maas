@@ -88,7 +88,7 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
     )
     database_keepalive_interval = ConfigurationOption(
         "database_keepalive_interval",
-        "Interval (in seconds) between keepaliveds.",
+        "Interval (in seconds) between keepalives.",
         Int(if_missing=15),
     )
     database_keepalive_count = ConfigurationOption(

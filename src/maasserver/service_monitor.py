@@ -86,6 +86,14 @@ class HTTPService(AlwaysOnService):
     snap_service_name = "http"
 
 
+class TemporalService(AlwaysOnService):
+    """Monitored Temporal Server service."""
+
+    name = "temporal"
+    service_name = "temporal"
+    snap_service_name = "temporal"
+
+
 # Global service monitor for regiond. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -94,4 +102,5 @@ service_monitor = ServiceMonitor(
     SyslogServiceOnRegion(),
     ProxyService(),
     HTTPService(),
+    TemporalService(),
 )

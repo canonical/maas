@@ -1,0 +1,9 @@
+#!/bin/bash -e
+# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+mkdir -p \
+      "$SNAP_DATA/temporal"
+
+# XXX: this is an experimental Temporal integration, for now using --allow-no-auth
+exec "$SNAP/usr/sbin/temporal-server" -e production -r "$SNAP_DATA/temporal/" -c "" --allow-no-auth start

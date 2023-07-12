@@ -20,6 +20,7 @@ REGION_SERVICES = frozenset(
         "regiond",
         "reverse_proxy",
         "syslog_region",
+        "temporal",
     }
 )
 
@@ -57,6 +58,7 @@ DEAD_STATUSES = {
     "proxy_rack": SERVICE_STATUS.UNKNOWN,
     "syslog_rack": SERVICE_STATUS.UNKNOWN,
     "reverse_proxy": SERVICE_STATUS.UNKNOWN,
+    "temporal": SERVICE_STATUS.UNKNOWN,
 }
 
 

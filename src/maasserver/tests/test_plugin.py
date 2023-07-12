@@ -257,6 +257,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "workers",
             "ipc-master",
             "vault-secrets-cleanup",
+            "temporal",
         }
         self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
@@ -385,6 +386,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "syslog",
             # "workers",  Prevented in all-in-one.
             "ipc-master",
+            "temporal",
         }
         self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(

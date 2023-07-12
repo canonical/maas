@@ -186,6 +186,12 @@ def make_HTTPService(postgresListener):
     return http.RegionHTTPService(postgresListener)
 
 
+def make_TemporalService():
+    from maasserver.regiondservices import temporal
+
+    return temporal.RegionTemporalService()
+
+
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
 
@@ -429,6 +435,11 @@ class RegionEventLoop:
         "vault-secrets-cleanup": {
             "only_on_master": True,
             "factory": make_VaultSecretsCleanupService,
+            "requires": [],
+        },
+        "temporal": {
+            "only_on_master": True,
+            "factory": make_TemporalService,
             "requires": [],
         },
     }

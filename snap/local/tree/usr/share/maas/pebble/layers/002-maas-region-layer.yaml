@@ -28,3 +28,8 @@ services:
       - ntp
       - proxy
       - syslog
+
+  temporal:
+    override: replace
+    command: sh -c "exec $SNAP/bin/run-temporal"
+    startup: disabled

@@ -8,6 +8,7 @@ set -e
 
 deb-systemd-invoke stop 'maas-regiond.service' >/dev/null || true
 deb-systemd-invoke stop 'maas-apiserver.service' >/dev/null || true
+deb-systemd-invoke stop 'maas-temporal.service' >/dev/null || true
 
 . /usr/share/dbconfig-common/dpkg/prerm.pgsql
 dbc_go maas-region-controller $@
