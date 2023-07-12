@@ -18,8 +18,8 @@ async def authenticated_user(
     if not session_id:
         raise unauthorized_error
 
-    service = UserService()
-    user = await service.get_by_session_id(conn, session_id)
+    service = UserService(conn)
+    user = await service.get_by_session_id(session_id)
     if not user:
         raise unauthorized_error
     return user

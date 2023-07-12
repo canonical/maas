@@ -1,7 +1,7 @@
 from typing import AsyncIterator
 
 from fastapi import Request
-from sqlalchemy.ext import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 
 async def db_conn(request: Request) -> AsyncIterator[AsyncConnection]:
