@@ -127,7 +127,6 @@ def node_details(**extra_details: Any) -> dict[str, Any]:
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
-@pytest.mark.allow_transactions
 class TestZoneApi:
     async def test_unauthenticated(
         self,
