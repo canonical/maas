@@ -64,20 +64,14 @@ class Fixture:
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 
-    async def commit(self) -> None:
-        await self.conn.commit()
-
     async def create(
         self,
         table: str,
         data: dict[str, Any] | list[dict[str, Any]] | None = None,
-        commit: bool = False,
     ) -> list[dict[str, Any]]:
         result = await self.conn.execute(
             METADATA.tables[table].insert().returning("*"), data
         )
-        if commit:
-            await self.conn.commit()
         return [row._asdict() for row in result]
 
     async def get(

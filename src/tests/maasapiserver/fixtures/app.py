@@ -1,10 +1,12 @@
+from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import AsyncIterable, Iterable
+from typing import Any, AsyncIterable, Callable, Iterable, Iterator
 
 from django.core import signing
 from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
+from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.db import Database
 from maasapiserver.main import create_app
@@ -13,10 +15,30 @@ from maasapiserver.models.v1.entities.user import User
 from .db import Fixture
 
 
+@contextmanager
+def override_dependencies(
+    app: FastAPI,
+    dependencies_map: dict[Callable[..., Any], Callable[..., Any]],
+) -> Iterator[None]:
+    """Context manager to override app dependencies in tests."""
+    for orig_func, override_func in dependencies_map.items():
+        app.dependency_overrides[orig_func] = override_func
+    yield
+    for orig_func in dependencies_map:
+        del app.dependency_overrides[orig_func]
+
+
 @pytest.fixture
-def api_app(db: Database) -> Iterable[FastAPI]:
+def api_app(db: Database, db_connection: AsyncConnection) -> Iterable[FastAPI]:
     """The API application."""
-    yield create_app(db=db)
+
+    from maasapiserver.api.db import db_conn as orig_db_conn
+
+    deps_map = {orig_db_conn: lambda: db_connection}
+
+    app = create_app(db=db)
+    with override_dependencies(app, deps_map):
+        yield app
 
 
 @pytest.fixture
@@ -48,9 +70,7 @@ async def authenticated_user(
         "is_active": True,
         "date_joined": datetime.utcnow(),
     }
-    [user_details] = await fixture.create(
-        "auth_user", user_details, commit=True
-    )
+    [user_details] = await fixture.create("auth_user", user_details)
     user = User(**user_details)
     await _create_user_session(fixture, user, user_session_id)
     yield user
@@ -73,7 +93,6 @@ async def _create_user_session(
             "session_data": session_data,
             "expire_date": datetime.utcnow() + timedelta(days=20),
         },
-        commit=True,
     )
 
 

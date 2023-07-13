@@ -157,10 +157,10 @@ class TestZoneApi:
     ) -> None:
         [zone] = await fixture.get("maasserver_zone")
         await fixture.create(
-            "maasserver_bmc", [bmc_details(zone_id=zone["id"])], commit=True
+            "maasserver_bmc", [bmc_details(zone_id=zone["id"])]
         )
         await fixture.create(
-            "maasserver_node", [node_details(zone_id=zone["id"])], commit=True
+            "maasserver_node", [node_details(zone_id=zone["id"])]
         )
 
         zone["created"] = zone["created"].isoformat()
@@ -178,10 +178,10 @@ class TestZoneApi:
     ) -> None:
         [zone1] = await fixture.get("maasserver_zone")
         [zone2] = await fixture.create(
-            "maasserver_zone", [zone_details(name="zone2")], commit=True
+            "maasserver_zone", [zone_details(name="zone2")]
         )
         [bmc1] = await fixture.create(
-            "maasserver_bmc", [bmc_details(zone_id=zone1["id"])], commit=True
+            "maasserver_bmc", [bmc_details(zone_id=zone1["id"])]
         )
         await fixture.create(
             "maasserver_node",
@@ -193,7 +193,6 @@ class TestZoneApi:
                     zone_id=zone1["id"],
                 )
             ],
-            commit=True,
         )
         await fixture.create(
             "maasserver_node",
@@ -205,11 +204,10 @@ class TestZoneApi:
                     zone_id=zone1["id"],
                 )
             ],
-            commit=True,
         )
 
         [bmc2] = await fixture.create(
-            "maasserver_bmc", [bmc_details(zone_id=zone2["id"])], commit=True
+            "maasserver_bmc", [bmc_details(zone_id=zone2["id"])]
         )
         await fixture.create(
             "maasserver_node",
@@ -218,7 +216,6 @@ class TestZoneApi:
                     bmc_id=bmc2["id"], node_type=1, zone_id=zone2["id"]
                 )
             ],
-            commit=True,
         )
 
         zone1["created"] = zone1["created"].isoformat()
