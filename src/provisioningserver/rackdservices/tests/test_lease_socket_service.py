@@ -4,6 +4,7 @@
 """Tests for src/provisioningserver/rackdservices/lease_socket_service.py"""
 
 
+from functools import partial
 import json
 import os
 import socket
@@ -14,20 +15,20 @@ from testtools.matchers import Not, PathExists
 from twisted.application.service import Service
 from twisted.internet import defer, reactor
 from twisted.internet.protocol import DatagramProtocol
-from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
+from provisioningserver.rackdservices.testing import (
+    configure_lease_service_for_one_shot,
+)
 from provisioningserver.rpc import clusterservice, getRegionClient
 from provisioningserver.rpc.region import UpdateLeases
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
-from provisioningserver.utils.twisted import DeferredValue, pause, retries
 
 
 class TestLeaseSocketService(MAASTestCase):
@@ -99,82 +100,50 @@ class TestLeaseSocketService(MAASTestCase):
     def test_notification_gets_added_to_notifications(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(sentinel.service, reactor)
-        service.startService()
-        self.addCleanup(service.stopService)
 
-        # Stop the looping call to check that the notification gets added
-        # to notifications.
-        process_done = service.done
-        service.processor.stop()
-        yield process_done
-        service.processor = MagicMock()
-
-        # Create test payload to send.
         packet = self.create_lease_notification()
+        helper = configure_lease_service_for_one_shot(self, service)
+        next(helper)
+        yield next(helper)
+        helper.send(partial(self.send_notification, socket_path, packet))
 
-        # Send notification to the socket should appear in notifications.
-        yield deferToThread(self.send_notification, socket_path, packet)
+        notifications = yield from helper
 
-        # Loop until the notifications has a notification.
-        for elapsed, remaining, wait in retries(5, 0.1, reactor):
-            if len(service.notifications) > 0:
-                break
-            else:
-                yield pause(wait, reactor)
-
-        # Should have one notitication.
-        self.assertEqual([packet], list(service.notifications))
+        # Should have one notification.
+        self.assertItemsEqual([packet], notifications)
 
     @defer.inlineCallbacks
     def test_processNotification_gets_called_with_notification(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(sentinel.service, reactor)
-        dv = DeferredValue()
 
-        # Mock processNotifcation to catch the call.
-        def mock_processNotification(*args, **kwargs):
-            dv.set(args)
-
-        self.patch(service, "processNotification", mock_processNotification)
-
-        # Start the service and stop it at the end of the test.
-        service.startService()
-        self.addCleanup(service.stopService)
+        helper = configure_lease_service_for_one_shot(self, service)
+        next(helper)
+        yield next(helper)
 
         # Create test payload to send.
         packet1 = self.create_lease_notification()
         packet2 = self.create_lease_notification()
-        payload = {
-            "cluster_uuid": None,
-            "updates": [packet1, packet2],
-        }
 
         # Send notification to the socket and wait for notification.
-        yield deferToThread(self.send_notification, socket_path, packet1)
-        yield deferToThread(self.send_notification, socket_path, packet2)
-        yield dv.get(timeout=10)
+        def _send_notifications():
+            self.send_notification(socket_path, packet1)
+            self.send_notification(socket_path, packet2)
 
-        # Payload should be the argument passed to processNotifcation
-        self.assertEqual((payload,), dv.value)
+        helper.send(_send_notifications)
+
+        notifications = yield from helper
+
+        self.assertItemsEqual([packet1, packet2], notifications)
 
     @defer.inlineCallbacks
     def test_processNotification_dont_allow_same_address(self):
         socket_path = self.patch_socket_path()
         service = LeaseSocketService(sentinel.service, reactor)
-        dvs = [DeferredValue(), DeferredValue()]
 
-        # Mock processNotifcation to catch the call.
-        def mock_processNotification(*args, **kwargs):
-            for dv in dvs:
-                if not dv.isSet:
-                    dv.set(args)
-                    break
-
-        self.patch(service, "processNotification", mock_processNotification)
-
-        # Start the service and stop it at the end of the test.
-        service.startService()
-        self.addCleanup(service.stopService)
+        helper = configure_lease_service_for_one_shot(self, service)
+        next(helper)
+        yield next(helper)
 
         # Create test payload to send.
         ip = factory.make_ipv4_address()
@@ -182,31 +151,17 @@ class TestLeaseSocketService(MAASTestCase):
         packet2 = self.create_lease_notification(ip=ip)
 
         # Send notifications to the socket and wait for notifications.
-        yield deferToThread(self.send_notification, socket_path, packet1)
-        yield deferToThread(self.send_notification, socket_path, packet2)
-        yield dvs[0].get(timeout=10)
-        yield dvs[1].get(timeout=10)
+        def _send_notifications():
+            self.send_notification(socket_path, packet1)
+            self.send_notification(socket_path, packet2)
+
+        helper.send(_send_notifications)
+
+        notifications = yield from helper
 
         # Packet should be the argument passed to processNotification in
         # order.
-        self.assertEqual(
-            (
-                {
-                    "cluster_uuid": None,
-                    "updates": [packet1],
-                },
-            ),
-            dvs[0].value,
-        )
-        self.assertEqual(
-            (
-                {
-                    "cluster_uuid": None,
-                    "updates": [packet2],
-                },
-            ),
-            dvs[1].value,
-        )
+        self.assertEqual([packet1, packet2], list(notifications))
 
     @defer.inlineCallbacks
     def test_processNotification_send_to_region(self):
@@ -225,11 +180,6 @@ class TestLeaseSocketService(MAASTestCase):
             "updates": [packet],
         }
         yield service.processNotification(payload, clock=reactor)
-        self.assertThat(
-            protocol.UpdateLeases,
-            MockCalledOnceWith(
-                protocol,
-                cluster_uuid=client.localIdent,
-                updates=[packet],
-            ),
+        protocol.UpdateLeases.assert_called_once_with(
+            protocol, cluster_uuid=client.localIdent, updates=[packet]
         )

@@ -4,22 +4,21 @@
 """Tests for maas-dhcp-support notify command."""
 
 
+from functools import partial
 import os
 import random
 from unittest.mock import sentinel
 
-from testtools.content import text_content
 from twisted.internet import defer, reactor
 
 from maastesting import dev_root, get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
-from provisioningserver.rackdservices.lease_socket_service import (
-    LeaseSocketService,
+from provisioningserver.rackdservices.testing import (
+    configure_lease_service_for_one_shot,
 )
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.twisted import DeferredValue
 
 TIMEOUT = get_testing_timeout()
 
@@ -37,15 +36,13 @@ class TestDHCPNotify(MAASTestCase):
 
     def catch_packet_on_socket(self):
         socket_path = self.patch_socket_path()
-        service = LeaseSocketService(sentinel.service, reactor)
-        dv = DeferredValue()
-
-        def mock_processNotification(*args, **kwargs):
-            dv.set(args)
-
-        self.patch(service, "processNotification", mock_processNotification)
-
-        return socket_path, service, dv
+        service = lease_socket_service.LeaseSocketService(
+            sentinel.service, reactor
+        )
+        helper = configure_lease_service_for_one_shot(self, service)
+        # Get to the point of the done callback
+        next(helper)
+        return socket_path, service, helper
 
     @defer.inlineCallbacks
     def test_sends_notification_over_socket_for_processing(self):
@@ -56,36 +53,37 @@ class TestDHCPNotify(MAASTestCase):
         lease_time = random.randint(30, 1000)
         hostname = factory.make_name("host")
 
-        socket_path, service, done = self.catch_packet_on_socket()
-        service.startService()
-        self.addCleanup(service.stopService)
-        cmd = [
-            f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
-            "notify",
-            "--action",
-            action,
-            "--mac",
-            mac,
-            "--ip-family",
-            ip_family,
-            "--ip",
-            ip,
-            "--lease-time",
-            str(lease_time),
-            "--hostname",
-            hostname,
-            "--socket",
-            socket_path,
-        ]
-        self.addDetail("cmd", text_content(repr(cmd)))
-        call_and_check(cmd)
-        yield done.get(timeout=TIMEOUT)
+        socket_path, service, helper = self.catch_packet_on_socket()
 
-        self.addDetail(
-            "notifications", text_content(repr(service.notifications))
+        send_notification = partial(
+            call_and_check,
+            [
+                f"{dev_root}/package-files/usr/sbin/maas-dhcp-helper",
+                "notify",
+                "--action",
+                action,
+                "--mac",
+                mac,
+                "--ip-family",
+                ip_family,
+                "--ip",
+                ip,
+                "--lease-time",
+                str(lease_time),
+                "--hostname",
+                hostname,
+                "--socket",
+                socket_path,
+            ],
         )
-        self.assertEqual(1, len(done.value[0]["updates"]))
-        update = done.value[0]["updates"][0]
+
+        # Wait for the service to be done
+        yield next(helper)
+
+        helper.send(send_notification)
+        notifications = yield from helper
+        self.assertEqual(len(notifications), 1)
+        update = notifications[0]
         self.assertEqual(action, update["action"])
         self.assertEqual(mac, update["mac"])
         self.assertEqual(ip_family, update["ip_family"])
