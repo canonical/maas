@@ -5,6 +5,7 @@
 
 from datetime import datetime
 from operator import attrgetter
+from typing import Optional
 
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -671,22 +672,19 @@ class BootResource(CleanSave, TimestampedModel):
                 return resource_set
         return None
 
-    def get_last_deploy(self) -> datetime:
+    def get_last_deploy(self) -> Optional[datetime]:
         from maasserver.models.event import Event
         from provisioningserver.events import EVENT_TYPES
 
-        deploy_msg = f"deployed {self.name}/{self.architecture}"
-        try:
-            return (
-                Event.objects.filter(
-                    type__name=EVENT_TYPES.IMAGE_DEPLOYED,
-                    description=deploy_msg,
-                )
-                .latest("created")
-                .created
-            )
-        except Event.DoesNotExist:
-            pass
+        # Ignore subarch/platform/supported_platforms
+        arch, _ = self.split_arch()
+        deploy_msg_prefix = f"deployed {self.name}/{arch}/"
+        if event := Event.objects.filter(
+            type__name=EVENT_TYPES.IMAGE_DEPLOYED,
+            description__startswith=deploy_msg_prefix,
+        ):
+            return event.latest("created").created
+        return None
 
     def split_arch(self):
         return self.architecture.split("/")

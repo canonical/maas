@@ -373,11 +373,12 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         os_name, series = resource.name.split("/")
         # The polled datetime only has granularity of order seconds
         start_time = datetime.datetime.now().replace(microsecond=0)
+        architecture = BootResource.objects.get_usable_architectures()[0]
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             osystem=os_name,
             distro_series=series,
-            architecture=resource.architecture,
+            architecture=architecture,
         )
         node.end_deployment()
         response = handler.poll({})
