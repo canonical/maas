@@ -111,6 +111,8 @@ def boot_resource_to_dict(resource, with_sets=False):
         "last_deployed": resource.get_last_deploy(),
     }
     dict_representation.update(resource.extra)
+    if resource.base_image:
+        dict_representation["base_image"] = resource.base_image
     if with_sets:
         dict_representation["sets"] = {}
         for resource_set in resource.sets.all().order_by("id").reverse():

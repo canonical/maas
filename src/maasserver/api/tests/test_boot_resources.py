@@ -104,7 +104,8 @@ class TestHelpers(APITestCase.ForUser):
         self.assertEqual(
             resource.get_last_deploy(), dict_representation["last_deployed"]
         )
-        self.assertFalse("sets" in dict_representation)
+        self.assertNotIn("sets", dict_representation)
+        self.assertNotIn("base_image", dict_representation)
 
     def test_boot_resource_to_dict_with_sets(self):
         resource = factory.make_BootResource()
@@ -114,6 +115,12 @@ class TestHelpers(APITestCase.ForUser):
             boot_resource_set_to_dict(resource_set),
             dict_representation["sets"][resource_set.version],
         )
+
+    def test_boot_resource_to_dict_custom(self):
+        base_image = factory.make_base_image_name()
+        resource = factory.make_BootResource(base_image=base_image)
+        dict_representation = boot_resource_to_dict(resource)
+        self.assertIn("base_image", dict_representation)
 
 
 def prevent_scheduling_of_image_imports(test):
