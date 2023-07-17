@@ -18,7 +18,6 @@ from maasserver.workers import (
     WorkersService,
 )
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import DeferredValue
 
@@ -29,14 +28,14 @@ class TestWorkersCount(MAASTestCase):
     def test_MAX_WORKERS_COUNT_default_cpucount(self):
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEqual(os.cpu_count(), MAX_WORKERS_COUNT)
+        assert os.cpu_count() == MAX_WORKERS_COUNT
 
     def test_set_max_workers_count(self):
         worker_count = random.randint(1, 8)
         set_max_workers_count(worker_count)
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEqual(worker_count, MAX_WORKERS_COUNT)
+        assert worker_count == MAX_WORKERS_COUNT
 
 
 class TestWorkersService(MAASTestCase):
@@ -47,31 +46,61 @@ class TestWorkersService(MAASTestCase):
 
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEqual(MAX_WORKERS_COUNT, service.worker_count)
-        self.assertEqual(sys.argv[0], service.worker_cmd)
+        assert MAX_WORKERS_COUNT == len(service.get_worker_ids())
+        assert sys.argv[0] == service.worker_cmd
 
     def test_calls_spawnWorkers_on_start(self):
         service = WorkersService(reactor)
         self.patch(service, "spawnWorkers")
         service.startService()
-        self.assertThat(service.spawnWorkers, MockCalledOnceWith())
+        service.spawnWorkers.assert_called_once()
 
     def test_spawnWorkers_calls__spawnWorker_for_missing_workers(self):
         worker_count = random.randint(2, 16)
-        service = WorkersService(reactor, worker_count=worker_count)
+        set_max_workers_count(worker_count)
+        service = WorkersService(reactor)
         self.patch(service, "_spawnWorker")
         pid = random.randint(1, 500)
-        service.workers[pid] = WorkerProcess(service)
+        service.workers[pid] = WorkerProcess(service, worker_id="0")
+        service.missing_worker_ids.remove("0")
         service.spawnWorkers()
-        calls = [call(runningImport=True)] + [
-            call() for _ in range(worker_count - 2)
+        calls = [call("1", runningImport=True)] + [
+            call(str(worker_id)) for worker_id in range(2, worker_count)
         ]
-        self.assertThat(service._spawnWorker, MockCallsMatch(*calls))
+        service._spawnWorker.assert_has_calls(calls)
+
+    def test_registerWorker(self):
+        worker_count = 2
+        set_max_workers_count(worker_count)
+        service = WorkersService(reactor)
+        self.patch(service, "_spawnWorker")
+
+        worker = WorkerProcess(service, worker_id="0")
+        worker.pid = 100
+        service.registerWorker(worker)
+
+        service.spawnWorkers()
+        calls = [call("1", runningImport=True)]
+        service._spawnWorker.assert_has_calls(calls)
+
+    def test_unregisterWorker(self):
+        worker_count = 2
+        set_max_workers_count(worker_count)
+        service = WorkersService(reactor)
+        self.patch(service, "_spawnWorker")
+
+        worker = WorkerProcess(service, worker_id="0")
+        worker.pid = 100
+        service.registerWorker(worker)
+        service.unregisterWorker(worker, None)
+        calls = [call("1", runningImport=True), call("0")]
+        service._spawnWorker.assert_has_calls(calls)
 
     @wait_for_reactor
     @inlineCallbacks
     def test_killWorker_spawns_another(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
+        set_max_workers_count(1)
+        service = WorkersService(reactor, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -91,15 +120,16 @@ class TestWorkersService(MAASTestCase):
             pid = list(service.workers.keys())[0]
             service.killWorker(pid)
             yield dv.get(timeout=2)
-            self.assertNotIn(pid, service.workers)
-            self.assertEqual(1, len(service.workers))
+            assert pid not in service.workers
+            assert len(service.workers) == 1
         finally:
             service.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_termWorker_spawns_another(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
+        set_max_workers_count(1)
+        service = WorkersService(reactor, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -119,15 +149,16 @@ class TestWorkersService(MAASTestCase):
             pid = list(service.workers.keys())[0]
             service.termWorker(pid)
             yield dv.get(timeout=2)
-            self.assertNotIn(pid, service.workers)
-            self.assertEqual(1, len(service.workers))
+            assert pid not in service.workers
+            assert len(service.workers) == 1
         finally:
             service.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_doesnt(self):
-        service = WorkersService(reactor, worker_count=1, worker_cmd="cat")
+        set_max_workers_count(1)
+        service = WorkersService(reactor, worker_cmd="cat")
 
         dv = DeferredValue()
         original_unregisterWorker = service.unregisterWorker
@@ -142,9 +173,9 @@ class TestWorkersService(MAASTestCase):
 
         try:
             service.startService()
-            self.assertEqual(1, len(service.workers))
+            assert len(service.workers) == 1
         finally:
             service.stopService()
 
         yield dv.get(timeout=2)
-        self.assertEqual({}, service.workers)
+        assert len(service.workers) == 0
