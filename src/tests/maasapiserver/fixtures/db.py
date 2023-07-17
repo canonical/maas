@@ -29,7 +29,7 @@ async def db(
 async def db_connection(
     request: pytest.FixtureRequest, pytestconfig, db: Database
 ) -> AsyncGenerator[AsyncConnection, None]:
-    """A database session."""
+    """A database connection."""
     allow_transactions = (
         request.node.get_closest_marker("allow_transactions") is not None
     )

@@ -3,7 +3,6 @@
 
 """The machine handler for the WebSocket connection."""
 
-
 from collections import defaultdict
 from functools import partial
 import logging
@@ -78,7 +77,7 @@ from maasserver.models import (
     Subnet,
     VolumeGroup,
 )
-from maasserver.node_action import get_node_action
+from maasserver.node_action import compile_node_actions, get_node_action
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import (
     StorageLayoutError,
@@ -182,6 +181,32 @@ class MachineHandler(NodeHandler):
                     )
                     .values("message")[:1]
                 ),
+                physical_disk_count=Count(
+                    "current_config__blockdevice__physicalblockdevice",
+                    distinct=True,
+                ),
+                total_storage=Subquery(
+                    node_total_storage_query_set.values("storage"),
+                    output_field=IntegerField(),
+                ),
+                pxe_mac=F("boot_interface__mac_address"),
+                fabric_name=F("boot_interface__vlan__fabric__name"),
+                node_fqdn=Concat(
+                    "hostname",
+                    Value("."),
+                    "domain__name",
+                    output_field=CharField(),
+                ),
+                simple_status=_build_simple_status_q(),
+            )
+        )
+
+        use_sqlalchemy_list = (
+            Machine.objects.all()
+            .select_related("owner", "zone", "domain", "bmc", "current_config")
+            .prefetch_related("pool")
+            .prefetch_related("current_config__interface_set")
+            .annotate(
                 physical_disk_count=Count(
                     "current_config__blockdevice__physicalblockdevice",
                     distinct=True,
@@ -310,12 +335,41 @@ class MachineHandler(NodeHandler):
         super().__init__(*args, **kwargs)
         self._deployed = False
 
-    def get_queryset(self, for_list=False, perm=NodePermission.view):
+    def _full_dehydrate_for_listing(self, machine, for_list=True):
+        obj = {
+            "id": machine.id,
+            "actions": list(compile_node_actions(machine, self.user).keys()),
+        }
+
+        self._add_permissions(machine, obj)
+        return obj
+
+    def _list_sqlalchemy(self, params):
+        res = super().list(
+            params,
+            use_sqlalchemy_list=True,
+            full_dehydrate_function=self._full_dehydrate_for_listing,
+        )
+        res = self.api_client.post("machines", json=res).json()
+        return res
+
+    def list(self, params):
+        res = self._list_sqlalchemy(params)
+        return res
+
+    def get_queryset(
+        self,
+        use_sqlalchemy_list=False,
+        for_list=False,
+        perm=NodePermission.view,
+    ):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
             self.user,
             perm,
-            from_nodes=super().get_queryset(for_list=for_list),
+            from_nodes=super().get_queryset(
+                use_sqlalchemy_list=use_sqlalchemy_list, for_list=for_list
+            ),
         )
 
     def dehydrate(self, obj, data, for_list=False):
@@ -1053,9 +1107,7 @@ class MachineHandler(NodeHandler):
             )
         return action.execute(**extra_params)
 
-    def _bulk_action(
-        self, filter_params, action_name, extra_params
-    ) -> tuple[int, list[str], dict[list[str]]]:
+    def _bulk_action(self, filter_params, action_name, extra_params):
         """Find nodes that match the filter, then apply the given action to them."""
         machines = self._filter(
             self.get_queryset(for_list=True), None, filter_params

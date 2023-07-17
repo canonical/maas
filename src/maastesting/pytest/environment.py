@@ -1,7 +1,6 @@
 # Copyright 2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-from os.path import abspath, dirname, join, pardir, realpath
+import importlib
 from pathlib import Path
 from shutil import copytree
 
@@ -14,7 +13,9 @@ from provisioningserver.utils.env import (
     MAAS_UUID,
 )
 
-dev_root = Path(abspath(join(dirname(realpath(__file__)), pardir, pardir)))
+dev_root = Path(
+    Path(importlib.util.find_spec("maastesting").origin).parents[2]
+)
 
 
 @pytest.fixture(autouse=True)

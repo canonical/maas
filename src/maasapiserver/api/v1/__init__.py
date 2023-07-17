@@ -1,4 +1,5 @@
 from ..base import API
+from .machines import MachineHandler
 from .root import RootHandler
 from .zones import ZoneHandler
 
@@ -7,5 +8,6 @@ APIv1 = API(
     handlers=[
         RootHandler(),
         ZoneHandler(),
+        MachineHandler(),
     ],
 )

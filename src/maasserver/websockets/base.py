@@ -20,7 +20,9 @@ from django.core.paginator import Paginator
 from django.db.models import Count, F, Model, Q
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
+from twisted.internet.threads import deferToThread
 
+from maasapiserver.client import APIServerClient
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
 from maasserver.prometheus.middleware import wrap_query_counter_cursor
@@ -100,6 +102,7 @@ class HandlerOptions:
     object_class = None
     queryset = None
     list_queryset = None
+    use_sqlalchemy_list = None
     pk = "id"
     bulk_pk = "ids"
     pk_type = int
@@ -118,6 +121,7 @@ class HandlerOptions:
     delete_permission = None
     use_paginated_list = False
     dft_page_size = 100
+    methods_using_apiserver = []
 
     def __new__(cls, meta=None):
         overrides = {}
@@ -180,7 +184,7 @@ class Handler(metaclass=HandlerMetaclass):
 
     """
 
-    def __init__(self, user, cache, request):
+    def __init__(self, user, cache, request, session_id=""):
         self.user = user
         self.cache = cache
         self.request = request
@@ -189,6 +193,7 @@ class Handler(metaclass=HandlerMetaclass):
         # correct notifications based on what items the client has.
         if "loaded_pks" not in self.cache:
             self.cache["loaded_pks"] = set()
+        self.api_client = APIServerClient(session_id)
 
     def full_dehydrate(self, obj, for_list=False):
         """Convert the given object into a dictionary.
@@ -359,13 +364,16 @@ class Handler(metaclass=HandlerMetaclass):
             )
         return obj
 
-    def get_queryset(self, for_list=False):
+    def get_queryset(self, use_sqlalchemy_list=False, for_list=False):
         """Return `QuerySet` used by this handler.
 
         Override if you need to modify the queryset based on the current user.
         """
         if for_list and self._meta.list_queryset is not None:
-            return self._meta.list_queryset
+            if use_sqlalchemy_list:
+                return self._meta.use_sqlalchemy_list
+            else:
+                return self._meta.list_queryset
         else:
             return self._meta.queryset
 
@@ -389,6 +397,55 @@ class Handler(metaclass=HandlerMetaclass):
         )
         return {"call": call_name}
 
+    def _apiserver_execute(self, method, params):
+        return concurrency.webapp.run(deferToThread, method, params)
+
+    def _legacy_execute(self, method, method_name, params):
+        # Handler methods are predominantly transactional and thus
+        # blocking/synchronous. Genuinely non-blocking/asynchronous
+        # methods must out themselves explicitly.
+        if IAsynchronous.providedBy(method) or asyncio.iscoroutinefunction(
+            method
+        ):
+            # Running in the io thread so clear RBAC now.
+            rbac.clear()
+
+            # Reload the user from the database.
+            d = concurrency.webapp.run(
+                deferToDatabase,
+                transactional(self.user.refresh_from_db),
+            )
+            d.addCallback(lambda _: ensureDeferred(method(params)))
+            return d
+        else:
+
+            @wraps(method)
+            @transactional
+            def prep_user_execute(params):
+                # Clear RBAC and reload the user to ensure that
+                # its up to date. `rbac.clear` must be done inside
+                # the thread because it uses thread locals internally.
+                rbac.clear()
+                self.user.refresh_from_db()
+
+                # Perform the work in the database.
+                return self._call_method_track_queries(
+                    method_name, method, params
+                )
+
+            # Force the name of the function to include the handler
+            # name so the debug logging is useful.
+            prep_user_execute.__name__ = "{}.{}".format(
+                self.__class__.__name__,
+                method_name,
+            )
+
+            # This is going to block and hold a database connection so
+            # we limit its concurrency.
+            return concurrency.webapp.run(
+                deferToDatabase, prep_user_execute, params
+            )
+
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_websocket_call_latency",
         get_labels=_get_call_latency_metrics_label,
@@ -406,50 +463,10 @@ class Handler(metaclass=HandlerMetaclass):
             except AttributeError:
                 raise HandlerNoSuchMethodError(method_name)
             else:
-                # Handler methods are predominantly transactional and thus
-                # blocking/synchronous. Genuinely non-blocking/asynchronous
-                # methods must out themselves explicitly.
-                if IAsynchronous.providedBy(
-                    method
-                ) or asyncio.iscoroutinefunction(method):
-                    # Running in the io thread so clear RBAC now.
-                    rbac.clear()
-
-                    # Reload the user from the database.
-                    d = concurrency.webapp.run(
-                        deferToDatabase,
-                        transactional(self.user.refresh_from_db),
-                    )
-                    d.addCallback(lambda _: ensureDeferred(method(params)))
-                    return d
+                if method_name in self._meta.methods_using_apiserver:
+                    return self._apiserver_execute(method, params)
                 else:
-
-                    @wraps(method)
-                    @transactional
-                    def prep_user_execute(params):
-                        # Clear RBAC and reload the user to ensure that
-                        # its up to date. `rbac.clear` must be done inside
-                        # the thread because it uses thread locals internally.
-                        rbac.clear()
-                        self.user.refresh_from_db()
-
-                        # Perform the work in the database.
-                        return self._call_method_track_queries(
-                            method_name, method, params
-                        )
-
-                    # Force the name of the function to include the handler
-                    # name so the debug logging is useful.
-                    prep_user_execute.__name__ = "{}.{}".format(
-                        self.__class__.__name__,
-                        method_name,
-                    )
-
-                    # This is going to block and hold a database connection so
-                    # we limit its concurrency.
-                    return concurrency.webapp.run(
-                        deferToDatabase, prep_user_execute, params
-                    )
+                    return self._legacy_execute(method, method_name, params)
         else:
             raise HandlerNoSuchMethodError(method_name)
 
@@ -537,7 +554,9 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return None
 
-    def list(self, params):
+    def list(
+        self, params, use_sqlalchemy_list=False, full_dehydrate_function=None
+    ):
         """List objects.
 
         :param start: A value of the `batch_key` column and NOT `pk`. They are
@@ -551,12 +570,23 @@ class Handler(metaclass=HandlerMetaclass):
             overridden to implement the desired DSL.
         :param sort_key: desired sorting key
         """
-        qs_filter = self.get_queryset(for_list=True)
+        if full_dehydrate_function is None:
+            full_dehydrate_function = self.full_dehydrate
+
+        if use_sqlalchemy_list:
+            qs_filter = self.get_queryset(
+                use_sqlalchemy_list=use_sqlalchemy_list, for_list=True
+            )
+        else:
+            qs_filter = self.get_queryset(for_list=True)
+
         if "filter" in params:
             qs_filter = self._filter(qs_filter, "list", params["filter"])
 
         if self._meta.use_paginated_list:
-            return self._build_list_grouping(qs_filter, params)
+            return self._build_list_grouping(
+                qs_filter, params, full_dehydrate_function
+            )
         else:
             return self._build_list_simple(qs_filter, params)
 
@@ -578,7 +608,7 @@ class Handler(metaclass=HandlerMetaclass):
         self._load_extra_data_before_dehydrate(qs, True)
         return [self.full_dehydrate(obj, for_list=True) for obj in objs]
 
-    def _build_list_grouping(self, qs, params):
+    def _build_list_grouping(self, qs, params, full_dehydrate_function):
         """List objects with grouping and pagination.
 
         :param page_size: Number of items per page.
@@ -687,13 +717,14 @@ class Handler(metaclass=HandlerMetaclass):
             for obj in page_objs:
                 grp_id = gid_getter(obj)
                 groups[grp_id]["items"].append(
-                    self.full_dehydrate(obj, for_list=True)
+                    full_dehydrate_function(obj, for_list=True)
                 )
             result["groups"] = list(groups.values())
         else:
             grp = new_grp(None, None, result["count"], False)
             grp["items"] = [
-                self.full_dehydrate(obj, for_list=True) for obj in page_objs
+                full_dehydrate_function(obj, for_list=True)
+                for obj in page_objs
             ]
             result["groups"] = [grp]
 

@@ -371,7 +371,10 @@ class WebSocketProtocol(Protocol):
         """Return an initialised instance of `handler_class`."""
         handler_name = handler_class._meta.handler_name
         handler_cache = self.cache.setdefault(handler_name, {})
-        return handler_class(self.user, handler_cache, self.request)
+        session_id = self.session.session_key
+        return handler_class(
+            self.user, handler_cache, self.request, session_id
+        )
 
 
 class WebSocketFactory(Factory):

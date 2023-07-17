@@ -3,7 +3,6 @@
 
 from pytest import fixture
 
-
 # override pytest-django's db setup
 @fixture(scope="session")
 def django_db_setup():

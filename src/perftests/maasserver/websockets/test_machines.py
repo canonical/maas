@@ -5,7 +5,7 @@ from maasserver.models import Machine
 from maasserver.websockets.handlers.machine import MachineHandler
 
 
-def test_perf_list_machines_Websocket_endpoint(perf, admin):
+def test_perf_list_machines_Websocket_endpoint(perf, admin, maasapiserver):
     # This should test the websocket calls that are used to load
     # the machine listing page on the initial page load.
     with perf.record("test_perf_list_machines_Websocket_endpoint"):
@@ -24,7 +24,7 @@ def test_perf_list_machines_Websocket_endpoint(perf, admin):
         ws_handler.list(params)
 
 
-def test_perf_list_machines_Websocket_endpoint_all(perf, admin):
+def test_perf_list_machines_Websocket_endpoint_all(perf, admin, maasapiserver):
     # How long would it take to list all the machines using the
     # websocket without any pagination.
     machine_count = Machine.objects.all().count()

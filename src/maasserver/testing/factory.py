@@ -119,6 +119,7 @@ from maasserver.models.rdns import RDNS
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.secrets import SecretManager
+from maasserver.sessiontimeout import SessionStore
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
@@ -1338,6 +1339,17 @@ class Factory(maastesting.factory.Factory):
         user.userprofile.save()
         return user
 
+    def make_User_with_session(self, *args, **kwargs):
+        user = self.make_User(*args, **kwargs)
+        session = self._make_session(user)
+        return user, session
+
+    def _make_session(self, user):
+        session = SessionStore()
+        session["_auth_user_id"] = user.id
+        session.save()
+        return session
+
     def make_ResourcePool(self, name=None, description=None, nodes=None):
         if name is None:
             name = self.make_name("resourcepool")
@@ -2089,6 +2101,11 @@ class Factory(maastesting.factory.Factory):
         user.userprofile.completed_intro = completed_intro
         user.userprofile.save()
         return user
+
+    def make_admin_with_session(self, *args, **kwargs):
+        admin = self.make_admin(*args, **kwargs)
+        session = self._make_session(admin)
+        return admin, session
 
     def make_FileStorage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)

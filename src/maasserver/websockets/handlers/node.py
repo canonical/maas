@@ -690,12 +690,6 @@ class NodeHandler(TimestampedModelHandler):
     def _load_extra_data_before_dehydrate(self, nodes, for_list=False):
         if not for_list:
             self._cache_script_results(nodes)
-        else:
-            # For the list action we don't need to retrieve the entire
-            # script results objects. We just need the statuses. This is why we
-            # use a dedicated query to retrieve such information, reducing
-            # network traffic and increasing the performances.
-            self._cache_script_results_for_list(nodes)
 
     def on_listen_for_active_pk(self, action, pk, obj):
         self._cache_script_results([obj])

@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from functools import partial
 import json
 import logging
-from operator import attrgetter, itemgetter
+from operator import itemgetter
 import random
 import re
 from types import FunctionType
@@ -91,7 +91,7 @@ from maasserver.storage_layouts import (
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.fixtures import RBACEnabled, RBACForceOffFixture
+from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -151,10 +151,9 @@ class FakeRequest:
         self.user = user
 
 
-class TestMachineHandler(MAASServerTestCase):
-    maxDiff = None
-
-    def get_blockdevice_status(self, handler, blockdevice):
+class TestMachineHandlerUtils:
+    @staticmethod
+    def get_blockdevice_status(handler, blockdevice):
         blockdevice_script_results = [
             script_result
             for results in handler._script_results.values()
@@ -164,11 +163,14 @@ class TestMachineHandler(MAASServerTestCase):
         ]
         return get_status_from_qs(blockdevice_script_results)
 
-    def dehydrate_node(self, node, handler, for_list=False):
+    @staticmethod
+    def dehydrate_node(node, handler, for_list=False):
         # Prime handler._script_results
         handler._script_results = {}
-        handler._cache_pks([node])
-        handler._load_extra_data_before_dehydrate([node])
+        if for_list:
+            handler._cache_script_results_for_list([node])
+        else:
+            handler._cache_script_results([node])
 
         boot_interface = node.get_boot_interface()
         subnets = handler.get_all_subnets(node)
@@ -368,6 +370,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "module": driver["module"],
                 "comment": driver["comment"],
             }
+
         data["vlan"] = None
         if boot_interface:
             data["vlan"] = handler.dehydrate_vlan(node, boot_interface)
@@ -382,6 +385,7 @@ class TestMachineHandler(MAASServerTestCase):
         data["pod"] = None
         if bmc is not None and bmc.bmc_type == BMC_TYPE.POD:
             data["pod"] = {"id": bmc.id, "name": bmc.name}
+
         if for_list:
             if node.node_type == NODE_TYPE.MACHINE:
                 data["numa_nodes_count"] = len(data["numa_nodes"])
@@ -565,7 +569,8 @@ class TestMachineHandler(MAASServerTestCase):
 
         return data
 
-    def make_nodes(self, number):
+    @staticmethod
+    def make_nodes(number):
         """Create `number` of new nodes."""
         for counter in range(number):
             node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
@@ -575,6 +580,10 @@ class TestMachineHandler(MAASServerTestCase):
                 factory.make_Node(
                     node_type=NODE_TYPE.DEVICE, parent=node, interface=True
                 )
+
+
+class TestMachineHandler(MAASServerTestCase):
+    maxDiff = None
 
     def test_allowed_methods(self):
         not_allowed_methods = [
@@ -709,163 +718,6 @@ class TestMachineHandler(MAASServerTestCase):
             ],
         )
 
-    def _populate_db_for_query_count(self, n=2):
-        owner = factory.make_User()
-        vlan = factory.make_VLAN(space=factory.make_Space())
-        for _ in range(n):
-            node = factory.make_Node_with_Interface_on_Subnet(
-                owner=owner, vlan=vlan
-            )
-            commissioning_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.COMMISSIONING
-            )
-            testing_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.TESTING
-            )
-            node.current_commissioning_script_set = commissioning_script_set
-            node.current_testing_script_set = testing_script_set
-            node.save()
-            for __ in range(2):
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED,
-                    script_set=commissioning_script_set,
-                )
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
-                )
-        return owner
-
-    def test_list_num_queries_is_the_expected_number(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-        owner = self._populate_db_for_query_count(2)
-        handler = MachineHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list, {"page_size": 1})
-        queries_total, _ = count_queries(handler.list, {})
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node listing.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
-        expected_query_count = 26
-        self.assertEqual(
-            queries_one,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-        self.assertEqual(
-            queries_total,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-
-    def test_list_num_queries_with_filter_is_the_expected_number(self):
-        # Prevent RBAC from making a query.
-        self.useFixture(RBACForceOffFixture())
-        owner = self._populate_db_for_query_count(2)
-        handler = MachineHandler(owner, {}, None)
-        base_params = {
-            "filter": {},
-            "group_collapsed": [],
-            "group_key": "status",
-            "page_number": 1,
-            "sort_direction": "descending",
-            "sort_key": "hostname",
-        }
-
-        queries_one, _ = count_queries(
-            handler.list, dict(page_size=1, **base_params)
-        )
-        queries_total, _ = count_queries(
-            handler.list, dict(page_size=50, **base_params)
-        )
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node listing.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
-        expected_query_count = 27
-        self.assertEqual(
-            queries_one,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-        self.assertEqual(
-            queries_total,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-
-    def test_list_num_queries_is_the_expected_number_with_rbac(self):
-        rbac = RBACEnabled()
-        self.useFixture(rbac)
-
-        owner = factory.make_User()
-        pool = factory.make_ResourcePool()
-        rbac.store.add_pool(pool)
-        rbac.store.allow(owner.username, pool, "view")
-        rbac.store.allow(owner.username, pool, "admin-machines")
-
-        vlan = factory.make_VLAN(space=factory.make_Space())
-        for _ in range(2):
-            node = factory.make_Node_with_Interface_on_Subnet(
-                owner=owner,
-                pool=pool,
-                vlan=vlan,
-            )
-            commissioning_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.COMMISSIONING
-            )
-            testing_script_set = factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.TESTING
-            )
-            node.current_commissioning_script_set = commissioning_script_set
-            node.current_testing_script_set = testing_script_set
-            node.save()
-            for __ in range(2):
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED,
-                    script_set=commissioning_script_set,
-                )
-                factory.make_ScriptResult(
-                    status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
-                )
-
-        handler = MachineHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list, {"page_size": 1})
-        queries_total, _ = count_queries(handler.list, {})
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node listing.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
-        expected_query_count = 26
-        self.assertEqual(
-            queries_one,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-        self.assertEqual(
-            queries_total,
-            expected_query_count,
-            "Number of queries has changed; make sure this is expected.",
-        )
-
-    def test_list_no_power_params_certificate(self):
-        sample_cert = get_sample_cert()
-        factory.make_Node(
-            power_type="lxd",
-            power_parameters={
-                "power_address": "lxd.maas",
-                "certificate": sample_cert.certificate_pem(),
-                "key": sample_cert.private_key_pem(),
-            },
-        )
-        handler = MachineHandler(factory.make_User(), {}, None)
-        list_results = handler.list({})
-        [node_info] = list_results["groups"][0]["items"]
-        self.assertNotIn("certificate", node_info)
-
     def test_get_power_params_certificate(self):
         sample_cert = get_sample_cert()
         node = factory.make_Node(
@@ -953,37 +805,6 @@ class TestMachineHandler(MAASServerTestCase):
         )
         self.assertEqual(ret["commissioning_status"]["passed"], num_scripts)
         self.assertEqual(ret["testing_status"]["passed"], num_scripts)
-
-    def test_cache_clears_on_reload(self):
-        owner = factory.make_User()
-        node = factory.make_Node(owner=owner)
-        commissioning_script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.COMMISSIONING
-        )
-        testing_script_set = factory.make_ScriptSet(
-            node=node, result_type=RESULT_TYPE.TESTING
-        )
-        node.current_commissioning_script_set = commissioning_script_set
-        node.current_testing_script_set = testing_script_set
-        node.save()
-        for _ in range(2):
-            factory.make_ScriptResult(
-                status=SCRIPT_STATUS.PASSED,
-                script_set=commissioning_script_set,
-            )
-            factory.make_ScriptResult(
-                status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
-            )
-
-        handler = MachineHandler(owner, {}, None)
-        handler.list({})
-        handler.list({})
-
-        result_set = set()
-        for result_type in handler._script_results_for_list[node.id].values():
-            for item in result_type:
-                result_set.add(item)
-        self.assertEqual([2], list(result_set))
 
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
@@ -1164,7 +985,9 @@ class TestMachineHandler(MAASServerTestCase):
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
         is_boot = blockdevice.id == node.get_boot_disk().id
-        test_status = self.get_blockdevice_status(handler, blockdevice)
+        test_status = TestMachineHandlerUtils.get_blockdevice_status(
+            handler, blockdevice
+        )
         self.assertEqual(
             {
                 "id": blockdevice.id,
@@ -1212,7 +1035,9 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {}, None)
         blockdevice = factory.make_PhysicalBlockDevice(node=node)
         is_boot = blockdevice.id == node.get_boot_disk().id
-        test_status = self.get_blockdevice_status(handler, blockdevice)
+        test_status = TestMachineHandlerUtils.get_blockdevice_status(
+            handler, blockdevice
+        )
         self.assertEqual(
             {
                 "id": blockdevice.id,
@@ -1247,7 +1072,9 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         blockdevice = factory.make_VirtualBlockDevice(node=node)
-        test_status = self.get_blockdevice_status(handler, blockdevice)
+        test_status = TestMachineHandlerUtils.get_blockdevice_status(
+            handler, blockdevice
+        )
         self.assertEqual(
             {
                 "id": blockdevice.id,
@@ -2213,7 +2040,7 @@ class TestMachineHandler(MAASServerTestCase):
         node.save()
 
         observed = handler.get({"system_id": node.system_id})
-        expected = self.dehydrate_node(node, handler)
+        expected = TestMachineHandlerUtils.dehydrate_node(node, handler)
         self.assertEqual(observed, expected)
 
     def test_get_hardware_sync_fields(self):
@@ -2413,142 +2240,6 @@ class TestMachineHandler(MAASServerTestCase):
             ],
         )
 
-    def test_list(self):
-        user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        script_result = factory.make_ScriptResult(
-            script_set=factory.make_ScriptSet(
-                node=node, result_type=RESULT_TYPE.TESTING
-            ),
-            status=SCRIPT_STATUS.PASSED,
-        )
-        handler = MachineHandler(user, {}, None)
-        factory.make_PhysicalBlockDevice(node=node)
-        self.assertNotIn(node.id, handler._script_results.keys())
-        self.assertNotIn(node.id, handler._script_results_for_list.keys())
-        list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        self.assertDictEqual(
-            {
-                node.id: {
-                    script_result.script.hardware_type: [SCRIPT_STATUS.PASSED]
-                }
-            },
-            handler._script_results_for_list,
-        )
-        self.assertNotIn(node.id, handler._script_results.keys())
-        self.assertNotIn("commissioning_status", list_items[0])
-        self.assertNotIn("commissioning_start_time", list_items[0])
-        self.assertNotIn("cpu_speed", list_items[0])
-        self.assertCountEqual(
-            [self.dehydrate_node(node, handler, for_list=True)], list_items
-        )
-
-    def test_list_scriptresults(self):
-        user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        factory.make_ScriptResult(
-            script=factory.make_Script(hardware_type=HARDWARE_TYPE.STORAGE),
-            script_set=factory.make_ScriptSet(
-                result_type=SCRIPT_TYPE.TESTING, node=node
-            ),
-            status=SCRIPT_STATUS.PASSED,
-        )
-        # This one should be ignored as it's not of type RESULT_TYPE.TESTING
-        factory.make_ScriptResult(
-            script=factory.make_Script(hardware_type=HARDWARE_TYPE.NETWORK),
-            script_set=factory.make_ScriptSet(
-                result_type=SCRIPT_TYPE.COMMISSIONING, node=node
-            ),
-            status=SCRIPT_STATUS.FAILED,
-        )
-        # This one should be ignored as it's suppressed
-        factory.make_ScriptResult(
-            script=factory.make_Script(hardware_type=HARDWARE_TYPE.CPU),
-            script_set=factory.make_ScriptSet(
-                result_type=SCRIPT_TYPE.TESTING, node=node
-            ),
-            status=SCRIPT_STATUS.PASSED,
-            suppressed=True,
-        )
-
-        handler = MachineHandler(user, {}, None)
-        factory.make_PhysicalBlockDevice(node=node)
-        list_results = handler.list({})
-        self.assertEqual(len(list_results["groups"][0]["items"]), 1)
-        node_response = list_results["groups"][0]["items"][0]
-        self.assertEqual(
-            node_response["storage_test_status"],
-            {
-                "status": 2,
-                "pending": -1,
-                "running": -1,
-                "passed": -1,
-                "failed": -1,
-            },
-        )
-        self.assertEqual(
-            node_response["network_test_status"],
-            {
-                "status": -1,
-                "pending": -1,
-                "running": -1,
-                "passed": -1,
-                "failed": -1,
-            },
-        )
-        self.assertEqual(
-            node_response["cpu_test_status"],
-            {
-                "status": -1,
-                "pending": -1,
-                "running": -1,
-                "passed": -1,
-                "failed": -1,
-            },
-        )
-
-    def test_list_ignores_devices(self):
-        owner = factory.make_User()
-        handler = MachineHandler(owner, {}, None)
-        # Create a device.
-        factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)
-        node = factory.make_Node(owner=owner)
-        list_results = handler.list({})
-        self.assertCountEqual(
-            [self.dehydrate_node(node, handler, for_list=True)],
-            list_results["groups"][0]["items"],
-        )
-
-    def test_list_returns_nodes_only_viewable_by_user(self):
-        user = factory.make_User()
-        other_user = factory.make_User()
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        ownered_node = factory.make_Node(
-            owner=user, status=NODE_STATUS.ALLOCATED
-        )
-        factory.make_Node(owner=other_user, status=NODE_STATUS.ALLOCATED)
-        handler = MachineHandler(user, {}, None)
-        list_results = handler.list({})
-        self.assertCountEqual(
-            [
-                self.dehydrate_node(node, handler, for_list=True),
-                self.dehydrate_node(ownered_node, handler, for_list=True),
-            ],
-            list_results["groups"][0]["items"],
-        )
-
-    def test_list_includes_pod_details_when_available(self):
-        user = factory.make_User()
-        pod = factory.make_Pod()
-        node = factory.make_Node(owner=user, bmc=pod)
-        handler = MachineHandler(user, {}, None)
-        list_results = handler.list({})
-        self.assertEqual(
-            [self.dehydrate_node(node, handler, for_list=True)],
-            list_results["groups"][0]["items"],
-        )
-
     def test_list_includes_static_ip_addresses(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
@@ -2564,7 +2255,9 @@ class TestMachineHandler(MAASServerTestCase):
                 {"ip": ip_address1.ip, "is_boot": True},
                 {"ip": ip_address2.ip, "is_boot": False},
             ],
-            self.dehydrate_node(node, handler, for_list=True)["ip_addresses"],
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )["ip_addresses"],
         )
 
     def test_list_includes_dynamic_ip_if_no_static(self):
@@ -2577,7 +2270,9 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         self.assertEqual(
             [{"ip": ip_address.ip, "is_boot": True}],
-            self.dehydrate_node(node, handler, for_list=True)["ip_addresses"],
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )["ip_addresses"],
         )
 
     def test_list_includes_vlan_with_boot_interface(self):
@@ -2596,7 +2291,9 @@ class TestMachineHandler(MAASServerTestCase):
                 "fabric_id": interface.vlan.fabric.id,
                 "fabric_name": "%s" % interface.vlan.fabric.name,
             },
-            self.dehydrate_node(node, handler, for_list=True)["vlan"],
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )["vlan"],
         )
 
     def test_list_excludes_vlan_without_boot_interface(self):
@@ -2604,7 +2301,9 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
         self.assertIsNone(
-            self.dehydrate_node(node, handler, for_list=True)["vlan"]
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )["vlan"]
         )
 
     def test_get_object_returns_node_if_super_user(self):
@@ -2790,7 +2489,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(interface=True, power_type="manual")
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         arch = factory.make_name("arch")
         node_data["architecture"] = arch
         error = self.assertRaises(
@@ -2812,7 +2511,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(interface=True)
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         new_zone = factory.make_Zone()
         new_pool = factory.make_ResourcePool()
         new_hostname = factory.make_name("hostname")
@@ -2854,7 +2553,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(interface=True)
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
         new_architecture = make_usable_architecture(self)
@@ -2883,7 +2582,7 @@ class TestMachineHandler(MAASServerTestCase):
             interface=True, architecture=architecture, power_type="manual"
         )
         tags = [factory.make_Tag(definition="").id for _ in range(3)]
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         node_data["tags"] = tags
         updated_node = handler.update(node_data)
         self.assertCountEqual(tags, updated_node["tags"])
@@ -2901,7 +2600,7 @@ class TestMachineHandler(MAASServerTestCase):
             tag.node_set.add(node)
             tag.save()
             tags[tag.id] = tag.name
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         removed_tag_id = random.choice(list(tags))
         tags.pop(removed_tag_id)
         node_data["tags"].remove(removed_tag_id)
@@ -2915,7 +2614,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, architecture=architecture, power_type="manual"
         )
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         updated_node = handler.update(node_data)
         self.assertEqual([], updated_node["tags"])
 
@@ -2927,7 +2626,7 @@ class TestMachineHandler(MAASServerTestCase):
             interface=True, architecture=architecture, power_type="manual"
         )
         tag = factory.make_Tag(definition="//foo/bar")
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         node_data["tags"].append(tag.id)
         error = self.assertRaises(HandlerError, handler.update, node_data)
         self.assertEqual(
@@ -3926,7 +3625,7 @@ class TestMachineHandler(MAASServerTestCase):
         architecture = make_usable_architecture(self)
         node = factory.make_Node(interface=True, architecture=architecture)
         tag = factory.make_Tag()
-        node_data = self.dehydrate_node(node, handler)
+        node_data = TestMachineHandlerUtils.dehydrate_node(node, handler)
         node_data["tags"].append(tag.name)
         self.assertRaises(HandlerError, handler.update, node_data)
 
@@ -6017,173 +5716,6 @@ class TestMachineHandlerWorkloadAnnotations(MAASServerTestCase):
 
 
 class TestMachineHandlerNewSchema(MAASServerTestCase):
-    def test_filter_simple(self):
-        user = factory.make_User()
-        nodes = [
-            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-            for _ in range(3)
-        ]
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "filter": {
-                    "hostname": [nodes[1].hostname],
-                }
-            }
-        )
-        items = result["groups"][0]["items"]
-        self.assertEqual(1, len(items))
-        self.assertEqual(
-            nodes[1].hostname,
-            items[0]["hostname"],
-        )
-
-    def test_filter_composed(self):
-        user = factory.make_User()
-        nodes = [
-            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-            for _ in range(3)
-        ]
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "filter": {
-                    "hostname": [nodes[1].hostname],
-                    "status": "allocated",
-                }
-            }
-        )
-        items = result["groups"][0]["items"]
-        self.assertEqual(1, len(items))
-        self.assertEqual(
-            nodes[1].hostname,
-            items[0]["hostname"],
-        )
-
-    def test_filter_no_response(self):
-        user = factory.make_User()
-        for _ in range(3):
-            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "filter": {
-                    "status": "new",
-                }
-            }
-        )
-        self.assertEqual(0, result["groups"][0]["count"])
-
-    def test_filter_invalid(self):
-        user = factory.make_User()
-        for _ in range(3):
-            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
-        handler = MachineHandler(user, {}, None)
-        self.assertRaises(
-            HandlerValidationError,
-            handler.list,
-            {
-                "filter": {
-                    "status": "my_custom_status",
-                }
-            },
-        )
-
-    def test_filter_diskless_machine(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user, status=NODE_STATUS.NEW, with_boot_disk=False
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "filter": {
-                    "status": "new",
-                }
-            }
-        )
-        self.assertEqual(1, result["groups"][0]["count"])
-
-    def test_filter_counters(self):
-        user = factory.make_User()
-        nodes = [factory.make_Machine(owner=user) for _ in range(2)]
-        for node in nodes:
-            _ = [factory.make_PhysicalBlockDevice(node=node) for _ in range(3)]
-        handler = MachineHandler(user, {}, None)
-        result = handler.list({"group_key": "owner"})
-        self.assertEqual(2, result["count"])
-        self.assertEqual(2, result["groups"][0]["count"])
-
-    def test_filter_storage_counters(self):
-        user = factory.make_User()
-        node = factory.make_Machine(owner=user)
-        [node.tags.add(factory.make_Tag()) for _ in range(2)]
-
-        handler = MachineHandler(user, {}, None)
-        result = handler.list({"filter": {"free_text": node.hostname}})
-
-        self.assertEqual(1, result["count"])
-        self.assertEqual(
-            node.physicalblockdevice_set.count(),
-            result["groups"][0]["items"][0]["physical_disk_count"],
-        )
-        self.assertEqual(
-            round(node.physicalblockdevice_set.first().size / (1000**3), 1),
-            result["groups"][0]["items"][0]["storage"],
-        )
-
-    def test_sort_alias(self):
-        user = factory.make_User()
-        fabrics = [factory.make_Fabric() for _ in range(2)]
-        subnets = [factory.make_Subnet(fabric=fabrics[i]) for i in range(2)]
-        statuses = [NODE_STATUS.ALLOCATED, NODE_STATUS.FAILED_COMMISSIONING]
-        nodes = [
-            factory.make_Machine_with_Interface_on_Subnet(
-                owner=user,
-                status=statuses[idx],
-                hostname=f"node{idx}-{factory.make_string(10)}",
-                subnet=subnets[idx],
-            )
-            for idx in range(2)
-        ]
-        for i, node in enumerate(nodes):
-            for _ in range(i):
-                factory.make_PhysicalBlockDevice(
-                    node=node, size=MIN_BOOT_PARTITION_SIZE
-                )
-        handler = MachineHandler(user, {}, None)
-        for key in (
-            "storage",
-            "physical_disk_count",
-            "fqdn",
-            "pxe_mac",
-            "simple_status",
-        ):
-            result = handler.list(
-                {
-                    "sort_key": key,
-                    "sort_direction": "descending",
-                }
-            )
-            items = result["groups"][0]["items"]
-            self.assertEqual(2, result["groups"][0]["count"])
-            self.assertLess(items[1][key], items[0][key], key)
-
-        # fabric_name is not the name of the field
-        result = handler.list(
-            {
-                "sort_key": "fabric_name",
-                "sort_direction": "descending",
-            }
-        )
-        items = result["groups"][0]["items"]
-        self.assertEqual(2, result["groups"][0]["count"])
-        self.assertLess(
-            items[1]["vlan"]["fabric_name"],
-            items[0]["vlan"]["fabric_name"],
-            "fabric",
-        )
-
     def test_filter_bulk_action(self):
         logger_twisted = self.useFixture(TwistedLoggerFixture())
         user = factory.make_admin()
@@ -6901,443 +6433,10 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         result = handler.filter_options({"group_key": "interfaces"})
         self.assertEqual(len(result), len(ifaces) + len(tags) + 1)
 
-    def test_group_label_dynamic(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="lxd"),
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="virsh"),
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "pod_type",
-            }
-        )
-        self.assertEqual(
-            "lxd",
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            "virsh",
-            result["groups"][1]["name"],
-        )
-
-    def test_group_collapse_dynamic(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="lxd"),
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-            bmc=factory.make_Pod(pod_type="virsh"),
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "pod_type",
-                "group_collapsed": ["lxd"],
-            }
-        )
-        self.assertEqual(
-            "lxd",
-            result["groups"][0]["name"],
-        )
-        self.assertTrue(
-            result["groups"][0]["collapsed"],
-        )
-        self.assertEqual(
-            "virsh",
-            result["groups"][1]["name"],
-        )
-        self.assertFalse(
-            result["groups"][1]["collapsed"],
-        )
-
-    def test_group_label_static(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.NEW,
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "status",
-            }
-        )
-        self.assertEqual(
-            "New",
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            "new",
-            result["groups"][0]["value"],
-        )
-        self.assertEqual(
-            "Allocated",
-            result["groups"][1]["name"],
-        )
-        self.assertEqual(
-            "allocated",
-            result["groups"][1]["value"],
-        )
-
-    def test_group_simple_status(self):
-        user = factory.make_User()
-        statuses = [
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.FAILED_COMMISSIONING,
-            NODE_STATUS.FAILED_DEPLOYMENT,
-        ]
-        for i in range(3):
-            factory.make_Node(owner=user, status=statuses[i])
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "simple_status",
-            }
-        )
-        grp_alloc = result["groups"][0]
-        self.assertEqual(SIMPLIFIED_NODE_STATUS.ALLOCATED, grp_alloc["name"])
-        self.assertEqual("allocated", grp_alloc["value"])
-        self.assertEqual(1, grp_alloc["count"])
-        grp_fail = result["groups"][1]
-        self.assertEqual(SIMPLIFIED_NODE_STATUS.FAILED, grp_fail["name"])
-        self.assertEqual("failed", grp_fail["value"])
-        self.assertEqual(2, grp_fail["count"])
-
-    def test_group_power_state(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user,
-            power_state=POWER_STATE.ON,
-        )
-        factory.make_Node(
-            owner=user,
-            power_state=POWER_STATE.OFF,
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "power_state",
-            }
-        )
-        self.assertEqual(
-            "Off",
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            "On",
-            result["groups"][1]["name"],
-        )
-
-    def test_group_owner(self):
-        admin = factory.make_admin()
-        user1 = factory.make_User(username="User01")
-        user2 = factory.make_User(username="User02")
-        factory.make_Node(
-            owner=user2,
-        )
-        factory.make_Node(
-            owner=user1,
-        )
-        handler = MachineHandler(admin, {}, None)
-        result = handler.list(
-            {
-                "group_key": "owner",
-            }
-        )
-        self.assertEqual(
-            "User01",
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            "User02",
-            result["groups"][1]["name"],
-        )
-
-    def test_group_parent(self):
-        admin = factory.make_admin()
-        parent = factory.make_Machine(owner=admin)
-        for _ in range(2):
-            factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(admin, {}, None)
-        result = handler.list(
-            {
-                "group_key": "parent",
-            }
-        )
-        self.assertEqual(
-            parent.hostname,
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            parent.hostname,
-            result["groups"][0]["value"],
-        )
-        self.assertEqual(
-            2,
-            result["groups"][0]["count"],
-        )
-        self.assertEqual(
-            "None",
-            result["groups"][1]["name"],
-        )
-        self.assertEqual(
-            None,
-            result["groups"][1]["value"],
-        )
-        self.assertEqual(
-            1,
-            result["groups"][1]["count"],
-        )
-
-    def test_group_parent_pages_no_parent_first_pagelast(self):
-        # On the first page, the last machine does not have a parent.
-        admin = factory.make_admin()
-        parent = factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin, parent=parent)
-        factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(admin, {}, None)
-        handler.list(
-            {
-                "group_key": "parent",
-                "page_size": 2,
-                "page_number": 1,
-            }
-        )
-
-    def test_group_parent_pages_no_parent_previous_page_with_parent(self):
-        # On the second page, the top has no parent, previous page
-        # ended with a machine with a parent
-        admin = factory.make_admin()
-        parent = factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin, parent=parent)
-        factory.make_Machine(owner=admin, parent=parent)
-        handler = MachineHandler(admin, {}, None)
-        handler.list(
-            {
-                "group_key": "parent",
-                "page_size": 2,
-                "page_number": 2,
-            }
-        )
-
-    def test_group_parent_pages_with_parent_previous_page_with_parent_and_no_parent(
-        self,
-    ):
-        # On the second page, the top of the page has a parent, but there
-        # should machines with no parents included as well.
-        admin = factory.make_admin()
-        parent1 = factory.make_Machine(owner=admin)
-        parent2 = factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin, parent=parent1)
-        factory.make_Machine(owner=admin, parent=parent1)
-        factory.make_Machine(owner=admin, parent=parent1)
-        factory.make_Machine(owner=admin, parent=parent2)
-        handler = MachineHandler(admin, {}, None)
-        handler.list(
-            {
-                "group_key": "parent",
-                "page_size": 1,
-                "page_number": 2,
-            }
-        )
-
-    def test_group_parent_pages_no_parent_previous_page_without_parent(self):
-        # On the second page, the previous page ended with a machine
-        # without a parent.
-        admin = factory.make_admin()
-        factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin)
-        factory.make_Machine(owner=admin)
-        handler = MachineHandler(admin, {}, None)
-        handler.list(
-            {
-                "group_key": "parent",
-                "page_size": 2,
-                "page_number": 2,
-            }
-        )
-
-    def test_group_zone(self):
-        user = factory.make_User()
-        zones = sorted(
-            [factory.make_Zone() for _ in range(2)], key=attrgetter("name")
-        )
-        factory.make_Node(
-            owner=user,
-            zone=zones[1],
-        )
-        factory.make_Node(
-            owner=user,
-            zone=zones[0],
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "zone",
-            }
-        )
-        self.assertEqual(
-            zones[0].name,
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            zones[1].name,
-            result["groups"][1]["name"],
-        )
-
-    def test_group_collapse_static(self):
-        user = factory.make_User()
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.ALLOCATED,
-        )
-        factory.make_Node(
-            owner=user,
-            status=NODE_STATUS.NEW,
-        )
-        handler = MachineHandler(user, {}, None)
-        result = handler.list(
-            {
-                "group_key": "status",
-                "group_collapsed": ["new"],
-            }
-        )
-        self.assertEqual(
-            "New",
-            result["groups"][0]["name"],
-        )
-        self.assertEqual(
-            "Allocated",
-            result["groups"][1]["name"],
-        )
-        self.assertTrue(
-            result["groups"][0]["collapsed"],
-        )
-        self.assertFalse(
-            result["groups"][1]["collapsed"],
-        )
-
-    def test_filter_dynamic_options(self):
-        user = factory.make_User()
-        tag = factory.make_Tag()
-        fabric = factory.make_Fabric(class_type="test-fabric-class")
-        factory.make_usable_boot_resource(architecture="amd64/generic")
-        node = factory.make_Machine_with_Interface_on_Subnet(
-            architecture="amd64/generic",
-            bmc=factory.make_Pod(),
-            owner=user,
-            fabric=fabric,
-            interface_speed=1000,
-        )
-        node.tags.add(tag)
-        handler = MachineHandler(user, {}, None)
-        for filter_grp in handler.filter_groups({}):
-            key = filter_grp["key"]
-            if filter_grp["dynamic"] and not key.startswith("not_"):
-                opts = handler.filter_options({"group_key": key})
-                if filter_grp["type"] == "list[str]":
-                    filter = {key: [k["key"] for k in opts]}
-                else:
-                    filter = {key: opts[0]["key"]}
-                handler.list({"filter": filter})
-
-    def test_unsubscribe_prevents_further_updates_for_pk(self):
-        admin = factory.make_admin()
-        handler = MachineHandler(admin, {}, None)
-        node = factory.make_Node()
-        handler.list({})
-        listen_result = handler.on_listen("machine", "update", node.system_id)
-        self.assertIsNotNone(listen_result)
-        handler.unsubscribe({"system_ids": [node.system_id]})
-        self.assertIsNone(
-            handler.on_listen("machine", "update", node.system_id)
-        )
-        list_result = handler.list({})
-        self.assertEqual(len(list_result["groups"][0]["items"]), 1)
-
     def test_unsubscribe_raises_validation_error_with_no_pk(self):
         admin = factory.make_admin()
         handler = MachineHandler(admin, {}, None)
         self.assertRaises(HandlerValidationError, handler.unsubscribe, {})
-
-    def test_unsubscribe_returns_serializable_type(self):
-        admin = factory.make_admin()
-        handler = MachineHandler(admin, {}, None)
-        nodes = [factory.make_Node() for _ in range(3)]
-        handler.list({})
-        resp = handler.unsubscribe(
-            {"system_ids": [node.system_id for node in nodes]}
-        )
-        self.assertIsInstance(resp, list)
-
-    def test_read_an_unsubscribed_object_subscribes(self):
-        admin = factory.make_admin()
-        handler = MachineHandler(admin, {}, None)
-        node1 = factory.make_Node()
-        node2 = factory.make_Node()
-        handler.list({})
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node1.system_id)
-        )
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
-        handler.unsubscribe({"system_ids": [node2.system_id]})
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node1.system_id)
-        )
-        self.assertIsNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
-        self.assertIsNotNone(handler.get({"system_id": node2.system_id}))
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
-
-    def test_list_an_unsubscribed_object_subscribes(self):
-        admin = factory.make_admin()
-        handler = MachineHandler(admin, {}, None)
-        node1 = factory.make_Node()
-        node2 = factory.make_Node()
-        handler.list({})
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node1.system_id)
-        )
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
-        handler.unsubscribe({"system_ids": [node1.system_id]})
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
-        self.assertIsNone(
-            handler.on_listen("machine", "update", node1.system_id)
-        )
-        list_result = handler.list({})
-        self.assertEqual(len(list_result["groups"][0]["items"]), 2)
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node1.system_id)
-        )
-        self.assertIsNotNone(
-            handler.on_listen("machine", "update", node2.system_id)
-        )
 
     def test_count_endpoint_no_filter(self):
         owner = factory.make_User()

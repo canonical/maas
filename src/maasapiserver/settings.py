@@ -38,7 +38,7 @@ class DatabaseConfig:
 @dataclass
 class Config:
     db: DatabaseConfig | None
-    debug_queries: bool
+    debug_queries: bool = False
 
 
 def api_service_socket_path() -> Path:
@@ -105,4 +105,4 @@ def read_db_config() -> Config:
         # connection is defined.
         database_config = None
         debug_queries = False
-    return Config(database_config, debug_queries=debug_queries)
+    return Config(db=database_config, debug_queries=debug_queries)
