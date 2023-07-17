@@ -349,7 +349,7 @@ class MachineService(Service):
         boot_interface_ip_cte = (
             select(
                 NodeTable.c.id,
-                case(  # a little bit hacky but yeah
+                case(
                     (
                         NodeTable.c.boot_interface_id.is_not(None),
                         NodeTable.c.boot_interface_id,
@@ -499,12 +499,13 @@ class MachineService(Service):
             )
             .where(
                 StaticIPAddressTable.c.ip.is_not(None),
-                or_(
-                    StaticIPAddressTable.c.alloc_type == IPADDRESS_TYPE.DHCP,
-                    StaticIPAddressTable.c.alloc_type == IPADDRESS_TYPE.AUTO,
-                    StaticIPAddressTable.c.alloc_type == IPADDRESS_TYPE.STICKY,
-                    StaticIPAddressTable.c.alloc_type
-                    == IPADDRESS_TYPE.USER_RESERVED,
+                StaticIPAddressTable.c.alloc_type.in_(
+                    (
+                        IPADDRESS_TYPE.DHCP,
+                        IPADDRESS_TYPE.AUTO,
+                        IPADDRESS_TYPE.STICKY,
+                        IPADDRESS_TYPE.USER_RESERVED,
+                    )
                 ),
             )
         ).cte("interface_addresses")
