@@ -648,6 +648,19 @@ class TestMachineHandler(MAASServerTestCase):
             and not attr.startswith("_")
         ]
 
+    def test_list_ids(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        handler = MachineHandler(user, {}, None)
+
+        list_results = handler.list_ids({})
+        list_items = list_results["groups"][0]["items"]
+
+        assert len(list_items) == 1
+        assert len(list_items[0]["permissions"]) == 0
+        assert len(list_items[0]["actions"]) > 0
+        assert list_items[0]["id"] == node.id
+
     def test_get_refresh_script_result_cache(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)

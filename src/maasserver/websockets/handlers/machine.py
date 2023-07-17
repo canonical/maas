@@ -228,6 +228,7 @@ class MachineHandler(NodeHandler):
         )
         allowed_methods = [
             "list",
+            "list_ids",
             "get",
             "create",
             "update",
@@ -344,14 +345,16 @@ class MachineHandler(NodeHandler):
         self._add_permissions(machine, obj)
         return obj
 
-    def _list_sqlalchemy(self, params):
-        res = super().list(
+    def list_ids(self, params):
+        return super().list(
             params,
             use_sqlalchemy_list=True,
             full_dehydrate_function=self._full_dehydrate_for_listing,
         )
-        res = self.api_client.post("machines", json=res).json()
-        return res
+
+    def _list_sqlalchemy(self, params):
+        res = self.list_ids(params)
+        return self.api_client.post("machines", json=res).json()
 
     def list(self, params):
         res = self._list_sqlalchemy(params)
