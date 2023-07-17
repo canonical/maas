@@ -18,6 +18,7 @@ from maasserver.regiondservices import certificate_expiration_check
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
 from maasserver.utils.threads import deferToDatabase
+from maasserver.workers import WorkersService
 from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
@@ -29,8 +30,17 @@ from provisioningserver.utils.fs import atomic_write, get_root_path, snap
 
 log = LegacyLogger()
 
+REGIOND_SOCKET_PATH = os.getenv(
+    "MAAS_HTTP_SOCKET_WORKER_BASE_PATH",
+    get_maas_data_path("maas-regiond-webapp.sock"),
+)
+
 
 class RegionHTTPService(Service):
+    @staticmethod
+    def build_unix_socket_path_for_worker(worker_id: str) -> str:
+        return f"{REGIOND_SOCKET_PATH}.{worker_id}"
+
     def __init__(self, postgresListener: PostgresListenerService = None):
         super().__init__()
         self.listener = postgresListener
@@ -57,14 +67,16 @@ class RegionHTTPService(Service):
     def _configure(self, configuration):
         """Update the HTTP configuration for the region proxy service."""
         template = load_template("http", "regiond.nginx.conf.template")
-        regiond_socket_path = os.getenv(
-            "MAAS_HTTP_SOCKET_PATH",
-            get_maas_data_path("maas-regiond-webapp.sock"),
-        )
         apiserver_socket_path = os.getenv(
             "MAAS_APISERVER_HTTP_SOCKET_PATH",
             get_maas_data_path("apiserver-http.sock"),
         )
+
+        # Load balancing the unix sockets
+        worker_socket_paths = [
+            self.build_unix_socket_path_for_worker(worker_id)
+            for worker_id in WorkersService.get_worker_ids()
+        ]
 
         if configuration.tls_enabled:
             key_path, cert_path = self._create_cert_files(configuration.cert)
@@ -76,7 +88,7 @@ class RegionHTTPService(Service):
             "tls_port": configuration.port,
             "tls_key_path": key_path,
             "tls_cert_path": cert_path,
-            "regiond_socket_path": regiond_socket_path,
+            "worker_socket_paths": worker_socket_paths,
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
         }

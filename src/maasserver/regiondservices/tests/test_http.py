@@ -15,6 +15,7 @@ from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.threads import deferToDatabase
+from maasserver.workers import WorkersService
 from maastesting.crochet import wait_for
 from provisioningserver.testing.certificates import (
     get_sample_cert_with_cacerts,
@@ -85,6 +86,10 @@ class TestRegionHTTPService(
         mock_cert_check.assert_called_once_with()
 
     def test_configure_not_snap(self):
+        # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
+        data_path = os.getenv("MAAS_DATA")
+        http.REGIOND_SOCKET_PATH = f"{data_path}/maas-regiond-webapp.sock"
+
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
         service = http.RegionHTTPService()
@@ -97,10 +102,14 @@ class TestRegionHTTPService(
 
         service._configure(http._Configuration(self.cert, port=5443))
 
-        # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
-        data_path = os.getenv("MAAS_DATA")
         nginx_config = nginx_conf.read_text()
-        self.assertIn(f"{data_path}/maas-regiond-webapp.sock;", nginx_config)
+
+        worker_ids = WorkersService.get_worker_ids()
+        for worker_id in worker_ids:
+            self.assertIn(
+                f"{data_path}/maas-regiond-webapp.sock.{worker_id};",
+                nginx_config,
+            )
         self.assertIn("root /usr/share/maas/web/static;", nginx_config)
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("ssl_certificate cert_path;", nginx_config)
@@ -111,11 +120,12 @@ class TestRegionHTTPService(
             os,
             "environ",
             {
-                "MAAS_HTTP_SOCKET_PATH": "/snap/maas/maas-regiond-webapp.sock",
                 "SNAP": "/snap/maas/5443",
                 "MAAS_HTTP_CONFIG_DIR": os.getenv("MAAS_DATA"),
             },
         )
+        http.REGIOND_SOCKET_PATH = "/snap/maas/maas-regiond-webapp.sock"
+
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
         service = http.RegionHTTPService()
@@ -129,9 +139,12 @@ class TestRegionHTTPService(
         service._configure(http._Configuration(cert=self.cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
-        self.assertIn(
-            "server unix:/snap/maas/maas-regiond-webapp.sock;", nginx_config
-        )
+        worker_ids = WorkersService.get_worker_ids()
+        for worker_id in worker_ids:
+            self.assertIn(
+                f"server unix:/snap/maas/maas-regiond-webapp.sock.{worker_id};",
+                nginx_config,
+            )
         self.assertIn(
             "root /snap/maas/5443/usr/share/maas/web/static;", nginx_config
         )

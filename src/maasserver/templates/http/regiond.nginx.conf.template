@@ -1,7 +1,9 @@
 # -*- mode: nginx -*-
 
 upstream regiond-webapp {
-    server unix:{{regiond_socket_path}};
+{{for worker_socket_path in worker_socket_paths}}
+    server unix:{{worker_socket_path}};
+{{endfor}}
 }
 
 upstream apiserver {

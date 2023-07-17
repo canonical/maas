@@ -18,7 +18,7 @@ export MAAS_SYSLOG_LOG_DIR="$SNAP_COMMON/log"
 export MAAS_IMAGES_KEYRING_FILEPATH="/snap/maas/current/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 export MAAS_THIRD_PARTY_DRIVER_SETTINGS="$SNAP/etc/maas/drivers.yaml"
 export MAAS_HTTP_CONFIG_DIR="$SNAP_DATA/http"
-export MAAS_HTTP_SOCKET_PATH="$SNAP_DATA/maas-regiond-webapp.sock"
+export MAAS_HTTP_SOCKET_WORKER_BASE_PATH="$SNAP_DATA/maas-regiond-webapp.sock"
 export MAAS_APISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/apiserver-http.sock"
 export MAAS_TEMPORAL_CONFIG_DIR="$SNAP_DATA/temporal"
 
