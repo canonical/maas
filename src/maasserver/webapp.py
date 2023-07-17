@@ -20,6 +20,7 @@ from twisted.web.server import Request, Site
 from twisted.web.wsgi import WSGIResource
 
 from maasserver import concurrency
+from maasserver.regiondservices.http import RegionHTTPService
 from maasserver.utils.threads import deferToDatabase
 from maasserver.utils.views import WebApplicationHandler
 from maasserver.websockets.protocol import WebSocketFactory
@@ -29,7 +30,6 @@ from maasserver.websockets.websockets import (
 )
 from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.twisted import (
     asynchronous,
     reducedWebLogFormatter,
@@ -227,16 +227,18 @@ class WebApplicationService(StreamServerEndpointService):
     def _makeEndpoint(self):
         """Make the endpoint for the webapp."""
 
-        socket_path = os.getenv(
-            "MAAS_HTTP_SOCKET_PATH",
-            get_maas_data_path("maas-regiond-webapp.sock"),
+        worker_id = os.getenv("MAAS_REGIOND_WORKER_ID", "")
+        worker_socket_path = (
+            RegionHTTPService.build_unix_socket_path_for_worker(worker_id)
         )
 
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        if os.path.exists(socket_path):
-            os.unlink(socket_path)
+        try:
+            os.unlink(worker_socket_path)
+        except FileNotFoundError:
+            pass
 
-        s.bind(socket_path)
+        s.bind(worker_socket_path)
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
 
