@@ -5,6 +5,7 @@
 
 import os
 import sys
+from typing import List
 
 from twisted.application import service
 from twisted.internet import protocol
@@ -26,9 +27,10 @@ def set_max_workers_count(worker_count):
 
 
 class WorkerProcess(protocol.ProcessProtocol):
-    def __init__(self, service, runningImport=False):
+    def __init__(self, service, worker_id: str, runningImport=False):
         super().__init__()
         self.service = service
+        self.worker_id = worker_id
         self.runningImport = runningImport
 
     def connectionMade(self):
@@ -54,17 +56,19 @@ class WorkersService(service.Service):
     Manages the lifecycle of the workers.
     """
 
-    def __init__(self, reactor, *, worker_count=None, worker_cmd=None):
+    @staticmethod
+    def get_worker_ids() -> List[str]:
+        return [str(worker_id) for worker_id in range(MAX_WORKERS_COUNT)]
+
+    def __init__(self, reactor, *, worker_cmd=None):
         super().__init__()
         self.reactor = reactor
         self.stopping = False
-        self.worker_count = worker_count
-        if self.worker_count is None:
-            self.worker_count = MAX_WORKERS_COUNT
         self.worker_cmd = worker_cmd
         if self.worker_cmd is None:
             self.worker_cmd = sys.argv[0]
         self.workers = {}
+        self.missing_worker_ids = self.get_worker_ids()
 
     def startService(self):
         """Start the workers."""
@@ -83,27 +87,30 @@ class WorkersService(service.Service):
         if self.stopping:
             # Don't spwan new workers if the service is stopping.
             return
-        missing = self.worker_count - len(self.workers)
         if self.workers:
             runningImport = max(
                 worker.runningImport for worker in self.workers.values()
             )
         else:
             runningImport = False
-        for _ in range(missing):
+
+        # Work on a copy to avoid races
+        for worker_id in list(self.missing_worker_ids):
             if not runningImport:
-                self._spawnWorker(runningImport=True)
+                self._spawnWorker(worker_id, runningImport=True)
                 runningImport = True
             else:
-                self._spawnWorker()
+                self._spawnWorker(worker_id)
 
     def registerWorker(self, worker):
         """Register the worker."""
         self.workers[worker.pid] = worker
+        self.missing_worker_ids.remove(worker.worker_id)
 
     def unregisterWorker(self, worker, status):
         """Worker has died."""
         del self.workers[worker.pid]
+        self.missing_worker_ids.append(worker.worker_id)
         self.spawnWorkers()
 
     def termWorker(self, pid):
@@ -120,11 +127,14 @@ class WorkersService(service.Service):
             log.msg("Killing worker pid:%d." % pid)
             worker.signal("KILL")
 
-    def _spawnWorker(self, runningImport=False):
+    def _spawnWorker(self, worker_id: str, runningImport: bool = False):
         """Spawn a new worker."""
-        worker = WorkerProcess(self, runningImport=runningImport)
+        worker = WorkerProcess(
+            self, worker_id=worker_id, runningImport=runningImport
+        )
         env = os.environ.copy()
         env["MAAS_REGIOND_PROCESS_MODE"] = "worker"
+        env["MAAS_REGIOND_WORKER_ID"] = worker_id
         env["MAAS_REGIOND_WORKER_COUNT"] = str(MAX_WORKERS_COUNT)
         if runningImport:
             env["MAAS_REGIOND_RUN_IMPORTER_SERVICE"] = "true"
