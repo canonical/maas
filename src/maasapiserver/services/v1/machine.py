@@ -2,7 +2,7 @@ import logging
 
 from sqlalchemy import case, desc, distinct, or_, select
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.sql.expression import func
+from sqlalchemy.sql.expression import ColumnOperators, func
 
 from maasserver.enum import (
     BMC_TYPE,
@@ -583,7 +583,10 @@ class MachineService(Service):
             .join(
                 ScriptTable, ScriptTable.c.id == ScriptResultTable.c.script_id
             )
-            .where(ScriptSetTable.c.result_type == RESULT_TYPE.TESTING)
+            .where(
+                ScriptSetTable.c.result_type == RESULT_TYPE.TESTING,
+                ScriptResultTable.c.suppressed == False,  # noqa: E712
+            )
             .order_by(
                 ScriptResultTable.c.script_name,
                 ScriptResultTable.c.physical_blockdevice_id,
@@ -593,616 +596,719 @@ class MachineService(Service):
             )
         ).cte("base_testing_status")
 
-        testing_status_cte = (
+        summary_testing_status_cte = (
             select(
-                base_testing_status_cte.c.node_id.label("id"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.RUNNING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.APPLYING_NETCONF,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.INSTALLING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_running"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.TIMEDOUT,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_INSTALLING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_failed"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PENDING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_pending"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.ABORTED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_aborted"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.DEGRADED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_degraded"),
-                func.sum(
-                    case(
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PASSED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.SKIPPED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("testing_status_combined_passed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.RUNNING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.APPLYING_NETCONF,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.INSTALLING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_running"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.TIMEDOUT,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_INSTALLING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_failed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PENDING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_pending"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.ABORTED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_aborted"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.DEGRADED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_degraded"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.STORAGE,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PASSED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.SKIPPED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("storage_test_status_combined_passed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.RUNNING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.APPLYING_NETCONF,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.INSTALLING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_running"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.TIMEDOUT,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_INSTALLING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_failed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PENDING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_pending"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.ABORTED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_aborted"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.DEGRADED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_degraded"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.NETWORK,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PASSED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.SKIPPED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("network_test_status_combined_passed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.RUNNING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.APPLYING_NETCONF,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.INSTALLING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_running"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.TIMEDOUT,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_INSTALLING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_failed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PENDING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_pending"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.ABORTED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_aborted"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.DEGRADED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_degraded"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.MEMORY,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PASSED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.SKIPPED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("memory_test_status_combined_passed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.RUNNING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.APPLYING_NETCONF,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.INSTALLING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_running"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.TIMEDOUT,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_INSTALLING,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_failed"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PENDING,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_pending"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.ABORTED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_aborted"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.DEGRADED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_degraded"),
-                func.sum(
-                    case(
-                        (
-                            base_testing_status_cte.c.hardware_type
-                            != HARDWARE_TYPE.CPU,
-                            0,
-                        ),
-                        (base_testing_status_cte.c.suppressed, 0),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.PASSED,
-                            1,
-                        ),
-                        (
-                            base_testing_status_cte.c.status
-                            == SCRIPT_STATUS.SKIPPED,
-                            1,
-                        ),
-                        else_=0,
-                    ),
-                ).label("cpu_test_status_combined_passed"),
+                base_testing_status_cte.c.node_id,
+                base_testing_status_cte.c.hardware_type,
+                postgresql.array_agg(
+                    func.distinct(base_testing_status_cte.c.status)
+                ).label("statuses"),
             )
             .select_from(base_testing_status_cte)
-            .where(
-                base_testing_status_cte.c.result_type == RESULT_TYPE.TESTING,
-                base_testing_status_cte.c.status != SCRIPT_STATUS.ABORTED,
+            .group_by(
+                base_testing_status_cte.c.node_id,
+                base_testing_status_cte.c.hardware_type,
             )
-            .group_by(base_testing_status_cte.c.node_id)
+        ).cte("summary_testing_status")
+
+        testing_status_cte = (
+            select(
+                summary_testing_status_cte.c.node_id.label("id"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.RUNNING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.APPLYING_NETCONF,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.INSTALLING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_running"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.TIMEDOUT,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_INSTALLING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_failed"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PENDING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_pending"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.ABORTED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_aborted"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.DEGRADED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_degraded"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PASSED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.SKIPPED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("testing_status_combined_passed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.RUNNING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.APPLYING_NETCONF,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.INSTALLING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_running"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.TIMEDOUT,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_INSTALLING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_failed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PENDING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_pending"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.ABORTED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_aborted"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.DEGRADED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_degraded"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.STORAGE,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PASSED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.SKIPPED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("storage_test_status_combined_passed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.RUNNING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.APPLYING_NETCONF,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.INSTALLING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_running"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.TIMEDOUT,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_INSTALLING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_failed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PENDING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_pending"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.ABORTED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_aborted"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.DEGRADED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_degraded"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.NETWORK,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PASSED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.SKIPPED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("network_test_status_combined_passed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.RUNNING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.APPLYING_NETCONF,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.INSTALLING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_running"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.TIMEDOUT,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_INSTALLING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_failed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PENDING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_pending"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.ABORTED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_aborted"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.DEGRADED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_degraded"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.MEMORY,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PASSED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.SKIPPED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("memory_test_status_combined_passed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.RUNNING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.APPLYING_NETCONF,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.INSTALLING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_running"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.TIMEDOUT,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_INSTALLING,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.FAILED_APPLYING_NETCONF,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_failed"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PENDING,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_pending"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.ABORTED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_aborted"),
+                func.bool_or(
+                    case(
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.DEGRADED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_degraded"),
+                func.bool_or(
+                    case(
+                        (
+                            summary_testing_status_cte.c.hardware_type
+                            != HARDWARE_TYPE.CPU,
+                            False,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.PASSED,
+                            True,
+                        ),
+                        (
+                            ColumnOperators.any_(
+                                summary_testing_status_cte.c.statuses
+                            )
+                            == SCRIPT_STATUS.SKIPPED,
+                            True,
+                        ),
+                        else_=False,
+                    )
+                ).label("cpu_test_status_combined_passed"),
+            )
+            .select_from(summary_testing_status_cte)
+            .group_by(summary_testing_status_cte.c.node_id)
         ).cte("testing_status")
 
         tags_cte = (
@@ -1336,140 +1442,165 @@ class MachineService(Service):
                 ).label("is_boot_ips"),
                 case(
                     (
-                        testing_status_cte.c.testing_status_combined_running
-                        > 0,
+                        testing_status_cte.c.testing_status_combined_running.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.RUNNING,
                     ),
                     (
-                        testing_status_cte.c.testing_status_combined_pending
-                        > 0,
+                        testing_status_cte.c.testing_status_combined_pending.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PENDING,
                     ),
                     (
-                        testing_status_cte.c.testing_status_combined_failed
-                        > 0,
+                        testing_status_cte.c.testing_status_combined_failed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.FAILED,
                     ),
                     (
-                        testing_status_cte.c.testing_status_combined_degraded
-                        > 0,
+                        testing_status_cte.c.testing_status_combined_degraded.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.DEGRADED,
                     ),
                     (
-                        testing_status_cte.c.testing_status_combined_passed
-                        > 0,
+                        testing_status_cte.c.testing_status_combined_passed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PASSED,
                     ),
                     else_=-1,
                 ).label("testing_status_combined"),
                 case(
                     (
-                        testing_status_cte.c.storage_test_status_combined_running
-                        > 0,
+                        testing_status_cte.c.storage_test_status_combined_running.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.RUNNING,
                     ),
                     (
-                        testing_status_cte.c.storage_test_status_combined_pending
-                        > 0,
+                        testing_status_cte.c.storage_test_status_combined_pending.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PENDING,
                     ),
                     (
-                        testing_status_cte.c.storage_test_status_combined_failed
-                        > 0,
+                        testing_status_cte.c.storage_test_status_combined_failed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.FAILED,
                     ),
                     (
-                        testing_status_cte.c.storage_test_status_combined_degraded
-                        > 0,
+                        testing_status_cte.c.storage_test_status_combined_degraded.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.DEGRADED,
                     ),
                     (
-                        testing_status_cte.c.storage_test_status_combined_passed
-                        > 0,
+                        testing_status_cte.c.storage_test_status_combined_passed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PASSED,
                     ),
                     else_=-1,
                 ).label("storage_test_status_combined"),
                 case(
                     (
-                        testing_status_cte.c.network_test_status_combined_running
-                        > 0,
+                        testing_status_cte.c.network_test_status_combined_running.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.RUNNING,
                     ),
                     (
-                        testing_status_cte.c.network_test_status_combined_pending
-                        > 0,
+                        testing_status_cte.c.network_test_status_combined_pending.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PENDING,
                     ),
                     (
-                        testing_status_cte.c.network_test_status_combined_failed
-                        > 0,
+                        testing_status_cte.c.network_test_status_combined_failed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.FAILED,
                     ),
                     (
-                        testing_status_cte.c.network_test_status_combined_degraded
-                        > 0,
+                        testing_status_cte.c.network_test_status_combined_degraded.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.DEGRADED,
                     ),
                     (
-                        testing_status_cte.c.network_test_status_combined_passed
-                        > 0,
+                        testing_status_cte.c.network_test_status_combined_passed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PASSED,
                     ),
                     else_=-1,
                 ).label("network_test_status_combined"),
                 case(
                     (
-                        testing_status_cte.c.cpu_test_status_combined_running
-                        > 0,
+                        testing_status_cte.c.cpu_test_status_combined_running.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.RUNNING,
                     ),
                     (
-                        testing_status_cte.c.cpu_test_status_combined_pending
-                        > 0,
+                        testing_status_cte.c.cpu_test_status_combined_pending.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PENDING,
                     ),
                     (
-                        testing_status_cte.c.cpu_test_status_combined_failed
-                        > 0,
+                        testing_status_cte.c.cpu_test_status_combined_failed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.FAILED,
                     ),
                     (
-                        testing_status_cte.c.cpu_test_status_combined_degraded
-                        > 0,
+                        testing_status_cte.c.cpu_test_status_combined_degraded.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.DEGRADED,
                     ),
                     (
-                        testing_status_cte.c.cpu_test_status_combined_passed
-                        > 0,
+                        testing_status_cte.c.cpu_test_status_combined_passed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PASSED,
                     ),
                     else_=-1,
                 ).label("cpu_test_status_combined"),
                 case(
                     (
-                        testing_status_cte.c.memory_test_status_combined_running
-                        > 0,
+                        testing_status_cte.c.memory_test_status_combined_running.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.RUNNING,
                     ),
                     (
-                        testing_status_cte.c.memory_test_status_combined_pending
-                        > 0,
+                        testing_status_cte.c.memory_test_status_combined_pending.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PENDING,
                     ),
                     (
-                        testing_status_cte.c.memory_test_status_combined_failed
-                        > 0,
+                        testing_status_cte.c.memory_test_status_combined_failed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.FAILED,
                     ),
                     (
-                        testing_status_cte.c.memory_test_status_combined_degraded
-                        > 0,
+                        testing_status_cte.c.memory_test_status_combined_degraded.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.DEGRADED,
                     ),
                     (
-                        testing_status_cte.c.memory_test_status_combined_passed
-                        > 0,
+                        testing_status_cte.c.memory_test_status_combined_passed.is_(
+                            True
+                        ),
                         SCRIPT_STATUS.PASSED,
                     ),
                     else_=-1,
