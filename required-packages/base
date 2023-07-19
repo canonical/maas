@@ -53,6 +53,7 @@ python3-simplestreams
 python3-sqlalchemy
 python3-starlette
 python3-tempita
+python3-temporalio
 python3-txtftp
 python3-tz
 python3-uvloop

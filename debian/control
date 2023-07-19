@@ -94,6 +94,7 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          python3-requests-unixsocket,
          python3-sqlalchemy (>= 2.0.0),
          python3-starlette,
+         python3-temporalio,
          ubuntu-keyring,
          ${misc:Depends},
          ${python3:Depends}
