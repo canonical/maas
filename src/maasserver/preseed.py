@@ -7,10 +7,8 @@ from collections import namedtuple
 import json
 import os.path
 from pipes import quote
-import typing
 from urllib.parse import urlencode, urlparse
 
-import attr
 from crochet import TimeoutError
 from curtin.config import merge_config
 from curtin.pack import pack_install
@@ -605,17 +603,14 @@ def get_curtin_config(request, node, base_osystem=None, base_series=None):
     return yaml.safe_dump(config)
 
 
-@attr.s(auto_attribs=True)
-class PackageManager:
+_CLOUD_INIT = ["cloud-init", "--version"]
+_NETPLAN = ["netplan", "info"]
 
-    package_tool: str
-    deps: typing.List[str]
-
-
-PACKAGE_MANAGER_PER_OS = {
-    "ubuntu": PackageManager("dpkg-query -s", ["cloud-init", "netplan.io"]),
-    "centos": PackageManager("rpm -q", ["cloud-init"]),
-    "rhel": PackageManager("rpm -q", ["cloud-init"]),
+DEPS_PER_OS = {
+    "ubuntu": (_CLOUD_INIT, _NETPLAN),
+    "centos": (_CLOUD_INIT,),
+    "rhel": (_CLOUD_INIT,),
+    "suse": (_CLOUD_INIT,),
 }
 
 
@@ -626,11 +621,13 @@ def get_custom_image_dependency_validation(node, base_osystem):
     cmd = {}
     err_msg = "not detected, MAAS will not be able to configure this machine properly"
 
-    package_manager = PACKAGE_MANAGER_PER_OS[base_osystem]
+    deps = DEPS_PER_OS[base_osystem]
 
-    for priority, dep in enumerate(package_manager.deps, start=98):
-        in_target = f'{package_manager.package_tool} {dep} || (echo "{dep} {err_msg}" && exit 1)'
-        cmd[f"{priority}-validate-custom-image-has-{dep}"] = [
+    for priority, dep_cmds in enumerate(deps, start=98):
+        name = dep_cmds[0]
+        executable = " ".join(dep_cmds)
+        in_target = f'{executable} || (echo "{name} {err_msg}" && exit 1)'
+        cmd[f"{priority}-validate-custom-image-has-{name}"] = [
             "curtin",
             "in-target",
             "--",
