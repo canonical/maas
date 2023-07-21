@@ -7,7 +7,12 @@ from .fixtures.app import (
     authenticated_user,
     user_session_id,
 )
-from .fixtures.db import db, db_connection, fixture
+from .fixtures.db import (
+    db,
+    db_connection,
+    fixture,
+    transaction_middleware_class,
+)
 
 __all__ = [
     "api_app",
@@ -17,6 +22,7 @@ __all__ = [
     "db",
     "db_connection",
     "fixture",
+    "transaction_middleware_class",
     "user_session_id",
 ]
 

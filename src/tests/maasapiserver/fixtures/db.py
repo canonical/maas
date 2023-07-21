@@ -1,12 +1,14 @@
+from contextlib import asynccontextmanager
 from os.path import abspath
 import random
 import string
-from typing import Any, AsyncGenerator, Iterator
+from typing import Any, AsyncIterator, Iterator
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import ColumnOperators
 
+from maasapiserver.api.db import TransactionMiddleware
 from maasapiserver.db import Database
 from maasapiserver.db.tables import METADATA
 from maasapiserver.settings import DatabaseConfig
@@ -26,9 +28,21 @@ async def db(
 
 
 @pytest.fixture
+def transaction_middleware_class(
+    db_connection: AsyncConnection,
+) -> Iterator[type]:
+    class ConnectionReusingTransactionMiddleware(TransactionMiddleware):
+        @asynccontextmanager
+        async def get_connection(self) -> AsyncIterator[AsyncConnection]:
+            yield db_connection
+
+    yield ConnectionReusingTransactionMiddleware
+
+
+@pytest.fixture
 async def db_connection(
     request: pytest.FixtureRequest, pytestconfig, db: Database
-) -> AsyncGenerator[AsyncConnection, None]:
+) -> AsyncIterator[AsyncConnection]:
     """A database connection."""
     allow_transactions = (
         request.node.get_closest_marker("allow_transactions") is not None

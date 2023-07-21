@@ -1,12 +1,10 @@
-from contextlib import contextmanager
 from datetime import datetime, timedelta
-from typing import Any, AsyncIterable, Callable, Iterable, Iterator
+from typing import AsyncIterable, Iterable
 
 from django.core import signing
 from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
-from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.db import Database
 from maasapiserver.main import create_app
@@ -15,30 +13,14 @@ from maasapiserver.models.v1.entities.user import User
 from .db import Fixture
 
 
-@contextmanager
-def override_dependencies(
-    app: FastAPI,
-    dependencies_map: dict[Callable[..., Any], Callable[..., Any]],
-) -> Iterator[None]:
-    """Context manager to override app dependencies in tests."""
-    for orig_func, override_func in dependencies_map.items():
-        app.dependency_overrides[orig_func] = override_func
-    yield
-    for orig_func in dependencies_map:
-        del app.dependency_overrides[orig_func]
-
-
 @pytest.fixture
-def api_app(db: Database, db_connection: AsyncConnection) -> Iterable[FastAPI]:
+def api_app(
+    db: Database, transaction_middleware_class: type
+) -> Iterable[FastAPI]:
     """The API application."""
-
-    from maasapiserver.api.db import db_conn as orig_db_conn
-
-    deps_map = {orig_db_conn: lambda: db_connection}
-
-    app = create_app(db=db)
-    with override_dependencies(app, deps_map):
-        yield app
+    yield create_app(
+        db=db, transaction_middleware_class=transaction_middleware_class
+    )
 
 
 @pytest.fixture

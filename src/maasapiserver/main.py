@@ -1,12 +1,16 @@
 from fastapi import FastAPI
 import uvicorn
 
+from .api.db import TransactionMiddleware
 from .api.v1 import APIv1
 from .db import Database
 from .settings import api_service_socket_path, read_db_config
 
 
-def create_app(db: Database | None = None) -> FastAPI:
+def create_app(
+    db: Database | None = None,
+    transaction_middleware_class: type = TransactionMiddleware,
+) -> FastAPI:
     """Create the FastAPI application."""
     if db is None:
         config = read_db_config()
@@ -16,7 +20,7 @@ def create_app(db: Database | None = None) -> FastAPI:
         title="MAASAPIServer",
         name="maasapiserver",
     )
-    app.state.db = db
+    app.add_middleware(transaction_middleware_class, db=db)
 
     # Register URL handlers
     APIv1.register(app.router)
