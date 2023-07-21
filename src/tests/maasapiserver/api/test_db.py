@@ -1,13 +1,13 @@
-from typing import AsyncIterable
+from typing import Any, AsyncIterator, Iterator
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from httpx import AsyncClient
 import pytest
-from sqlalchemy import Column, insert, Integer, MetaData, select, Table
+from sqlalchemy import Column, insert, Integer, MetaData, select, Table, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.api.base import API, Handler, handler
-from maasapiserver.api.db import db_conn
+from maasapiserver.api.db import DatabaseMetricsMiddleware, db_conn
 from maasapiserver.db import Database
 from maasapiserver.main import create_app
 
@@ -49,7 +49,7 @@ async def insert_app(db: Database, db_connection: AsyncConnection) -> FastAPI:
 
 
 @pytest.fixture
-async def insert_client(insert_app: FastAPI) -> AsyncIterable[AsyncClient]:
+async def insert_client(insert_app: FastAPI) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(app=insert_app, base_url="http://test") as client:
         yield client
 
@@ -76,3 +76,42 @@ class TestDBSession:
         async with db_connection.begin():
             ids = await db_connection.scalars(select(TestTable.c.id))
         assert list(ids) == []
+
+
+@pytest.fixture
+def query_count_app(
+    db: Database,
+    db_connection: AsyncConnection,
+    transaction_middleware_class: type,
+) -> Iterator[FastAPI]:
+    app = FastAPI()
+    app.add_middleware(DatabaseMetricsMiddleware, db=db)
+    app.add_middleware(transaction_middleware_class, db=db)
+
+    @app.get("/{count}")
+    async def get(request: Request, count: int) -> Any:
+        for _ in range(count):
+            await db_connection.execute(text("SELECT 1"))
+        return request.state.query_metrics
+
+    yield app
+
+
+@pytest.fixture
+async def query_count_client(
+    query_count_app: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=query_count_app, base_url="http://test"
+    ) as client:
+        yield client
+
+
+class TestDatabaseMetricsMiddleware:
+    @pytest.mark.parametrize("count", [1, 3])
+    async def test_query_metrics(
+        self, query_count_client: AsyncClient, count: int
+    ) -> None:
+        metrics = (await query_count_client.get(f"/{count}")).json()
+        assert metrics["count"] == count
+        assert metrics["latency"] > 0.0
