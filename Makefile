@@ -76,6 +76,12 @@ build: \
 all: build ui go-bins doc
 .PHONY: all
 
+
+$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.53.1
+$(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
+	GOBIN="$(realpath $(dir $@))"
+	utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
+
 # Install all packages required for MAAS development & operation on
 # the system. This may prompt for a password.
 install-dependencies: required_deps_files := base dev
@@ -92,6 +98,7 @@ endif
 	$(apt_install) $(foreach deps,$(required_deps_files),$(call list_packages,$(deps)))
 	$(apt) purge $(call list_packages,forbidden)
 	if [ -x /usr/bin/snap ]; then xargs -L1 sudo snap install < required-packages/snaps; fi
+	$(MAKE) --no-print-directory $(BIN_DIR)/golangci-lint
 .PHONY: install-dependencies
 
 $(VENV):
@@ -114,10 +121,10 @@ ui: $(UI_BUILD)
 .PHONY: ui
 
 $(UI_BUILD):
-	$(MAKE) -C src/maasui build
+	$(MAKE) --no-print-directory -C src/maasui build
 
 $(OFFLINE_DOCS):
-	$(MAKE) -C src/maas-offline-docs
+	$(MAKE) --no-print-directory -C src/maas-offline-docs
 
 $(swagger-dist):
 	mkdir $@
@@ -131,8 +138,8 @@ swagger-css: $(swagger-dist)
 .PHONY: swagger-css
 
 go-bins:
-	$(MAKE) -j -C src/host-info build
-	$(MAKE) -j -C src/maasagent build
+	$(MAKE) --no-print-directory -j -C src/host-info build
+	$(MAKE) --no-print-directory -j -C src/maasagent build
 .PHONY: go-bins
 
 test: test-missing-migrations test-py lint-oapi test-go
@@ -256,16 +263,16 @@ doc: api-docs.rst openapi.yaml swagger-css swagger-js
 .PHONY: doc
 
 clean-ui:
-	$(MAKE) -C src/maasui clean
+	$(MAKE) --no-print-directory -C src/maasui clean
 .PHONY: clean-ui
 
 clean-ui-build:
-	$(MAKE) -C src/maasui clean-build
+	$(MAKE) --no-print-directory -C src/maasui clean-build
 .PHONY: clean-build
 
 clean-go-bins:
-	$(MAKE) -C src/host-info clean
-	$(MAKE) -C src/maasagent clean
+	$(MAKE) --no-print-directory -C src/host-info clean
+	$(MAKE) --no-print-directory -C src/maasagent clean
 .PHONY: clean-go-bins
 
 clean: clean-ui clean-go-bins
@@ -350,10 +357,10 @@ endif
 -packaging-tarball:
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) -C src/host-info vendor
+	$(MAKE) --no-print-directory -C src/host-info vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/host-info/vendor \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) -C src/maasagent vendor
+	$(MAKE) --no-print-directory -C src/maasagent vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) src/maasagent/vendor \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
@@ -376,7 +383,7 @@ package: package-tree
 .PHONY: package
 
 package-dev:
-	$(MAKE) packaging-export-uncommitted=true package
+	$(MAKE) --no-print-directory packaging-export-uncommitted=true package
 .PHONY: package-dev
 
 package-clean: patterns := *.deb *.udeb *.dsc *.build *.changes
@@ -441,9 +448,3 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		src/maasagent/build/ \
 		$(SNAP_UNPACKED_DIR)/usr/sbin/
 .PHONY: snap-tree-sync
-
-$(BIN_DIR)/golangci-lint: GOLANGCI_VERSION=1.53.1
-$(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
-	GOBIN="$(realpath $(dir $@))"
-	sh utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
-	touch $@
