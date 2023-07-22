@@ -28,7 +28,7 @@ func TestScan(t *testing.T) {
 		ips = append(ips, netip.MustParseAddr(v))
 	}
 
-	result, err := Scan(context.TODO(), ips...)
+	result, err := Scan(context.TODO(), ips)
 	if err != nil {
 		t.Fatal(err)
 	}

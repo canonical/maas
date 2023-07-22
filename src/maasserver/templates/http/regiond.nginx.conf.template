@@ -142,6 +142,10 @@ server {
     listen [::]:7233 http2;
     listen 7233 http2;
 
+    grpc_connect_timeout 75s;
+    grpc_read_timeout 75s;
+    grpc_send_timeout 75s;
+
     location / {
         grpc_pass grpc://temporal;
     }
@@ -176,37 +180,44 @@ server {
     location @grpc_deadline_exceeded {
         add_header grpc-status 4;
         add_header grpc-message 'deadline exceeded';
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_permission_denied {
         add_header grpc-status 7;
         add_header grpc-message 'permission denied';
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_resource_exhausted {
         add_header grpc-status 8;
         add_header grpc-message 'resource exhausted';
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_unimplemented {
         add_header grpc-status 12;
         add_header grpc-message unimplemented;
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_internal {
         add_header grpc-status 13;
         add_header grpc-message 'internal error';
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_unavailable {
         add_header grpc-status 14;
         add_header grpc-message unavailable;
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     location @grpc_unauthenticated {
         add_header grpc-status 16;
         add_header grpc-message unauthenticated;
-        return 204;
+        add_header content-type application/grpc;
+        return 200;
     }
     default_type application/grpc;   # Ensure gRPC for all error responses
 }

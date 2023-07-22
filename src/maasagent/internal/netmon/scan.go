@@ -49,19 +49,27 @@ var (
 )
 
 // Scan sends ICMP Echo requests to provided IP addresses.
-func Scan(ctx context.Context, ips ...netip.Addr) ([]IPHwAddressPair, error) {
+func Scan(ctx context.Context, ips []netip.Addr) (map[netip.Addr]net.HardwareAddr, error) {
+	result := make(map[netip.Addr]net.HardwareAddr, len(ips))
+
+	if len(ips) == 0 {
+		return result, nil
+	}
+
 	queue := make(map[netip.Addr]struct{})
 	conns := make(map[int]*icmp.PacketConn)
 
 	cctx, ccancel := context.WithCancel(ctx)
 	defer ccancel()
 
-	result, err := capture(cctx)
+	pairs, err := capture(cctx)
 	if err != nil {
 		return nil, err
 	}
 
 	for i, ip := range ips {
+		result[ip] = nil
+
 		if !ip.IsValid() {
 			continue
 		}
@@ -98,26 +106,24 @@ func Scan(ctx context.Context, ips ...netip.Addr) ([]IPHwAddressPair, error) {
 
 	defer timer.Stop()
 
-	var pairs []IPHwAddressPair
-
 	for {
 		select {
 		case <-ctx.Done():
-			return pairs, nil
-		case pair := <-result:
+			return result, nil
+		case pair := <-pairs:
 			if _, ok := queue[pair.IP]; ok {
-				pairs = append(pairs, pair)
+				result[pair.IP] = pair.HwAddress
 			}
 
 			delete(queue, pair.IP)
 
 			if len(queue) == 0 {
 				ccancel()
-				return pairs, nil
+				return result, nil
 			}
 		case <-ch:
 			ccancel()
-			return pairs, nil
+			return result, nil
 		}
 	}
 }
