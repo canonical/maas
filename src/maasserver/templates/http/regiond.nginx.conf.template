@@ -60,6 +60,11 @@ server {
         proxy_set_header Upgrade $http_upgrade;
     }
 
+    # apiserver Prometheus endpoint
+    location = /MAAS/a/metrics {
+        proxy_pass http://apiserver/metrics;
+    }
+
     location /MAAS/a/ {
         rewrite ^/MAAS/a/(.*)$ /api/$1 break;
         proxy_pass http://apiserver;

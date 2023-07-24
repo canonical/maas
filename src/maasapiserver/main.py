@@ -4,6 +4,7 @@ import uvicorn
 from .api.db import DatabaseMetricsMiddleware, TransactionMiddleware
 from .api.v1 import APIv1
 from .db import Database
+from .prometheus import metrics, PrometheusMiddleware
 from .settings import api_service_socket_path, read_db_config
 
 
@@ -20,10 +21,12 @@ def create_app(
         title="MAASAPIServer",
         name="maasapiserver",
     )
+    app.add_middleware(PrometheusMiddleware)
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
     app.add_middleware(transaction_middleware_class, db=db)
 
     # Register URL handlers
+    app.router.add_api_route("/metrics", metrics, methods=["GET"])
     APIv1.register(app.router)
     return app
 

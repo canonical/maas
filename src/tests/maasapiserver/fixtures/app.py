@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import AsyncIterable, Iterable
+from typing import AsyncIterator, Iterator
 
 from django.core import signing
 from fastapi import FastAPI
@@ -16,7 +16,7 @@ from .db import Fixture
 @pytest.fixture
 def api_app(
     db: Database, transaction_middleware_class: type
-) -> Iterable[FastAPI]:
+) -> Iterator[FastAPI]:
     """The API application."""
     yield create_app(
         db=db, transaction_middleware_class=transaction_middleware_class
@@ -24,14 +24,14 @@ def api_app(
 
 
 @pytest.fixture
-async def api_client(api_app: FastAPI) -> AsyncIterable[AsyncClient]:
+async def api_client(api_app: FastAPI) -> AsyncIterator[AsyncClient]:
     """Client for the API."""
     async with AsyncClient(app=api_app, base_url="http://test") as client:
         yield client
 
 
 @pytest.fixture
-def user_session_id(fixture: Fixture) -> Iterable[str]:
+def user_session_id(fixture: Fixture) -> Iterator[str]:
     """API user session ID."""
     yield fixture.random_string()
 
@@ -40,7 +40,7 @@ def user_session_id(fixture: Fixture) -> Iterable[str]:
 async def authenticated_user(
     fixture: Fixture,
     user_session_id: str,
-) -> AsyncIterable[User]:
+) -> AsyncIterator[User]:
     user_details = {
         "username": "user",
         "first_name": "Some",
@@ -81,7 +81,7 @@ async def _create_user_session(
 @pytest.fixture
 async def authenticated_api_client(
     api_app: FastAPI, authenticated_user: User, user_session_id: str
-) -> AsyncIterable[AsyncClient]:
+) -> AsyncIterator[AsyncClient]:
     """Authenticated client for the API."""
     async with AsyncClient(app=api_app, base_url="http://test") as client:
         client.cookies.set("sessionid", user_session_id)

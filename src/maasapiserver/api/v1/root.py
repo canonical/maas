@@ -11,5 +11,5 @@ class RootHandler(Handler):
     """Root API handler."""
 
     @handler(path="/", methods=["GET"])
-    def get(self) -> RootGetResponse:
+    async def get(self) -> RootGetResponse:
         return RootGetResponse()
