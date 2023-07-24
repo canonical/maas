@@ -1,6 +1,5 @@
 server:
   log_level: info
-
 metrics:
   wal_directory: ${AGENT_WAL_DIR}
   global:
@@ -14,16 +13,19 @@ metrics:
       - url: ${PROMETHEUS_REMOTE_WRITE_URL}
         name: prom-export
   configs:
-    - name: 'maas'
+    - name: "maas"
       scrape_configs:
-        - job_name: 'maas-metrics'
+        - job_name: "maas-metrics"
           static_configs:
-            - targets: ['${HOSTNAME}:5239']
-
+            - targets: ["${HOSTNAME}:5239"]
+        - job_name: "maas-cluster-metrics"
+          static_configs:
+            - targets: ["${HOSTNAME}:5240"]
+          metrics_path: "/MAAS/metrics"
 logs:
   positions_directory: ${AGENT_POS_DIR}
   configs:
-    - name: 'maas'
+    - name: "maas"
       clients:
         - url: ${LOKI_API_URL}
       scrape_configs:
@@ -37,10 +39,10 @@ logs:
               maas_rack: ${MAAS_IS_RACK:False}
               maas_module: "audit"
           relabel_configs:
-            - source_labels: ['__syslog_message_hostname']
-              target_label: 'host'
-            - source_labels: ['__syslog_message_app_name']
-              target_label: 'maas_module'
+            - source_labels: ["__syslog_message_hostname"]
+              target_label: "host"
+            - source_labels: ["__syslog_message_app_name"]
+              target_label: "maas_module"
           pipeline_stages:
             - regex:
                 expression: "^(?s) \\[(?P<severity>\\S+?)\\] ((?P<machine>\\S+): )?(?P<content>.*)$"
@@ -49,7 +51,6 @@ logs:
             - labels:
                 severity:
                 machine:
-
         - job_name: maas-console
           static_configs:
             - labels:
@@ -79,7 +80,6 @@ logs:
                       remote_addr:
                       method:
                       status:
-
         - job_name: maas-dhcpd
           static_configs:
             - labels:
@@ -89,7 +89,6 @@ logs:
                 maas_region: ${MAAS_IS_REGION:False}
                 maas_rack: ${MAAS_IS_RACK:False}
                 job: "maas-dhcpd"
-
         - job_name: maas-metadata
           static_configs:
             - labels:
@@ -110,7 +109,6 @@ logs:
                 protocol:
                 status:
                 http_user_agent:
-
         - job_name: maas-named
           static_configs:
             - labels:
@@ -120,7 +118,6 @@ logs:
                 maas_region: ${MAAS_IS_REGION:False}
                 maas_rack: ${MAAS_IS_RACK:False}
                 job: "maas-named"
-
         - job_name: maas-ntpd
           static_configs:
             - labels:
@@ -130,7 +127,6 @@ logs:
                 maas_region: ${MAAS_IS_REGION:False}
                 maas_rack: ${MAAS_IS_RACK:False}
                 job: "maas-ntpd"
-
         - job_name: maas-proxy
           static_configs:
             - labels:

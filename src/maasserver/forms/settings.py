@@ -816,11 +816,11 @@ CONFIG_ITEMS = {
         "default": False,
         "form": forms.BooleanField,
         "form_kwargs": {
-            "label": "Enable sending stats to a prometheus gateway.",
+            "label": "Enable Prometheus exporter",
             "required": False,
             "help_text": (
-                "Allows MAAS to send statistics to Prometheus. This requires "
-                "the 'prometheus_push_gateway' to be set."
+                "Whether to enable Prometheus exporter functions, including "
+                "Cluster metrics endpoint and Push gateway (if configured)."
             ),
         },
     },
