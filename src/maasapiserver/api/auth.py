@@ -1,14 +1,13 @@
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from . import services
 from ..models.v1.entities.user import User
-from ..services.v1.user import UserService
-from .db import db_conn
+from ..services import ServiceCollectionV1
 
 
 async def authenticated_user(
     request: Request,
-    conn: AsyncConnection = Depends(db_conn),
+    services: ServiceCollectionV1 = Depends(services),
 ) -> User:
     unauthorized_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -18,8 +17,7 @@ async def authenticated_user(
     if not session_id:
         raise unauthorized_error
 
-    service = UserService(conn)
-    user = await service.get_by_session_id(session_id)
+    user = await services.users.get_by_session_id(session_id)
     if not user:
         raise unauthorized_error
     return user

@@ -79,6 +79,6 @@ class DatabaseMetricsMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def db_conn(request: Request) -> AsyncIterator[AsyncConnection]:
-    """Context manager to run a section with a DB connection."""
-    yield request.state.conn
+def db_conn(request: Request) -> AsyncConnection:
+    """Dependency to return the database connection."""
+    return request.state.conn
