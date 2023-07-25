@@ -11,7 +11,11 @@ upstream apiserver {
 }
 
 upstream temporal {
-    server localhost:17233;
+    server localhost:7233;
+}
+
+upstream temporal-metrics {
+    server localhost:9000;
 }
 
 proxy_http_version 1.1;
@@ -144,8 +148,8 @@ server {
 {{endif}}
 
 server {
-    listen [::]:7233 http2;
-    listen 7233 http2;
+    listen [::]:5271 http2;
+    listen 5271 http2;
 
     grpc_connect_timeout 75s;
     grpc_read_timeout 75s;
@@ -225,4 +229,13 @@ server {
         return 200;
     }
     default_type application/grpc;   # Ensure gRPC for all error responses
+}
+
+server {
+    listen [::]:5272;
+    listen 5272;
+
+    location /metrics {
+        proxy_pass http://temporal-metrics/metrics;
+    }
 }
