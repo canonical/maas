@@ -1,8 +1,9 @@
+import asyncio
 from functools import wraps
 import glob
 import os
 import re
-from time import time
+import time
 from typing import Optional, Tuple
 
 import prometheus_client
@@ -111,38 +112,57 @@ class PrometheusMetrics:
     ):
         """Wrap a function to record its call latency on a metric.
 
-        If the function is asynchronous (it returns a Deferred), the time to
-        complete the deferred is tracked.
+        If the function returns an asyncio coroutine or a Twisted Deferred,,
+        the time to complete the async funcion is tracked.
 
         The `get_labels` function is called with the same arguments as the call
         and must return a dict with labels for the metric.
-
         """
 
         def wrap_func(func):
             @wraps(func)
             def wrapper(*args, **kwargs):
-                labels = get_labels(*args, **kwargs)
-                before = time()
+                before = time.perf_counter()
                 result = func(*args, **kwargs)
-                after = time()
-                if not isinstance(result, Deferred):
+                after = time.perf_counter()
+
+                if asyncio.iscoroutine(result):
+                    # wrap to track time after the call has completed
+                    async def record_latency(coro):
+                        result = await coro
+                        latency = time.perf_counter() - before
+                        self.update(
+                            metric_name,
+                            "observe",
+                            value=latency,
+                            labels=get_labels(*args, **kwargs),
+                        )
+                        return result
+
+                    return record_latency(result)
+
+                elif isinstance(result, Deferred):
+                    # attach a callback to the deferred to track time after the
+                    # call has completed
+                    def record_latency(result):
+                        latency = time.perf_counter() - before
+                        self.update(
+                            metric_name,
+                            "observe",
+                            value=latency,
+                            labels=get_labels(*args, **kwargs),
+                        )
+                        return result
+
+                    result.addCallback(record_latency)
+                else:
                     latency = after - before
                     self.update(
-                        metric_name, "observe", value=latency, labels=labels
+                        metric_name,
+                        "observe",
+                        value=latency,
+                        labels=get_labels(*args, **kwargs),
                     )
-                    return result
-
-                # attach a callback to the deferred to track time after the
-                # call has completed
-                def record_latency(result):
-                    latency = time() - before
-                    self.update(
-                        metric_name, "observe", value=latency, labels=labels
-                    )
-                    return result
-
-                result.addCallback(record_latency)
                 return result
 
             return wrapper
