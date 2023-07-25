@@ -70,7 +70,8 @@ swagger-css: url := "https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css"
 build: \
   $(VENV) \
   $(BIN_SCRIPTS) \
-  bin/py
+  $(BIN_DIR)/py \
+  $(BIN_DIR)/golangci-lint
 .PHONY: build
 
 all: build ui go-bins doc
@@ -98,20 +99,19 @@ endif
 	$(apt_install) $(foreach deps,$(required_deps_files),$(call list_packages,$(deps)))
 	$(apt) purge $(call list_packages,forbidden)
 	if [ -x /usr/bin/snap ]; then xargs -L1 sudo snap install < required-packages/snaps; fi
-	$(MAKE) --no-print-directory $(BIN_DIR)/golangci-lint
 .PHONY: install-dependencies
 
 $(VENV):
 	python3 -m venv --system-site-packages --clear $@
 	$(VENV)/bin/pip install -e .[testing]
 
-bin:
+$(BIN_DIR):
 	mkdir $@
 
-$(BIN_SCRIPTS): $(VENV) bin
+$(BIN_SCRIPTS): $(VENV) $(BIN_DIR)
 	ln -sf ../$(VENV)/$@ $@
 
-bin/py: $(VENV) bin
+bin/py: $(VENV) $(BIN_DIR)
 	ln -sf ../$(VENV)/bin/ipython3 $@
 
 bin/database: bin/postgresfixture
