@@ -48,6 +48,6 @@ class TestPrometheusMiddleware:
         # metrics report matching number of queries for the endpoint
         response = await client.get("/metrics")
         assert re.search(
-            rf'maas_apiserver_call_query_count_total{{handler="/{{count}}",.*,method="GET"}} {count}.0',
+            rf'maas_apiserver_request_query_count_total{{handler="/{{count}}",.*,method="GET",status="200"}} {count}.0',
             response.text,
         )
