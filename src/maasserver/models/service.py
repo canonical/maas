@@ -37,6 +37,7 @@ RACK_SERVICES = frozenset(
         "dns_rack",
         "proxy_rack",
         "syslog_rack",
+        "agent",
     }
 )
 
@@ -59,6 +60,7 @@ DEAD_STATUSES = {
     "syslog_rack": SERVICE_STATUS.UNKNOWN,
     "reverse_proxy": SERVICE_STATUS.UNKNOWN,
     "temporal": SERVICE_STATUS.UNKNOWN,
+    "agent": SERVICE_STATUS.UNKNOWN,
 }
 
 

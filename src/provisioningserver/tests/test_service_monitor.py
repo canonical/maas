@@ -6,6 +6,7 @@
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.service_monitor import (
+    AgentServiceOnRack,
     DHCPv4Service,
     DHCPv6Service,
     DNSServiceOnRack,
@@ -66,6 +67,14 @@ class TestSyslogServiceOnRack(MAASTestCase):
         self.assertEqual("syslog_rack", syslog.name)
 
 
+class TestAgentServiceOnRack(MAASTestCase):
+    def test_name_and_service_name(self):
+        syslog = AgentServiceOnRack()
+        self.assertEqual("maas-agent", syslog.service_name)
+        self.assertEqual("agent", syslog.snap_service_name)
+        self.assertEqual("agent", syslog.name)
+
+
 class TestGlobalServiceMonitor(MAASTestCase):
     def test_includes_all_services(self):
         self.assertEqual(
@@ -77,6 +86,7 @@ class TestGlobalServiceMonitor(MAASTestCase):
                 "ntp_rack",
                 "proxy_rack",
                 "syslog_rack",
+                "agent",
             },
             service_monitor._services.keys(),
         )

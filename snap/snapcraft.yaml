@@ -268,6 +268,16 @@ parts:
     prime:
       - usr/sbin/maas-netmon
 
+  maas-agent:
+    plugin: make
+    source: src/maasagent
+    build-packages:
+      - golang-go
+    organize:
+      bin/maas-agent: usr/sbin/maas-agent
+    prime:
+      - usr/sbin/maas-agent
+
   tree:
     plugin: dump
     source: snap/local/tree

@@ -1,0 +1,3 @@
+debian/extras/99-maas-agent-sudoers etc/sudoers.d
+
+bin/maas-agent usr/sbin

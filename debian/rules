@@ -20,6 +20,7 @@ override_dh_installsystemd:
 	dh_installsystemd -p maas-proxy --name=maas-proxy maas-proxy.service
 	dh_installsystemd -p maas-dhcp --name=maas-dhcpd maas-dhcpd.service
 	dh_installsystemd -p maas-dhcp --name=maas-dhcpd6 maas-dhcpd6.service
+	dh_installsystemd -p maas-agent --name=maas-agent maas-agent.service
 
 override_dh_auto_install:
 	dh_auto_install

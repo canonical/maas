@@ -1,0 +1,14 @@
+[Unit]
+Description=The MAAS Agent daemon
+Documentation=https://maas.io/docs
+Wants=network-online.target
+After=network-online.target
+BindsTo=maas-rackd.service
+
+[Service]
+User=maas
+Group=maas
+ExecStart=/usr/sbin/maas-agent
+
+[Install]
+WantedBy=multi-user.target

@@ -392,6 +392,24 @@ class RackSyslog(RackOnlyExternalService):
         )
 
 
+class RackAgent(RackOnlyExternalService):
+    """External maas-agent service"""
+
+    service_name = "agent"
+
+    def _configure(self, configuration):
+        return
+
+    def _tryUpdate(self, config):
+        d = maybeDeferred(
+            self._getConfiguration,
+        )
+        return d
+
+    def _getConfiguration(self):
+        return
+
+
 class RackExternalService(TimerService):
     # Initial start the interval is low so that forwarders of bind9 gets
     # at least one region controller. When no region controllers are set
@@ -417,6 +435,7 @@ class RackExternalService(TimerService):
                 ("DNS", RackDNS()),
                 ("proxy", RackProxy()),
                 ("syslog", RackSyslog()),
+                ("agent", RackAgent()),
             ]
 
     def _update_interval(self, config):
