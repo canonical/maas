@@ -90,7 +90,7 @@ class TemporalService(AlwaysOnService):
     """Monitored Temporal Server service."""
 
     name = "temporal"
-    service_name = "temporal"
+    service_name = "maas-temporal"
     snap_service_name = "temporal"
 
 
