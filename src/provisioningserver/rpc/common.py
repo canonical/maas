@@ -129,13 +129,9 @@ class Client:
                 "Client address is only available in the rack."
             )
 
-    def _get_call_latency_metric_labels(self, cmd, *args, **kwargs):
-        """Return labels for the rack/region call latency metric."""
-        return {"call": cmd.__name__}
-
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_rack_region_rpc_call_latency",
-        get_labels=_get_call_latency_metric_labels,
+        get_labels=lambda args, kwargs, retval: {"call": args[1].__name__},
     )
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):

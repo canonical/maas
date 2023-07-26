@@ -69,7 +69,7 @@ def forward_domains_to_forwarded_zones(forward_domains):
 
 @PROMETHEUS_METRICS.record_call_latency(
     "maas_dns_update_latency",
-    get_labels=lambda *args, **kwargs: {
+    get_labels=lambda args, kwargs, retval: {
         "update_type": "reload" if kwargs.get("requires_reload") else "dynamic"
     },
 )

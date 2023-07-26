@@ -96,21 +96,23 @@ class TestPrometheusMetricsNew:
         )
         label_call_args = []
 
-        def get_labels(*args, **kwargs):
-            label_call_args.append((args, kwargs))
+        def get_labels(args, kwargs, result):
+            label_call_args.append((args, kwargs, result))
             return {"foo": "FOO", "bar": "BAR"}
+
+        retval = object()
 
         @prometheus_metrics.record_call_latency("histo", get_labels=get_labels)
         @inlineCallbacks
         def func(param1, param2=None):
             yield
-            returnValue(param1)
+            returnValue(retval)
 
-        obj = object()
-        result = await func(obj, param2="baz")
-        assert result is obj
+        param1 = object()
+        result = await func(param1, param2="baz")
+        assert result is retval
         # the get_labels function is called with the same args as the function
-        assert label_call_args == [((obj,), {"param2": "baz"})]
+        assert label_call_args == [((param1,), {"param2": "baz"}, retval)]
         assert (
             'histo_count{bar="BAR",foo="FOO"} 1.0'
             in prometheus_metrics.generate_latest().decode("ascii")
@@ -129,20 +131,22 @@ class TestPrometheusMetricsNew:
         )
         label_call_args = []
 
-        def get_labels(*args, **kwargs):
-            label_call_args.append((args, kwargs))
+        def get_labels(args, kwargs, result):
+            label_call_args.append((args, kwargs, result))
             return {"foo": "FOO", "bar": "BAR"}
+
+        retval = object()
 
         @prometheus_metrics.record_call_latency("histo", get_labels=get_labels)
         async def func(param1, param2=None):
             await asyncio.sleep(0.001)
-            return param1
+            return retval
 
-        obj = object()
-        result = await func(obj, param2="baz")
-        assert result is obj
+        param1 = object()
+        result = await func(param1, param2="baz")
+        assert result is retval
         # the get_labels function is called with the same args as the function
-        assert label_call_args == [((obj,), {"param2": "baz"})]
+        assert label_call_args == [((param1,), {"param2": "baz"}, retval)]
         assert (
             'histo_count{bar="BAR",foo="FOO"} 1.0'
             in prometheus_metrics.generate_latest().decode("ascii")
@@ -160,19 +164,21 @@ class TestPrometheusMetricsNew:
         )
         label_call_args = []
 
-        def get_labels(*args, **kwargs):
-            label_call_args.append((args, kwargs))
+        def get_labels(args, kwargs, result):
+            label_call_args.append((args, kwargs, result))
             return {"foo": "FOO", "bar": "BAR"}
+
+        retval = object()
 
         @prometheus_metrics.record_call_latency("histo", get_labels=get_labels)
         def func(param1, param2=None):
-            return param1
+            return retval
 
-        obj = object()
-        result = func(obj, param2="baz")
-        assert result is obj
+        param1 = object()
+        result = func(param1, param2="baz")
+        assert result is retval
         # the get_labels function is called with the same args as the function
-        assert label_call_args == [((obj,), {"param2": "baz"})]
+        assert label_call_args == [((param1,), {"param2": "baz"}, retval)]
         assert (
             'histo_count{bar="BAR",foo="FOO"} 1.0'
             in prometheus_metrics.generate_latest().decode("ascii")

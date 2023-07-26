@@ -838,11 +838,6 @@ class RegionServer(Region):
         super().connectionLost(reason)
 
 
-def _get_call_latency_metric_labels(client, cmd, *args, **kwargs):
-    """Return labels for the region/rack call latency metric."""
-    return {"call": cmd.__name__}
-
-
 class RackClient(common.Client):
     """A `common.Client` for communication from region to rack."""
 
@@ -866,7 +861,7 @@ class RackClient(common.Client):
 
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_region_rack_rpc_call_latency",
-        get_labels=_get_call_latency_metric_labels,
+        get_labels=lambda args, kwargs, retval: {"call": args[1].__name__},
     )
     @asynchronous
     def __call__(self, cmd, *args, **kwargs):

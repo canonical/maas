@@ -167,6 +167,11 @@ class HandlerMetaclass(type):
         return new_class
 
 
+def _get_call_latency_metrics_label(args, *_):
+    handler, method_name, *_ = args
+    return {"call": f"{handler._meta.handler_name}.{method_name}"}
+
+
 class Handler(metaclass=HandlerMetaclass):
     """Base handler for all handlers in the WebSocket protocol.
 
@@ -391,12 +396,6 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return get_QueryDict(params)
 
-    def _get_call_latency_metrics_label(self, method_name, params):
-        call_name = "{handler_name}.{method_name}".format(
-            handler_name=self._meta.handler_name, method_name=method_name
-        )
-        return {"call": call_name}
-
     def _apiserver_execute(self, method, params):
         return concurrency.webapp.run(deferToThread, method, params)
 
@@ -477,7 +476,7 @@ class Handler(metaclass=HandlerMetaclass):
         with wrap_query_counter_cursor(latencies):
             result = method(params)
 
-        labels = self._get_call_latency_metrics_label(method_name, [])
+        labels = _get_call_latency_metrics_label((self, method_name))
         PROMETHEUS_METRICS.update(
             "maas_websocket_call_query_count",
             "observe",

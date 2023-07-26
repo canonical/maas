@@ -108,15 +108,17 @@ class PrometheusMetrics:
         return prometheus_client.generate_latest(registry)
 
     def record_call_latency(
-        self, metric_name, get_labels=lambda *args, **kwargs: {}
+        self, metric_name, get_labels=lambda args, kwargs, retval: {}
     ):
         """Wrap a function to record its call latency on a metric.
 
         If the function returns an asyncio coroutine or a Twisted Deferred,,
         the time to complete the async funcion is tracked.
 
-        The `get_labels` function is called with the same arguments as the call
-        and must return a dict with labels for the metric.
+        The `get_labels` function is called with the args tuple and kwargs dict
+        that are passed to the wrapped function as well as the return value
+        from the function. and and must return a dict with labels for the
+        metric.
         """
 
         def wrap_func(func):
@@ -135,7 +137,7 @@ class PrometheusMetrics:
                             metric_name,
                             "observe",
                             value=latency,
-                            labels=get_labels(*args, **kwargs),
+                            labels=get_labels(args, kwargs, result),
                         )
                         return result
 
@@ -150,7 +152,7 @@ class PrometheusMetrics:
                             metric_name,
                             "observe",
                             value=latency,
-                            labels=get_labels(*args, **kwargs),
+                            labels=get_labels(args, kwargs, result),
                         )
                         return result
 
@@ -161,7 +163,7 @@ class PrometheusMetrics:
                         metric_name,
                         "observe",
                         value=latency,
-                        labels=get_labels(*args, **kwargs),
+                        labels=get_labels(args, kwargs, result),
                     )
                 return result
 
