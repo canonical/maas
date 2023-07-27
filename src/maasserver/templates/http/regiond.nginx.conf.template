@@ -69,6 +69,12 @@ server {
         proxy_pass http://apiserver/metrics;
     }
 
+    # block remote access to the machines endpoints for now since it doesn't
+    # filter machines by user
+    location = /MAAS/a/v1/machines {
+        return 404;
+    }
+
     location /MAAS/a/ {
         rewrite ^/MAAS/a/(.*)$ /api/$1 break;
         proxy_pass http://apiserver;
