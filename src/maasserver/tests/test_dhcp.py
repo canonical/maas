@@ -815,10 +815,16 @@ class TestGetIPAddressForInterface(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         subnet = factory.make_Subnet(vlan=vlan)
         ip_address = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+            ip=factory.pick_ip_in_Subnet(subnet),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=interface,
         )
         self.assertEqual(
-            ip_address, dhcp.get_ip_address_for_interface(interface, vlan)
+            ip_address,
+            dhcp.get_ip_address_for_interface(
+                interface, vlan, subnet.get_ip_version()
+            ),
         )
 
     def test_returns_None(self):
@@ -826,10 +832,15 @@ class TestGetIPAddressForInterface(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         subnet = factory.make_Subnet(vlan=vlan)
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+            ip=factory.pick_ip_in_Subnet(subnet),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=interface,
         )
         self.assertIsNone(
-            dhcp.get_ip_address_for_interface(interface, factory.make_VLAN())
+            dhcp.get_ip_address_for_interface(
+                interface, factory.make_VLAN(), subnet.get_ip_version()
+            )
         )
 
 
@@ -844,11 +855,16 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
         )
         subnet = factory.make_Subnet(vlan=vlan)
         ip_address = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+            ip=factory.pick_ip_in_Subnet(subnet),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=interface,
         )
         self.assertEqual(
             ip_address,
-            dhcp.get_ip_address_for_rack_controller(rack_controller, vlan),
+            dhcp.get_ip_address_for_rack_controller(
+                rack_controller, vlan, subnet.get_ip_version()
+            ),
         )
 
     def test_returns_ip_address_from_best_interface_on_rack_controller(self):
@@ -868,7 +884,10 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
         )
         subnet = factory.make_Subnet(vlan=vlan)
         factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
+            ip=factory.pick_ip_in_Subnet(subnet),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+            interface=interface,
         )
         bond_ip_address = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,
@@ -877,7 +896,9 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
         )
         self.assertEqual(
             bond_ip_address,
-            dhcp.get_ip_address_for_rack_controller(rack_controller, vlan),
+            dhcp.get_ip_address_for_rack_controller(
+                rack_controller, vlan, subnet.get_ip_version()
+            ),
         )
 
 
@@ -2123,11 +2144,12 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        subnet = factory.make_Subnet(vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan, version=4)
         primary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan
         )
         primary_ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet),
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
             interface=primary_interface,
@@ -2136,6 +2158,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan
         )
         secondary_ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet),
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
             interface=secondary_interface,
@@ -2152,7 +2175,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
                 },
                 secondary_rack,
             ),
-            dhcp.make_failover_peer_config(vlan, primary_rack),
+            dhcp.make_failover_peer_config(vlan, primary_rack, 4),
         )
 
     def test_renders_config_for_secondary(self):
@@ -2163,11 +2186,12 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        subnet = factory.make_Subnet(vlan=vlan)
+        subnet = factory.make_Subnet(vlan=vlan, version=4)
         primary_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan
         )
         primary_ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet),
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
             interface=primary_interface,
@@ -2176,6 +2200,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan
         )
         secondary_ip = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet),
             alloc_type=IPADDRESS_TYPE.AUTO,
             subnet=subnet,
             interface=secondary_interface,
@@ -2192,7 +2217,78 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
                 },
                 primary_rack,
             ),
-            dhcp.make_failover_peer_config(vlan, secondary_rack),
+            dhcp.make_failover_peer_config(vlan, secondary_rack, 4),
+        )
+
+    # See https://bugs.launchpad.net/maas/+bug/2027621
+    def test_renders_config_for_secondary_should_not_mix_v4_and_v6_addresses(
+        self,
+    ):
+        primary_rack = factory.make_RackController()
+        secondary_rack = factory.make_RackController()
+        vlan = factory.make_VLAN(
+            dhcp_on=True,
+            primary_rack=primary_rack,
+            secondary_rack=secondary_rack,
+        )
+        subnet_v4 = factory.make_Subnet(vlan=vlan, version=4)
+        subnet_v6 = factory.make_Subnet(vlan=vlan, version=6)
+        primary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=primary_rack, vlan=vlan
+        )
+        primary_ip_v4 = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet_v4),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet_v4,
+            interface=primary_interface,
+        )
+        primary_ip_v6 = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet_v6),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet_v6,
+            interface=primary_interface,
+        )
+        secondary_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=secondary_rack, vlan=vlan
+        )
+        secondary_ip_v4 = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet_v4),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet_v4,
+            interface=secondary_interface,
+        )
+        secondary_ip_v6 = factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_Subnet(subnet_v6),
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet_v6,
+            interface=secondary_interface,
+        )
+        failover_peer_name = "failover-vlan-%d" % vlan.id
+        self.assertEqual(
+            (
+                failover_peer_name,
+                {
+                    "name": failover_peer_name,
+                    "mode": "secondary",
+                    "address": str(secondary_ip_v4.ip),
+                    "peer_address": str(primary_ip_v4.ip),
+                },
+                primary_rack,
+            ),
+            dhcp.make_failover_peer_config(vlan, secondary_rack, 4),
+        )
+        self.assertEqual(
+            (
+                failover_peer_name,
+                {
+                    "name": failover_peer_name,
+                    "mode": "secondary",
+                    "address": str(secondary_ip_v6.ip),
+                    "peer_address": str(primary_ip_v6.ip),
+                },
+                primary_rack,
+            ),
+            dhcp.make_failover_peer_config(vlan, secondary_rack, 6),
         )
 
 
