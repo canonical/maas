@@ -1,3 +1,7 @@
+// Package codec provides Encryption Codec that can be used to encrypt
+// sensitive data passed to and from Temporal Server
+//
+// https://docs.temporal.io/security#data-converter
 package codec
 
 import (

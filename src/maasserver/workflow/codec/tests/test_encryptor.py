@@ -38,7 +38,7 @@ class TestEncryptionCodec:
     @pytest.mark.asyncio
     async def test_decode(self):
         # Decode payload encoded by EncryptionCodec implemented in Go
-        # Check TestEncodeDecode in src/maasagent/internal/workflow/codec/encryptor_test.go
+        # Check TestEncodeDecode in src/maasagent/pkg/workflow/codec/encryptor_test.go
         key = "d901193069ad3d2cd99ce75c303f30bc".encode("utf-8")
         encryption_codec = EncryptionCodec(key)
         data = bytes.fromhex(
