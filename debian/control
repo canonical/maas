@@ -216,6 +216,7 @@ Depends: avahi-utils,
          grub-common,
          iputils-ping,
          libvirt-clients,
+         maas-agent (=${binary:Version}),
          maas-cli (=${binary:Version}),
          maas-common (=${binary:Version}),
          maas-dhcp (=${binary:Version}),
@@ -307,3 +308,9 @@ Package: maas-netmon
 Architecture: any
 Description: MAAS Network Monitor
  This package provides MAAS Network Monitor binary that is used by MAAS.
+
+Package: maas-agent
+Architecture: any
+Description: MAAS Agent
+ This package provides the MAAS Agent binary that is used by MAAS to
+ gradually replace the Rack Controller.
