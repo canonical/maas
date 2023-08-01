@@ -44,6 +44,7 @@ class DynamicDNSUpdate:
     name: str
     zone: str
     rectype: str
+    rev_zone: Optional[str] = None
     ttl: Optional[int] = None
     subnet: Optional[str] = None  # for reverse updates
     answer: Optional[str] = None
@@ -72,19 +73,22 @@ class DynamicDNSUpdate:
             return None
         ip = IPAddress(fwd_update.answer)
         name = ip.reverse_dns
+        zone = fwd_update.rev_zone
         if (ip.version == 4 and subnet.prefixlen > 24) or (
             ip.version == 6 and subnet.prefixlen > 124
         ):
             name_split = ip.reverse_dns.split(".")
-            name_split = (
-                name_split[:1] + [f"0-{subnet.prefixlen}"] + name_split[1:]
-            )
+            suffix = [zone]
+            if not zone:
+                suffix = [f"0-{subnet.prefixlen}"] + name_split[1:]
+
+            name_split = name_split[:1] + suffix
             name = ".".join(name_split)
 
         return cls(
             operation=fwd_update.operation,
             name=name,
-            zone=fwd_update.zone,
+            zone=zone or fwd_update.zone,
             subnet=str(subnet.cidr),
             ttl=fwd_update.ttl,
             answer=fwd_update.name,

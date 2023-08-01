@@ -7,7 +7,7 @@ import time
 
 from django.conf import settings
 import dns.resolver
-from netaddr import IPAddress
+from netaddr import IPAddress, IPNetwork
 from testtools.matchers import (
     Contains,
     Equals,
@@ -26,6 +26,7 @@ from maasserver.dns.config import (
     forward_domains_to_forwarded_zones,
     get_internal_domain,
     get_resource_name_for_subnet,
+    get_reverse_zone_for_answer,
     get_trusted_acls,
     get_trusted_networks,
     get_upstream_dns,
@@ -797,6 +798,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
+                    rev_zone=get_reverse_zone_for_answer(ip),
                     name=f"{resource.name}.{domain.name}",
                     ttl=resource.address_ttl if resource.address_ttl else 60,
                     answer=ip,
@@ -853,6 +855,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="DELETE",
                     zone=domain.name,
+                    rev_zone=get_reverse_zone_for_answer(ip),
                     name=f"{resource.name}.{domain.name}",
                     answer=ip,
                     rectype="A" if IPAddress(ip).version == 4 else "AAAA",
@@ -860,6 +863,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
+                    rev_zone=get_reverse_zone_for_answer(ip),
                     name=f"{resource.name}.{domain.name}",
                     ttl=resource.address_ttl if resource.address_ttl else 60,
                     answer=ip,
@@ -898,6 +902,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
+                    rev_zone=get_reverse_zone_for_answer(ip2.ip),
                     name=f"{resource.name}.{domain.name}",
                     rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
                     answer=ip2.ip,
@@ -932,10 +937,68 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                 DynamicDNSUpdate(
                     operation="INSERT",
                     zone=domain.name,
+                    rev_zone=get_reverse_zone_for_answer(ip2.ip),
                     name=f"{node.hostname}.{domain.name}",
                     rectype="A" if IPAddress(ip2.ip).version == 4 else "AAAA",
                     answer=ip2.ip,
                 ),
             ],
             result,
+        )
+
+    def test_insert_reverse_glue_zone(self):
+        domain = factory.make_Domain()
+        subnet = factory.make_Subnet(cidr="192.168.1.64/26")
+        ip = subnet.get_next_ip_for_allocation()[0]
+        resource = factory.make_DNSResource(domain=domain, ip=ip)
+        message = f"INSERT {domain.name} {resource.name} A {resource.address_ttl if resource.address_ttl else 60} {ip}"
+        zone = get_reverse_zone_for_answer(ip)
+        result, _ = process_dns_update_notify(message)
+        ip_split = ip.split(".")
+        self.assertCountEqual(
+            [
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    zone=zone,
+                    name=".".join([ip_split[-1], zone]),
+                    ttl=resource.address_ttl if resource.address_ttl else 60,
+                    subnet=subnet.cidr,
+                    answer=f"{resource.name}.{domain.name}",
+                    rectype="PTR",
+                )
+            ],
+            [
+                DynamicDNSUpdate.as_reverse_record_update(
+                    res, IPNetwork(subnet.cidr)
+                )
+                for res in result
+            ],
+        )
+
+
+class TestGetReverseZoneForUpdate(MAASServerTestCase):
+    def test_get_reverse_zone_for_answer_v4_24(self):
+        subnet = factory.make_Subnet(cidr="192.168.1.0/24")
+        ip = subnet.get_next_ip_for_allocation()[0]
+        rev_zone = get_reverse_zone_for_answer(ip)
+        self.assertEqual("1.168.192.in-addr.arpa", rev_zone)
+
+    def test_get_reverse_zone_for_update_v4_26(self):
+        subnet = factory.make_Subnet(cidr="192.168.1.0/26")
+        ip = subnet.get_next_ip_for_allocation()[0]
+        rev_zone = get_reverse_zone_for_answer(ip)
+        self.assertEqual("0-26.1.168.192.in-addr.arpa", rev_zone)
+
+    def test_get_reverse_zone_for_update_v6_64(self):
+        subnet = factory.make_Subnet(cidr="de:ad:be:ef:ca::/64")
+        ip = subnet.get_next_ip_for_allocation()[0]
+        rev_zone = get_reverse_zone_for_answer(ip)
+        self.assertEqual("f.e.0.0.e.b.0.0.d.a.0.0.e.d.0.0.ip6.arpa", rev_zone)
+
+    def test_get_reverse_zone_for_update_v6_65(self):
+        subnet = factory.make_Subnet(cidr="de:ad:be:ef:ca::/65")
+        ip = subnet.get_next_ip_for_allocation()[0]
+        rev_zone = get_reverse_zone_for_answer(ip)
+        self.assertEqual(
+            "0.f.e.0.0.e.b.0.0.d.a.0.0.e.d.0.0.ip6.arpa", rev_zone
         )
