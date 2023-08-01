@@ -7,7 +7,7 @@
 from collections import defaultdict
 
 from django.conf import settings
-from netaddr import IPAddress
+from netaddr import IPAddress, IPNetwork
 
 from maasserver.dns.zonegenerator import (
     InternalDomain,
@@ -32,6 +32,7 @@ from provisioningserver.dns.actions import (
     bind_write_zones,
 )
 from provisioningserver.dns.config import DynamicDNSUpdate
+from provisioningserver.dns.zoneconfig import DNSReverseZoneConfig
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.shell import ExternalProcessError
@@ -295,6 +296,16 @@ def get_internal_domain():
     )
 
 
+def get_reverse_zone_for_answer(answer):
+    subnet = Subnet.objects.get_best_subnet_for_ip(answer)
+    if not subnet:
+        return None
+
+    network = IPNetwork(subnet.cidr)
+    zone_info = DNSReverseZoneConfig.compose_zone_info(network)
+    return zone_info[0].zone_name
+
+
 def process_dns_update_notify(message):
     updates = []
     update_list = message.split(" ")
@@ -321,12 +332,17 @@ def process_dns_update_notify(message):
             ttl = int(update_list[-2]) if update_list[-2] else None
             answer = update_list[-1]
 
+    rev_zone = None
+    if rectype in ("A", "AAAA") and answer is not None:
+        rev_zone = get_reverse_zone_for_answer(answer)
+
     match op:
         case "UPDATE":
             updates.append(
                 DynamicDNSUpdate.create_from_trigger(
                     operation="DELETE",
                     zone=zone,
+                    rev_zone=rev_zone,
                     name=name,
                     rectype=rectype,
                     answer=answer,
@@ -336,6 +352,7 @@ def process_dns_update_notify(message):
                 DynamicDNSUpdate.create_from_trigger(
                     operation="INSERT",
                     zone=zone,
+                    rev_zone=rev_zone,
                     name=name,
                     rectype=rectype,
                     ttl=ttl,
@@ -347,6 +364,7 @@ def process_dns_update_notify(message):
                 DynamicDNSUpdate.create_from_trigger(
                     operation=op,
                     zone=zone,
+                    rev_zone=rev_zone,
                     name=name,
                     rectype=rectype,
                     ttl=ttl,
@@ -361,6 +379,7 @@ def process_dns_update_notify(message):
                     DynamicDNSUpdate.create_from_trigger(
                         operation="DELETE",
                         zone=zone,
+                        rev_zone=rev_zone,
                         name=name,
                         rectype=rectype,
                     )
@@ -370,6 +389,7 @@ def process_dns_update_notify(message):
                         DynamicDNSUpdate.create_from_trigger(
                             operation="DELETE",
                             zone=zone,
+                            rev_zone=rev_zone,
                             name=name,
                             rectype="AAAA",
                         )
@@ -403,6 +423,7 @@ def process_dns_update_notify(message):
                     DynamicDNSUpdate.create_from_trigger(
                         operation="INSERT",
                         zone=zone,
+                        rev_zone=get_reverse_zone_for_answer(ip.ip),
                         name=name,
                         rectype=rectype,
                         ttl=ttl,
@@ -415,6 +436,7 @@ def process_dns_update_notify(message):
                     DynamicDNSUpdate.create_from_trigger(
                         operation=op,
                         zone=zone,
+                        rev_zone=rev_zone,
                         name=name,
                         rectype=rectype,
                         answer=update_list[-1],
@@ -425,6 +447,7 @@ def process_dns_update_notify(message):
                     DynamicDNSUpdate.create_from_trigger(
                         operation=op,
                         zone=zone,
+                        rev_zone=rev_zone,
                         name=name,
                         rectype=rectype,
                     )
