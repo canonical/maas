@@ -10,6 +10,7 @@ Managers all the external services that the rack controller runs.
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict
 from datetime import timedelta
+from urllib.parse import urlparse
 
 import attr
 from netaddr import IPAddress
@@ -17,6 +18,8 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
 from twisted.internet.threads import deferToThread
 
+from provisioningserver.agent import config as agent_config
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.dns.actions import (
     bind_reload_with_retries,
     bind_write_configuration,
@@ -36,6 +39,7 @@ from provisioningserver.rpc.region import (
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 from provisioningserver.utils.twisted import callOut, callOutToThread
 
 log = LegacyLogger()
@@ -397,17 +401,21 @@ class RackAgent(RackOnlyExternalService):
 
     service_name = "agent"
 
-    def _configure(self, configuration):
-        return
+    def _configure(self):
+        controllers = []
+        with ClusterConfiguration.open() as config:
+            controllers = [urlparse(url).hostname for url in config.maas_url]
+
+        config = agent_config.Configuration(
+            system_id=MAAS_ID.get(),
+            secret=MAAS_SHARED_SECRET.get(),
+            controllers=controllers,
+        )
+
+        agent_config.write_config(config)
 
     def _tryUpdate(self, config):
-        d = maybeDeferred(
-            self._getConfiguration,
-        )
-        return d
-
-    def _getConfiguration(self):
-        return
+        return deferToThread(self._configure)
 
 
 class RackExternalService(TimerService):
