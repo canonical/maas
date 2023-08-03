@@ -175,6 +175,7 @@ class RegionControllerService(Service):
         )
         eventloop.restart()
 
+    @inlineCallbacks
     def queueDynamicDNSUpdate(self, channel, message):
         """
         Called when the `sys_dns_update` message is received
@@ -183,7 +184,9 @@ class RegionControllerService(Service):
         if message == "":
             return
 
-        (new_updates, need_reload) = process_dns_update_notify(message)
+        (new_updates, need_reload) = yield deferToDatabase(
+            process_dns_update_notify, message
+        )
 
         self._dns_requires_full_reload = (
             self._dns_requires_full_reload or need_reload
