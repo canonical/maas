@@ -864,8 +864,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         check_serial.return_value = succeed(update_result)
 
         service._dns_update_in_progress = True
-        yield deferToDatabase(
-            service.queueDynamicDNSUpdate,
+        yield service.queueDynamicDNSUpdate(
             factory.make_name(),
             f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
@@ -914,8 +913,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         check_serial.return_value = succeed(update_result)
 
         service._dns_update_in_progress = True
-        yield deferToDatabase(
-            service.queueDynamicDNSUpdate,
+        yield service.queueDynamicDNSUpdate(
             factory.make_name(),
             f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
