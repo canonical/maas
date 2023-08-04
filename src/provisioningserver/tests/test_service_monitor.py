@@ -13,6 +13,7 @@ from provisioningserver.service_monitor import (
     NTPServiceOnRack,
     ProxyServiceOnRack,
     service_monitor,
+    SERVICE_STATE,
     SyslogServiceOnRack,
 )
 
@@ -42,6 +43,7 @@ class TestNTPServiceOnRack(MAASTestCase):
         ntp = NTPServiceOnRack()
         self.assertEqual("chrony", ntp.service_name)
         self.assertEqual("ntp_rack", ntp.name)
+        self.assertEqual(SERVICE_STATE.ANY, ntp.expected_state)
 
 
 class TestDNSServiceOnRack(MAASTestCase):
@@ -49,6 +51,7 @@ class TestDNSServiceOnRack(MAASTestCase):
         dns = DNSServiceOnRack()
         self.assertEqual("bind9", dns.service_name)
         self.assertEqual("dns_rack", dns.name)
+        self.assertEqual(SERVICE_STATE.ANY, dns.expected_state)
 
 
 class TestProxyServiceOnRack(MAASTestCase):
@@ -57,6 +60,7 @@ class TestProxyServiceOnRack(MAASTestCase):
         self.assertEqual("maas-proxy", proxy.service_name)
         self.assertEqual("proxy", proxy.snap_service_name)
         self.assertEqual("proxy_rack", proxy.name)
+        self.assertEqual(SERVICE_STATE.ANY, proxy.expected_state)
 
 
 class TestSyslogServiceOnRack(MAASTestCase):
@@ -65,6 +69,7 @@ class TestSyslogServiceOnRack(MAASTestCase):
         self.assertEqual("maas-syslog", syslog.service_name)
         self.assertEqual("syslog", syslog.snap_service_name)
         self.assertEqual("syslog_rack", syslog.name)
+        self.assertEqual(SERVICE_STATE.ANY, syslog.expected_state)
 
 
 class TestAgentServiceOnRack(MAASTestCase):

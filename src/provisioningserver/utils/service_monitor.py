@@ -183,10 +183,10 @@ class AlwaysOnService(Service):
 class ToggleableService(Service):
     """Service can be toggled on or off."""
 
-    def __init__(self):
+    def __init__(self, expected_state=SERVICE_STATE.OFF):
         super().__init__()
-        self.expected_state = SERVICE_STATE.OFF
-        self.expected_state_reason = None
+        self.expected_state = expected_state
+        self.expected_state_reason = "Default expected state"
 
     def getExpectedState(self):
         """Return a the expected state for the dhcp service.

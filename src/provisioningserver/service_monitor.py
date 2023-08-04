@@ -2,10 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Services monitored on rackd."""
-
+from abc import ABC
 
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
+    SERVICE_STATE,
     ServiceMonitor,
     ToggleableService,
 )
@@ -31,7 +32,18 @@ class DHCPv6Service(ToggleableService):
     snap_service_name = "dhcpd6"
 
 
-class NTPServiceOnRack(ToggleableService):
+class RackToggleableService(ToggleableService, ABC):
+    """A helper class to prevent races between region and rack
+    in region+rack deployments."""
+
+    def __init__(self):
+        # To prevent races between region and rack, accept any state
+        # by default (the desired service state then will be updated
+        # via RackOnlyExternalService logic)
+        super().__init__(expected_state=SERVICE_STATE.ANY)
+
+
+class NTPServiceOnRack(RackToggleableService):
     """Monitored NTP service on a rack controller host."""
 
     name = "ntp_rack"
@@ -39,7 +51,7 @@ class NTPServiceOnRack(ToggleableService):
     snap_service_name = "ntp"
 
 
-class DNSServiceOnRack(ToggleableService):
+class DNSServiceOnRack(RackToggleableService):
     """Monitored DNS service on a rack controller host."""
 
     name = "dns_rack"
@@ -50,7 +62,7 @@ class DNSServiceOnRack(ToggleableService):
     kill_extra_opts = ("-s", "SIGKILL")
 
 
-class ProxyServiceOnRack(ToggleableService):
+class ProxyServiceOnRack(RackToggleableService):
     """Monitored proxy service on a rack controller host."""
 
     name = "proxy_rack"
@@ -58,7 +70,7 @@ class ProxyServiceOnRack(ToggleableService):
     snap_service_name = "proxy"
 
 
-class SyslogServiceOnRack(ToggleableService):
+class SyslogServiceOnRack(RackToggleableService):
     """Monitored syslog service on a rack controller host."""
 
     name = "syslog_rack"
