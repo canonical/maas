@@ -2,7 +2,8 @@ from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
-from urllib.parse import urlencode
+
+from sqlalchemy import URL
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.vault import (
@@ -22,17 +23,15 @@ class DatabaseConfig:
     port: int | None = None
 
     @property
-    def dsn(self) -> str:
-        params = {
-            "host": self.host,
-            "user": self.username,
-            "password": self.password,
-            "port": self.port,
-        }
-        for key, value in list(params.items()):
-            if value is None:
-                del params[key]
-        return f"postgresql+asyncpg:///{self.name}?{urlencode(params)}"
+    def dsn(self) -> URL:
+        return URL.create(
+            "postgresql+asyncpg",
+            host=self.host,
+            port=self.port,
+            database=self.name,
+            username=self.username,
+            password=self.password,
+        )
 
 
 @dataclass
