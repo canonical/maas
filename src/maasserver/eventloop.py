@@ -192,6 +192,12 @@ def make_TemporalService():
     return temporal.RegionTemporalService()
 
 
+def make_TemporalWorker():
+    from maasserver.regiondservices import temporal_worker
+
+    return temporal_worker.TemporalWorkerService(reactor)
+
+
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
 
@@ -440,6 +446,11 @@ class RegionEventLoop:
         "temporal": {
             "only_on_master": True,
             "factory": make_TemporalService,
+            "requires": [],
+        },
+        "temporal-worker": {
+            "only_on_master": True,
+            "factory": make_TemporalWorker,
             "requires": [],
         },
     }

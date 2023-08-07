@@ -293,6 +293,7 @@ RegionControllerRule = Rule(
     Allow("distro_info|distro_info.*"),
     Allow("django|django.**"),
     Allow("formencode|formencode.**"),
+    Allow("google.protobuf|google.protobuf.**"),  # for Temporal
     Allow("hvac|hvac.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
