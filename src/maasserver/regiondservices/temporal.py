@@ -51,9 +51,9 @@ class RegionTemporalService(Service):
     @inlineCallbacks
     def _reload_service(self):
         if snap.running_in_snap():
-            service_monitor.restartService("temporal")
+            yield service_monitor.restartService("temporal")
         else:
-            service_monitor.reloadService("temporal")
+            yield service_monitor.reloadService("temporal")
 
 
 def get_temporal_config_dir():
