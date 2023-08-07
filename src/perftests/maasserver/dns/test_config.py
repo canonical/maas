@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from netaddr import IPNetwork
 import pytest
 
 from maasserver.dns.config import (
@@ -49,4 +50,6 @@ def test_perf_generate_dns_updates(perf, factory):
         for record in records:
             notify = f"INSERT {domain.name} {record.name} A 30 {record.ip_addresses.first().ip}"
             fwd, _ = process_dns_update_notify(notify)
-            DynamicDNSUpdate.as_reverse_record_update(fwd[0], subnet.cidr)
+            DynamicDNSUpdate.as_reverse_record_update(
+                fwd[0], IPNetwork(subnet.cidr)
+            )
