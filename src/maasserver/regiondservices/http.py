@@ -120,9 +120,9 @@ class RegionHTTPService(Service):
     @inlineCallbacks
     def _reload_service(self):
         if snap.running_in_snap():
-            service_monitor.restartService("reverse_proxy")
+            yield service_monitor.restartService("reverse_proxy")
         else:
-            service_monitor.reloadService("reverse_proxy")
+            yield service_monitor.reloadService("reverse_proxy")
         yield deferToDatabase(
             certificate_expiration_check.check_tls_certificate
         )
