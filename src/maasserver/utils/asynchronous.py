@@ -256,7 +256,7 @@ def async_retry(retries=5, backoff_ms=1000):
             tries = 0
             while True:
                 try:
-                    await fn(*args, **kwargs)
+                    return await fn(*args, **kwargs)
                 except Exception as e:
                     tries += 1
                     if tries == retries:
@@ -266,8 +266,6 @@ def async_retry(retries=5, backoff_ms=1000):
                             0, 1
                         )
                         await asyncio.sleep(sleep_ms / 1000)
-                else:
-                    break
 
         return wrapped
 

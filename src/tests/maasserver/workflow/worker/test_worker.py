@@ -10,7 +10,8 @@ from temporalio.api.workflowservice.v1 import (
 from temporalio.worker import Worker as TemporalWorker
 
 from maasserver.workflow.testing.dummy import DummyWorkflow
-from maasserver.workflow.worker import get_client_async, Worker
+from maasserver.workflow.worker import Worker
+from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 
 @pytest.fixture
@@ -49,21 +50,18 @@ def mock_temporal_connect(mocker, mock_temporal_client):
     )
 
 
-class TestGetClient:
-    @pytest.mark.asyncio
-    async def test_get_client_async(self, mock_temporal_connect):
-        client = await get_client_async()
-        assert client is not None
-
-
 class TestWorker:
     @pytest.mark.asyncio
-    async def test_run(self, mock_temporal_connect, mocker):
+    async def test_run(self, mocker, mock_temporal_client):
         mocker.patch("temporalio.worker.Worker.__init__", return_value=None)
         mock_worker_run = mocker.patch(
             "temporalio.worker.Worker.run", return_value=None
         )
-        wrkr = Worker(additional_workflows=[DummyWorkflow])
+
+        MAAS_SHARED_SECRET.set("x" * 32)
+
+        wrkr = Worker(client=mock_temporal_client, workflows=[DummyWorkflow])
         await wrkr.run()
+
         assert isinstance(wrkr._worker, TemporalWorker)
         mock_worker_run.assert_called_once()

@@ -10,6 +10,7 @@ from twisted.internet.asyncioreactor import AsyncioSelectorReactor
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 
 from maasserver.service_monitor import service_monitor, SERVICE_STATE
+from maasserver.workflow.configure import ConfigureWorkflow
 from maasserver.workflow.worker import Worker
 
 
@@ -22,7 +23,7 @@ class TemporalWorkerService(Service):
             self._loop = asyncio.get_event_loop()
         else:  # handle crochet reactor
             self._loop = asyncio.new_event_loop()
-        self.worker = Worker()
+        self.worker = Worker(workflows=[ConfigureWorkflow])
 
     @inlineCallbacks
     def startService(self):
