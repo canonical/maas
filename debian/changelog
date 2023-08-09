@@ -1,4 +1,11 @@
-maas (1:2.9.3~rc2-0ubuntu1) lunar; urgency=medium
+maas (1:2.9.3~rc3-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 RC3.
+  * No change rebuild to pick up python-pylxd in snap (LP: #2030814)
+
+ -- Mauricio Faria de Oliveira <mfo@canonical.com>  Wed, 09 Aug 2023 12:24:18 -0300
+
+maas (1:2.9.3~rc2-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 RC2.
   * Reapply 2.8.x fixes since MAAS 2.9.2.
