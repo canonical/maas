@@ -30,19 +30,45 @@ $ActionQueueType LinkedList # use asynchronous processing
 $ActionResumeRetryCount -1 # infinite retries on insert failure
 $ActionQueueSaveOnShutdown on # save in-memory data if rsyslog shuts down
 
+# System journal logging
+module(load="omjournal")
+
+# Template for ex-`maas.log`: no alteration needed, can use `list`.
+template(name="MAASjournal" type="list") {
+  constant(value="maas-log" outname="SYSLOG_IDENTIFIER")
+  property(name="rawmsg-after-pri" outname="MESSAGE")
+}
+
 {{if write_local}}
-# Log the messages to disk based on the hostname of the log message.
-$template MAASenlist,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/%fromhost-ip%"
-$template MAASboot,"{{log_dir}}/rsyslog/%HOSTNAME%/%$YEAR%-%$MONTH%-%$DAY%/messages"
+# Just in case some of the user-deployed apps use slashes in tags
+global(parser.permitSlashInProgramName="on")
+
+# `subtree` template type allows altering the message (with `set`),
+# compared to `list` where you can only specify the property name.
+template(name="MAASremote" type="subtree" subtree="$!remote")
 
 if $syslogtag contains "maas" then {
-  *.* {{log_dir}}/maas.log
+  action(type="omjournal" template="MAASjournal")
 } else {
+  # Convenience fields to filter the logs with journalctl
+  set $!remote!MAAS_MACHINE_HOSTNAME = $hostname;
+  set $!remote!MAAS_MACHINE_IP = $fromhost-ip;
+  set $!remote!MAAS_MACHINE_SYSLOG_TAG = $programname;
+  set $!remote!MAAS_MACHINE_PID = $procid;
+  # Save original timestamp for time sync debugging
+  set $!remote!MAAS_MACHINE_TIMESTAMP = $timereported;
+
+  # Prefix log message with a machine identifier appropriate for the node status
   if $hostname == "maas-enlisting-node" then {
-    :fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist
+    set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";
+    set $.machineid = $fromhost-ip;
   } else {
-    :fromhost-ip, !isequal, "127.0.0.1" ?MAASboot
+    set $!remote!SYSLOG_IDENTIFIER = "maas-machine";
+    set $.machineid = $hostname;
   }
+  set $!remote!MESSAGE = "[" & $.machineid & "] " & $syslogtag & $msg;
+
+  action(type="omjournal" template="MAASremote")
 }
 {{endif}}
 
@@ -70,10 +96,11 @@ if $syslogtag contains "maas" then {
            TCP_Framing="octet-counted" queue.filename="promtail")
 {{endif}}
 
-
 {{if not write_local}}
 # rack-only controller still logs to a local maas.log.
-:syslogtag, contains, "maas" {{log_dir}}/maas.log
+if $syslogtag contains "maas" then {
+  action(type="omjournal" template="MAASjournal")
+}
 {{endif}}
 
 # Done.

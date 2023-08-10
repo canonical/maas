@@ -111,9 +111,11 @@ class TestWriteConfig(MAASTestCase):
     def test_write_local(self):
         config.write_config(True)
         matcher_one = Contains(
-            ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist'
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";'
         )
-        matcher_two = Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
+        matcher_two = Contains(
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-machine";'
+        )
         self.assertThat(
             f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
@@ -122,13 +124,13 @@ class TestWriteConfig(MAASTestCase):
     def test_no_write_local(self):
         config.write_config(False)
         matcher_one = Not(
-            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist')
+            Contains('set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";')
         )
         matcher_two = Not(
-            Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
+            Contains('set $!remote!SYSLOG_IDENTIFIER = "maas-machine";')
         )
         # maas.log is still local when no write local.
-        matcher_three = Contains(':syslogtag, contains, "maas"')
+        matcher_three = Contains('if $syslogtag contains "maas" then')
         self.assertThat(
             f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(
@@ -181,10 +183,10 @@ class TestWriteConfig(MAASTestCase):
         with self.syslog_path.open() as syslog_file:
             lines = [line.strip() for line in syslog_file.readlines()]
             self.assertIn(
-                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASenlist', lines
+                'set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";', lines
             )
             self.assertIn(
-                ':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot', lines
+                'set $!remote!SYSLOG_IDENTIFIER = "maas-machine";', lines
             )
             for host in forwarders:
                 self.assertLinesContain('target="%s"' % host["ip"], lines)

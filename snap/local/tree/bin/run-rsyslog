@@ -3,8 +3,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p \
-      "$SNAP_DATA/syslog/rsyslog" \
-      "$SNAP_COMMON/log/rsyslog"
+      "$SNAP_DATA/syslog/rsyslog"
 
 if [ ! -e "$SNAP_DATA/syslog/rsyslog.conf" ]; then
     echo "Cannot start rsyslog as $SNAP_DATA/syslog/rsyslog.conf does not exist."
