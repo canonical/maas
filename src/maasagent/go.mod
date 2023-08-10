@@ -3,6 +3,7 @@ module launchpad.net/maas/maas/src/maasagent
 go 1.18
 
 require (
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/google/gopacket v1.1.19
 	github.com/packetcap/go-pcap v0.0.0-20230509084824-080a85fb093e
 	github.com/rs/zerolog v1.29.1

@@ -11,7 +11,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"syscall"
+	"time"
 
+	backoff "github.com/cenkalti/backoff/v4"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.temporal.io/sdk/client"
@@ -59,19 +61,36 @@ func Run() int {
 		return 1
 	}
 
-	client, err := client.Dial(client.Options{
-		// TODO: fallback retry if Controllers[0] is unavailable
-		HostPort:      fmt.Sprintf("%s:%d", cfg.Controllers[0], TemporalPort),
-		Logger:        wflog.New(log.Logger),
-		DataConverter: converter.NewCodecDataConverter(converter.GetDefaultDataConverter(), codec),
-	})
+	clientBackoff := backoff.NewExponentialBackOff()
+	clientBackoff.MaxElapsedTime = 60 * time.Second
+
+	client, err := backoff.RetryWithData(
+		func() (client.Client, error) {
+			return client.Dial(client.Options{
+				// TODO: fallback retry if Controllers[0] is unavailable
+				HostPort: fmt.Sprintf("%s:%d", cfg.Controllers[0], TemporalPort),
+				Logger:   wflog.New(log.Logger),
+				DataConverter: converter.NewCodecDataConverter(
+					converter.GetDefaultDataConverter(),
+					codec,
+				),
+			})
+		}, clientBackoff,
+	)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal client error")
 		return 1
 	}
 
-	_, err = workflow.NewWorkerPool(cfg.SystemID, client)
+	workerPoolBackoff := backoff.NewExponentialBackOff()
+	workerPoolBackoff.MaxElapsedTime = 60 * time.Second
+
+	_, err = backoff.RetryWithData(
+		func() (*workflow.WorkerPool, error) {
+			return workflow.NewWorkerPool(cfg.SystemID, client)
+		}, workerPoolBackoff,
+	)
 
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal worker pool creation failure")
