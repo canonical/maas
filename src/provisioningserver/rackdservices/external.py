@@ -39,7 +39,7 @@ from provisioningserver.rpc.region import (
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
 from provisioningserver.utils import snap
-from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET, MAAS_UUID
 from provisioningserver.utils.twisted import callOut, callOutToThread
 
 log = LegacyLogger()
@@ -407,6 +407,7 @@ class RackAgent(RackOnlyExternalService):
             controllers = [urlparse(url).hostname for url in config.maas_url]
 
         config = agent_config.Configuration(
+            maas_uuid=MAAS_UUID.get(),
             system_id=MAAS_ID.get(),
             secret=MAAS_SHARED_SECRET.get(),
             controllers=controllers,

@@ -30,6 +30,7 @@ const (
 
 // config represents a neccessary set of configuration options for MAAS Agent
 type config struct {
+	MAASUUID    string   `yaml:"maas_uuid"`
 	SystemID    string   `yaml:"system_id"`
 	Secret      string   `yaml:"secret"`
 	Controllers []string `yaml:"controllers,flow"`

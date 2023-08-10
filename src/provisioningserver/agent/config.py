@@ -22,6 +22,7 @@ def get_agent_config_path():
 
 @dataclass
 class Configuration:
+    maas_uuid: str
     system_id: str
     secret: str
     controllers: list[str]
