@@ -57,6 +57,8 @@ if $syslogtag contains "maas" then {
   set $!remote!MAAS_MACHINE_PID = $procid;
   # Save original timestamp for time sync debugging
   set $!remote!MAAS_MACHINE_TIMESTAMP = $timereported;
+  # Debug priority for machine logs
+  set $!remote!PRIORITY = "7";
 
   # Prefix log message with a machine identifier appropriate for the node status
   if $hostname == "maas-enlisting-node" then {
