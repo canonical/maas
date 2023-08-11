@@ -7,7 +7,7 @@ services:
   regiond:
     override: replace
     # Note: we use `sh -c` to expand the `$SNAP` environment variable
-    command: sh -c "exec $SNAP/bin/run-regiond"
+    command: sh -c "exec systemd-cat -t maas-regiond $SNAP/bin/run-regiond"
     startup: enabled
     # Workaround for https://github.com/canonical/pebble/issues/231
     before:
@@ -20,7 +20,7 @@ services:
 
   apiserver:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-apiserver"
+    command: sh -c "exec systemd-cat -t maas-apiserver $SNAP/bin/run-apiserver"
     startup: enabled
     before:
       - http
@@ -31,5 +31,5 @@ services:
 
   temporal:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-temporal"
+    command: sh -c "exec systemd-cat -t maas-temporal $SNAP/bin/run-temporal"
     startup: disabled

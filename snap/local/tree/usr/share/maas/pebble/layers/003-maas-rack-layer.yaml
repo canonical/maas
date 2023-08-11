@@ -7,7 +7,7 @@ services:
   rackd:
     override: replace
     # Note: we use `sh -c` to expand the `$SNAP` environment variable
-    command: sh -c "exec $SNAP/bin/run-rackd"
+    command: sh -c "exec systemd-cat -t maas-rackd $SNAP/bin/run-rackd"
     startup: enabled
     # Workaround for https://github.com/canonical/pebble/issues/231
     before:
@@ -32,4 +32,4 @@ services:
   agent:
     override: replace
     startup: disabled
-    command: sh -c "exec $SNAP/bin/run-maas-agent"
+    command: sh -c "exec systemd-cat -t maas-agent $SNAP/bin/run-maas-agent"
