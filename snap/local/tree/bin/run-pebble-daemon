@@ -14,5 +14,4 @@ mkdir -p "$prometheus_multiproc_dir"
 "$SNAP/bin/reconfigure-pebble"
 
 # Run the supervisor for the snap.
-export PEBBLE_DEBUG=1
 exec pebble run --verbose
