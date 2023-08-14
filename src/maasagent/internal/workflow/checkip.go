@@ -12,12 +12,12 @@ import (
 
 // CheckIPParam is a workflow parameter for the CheckIP workflow
 type CheckIPParam struct {
-	IPs []netip.Addr
+	IPs []netip.Addr `json:"ips"`
 }
 
 // CheckIPResult is a value returned by the CheckIP workflow
 type CheckIPResult struct {
-	IPs map[netip.Addr]net.HardwareAddr
+	IPs map[netip.Addr]net.HardwareAddr `json:"ips"`
 }
 
 // CheckIP is a Temporal workflow for checking available IP addresses

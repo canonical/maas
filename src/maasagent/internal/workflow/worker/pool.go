@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
@@ -14,10 +15,8 @@ import (
 )
 
 // WorkerPool contains a collection of Temporal Workers that can be added or
-// removed in runtime, through master worker that is responsible for execution of
-// special workflows AddWorker and RemoveWorker.
-// WorkerPool allows to register specific Workflows and Activities for the
-// added workers.
+// removed during runtime by master worker which is responsible for execution of
+// special workflows `add_worker` and `remove_worker`.
 type WorkerPool struct {
 	client client.Client
 	// worker for control plane workflows like Add or Remove workers
@@ -32,31 +31,31 @@ type WorkerPool struct {
 }
 
 // NewWorkerPool returns WorkerPool that has a master worker listening to a
-// Temporal Task Queue {systemID}
+// Temporal Task Queue named after systemID
 func NewWorkerPool(systemID string, client client.Client) (*WorkerPool, error) {
 	pool := &WorkerPool{
 		systemID: systemID,
 		client:   client,
 		workers:  make(map[string]worker.Worker),
 		workflows: map[string]interface{}{
-			"CheckIP": wf.CheckIP,
+			"check_ip": wf.CheckIP,
 		},
 		activities: map[string]interface{}{},
 	}
 
-	// master worker responsible for adding/removing workers from the pool
+	// master worker is responsible for adding/removing workers to/from the pool
 	pool.master = worker.New(client, systemID, worker.Options{})
 
 	var opts workflow.RegisterOptions
 	opts = workflow.RegisterOptions{
-		Name: "AddWorker",
+		Name: "add_worker",
 	}
 	pool.master.RegisterWorkflowWithOptions(
 		exec[addWorkerParam](pool.addWorker), opts,
 	)
 
 	opts = workflow.RegisterOptions{
-		Name: "RemoveWorker",
+		Name: "remove_worker",
 	}
 	pool.master.RegisterWorkflowWithOptions(
 		exec[removeWorkerParam](pool.removeWorker), opts,
@@ -65,21 +64,21 @@ func NewWorkerPool(systemID string, client client.Client) (*WorkerPool, error) {
 	return pool, pool.master.Start()
 }
 
-// configureParam is a parameter that should be provided to Configure workflow
-type configureParam struct {
-	SystemID string
+// configureWorkerPoolParam is a parameter that should be provided to the
+// `configure_worker_pool` workflow
+type configureWorkerPoolParam struct {
+	SystemID string `json:"system_id"`
 }
 
-// Configure calls Configure workflow to be executed.
+// Configure calls `configure_worker_pool` workflow to be executed.
 // This workflow will configure WorkerPool with a proper set of workers.
-// E.g. it will call AddWorker and RemoveWorker workflows.
 func (p *WorkerPool) Configure(ctx context.Context) error {
 	workflowOptions := client.StartWorkflowOptions{
-		TaskQueue: "control-plane",
+		TaskQueue: "control_plane",
 	}
 
 	workflowRun, err := p.client.ExecuteWorkflow(ctx, workflowOptions,
-		"Configure", configureParam{SystemID: p.systemID})
+		"configure_worker_pool", configureWorkerPoolParam{SystemID: p.systemID})
 	if err != nil {
 		return err
 	}
@@ -88,9 +87,9 @@ func (p *WorkerPool) Configure(ctx context.Context) error {
 }
 
 type addWorkerParam struct {
-	TaskQueue  string
-	Workflows  []string
-	Activities []string
+	TaskQueue  string   `json:"task_queue"`
+	Workflows  []string `json:"workflows"`
+	Activities []string `json:"activities"`
 }
 
 // addWorker adds worker to the WorkerPool and registers workflows and activities
@@ -104,15 +103,15 @@ func (p *WorkerPool) addWorker(param addWorkerParam) error {
 
 	w := worker.New(p.client, param.TaskQueue, worker.Options{})
 
-	for _, workflow := range param.Workflows {
-		if fn, ok := p.workflows[workflow]; ok {
-			w.RegisterWorkflow(fn)
+	for _, wf := range param.Workflows {
+		if fn, ok := p.workflows[wf]; ok {
+			w.RegisterWorkflowWithOptions(fn, workflow.RegisterOptions{Name: wf})
 		}
 	}
 
-	for _, activity := range param.Activities {
-		if fn, ok := p.activities[activity]; ok {
-			w.RegisterActivity(fn)
+	for _, act := range param.Activities {
+		if fn, ok := p.activities[act]; ok {
+			w.RegisterActivityWithOptions(fn, activity.RegisterOptions{Name: act})
 		}
 	}
 
@@ -126,7 +125,7 @@ func (p *WorkerPool) addWorker(param addWorkerParam) error {
 }
 
 type removeWorkerParam struct {
-	TaskQueue string
+	TaskQueue string `json:"task_queue"`
 }
 
 // removeWorker stops worker of a certain TaskQueue and removes it from the pool
@@ -146,7 +145,7 @@ func (p *WorkerPool) removeWorker(param removeWorkerParam) error {
 	return nil
 }
 
-// exec will execute provide function as Local Activity
+// exec will execute provided function as Local Activity
 func exec[T any](fn any) func(ctx workflow.Context, param T) error {
 	return func(ctx workflow.Context, param T) error {
 		lao := workflow.LocalActivityOptions{
