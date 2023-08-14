@@ -4,10 +4,8 @@
 
 mkdir -p \
       "$SNAP_DATA/proxy" \
-      "$SNAP_COMMON/proxy/"{cache,spool} \
-      "$SNAP_COMMON/log/"{proxy,http} 
+      "$SNAP_COMMON/proxy/"{cache,spool}
 chown snap_daemon:snap_daemon \
-      "$SNAP_COMMON/log/proxy" \
       "$SNAP_COMMON/proxy/"{cache,spool}
 
 if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
@@ -17,7 +15,7 @@ fi
 
 # Ensure that the cache is initialized.
 if [ ! -d "$SNAP_COMMON/proxy/cache/00" ]; then
-    squid -z -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
+    squid -z -d 5 -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
 fi
 
 # Start squid, force kill it when the script is terminated. Squid sometimes

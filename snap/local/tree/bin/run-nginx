@@ -2,10 +2,7 @@
 # Copyright 2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-mkdir -p \
-      "$SNAP_DATA/http" \
-      "$SNAP_COMMON/log/http"
-chown root:root "$SNAP_COMMON/log/http"
+mkdir -p "$SNAP_DATA/http"
 
 # Place nginx.conf from the one shipped with the snap.
 cp -f "$SNAP/usr/share/maas/nginx/nginx.conf" "$SNAP_DATA/http/"

@@ -12,7 +12,7 @@ ExecStartPre=/bin/mkdir -p /run/maas/proxy
 ExecStartPre=/bin/sh -ec '\
     . /usr/share/maas/maas-proxy-common.sh; \
     pre_start'
-ExecStart=/usr/sbin/squid -Y -f /var/lib/maas/maas-proxy.conf
+ExecStart=/usr/sbin/squid -d 5 -Y -f /var/lib/maas/maas-proxy.conf
 ExecReload=/usr/sbin/squid -k reconfigure
 
 [Install]

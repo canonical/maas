@@ -51,18 +51,16 @@ icon_directory {{snap_path}}/usr/share/squid/icons
 error_directory {{snap_path}}/usr/share/squid-langpack/en
 coredump_dir {{snap_common_path}}/proxy/spool
 cache_dir aufs {{snap_common_path}}/proxy/cache 40000 16 256
-cache_access_log stdio:{{snap_common_path}}/log/proxy/access.log
-cache_log {{snap_common_path}}/log/proxy/cache.log
-cache_store_log stdio:{{snap_common_path}}/log/proxy/store.log
 cache_effective_user snap_daemon
 cache_effective_group snap_daemon
 {{else}}
 coredump_dir /var/spool/maas-proxy
 cache_dir aufs /var/spool/maas-proxy 40000 16 256
-cache_access_log /var/log/maas/proxy/access.log
-cache_log /var/log/maas/proxy/cache.log
-cache_store_log /var/log/maas/proxy/store.log
 {{endif}}
+# We run squid with -d argument instead to receive the logs in stdout
+cache_log /dev/null
+access_log syslog:daemon.debug
+cache_store_log syslog:daemon.debug
 {{if peers}}
 {{for peer in peers}}
 {{if peer['username'] and peer['password']}}

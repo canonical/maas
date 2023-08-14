@@ -39,6 +39,12 @@ template(name="MAASjournal" type="list") {
   property(name="rawmsg-after-pri" outname="MESSAGE")
 }
 
+template(name="MAASnginxaccess" type="list") {
+  constant(value="maas-http" outname="SYSLOG_IDENTIFIER")
+  property(name="msg" outname="MESSAGE")
+  constant(value="7" outname="PRIORITY")
+}
+
 {{if write_local}}
 # Just in case some of the user-deployed apps use slashes in tags
 global(parser.permitSlashInProgramName="on")
@@ -47,7 +53,9 @@ global(parser.permitSlashInProgramName="on")
 # compared to `list` where you can only specify the property name.
 template(name="MAASremote" type="subtree" subtree="$!remote")
 
-if $syslogtag contains "maas" then {
+if $programname == "maas_nginx" and $inputname == "imuxsock" then {
+  action(type="omjournal" template="MAASnginxaccess")
+} else if $syslogtag contains "maas" then {
   action(type="omjournal" template="MAASjournal")
 } else {
   # Convenience fields to filter the logs with journalctl
@@ -100,7 +108,9 @@ if $syslogtag contains "maas" then {
 
 {{if not write_local}}
 # rack-only controller still logs to a local maas.log.
-if $syslogtag contains "maas" then {
+if $programname == "maas_nginx" and $inputname == "imuxsock" then {
+  action(type="omjournal" template="MAASnginxaccess")
+} else if $syslogtag contains "maas" then {
   action(type="omjournal" template="MAASjournal")
 }
 {{endif}}

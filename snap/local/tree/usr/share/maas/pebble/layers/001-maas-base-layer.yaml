@@ -12,7 +12,7 @@ services:
 
   http:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-nginx"
+    command: sh -c "exec systemd-cat -t maas-http $SNAP/bin/run-nginx"
     startup: disabled
 
   ntp:
@@ -22,7 +22,7 @@ services:
 
   proxy:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-squid"
+    command: sh -c "exec systemd-cat -t maas-proxy $SNAP/bin/run-squid"
     startup: disabled
 
   syslog:
