@@ -131,13 +131,17 @@ type removeWorkerParam struct {
 
 // removeWorker stops worker of a certain TaskQueue and removes it from the pool
 func (p *WorkerPool) removeWorker(param removeWorkerParam) error {
-	if w, ok := p.workers[param.TaskQueue]; ok {
-		w.Stop()
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	w, ok := p.workers[param.TaskQueue]
+
+	if !ok {
+		return nil
 	}
 
-	p.mutex.Lock()
+	w.Stop()
 	delete(p.workers, param.TaskQueue)
-	defer p.mutex.Unlock()
 
 	return nil
 }
