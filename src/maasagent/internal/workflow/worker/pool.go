@@ -1,4 +1,4 @@
-package workflow
+package worker
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+
+	wf "launchpad.net/maas/maas/src/maasagent/internal/workflow"
 )
 
 // WorkerPool contains a collection of Temporal Workers that can be added or
@@ -37,7 +39,7 @@ func NewWorkerPool(systemID string, client client.Client) (*WorkerPool, error) {
 		client:   client,
 		workers:  make(map[string]worker.Worker),
 		workflows: map[string]interface{}{
-			"CheckIP": CheckIP,
+			"CheckIP": wf.CheckIP,
 		},
 		activities: map[string]interface{}{},
 	}

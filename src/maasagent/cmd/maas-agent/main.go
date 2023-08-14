@@ -19,8 +19,8 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
-	"launchpad.net/maas/maas/src/maasagent/internal/workflow"
 	wflog "launchpad.net/maas/maas/src/maasagent/internal/workflow/log"
+	"launchpad.net/maas/maas/src/maasagent/internal/workflow/worker"
 	"launchpad.net/maas/maas/src/maasagent/pkg/workflow/codec"
 )
 
@@ -88,8 +88,8 @@ func Run() int {
 	workerPoolBackoff.MaxElapsedTime = 60 * time.Second
 
 	_, err = backoff.RetryWithData(
-		func() (*workflow.WorkerPool, error) {
-			return workflow.NewWorkerPool(cfg.SystemID, client)
+		func() (*worker.WorkerPool, error) {
+			return worker.NewWorkerPool(cfg.SystemID, client)
 		}, workerPoolBackoff,
 	)
 
