@@ -22,12 +22,12 @@ services:
   dhcpd:
     override: replace
     startup: disabled
-    command: sh -c "exec $SNAP/bin/run-dhcpd"
+    command: sh -c "exec systemd-cat -t dhcpd $SNAP/bin/run-dhcpd"
 
   dhcpd6:
     override: replace
     startup: disabled
-    command: sh -c "exec $SNAP/bin/run-dhcpd6"
+    command: sh -c "exec systemd-cat -t dhcpd6 $SNAP/bin/run-dhcpd6"
 
   agent:
     override: replace
