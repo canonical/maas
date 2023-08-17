@@ -38,9 +38,20 @@ func NewWorkerPool(systemID string, client client.Client) (*WorkerPool, error) {
 		client:   client,
 		workers:  make(map[string]worker.Worker),
 		workflows: map[string]interface{}{
-			"check_ip": wf.CheckIP,
+			"check_ip":              wf.CheckIP,
+			"commission":            wf.Commission,
+			"deploy":                wf.Deploy,
+			"deployed_os_workflow":  wf.DeployedOS,
+			"ephemeral_os_workflow": wf.EphemeralOS,
+			"power_on":              wf.PowerOn,
+			"power_off":             wf.PowerOff,
+			"power_query":           wf.PowerQuery,
+			"power_cycle":           wf.PowerCycle,
 		},
-		activities: map[string]interface{}{},
+		activities: map[string]interface{}{
+			"switch_boot_order": wf.SwitchBootOrderActivity,
+			"power":             wf.PowerActivity,
+		},
 	}
 
 	// master worker is responsible for adding/removing workers to/from the pool
@@ -51,14 +62,14 @@ func NewWorkerPool(systemID string, client client.Client) (*WorkerPool, error) {
 		Name: "add_worker",
 	}
 	pool.master.RegisterWorkflowWithOptions(
-		exec[addWorkerParam](pool.addWorker), opts,
+		localActivityExec[addWorkerParam](pool.addWorker), opts,
 	)
 
 	opts = workflow.RegisterOptions{
 		Name: "remove_worker",
 	}
 	pool.master.RegisterWorkflowWithOptions(
-		exec[removeWorkerParam](pool.removeWorker), opts,
+		localActivityExec[removeWorkerParam](pool.removeWorker), opts,
 	)
 
 	return pool, pool.master.Start()
@@ -145,8 +156,8 @@ func (p *WorkerPool) removeWorker(param removeWorkerParam) error {
 	return nil
 }
 
-// exec will execute provided function as Local Activity
-func exec[T any](fn any) func(ctx workflow.Context, param T) error {
+// localActivityExec will execute provided function as Local Activity
+func localActivityExec[T any](fn any) func(ctx workflow.Context, param T) error {
 	return func(ctx workflow.Context, param T) error {
 		lao := workflow.LocalActivityOptions{
 			ScheduleToCloseTimeout: 5 * time.Second,

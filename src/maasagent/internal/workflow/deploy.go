@@ -1,0 +1,68 @@
+package workflow
+
+import (
+	"net/netip"
+
+	"go.temporal.io/sdk/workflow"
+
+	wflog "maas.io/core/src/maasagent/internal/workflow/log"
+)
+
+// DeployParam is a workflow parameter for the DeployWorkflow
+type DeployParam struct {
+	Power        PowerParam `json:"power"`
+	SystemID     string     `json:"system_id"`
+	Queue        string     `json:"queue"`
+	RequestedIPs []string   `json:"requested_ips"`
+}
+
+// Deploy is a Temporal workflow that is reasonable for deploying a host
+func Deploy(ctx workflow.Context, params DeployParam) error {
+	log := workflow.GetLogger(ctx)
+
+	systemIDTag := wflog.NewSystemIDTag(params.SystemID)
+
+	log.Info("starting deployment", systemIDTag)
+
+	var err error
+
+	ipsToCheck := make([]netip.Addr, len(params.RequestedIPs))
+
+	for i, ipStr := range params.RequestedIPs {
+		ipsToCheck[i], err = netip.ParseAddr(ipStr)
+		if err != nil {
+			return err
+		}
+	}
+
+	future := workflow.ExecuteChildWorkflow(ctx, CheckIP, CheckIPParam{
+		IPs: ipsToCheck,
+	})
+
+	if err := future.Get(ctx, nil); err != nil {
+		return err
+	}
+
+	future = workflow.ExecuteChildWorkflow(ctx, EphemeralOS, EphemeralOSParam{
+		SystemID:     params.SystemID,
+		SetBootOrder: true,
+		Power:        params.Power,
+	})
+
+	if err := future.Get(ctx, nil); err != nil {
+		return err
+	}
+
+	future = workflow.ExecuteChildWorkflow(ctx, DeployedOS, DeployedOSParam{
+		SystemID: params.SystemID,
+		Power:    params.Power,
+	})
+
+	if err := future.Get(ctx, nil); err != nil {
+		return err
+	}
+
+	log.Info("deployment successful", systemIDTag)
+
+	return nil
+}
