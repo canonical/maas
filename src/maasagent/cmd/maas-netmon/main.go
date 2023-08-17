@@ -16,7 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"launchpad.net/maas/maas/src/maasagent/internal/netmon"
+	"maas.io/core/src/maasagent/internal/netmon"
 )
 
 func Run() int {

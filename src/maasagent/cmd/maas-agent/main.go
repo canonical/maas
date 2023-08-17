@@ -19,9 +19,9 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
-	wflog "launchpad.net/maas/maas/src/maasagent/internal/workflow/log"
-	"launchpad.net/maas/maas/src/maasagent/internal/workflow/worker"
-	"launchpad.net/maas/maas/src/maasagent/pkg/workflow/codec"
+	wflog "maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/workflow/worker"
+	"maas.io/core/src/maasagent/pkg/workflow/codec"
 )
 
 const (

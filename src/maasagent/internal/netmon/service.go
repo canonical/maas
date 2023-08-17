@@ -17,7 +17,7 @@ import (
 	pcap "github.com/packetcap/go-pcap"
 	"github.com/rs/zerolog/log"
 
-	"launchpad.net/maas/maas/src/maasagent/internal/ethernet"
+	"maas.io/core/src/maasagent/internal/ethernet"
 )
 
 const (

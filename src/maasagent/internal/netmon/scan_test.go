@@ -15,7 +15,8 @@ import (
 
 // TestScan can be used for testing
 // sudo is required because Scan is using privileged ping
-// sudo TEST_NETMON_SCAN=172.16.1.1,172.16.2.1 go test launchpad.net/maas/maas/src/maasagent/internal/netmon -run TestScan -count 1 -v
+// sudo TEST_NETMON_SCAN=172.16.1.1,172.16.2.1 \
+// go test "maas.io/core/src/maasagent/internal/netmon -run TestScan -count 1 -v
 func TestScan(t *testing.T) {
 	env := os.Getenv("TEST_NETMON_SCAN")
 	if env == "" {

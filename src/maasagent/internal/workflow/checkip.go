@@ -7,7 +7,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"launchpad.net/maas/maas/src/maasagent/internal/netmon"
+	"maas.io/core/src/maasagent/internal/netmon"
 )
 
 // CheckIPParam is a workflow parameter for the CheckIP workflow

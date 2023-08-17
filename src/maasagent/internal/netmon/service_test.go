@@ -15,7 +15,7 @@ import (
 	pcap "github.com/packetcap/go-pcap"
 	"github.com/stretchr/testify/assert"
 
-	"launchpad.net/maas/maas/src/maasagent/internal/ethernet"
+	"maas.io/core/src/maasagent/internal/ethernet"
 )
 
 func uint16Pointer(v uint16) *uint16 {

@@ -1,4 +1,4 @@
-module launchpad.net/maas/maas/src/maasagent
+module maas.io/core/src/maasagent
 
 go 1.18
 
