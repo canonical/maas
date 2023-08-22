@@ -4,8 +4,7 @@
 
 mkdir -p \
       "$SNAP_DATA/etc/chrony" \
-      "$SNAP_COMMON/chrony" \
-      "$SNAP_COMMON/log/ntpstats"
+      "$SNAP_COMMON/chrony"
 
 if [ ! -e "$SNAP_DATA/etc/chrony/chrony.conf" ]; then
     cp "$SNAP/usr/share/maas/chrony.conf" "$SNAP_DATA/etc/chrony/chrony.conf"

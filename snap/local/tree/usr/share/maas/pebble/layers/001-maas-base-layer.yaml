@@ -17,7 +17,7 @@ services:
 
   ntp:
     override: replace
-    command: sh -c "exec $SNAP/bin/run-chronyd"
+    command: sh -c "exec systemd-cat -t chronyd $SNAP/bin/run-chronyd"
     startup: disabled
 
   proxy:
