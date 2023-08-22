@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for common RPC code."""
-
-
 import random
 import re
 from unittest.mock import ANY, sentinel
@@ -13,6 +11,7 @@ from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
+from twisted.python.failure import Failure
 from twisted.test.proto_helpers import StringTransport
 
 from maastesting.factory import factory
@@ -234,6 +233,38 @@ class TestRPCProtocol(MAASTestCase):
         protocol.makeConnection(StringTransport())
         protocol.connectionLost(connectionDone)
         self.assertThat(protocol.onConnectionLost, IsFiredDeferred())
+
+    def test_unhandled_error_handler_closed(self):
+        """
+        Test the unhandledError method when the handler is closed.
+        """
+        amp_unhandledError = self.patch_autospec(amp.AMP, "unhandledError")
+
+        protocol = common.RPCProtocol()
+
+        fake_failure = Failure(
+            RuntimeError(
+                "unable to perform operation on <UVPoll closed=True 0x7f3506bd4c10>; the handler is closed"
+            )
+        )
+
+        protocol.unhandledError(fake_failure)
+
+        amp_unhandledError.assert_called_once()
+
+    def test_unhandled_error_generic(self):
+        """
+        Test the unhandledError method for a generic failure.
+        """
+        amp_unhandledError = self.patch_autospec(amp.AMP, "unhandledError")
+
+        protocol = common.RPCProtocol()
+
+        fake_failure = Failure(Exception("Some generic error"))
+
+        protocol.unhandledError(fake_failure)
+
+        amp_unhandledError.assert_not_called()
 
 
 class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
