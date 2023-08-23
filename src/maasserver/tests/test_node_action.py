@@ -7,7 +7,6 @@ from unittest.mock import ANY
 
 from django.db import transaction
 from netaddr import IPNetwork
-from testtools.matchers import Equals
 
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
@@ -75,7 +74,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit, post_commit_hooks, reload_object
-from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -364,11 +362,8 @@ class TestCommissionAction(MAASServerTestCase):
         with post_commit_hooks:
             action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertThat(
-            node_start,
-            MockCalledOnceWith(
-                admin, ANY, ANY, allow_power_cycle=True, config=ANY
-            ),
+        node_start.assert_called_once_with(
+            admin, ANY, ANY, allow_power_cycle=True, config=ANY
         )
 
     def test_Commission_starts_commissioning(self):
@@ -404,11 +399,8 @@ class TestCommissionAction(MAASServerTestCase):
         )
         self.assertEqual(node.current_testing_script_set_id, script_sets[1].id)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertThat(
-            node_start,
-            MockCalledOnceWith(
-                admin, ANY, ANY, allow_power_cycle=True, config=ANY
-            ),
+        node_start.assert_called_once_with(
+            admin, ANY, ANY, allow_power_cycle=True, config=ANY
         )
 
     def test_Commission_logs_audit_event(self):
@@ -492,7 +484,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             node = reload_object(node)
             self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
-        self.assertThat(node_stop, MockCalledOnceWith(owner))
+        node_stop.assert_called_once_with(owner)
 
     def test_Abort_aborts_commissioning(self):
         """Makes sure a COMMISSIONING node is returned to NEW status after an
@@ -529,7 +521,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             node = reload_object(node)
             self.assertEqual(NODE_STATUS.NEW, node.status)
 
-        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        node_stop.assert_called_once_with(admin)
 
     def test_Abort_aborts_deployment(self):
         """Makes sure a DEPLOYING node is returned to ALLOCATED status after an
@@ -566,7 +558,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             node = reload_object(node)
             self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
-        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        node_stop.assert_called_once_with(admin)
 
     def test_Abort_aborts_testing(self):
         """Makes sure a TESTING node is returned to previous status after an
@@ -609,7 +601,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             node = reload_object(node)
             self.assertEqual(status, node.status)
 
-        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        node_stop.assert_called_once_with(admin)
 
 
 class TestAcquireNodeAction(MAASServerTestCase):
@@ -643,10 +635,8 @@ class TestAcquireNodeAction(MAASServerTestCase):
         request.user = user
         node_acquire = self.patch(locks, "node_acquire")
         Acquire(node, user, request).execute()
-        self.assertThat(node_acquire.__enter__, MockCalledOnceWith())
-        self.assertThat(
-            node_acquire.__exit__, MockCalledOnceWith(None, None, None)
-        )
+        node_acquire.__enter__.assert_called_once_with()
+        node_acquire.__exit__.assert_called_once_with(None, None, None)
 
 
 class TestDeployAction(MAASServerTestCase):
@@ -691,15 +681,12 @@ class TestDeployAction(MAASServerTestCase):
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
-        self.expectThat(
-            mock_node_start,
-            MockCalledOnceWith(
-                user,
-                user_data=None,
-                install_kvm=False,
-                register_vmhost=False,
-                enable_hw_sync=False,
-            ),
+        mock_node_start.assert_called_once_with(
+            user,
+            user_data=None,
+            install_kvm=False,
+            register_vmhost=False,
+            enable_hw_sync=False,
         )
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
@@ -726,15 +713,12 @@ class TestDeployAction(MAASServerTestCase):
         extra = {"user_data": "foo: bar"}
         expected = b"foo: bar"
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(
-            mock_node_start,
-            MockCalledOnceWith(
-                user,
-                user_data=expected,
-                install_kvm=False,
-                register_vmhost=False,
-                enable_hw_sync=False,
-            ),
+        mock_node_start.assert_called_once_with(
+            user,
+            user_data=expected,
+            install_kvm=False,
+            register_vmhost=False,
+            enable_hw_sync=False,
         )
 
     def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):
@@ -800,8 +784,8 @@ class TestDeployAction(MAASServerTestCase):
         release_name = osystem["releases"][0]["name"]
         extra = {"osystem": os_name, "distro_series": release_name}
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(node.osystem, Equals(os_name))
-        self.expectThat(node.distro_series, Equals(release_name))
+        self.assertEqual(node.osystem, os_name)
+        self.assertEqual(node.distro_series, release_name)
 
     def test_Deploy_sets_osystem_and_series_to_default(self):
         # Regression test for LP:1822173
@@ -822,8 +806,8 @@ class TestDeployAction(MAASServerTestCase):
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
-        self.expectThat(node.osystem, Equals(os_name))
-        self.expectThat(node.distro_series, Equals(release_name))
+        self.assertEqual(node.osystem, os_name)
+        self.assertEqual(node.distro_series, release_name)
 
     def test_Deploy_passes_install_kvm_if_specified(self):
         user = factory.make_admin()
@@ -846,17 +830,14 @@ class TestDeployAction(MAASServerTestCase):
             "install_kvm": True,
         }
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(node.osystem, Equals(os_name))
-        self.expectThat(node.distro_series, Equals(release_name))
-        self.assertThat(
-            mock_node_start,
-            MockCalledOnceWith(
-                user,
-                user_data=None,
-                install_kvm=True,
-                register_vmhost=False,
-                enable_hw_sync=False,
-            ),
+        self.assertEqual(node.osystem, os_name)
+        self.assertEqual(node.distro_series, release_name)
+        mock_node_start.assert_called_once_with(
+            user,
+            user_data=None,
+            install_kvm=True,
+            register_vmhost=False,
+            enable_hw_sync=False,
         )
 
     def test_Deploy_raises_NodeActionError_on_install_kvm_if_os_missing(self):
@@ -942,8 +923,8 @@ class TestDeployAction(MAASServerTestCase):
         release_name = osystem["releases"][0]["name"]
         extra = {"osystem": os_name, "distro_series": release_name + "*"}
         Deploy(node, user, request).execute(**extra)
-        self.expectThat(node.osystem, Equals(os_name))
-        self.expectThat(node.distro_series, Equals(release_name))
+        self.assertEqual(node.osystem, os_name)
+        self.assertEqual(node.distro_series, release_name)
 
     def test_Deploy_allocates_node_if_node_not_already_allocated(self):
         user = factory.make_User()
@@ -960,8 +941,8 @@ class TestDeployAction(MAASServerTestCase):
         action = Deploy(node, user, request)
         action.execute()
 
-        self.expectThat(user, Equals(node.owner))
-        self.expectThat(NODE_STATUS.ALLOCATED, Equals(node.status))
+        self.assertEqual(user, node.owner)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_Deploy_raises_an_error_when_enable_hw_sync_is_True_for_non_linux(
         self,
@@ -1031,12 +1012,9 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
         e = self.assertRaises(
             NodeActionError, Deploy(node, user, request).execute
         )
-        self.expectThat(
+        self.assertEqual(
             str(e),
-            Equals(
-                "%s: Failed to start, static IP addresses are exhausted."
-                % node.hostname
-            ),
+            f"{node.hostname}: Failed to start, static IP addresses are exhausted.",
         )
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
@@ -1143,7 +1121,7 @@ class TestPowerOnAction(MAASServerTestCase):
         )
         node_start = self.patch(node, "start")
         PowerOn(node, user, request).execute()
-        self.assertThat(node_start, MockCalledOnceWith(user))
+        node_start.assert_called_once_with(user)
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description, "Powered on '%s'." % node.hostname
@@ -1200,11 +1178,32 @@ class TestPowerOffAction(MAASServerTestCase):
 
         PowerOff(node, user, request).execute()
 
-        self.assertThat(node_stop, MockCalledOnceWith(user))
+        node_stop.assert_called_once_with(user, stop_mode=None)
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
-            audit_event.description, "Powered off '%s'." % node.hostname
+            audit_event.description, f"Powered off '{node.hostname}'."
         )
+
+    def test_can_stop_with_soft_stop_mode(self):
+        admin = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = admin
+        params = dict(
+            power_address=factory.make_ipv4_address(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string(),
+        )
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.READY,
+            power_type="ipmi",
+            power_parameters=params,
+        )
+        node_stop = self.patch_autospec(node, "stop")
+
+        PowerOff(node, admin, request).execute(stop_mode="soft")
+
+        node_stop.assert_called_once_with(admin, stop_mode="soft")
 
     def test_stops_Ready_node(self):
         admin = factory.make_admin()
@@ -1225,7 +1224,7 @@ class TestPowerOffAction(MAASServerTestCase):
 
         PowerOff(node, admin, request).execute()
 
-        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        node_stop.assert_called_once_with(admin, stop_mode=None)
 
     def test_actionable_for_non_monitored_states(self):
         all_statuses = NON_MONITORED_STATUSES
@@ -1414,8 +1413,8 @@ class TestReleaseAction(MAASServerTestCase):
         with post_commit_hooks:
             Release(node, user, request).execute()
 
-        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
-        self.assertThat(node_stop, MockCalledOnceWith(user))
+        self.assertEqual(node.status, NODE_STATUS.RELEASING)
+        node_stop.assert_called_once_with(user)
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description, "Started releasing '%s'." % node.hostname
@@ -1445,16 +1444,13 @@ class TestReleaseAction(MAASServerTestCase):
         with post_commit_hooks:
             Release(node, user, request).execute(erase=True)
 
-        self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
-        self.assertThat(
-            node_start,
-            MockCalledOnceWith(
-                user,
-                user_data=ANY,
-                old_status=old_status,
-                allow_power_cycle=True,
-                config=ANY,
-            ),
+        self.assertEqual(node.status, NODE_STATUS.DISK_ERASING)
+        node_start.assert_called_once_with(
+            user,
+            user_data=ANY,
+            old_status=old_status,
+            allow_power_cycle=True,
+            config=ANY,
         )
 
     def test_Release_passes_secure_erase_and_quick_erase(self):
@@ -1481,11 +1477,8 @@ class TestReleaseAction(MAASServerTestCase):
                 erase=True, secure_erase=True, quick_erase=True
             )
 
-        self.assertThat(
-            node_release_or_erase,
-            MockCalledOnceWith(
-                user, erase=True, secure_erase=True, quick_erase=True
-            ),
+        node_release_or_erase.assert_called_once_with(
+            user, erase=True, secure_erase=True, quick_erase=True
         )
 
 
@@ -1738,7 +1731,7 @@ class TestImportImagesAction(MAASServerTestCase):
         with post_commit_hooks:
             ImportImages(rack, user, request).execute()
 
-        self.assertThat(mock_import, MockCalledOnce())
+        mock_import.assert_called_once()
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description,
@@ -1785,7 +1778,7 @@ class TestRescueModeAction(MAASServerTestCase):
         action = RescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_start_rescue_mode, MockCalledOnceWith(user))
+        node_start_rescue_mode.assert_called_once_with(user)
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description,
@@ -1801,7 +1794,7 @@ class TestRescueModeAction(MAASServerTestCase):
         action = RescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_start_rescue_mode, MockCalledOnceWith(user))
+        node_start_rescue_mode.assert_called_once_with(user)
 
     def test_rescue_mode_action_for_deployed(self):
         user = factory.make_admin()
@@ -1812,7 +1805,7 @@ class TestRescueModeAction(MAASServerTestCase):
         action = RescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_start_rescue_mode, MockCalledOnceWith(user))
+        node_start_rescue_mode.assert_called_once_with(user)
 
 
 class TestExitRescueModeAction(MAASServerTestCase):
@@ -1832,7 +1825,7 @@ class TestExitRescueModeAction(MAASServerTestCase):
         action = ExitRescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
+        node_stop_rescue_mode.assert_called_once_with(user)
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description,
@@ -1848,7 +1841,7 @@ class TestExitRescueModeAction(MAASServerTestCase):
         action = ExitRescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
+        node_stop_rescue_mode.assert_called_once_with(user)
 
     def test_exit_rescue_mode_action_for_deployed(self):
         user = factory.make_admin()
@@ -1859,7 +1852,7 @@ class TestExitRescueModeAction(MAASServerTestCase):
         action = ExitRescueMode(node, user, request)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
+        node_stop_rescue_mode.assert_called_once_with(user)
 
 
 class TestCloneAction(MAASServerTestCase):

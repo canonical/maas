@@ -669,10 +669,10 @@ class PowerOff(NodeAction):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
 
-    def _execute(self):
-        """See `NodeAction.execute`."""
+    def _execute(self, stop_mode=None):
+        """Stop the node, optionally specifiying the stop_mode."""
         try:
-            self.node.stop(self.user)
+            self.node.stop(self.user, stop_mode=stop_mode)
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
 
