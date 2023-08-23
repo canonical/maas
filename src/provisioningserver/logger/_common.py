@@ -6,12 +6,12 @@ import enum
 import functools
 import logging
 import sys
-import time
 
 # This format roughly matches Twisted's default, so that combined Twisted and
 # Django logs are consistent with one another.
-DEFAULT_LOG_FORMAT = "%(asctime)s %(name)s: [%(levelname)s] %(message)s"
-DEFAULT_LOG_FORMAT_DATE = "%Y-%m-%d %H:%M:%S"
+#
+# For timestamps, rely on journald instead.
+DEFAULT_LOG_FORMAT = "%(name)s: [%(levelname)s] %(message)s"
 DEFAULT_LOG_VERBOSITY_LEVELS = {0, 1, 2, 3}
 DEFAULT_LOG_VERBOSITY = 2
 
@@ -86,7 +86,6 @@ def warn_unless(predicate, message):
     """
     if not predicate:
         message = DEFAULT_LOG_FORMAT % dict(
-            asctime=time.strftime(DEFAULT_LOG_FORMAT_DATE, time.localtime()),
             name="global",
             levelname="warn",
             message=message,

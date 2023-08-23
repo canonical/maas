@@ -14,7 +14,6 @@ from twisted import logger as twistedModern
 
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
-    DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_VERBOSITY_LEVELS,
     is_dev_environment,
     LoggingMode,
@@ -91,7 +90,7 @@ def get_logging_config(verbosity: int):
         "formatters": {
             "stdout": {
                 "format": DEFAULT_LOG_FORMAT,
-                "datefmt": DEFAULT_LOG_FORMAT_DATE,
+                "datefmt": "",  # To prevent using the default format
             },
             "syslog": {"format": "%(name)s: [%(levelname)s] %(message)s"},
         },

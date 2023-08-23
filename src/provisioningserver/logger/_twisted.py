@@ -15,7 +15,6 @@ from twisted.python import usage
 
 from provisioningserver.logger._common import (
     DEFAULT_LOG_FORMAT,
-    DEFAULT_LOG_FORMAT_DATE,
     DEFAULT_LOG_VERBOSITY,
     DEFAULT_LOG_VERBOSITY_LEVELS,
     get_module_for_file,
@@ -153,7 +152,6 @@ def _startLoggingWithObserver(observer, setStdout=1):
     )
 
 
-_timeFormat = DEFAULT_LOG_FORMAT_DATE
 _lineFormat = DEFAULT_LOG_FORMAT + "\n"
 
 
@@ -166,14 +164,12 @@ def _formatModernEvent(event):
         except Exception:
             traceback = "(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
         text = "\n".join((text, traceback))
-    time = event["log_time"] if "log_time" in event else None
     level = event["log_level"] if "log_level" in event else None
     system = event["log_system"] if "log_system" in event else None
     if system is None and "log_namespace" in event:
         system = _getSystemName(event["log_namespace"])
 
     return _lineFormat % {
-        "asctime": twistedModern.formatTime(time, _timeFormat),
         "levelname": "-" if level is None else level.name,
         "message": "-" if text is None else text.replace("\n", "\n\t"),
         "name": "-" if system is None else system,
