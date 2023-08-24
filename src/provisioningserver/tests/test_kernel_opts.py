@@ -439,3 +439,20 @@ class TestKernelOpts(MAASTestCase):
                 ]
             ),
         )
+
+    def test_xinstall_compose_kernel_command_line_ephemeral_opts(self):
+        # ephemeral opts MUST appear before the separator
+        mock_get_curtin_sep = self.patch(
+            kernel_opts, "get_curtin_kernel_cmdline_sep"
+        )
+        sep = factory.make_name("sep")
+        mock_get_curtin_sep.return_value = sep
+
+        ephem_opt = "EPHEMERAL_OPT=1"
+        params = self.make_kernel_parameters(
+            purpose="xinstall",
+            ephemeral_opts=ephem_opt,
+        )
+        cmdline = compose_kernel_command_line(params)
+        self.assertIn(ephem_opt, cmdline)
+        self.assertTrue(cmdline.find(sep) > cmdline.find(ephem_opt))

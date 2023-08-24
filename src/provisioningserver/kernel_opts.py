@@ -43,6 +43,7 @@ KernelParametersBase = namedtuple(
         # verbatim to the kernel command line
         "http_boot",  # Used to make sure a MAAS 2.3 rack controller uses
         # http_boot.
+        "ephemeral_opts",  # Same as 'extra_opts' but used only in the ephemeral OS
     ),
 )
 
@@ -151,6 +152,8 @@ def compose_kernel_command_line(params):
     #       as it would be nice to have.
     options += compose_logging_opts(params)
     options += compose_arch_opts(params)
+    if params.ephemeral_opts:
+        options.append(params.ephemeral_opts)
     cmdline_sep = get_curtin_kernel_cmdline_sep()
     if params.extra_opts:
         # Using --- before extra opts makes both d-i and Curtin install

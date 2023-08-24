@@ -218,11 +218,13 @@ def get_boot_config_for_machine(machine, configs, purpose):
         else:
             osystem = configs["commissioning_osystem"]
             series = configs["commissioning_distro_series"]
+        final_osystem, final_series = osystem, series
     else:
         osystem = machine.get_osystem(default=configs["default_osystem"])
         series = machine.get_distro_series(
             default=configs["default_distro_series"]
         )
+        final_osystem, final_series = osystem, series
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
         # drop of iscsi), precise is no longer deployable. To address a
         # squashfs image is made available allowing it to be deployed in
@@ -285,7 +287,7 @@ def get_boot_config_for_machine(machine, configs, purpose):
             )
         except ValidationError:
             subarch = "no-such-kernel"
-    return osystem, series, subarch
+    return osystem, series, subarch, final_osystem, final_series
 
 
 def get_base_url_for_local_ip(local_ip, internal_domain):
@@ -318,6 +320,15 @@ def get_final_boot_purpose(machine, arch, purpose):
         return "commissioning"
     else:
         return purpose
+
+
+def get_quirks_kernel_opts(
+    final_osystem: str, final_series: str
+) -> str | None:
+    if final_osystem == "centos":
+        return "nvme-core.multipath=0"
+
+    return None
 
 
 @synchronous
@@ -386,6 +397,7 @@ def get_config(
         if log_port is None:
             log_port = 514  # Fallback to default UDP syslog port.
 
+    ephemeral_opts: str | None = None
     # XXX: Instead of updating the machine directly, we should store the
     # information and update the machine later. The current code doesn't
     # work when you first boot a machine that has IPMI configured, since
@@ -510,6 +522,7 @@ def get_config(
                 "log_port": log_port,
                 "extra_opts": "",
                 "http_boot": True,
+                "ephemeral_opts": ephemeral_opts or "",
             }
 
         # Log the request into the event log for that machine.
@@ -522,9 +535,13 @@ def get_config(
         else:
             event_log_pxe_request(machine, purpose)
 
-        osystem, series, subarch = get_boot_config_for_machine(
-            machine, configs, purpose
-        )
+        (
+            osystem,
+            series,
+            subarch,
+            final_osystem,
+            final_series,
+        ) = get_boot_config_for_machine(machine, configs, purpose)
 
         extra_kernel_opts = machine.get_effective_kernel_options(
             default_kernel_opts=configs["kernel_opts"]
@@ -548,6 +565,10 @@ def get_config(
         extra_kernel_opts = merge_kparams_with_extra(
             kparams, extra_kernel_opts
         )
+        if final_osystem != "ubuntu":
+            ephemeral_opts = get_quirks_kernel_opts(
+                final_osystem, final_series
+            )
     else:
         purpose = "commissioning"  # enlistment
         if configs["use_rack_proxy"]:
@@ -633,6 +654,7 @@ def get_config(
         # As of MAAS 2.4 only HTTP boot is supported. This ensures MAAS 2.3
         # rack controllers use HTTP boot as well.
         "http_boot": True,
+        "ephemeral_opts": ephemeral_opts or "",
     }
     if machine is not None:
         params["system_id"] = machine.system_id
