@@ -19,6 +19,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
+	wf "maas.io/core/src/maasagent/internal/workflow"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 	"maas.io/core/src/maasagent/pkg/workflow/codec"
@@ -84,17 +85,28 @@ func Run() int {
 		return 1
 	}
 
+	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
+		worker.WithAllowedWorkflows(map[string]interface{}{
+			"check_ip":              wf.CheckIP,
+			"commission":            wf.Commission,
+			"deploy":                wf.Deploy,
+			"deployed_os_workflow":  wf.DeployedOS,
+			"ephemeral_os_workflow": wf.EphemeralOS,
+			"power_on":              wf.PowerOn,
+			"power_off":             wf.PowerOff,
+			"power_query":           wf.PowerQuery,
+			"power_cycle":           wf.PowerCycle,
+		}), worker.WithAllowedActivities(map[string]interface{}{
+			"switch_boot_order": wf.SwitchBootOrderActivity,
+			"power":             wf.PowerActivity,
+		}))
+
 	workerPoolBackoff := backoff.NewExponentialBackOff()
 	workerPoolBackoff.MaxElapsedTime = 60 * time.Second
 
-	_, err = backoff.RetryWithData(
-		func() (*worker.WorkerPool, error) {
-			return worker.NewWorkerPool(cfg.SystemID, client)
-		}, workerPoolBackoff,
-	)
-
+	err = backoff.Retry(workerPool.Start, workerPoolBackoff)
 	if err != nil {
-		log.Error().Err(err).Msg("Temporal worker pool creation failure")
+		log.Error().Err(err).Msg("Temporal worker pool failure")
 		return 1
 	}
 
@@ -104,9 +116,13 @@ func Run() int {
 
 	signal.Notify(sigC, syscall.SIGTERM, syscall.SIGINT)
 
-	<-sigC
-
-	return 0
+	select {
+	case err := <-workerPool.Error():
+		log.Fatal().Err(err).Msg("Temporal worker pool failure")
+		return 1
+	case <-sigC:
+		return 0
+	}
 }
 
 // getConfig reads MAAS Agent YAML configuration file
