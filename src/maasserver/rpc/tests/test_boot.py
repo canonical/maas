@@ -235,6 +235,7 @@ class TestGetConfig(MAASServerTestCase):
                 "log_port": 5247,
                 "extra_opts": "",
                 "http_boot": True,
+                "ephemeral_opts": "",
             },
             config,
         )
@@ -280,6 +281,7 @@ class TestGetConfig(MAASServerTestCase):
                 "log_port": syslog_port,
                 "extra_opts": "",
                 "http_boot": True,
+                "ephemeral_opts": "",
             },
             config,
         )
@@ -324,6 +326,7 @@ class TestGetConfig(MAASServerTestCase):
                 "log_port": 5247,
                 "extra_opts": "",
                 "http_boot": True,
+                "ephemeral_opts": "",
             },
             config,
         )
@@ -1356,6 +1359,7 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
         self.assertEqual(distro_series, observed_config["release"])
+        self.assertEqual("", observed_config["ephemeral_opts"])
 
     def test_returns_base_image_for_custom_ubuntu_image_xinstall(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
@@ -1390,6 +1394,32 @@ class TestGetConfig(MAASServerTestCase):
         expected_osystem, expected_series = custom_image.base_image.split("/")
         self.assertEqual(expected_osystem, observed_config["osystem"])
         self.assertEqual(expected_series, observed_config["release"])
+        self.assertEqual("", observed_config["ephemeral_opts"])
+
+    def test_returns_quirks_for_centos_image_xinstall(self):
+        osystem = Config.objects.get_config("default_osystem")
+        release = Config.objects.get_config("default_distro_series")
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        self.make_node(arch_name="amd64")
+        node = factory.make_Node_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="centos",
+            distro_series="centos71",
+            architecture="amd64/generic",
+            primary_rack=rack_controller,
+        )
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertEqual(osystem, observed_config["osystem"])
+        self.assertEqual(release, observed_config["release"])
+        self.assertEqual(
+            "nvme-core.multipath=0", observed_config["ephemeral_opts"]
+        )
 
     # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
     # the commissioning ephemeral environment.
@@ -1593,7 +1623,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             ]
         )
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
         )
 
@@ -1634,7 +1664,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             ]
         )
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
         )
 
@@ -1672,7 +1702,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             ]
         )
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
         )
 
@@ -1737,7 +1767,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             architecture=f"amd64/{legacy_subarch}",
         )
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             modern_machine, configs, "xinstall"
         )
         self.assertEqual("ubuntu", osystem)
@@ -1745,7 +1775,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(subarch, config_arch)
         self.assertNotEqual(machine_hwe_kernel, config_arch)
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             legacy_machine, configs, "xinstall"
         )
         self.assertEqual("ubuntu", osystem)
@@ -1796,13 +1826,58 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             architecture=f"amd64/{legacy_subarch}",
         )
 
-        osystem, series, config_arch = get_boot_config_for_machine(
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "commissioning"
         )
         self.assertEqual(configs["commissioning_osystem"], osystem)
         self.assertEqual(configs["commissioning_distro_series"], series)
         self.assertEqual(legacy_subarch, config_arch)
         self.assertNotEqual(machine_hwe_kernel, config_arch)
+
+    def test_get_boot_config_for_machine_centos(self):
+        subarch = "ga-20.04"
+        # We need a base image to be present. In fact, we always
+        # needed that for the new image to boot.
+        factory.make_default_ubuntu_release_bootable(arch=f"amd64/{subarch}")
+        factory.make_usable_boot_resource(
+            name="centos/7",
+            architecture="amd64/generic",
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="centos",
+            distro_series="7",
+        )
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+
+        (
+            osystem,
+            series,
+            config_arch,
+            final_osystem,
+            final_series,
+        ) = get_boot_config_for_machine(machine, configs, "xinstall")
+
+        self.assertEqual(configs["commissioning_osystem"], osystem)
+        self.assertEqual(configs["commissioning_distro_series"], series)
+        self.assertEqual(subarch, config_arch)
+        self.assertEqual("centos", final_osystem)
+        self.assertEqual("7", final_series)
 
 
 class TestGetNodeFromMacOrHardwareUUID(MAASServerTestCase):
