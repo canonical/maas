@@ -118,7 +118,7 @@ class LeaseSocketService(Service, DatagramProtocol):
                 client = yield self.client_service.getClientNow()
                 break
             except NoConnectionsAvailable:
-                yield pause(wait, self.clock)
+                yield pause(wait, clock)
         else:
             maaslog.error(
                 "Can't send DHCP lease information, no RPC "

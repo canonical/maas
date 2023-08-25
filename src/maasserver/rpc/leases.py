@@ -9,6 +9,7 @@ from datetime import datetime
 from netaddr import IPAddress
 
 from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE
+from maasserver.fields import normalise_macaddress
 from maasserver.models import (
     DNSResource,
     Interface,
@@ -91,6 +92,7 @@ def update_lease(
             "Family for the subnet does not match. Expected: %s" % ip_family
         )
 
+    mac = normalise_macaddress(mac)
     created = datetime.fromtimestamp(timestamp)
     log.msg(
         "Lease update: %s for %s on %s at %s%s%s"
