@@ -4,19 +4,11 @@ set timeout=0
 
 menuentry 'Local' {
     echo 'Booting local disk...'
+    # The bootloader paths list for secure boot is shortened because of LP:2022084
     for bootloader in \
             boot/bootx64.efi \
             ubuntu/shimx64.efi \
             ubuntu/grubx64.efi \
-            centos/shimx64.efi \
-            centos/grubx64.efi \
-            redhat/shimx64.efi \
-            redhat/grubx64.efi \
-            rhel/shimx64.efi \
-            rhel/grubx64.efi \
-            suse/shim.efi \
-            suse/grubx64.efi \
-            red/grubx64.efi \
             Microsoft/Boot/bootmgfw.efi; do
         search --set=root --file /efi/$bootloader
         if [ $? -eq 0 ]; then
@@ -24,6 +16,27 @@ menuentry 'Local' {
             boot
         fi
     done
+
+    if [ "${shim_lock}" != "y" ]; then
+        echo 'Secure boot is disabled, trying chainloader...'
+        for bootloader in \
+                centos/shimx64.efi \
+                centos/grubx64.efi \
+                redhat/shimx64.efi \
+                redhat/grubx64.efi \
+                rhel/shimx64.efi \
+                rhel/grubx64.efi \
+                suse/shim.efi \
+                suse/grubx64.efi \
+                red/grubx64.efi; do
+            search --set=root --file /efi/$bootloader
+            if [ $? -eq 0 ]; then
+                chainloader /efi/$bootloader
+                boot
+            fi
+        done
+    fi
+
     # If no bootloader is found exit and allow the next device to boot.
-    exit
+    exit 1
 }
