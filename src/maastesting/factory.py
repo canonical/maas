@@ -510,10 +510,12 @@ class Factory:
             network = self.make_ipv6_network()
         return self.make_ip_range(network=network)
 
-    def make_mac_address(self, delimiter=":"):
+    def make_mac_address(self, delimiter=":", padding=True):
         assert isinstance(delimiter, str)
         octets = islice(self.random_octets, 6)
-        return delimiter.join(format(octet, "02x") for octet in octets)
+        return delimiter.join(
+            format(octet, "02x" if padding else "x") for octet in octets
+        )
 
     def make_random_leases(self, num_leases=1):
         """Create a dict of arbitrary ip-to-mac address mappings."""

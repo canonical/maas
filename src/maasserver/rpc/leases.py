@@ -5,6 +5,8 @@
 
 
 from datetime import datetime
+from itertools import chain
+import re
 
 from netaddr import IPAddress
 
@@ -23,6 +25,29 @@ from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
 
 log = LegacyLogger()
+
+MAC_SPLIT_RE = re.compile(r"[-:.]")
+
+
+def normalise_macaddress(mac: str) -> str:
+    """Return a colon-separated format for the specified MAC.
+
+    This supports converting from input formats matching the MAC_FIELD_RE
+    regexp.
+
+    """
+
+    tokens = MAC_SPLIT_RE.split(mac.lower())
+    match len(tokens):
+        case 1:  # no separator
+            tokens = re.findall("..", tokens[0])
+        case 3:  # each token is two bytes
+            tokens = chain(
+                *(re.findall("..", token.zfill(4)) for token in tokens)
+            )
+        case _:  # single-byte tokens
+            tokens = (token.zfill(2) for token in tokens)
+    return ":".join(tokens)
 
 
 class LeaseUpdateError(Exception):
@@ -91,6 +116,8 @@ def update_lease(
             "Family for the subnet does not match. Expected: %s" % ip_family
         )
 
+    if isinstance(mac, str):
+        mac = normalise_macaddress(mac)
     created = datetime.fromtimestamp(timestamp)
     log.msg(
         "Lease update: %s for %s on %s at %s%s%s"

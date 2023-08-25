@@ -16,7 +16,11 @@ from maasserver.enum import INTERFACE_TYPE, IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.models import DNSResource
 from maasserver.models.interface import UnknownInterface
 from maasserver.models.staticipaddress import StaticIPAddress
-from maasserver.rpc.leases import LeaseUpdateError, update_lease
+from maasserver.rpc.leases import (
+    LeaseUpdateError,
+    normalise_macaddress,
+    update_lease,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
@@ -258,12 +262,18 @@ class TestUpdateLease(MAASServerTestCase):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
             with_static_range=False, dhcp_on=True
         )
-        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        mac = factory.make_mac_address(padding=False)
+        norm_mac = normalise_macaddress(mac)
+        node = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet, address=norm_mac
+        )
         boot_interface = node.get_boot_interface()
         dynamic_range = subnet.get_dynamic_ranges()[0]
         ip = factory.pick_ip_in_IPRange(dynamic_range)
         kwargs = self.make_kwargs(
-            action="commit", mac=boot_interface.mac_address, ip=ip
+            action="commit",
+            mac=mac,
+            ip=ip,
         )
         update_lease(**kwargs)
 
