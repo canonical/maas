@@ -259,10 +259,12 @@ class DiscoveredPodHints:
     Limiting the maximum cores allow request on a per machine basis.
     """
 
-    cores = attr.ib(converter=int, default=-1)
-    cpu_speed = attr.ib(converter=int, default=-1)
-    memory = attr.ib(converter=int, default=-1)
-    local_storage = attr.ib(converter=int, default=-1)
+    UNDEFINED = -1
+
+    cores = attr.ib(converter=int, default=UNDEFINED)
+    cpu_speed = attr.ib(converter=int, default=UNDEFINED)
+    memory = attr.ib(converter=int, default=UNDEFINED)
+    local_storage = attr.ib(converter=int, default=UNDEFINED)
 
 
 @attr.s
