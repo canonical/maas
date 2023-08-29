@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.7 (Ubuntu 14.7-0ubuntu0.22.04.1)
+-- Dumped from database version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15,6 +15,20 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: temporal; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA temporal;
+
+
+--
+-- Name: temporal_visibility; Type: SCHEMA; Schema: -; Owner: -
+--
+
+CREATE SCHEMA temporal_visibility;
+
 
 --
 -- Name: bmc_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
@@ -11293,6 +11307,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 358	piston3	0004_big_auto_field	2023-05-03 03:30:46.539848+00
 359	maasserver	0303_interface_params_cleanups	2023-05-12 03:30:35.152079+00
 360	maasserver	0304_interface_params_no_autoconf	2023-05-12 03:30:35.161528+00
+361	maasserver	0305_add_temporal_schema	2023-08-25 09:27:56.827957+00
 \.
 
 
@@ -12109,7 +12124,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 360, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 361, true);
 
 
 --
