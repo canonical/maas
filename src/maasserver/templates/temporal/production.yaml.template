@@ -17,9 +17,9 @@ persistence:
         connectProtocol: "tcp"
         connectAttributes:
           search_path: "temporal"
-        {{ for k, v in connect_attributes.items() }}
+        {{for k, v in connect_attributes.items()}}
           {{ k }}: {{ v | repr }}
-        {{ endfor }}
+        {{endfor}}
         maxConns: 20
         maxIdleConns: 20
         maxConnLifetime: "1h"
@@ -34,10 +34,9 @@ persistence:
         connectProtocol: "tcp"
         connectAttributes:
           search_path: "temporal_visibility"
-        {{ for k, v in connect_attributes.items() }}
+        {{for k, v in connect_attributes.items()}}
           {{ k }}: {{ v | repr }}
-        {{ endfor }}
-
+        {{endfor}}
         maxConns: 2
         maxIdleConns: 2
         maxConnLifetime: "1h"
