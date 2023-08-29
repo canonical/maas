@@ -3,53 +3,45 @@ log:
   level: info
 
 persistence:
-  defaultStore: sqlite-default
-  visibilityStore: sqlite-visibility
-  numHistoryShards: 1
+  defaultStore: default
+  visibilityStore: visibility
+  numHistoryShards: 4
   datastores:
-    sqlite-default:
+    default:
       sql:
-        user: ""
-        password: ""
-        pluginName: "sqlite"
-        databaseName: "default"
-        connectAddr: "localhost"
+        user: {{ user }}
+        password: {{ password }}
+        pluginName: "postgres12"
+        databaseName: {{ database }}
+        connectAddr: {{ address | repr }}
         connectProtocol: "tcp"
         connectAttributes:
-          mode: "memory"
-          cache: "private"
-        maxConns: 1
-        maxIdleConns: 1
+          search_path: "temporal"
+        {{ for k, v in connect_attributes.items() }}
+          {{ k }}: {{ v | repr }}
+        {{ endfor }}
+        maxConns: 20
+        maxIdleConns: 20
         maxConnLifetime: "1h"
-        tls:
-          enabled: false
-          caFile: ""
-          certFile: ""
-          keyFile: ""
-          enableHostVerification: false
-          serverName: ""
 
-    sqlite-visibility:
+    visibility:
       sql:
-        user: ""
-        password: ""
-        pluginName: "sqlite"
-        databaseName: "default"
-        connectAddr: "localhost"
+        user: {{ user }}
+        password: {{ password }}
+        pluginName: "postgres12"
+        databaseName: {{ database }}
+        connectAddr: {{ address | repr }}
         connectProtocol: "tcp"
         connectAttributes:
-          mode: "memory"
-          cache: "private"
-        maxConns: 1
-        maxIdleConns: 1
+          search_path: "temporal_visibility"
+        {{ for k, v in connect_attributes.items() }}
+          {{ k }}: {{ v | repr }}
+        {{ endfor }}
+
+        maxConns: 2
+        maxIdleConns: 2
         maxConnLifetime: "1h"
-        tls:
-          enabled: false
-          caFile: ""
-          certFile: ""
-          keyFile: ""
-          enableHostVerification: false
-          serverName: ""
+
 global:
   membership:
     maxJoinDuration: 30s
