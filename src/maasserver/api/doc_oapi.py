@@ -25,7 +25,9 @@ from maasserver.utils import build_absolute_uri
 # LP 2009140: Match a par of brackets enclosing a string, return only the string within the brackets.
 # Functions as a more context aware equivalent to string.strip("}{")
 # ie: '{param}' returns 'param', 'param_{test}' is unnafected
-PARAM_RE = re.compile(r"(?<=\{)\.+(?<=\})")
+PARAM_RE = re.compile(
+    r"^{(?P<param>\S+)}$",
+)
 
 
 def landing_page(request):
@@ -221,14 +223,16 @@ def _oapi_item_from_docstring(
             # LP 2009140
             stripped_name = PARAM_RE.match(param["name"])
             name = (
-                param["name"] if not stripped_name else stripped_name.group()
+                param["name"]
+                if stripped_name is None
+                else stripped_name.group(1)
             )
             required = (
                 param["options"]["required"].lower() == "true"
                 or name != param["name"]
             )
             # params with special charcters in names don't form part of the request body
-            if name != param["name"]:
+            if http_method in ["GET", "DELETE"] or name != param["name"]:
                 param_dict = {
                     "name": name,
                     "in": "path" if name in uri_params else "query",
@@ -321,7 +325,7 @@ def _oapi_item_from_docstring(
                 "requestBody": {
                     "required": True,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {**body},
                         },
                     },
