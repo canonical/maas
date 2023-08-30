@@ -112,6 +112,10 @@ server {
         root {{static_dir}}/web/static;
         try_files /maas-favicon-32px.png =404;
     }
+
+    location /metrics/temporal {
+        proxy_pass http://temporal-metrics/metrics;
+    }
 }
 
 {{if tls_enabled}}
@@ -235,13 +239,4 @@ server {
         return 200;
     }
     default_type application/grpc;   # Ensure gRPC for all error responses
-}
-
-server {
-    listen [::]:5272;
-    listen 5272;
-
-    location /metrics {
-        proxy_pass http://temporal-metrics/metrics;
-    }
 }
