@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Common RPC classes and utilties."""
-
-
 from os import getpid
 from socket import gethostname
 
@@ -352,15 +350,25 @@ class RPCProtocol(amp.AMP):
 
         Here we instead log the failure but do *not* disconnect because it's
         too disruptive to the running of MAAS.
+        In case of https://bugs.launchpad.net/maas/+bug/2029417, we drop the connection instead.
         """
-        log.err(
-            failure,
-            (
-                "Unhandled failure during AMP request. This is probably a bug. "
-                "Please ensure that this error is handled within application "
-                "code."
-            ),
-        )
+        if (
+            failure.check(RuntimeError)
+            and "the handler is closed" in failure.getErrorMessage()
+        ):
+            super().unhandledError(failure)
+            log.err(
+                "The handler is closed and the exception was unhandled. The connection is dropped."
+            )
+        else:
+            log.err(
+                failure,
+                (
+                    "Unhandled failure during AMP request. This is probably a bug. "
+                    "Please ensure that this error is handled within application "
+                    "code."
+                ),
+            )
 
     @Ping.responder
     def ping(self):
