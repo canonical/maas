@@ -896,6 +896,44 @@ class TestMachineHandlerWithMaasApiServer:
             )
         ]
 
+    def test_list_ephemeral_deployment(self):
+        owner, session = factory.make_User_with_session()
+        handler = MachineHandler(
+            owner, {}, None, session_id=session.session_key
+        )
+        node = factory.make_Node(
+            owner=owner,
+            node_type=NODE_TYPE.MACHINE,
+            status=NODE_STATUS.READY,
+            ephemeral_deploy=True,
+        )
+        transaction.commit()
+        list_results = handler.list({})
+        assert list_results["groups"][0]["items"] == [
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )
+        ]
+
+    def test_list_ephemeral_deployment_when_diskless(self):
+        owner, session = factory.make_User_with_session()
+        handler = MachineHandler(
+            owner, {}, None, session_id=session.session_key
+        )
+        node = factory.make_Node(
+            owner=owner,
+            node_type=NODE_TYPE.MACHINE,
+            status=NODE_STATUS.READY,
+            with_boot_disk=False,
+        )
+        transaction.commit()
+        list_results = handler.list({})
+        assert list_results["groups"][0]["items"] == [
+            TestMachineHandlerUtils.dehydrate_node(
+                node, handler, for_list=True
+            )
+        ]
+
     def test_list_includes_pod_details_when_available(self):
         user, session = factory.make_User_with_session()
         pod = factory.make_Pod()

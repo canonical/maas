@@ -364,6 +364,7 @@ class TestMachineHandlerUtils:
             "default_user": node.default_user,
             "workload_annotations": OwnerData.objects.get_owner_data(node),
             "last_applied_storage_layout": node.last_applied_storage_layout,
+            "ephemeral_deploy": node.ephemeral_deploy,
         }
         if "module" in driver and "comment" in driver:
             data["third_party_driver"] = {
@@ -402,6 +403,7 @@ class TestMachineHandlerUtils:
                     "commissioning_script_count",
                     "dhcp_on",
                     "distro_series",
+                    "ephemeral_deploy",
                     "extra_macs",
                     "fabrics",
                     "fqdn",
@@ -2121,6 +2123,15 @@ class TestMachineHandler(MAASServerTestCase):
             else:
                 # None for LVM VGs, doesn't exist for other virtual devices
                 self.assertIsNone(disk.get("numa_node"))
+
+    def test_get_ephemeral_deployment(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, ephemeral_deploy=True
+        )
+        result = handler.get({"system_id": node.system_id})
+        assert result["ephemeral_deploy"] is True
 
     def test_get_includes_not_acquired_special_filesystems(self):
         owner = factory.make_User()

@@ -367,6 +367,16 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual("hwe-v", parsed_result["min_hwe_kernel"])
 
+    def test_GET_returns_ephemeral_deployment(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, ephemeral_deploy=True
+        )
+        response = self.client.get(self.get_machine_uri(machine))
+
+        assert http.client.OK == response.status_code
+        parsed_result = json_load_bytes(response.content)
+        assert parsed_result["ephemeral_deploy"] is True
+
     def test_GET_returns_status_message_with_most_recent_event(self):
         """Makes sure the most recent event from this machine is shown in the
         status_message attribute."""
@@ -602,6 +612,33 @@ class TestMachineAPI(APITestCase.ForUser):
             b"Cannot deploy as a VM host for ephemeral deployments.",
             response.content,
         )
+
+    def test_POST_deploy_sets_ephemeral_deployment_automatically_if_diskless(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            with_boot_disk=False,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine), {"op": "deploy"}
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["ephemeral_deploy"] is True
 
     def test_POST_deploy_fails_when_install_kvm_set_for_ephemeral_deploy(self):
         self.become_admin()

@@ -756,6 +756,7 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "sync_interval",
                 "next_sync",
                 "enable_hw_sync",
+                "ephemeral_deploy",
             },
             parsed_result.keys(),
         )
@@ -982,6 +983,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "sync_interval",
                 "next_sync",
                 "enable_hw_sync",
+                "ephemeral_deploy",
             },
             parsed_result.keys(),
         )

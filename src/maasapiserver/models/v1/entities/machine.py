@@ -62,6 +62,7 @@ class Machine(BaseModel):
     status: str
     status_code: int
     simple_status: str
+    ephemeral_deploy: bool
     fabrics: Optional[list[str]]
     spaces: Optional[list[str]]
     extra_macs: Optional[list[str]]

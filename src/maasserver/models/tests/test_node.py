@@ -1039,12 +1039,6 @@ class TestNode(MAASServerTestCase):
         )
         self.assertFalse(node.ephemeral_deployment)
 
-    def test_ephemeral_deployment_checks_not_diskless(self):
-        node = factory.make_Node(
-            with_boot_disk=False, status=NODE_STATUS.DEPLOYING
-        )
-        self.assertTrue(node.ephemeral_deployment)
-
     def test_ephemeral_deployment_checks_ephemeral_deploy(self):
         node = factory.make_Node(
             ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
@@ -5526,6 +5520,7 @@ class TestNode(MAASServerTestCase):
     def test_storage_layout_issues_is_valid_when_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.
         node = factory.make_Node(
+            ephemeral_deploy=True,
             with_boot_disk=False,
             osystem="ubuntu",
             status=NODE_STATUS.DEPLOYING,

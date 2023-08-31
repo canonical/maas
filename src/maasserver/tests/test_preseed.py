@@ -2319,7 +2319,9 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_get_preseed_type_for_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, with_boot_disk=False
+            status=NODE_STATUS.DEPLOYING,
+            with_boot_disk=False,
+            ephemeral_deploy=True,
         )
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node)

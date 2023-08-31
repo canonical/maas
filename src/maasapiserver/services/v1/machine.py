@@ -182,6 +182,7 @@ class MachineService(Service):
             simple_status=SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
                 record["status_code"], SIMPLIFIED_NODE_STATUS.OTHER
             ),
+            ephemeral_deploy=record["ephemeral_deploy"],
             fabrics=record["fabrics"],
             spaces=record["spaces"],
             extra_macs=record["extra_macs"],
@@ -1396,6 +1397,7 @@ class MachineService(Service):
                 NodeTable.c.osystem,
                 NodeTable.c.distro_series,
                 NodeTable.c.status.label("status_code"),
+                NodeTable.c.ephemeral_deploy,
                 func.coalesce(fabrics_cte.c.names, []).label("fabrics"),
                 func.coalesce(spaces_cte.c.names, []).label("spaces"),
                 func.coalesce(extra_macs_cte.c.extra_macs, []).label(

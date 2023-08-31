@@ -286,7 +286,6 @@ class MachineHandler(NodeHandler):
             "boot_cluster_ip",
             "token",
             "netboot",
-            "ephemeral_deploy",
             "agent_name",
             "power_state_queried",
             "power_state_updated",

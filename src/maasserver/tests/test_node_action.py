@@ -7,6 +7,7 @@ from unittest.mock import ANY
 
 from django.db import transaction
 from netaddr import IPNetwork
+import pytest
 
 from maasserver import locks
 from maasserver.clusterrpc.boot_images import RackControllersImporter
@@ -767,7 +768,45 @@ class TestDeployAction(MAASServerTestCase):
             str(error),
         )
 
-    def test_Deploy_sets_osystem_and_series(self):
+    def test_Deploy_raises_NodeActionError_invalid_ephemeral_conditions(self):
+        admin = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = admin
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=admin,
+        )
+        osystem = make_usable_osystem(self)
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
+
+        extra = {
+            "osystem": os_name,
+            "distro_series": release_name,
+            "install_kvm": True,
+            "ephemeral_deploy": True,
+        }
+        with pytest.raises(NodeActionError) as exception:
+            Deploy(node, admin, request).execute(**extra)
+        assert "Cannot deploy as a VM host for ephemeral deployments." == str(
+            exception.value
+        )
+
+        extra = {
+            "osystem": os_name,
+            "distro_series": release_name,
+            "register_vmhost": True,
+            "ephemeral_deploy": True,
+        }
+        with pytest.raises(NodeActionError) as exception:
+            Deploy(node, admin, request).execute(**extra)
+        assert "Cannot deploy as a VM host for ephemeral deployments." == str(
+            exception.value
+        )
+
+    def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy(self):
         user = factory.make_User()
         request = factory.make_fake_request("/")
         request.user = user
@@ -779,15 +818,51 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(self)
+
+        osystem = make_usable_osystem(
+            self, osystem_name="ubuntu", releases=["focal"]
+        )
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
+        extra = {
+            "osystem": os_name,
+            "distro_series": release_name,
+            "ephemeral_deploy": True,
+        }
+        Deploy(node, user, request).execute(**extra)
+        assert node.osystem == os_name
+        assert node.distro_series == release_name
+        assert node.ephemeral_deployment is True
+
+    def test_Deploy_diskless_without_ephemeral_raises_an_exception(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=user,
+            with_boot_disk=False,
+        )
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
+        osystem = make_usable_osystem(
+            self, osystem_name="ubuntu", releases=["focal"]
+        )
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
         extra = {"osystem": os_name, "distro_series": release_name}
-        Deploy(node, user, request).execute(**extra)
-        self.assertEqual(node.osystem, os_name)
-        self.assertEqual(node.distro_series, release_name)
+        with pytest.raises(NodeActionError) as exception:
+            Deploy(node, user, request).execute(**extra)
+        assert (
+            "An ephemeral deployment must be used for a diskless machine."
+            == str(exception.value)
+        )
 
-    def test_Deploy_sets_osystem_and_series_to_default(self):
+    def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy_to_default(
+        self,
+    ):
         # Regression test for LP:1822173
         user = factory.make_User()
         request = factory.make_fake_request("/")
@@ -800,14 +875,17 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(self)
+        osystem = make_usable_osystem(
+            self, osystem_name="ubuntu", releases=["focal"]
+        )
         os_name = osystem["name"]
         release_name = osystem["releases"][0]["name"]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
-        self.assertEqual(node.osystem, os_name)
-        self.assertEqual(node.distro_series, release_name)
+        assert node.osystem == os_name
+        assert node.distro_series == release_name
+        assert node.ephemeral_deployment is False
 
     def test_Deploy_passes_install_kvm_if_specified(self):
         user = factory.make_admin()

@@ -345,7 +345,7 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node_with_extra(
-            status=NODE_STATUS.DEPLOYED, netboot=False, with_boot_disk=False
+            status=NODE_STATUS.DEPLOYED, netboot=False, ephemeral_deploy=True
         )
         node.boot_cluster_ip = local_ip
         node.osystem = factory.make_name("osystem")

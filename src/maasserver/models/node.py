@@ -1554,7 +1554,7 @@ class Node(CleanSave, TimestampedModel):
             NODE_STATUS.READY,
         }:
             return False
-        return self.is_diskless or self.ephemeral_deploy
+        return self.ephemeral_deploy
 
     def retrieve_storage_layout_issues(
         self,

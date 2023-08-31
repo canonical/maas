@@ -516,6 +516,7 @@ class Deploy(NodeAction):
         register_vmhost=False,
         user_data=None,
         enable_hw_sync=False,
+        ephemeral_deploy=False,
     ):
         """See `NodeAction.execute`."""
         if install_kvm or register_vmhost:
@@ -524,6 +525,15 @@ class Deploy(NodeAction):
                     "You must be a MAAS administrator to deploy a machine "
                     "as a MAAS-managed VM host."
                 )
+        if (install_kvm or register_vmhost) and ephemeral_deploy:
+            raise NodeActionError(
+                "Cannot deploy as a VM host for ephemeral deployments."
+            )
+        if self.node.is_diskless and not ephemeral_deploy:
+            raise NodeActionError(
+                "An ephemeral deployment must be used for a diskless machine."
+            )
+        self.node.ephemeral_deploy = ephemeral_deploy
         if self.node.owner is None:
             with locks.node_acquire:
                 try:
