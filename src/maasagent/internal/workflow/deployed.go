@@ -5,7 +5,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	wflog "maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
 // DeployedOSParam are workflow parameters for the DeployedOS workflow
@@ -18,7 +18,7 @@ type DeployedOSParam struct {
 func DeployedOS(ctx workflow.Context, params DeployedOSParam) error {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := wflog.NewSystemIDTag(params.SystemID)
+	systemIDTag := tag.TargetSystemID(params.SystemID)
 
 	log.Debug("executing PowerCycle", systemIDTag)
 

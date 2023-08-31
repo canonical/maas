@@ -71,7 +71,7 @@ func Run() int {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
 				HostPort: fmt.Sprintf("%s:%d", cfg.Controllers[0], TemporalPort),
-				Logger:   wflog.New(log.Logger),
+				Logger:   wflog.NewZerologAdapter(log.Logger),
 				DataConverter: converter.NewCodecDataConverter(
 					converter.GetDefaultDataConverter(),
 					codec,

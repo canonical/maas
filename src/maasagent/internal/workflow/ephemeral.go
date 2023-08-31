@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/workflow"
-	wflog "maas.io/core/src/maasagent/internal/workflow/log"
+	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
 
 var (
@@ -31,7 +31,7 @@ func SwitchBootOrderActivity(ctx context.Context, params SwitchBootOrderParam) e
 	return nil
 }
 
-// EphemeralOSParam is a workflow parameter for the EphemeralOS
+// EphemeralOSParam is a workflow parameter for the EphemeralOS workflow
 type EphemeralOSParam struct {
 	Power        PowerParam `json:"power"`
 	SystemID     string     `json:"system_id"`
@@ -42,7 +42,7 @@ type EphemeralOSParam struct {
 func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := wflog.NewSystemIDTag(params.SystemID)
+	systemIDTag := tag.TargetSystemID(params.SystemID)
 
 	var powerStatus PowerQueryResult
 

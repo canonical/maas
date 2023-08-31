@@ -9,8 +9,9 @@ type Logger struct {
 	logger zerolog.Logger
 }
 
-// New returns new workflow Logger
-func New(logger zerolog.Logger) *Logger {
+// NewZerologAdapter returns new workflow Logger
+// based on zerolog
+func NewZerologAdapter(logger zerolog.Logger) *Logger {
 	return &Logger{
 		logger: logger,
 	}
