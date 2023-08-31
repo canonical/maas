@@ -3,6 +3,7 @@ from functools import lru_cache
 from fixtures import Fixture
 
 from provisioningserver.certificates import Certificate
+from provisioningserver.utils.fs import atomic_write
 
 
 @lru_cache(maxsize=5)
@@ -35,7 +36,8 @@ class SampleCertificateFixture(Fixture):
             cert = get_sample_cert()
             cert_pem = cert.certificate_pem()
             key_pem = cert.private_key_pem()
-            with self.cache_path.open("wb") as fh:
-                fh.write(cert_pem.encode("ascii"))
-                fh.write(key_pem.encode("ascii"))
+            atomic_write(
+                cert_pem.encode("ascii") + key_pem.encode("ascii"),
+                self.cache_path,
+            )
         self.cert = cert
