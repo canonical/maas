@@ -148,11 +148,12 @@ type configureWorkerPoolParam struct {
 // This workflow will configure WorkerPool with a proper set of workers.
 func (p *WorkerPool) Configure(ctx context.Context) error {
 	workflowOptions := client.StartWorkflowOptions{
-		TaskQueue: "control_plane",
+		ID:        fmt.Sprintf("configure:%s", p.systemID),
+		TaskQueue: p.controlPlaneTaskQueueName,
 	}
 
 	workflowRun, err := p.client.ExecuteWorkflow(ctx, workflowOptions,
-		"configure_worker_pool", configureWorkerPoolParam{SystemID: p.systemID})
+		p.configurePoolWorkflowName, configureWorkerPoolParam{SystemID: p.systemID})
 	if err != nil {
 		return err
 	}

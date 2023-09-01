@@ -319,6 +319,7 @@ RegionControllerRule = Rule(
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("tempita"),
     Allow("temporalio.**"),
+    Allow("apiclient.maas_client.MAASOAuth"),
     Allow("twisted.**"),
     Allow("yaml"),
     Allow("zope.interface|zope.interface.**"),

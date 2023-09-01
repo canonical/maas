@@ -6,6 +6,7 @@ package main
 */
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -99,7 +100,7 @@ func Run() int {
 		}), worker.WithAllowedActivities(map[string]interface{}{
 			"switch_boot_order": wf.SwitchBootOrderActivity,
 			"power":             wf.PowerActivity,
-		}))
+		}), worker.WithControlPlaneTaskQueueName("region_controller"))
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
 	workerPoolBackoff.MaxElapsedTime = 60 * time.Second
@@ -107,6 +108,12 @@ func Run() int {
 	err = backoff.Retry(workerPool.Start, workerPoolBackoff)
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal worker pool failure")
+		return 1
+	}
+
+	err = workerPool.Configure(context.Background())
+	if err != nil {
+		log.Error().Err(err).Msg("Temporal worker pool configuration failure")
 		return 1
 	}
 
