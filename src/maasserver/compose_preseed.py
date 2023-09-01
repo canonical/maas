@@ -573,7 +573,7 @@ def _compose_cloud_init_preseed(
     if (
         node.status != NODE_STATUS.ENTERING_RESCUE_MODE
         and not enable_ssh
-        and not node.ephemeral_deployment
+        and not node.ephemeral_deploy
     ):
         testing_reboot = False
         if node.status == NODE_STATUS.TESTING:

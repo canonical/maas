@@ -276,58 +276,6 @@ class TestParsePXEConfig(MAASTestCase):
 class TestPXEBootMethodRender(MAASTestCase):
     """Tests for `provisioningserver.boot.pxe.PXEBootMethod.render`."""
 
-    def test_get_reader_ephemeral(self):
-        # Given the right configuration options, the PXE configuration is
-        # correctly rendered.
-        method = PXEBootMethod()
-        xtra = (
-            "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/"
-            "my_extra_config?mac={{ kernel_params.mac }}"
-        )
-        params = make_kernel_parameters(
-            self,
-            arch="amd64",
-            subarch="generic",
-            purpose="ephemeral",
-            extra_opts=xtra,
-        )
-        output = method.get_reader(backend=None, kernel_params=params)
-        # The output is a BytesReader.
-        self.assertIsInstance(output, BytesReader)
-        output = output.read(10000).decode("utf-8")
-        # The template has rendered without error. PXELINUX configurations
-        # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith("DEFAULT "))
-        # The PXE parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.release,
-            label=params.label,
-        )
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+KERNEL %s/%s$"
-                    % (re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+APPEND initrd=%s/%s\s+"
-                    % (re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+"
-                    % (params.fs_host),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*\s+maas_url=.+?$", re.MULTILINE | re.DOTALL),
-            ),
-        )
-
     def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.

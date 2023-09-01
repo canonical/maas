@@ -169,7 +169,7 @@ def generate_ephemeral_netplan_lock_removal(node):
 
 def generate_ephemeral_deployment_network_configuration(node):
     """Generate cloud-init network configuration for ephemeral deployment."""
-    if not node.ephemeral_deployment:
+    if not node.ephemeral_deploy:
         return
     osystem = node.get_osystem()
     release = node.get_distro_series()

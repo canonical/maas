@@ -1,8 +1,0 @@
-DEFAULT execute
-
-LABEL execute
-  SAY booting ephemeral image...
-  SAY extra={{ kernel_params.extra_opts }}
-  KERNEL {{kernel_params | kernel_path }}
-  APPEND initrd={{kernel_params | initrd_path }} {{ kernel_params.extra_opts }} maas_url={{kernel_params.preseed_url }}
-

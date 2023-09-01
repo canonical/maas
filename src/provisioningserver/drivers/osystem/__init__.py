@@ -25,8 +25,6 @@ class BOOT_IMAGE_PURPOSE:
     DISKLESS = "diskless"
     # Bootloader for enlistment, commissioning, and deployment
     BOOTLOADER = "bootloader"
-    # Usable for ephemeral boots
-    EPHEMERAL = "ephemeral"
 
 
 # A cluster-side representation of a Node, relevant to the osystem code,
@@ -254,9 +252,6 @@ class OperatingSystemRegistry(Registry):
 from provisioningserver.drivers.osystem.bootloader import (  # noqa:E402 isort:skip
     BootLoaderOS,
 )
-from provisioningserver.drivers.osystem.caringo import (  # noqa:E402 isort:skip
-    CaringoOS,
-)
 from provisioningserver.drivers.osystem.centos import (  # noqa:E402 isort:skip
     CentOS,
 )
@@ -291,7 +286,6 @@ builtin_osystems = [
     CustomOS(),
     WindowsOS(),
     SUSEOS(),
-    CaringoOS(),
     ESXi(),
 ]
 for osystem in builtin_osystems:

@@ -28,7 +28,6 @@ from twisted.python.filepath import FilePath
 
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers import ArchitectureRegistry
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.logger import get_maas_logger, LegacyLogger
@@ -199,21 +198,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
         Calls `MarkNodeFailed` for the machine if its a known machine.
         """
-        is_ephemeral = False
-        try:
-            osystem_obj = OperatingSystemRegistry.get_item(
-                params["osystem"], default=None
-            )
-            purposes = osystem_obj.get_boot_image_purposes(
-                params["arch"],
-                params["subarch"],
-                params.get("release", ""),
-                params.get("label", ""),
-            )
-            if "ephemeral" in purposes:
-                is_ephemeral = True
-        except Exception:
-            pass
 
         # Check to see if the we are PXE booting a device.
         if params["purpose"] == "local-device":
@@ -227,14 +211,12 @@ class TFTPBackend(FilesystemSynchronousBackend):
             params["purpose"] = "local"
 
         system_id = params.pop("system_id", None)
-        if params["purpose"] == "local" and not is_ephemeral:
+        if params["purpose"] == "local":
             # Local purpose doesn't use a boot image so just set the label
             # to "local".
             params["label"] = "local"
             return params
         else:
-            if params["purpose"] == "local" and is_ephemeral:
-                params["purpose"] = "ephemeral"
             boot_image = get_boot_image(params)
             if boot_image is None:
                 # No matching boot image.

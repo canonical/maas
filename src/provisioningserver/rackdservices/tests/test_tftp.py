@@ -93,7 +93,7 @@ class TestGetBootImage(MAASTestCase):
         params = make_boot_image_params()
         images = []
         return_image = None
-        all_purposes = ["commissioning", "xinstall", "install", "ephemeral"]
+        all_purposes = ["commissioning", "xinstall", "install"]
         for purpose in all_purposes:
             image = self.make_boot_image(
                 params, purpose, subarch=subarch, subarches=subarches
@@ -130,12 +130,6 @@ class TestGetBootImage(MAASTestCase):
 
     def test_returns_xinstall_image_for_xinstall(self):
         images, expected_image = self.make_all_boot_images("xinstall")
-        self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        self.assertEqual(expected_image, get_boot_image(params))
-
-    def test_returns_ephemeral_image_for_ephemeral(self):
-        images, expected_image = self.make_all_boot_images("ephemeral")
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
         self.assertEqual(expected_image, get_boot_image(params))
@@ -758,57 +752,6 @@ class TestTFTPBackend(MAASTestCase):
                 backend, kernel_params=fake_kernel_params, **params_with_ip
             ),
         )
-
-    @inlineCallbacks
-    def test_get_boot_method_reader_rendered_parms_for_depoyed_ephemeral(self):
-        # Fake kernel configuration parameters, as returned from the RPC call.
-        fake_kernel_params = make_kernel_parameters(
-            purpose="local", label="local", osystem="caringo"
-        )
-        fake_params = fake_kernel_params._asdict()
-
-        # Stub the output of list_boot_images so the label is set in the
-        # kernel parameters.
-        boot_image = {
-            "osystem": fake_params["osystem"],
-            "release": fake_params["release"],
-            "architecture": fake_params["arch"],
-            "subarchitecture": fake_params["subarch"],
-            "purpose": "ephemeral",
-            "supported_subarches": "",
-            "label": fake_params["label"],
-        }
-        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
-
-        del fake_params["label"]
-
-        # Stub RPC call to return the fake configuration parameters.
-        client = Mock()
-        client.localIdent = factory.make_name("system_id")
-        client.return_value = succeed(fake_params)
-        client_service = Mock()
-        client_service.getClient.return_value = client
-
-        # get_boot_method_reader() takes a dict() of parameters and returns an
-        # `IReader` of a PXE configuration, rendered by
-        # `PXEBootMethod.get_reader`.
-        backend = TFTPBackend(self.make_dir(), client_service)
-
-        # Stub get_reader to return the render parameters.
-        method = PXEBootMethod()
-        fake_render_result = factory.make_name("render").encode("utf-8")
-        render_patch = self.patch(method, "get_reader")
-        render_patch.return_value = BytesReader(fake_render_result)
-
-        # Get the rendered configuration, which will actually be a JSON dump
-        # of the render-time parameters.
-        reader = yield backend.get_boot_method_reader(method, fake_params)
-        self.addCleanup(reader.finish)
-        self.assertIsInstance(reader, BytesReader)
-        output = reader.read(10000)
-
-        # The result has been rendered by `method.get_reader`.
-        self.assertEqual(fake_render_result, output)
 
     @inlineCallbacks
     def test_get_boot_method_render_substitutes_armhf_in_params(self):

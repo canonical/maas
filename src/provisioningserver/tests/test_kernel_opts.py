@@ -179,23 +179,6 @@ class TestKernelOpts(MAASTestCase):
             ),
         )
 
-    def test_ephemeral_compose_kernel_command_line_inc_cc_datasource(self):
-        # The result of compose_kernel_command_line includes the cloud-init
-        # options for the datasource and cloud-config-url
-        params = self.make_kernel_parameters(
-            purpose="ephemeral", fs_host=factory.make_ipv4_address()
-        )
-        cmdline = compose_kernel_command_line(params)
-        self.assertThat(
-            cmdline,
-            ContainsAll(
-                [
-                    "cc:{'datasource_list': ['MAAS']}end_cc",
-                    "cloud-config-url=%s" % params.preseed_url,
-                ]
-            ),
-        )
-
     def test_commissioning_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
         # options for a non "commissioning" node.

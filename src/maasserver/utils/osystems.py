@@ -654,16 +654,6 @@ def get_working_kernel(
 
     arch, platform = architecture.split("/")
 
-    # If we are dealing with an ephemeral image, just return the hwe_kernel
-    # as-is, i.e. just stick with generic.
-    osystem_obj = OperatingSystemRegistry.get_item(osystem, default=None)
-    if osystem_obj is not None:
-        purposes = osystem_obj.get_boot_image_purposes(
-            arch, platform, distro_series, "*"
-        )
-        if "ephemeral" in purposes:
-            return requested_kernel
-
     # if we're deploying a custom image, we'll want to fetch info for the base image
     # for the purpose of booting the ephemeral OS installer
     if osystem == "custom" and distro_series:

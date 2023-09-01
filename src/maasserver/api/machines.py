@@ -818,9 +818,10 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             options.install_kvm or options.register_vmhost
         ) and not request.user.has_perm(NodePermission.admin, machine):
             raise PermissionDenied("Only administratros can deploy VM hosts")
+        ephemeral_deploy = options.ephemeral_deploy or machine.is_diskless
         if (
             options.install_kvm or options.register_vmhost
-        ) and machine.ephemeral_deployment:
+        ) and ephemeral_deploy:
             raise MAASAPIBadRequest(
                 "Cannot deploy as a VM host for ephemeral deployments."
             )
@@ -863,7 +864,6 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
         if options.install_rackd:
             form.set_install_rackd(install_rackd=options.install_rackd)
-        ephemeral_deploy = options.ephemeral_deploy or machine.is_diskless
         form.set_ephemeral_deploy(ephemeral_deploy=ephemeral_deploy)
         if options.enable_hw_sync:
             form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)

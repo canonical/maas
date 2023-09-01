@@ -601,11 +601,10 @@ class TestMachineAPI(APITestCase.ForUser):
             distro_series=distro_series,
             osystem=osystem,
             architecture=make_usable_architecture(self),
-            ephemeral_deploy=True,
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "install_kvm": True},
+            {"op": "deploy", "install_kvm": True, "ephemeral_deploy": True},
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
@@ -655,11 +654,10 @@ class TestMachineAPI(APITestCase.ForUser):
             distro_series=distro_series,
             osystem=osystem,
             architecture=make_usable_architecture(self),
-            ephemeral_deploy=True,
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "install_kvm": True},
+            {"op": "deploy", "install_kvm": True, "ephemeral_deploy": True},
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
@@ -682,11 +680,14 @@ class TestMachineAPI(APITestCase.ForUser):
             distro_series=distro_series,
             osystem=osystem,
             architecture=make_usable_architecture(self),
-            ephemeral_deploy=True,
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "register_vmhost": True},
+            {
+                "op": "deploy",
+                "register_vmhost": True,
+                "ephemeral_deploy": True,
+            },
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
@@ -711,11 +712,14 @@ class TestMachineAPI(APITestCase.ForUser):
             distro_series=distro_series,
             osystem=osystem,
             architecture=make_usable_architecture(self),
-            ephemeral_deploy=True,
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "register_vmhost": True},
+            {
+                "op": "deploy",
+                "register_vmhost": True,
+                "ephemeral_deploy": True,
+            },
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(

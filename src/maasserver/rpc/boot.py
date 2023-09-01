@@ -77,7 +77,6 @@ def event_log_pxe_request(machine, purpose):
         "commissioning": "commissioning",
         "rescue": "rescue mode",
         "xinstall": "installation",
-        "ephemeral": "ephemeral",
         "local": "local boot",
         "poweroff": "power off",
     }
@@ -520,7 +519,7 @@ def get_config(
         # Ephemeral deployments will have 'local' boot
         # purpose on power cycles.  Set purpose back to
         # 'xinstall' so that the system can be re-deployed.
-        if purpose == "local" and machine.ephemeral_deployment:
+        if purpose == "local" and machine.ephemeral_deploy:
             purpose = "xinstall"
 
         # Early out if the machine is booting local.

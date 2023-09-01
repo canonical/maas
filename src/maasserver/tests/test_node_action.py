@@ -832,7 +832,7 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute(**extra)
         assert node.osystem == os_name
         assert node.distro_series == release_name
-        assert node.ephemeral_deployment is True
+        assert node.ephemeral_deploy is True
 
     def test_Deploy_diskless_without_ephemeral_raises_an_exception(self):
         user = factory.make_User()
@@ -885,7 +885,7 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute()
         assert node.osystem == os_name
         assert node.distro_series == release_name
-        assert node.ephemeral_deployment is False
+        assert node.ephemeral_deploy is False
 
     def test_Deploy_passes_install_kvm_if_specified(self):
         user = factory.make_admin()

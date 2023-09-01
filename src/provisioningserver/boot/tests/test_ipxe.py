@@ -97,69 +97,6 @@ class TestIPXEBootMethod(MAASTestCase):
 class TestIPXEBootMethodRender(MAASTestCase):
     """Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.render`."""
 
-    def test_get_reader_ephemeral(self):
-        # Given the right configuration options, the iPXE configuration is
-        # correctly rendered.
-        method = IPXEBootMethod()
-        xtra = (
-            "custom_xtra_cfg=http://{{ kernel_params.fs_host }}/"
-            "my_extra_config?mac={{ kernel_params.mac }}"
-        )
-        params = make_kernel_parameters(
-            self,
-            arch="amd64",
-            subarch="generic",
-            purpose="ephemeral",
-            extra_opts=xtra,
-        )
-        fs_host = "http://%s:5248/images" % (
-            convert_host_to_uri_str(params.fs_host)
-        )
-        output = method.get_reader(backend=None, kernel_params=params)
-        # The output is a BytesReader.
-        self.assertIsInstance(output, BytesReader)
-        output = output.read(10000).decode("utf-8")
-        # The template has rendered without error. iPXE configurations
-        # start with #ipxe.
-        self.assertThat(output, StartsWith("#!ipxe"))
-        # The iPXE parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.release,
-            label=params.label,
-        )
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s*kernel %s/%s/%s$"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.kernel,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s*initrd %s/%s/%s\s+"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.initrd,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*\s+custom_xtra_cfg=http://%s/my_extra_config.*?\s+"
-                    % (params.fs_host),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*\s+maas_url=.+?$", re.MULTILINE | re.DOTALL),
-            ),
-        )
-
     def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is
         # correctly rendered.

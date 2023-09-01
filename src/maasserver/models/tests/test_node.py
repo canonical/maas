@@ -1037,40 +1037,19 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             with_boot_disk=True, status=NODE_STATUS.DEPLOYING
         )
-        self.assertFalse(node.ephemeral_deployment)
+        self.assertFalse(node.ephemeral_deploy)
 
     def test_ephemeral_deployment_checks_ephemeral_deploy(self):
         node = factory.make_Node(
             ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
         )
-        self.assertTrue(node.ephemeral_deployment)
+        self.assertTrue(node.ephemeral_deploy)
 
     def test_ephemeral_deployment_checks_no_ephemeral_deploy(self):
         node = factory.make_Node(
             ephemeral_deploy=False, status=NODE_STATUS.DEPLOYING
         )
-        self.assertFalse(node.ephemeral_deployment)
-
-    def test_ephemeral_deployment_checks_is_device(self):
-        device = factory.make_Device(
-            ephemeral_deploy=True, status=NODE_STATUS.DEPLOYING
-        )
-        self.assertFalse(device.ephemeral_deployment)
-
-    def test_ephemeral_deployment_no_if_not_deploying(self):
-        node = factory.make_Node(
-            status=factory.pick_choice(
-                NODE_STATUS_CHOICES,
-                but_not=[
-                    NODE_STATUS.DEPLOYING,
-                    NODE_STATUS.DEPLOYED,
-                    NODE_STATUS.ALLOCATED,
-                    NODE_STATUS.READY,
-                ],
-            ),
-            ephemeral_deploy=True,
-        )
-        self.assertFalse(node.ephemeral_deployment)
+        self.assertFalse(node.ephemeral_deploy)
 
     def test_ephemeral_deploy_scriptstatus_no(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -3041,17 +3020,6 @@ class TestNode(MAASServerTestCase):
         with post_commit_hooks:
             node.release()
         self.assertTrue(node.netboot)
-
-    def test_release_turns_off_ephemeral_deploy(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User()
-        )
-        self.patch(node, "_stop")
-        self.patch(node, "_set_status")
-        node.set_ephemeral_deploy(on=True)
-        with post_commit_hooks:
-            node.release()
-        self.assertFalse(node.ephemeral_deploy)
 
     def test_release_sets_install_rackd_false(self):
         node = factory.make_Node(
@@ -7222,21 +7190,6 @@ class TestNodeManager(MAASServerTestCase):
         node = factory.make_Node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
-
-    def test_ephemeral_deploy_on(self):
-        node = factory.make_Node(ephemeral_deploy=False)
-        node.set_ephemeral_deploy(True)
-        self.assertTrue(node.ephemeral_deploy)
-
-    def test_ephemeral_deploy_auto_on_when_diskless(self):
-        node = factory.make_Node(ephemeral_deploy=False, with_boot_disk=False)
-        node.set_ephemeral_deploy(False)
-        self.assertTrue(node.ephemeral_deploy)
-
-    def test_ephemeral_deploy_off(self):
-        node = factory.make_Node(ephemeral_deploy=True)
-        node.set_ephemeral_deploy(False)
-        self.assertFalse(node.ephemeral_deploy)
 
 
 class TestNodeManagerGetNodesRBAC(MAASServerTestCase):

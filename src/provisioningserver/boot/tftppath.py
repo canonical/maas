@@ -163,10 +163,7 @@ def extract_image_params(path, maas_meta):
             label=label,
             purpose=purpose,
         )
-        if (
-            purpose == BOOT_IMAGE_PURPOSE.XINSTALL
-            or purpose == BOOT_IMAGE_PURPOSE.EPHEMERAL
-        ):
+        if purpose == BOOT_IMAGE_PURPOSE.XINSTALL:
             xinstall_path, xinstall_type = osystem_obj.get_xinstall_parameters(
                 arch, subarch, release, label
             )

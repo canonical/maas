@@ -178,7 +178,6 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.user_data import generate_user_data_for_status
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import (
@@ -1538,24 +1537,6 @@ class Node(CleanSave, TimestampedModel):
         # Use the queryset as it might be cached
         return len(self.current_config.blockdevice_set.all()) == 0
 
-    @property
-    def ephemeral_deployment(self):
-        """Return if node is set to ephemeral deployment."""
-        # Devices should always local boot.
-        if self.is_device:
-            return False
-        # Only machines which are deploying can be deployed ephemerally. Allow
-        # ALLOCATED and READY as this is checked before transitioning in the
-        # API.
-        if self.status not in {
-            NODE_STATUS.DEPLOYING,
-            NODE_STATUS.DEPLOYED,
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.READY,
-        }:
-            return False
-        return self.ephemeral_deploy
-
     def retrieve_storage_layout_issues(
         self,
         has_boot,
@@ -1571,7 +1552,7 @@ class Node(CleanSave, TimestampedModel):
         """Create and retrieve storage layout issues error messages."""
         issues = []
         # Storage isn't applied to an ephemeral_deployment
-        if self.ephemeral_deployment and self.osystem == "ubuntu":
+        if self.ephemeral_deploy and self.osystem == "ubuntu":
             return []
         if self.is_diskless:
             issues.append(
@@ -1770,7 +1751,7 @@ class Node(CleanSave, TimestampedModel):
         # and will already be in a DEPLOYED state.
         if self.status == NODE_STATUS.ALLOCATED:
             self.update_status(NODE_STATUS.DEPLOYING)
-        if self.ephemeral_deployment is False:
+        if self.ephemeral_deploy is False:
             script_set = ScriptSet.objects.create_installation_script_set(self)
             self.current_installation_script_set = script_set
         self.save()
@@ -3247,7 +3228,7 @@ class Node(CleanSave, TimestampedModel):
         )
 
         if network_boot is None:
-            if self.ephemeral_deployment:
+            if self.ephemeral_deploy:
                 network_boot = True
             elif self.status == NODE_STATUS.EXITING_RESCUE_MODE:
                 network_boot = self.previous_status != NODE_STATUS.DEPLOYED
@@ -3714,7 +3695,6 @@ class Node(CleanSave, TimestampedModel):
         self.update_status(NODE_STATUS.RELEASING)
         self.agent_name = ""
         self.set_netboot()
-        self.set_ephemeral_deploy()
         self.osystem = ""
         self.distro_series = ""
         self.license_key = ""
@@ -3840,16 +3820,6 @@ class Node(CleanSave, TimestampedModel):
         )
         self.netboot = on
         self.save()
-
-    def set_ephemeral_deploy(self, on=False):
-        """Set ephermal deploy on or off."""
-        # self.ephemeral_deployment returns True when the system is diskless.
-        self.ephemeral_deploy = on or self.is_diskless
-        log.info(
-            "{hostname}: Turning ephemeral deploy %s for node"
-            % ("on" if self.ephemeral_deploy else "off"),
-            hostname=self.hostname,
-        )
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
@@ -5317,24 +5287,7 @@ class Node(CleanSave, TimestampedModel):
             # Install the node if netboot is enabled,
             # otherwise boot locally.
             if self.netboot:
-                arch, subarch = self.split_arch()
-                osystem_obj = OperatingSystemRegistry.get_item(
-                    self.osystem, default=None
-                )
-                if osystem_obj is None:
-                    return "xinstall"
-
-                purposes = osystem_obj.get_boot_image_purposes(
-                    arch, subarch, "", "*"
-                )
-                if "ephemeral" in purposes:
-                    # If ephemeral is in purposes, this comes from Caringo OS.
-                    # Set the ephemeral_deploy field on the node.
-                    self.set_ephemeral_deploy(True)
-                    self.save()
-                    return "ephemeral"
-                else:
-                    return "xinstall"
+                return "xinstall"
             else:
                 return "local"
         elif (
@@ -5575,13 +5528,13 @@ class Node(CleanSave, TimestampedModel):
                             ]
                         }
                     )
-        if self.ephemeral_deployment and (
+        if self.ephemeral_deploy and (
             self.install_kvm or self.register_vmhost
         ):
             raise ValidationError(
                 "Cannot deploy as a VM host for ephemeral deployments."
             )
-        if self.ephemeral_deployment and not release_a_newer_than_b(
+        if self.ephemeral_deploy and not release_a_newer_than_b(
             self.distro_series, "bionic"
         ):
             raise ValidationError(
@@ -5789,7 +5742,7 @@ class Node(CleanSave, TimestampedModel):
                 d.addCallback(claim_auto_ips)
                 claimed_ips = True
             set_deployment_timeout = False
-        elif self.status == NODE_STATUS.DEPLOYED and self.ephemeral_deployment:
+        elif self.status == NODE_STATUS.DEPLOYED and self.ephemeral_deploy:
             # Ephemeral deployments need to be re-deployed on a power cycle
             # and will already be in a DEPLOYED state.
             set_deployment_timeout = True

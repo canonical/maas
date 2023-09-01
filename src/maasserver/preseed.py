@@ -698,7 +698,7 @@ def get_preseed_type_for(node):
     is_commissioning_preseed = (
         node.status in COMMISSIONING_LIKE_STATUSES
         or node.get_boot_purpose() == "poweroff"
-        or node.ephemeral_deployment
+        or node.ephemeral_deploy
     )
     if is_commissioning_preseed:
         return PRESEED_TYPE.COMMISSIONING
@@ -720,7 +720,7 @@ def get_preseed(request, node) -> bytes:
     config = Config.objects.get_configs(
         ["commissioning_osystem", "commissioning_distro_series"]
     )
-    if node.status in COMMISSIONING_LIKE_STATUSES or node.ephemeral_deployment:
+    if node.status in COMMISSIONING_LIKE_STATUSES or node.ephemeral_deploy:
         return render_preseed(
             request,
             node,
