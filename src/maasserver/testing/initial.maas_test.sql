@@ -31,6 +31,20 @@ CREATE SCHEMA temporal_visibility;
 
 
 --
+-- Name: btree_gin; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS btree_gin WITH SCHEMA temporal_visibility;
+
+
+--
+-- Name: EXTENSION btree_gin; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION btree_gin IS 'support for indexing common datatypes in GIN';
+
+
+--
 -- Name: bmc_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -6087,6 +6101,19 @@ $$;
 
 
 --
+-- Name: convert_ts(character varying); Type: FUNCTION; Schema: temporal_visibility; Owner: -
+--
+
+CREATE FUNCTION temporal_visibility.convert_ts(s character varying) RETURNS timestamp without time zone
+    LANGUAGE plpgsql IMMUTABLE STRICT
+    AS $$
+BEGIN
+  RETURN s::timestamptz at time zone 'UTC';
+END
+$$;
+
+
+--
 -- Name: auth_group; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9635,6 +9662,524 @@ ALTER SEQUENCE public.piston3_token_id_seq OWNED BY public.piston3_token.id;
 
 
 --
+-- Name: activity_info_maps; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.activity_info_maps (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    schedule_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16)
+);
+
+
+--
+-- Name: buffered_events; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.buffered_events (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: buffered_events_id_seq; Type: SEQUENCE; Schema: temporal; Owner: -
+--
+
+CREATE SEQUENCE temporal.buffered_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: buffered_events_id_seq; Type: SEQUENCE OWNED BY; Schema: temporal; Owner: -
+--
+
+ALTER SEQUENCE temporal.buffered_events_id_seq OWNED BY temporal.buffered_events.id;
+
+
+--
+-- Name: child_execution_info_maps; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.child_execution_info_maps (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    initiated_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16)
+);
+
+
+--
+-- Name: cluster_membership; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.cluster_membership (
+    membership_partition integer NOT NULL,
+    host_id bytea NOT NULL,
+    rpc_address character varying(128) NOT NULL,
+    rpc_port smallint NOT NULL,
+    role smallint NOT NULL,
+    session_start timestamp without time zone DEFAULT '1970-01-01 00:00:01'::timestamp without time zone,
+    last_heartbeat timestamp without time zone DEFAULT '1970-01-01 00:00:01'::timestamp without time zone,
+    record_expiry timestamp without time zone DEFAULT '1970-01-01 00:00:01'::timestamp without time zone
+);
+
+
+--
+-- Name: cluster_metadata; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.cluster_metadata (
+    metadata_partition integer NOT NULL,
+    data bytea DEFAULT '\x'::bytea NOT NULL,
+    data_encoding character varying(16) DEFAULT 'Proto3'::character varying NOT NULL,
+    version bigint DEFAULT 1 NOT NULL
+);
+
+
+--
+-- Name: cluster_metadata_info; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.cluster_metadata_info (
+    metadata_partition integer NOT NULL,
+    cluster_name character varying(255) NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    version bigint NOT NULL
+);
+
+
+--
+-- Name: current_executions; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.current_executions (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    create_request_id character varying(255) NOT NULL,
+    state integer NOT NULL,
+    status integer NOT NULL,
+    start_version bigint DEFAULT 0 NOT NULL,
+    last_write_version bigint NOT NULL
+);
+
+
+--
+-- Name: executions; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.executions (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    next_event_id bigint NOT NULL,
+    last_write_version bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    state bytea NOT NULL,
+    state_encoding character varying(16) NOT NULL,
+    db_record_version bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: history_immediate_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.history_immediate_tasks (
+    shard_id integer NOT NULL,
+    category_id integer NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: history_node; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.history_node (
+    shard_id integer NOT NULL,
+    tree_id bytea NOT NULL,
+    branch_id bytea NOT NULL,
+    node_id bigint NOT NULL,
+    txn_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    prev_txn_id bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: history_scheduled_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.history_scheduled_tasks (
+    shard_id integer NOT NULL,
+    category_id integer NOT NULL,
+    visibility_timestamp timestamp without time zone NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: history_tree; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.history_tree (
+    shard_id integer NOT NULL,
+    tree_id bytea NOT NULL,
+    branch_id bytea NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: namespace_metadata; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.namespace_metadata (
+    partition_id integer NOT NULL,
+    notification_version bigint NOT NULL
+);
+
+
+--
+-- Name: namespaces; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.namespaces (
+    partition_id integer NOT NULL,
+    id bytea NOT NULL,
+    name character varying(255) NOT NULL,
+    notification_version bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    is_global boolean NOT NULL
+);
+
+
+--
+-- Name: queue; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.queue (
+    queue_type integer NOT NULL,
+    message_id bigint NOT NULL,
+    message_payload bytea NOT NULL,
+    message_encoding character varying(16) DEFAULT 'Json'::character varying NOT NULL
+);
+
+
+--
+-- Name: queue_metadata; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.queue_metadata (
+    queue_type integer NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) DEFAULT 'Json'::character varying NOT NULL,
+    version bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: replication_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.replication_tasks (
+    shard_id integer NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: replication_tasks_dlq; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.replication_tasks_dlq (
+    source_cluster_name character varying(255) NOT NULL,
+    shard_id integer NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: request_cancel_info_maps; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.request_cancel_info_maps (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    initiated_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16)
+);
+
+
+--
+-- Name: schema_update_history; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.schema_update_history (
+    version_partition integer NOT NULL,
+    year integer NOT NULL,
+    month integer NOT NULL,
+    update_time timestamp without time zone NOT NULL,
+    description character varying(255),
+    manifest_md5 character varying(64),
+    new_version character varying(64),
+    old_version character varying(64)
+);
+
+
+--
+-- Name: schema_version; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.schema_version (
+    version_partition integer NOT NULL,
+    db_name character varying(255) NOT NULL,
+    creation_time timestamp without time zone,
+    curr_version character varying(64),
+    min_compatible_version character varying(64)
+);
+
+
+--
+-- Name: shards; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.shards (
+    shard_id integer NOT NULL,
+    range_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: signal_info_maps; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.signal_info_maps (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    initiated_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16)
+);
+
+
+--
+-- Name: signals_requested_sets; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.signals_requested_sets (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    signal_id character varying(255) NOT NULL
+);
+
+
+--
+-- Name: task_queues; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.task_queues (
+    range_hash bigint NOT NULL,
+    task_queue_id bytea NOT NULL,
+    range_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.tasks (
+    range_hash bigint NOT NULL,
+    task_queue_id bytea NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: timer_info_maps; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.timer_info_maps (
+    shard_id integer NOT NULL,
+    namespace_id bytea NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    run_id bytea NOT NULL,
+    timer_id character varying(255) NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16)
+);
+
+
+--
+-- Name: timer_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.timer_tasks (
+    shard_id integer NOT NULL,
+    visibility_timestamp timestamp without time zone NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: transfer_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.transfer_tasks (
+    shard_id integer NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: visibility_tasks; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.visibility_tasks (
+    shard_id integer NOT NULL,
+    task_id bigint NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL
+);
+
+
+--
+-- Name: executions_visibility; Type: TABLE; Schema: temporal_visibility; Owner: -
+--
+
+CREATE TABLE temporal_visibility.executions_visibility (
+    namespace_id character(64) NOT NULL,
+    run_id character(64) NOT NULL,
+    start_time timestamp without time zone NOT NULL,
+    execution_time timestamp without time zone NOT NULL,
+    workflow_id character varying(255) NOT NULL,
+    workflow_type_name character varying(255) NOT NULL,
+    status integer NOT NULL,
+    close_time timestamp without time zone,
+    history_length bigint,
+    memo bytea,
+    encoding character varying(64) NOT NULL,
+    task_queue character varying(255) DEFAULT ''::character varying NOT NULL,
+    search_attributes jsonb,
+    temporalchangeversion jsonb GENERATED ALWAYS AS ((search_attributes -> 'TemporalChangeVersion'::text)) STORED,
+    binarychecksums jsonb GENERATED ALWAYS AS ((search_attributes -> 'BinaryChecksums'::text)) STORED,
+    batcheruser character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'BatcherUser'::text)) STORED,
+    temporalscheduledstarttime timestamp without time zone GENERATED ALWAYS AS (temporal_visibility.convert_ts(((search_attributes ->> 'TemporalScheduledStartTime'::text))::character varying)) STORED,
+    temporalscheduledbyid character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'TemporalScheduledById'::text)) STORED,
+    temporalschedulepaused boolean GENERATED ALWAYS AS (((search_attributes -> 'TemporalSchedulePaused'::text))::boolean) STORED,
+    temporalnamespacedivision character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'TemporalNamespaceDivision'::text)) STORED,
+    bool01 boolean GENERATED ALWAYS AS (((search_attributes -> 'Bool01'::text))::boolean) STORED,
+    bool02 boolean GENERATED ALWAYS AS (((search_attributes -> 'Bool02'::text))::boolean) STORED,
+    bool03 boolean GENERATED ALWAYS AS (((search_attributes -> 'Bool03'::text))::boolean) STORED,
+    datetime01 timestamp without time zone GENERATED ALWAYS AS (temporal_visibility.convert_ts(((search_attributes ->> 'Datetime01'::text))::character varying)) STORED,
+    datetime02 timestamp without time zone GENERATED ALWAYS AS (temporal_visibility.convert_ts(((search_attributes ->> 'Datetime02'::text))::character varying)) STORED,
+    datetime03 timestamp without time zone GENERATED ALWAYS AS (temporal_visibility.convert_ts(((search_attributes ->> 'Datetime03'::text))::character varying)) STORED,
+    double01 numeric(20,5) GENERATED ALWAYS AS (((search_attributes -> 'Double01'::text))::numeric) STORED,
+    double02 numeric(20,5) GENERATED ALWAYS AS (((search_attributes -> 'Double02'::text))::numeric) STORED,
+    double03 numeric(20,5) GENERATED ALWAYS AS (((search_attributes -> 'Double03'::text))::numeric) STORED,
+    int01 bigint GENERATED ALWAYS AS (((search_attributes -> 'Int01'::text))::bigint) STORED,
+    int02 bigint GENERATED ALWAYS AS (((search_attributes -> 'Int02'::text))::bigint) STORED,
+    int03 bigint GENERATED ALWAYS AS (((search_attributes -> 'Int03'::text))::bigint) STORED,
+    keyword01 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword01'::text)) STORED,
+    keyword02 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword02'::text)) STORED,
+    keyword03 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword03'::text)) STORED,
+    keyword04 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword04'::text)) STORED,
+    keyword05 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword05'::text)) STORED,
+    keyword06 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword06'::text)) STORED,
+    keyword07 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword07'::text)) STORED,
+    keyword08 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword08'::text)) STORED,
+    keyword09 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword09'::text)) STORED,
+    keyword10 character varying(255) GENERATED ALWAYS AS ((search_attributes ->> 'Keyword10'::text)) STORED,
+    text01 tsvector GENERATED ALWAYS AS (((search_attributes ->> 'Text01'::text))::tsvector) STORED,
+    text02 tsvector GENERATED ALWAYS AS (((search_attributes ->> 'Text02'::text))::tsvector) STORED,
+    text03 tsvector GENERATED ALWAYS AS (((search_attributes ->> 'Text03'::text))::tsvector) STORED,
+    keywordlist01 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList01'::text)) STORED,
+    keywordlist02 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList02'::text)) STORED,
+    keywordlist03 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList03'::text)) STORED
+);
+
+
+--
+-- Name: schema_update_history; Type: TABLE; Schema: temporal_visibility; Owner: -
+--
+
+CREATE TABLE temporal_visibility.schema_update_history (
+    version_partition integer NOT NULL,
+    year integer NOT NULL,
+    month integer NOT NULL,
+    update_time timestamp without time zone NOT NULL,
+    description character varying(255),
+    manifest_md5 character varying(64),
+    new_version character varying(64),
+    old_version character varying(64)
+);
+
+
+--
+-- Name: schema_version; Type: TABLE; Schema: temporal_visibility; Owner: -
+--
+
+CREATE TABLE temporal_visibility.schema_version (
+    version_partition integer NOT NULL,
+    db_name character varying(255) NOT NULL,
+    creation_time timestamp without time zone,
+    curr_version character varying(64),
+    min_compatible_version character varying(64)
+);
+
+
+--
 -- Name: auth_group id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10304,6 +10849,13 @@ ALTER TABLE ONLY public.piston3_nonce ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.piston3_token ALTER COLUMN id SET DEFAULT nextval('public.piston3_token_id_seq'::regclass);
+
+
+--
+-- Name: buffered_events id; Type: DEFAULT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.buffered_events ALTER COLUMN id SET DEFAULT nextval('temporal.buffered_events_id_seq'::regclass);
 
 
 --
@@ -11308,6 +11860,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 359	maasserver	0303_interface_params_cleanups	2023-05-12 03:30:35.152079+00
 360	maasserver	0304_interface_params_no_autoconf	2023-05-12 03:30:35.161528+00
 361	maasserver	0305_add_temporal_schema	2023-08-25 09:27:56.827957+00
+362	maasserver	0306_diskless_ephemeral_deploy	2023-09-01 03:30:49.394747+00
 \.
 
 
@@ -12072,6 +12625,288 @@ COPY public.piston3_token (id, key, secret, verifier, token_type, "timestamp", i
 
 
 --
+-- Data for Name: activity_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.activity_info_maps (shard_id, namespace_id, workflow_id, run_id, schedule_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: buffered_events; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.buffered_events (shard_id, namespace_id, workflow_id, run_id, id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: child_execution_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.child_execution_info_maps (shard_id, namespace_id, workflow_id, run_id, initiated_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: cluster_membership; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.cluster_membership (membership_partition, host_id, rpc_address, rpc_port, role, session_start, last_heartbeat, record_expiry) FROM stdin;
+\.
+
+
+--
+-- Data for Name: cluster_metadata; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.cluster_metadata (metadata_partition, data, data_encoding, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: cluster_metadata_info; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.cluster_metadata_info (metadata_partition, cluster_name, data, data_encoding, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: current_executions; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.current_executions (shard_id, namespace_id, workflow_id, run_id, create_request_id, state, status, start_version, last_write_version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: executions; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.executions (shard_id, namespace_id, workflow_id, run_id, next_event_id, last_write_version, data, data_encoding, state, state_encoding, db_record_version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: history_immediate_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.history_immediate_tasks (shard_id, category_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: history_node; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.history_node (shard_id, tree_id, branch_id, node_id, txn_id, data, data_encoding, prev_txn_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: history_scheduled_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.history_scheduled_tasks (shard_id, category_id, visibility_timestamp, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: history_tree; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.history_tree (shard_id, tree_id, branch_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: namespace_metadata; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.namespace_metadata (partition_id, notification_version) FROM stdin;
+54321	1
+\.
+
+
+--
+-- Data for Name: namespaces; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.namespaces (partition_id, id, name, notification_version, data, data_encoding, is_global) FROM stdin;
+\.
+
+
+--
+-- Data for Name: queue; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.queue (queue_type, message_id, message_payload, message_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: queue_metadata; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.queue_metadata (queue_type, data, data_encoding, version) FROM stdin;
+\.
+
+
+--
+-- Data for Name: replication_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.replication_tasks (shard_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: replication_tasks_dlq; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.replication_tasks_dlq (source_cluster_name, shard_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: request_cancel_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.request_cancel_info_maps (shard_id, namespace_id, workflow_id, run_id, initiated_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: schema_update_history; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.schema_update_history (version_partition, year, month, update_time, description, manifest_md5, new_version, old_version) FROM stdin;
+0	2023	9	2023-09-01 03:30:50.320866	initial version		0.0	0
+0	2023	9	2023-09-01 03:30:50.469309	base version of schema	55b84ca114ac34d84bdc5f52c198fa33	1.0	0.0
+0	2023	9	2023-09-01 03:30:50.472776	schema update for cluster metadata	58f06841bbb187cb210db32a090c21ee	1.1	1.0
+0	2023	9	2023-09-01 03:30:50.474978	schema update for RPC replication	c6bdeea21882e2625038927a84929b16	1.2	1.1
+0	2023	9	2023-09-01 03:30:50.478556	schema update for kafka deprecation	3beee7d470421674194475f94b58d89b	1.3	1.2
+0	2023	9	2023-09-01 03:30:50.480822	schema update for cluster metadata cleanup	c53e2e9cea5660c8a1f3b2ac73cdb138	1.4	1.3
+0	2023	9	2023-09-01 03:30:50.484438	schema update for cluster_membership, executions and history_node tables	bfb307ba10ac0fdec83e0065dc5ffee4	1.5	1.4
+0	2023	9	2023-09-01 03:30:50.486108	schema update for queue_metadata	978e1a6500d377ba91c6e37e5275a59b	1.6	1.5
+0	2023	9	2023-09-01 03:30:50.491825	create cluster metadata info table to store cluster information and executions to store tiered storage queue	366b8b49d6701a6a09778e51ad1682ed	1.7	1.6
+0	2023	9	2023-09-01 03:30:50.496234	drop unused tasks table; Expand VARCHAR columns governed by maxIDLength to VARCHAR(255)	229846b5beb0b96f49e7a3c5fde09fa7	1.8	1.7
+0	2023	9	2023-09-01 03:30:50.502285	add history tasks table	b62e4e5826967e152e00b75da42d12ea	1.9	1.8
+\.
+
+
+--
+-- Data for Name: schema_version; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
+0	maas	2023-09-01 03:30:50.501821	1.9	1.0
+\.
+
+
+--
+-- Data for Name: shards; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.shards (shard_id, range_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: signal_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.signal_info_maps (shard_id, namespace_id, workflow_id, run_id, initiated_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: signals_requested_sets; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.signals_requested_sets (shard_id, namespace_id, workflow_id, run_id, signal_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: task_queues; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.task_queues (range_hash, task_queue_id, range_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.tasks (range_hash, task_queue_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: timer_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.timer_info_maps (shard_id, namespace_id, workflow_id, run_id, timer_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: timer_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.timer_tasks (shard_id, visibility_timestamp, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: transfer_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.transfer_tasks (shard_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: visibility_tasks; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.visibility_tasks (shard_id, task_id, data, data_encoding) FROM stdin;
+\.
+
+
+--
+-- Data for Name: executions_visibility; Type: TABLE DATA; Schema: temporal_visibility; Owner: -
+--
+
+COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time, execution_time, workflow_id, workflow_type_name, status, close_time, history_length, memo, encoding, task_queue, search_attributes) FROM stdin;
+\.
+
+
+--
+-- Data for Name: schema_update_history; Type: TABLE DATA; Schema: temporal_visibility; Owner: -
+--
+
+COPY temporal_visibility.schema_update_history (version_partition, year, month, update_time, description, manifest_md5, new_version, old_version) FROM stdin;
+0	2023	9	2023-09-01 03:30:50.537388	initial version		0.0	0
+0	2023	9	2023-09-01 03:30:50.66697	base version of visibility schema	6a739dc4ceb78e29e490cd7cef662a80	1.0	0.0
+0	2023	9	2023-09-01 03:30:50.668808	add close time & status index	3bc835a57de6e863cf545c25aa418aa3	1.1	1.0
+0	2023	9	2023-09-01 03:30:50.821314	update schema to support advanced visibility	3943d27399fe3df0f1be869a4982c0bb	1.2	1.1
+\.
+
+
+--
+-- Data for Name: schema_version; Type: TABLE DATA; Schema: temporal_visibility; Owner: -
+--
+
+COPY temporal_visibility.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
+0	maas	2023-09-01 03:30:50.820729	1.2	0.1
+\.
+
+
+--
 -- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -12124,7 +12959,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 361, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 362, true);
 
 
 --
@@ -12783,6 +13618,13 @@ SELECT pg_catalog.setval('public.piston3_nonce_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.piston3_token_id_seq', 1, false);
+
+
+--
+-- Name: buffered_events_id_seq; Type: SEQUENCE SET; Schema: temporal; Owner: -
+--
+
+SELECT pg_catalog.setval('temporal.buffered_events_id_seq', 1, false);
 
 
 --
@@ -14226,6 +15068,286 @@ ALTER TABLE ONLY public.piston3_token
 
 
 --
+-- Name: activity_info_maps activity_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.activity_info_maps
+    ADD CONSTRAINT activity_info_maps_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, schedule_id);
+
+
+--
+-- Name: buffered_events buffered_events_id_key; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.buffered_events
+    ADD CONSTRAINT buffered_events_id_key UNIQUE (id);
+
+
+--
+-- Name: buffered_events buffered_events_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.buffered_events
+    ADD CONSTRAINT buffered_events_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, id);
+
+
+--
+-- Name: child_execution_info_maps child_execution_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.child_execution_info_maps
+    ADD CONSTRAINT child_execution_info_maps_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, initiated_id);
+
+
+--
+-- Name: cluster_membership cluster_membership_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.cluster_membership
+    ADD CONSTRAINT cluster_membership_pkey PRIMARY KEY (membership_partition, host_id);
+
+
+--
+-- Name: cluster_metadata_info cluster_metadata_info_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.cluster_metadata_info
+    ADD CONSTRAINT cluster_metadata_info_pkey PRIMARY KEY (metadata_partition, cluster_name);
+
+
+--
+-- Name: cluster_metadata cluster_metadata_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.cluster_metadata
+    ADD CONSTRAINT cluster_metadata_pkey PRIMARY KEY (metadata_partition);
+
+
+--
+-- Name: current_executions current_executions_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.current_executions
+    ADD CONSTRAINT current_executions_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id);
+
+
+--
+-- Name: executions executions_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.executions
+    ADD CONSTRAINT executions_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id);
+
+
+--
+-- Name: history_immediate_tasks history_immediate_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.history_immediate_tasks
+    ADD CONSTRAINT history_immediate_tasks_pkey PRIMARY KEY (shard_id, category_id, task_id);
+
+
+--
+-- Name: history_node history_node_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.history_node
+    ADD CONSTRAINT history_node_pkey PRIMARY KEY (shard_id, tree_id, branch_id, node_id, txn_id);
+
+
+--
+-- Name: history_scheduled_tasks history_scheduled_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.history_scheduled_tasks
+    ADD CONSTRAINT history_scheduled_tasks_pkey PRIMARY KEY (shard_id, category_id, visibility_timestamp, task_id);
+
+
+--
+-- Name: history_tree history_tree_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.history_tree
+    ADD CONSTRAINT history_tree_pkey PRIMARY KEY (shard_id, tree_id, branch_id);
+
+
+--
+-- Name: namespace_metadata namespace_metadata_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.namespace_metadata
+    ADD CONSTRAINT namespace_metadata_pkey PRIMARY KEY (partition_id);
+
+
+--
+-- Name: namespaces namespaces_name_key; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.namespaces
+    ADD CONSTRAINT namespaces_name_key UNIQUE (name);
+
+
+--
+-- Name: namespaces namespaces_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.namespaces
+    ADD CONSTRAINT namespaces_pkey PRIMARY KEY (partition_id, id);
+
+
+--
+-- Name: queue_metadata queue_metadata_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.queue_metadata
+    ADD CONSTRAINT queue_metadata_pkey PRIMARY KEY (queue_type);
+
+
+--
+-- Name: queue queue_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.queue
+    ADD CONSTRAINT queue_pkey PRIMARY KEY (queue_type, message_id);
+
+
+--
+-- Name: replication_tasks_dlq replication_tasks_dlq_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.replication_tasks_dlq
+    ADD CONSTRAINT replication_tasks_dlq_pkey PRIMARY KEY (source_cluster_name, shard_id, task_id);
+
+
+--
+-- Name: replication_tasks replication_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.replication_tasks
+    ADD CONSTRAINT replication_tasks_pkey PRIMARY KEY (shard_id, task_id);
+
+
+--
+-- Name: request_cancel_info_maps request_cancel_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.request_cancel_info_maps
+    ADD CONSTRAINT request_cancel_info_maps_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, initiated_id);
+
+
+--
+-- Name: schema_update_history schema_update_history_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.schema_update_history
+    ADD CONSTRAINT schema_update_history_pkey PRIMARY KEY (version_partition, year, month, update_time);
+
+
+--
+-- Name: schema_version schema_version_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.schema_version
+    ADD CONSTRAINT schema_version_pkey PRIMARY KEY (version_partition, db_name);
+
+
+--
+-- Name: shards shards_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.shards
+    ADD CONSTRAINT shards_pkey PRIMARY KEY (shard_id);
+
+
+--
+-- Name: signal_info_maps signal_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.signal_info_maps
+    ADD CONSTRAINT signal_info_maps_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, initiated_id);
+
+
+--
+-- Name: signals_requested_sets signals_requested_sets_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.signals_requested_sets
+    ADD CONSTRAINT signals_requested_sets_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, signal_id);
+
+
+--
+-- Name: task_queues task_queues_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.task_queues
+    ADD CONSTRAINT task_queues_pkey PRIMARY KEY (range_hash, task_queue_id);
+
+
+--
+-- Name: tasks tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.tasks
+    ADD CONSTRAINT tasks_pkey PRIMARY KEY (range_hash, task_queue_id, task_id);
+
+
+--
+-- Name: timer_info_maps timer_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.timer_info_maps
+    ADD CONSTRAINT timer_info_maps_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, timer_id);
+
+
+--
+-- Name: timer_tasks timer_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.timer_tasks
+    ADD CONSTRAINT timer_tasks_pkey PRIMARY KEY (shard_id, visibility_timestamp, task_id);
+
+
+--
+-- Name: transfer_tasks transfer_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.transfer_tasks
+    ADD CONSTRAINT transfer_tasks_pkey PRIMARY KEY (shard_id, task_id);
+
+
+--
+-- Name: visibility_tasks visibility_tasks_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.visibility_tasks
+    ADD CONSTRAINT visibility_tasks_pkey PRIMARY KEY (shard_id, task_id);
+
+
+--
+-- Name: executions_visibility executions_visibility_pkey; Type: CONSTRAINT; Schema: temporal_visibility; Owner: -
+--
+
+ALTER TABLE ONLY temporal_visibility.executions_visibility
+    ADD CONSTRAINT executions_visibility_pkey PRIMARY KEY (namespace_id, run_id);
+
+
+--
+-- Name: schema_update_history schema_update_history_pkey; Type: CONSTRAINT; Schema: temporal_visibility; Owner: -
+--
+
+ALTER TABLE ONLY temporal_visibility.schema_update_history
+    ADD CONSTRAINT schema_update_history_pkey PRIMARY KEY (version_partition, year, month, update_time);
+
+
+--
+-- Name: schema_version schema_version_pkey; Type: CONSTRAINT; Schema: temporal_visibility; Owner: -
+--
+
+ALTER TABLE ONLY temporal_visibility.schema_version
+    ADD CONSTRAINT schema_version_pkey PRIMARY KEY (version_partition, db_name);
+
+
+--
 -- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -15434,6 +16556,335 @@ CREATE INDEX piston3_token_consumer_id_b178993d ON public.piston3_token USING bt
 --
 
 CREATE INDEX piston3_token_user_id_e5cd818c ON public.piston3_token USING btree (user_id);
+
+
+--
+-- Name: cm_idx_lasthb; Type: INDEX; Schema: temporal; Owner: -
+--
+
+CREATE INDEX cm_idx_lasthb ON temporal.cluster_membership USING btree (last_heartbeat);
+
+
+--
+-- Name: cm_idx_recordexpiry; Type: INDEX; Schema: temporal; Owner: -
+--
+
+CREATE INDEX cm_idx_recordexpiry ON temporal.cluster_membership USING btree (record_expiry);
+
+
+--
+-- Name: cm_idx_rolehost; Type: INDEX; Schema: temporal; Owner: -
+--
+
+CREATE UNIQUE INDEX cm_idx_rolehost ON temporal.cluster_membership USING btree (role, host_id);
+
+
+--
+-- Name: cm_idx_rolelasthb; Type: INDEX; Schema: temporal; Owner: -
+--
+
+CREATE INDEX cm_idx_rolelasthb ON temporal.cluster_membership USING btree (role, last_heartbeat);
+
+
+--
+-- Name: cm_idx_rpchost; Type: INDEX; Schema: temporal; Owner: -
+--
+
+CREATE INDEX cm_idx_rpchost ON temporal.cluster_membership USING btree (rpc_address, role);
+
+
+--
+-- Name: by_batcher_user; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_batcher_user ON temporal_visibility.executions_visibility USING btree (namespace_id, batcheruser, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_binary_checksums; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_binary_checksums ON temporal_visibility.executions_visibility USING gin (namespace_id, binarychecksums jsonb_path_ops);
+
+
+--
+-- Name: by_bool_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_bool_01 ON temporal_visibility.executions_visibility USING btree (namespace_id, bool01, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_bool_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_bool_02 ON temporal_visibility.executions_visibility USING btree (namespace_id, bool02, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_bool_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_bool_03 ON temporal_visibility.executions_visibility USING btree (namespace_id, bool03, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_datetime_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_datetime_01 ON temporal_visibility.executions_visibility USING btree (namespace_id, datetime01, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_datetime_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_datetime_02 ON temporal_visibility.executions_visibility USING btree (namespace_id, datetime02, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_datetime_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_datetime_03 ON temporal_visibility.executions_visibility USING btree (namespace_id, datetime03, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_double_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_double_01 ON temporal_visibility.executions_visibility USING btree (namespace_id, double01, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_double_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_double_02 ON temporal_visibility.executions_visibility USING btree (namespace_id, double02, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_double_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_double_03 ON temporal_visibility.executions_visibility USING btree (namespace_id, double03, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_execution_time; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_execution_time ON temporal_visibility.executions_visibility USING btree (namespace_id, execution_time, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_history_length; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_history_length ON temporal_visibility.executions_visibility USING btree (namespace_id, history_length, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_int_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_int_01 ON temporal_visibility.executions_visibility USING btree (namespace_id, int01, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_int_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_int_02 ON temporal_visibility.executions_visibility USING btree (namespace_id, int02, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_int_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_int_03 ON temporal_visibility.executions_visibility USING btree (namespace_id, int03, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_01 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword01, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_02 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword02, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_03 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword03, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_04; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_04 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword04, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_05; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_05 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword05, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_06; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_06 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword06, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_07; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_07 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword07, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_08; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_08 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword08, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_09; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_09 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword09, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_10; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_10 ON temporal_visibility.executions_visibility USING btree (namespace_id, keyword10, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_keyword_list_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_list_01 ON temporal_visibility.executions_visibility USING gin (namespace_id, keywordlist01 jsonb_path_ops);
+
+
+--
+-- Name: by_keyword_list_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_list_02 ON temporal_visibility.executions_visibility USING gin (namespace_id, keywordlist02 jsonb_path_ops);
+
+
+--
+-- Name: by_keyword_list_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_keyword_list_03 ON temporal_visibility.executions_visibility USING gin (namespace_id, keywordlist03 jsonb_path_ops);
+
+
+--
+-- Name: by_status; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_status ON temporal_visibility.executions_visibility USING btree (namespace_id, status, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_task_queue; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_task_queue ON temporal_visibility.executions_visibility USING btree (namespace_id, task_queue, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_temporal_change_version; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_temporal_change_version ON temporal_visibility.executions_visibility USING gin (namespace_id, temporalchangeversion jsonb_path_ops);
+
+
+--
+-- Name: by_temporal_namespace_division; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_temporal_namespace_division ON temporal_visibility.executions_visibility USING btree (namespace_id, temporalnamespacedivision, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_temporal_schedule_paused; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_temporal_schedule_paused ON temporal_visibility.executions_visibility USING btree (namespace_id, temporalschedulepaused, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_temporal_scheduled_by_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_temporal_scheduled_by_id ON temporal_visibility.executions_visibility USING btree (namespace_id, temporalscheduledbyid, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_temporal_scheduled_start_time; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_temporal_scheduled_start_time ON temporal_visibility.executions_visibility USING btree (namespace_id, temporalscheduledstarttime, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_text_01; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_text_01 ON temporal_visibility.executions_visibility USING gin (namespace_id, text01);
+
+
+--
+-- Name: by_text_02; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_text_02 ON temporal_visibility.executions_visibility USING gin (namespace_id, text02);
+
+
+--
+-- Name: by_text_03; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_text_03 ON temporal_visibility.executions_visibility USING gin (namespace_id, text03);
+
+
+--
+-- Name: by_workflow_id; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_workflow_id ON temporal_visibility.executions_visibility USING btree (namespace_id, workflow_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_workflow_type; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_workflow_type ON temporal_visibility.executions_visibility USING btree (namespace_id, workflow_type_name, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: default_idx; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX default_idx ON temporal_visibility.executions_visibility USING btree (namespace_id, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
 
 
 --
