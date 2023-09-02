@@ -224,17 +224,15 @@ def ip_is_on_vlan(ip_address, vlan):
     )
 
 
-def get_ip_address_for_interface(interface, vlan, ip_version: int):
+def get_ip_address_for_interface(interface, vlan):
     """Return the IP address for `interface` on `vlan`."""
     for ip_address in interface.ip_addresses.all():
-        if ip_is_version(ip_address, ip_version) and ip_is_on_vlan(
-            ip_address, vlan
-        ):
+        if ip_is_on_vlan(ip_address, vlan):
             return ip_address
     return None
 
 
-def get_ip_address_for_rack_controller(rack_controller, vlan, ip_version: int):
+def get_ip_address_for_rack_controller(rack_controller, vlan):
     """Return the IP address for `rack_controller` on `vlan`."""
     # First we build a list of all interfaces that have an IP address
     # on that vlan. Then we pick the best interface for that vlan
@@ -245,12 +243,10 @@ def get_ip_address_for_rack_controller(rack_controller, vlan, ip_version: int):
     matching_interfaces = set()
     for interface in interfaces:
         for ip_address in interface.ip_addresses.all():
-            if ip_is_version(ip_address, ip_version) and ip_is_on_vlan(
-                ip_address, vlan
-            ):
+            if ip_is_on_vlan(ip_address, vlan):
                 matching_interfaces.add(interface)
     interface = get_best_interface(matching_interfaces)
-    return get_ip_address_for_interface(interface, vlan, ip_version)
+    return get_ip_address_for_interface(interface, vlan)
 
 
 @typed
@@ -493,19 +489,17 @@ def make_subnet_config(
     return subnet_config
 
 
-def make_failover_peer_config(vlan, rack_controller, ip_version: int):
+def make_failover_peer_config(vlan, rack_controller):
     """Return DHCP failover peer configuration dict for a rack controller."""
     is_primary = vlan.primary_rack_id == rack_controller.id
     interface_ip_address = get_ip_address_for_rack_controller(
-        rack_controller, vlan, ip_version
+        rack_controller, vlan
     )
     if is_primary:
         peer_rack = vlan.secondary_rack
     else:
         peer_rack = vlan.primary_rack
-    peer_address = get_ip_address_for_rack_controller(
-        peer_rack, vlan, ip_version
-    )
+    peer_address = get_ip_address_for_rack_controller(peer_rack, vlan)
     name = "failover-vlan-%d" % vlan.id
     return (
         name,
@@ -659,7 +653,7 @@ def get_dhcp_configure_for(
     if has_secondary:
         # Generate the failover peer for this VLAN.
         peer_name, peer_config, peer_rack = make_failover_peer_config(
-            vlan, rack_controller, ip_version
+            vlan, rack_controller
         )
     else:
         peer_name, peer_config, peer_rack = None, None, None
