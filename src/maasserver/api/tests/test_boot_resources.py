@@ -153,29 +153,9 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
             for _ in range(3)
         ]
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.get(
             reverse("boot_resources_handler"), {"type": "synced"}
-        )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-        parsed_result = json_load_bytes(response.content)
-        self.assertCountEqual(
-            [resource.id for resource in resources],
-            [resource.get("id") for resource in parsed_result],
-        )
-
-    def test_GET_generated_returns_generated_boot_resources(self):
-        resources = [
-            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
-            for _ in range(3)
-        ]
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
-        response = self.client.get(
-            reverse("boot_resources_handler"), {"type": "generated"}
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -192,7 +172,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             for _ in range(3)
         ]
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
-        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
         response = self.client.get(
             reverse("boot_resources_handler"), {"type": "uploaded"}
         )

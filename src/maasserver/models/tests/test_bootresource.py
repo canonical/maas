@@ -17,10 +17,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
 from maasserver.models import bootresource
-from maasserver.models.bootresource import (
-    BootResource,
-    RTYPE_REQUIRING_OS_SERIES_NAME,
-)
+from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
@@ -46,15 +43,6 @@ class TestBootResourceManager(MAASServerTestCase):
         name = f"{os}/{series}"
         resource, (arch, subarch) = self.make_boot_resource(
             BOOT_RESOURCE_TYPE.SYNCED, name=name
-        )
-        return resource, (os, arch, subarch, series)
-
-    def make_generated_boot_resource(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        name = f"{os}/{series}"
-        resource, (arch, subarch) = self.make_boot_resource(
-            BOOT_RESOURCE_TYPE.GENERATED, name=name
         )
         return resource, (os, arch, subarch, series)
 
@@ -92,39 +80,6 @@ class TestBootResourceManager(MAASServerTestCase):
         self.assertEqual(
             None,
             BootResource.objects.get_synced_resource(
-                os, arch, subarch, series
-            ),
-        )
-
-    def test_has_generated_resource_returns_true_when_exists(self):
-        _, args = self.make_generated_boot_resource()
-        self.assertTrue(BootResource.objects.has_generated_resource(*args))
-
-    def test_has_generated_resource_returns_false_when_doesnt_exists(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertFalse(
-            BootResource.objects.has_generated_resource(
-                os, arch, subarch, series
-            )
-        )
-
-    def test_get_generated_resource_returns_resource_when_exists(self):
-        resource, args = self.make_generated_boot_resource()
-        self.assertEqual(
-            resource, BootResource.objects.get_generated_resource(*args)
-        )
-
-    def test_get_generated_resource_returns_None_when_doesnt_exists(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        self.assertEqual(
-            None,
-            BootResource.objects.get_generated_resource(
                 os, arch, subarch, series
             ),
         )
@@ -348,9 +303,7 @@ class TestBootResourceManager(MAASServerTestCase):
 
     def test_get_resource_for_returns_matching_resource(self):
         resources = [
-            factory.make_BootResource(
-                rtype=random.choice(RTYPE_REQUIRING_OS_SERIES_NAME)
-            )
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
             for _ in range(3)
         ]
         resource = resources.pop()
@@ -370,12 +323,8 @@ class TestBootResourceManager(MAASServerTestCase):
         )
 
     def test_get_resource_for_returns_custom_resource(self):
-        [
-            factory.make_BootResource(
-                rtype=random.choice(RTYPE_REQUIRING_OS_SERIES_NAME)
-            )
-            for _ in range(2)
-        ]
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         custom = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
             name=factory.make_name(),
@@ -653,25 +602,6 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             BootResource.objects.get_resources_matching_boot_images(images),
         )
 
-    def test_returns_resource_for_generated_resource(self):
-        resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED
-        )
-        os, series = resource.name.split("/")
-        arch, subarch = resource.split_arch()
-        label = resource.get_latest_complete_set().label
-        image = make_rpc_boot_image(
-            osystem=os,
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            label=label,
-        )
-        self.assertEqual(
-            [resource],
-            BootResource.objects.get_resources_matching_boot_images([image]),
-        )
-
     def test_returns_resource_for_uploaded_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED
@@ -774,22 +704,6 @@ class TestBootImagesAreInSync(MAASServerTestCase):
             for purpose in purposes
         ]
         self.assertTrue(BootResource.objects.boot_images_are_in_sync(images))
-
-    def test_returns_True_for_generated_resource(self):
-        resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED
-        )
-        os, series = resource.name.split("/")
-        arch, subarch = resource.split_arch()
-        label = resource.get_latest_complete_set().label
-        image = make_rpc_boot_image(
-            osystem=os,
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            label=label,
-        )
-        self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
     def test_returns_True_for_uploaded_resource(self):
         resource = factory.make_usable_boot_resource(
@@ -1034,17 +948,6 @@ class TestBootResource(MAASServerTestCase):
         )
         self.assertRaises(ValidationError, resource.save)
 
-    def test_validation_raises_error_on_invalid_name_for_generated(self):
-        name = factory.make_name("name")
-        arch = "{}/{}".format(
-            factory.make_name("arch"),
-            factory.make_name("subarch"),
-        )
-        resource = BootResource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED, name=name, architecture=arch
-        )
-        self.assertRaises(ValidationError, resource.save)
-
     def test_validation_raises_error_on_invalid_name_for_uploaded(self):
         name = "{}/{}".format(
             factory.make_name("os"), factory.make_name("series")
@@ -1096,7 +999,7 @@ class TestBootResource(MAASServerTestCase):
         self.assertRaises(
             ValidationError,
             factory.make_BootResource,
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
             name=name,
             architecture=arch,
         )

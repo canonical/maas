@@ -412,23 +412,17 @@ POWER_STATE_CHOICES = enum_choices(POWER_STATE, transform=str.capitalize)
 
 
 class BOOT_RESOURCE_TYPE:
-    """The vocabulary of possible types for `BootResource`."""
+    """Possible types for `BootResource`."""
 
-    # Downloaded from `BootSources`.
-    SYNCED = 0
-
-    # Generate by MAAS.
-    GENERATED = 1
-
-    # Uploaded by User.
-    UPLOADED = 2
+    SYNCED = 0  # downloaded from BootSources
+    # index 1 was GENERATED, now unused
+    UPLOADED = 2  # uploaded by user
 
 
 # Django choices for BOOT_RESOURCE_TYPE: sequence of tuples (key, UI
 # representation).
 BOOT_RESOURCE_TYPE_CHOICES = (
     (BOOT_RESOURCE_TYPE.SYNCED, "Synced"),
-    (BOOT_RESOURCE_TYPE.GENERATED, "Generated"),
     (BOOT_RESOURCE_TYPE.UPLOADED, "Uploaded"),
 )
 

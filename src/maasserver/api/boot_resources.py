@@ -40,18 +40,8 @@ from maasserver.utils.orm import post_commit_do
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,
-    "generated": BOOT_RESOURCE_TYPE.GENERATED,
     "uploaded": BOOT_RESOURCE_TYPE.UPLOADED,
 }
-
-
-# XXX blake_r 2014-09-22 bug=1361370: We currently allow both generated and
-# uploaded resource to be uploaded. This is until the MAAS can generate its
-# own images.
-ALLOW_UPLOAD_RTYPES = [
-    BOOT_RESOURCE_TYPE.GENERATED,
-    BOOT_RESOURCE_TYPE.UPLOADED,
-]
 
 
 def get_content_parameter(request):
@@ -74,7 +64,7 @@ def boot_resource_file_to_dict(rfile):
     if not dict_representation["complete"]:
         dict_representation["progress"] = rfile.largefile.progress
         resource = rfile.resource_set.resource
-        if resource.rtype in ALLOW_UPLOAD_RTYPES:
+        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             dict_representation["upload_uri"] = reverse(
                 "boot_resource_file_upload_handler",
                 args=[resource.id, rfile.id],
@@ -388,9 +378,9 @@ class BootResourceFileUploadHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Content-Length doesn't equal size of received data."
             )
-        if resource.rtype not in ALLOW_UPLOAD_RTYPES:
+        if resource.rtype != BOOT_RESOURCE_TYPE.UPLOADED:
             raise MAASAPIForbidden(
-                "Cannot upload to a resource of type: %s. " % resource.rtype
+                f"Cannot upload to a resource of type: {resource.rtype}."
             )
         if rfile.largefile.complete:
             raise MAASAPIBadRequest("Cannot upload to a complete file.")

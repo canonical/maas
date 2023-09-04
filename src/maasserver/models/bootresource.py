@@ -34,14 +34,6 @@ from maasserver.utils.orm import get_first, get_one
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
 
-# Names on boot resources have a specific meaning depending on the type
-# of boot resource. If its a synced or generated image then the name must
-# be in the format os/series.
-RTYPE_REQUIRING_OS_SERIES_NAME = (
-    BOOT_RESOURCE_TYPE.SYNCED,
-    BOOT_RESOURCE_TYPE.GENERATED,
-)
-
 LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel")
 
 
@@ -76,26 +68,6 @@ class BootResourceManager(Manager):
         name = f"{osystem}/{series}"
         return self._get_resource(
             BOOT_RESOURCE_TYPE.SYNCED, name, architecture, subarchitecture
-        )
-
-    def has_generated_resource(
-        self, osystem, architecture, subarchitecture, series
-    ):
-        """Return True if `BootResource` exists with type of GENERATED, and
-        given osystem, architecture, subarchitecture, and series."""
-        name = f"{osystem}/{series}"
-        return self._has_resource(
-            BOOT_RESOURCE_TYPE.GENERATED, name, architecture, subarchitecture
-        )
-
-    def get_generated_resource(
-        self, osystem, architecture, subarchitecture, series
-    ):
-        """Return `BootResource` with type of GENERATED, and given
-        osystem, architecture, subarchitecture, and series."""
-        name = f"{osystem}/{series}"
-        return self._get_resource(
-            BOOT_RESOURCE_TYPE.GENERATED, name, architecture, subarchitecture
         )
 
     def has_uploaded_resource(self, name, architecture, subarchitecture):
@@ -183,7 +155,7 @@ class BootResourceManager(Manager):
         subarchitecture, and series."""
         if osystem != "custom":
             name = f"{osystem}/{series}"
-            rtype = RTYPE_REQUIRING_OS_SERIES_NAME
+            rtype = (BOOT_RESOURCE_TYPE.SYNCED,)
         else:
             name = series
             rtype = (BOOT_RESOURCE_TYPE.UPLOADED,)
@@ -215,7 +187,6 @@ class BootResourceManager(Manager):
                 if image["osystem"] != "custom":
                     rtypes = [
                         BOOT_RESOURCE_TYPE.SYNCED,
-                        BOOT_RESOURCE_TYPE.GENERATED,
                         BOOT_RESOURCE_TYPE.UPLOADED,
                     ]
                     name = "{}/{}".format(image["osystem"], image["release"])
@@ -557,8 +528,7 @@ class BootResource(CleanSave, TimestampedModel):
         :class:`BOOT_RESOURCE_TYPE`.
     :ivar name: Name of the `BootResource`. If its BOOT_RESOURCE_TYPE.UPLOADED
         then `name` is used to reference this image. If its
-        BOOT_RESOURCE_TYPE.SYCNED or BOOT_RESOURCE_TYPE.GENERATED then its
-        in the format of os/series.
+        BOOT_RESOURCE_TYPE.SYCNED, then its in the format of os/series.
     :ivar architecture: Architecture of the `BootResource`. It must be in
         the format arch/subarch.
     :ivar extra: Extra information about the file. This is only used
@@ -622,7 +592,7 @@ class BootResource(CleanSave, TimestampedModel):
                         "unless it starts with a supported operating system."
                         % (self.display_rtype)
                     )
-        elif self.rtype in RTYPE_REQUIRING_OS_SERIES_NAME:
+        elif self.rtype == BOOT_RESOURCE_TYPE.SYNCED:
             if "/" not in self.name:
                 raise ValidationError(
                     "%s boot resource must contain a '/' in it's name."

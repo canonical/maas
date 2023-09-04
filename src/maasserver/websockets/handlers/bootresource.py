@@ -519,13 +519,9 @@ class BootResourceHandler(Handler):
 
     def get_resource_title(self, resource):
         """Return the title for the resource based on the type and name."""
-        rtypes_with_split_names = [
-            BOOT_RESOURCE_TYPE.SYNCED,
-            BOOT_RESOURCE_TYPE.GENERATED,
-        ]
-        if "title" in resource.extra and len(resource.extra["title"]) > 0:
-            return resource.extra["title"]
-        elif resource.rtype in rtypes_with_split_names:
+        if title := resource.extra.get("title"):
+            return title
+        elif resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
             os, series = resource.name.split("/")
             if resource.name.startswith("ubuntu/"):
                 return format_ubuntu_distro_series(series)

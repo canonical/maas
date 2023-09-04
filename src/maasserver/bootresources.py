@@ -458,8 +458,7 @@ class BootResourceStore(ObjectStore):
         the end of the syncing process.
         """
         ident = self.get_resource_identity(resource)
-        if ident in self._resources_to_delete:
-            self._resources_to_delete.remove(ident)
+        self._resources_to_delete.discard(ident)
 
     def save_content_later(self, rfile, content):
         """Register content to be saved later on to the given resource file.
@@ -508,41 +507,14 @@ class BootResourceStore(ObjectStore):
 
         name = f"{os}/{series}"
 
-        # Allow a generated resource to be replaced by a sycned resource. This
-        # gives the ability for maas.io to start providing images that
-        # MAAS used to generate itself.
-        supported_rtypes = [
-            BOOT_RESOURCE_TYPE.SYNCED,
-            BOOT_RESOURCE_TYPE.GENERATED,
-        ]
-        resource = get_one(
-            BootResource.objects.filter(
-                rtype__in=supported_rtypes,
-                name=name,
-                architecture=architecture,
-            )
+        resource, _ = BootResource.objects.get_or_create(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
         )
-        if resource is None:
-            # No resource currently exists for this product.
-            resource = BootResource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=name,
-                architecture=architecture,
-            )
-        else:
-            if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
-                # Resource already exists and was in the simplestream content,
-                # so we do not want it removed.
-                self.prevent_resource_deletion(resource)
-            else:
-                # Resource was previously a generated image. This is being
-                # replaced with this synced image.
-                resource.rtype = BOOT_RESOURCE_TYPE.SYNCED
-
         resource.kflavor = kflavor
         resource.bootloader_type = bootloader_type
         resource.rolling = product.get("rolling", False)
-
         # Simplestreams content from maas.io includes the following
         # extra fields. Looping through the extra product data and adding it to
         # extra will not work as the product data that is passed into this
@@ -554,6 +526,8 @@ class BootResourceStore(ObjectStore):
             for key in ("subarches", "platform", "supported_platforms")
             if key in product
         }
+
+        self.prevent_resource_deletion(resource)
 
         title = get_product_title(product)
         if title is not None:

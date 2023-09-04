@@ -1446,23 +1446,6 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         self.assertCountEqual([], reload_objects(BootResource, resources))
         self.assertIsNone(reload_object(selection))
 
-    def test_deletes_generated_image(self):
-        self.useFixture(SignalsDisabled("bootsources"))
-        self.useFixture(SignalsDisabled("largefiles"))
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        os = factory.make_name("os")
-        release = factory.make_name("release")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name=f"{os}/{release}",
-            architecture=f"{arch}/{subarch}",
-        )
-        handler.delete_image({"id": resource.id})
-        self.assertIsNone(reload_object(resource))
-
     def test_deletes_uploaded_image(self):
         self.useFixture(SignalsDisabled("bootsources"))
         self.useFixture(SignalsDisabled("largefiles"))

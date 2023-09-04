@@ -167,7 +167,6 @@ from maasserver.utils.forms import (
     get_QueryDict,
     set_form_error,
 )
-from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -2613,30 +2612,12 @@ class BootResourceForm(MAASModelForm):
         return "/".join([base_osystem, base_version])
 
     def get_existing_resource(self, resource):
-        """Return existing resource if avaliable.
-
-        If the passed resource already has a match in the database then that
-        resource is returned. If not then the passed resource is returned.
-        """
-        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
-            # Uploaded BootResources were previously generated, now they're
-            # uploaded. Search for both to convert.
-            rtypes = [
-                BOOT_RESOURCE_TYPE.UPLOADED,
-                BOOT_RESOURCE_TYPE.GENERATED,
-            ]
-        else:
-            rtypes = [resource.type]
-        existing_resource = get_one(
-            BootResource.objects.filter(
-                rtype__in=rtypes,
-                name=resource.name,
-                architecture=resource.architecture,
-            )
+        """Return existing resource if avaliable."""
+        resource, _ = BootResource.objects.get_or_create(
+            rtype=resource.rtype,
+            name=resource.name,
+            architecture=resource.architecture,
         )
-        if existing_resource is not None:
-            existing_resource.rtype = resource.rtype
-            return existing_resource
         return resource
 
     def create_resource_set(self, resource, label):

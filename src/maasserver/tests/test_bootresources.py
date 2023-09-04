@@ -815,21 +815,6 @@ class TestBootResourceStore(MAASServerTestCase):
         store.get_or_create_boot_resource(product)
         self.assertThat(mock_prevent, MockCalledOnceWith(resource))
 
-    def test_get_or_create_boot_resource_converts_generated_into_synced(self):
-        name, architecture, product = make_product()
-        resource = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name=name,
-            architecture=architecture,
-        )
-        store = BootResourceStore()
-        mock_prevent = self.patch(store, "prevent_resource_deletion")
-        store.get_or_create_boot_resource(product)
-        self.assertEqual(
-            BOOT_RESOURCE_TYPE.SYNCED, reload_object(resource).rtype
-        )
-        self.assertThat(mock_prevent, MockNotCalled())
-
     def test_get_or_create_boot_resource_adds_kflavor_to_subarch(self):
         kflavor = factory.make_name("kflavor")
         _, architecture, product = make_product(

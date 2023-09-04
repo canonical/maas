@@ -412,44 +412,6 @@ class TestBootResourceForm(MAASServerTestCase):
             written_content = stream.read()
         self.assertEqual(content, written_content)
 
-    def test_adds_boot_resource_set_to_existing_generated_boot_resource(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        OperatingSystemRegistry.register_item(os, CustomOS())
-        self.addCleanup(OperatingSystemRegistry.unregister_item, os)
-        name = f"{os}/{series}"
-        architecture = make_usable_architecture(self)
-        resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name=name,
-            architecture=architecture,
-            base_image="ubuntu/focal",
-        )
-        upload_type, filetype = self.pick_filetype()
-        size = random.randint(1024, 2048)
-        content = factory.make_string(size).encode("utf-8")
-        upload_name = factory.make_name("filename")
-        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
-        data = {
-            "name": name,
-            "architecture": architecture,
-            "filetype": upload_type,
-            "keep_old": True,
-        }
-        form = BootResourceForm(data=data, files={"content": uploaded_file})
-        self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        resource = reload_object(resource)
-        resource_set = resource.sets.order_by("id").last()
-        rfile = resource_set.files.first()
-        self.assertTrue(filetype, rfile.filetype)
-        self.assertTrue(filetype, rfile.filename)
-        self.assertTrue(size, rfile.largefile.total_size)
-        with rfile.largefile.content.open("rb") as stream:
-            written_content = stream.read()
-        self.assertEqual(content, written_content)
-        self.assertEqual(resource.rtype, BOOT_RESOURCE_TYPE.UPLOADED)
-
     def test_adds_boot_resource_set_to_existing_uploaded_boot_resource(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
