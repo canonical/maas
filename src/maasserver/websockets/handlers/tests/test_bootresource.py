@@ -653,7 +653,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         name = "ubuntu/%s" % factory.make_name("series")
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        largefile = factory.make_LargeFile(content=b"")
+        largefile = factory.make_LargeFile(content=b"", size=1000)
         for subarch in subarches:
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,

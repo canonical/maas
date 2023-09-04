@@ -17,12 +17,13 @@ __all__ = [
 from datetime import timedelta
 from operator import itemgetter
 import os
+from pathlib import Path
 from subprocess import CalledProcessError
 from textwrap import dedent
 import threading
 import time
 
-from django.db import connection, connections
+from django.db import connection, connections, transaction
 from django.db.utils import load_backend
 from django.http import HttpResponse, StreamingHttpResponse
 from pkg_resources import parse_version
@@ -1599,3 +1600,59 @@ class ImportResourcesProgressService(TimerService):
             )
 
         return d.addCallback(has_boot_images)
+
+
+def export_images_from_db(target_dir: Path):
+    log.info(f"Exporting image files to {target_dir}")
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    largefile_ids_to_delete = set()
+    oids_to_delete = set()
+    with transaction.atomic():
+        files = (
+            BootResourceFile.objects.all()
+            .select_for_update()
+            .select_related("largefile")
+        )
+
+        expected_images = set()
+        for file in files:
+            imagename = file.largefile.sha256
+
+            def msg(message: str):
+                log.msg(f"{imagename}: {message}")
+
+            total_size = file.largefile.total_size
+            if file.largefile.size != total_size:
+                msg(f"skipping, size is {file.largefile.size} of {total_size}")
+                oids_to_delete.add(file.largefile.content.oid)
+                continue
+
+            image = target_dir / imagename
+            expected_images.add(image)
+
+            if image.exists() and image.lstat().st_size == total_size:
+                msg("skipping, file already present")
+                largefile_ids_to_delete.add(file.largefile_id)
+                continue
+
+            msg("writing")
+            with (
+                file.largefile.content.open("rb") as sfd,
+                image.open("wb") as dfd,
+            ):
+                # read data in blocks to avoid using too much memory with big
+                # images
+                while data := sfd.read(1024 * 1024):
+                    dfd.write(data)
+                largefile_ids_to_delete.add(file.largefile_id)
+                oids_to_delete.add(file.largefile.content.oid)
+
+        existing_images = set(target_dir.iterdir())
+        for image in existing_images - expected_images:
+            image.unlink()
+
+        LargeFile.objects.filter(id__in=largefile_ids_to_delete).delete()
+        with connection.cursor() as cursor:
+            for oid in oids_to_delete:
+                cursor.execute("SELECT lo_unlink(%s)", [oid])

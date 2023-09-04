@@ -2340,7 +2340,7 @@ class Factory(maastesting.factory.Factory):
             description=description,
         )
 
-    def make_LargeFile(self, content: bytes = None, size=512):
+    def make_LargeFile(self, content: bytes = None, size=None):
         """Create `LargeFile`.
 
         :param content: Data to store in large file object.
@@ -2350,7 +2350,12 @@ class Factory(maastesting.factory.Factory):
             be an inprogress file.
         """
         if content is None:
-            content = factory.make_bytes(size=size)
+            content_size = size
+            if content_size is None:
+                content_size = 512
+            content = factory.make_bytes(size=content_size)
+        if size is None:
+            size = len(content)
         sha256 = hashlib.sha256()
         sha256.update(content)
         sha256 = sha256.hexdigest()
@@ -2470,8 +2475,6 @@ class Factory(maastesting.factory.Factory):
         content=None,
         size=None,
     ):
-        if size is None:
-            size = 512
         largefile = self.make_LargeFile(content=content, size=size)
         return self.make_BootResourceFile(
             resource_set,
