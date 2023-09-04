@@ -44,6 +44,7 @@ from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.node import Controller, Machine, Node
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.podhints import PodHints
 from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
@@ -3033,6 +3034,39 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             power_parameters__project=project,
         )
         self.assertEqual(vm.bmc_id, intended_bmc.id)
+
+
+class TestPodHints(MAASServerTestCase, PodTestMixin):
+    def test_sync_hints_doesnt_save_empty_hints(self):
+        cluster = factory.make_VMCluster(pods=0)
+        discovered = self.make_discovered_pod()
+        pod1 = Pod(
+            power_type="lxd",
+            power_parameters={"project": factory.make_name("project")},
+        )
+        pod1.save()
+        mock_hint_save = self.patch(PodHints, "save")
+        pod1.sync_hints(discovered.hints, cluster=cluster)
+        mock_hint_save.assert_called()
+        mock_hint_save.reset_mock()
+        blank = DiscoveredPodHints()
+        pod1.sync_hints(blank)
+        mock_hint_save.assert_not_called()
+
+    def test_sync_hints_doesnt_save_same_hints(self):
+        cluster = factory.make_VMCluster(pods=0)
+        discovered = self.make_discovered_pod()
+        pod1 = Pod(
+            power_type="lxd",
+            power_parameters={"project": factory.make_name("project")},
+        )
+        pod1.save()
+        mock_hint_save = self.patch(PodHints, "save")
+        pod1.sync_hints(discovered.hints, cluster=cluster)
+        mock_hint_save.assert_called()
+        mock_hint_save.reset_mock()
+        pod1.sync_hints(discovered.hints)
+        mock_hint_save.assert_not_called()
 
 
 class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
