@@ -69,7 +69,10 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import RESULT_TYPE
 from provisioningserver.drivers import SETTING_SCOPE
-from provisioningserver.drivers.pod import InterfaceAttachType
+from provisioningserver.drivers.pod import (
+    DiscoveredPodHints,
+    InterfaceAttachType,
+)
 from provisioningserver.drivers.power.registry import (
     PowerDriverRegistry,
     sanitise_power_parameters,
@@ -800,21 +803,30 @@ class Pod(BMC):
     def sync_hints(self, discovered_hints, cluster=None):
         """Sync the hints with `discovered_hints`."""
 
+        def update_hint(
+            hints: PodHints, discovered: DiscoveredPodHints, attr: str
+        ) -> bool:
+            new_val = getattr(discovered, attr)
+            if new_val != DiscoveredPodHints.UNDEFINED and new_val != getattr(
+                hints, attr
+            ):
+                setattr(hints, attr, new_val)
+                return True
+            return False
+
+        changed = False
         try:
             hints = self.hints
         except PodHints.DoesNotExist:
             hints = self.hints = PodHints()
-        if discovered_hints.cores != -1:
-            hints.cores = discovered_hints.cores
-        if discovered_hints.cpu_speed != -1:
-            hints.cpu_speed = discovered_hints.cpu_speed
-        if discovered_hints.memory != -1:
-            hints.memory = discovered_hints.memory
-        if discovered_hints.local_storage != -1:
-            hints.local_storage = discovered_hints.local_storage
-        if cluster is not None:
+            changed = True
+        for a in ["cores", "cpu_speed", "memory", "local_storage"]:
+            changed |= update_hint(hints, discovered_hints, a)
+        if cluster is not None and hints.cluster != cluster:
             hints.cluster = cluster
-        hints.save()
+            changed = True
+        if changed:
+            hints.save()
 
     def add_tag(self, tag):
         """Add tag to Pod."""
