@@ -4,7 +4,13 @@
 """Boot Resource Set."""
 
 
-from django.db.models import CASCADE, CharField, ForeignKey, Sum
+from django.db.models import (
+    CASCADE,
+    CharField,
+    ForeignKey,
+    ManyToManyField,
+    Sum,
+)
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -56,6 +62,8 @@ class BootResourceSet(CleanSave, TimestampedModel):
     version = CharField(max_length=255, editable=False)
 
     label = CharField(max_length=255, editable=False)
+
+    sync = ManyToManyField("RegionController", editable=True, blank=True)
 
     def __str__(self):
         return f"<BootResourceSet {self.version}/{self.label}>"

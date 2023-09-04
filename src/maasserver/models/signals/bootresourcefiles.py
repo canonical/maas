@@ -7,7 +7,6 @@
 from django.db.models.signals import post_delete
 
 from maasserver.models.bootresourcefile import BootResourceFile
-from maasserver.models.largefile import LargeFile
 from maasserver.utils.signals import SignalsManager
 
 signals = SignalsManager()
@@ -21,13 +20,8 @@ def delete_large_file(sender, instance, **kwargs):
     This is done using the `post_delete` signal because only then has the
     relation been removed.
     """
-    try:
-        largefile = instance.largefile
-    except LargeFile.DoesNotExist:
-        pass  # Nothing to do.
-    else:
-        if largefile is not None:
-            largefile.delete()
+    if (largefile := instance.largefile) is not None:
+        largefile.delete()
 
 
 signals.watch(post_delete, delete_large_file, BootResourceFile)

@@ -4,7 +4,13 @@
 """Boot Resource File."""
 
 
-from django.db.models import CASCADE, CharField, ForeignKey, JSONField
+from django.db.models import (
+    BigIntegerField,
+    CASCADE,
+    CharField,
+    ForeignKey,
+    JSONField,
+)
 
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -26,7 +32,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
     :ivar resource_set: `BootResourceSet` file belongs to. When
         `BootResourceSet` is deleted, this `BootResourceFile` will be deleted.
     :ivar largefile: Actual file information and data. See
-        :class:`LargeFile`.
+        :class:`LargeFile` (obsolete).
     :ivar filename: Name of the file.
     :ivar filetype: Type of the file. See the vocabulary
         :class:`BOOT_RESOURCE_FILE_TYPE`.
@@ -44,7 +50,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
         on_delete=CASCADE,
     )
 
-    largefile = ForeignKey(LargeFile, editable=False, on_delete=CASCADE)
+    largefile = ForeignKey(LargeFile, on_delete=CASCADE, null=True)
 
     filename = CharField(max_length=255, editable=False)
 
@@ -56,6 +62,10 @@ class BootResourceFile(CleanSave, TimestampedModel):
     )
 
     extra = JSONField(blank=True, default=dict)
+
+    sha256 = CharField(max_length=64, blank=True)
+
+    size = BigIntegerField(default=0)
 
     def __str__(self):
         return f"<BootResourceFile {self.filename}/{self.filetype}>"

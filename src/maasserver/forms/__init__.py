@@ -2656,6 +2656,8 @@ class BootResourceForm(MAASModelForm):
             largefile=largefile,
             filename=filetype,
             filetype=filetype,
+            size=largefile.total_size,
+            sha256=largefile.sha256,
         )
 
     def validate_unique(self):

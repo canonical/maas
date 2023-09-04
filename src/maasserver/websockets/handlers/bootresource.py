@@ -33,7 +33,6 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     Config,
-    LargeFile,
     Node,
 )
 from maasserver.utils import get_maas_user_agent
@@ -437,11 +436,8 @@ class BootResourceHandler(Handler):
             if resource_set is None:
                 continue
             for rfile in resource_set.files.all():
-                try:
-                    largefile = rfile.largefile
-                except LargeFile.DoesNotExist:
-                    continue
-                if largefile.sha256 not in shas:
+                largefile = rfile.largefile
+                if largefile is not None and largefile.sha256 not in shas:
                     size += largefile.total_size
                     shas.add(largefile.sha256)
         return size

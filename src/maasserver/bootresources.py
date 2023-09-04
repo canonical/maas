@@ -648,28 +648,21 @@ class BootResourceStore(ObjectStore):
         needs_saving = False
         prev_largefile = None
 
-        try:
-            largefile = rfile.largefile
-        except LargeFile.DoesNotExist:
+        largefile = rfile.largefile
+        if largefile is not None and largefile.sha256 != sha256:
+            # The content from simplestreams is different then what is in
+            # the database. We hold the previous largefile so that it can
+            # be removed once the new largefile is created. The largefile
+            # cannot be removed here, because then the `BootResourceFile`
+            # would have to set the largefile field to null, and that is
+            # not allowed.
+            prev_largefile = largefile
             largefile = None
-        else:
-            if largefile.sha256 != sha256:
-                # The content from simplestreams is different then what is in
-                # the database. We hold the previous largefile so that it can
-                # be removed once the new largefile is created. The largefile
-                # cannot be removed here, because then the `BootResourceFile`
-                # would have to set the largefile field to null, and that is
-                # not allowed.
-                prev_largefile = largefile
-                largefile = None
-                msg = (
-                    "Hash mismatch for prev_file=%s resourceset=%s "
-                    "resource=%s" % (prev_largefile, resource_set, resource)
-                )
-                Event.objects.create_region_event(
-                    EVENT_TYPES.REGION_IMPORT_WARNING, msg
-                )
-                maaslog.warning(msg)
+            msg = f"Hash mismatch for prev_file={prev_largefile} resourceset={resource_set} resource={resource}"
+            Event.objects.create_region_event(
+                EVENT_TYPES.REGION_IMPORT_WARNING, msg
+            )
+            maaslog.warning(msg)
 
         if largefile is None:
             # The resource file current does not have a largefile linked. Lets
@@ -692,6 +685,8 @@ class BootResourceStore(ObjectStore):
         # A largefile now exists for this resource file. Its either a new
         # largefile or an existing one that already existed in the database.
         rfile.largefile = largefile
+        rfile.sha256 = largefile.sha256
+        rfile.size = largefile.total_size
         rfile.save()
 
         is_resource_broken = (
@@ -1603,17 +1598,19 @@ class ImportResourcesProgressService(TimerService):
 
 
 def export_images_from_db(target_dir: Path):
+    def _unlink_largefile(file):
+        file.sha256 = file.largefile.sha256
+        file.size = file.largefile.total_size
+        file.largefile = None
+        file.save()
+
     log.info(f"Exporting image files to {target_dir}")
     target_dir.mkdir(parents=True, exist_ok=True)
 
     largefile_ids_to_delete = set()
     oids_to_delete = set()
     with transaction.atomic():
-        files = (
-            BootResourceFile.objects.all()
-            .select_for_update()
-            .select_related("largefile")
-        )
+        files = BootResourceFile.objects.all().select_related("largefile")
 
         expected_images = set()
         for file in files:
@@ -1634,6 +1631,7 @@ def export_images_from_db(target_dir: Path):
             if image.exists() and image.lstat().st_size == total_size:
                 msg("skipping, file already present")
                 largefile_ids_to_delete.add(file.largefile_id)
+                _unlink_largefile(file)
                 continue
 
             msg("writing")
@@ -1647,6 +1645,7 @@ def export_images_from_db(target_dir: Path):
                     dfd.write(data)
                 largefile_ids_to_delete.add(file.largefile_id)
                 oids_to_delete.add(file.largefile.content.oid)
+                _unlink_largefile(file)
 
         existing_images = set(target_dir.iterdir())
         for image in existing_images - expected_images:
