@@ -756,35 +756,6 @@ class TestBootResourceStore(MAASServerTestCase):
         )
         self.assertEqual(product["rolling"], resource.rolling)
 
-    def test_get_or_create_boot_resource_handles_bootloader(self):
-        osystem = factory.make_name("os")
-        product = {
-            "os": osystem,
-            "arch": factory.make_name("arch"),
-            "bootloader-type": factory.make_name("bootloader-type"),
-            "lablel": factory.make_name("label"),
-            "ftype": factory.pick_choice(
-                [
-                    BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
-                    BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
-                ]
-            ),
-            "path": "/path/to/%s" % osystem,
-            "sha256": factory.make_name("sha256"),
-            "src_package": factory.make_name("src_package"),
-            "src_release": factory.make_name("src_release"),
-            "src_version": factory.make_name("src_version"),
-        }
-        store = BootResourceStore()
-        resource = store.get_or_create_boot_resource(product)
-        self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
-        self.assertEqual(
-            "{}/{}".format(product["os"], product["bootloader-type"]),
-            resource.name,
-        )
-        self.assertEqual("%s/generic" % product["arch"], resource.architecture)
-        self.assertEqual(product["bootloader-type"], resource.bootloader_type)
-
     def test_get_or_create_boot_resource_gets_resource(self):
         name, architecture, product = make_product()
         expected = factory.make_BootResource(
@@ -2398,44 +2369,6 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         }
         return src, product, version
 
-    def create_bootloader_simplestream(self, stream_version=None):
-        if stream_version is None:
-            stream_version = "1"
-        product = (
-            "com.ubuntu.maas:daily:%s:bootloader-download" % stream_version
-        )
-        version = datetime.now().date().strftime("%Y%m%d.0")
-        versions = {
-            version: {
-                "items": {
-                    BOOT_RESOURCE_FILE_TYPE.BOOTLOADER: {
-                        "sha256": factory.make_name("sha256"),
-                        "path": factory.make_name("path"),
-                        "ftype": BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
-                        "size": random.randint(0, 2**64),
-                    }
-                }
-            }
-        }
-        products = {
-            product: {
-                "label": "daily",
-                "os": "grub-efi-signed",
-                "arch": "amd64",
-                "bootloader-type": "uefi",
-                "version": version,
-                "versions": versions,
-            }
-        }
-        src = {
-            "datatype": "image-downloads",
-            "format": "products:1.0",
-            "updated": format_datetime(datetime.now()),
-            "products": products,
-            "content_id": "com.ubuntu.maas:daily:1:bootloader-download",
-        }
-        return src, product, version
-
     def test_insert_validates_maas_supported_if_available(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None
@@ -2499,19 +2432,6 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockCalledOnce())
 
-    def test_insert_allows_bootloader(self):
-        boot_resource_repo_writer = BootResourceRepoWriter(
-            BootResourceStore(), None
-        )
-        src, product, version = self.create_bootloader_simplestream()
-        data = src["products"][product]["versions"][version]["items"][
-            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER
-        ]
-        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
-        mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
-        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
-
     def test_insert_allows_archive_tar_xz(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
             BootResourceStore(), None
@@ -2539,34 +2459,6 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             unknown_ftype
         ]
         pedigree = (product, version, unknown_ftype)
-        mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
-        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
-
-    def test_insert_validates_bootloader(self):
-        boot_resource_repo_writer = BootResourceRepoWriter(
-            BootResourceStore(), None
-        )
-        src, product, version = self.create_bootloader_simplestream()
-        data = src["products"][product]["versions"][version]["items"][
-            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER
-        ]
-        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
-        mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
-        boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
-
-    def test_insert_validates_rejects_unknown_version(self):
-        boot_resource_repo_writer = BootResourceRepoWriter(
-            BootResourceStore(), None
-        )
-        src, product, version = self.create_bootloader_simplestream(
-            factory.make_name("stream_version")
-        )
-        data = src["products"][product]["versions"][version]["items"][
-            BOOT_RESOURCE_FILE_TYPE.BOOTLOADER
-        ]
-        pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.BOOTLOADER)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
         self.assertThat(mock_insert, MockNotCalled())

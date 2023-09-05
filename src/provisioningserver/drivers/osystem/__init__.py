@@ -249,9 +249,6 @@ class OperatingSystemRegistry(Registry):
     """Registry for operating system classes."""
 
 
-from provisioningserver.drivers.osystem.bootloader import (  # noqa:E402 isort:skip
-    BootLoaderOS,
-)
 from provisioningserver.drivers.osystem.centos import (  # noqa:E402 isort:skip
     CentOS,
 )
@@ -280,7 +277,6 @@ from provisioningserver.drivers.osystem.windows import (  # noqa:E402 isort:skip
 builtin_osystems = [
     UbuntuOS(),
     UbuntuCoreOS(),
-    BootLoaderOS(),
     CentOS(),
     RHELOS(),
     CustomOS(),

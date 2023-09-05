@@ -25,10 +25,7 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     maas_meta_last_modified,
 )
-from provisioningserver.drivers.osystem import (
-    BOOT_IMAGE_PURPOSE,
-    OperatingSystemRegistry,
-)
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
 )
@@ -493,29 +490,6 @@ class TestTFTPPath(MAASTestCase):
                     "xinstall_type": xi_type,
                     "supported_subarches": image_resource["subarches"],
                 },
-            ],
-            params,
-        )
-
-    def test_extract_image_params_with_bootloader(self):
-        bootloader_type = factory.make_name("bootloader_type")
-        arch = factory.make_name("arch")
-        path = ("bootloader", bootloader_type, arch)
-
-        params = extract_image_params(path, "")
-
-        self.assertCountEqual(
-            [
-                {
-                    "osystem": "bootloader",
-                    "architecture": arch,
-                    "subarchitecture": "generic",
-                    "release": bootloader_type,
-                    "label": "*",
-                    "purpose": BOOT_IMAGE_PURPOSE.BOOTLOADER,
-                    "xinstall_path": "",
-                    "xinstall_type": "",
-                }
             ],
             params,
         )
