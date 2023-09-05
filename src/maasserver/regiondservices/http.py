@@ -91,6 +91,7 @@ class RegionHTTPService(Service):
             "worker_socket_paths": worker_socket_paths,
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
+            "boot_resources_dir": get_maas_data_path("boot-resources"),
         }
         rendered = template.substitute(environ).encode()
         target_path = Path(compose_http_config_path("regiond.nginx.conf"))

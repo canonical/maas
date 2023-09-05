@@ -88,6 +88,7 @@ class TestRegionHTTPService(
     def test_configure_not_snap(self):
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
+        boot_resources_dir = f"{data_path}/boot-resources"
         http.REGIOND_SOCKET_PATH = f"{data_path}/maas-regiond-webapp.sock"
 
         tempdir = self.make_dir()
@@ -114,6 +115,7 @@ class TestRegionHTTPService(
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("ssl_certificate cert_path;", nginx_config)
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
+        self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
     def test_configure_in_snap(self):
         self.patch(
@@ -122,9 +124,12 @@ class TestRegionHTTPService(
             {
                 "SNAP": "/snap/maas/5443",
                 "MAAS_HTTP_CONFIG_DIR": os.getenv("MAAS_DATA"),
+                "MAAS_DATA": os.getenv("MAAS_DATA"),
             },
         )
         http.REGIOND_SOCKET_PATH = "/snap/maas/maas-regiond-webapp.sock"
+
+        boot_resources_dir = f"{os.getenv('MAAS_DATA')}/boot-resources"
 
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
@@ -151,6 +156,7 @@ class TestRegionHTTPService(
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("ssl_certificate cert_path;", nginx_config)
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
+        self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
     def test_configure_https_also_has_http_server(self):
         tempdir = self.make_dir()

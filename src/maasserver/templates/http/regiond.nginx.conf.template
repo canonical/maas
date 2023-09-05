@@ -116,6 +116,13 @@ server {
     location /metrics/temporal {
         proxy_pass http://temporal-metrics/metrics;
     }
+
+    location /MAAS/boot-resources/ {
+        autoindex off;
+        root {{boot_resources_dir}};
+        rewrite ^/MAAS/boot-resources/([^/]+)/?.*$ /$1 break;
+        try_files /$1 =404;
+    }
 }
 
 {{if tls_enabled}}
@@ -150,6 +157,13 @@ server {
     location /MAAS/images-stream {
         proxy_pass http://regiond-webapp;
     }   
+
+    location /MAAS/boot-resources/ {
+        autoindex off;
+        root {{boot_resources_dir}};
+        rewrite ^/MAAS/boot-resources/([^/]+)/?.*$ /$1 break;
+        try_files /$1 =404;
+    }
 
     location /MAAS {
         return 301 https://$host:{{tls_port}}$request_uri;
