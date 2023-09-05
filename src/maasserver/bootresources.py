@@ -18,6 +18,7 @@ from datetime import timedelta
 from operator import itemgetter
 import os
 from pathlib import Path
+import shutil
 from subprocess import CalledProcessError
 from textwrap import dedent
 import threading
@@ -1598,7 +1599,7 @@ class ImportResourcesProgressService(TimerService):
 
 
 def export_images_from_db(target_dir: Path):
-    def _unlink_largefile(file):
+    def unlink_largefile(file):
         file.sha256 = file.largefile.sha256
         file.size = file.largefile.total_size
         file.largefile = None
@@ -1630,22 +1631,17 @@ def export_images_from_db(target_dir: Path):
 
             if image.exists() and image.lstat().st_size == total_size:
                 msg("skipping, file already present")
-                largefile_ids_to_delete.add(file.largefile_id)
-                _unlink_largefile(file)
-                continue
+            else:
+                msg("writing")
+                with (
+                    file.largefile.content.open("rb") as sfd,
+                    image.open("wb") as dfd,
+                ):
+                    shutil.copyfileobj(sfd, dfd)
+                    oids_to_delete.add(file.largefile.content.oid)
 
-            msg("writing")
-            with (
-                file.largefile.content.open("rb") as sfd,
-                image.open("wb") as dfd,
-            ):
-                # read data in blocks to avoid using too much memory with big
-                # images
-                while data := sfd.read(1024 * 1024):
-                    dfd.write(data)
-                largefile_ids_to_delete.add(file.largefile_id)
-                oids_to_delete.add(file.largefile.content.oid)
-                _unlink_largefile(file)
+            largefile_ids_to_delete.add(file.largefile_id)
+            unlink_largefile(file)
 
         existing_images = set(target_dir.iterdir())
         for image in existing_images - expected_images:
