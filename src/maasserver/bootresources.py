@@ -1599,12 +1599,6 @@ class ImportResourcesProgressService(TimerService):
 
 
 def export_images_from_db(target_dir: Path):
-    def unlink_largefile(file):
-        file.sha256 = file.largefile.sha256
-        file.size = file.largefile.total_size
-        file.largefile = None
-        file.save()
-
     log.info(f"Exporting image files to {target_dir}")
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1613,12 +1607,18 @@ def export_images_from_db(target_dir: Path):
     with transaction.atomic():
         files = BootResourceFile.objects.all().select_related("largefile")
 
-        expected_images = set()
+        expected_files = set()
         for file in files:
-            imagename = file.largefile.sha256
+            imagename = file.sha256
+            image = target_dir / imagename
 
             def msg(message: str):
                 log.msg(f"{imagename}: {message}")
+
+            if file.largefile is None:
+                msg("content already migrated to disk")
+                expected_files.add(image)
+                continue
 
             total_size = file.largefile.total_size
             if file.largefile.size != total_size:
@@ -1626,8 +1626,7 @@ def export_images_from_db(target_dir: Path):
                 oids_to_delete.add(file.largefile.content.oid)
                 continue
 
-            image = target_dir / imagename
-            expected_images.add(image)
+            expected_files.add(image)
 
             if image.exists() and image.lstat().st_size == total_size:
                 msg("skipping, file already present")
@@ -1641,11 +1640,15 @@ def export_images_from_db(target_dir: Path):
                     oids_to_delete.add(file.largefile.content.oid)
 
             largefile_ids_to_delete.add(file.largefile_id)
-            unlink_largefile(file)
+            # need to unset it because the post-delete signal will otherwise
+            # try to delete the largefile object, which is already handled
+            # below
+            file.largefile = None
+            file.save()
 
-        existing_images = set(target_dir.iterdir())
-        for image in existing_images - expected_images:
-            image.unlink()
+        existing_files = set(target_dir.iterdir())
+        for file in existing_files - expected_files:
+            file.unlink()
 
         LargeFile.objects.filter(id__in=largefile_ids_to_delete).delete()
         with connection.cursor() as cursor:

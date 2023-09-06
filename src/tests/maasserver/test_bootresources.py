@@ -116,3 +116,28 @@ class TestExportImagesFromDB:
         with connection.cursor() as cursor:
             cursor.execute("SELECT loid FROM pg_largeobject")
             assert cursor.fetchall() == []
+
+    def test_no_largefile_ignore(self, target_dir, factory):
+        resource = factory.make_BootResource(
+            name="ubuntu/jammy",
+            architecture="s390x/generic",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource=resource,
+            version="20230901",
+            label="stable",
+        )
+        sha256 = "abcde"
+        factory.make_BootResourceFile(
+            resource_set=resource_set,
+            largefile=None,
+            filename="boot-initrd",
+            sha256=sha256,
+            size=100,
+        )
+
+        target_dir.mkdir()
+        resource_file = target_dir / sha256
+        resource_file.touch()
+        export_images_from_db(target_dir)
+        assert resource_file.exists()

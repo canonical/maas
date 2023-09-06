@@ -2452,7 +2452,9 @@ class Factory(maastesting.factory.Factory):
         largefile,
         filename=None,
         filetype=None,
+        sha256=None,
         extra=None,
+        size=0,
     ):
         if filename is None:
             filename = self.make_name("name")
@@ -2463,14 +2465,17 @@ class Factory(maastesting.factory.Factory):
                 self.make_name("key"): self.make_name("value")
                 for _ in range(3)
             }
+        if largefile:
+            sha256 = largefile.sha256
+            size = largefile.total_size
         return BootResourceFile.objects.create(
             resource_set=resource_set,
             largefile=largefile,
             filename=filename,
             filetype=filetype,
             extra=extra,
-            sha256=largefile.sha256,
-            size=largefile.total_size,
+            sha256=sha256,
+            size=size,
         )
 
     def make_boot_resource_file_with_content(
