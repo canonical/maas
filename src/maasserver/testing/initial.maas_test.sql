@@ -11902,6 +11902,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 362	maasserver	0306_diskless_ephemeral_deploy	2023-09-01 03:30:49.394747+00
 363	maasserver	0307_bootresource_type_drop_generated	2023-09-05 03:30:35.621467+00
 364	maasserver	0308_remove_images_from_db	2023-09-05 03:30:35.88739+00
+365	maasserver	0309_drop_bootloader_filetype	2023-09-06 03:30:38.148484+00
 \.
 
 
@@ -13008,7 +13009,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 364, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 365, true);
 
 
 --
