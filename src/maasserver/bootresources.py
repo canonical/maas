@@ -20,11 +20,13 @@ import os
 from pathlib import Path
 import shutil
 from subprocess import CalledProcessError
+import tarfile
 from textwrap import dedent
 import threading
 import time
 
 from django.db import connection, connections, transaction
+from django.db.models import F
 from django.db.utils import load_backend
 from django.http import HttpResponse, StreamingHttpResponse
 from pkg_resources import parse_version
@@ -1601,19 +1603,36 @@ class ImportResourcesProgressService(TimerService):
 def export_images_from_db(target_dir: Path):
     log.info(f"Exporting image files to {target_dir}")
     target_dir.mkdir(parents=True, exist_ok=True)
+    bootloaders_dir = target_dir / "bootloaders"
+    bootloaders_dir.mkdir(exist_ok=True)
 
     largefile_ids_to_delete = set()
     oids_to_delete = set()
     with transaction.atomic():
-        files = BootResourceFile.objects.all().select_related("largefile")
+        files = (
+            BootResourceFile.objects.all()
+            .select_related("largefile")
+            .annotate(
+                architecture=F("resource_set__resource__architecture"),
+                bootloader_type=F("resource_set__resource__bootloader_type"),
+            )
+        )
 
-        expected_files = set()
+        expected_files = {bootloaders_dir}
         for file in files:
             imagename = file.sha256
             image = target_dir / imagename
 
             def msg(message: str):
                 log.msg(f"{imagename}: {message}")
+
+            def extract_bootloaders(file):
+                arch = file.architecture.split("/")[0]
+                bootloader_dir = bootloaders_dir / file.bootloader_type / arch
+                bootloader_dir.mkdir(parents=True, exist_ok=True)
+                with tarfile.open(image.absolute(), mode="r") as tar:
+                    for member in tar:
+                        tar.extract(member, path=bootloader_dir.absolute())
 
             if file.largefile is None:
                 msg("content already migrated to disk")
@@ -1638,6 +1657,12 @@ def export_images_from_db(target_dir: Path):
                 ):
                     shutil.copyfileobj(sfd, dfd)
                     oids_to_delete.add(file.largefile.content.oid)
+
+                if (
+                    file.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+                    and file.bootloader_type
+                ):
+                    extract_bootloaders(file)
 
             largefile_ids_to_delete.add(file.largefile_id)
             # need to unset it because the post-delete signal will otherwise

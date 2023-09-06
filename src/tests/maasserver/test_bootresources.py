@@ -5,6 +5,7 @@ from django.db import connection
 import pytest
 
 from maasserver.bootresources import export_images_from_db
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.utils.orm import reload_object
 
 
@@ -14,14 +15,14 @@ def target_dir(tmpdir):
 
 
 def list_files(base_path):
-    return {path.relative_to(base_path) for path in base_path.iterdir()}
+    return {str(path.relative_to(base_path)) for path in base_path.iterdir()}
 
 
 @pytest.mark.usefixtures("maasdb")
 class TestExportImagesFromDB:
     def test_empty(self, target_dir):
         export_images_from_db(target_dir)
-        assert list(target_dir.iterdir()) == []
+        assert list_files(target_dir) == {"bootloaders"}
 
     def test_create_files(self, target_dir, factory):
         resource1 = factory.make_BootResource(
@@ -57,8 +58,9 @@ class TestExportImagesFromDB:
         )
         export_images_from_db(target_dir)
         assert list_files(target_dir) == {
-            Path(sha256(content1).hexdigest()),
-            Path(sha256(content2).hexdigest()),
+            "bootloaders",
+            sha256(content1).hexdigest(),
+            sha256(content2).hexdigest(),
         }
 
     def test_remove_extra_files(self, target_dir, factory):
@@ -141,3 +143,37 @@ class TestExportImagesFromDB:
         resource_file.touch()
         export_images_from_db(target_dir)
         assert resource_file.exists()
+
+    def test_booloaders_export(self, tmpdir, target_dir, factory):
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name="grub-efi/uefi",
+            architecture="amd64/generic",
+            bootloader_type="uefi",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource=resource,
+            version="20230901",
+            label="stable",
+        )
+        tarball = Path(
+            factory.make_tarball(
+                tmpdir,
+                {
+                    "grubx64.efi": b"grub content",
+                    "bootx64.efi": b"boot content",
+                },
+            )
+        )
+        factory.make_boot_resource_file_with_content(
+            resource_set=resource_set,
+            filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
+            filename="grub2-signed.tar.xz",
+            content=tarball.read_bytes(),
+        )
+        export_images_from_db(target_dir)
+        bootloader_dir = target_dir / "bootloaders/uefi/amd64"
+        assert list_files(bootloader_dir) == {
+            "grubx64.efi",
+            "bootx64.efi",
+        }
