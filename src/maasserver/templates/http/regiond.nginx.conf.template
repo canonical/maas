@@ -117,11 +117,12 @@ server {
         proxy_pass http://temporal-metrics/metrics;
     }
 
-    location /MAAS/boot-resources/ {
+    location ~ ^/MAAS/boot-resources/([^/]+)/?(.*)$ {
+        # /MAAS/boot-resources/$hash/$labels -> {{boot_resources_dir}}/$hash (labels ignored)
+        # /MAAS/boot-resources/$dir/.../$file -> {{boot_resources_dir}}/$dir/.../$file (full path)
         autoindex off;
         root {{boot_resources_dir}};
-        rewrite ^/MAAS/boot-resources/([^/]+)/?.*$ /$1 break;
-        try_files /$1 =404;
+        try_files /$1 /$1/$2 =404;
     }
 }
 
@@ -158,11 +159,12 @@ server {
         proxy_pass http://regiond-webapp;
     }   
 
-    location /MAAS/boot-resources/ {
+    location ~ ^/MAAS/boot-resources/([^/]+)/?(.*)$ {
+        # /MAAS/boot-resources/$hash/$labels -> {{boot_resources_dir}}/$hash (labels ignored)
+        # /MAAS/boot-resources/$dir/.../$file -> {{boot_resources_dir}}/$dir/.../$file (full path)
         autoindex off;
         root {{boot_resources_dir}};
-        rewrite ^/MAAS/boot-resources/([^/]+)/?.*$ /$1 break;
-        try_files /$1 =404;
+        try_files /$1 /$1/$2 =404;
     }
 
     location /MAAS {
