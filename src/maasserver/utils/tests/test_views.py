@@ -382,6 +382,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             MockCallsMatch(call(request), call(request), call(request)),
         )
         self.assertIsInstance(response, HttpResponseConflict)
+        self.expectThat(response["Retry-After"], Equals("5"))
         self.expectThat(response.status_code, Equals(http.client.CONFLICT))
         self.expectThat(
             response.reason_phrase,
