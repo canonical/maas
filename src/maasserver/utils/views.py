@@ -38,6 +38,8 @@ from provisioningserver.utils.twisted import retries
 
 logger = logging.getLogger(__name__)
 
+RETRY_AFTER_CONFLICT = 5
+
 
 class InternalErrorResponse(BaseException):
     """Exception raised to exit the transaction context.
@@ -149,6 +151,9 @@ class HttpResponseConflict(MAASDjangoTemplateResponse):
 
     def __init__(self, response=None, exc_info=None):
         super().__init__(response=response)
+        # Responses with status code 409 should be retried by the clients
+        # see https://bugs.launchpad.net/maas/+bug/2034014/comments/6 for more information
+        self["Retry-After"] = RETRY_AFTER_CONFLICT
         self.exc_info = exc_info
 
 
