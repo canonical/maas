@@ -19,7 +19,10 @@ from zope.interface import implementer
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
-from provisioningserver.kernel_opts import compose_kernel_command_line
+from provisioningserver.kernel_opts import (
+    compose_kernel_command_line,
+    KernelParameters,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
@@ -345,51 +348,51 @@ class BootMethod(metaclass=ABCMeta):
             try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, error)
             raise AssertionError(error)
 
-    def compose_template_namespace(self, kernel_params):
+    def compose_template_namespace(self, kernel_params: KernelParameters):
         """Composes the namespace variables that are used by a boot
         method template.
         """
         dtb_subarchs = ["xgene-uboot-mustang"]
 
-        def fs_host(params):
+        def fs_host(params: KernelParameters):
             return "http://%s:5248/images/" % (
                 convert_host_to_uri_str(params.fs_host)
             )
 
-        def image_dir(params):
+        def kernel_image_dir(params: KernelParameters):
             return compose_image_path(
-                params.osystem,
+                params.kernel_osystem,
                 params.arch,
                 params.subarch,
-                params.release,
-                params.label,
+                params.kernel_release,
+                params.kernel_label,
             )
 
-        def initrd_path(params):
+        def initrd_path(params: KernelParameters):
             # Normally the initrd filename is the SimpleStream filetype. If
             # no filetype is given try the filetype.
             if params.initrd is not None:
                 initrd = params.initrd
             else:
                 initrd = "boot-initrd"
-            return f"{image_dir(params)}/{initrd}"
+            return f"{kernel_image_dir(params)}/{initrd}"
 
-        def kernel_name(params):
+        def kernel_name(params: KernelParameters):
             if params.kernel is not None:
                 return params.kernel
             else:
                 return "boot-kernel"
 
-        def kernel_path(params):
+        def kernel_path(params: KernelParameters):
             # Normally the kernel filename is the SimpleStream filetype. If
             # no filetype is given try the filetype.
             if params.kernel is not None:
                 kernel = params.kernel
             else:
                 kernel = "boot-kernel"
-            return f"{image_dir(params)}/{kernel}"
+            return f"{kernel_image_dir(params)}/{kernel}"
 
-        def dtb_path(params):
+        def dtb_path(params: KernelParameters):
             if params.subarch in dtb_subarchs:
                 # Normally the dtb filename is the SimpleStream filetype. If
                 # no filetype is given try the filetype.
@@ -397,11 +400,11 @@ class BootMethod(metaclass=ABCMeta):
                     boot_dtb = params.boot_dtb
                 else:
                     boot_dtb = "boot-dtb"
-                return f"{image_dir(params)}/{boot_dtb}"
+                return f"{kernel_image_dir(params)}/{boot_dtb}"
             else:
                 return None
 
-        def kernel_command(params):
+        def kernel_command(params: KernelParameters):
             return compose_kernel_command_line(params)
 
         namespace = {

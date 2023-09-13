@@ -3,7 +3,6 @@
 
 """Generate kernel command-line options for inclusion in PXE configs."""
 
-
 from collections import namedtuple
 import os
 
@@ -29,6 +28,10 @@ KernelParametersBase = namedtuple(
         "arch",  # Machine architecture, e.g. "i386"
         "subarch",  # Machine subarchitecture, e.g. "generic"
         "release",  # OS release, e.g. "precise"
+        "xinstall_path",  # filename for the image
+        "kernel_osystem",  # Kernel operating system, e.g. "ubuntu"
+        "kernel_release",  # Kernel OS release, e.g. "precise"
+        "kernel_label",  # Kernel label, e.g. "release"
         "kernel",  # The kernel filename
         "initrd",  # The initrd filename
         "boot_dtb",  # The boot_dtb filename
@@ -61,7 +64,7 @@ class KernelParameters(KernelParametersBase):
         return super().__new__(cls, *args, **kwargs)
 
 
-def compose_logging_opts(params):
+def compose_logging_opts(params: KernelParameters):
     return ["log_host=%s" % params.log_host, "log_port=%d" % params.log_port]
 
 
@@ -78,12 +81,24 @@ def get_last_directory(root):
     return max(dirs)
 
 
-def compose_purpose_opts(params):
+def compose_purpose_opts(params: KernelParameters):
     """Return the list of the purpose-specific kernel options."""
+
+    image_filename = params.xinstall_path
+    if not image_filename:
+        image_filename = "squashfs"
+    image_type = "squash"
+
+    # XXX: We assume that a symlink from `root.tgz` to `root-tgz` has been created for the custom images on the rack.
+    # Update this according to the outcome/implementation of https://warthogs.atlassian.net/browse/MAASENG-2151
+    if image_filename.endswith("tgz"):
+        image_type = "tar"
+        image_filename = image_filename.replace("-tgz", ".tgz")
+
     kernel_params = [
-        "ro",
-        "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs"
+        "root=%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s"
         % (
+            image_type,
             (
                 "[%s]" % params.fs_host
                 if IPAddress(params.fs_host).version == 6
@@ -94,6 +109,7 @@ def compose_purpose_opts(params):
             params.subarch,
             params.release,
             params.label,
+            image_filename,
         ),
         # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
         # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
@@ -105,19 +121,25 @@ def compose_purpose_opts(params):
             else "ip=off"
         ),
         ("ip6=dhcp" if IPAddress(params.fs_host).version == 6 else "ip6=off"),
-        # Read by overlayroot package.
-        "overlayroot=tmpfs",
-        # LP:1533822 - Disable reading overlay data from disk.
-        "overlayroot_cfgdisk=disabled",
         # Select the MAAS datasource by default.
         "cc:{'datasource_list': ['MAAS']}end_cc",
         # Read by cloud-init.
         "cloud-config-url=%s" % params.preseed_url,
     ]
+    if image_type == "squash":
+        kernel_params.extend(
+            [
+                "ro",
+                # Read by overlayroot package.
+                "overlayroot=tmpfs",
+                # LP:1533822 - Disable reading overlay data from disk.
+                "overlayroot_cfgdisk=disabled",
+            ]
+        )
     return kernel_params
 
 
-def compose_apparmor_opts(params):
+def compose_apparmor_opts(params: KernelParameters):
     if params.osystem == "ubuntu":
         di = UbuntuDistroInfo()
         codenames = di.get_all()
@@ -130,7 +152,7 @@ def compose_apparmor_opts(params):
     return []
 
 
-def compose_arch_opts(params):
+def compose_arch_opts(params: KernelParameters):
     """Return any architecture-specific options required"""
     arch_subarch = f"{params.arch}/{params.subarch}"
     resource = ArchitectureRegistry.get_item(arch_subarch)
@@ -148,7 +170,7 @@ def get_curtin_kernel_cmdline_sep():
     return getattr(curtin, CURTIN_KERNEL_CMDLINE_NAME, "--")
 
 
-def compose_kernel_command_line(params):
+def compose_kernel_command_line(params: KernelParameters):
     """Generate a line of kernel options for booting `node`.
 
     :type params: `KernelParameters`.

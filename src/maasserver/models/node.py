@@ -1552,7 +1552,7 @@ class Node(CleanSave, TimestampedModel):
         """Create and retrieve storage layout issues error messages."""
         issues = []
         # Storage isn't applied to an ephemeral_deployment
-        if self.ephemeral_deploy and self.osystem == "ubuntu":
+        if self.ephemeral_deploy:
             return []
         if self.is_diskless:
             issues.append(
@@ -5534,11 +5534,13 @@ class Node(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Cannot deploy as a VM host for ephemeral deployments."
             )
-        if self.ephemeral_deploy and not release_a_newer_than_b(
-            self.distro_series, "bionic"
+        if (
+            self.ephemeral_deploy
+            and self.osystem == "ubuntu"
+            and not release_a_newer_than_b(self.distro_series, "bionic")
         ):
             raise ValidationError(
-                "Ephemeral deployments only supported on Ubuntu Bionic 18.04+"
+                "Ubuntu ephemeral deployments only supported on Ubuntu Bionic 18.04+"
             )
         self._register_request_event(
             user, event, action="start", comment=comment

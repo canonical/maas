@@ -106,39 +106,65 @@ class TestGetBootImage(MAASTestCase):
     def patch_list_boot_images(self, images):
         self.patch(tftp_module, "list_boot_images").return_value = images
 
-    def get_params_from_boot_image(self, image):
-        return {
-            "osystem": image["osystem"],
-            "release": image["release"],
-            "arch": image["architecture"],
-            "subarch": image["subarchitecture"],
-            "purpose": image["purpose"],
-        }
-
     def test_returns_commissioning_image_for_enlist(self):
         images, expected_image = self.make_all_boot_images("commissioning")
         self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        params["purpose"] = "enlist"
-        self.assertEqual(expected_image, get_boot_image(params))
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                expected_image["subarchitecture"],
+                "enlist",
+                skip_subarchitecture_check=False,
+            ),
+        )
 
     def test_returns_commissioning_image_for_commissioning(self):
         images, expected_image = self.make_all_boot_images("commissioning")
         self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        self.assertEqual(expected_image, get_boot_image(params))
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                expected_image["subarchitecture"],
+                expected_image["purpose"],
+                skip_subarchitecture_check=False,
+            ),
+        )
 
     def test_returns_xinstall_image_for_xinstall(self):
         images, expected_image = self.make_all_boot_images("xinstall")
         self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        self.assertEqual(expected_image, get_boot_image(params))
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                expected_image["subarchitecture"],
+                expected_image["purpose"],
+                skip_subarchitecture_check=False,
+            ),
+        )
 
     def test_returns_install_image_for_install(self):
         images, expected_image = self.make_all_boot_images("install")
         self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        self.assertEqual(expected_image, get_boot_image(params))
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                expected_image["subarchitecture"],
+                expected_image["purpose"],
+                skip_subarchitecture_check=False,
+            ),
+        )
 
     def test_returns_image_by_its_supported_subarches(self):
         subarch = factory.make_name("hwe")
@@ -148,22 +174,47 @@ class TestGetBootImage(MAASTestCase):
             "commissioning", subarch="generic", subarches=subarches
         )
         self.patch_list_boot_images(images)
-        params = self.get_params_from_boot_image(expected_image)
-        params["subarch"] = subarch
-        self.assertEqual(expected_image, get_boot_image(params))
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                subarch,
+                expected_image["purpose"],
+                skip_subarchitecture_check=False,
+            ),
+        )
+
+    def test_skip_subarch_check(self):
+        subarch = factory.make_name("generic")
+        images, expected_image = self.make_all_boot_images(
+            "commissioning", subarch=""
+        )
+        self.patch_list_boot_images(images)
+        self.assertEqual(
+            expected_image,
+            get_boot_image(
+                expected_image["osystem"],
+                expected_image["release"],
+                expected_image["architecture"],
+                subarch,
+                expected_image["purpose"],
+                skip_subarchitecture_check=True,
+            ),
+        )
 
     def test_returns_None_if_missing_image(self):
         images, _ = self.make_all_boot_images(None)
         self.patch_list_boot_images(images)
         self.assertIsNone(
             get_boot_image(
-                {
-                    "osystem": factory.make_name("os"),
-                    "release": factory.make_name("release"),
-                    "arch": factory.make_name("arch"),
-                    "subarch": factory.make_name("subarch"),
-                    "purpose": factory.make_name("purpose"),
-                }
+                factory.make_name("os"),
+                factory.make_name("release"),
+                factory.make_name("arch"),
+                factory.make_name("subarch"),
+                factory.make_name("purpose"),
+                skip_subarchitecture_check=False,
             )
         )
 
@@ -560,8 +611,18 @@ class TestTFTPBackend(MAASTestCase):
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):
+        osystem = factory.make_name("ubuntu")
+        release = factory.make_name("focal")
+        label = factory.make_name("stable")
         # Fake kernel configuration parameters, as returned from the RPC call.
-        fake_kernel_params = make_kernel_parameters()
+        fake_kernel_params = make_kernel_parameters(
+            osystem=osystem,
+            release=release,
+            label=label,
+            kernel_osystem=osystem,
+            kernel_release=release,
+            kernel_label=label,
+        )
         fake_params = fake_kernel_params._asdict()
 
         # Stub the output of list_boot_images so the label is set in the
@@ -574,6 +635,7 @@ class TestTFTPBackend(MAASTestCase):
             "purpose": fake_params["purpose"],
             "supported_subarches": "",
             "label": fake_params["label"],
+            "xinstall_path": fake_params["xinstall_path"],
         }
         self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
         del fake_params["label"]
@@ -618,7 +680,10 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_boot_method_reader_returns_rendered_params_for_local(self):
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters(
-            purpose="local", label="local"
+            purpose="local",
+            label="local",
+            kernel_label="local",
+            xinstall_path="",
         )
         fake_params = fake_kernel_params._asdict()
         del fake_params["label"]
@@ -663,7 +728,10 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_boot_method_reader_returns_rendered_params_local_device(self):
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters(
-            purpose="local", label="local"
+            purpose="local",
+            label="local",
+            kernel_label="local",
+            xinstall_path="",
         )
         fake_params = fake_kernel_params._asdict()
         del fake_params["label"]
@@ -710,7 +778,9 @@ class TestTFTPBackend(MAASTestCase):
     @inlineCallbacks
     def test_get_boot_method_reader_returns_no_image(self):
         # Fake kernel configuration parameters, as returned from the RPC call.
-        fake_kernel_params = make_kernel_parameters(label="no-such-image")
+        fake_kernel_params = make_kernel_parameters(
+            label="no-such-image", kernel_label="no-such-image"
+        )
         fake_params = fake_kernel_params._asdict()
 
         # Stub the output of list_boot_images so no images exist.

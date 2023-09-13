@@ -250,8 +250,10 @@ def get_boot_config_for_machine(machine, configs, purpose):
                 # Use only the commissioning osystem and series, for operating
                 # systems other than Ubuntu. As Ubuntu supports HWE kernels,
                 # and needs to use that kernel to perform the installation.
-                osystem = configs["commissioning_osystem"]
-                series = configs["commissioning_distro_series"]
+                # In case of ephemeral deployment of custom images we have to keep the original osystem/series.
+                if not machine.ephemeral_deploy:
+                    osystem = configs["commissioning_osystem"]
+                    series = configs["commissioning_distro_series"]
                 # LP:2013529, machine HWE kernel might not exist for
                 # commissioning osystem/series
                 use_machine_hwe_kernel = False
@@ -293,13 +295,15 @@ def get_boot_config_for_machine(machine, configs, purpose):
         subarch = machine.hwe_kernel
 
     try:
-        subarch = get_working_kernel(
-            subarch,
-            machine.min_hwe_kernel,
-            machine.architecture,
-            osystem,
-            series,
-        )
+        # For custom ephemeral deployments return the image subarch as it is. Otherwise, retrieve the working kernel.
+        if not machine.ephemeral_deploy or osystem == "ubuntu":
+            subarch = get_working_kernel(
+                subarch,
+                machine.min_hwe_kernel,
+                machine.architecture,
+                osystem,
+                series,
+            )
     except ValidationError:
         # In case the kernel for that particular subarch
         # was not found, and no specific kernel was requested,
@@ -499,6 +503,7 @@ def get_config(
         machine.save()
 
         arch, subarch = machine.split_arch()
+
         if configs["use_rack_proxy"]:
             preseed_url = compose_preseed_url(
                 machine,
@@ -541,6 +546,8 @@ def get_config(
                 "subarch": subarch,
                 "osystem": machine.osystem,
                 "release": machine.distro_series,
+                "kernel_osystem": machine.osystem,
+                "kernel_release": machine.distro_series,
                 "kernel": "",
                 "initrd": "",
                 "boot_dtb": "",
@@ -655,6 +662,19 @@ def get_config(
         extra_kernel_opts = configs["kernel_opts"]
 
     boot_purpose = get_final_boot_purpose(machine, arch, purpose)
+
+    kernel_osystem, kernel_release = osystem, series
+    # For custom image ephemeral deployments we use the default (ubuntu) commissioning os/distro kernel
+    if (
+        machine is not None
+        and machine.ephemeral_deploy
+        and machine.osystem != "ubuntu"
+    ):
+        kernel_osystem, kernel_release = (
+            configs["commissioning_osystem"],
+            configs["commissioning_distro_series"],
+        )
+
     kernel, initrd, boot_dtb = get_boot_filenames(
         arch,
         subarch,
@@ -671,6 +691,8 @@ def get_config(
         "subarch": subarch,
         "osystem": osystem,
         "release": series,
+        "kernel_osystem": kernel_osystem,
+        "kernel_release": kernel_release,
         "kernel": kernel,
         "initrd": initrd,
         "boot_dtb": boot_dtb,

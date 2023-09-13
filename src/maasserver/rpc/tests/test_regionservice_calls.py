@@ -361,6 +361,8 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
                     "subarch",
                     "osystem",
                     "release",
+                    "kernel_osystem",
+                    "kernel_release",
                     "kernel",
                     "initrd",
                     "boot_dtb",

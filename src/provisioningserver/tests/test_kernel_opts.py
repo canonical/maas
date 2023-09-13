@@ -8,7 +8,7 @@ import os
 import random
 from unittest.mock import sentinel
 
-from testtools.matchers import ContainsAll
+from testtools.matchers import Contains, ContainsAll, Not
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -142,6 +142,46 @@ class TestKernelOpts(MAASTestCase):
                 ]
             ),
         )
+
+    def test_xinstall_tarball(self):
+        # The result of compose_kernel_command_line includes the purpose
+        # options for a non "xinstall" node.
+        params = self.make_kernel_parameters(
+            purpose="xinstall",
+            arch="amd64",
+            subarch="generic",
+            osystem="centos",
+            release="8",
+            kernel_osystem="ubuntu",
+            kernel_release="focal",
+            kernel=None,
+            hostname="vm01",
+            preseed_url="http://10.0.2.254:5248/MAAS/metadata/latest/by-id/txs4nc/?op=get_preseed",
+            fs_host="10.0.2.254",
+            ephemeral_opts="nvme-core.multipath=0",
+            kernel_label="stable",
+            label="stable",
+            # TODO: change according to the proper fix of filenames
+            xinstall_path="root-tgz",
+        )
+        cmdline = compose_kernel_command_line(params)
+        self.assertThat(
+            cmdline,
+            ContainsAll(
+                [
+                    "root=tar:http://10.0.2.254:5248/images/centos/amd64/generic/8/stable/root.tgz",
+                    "ip6=off",
+                    "ip=::::%s:BOOTIF" % params.hostname,
+                    "nvme-core.multipath=0",
+                ]
+            ),
+        )
+        for forbidden_opt in [
+            " ro ",
+            "overlayroot=tmpfs",
+            "overlayroot_cfgdisk=disabled",
+        ]:
+            self.assertThat(cmdline, Not(Contains(forbidden_opt)))
 
     def test_xinstall_compose_kernel_command_line_inc_purpose_opts6(self):
         # The result of compose_kernel_command_line includes the purpose
@@ -418,7 +458,7 @@ class TestKernelOpts(MAASTestCase):
             ContainsAll(
                 [
                     "ro",
-                    "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/squashfs"
+                    "root=squash:http://%s:5248/images/%s/%s/%s/%s/%s/%s"
                     % (
                         params.fs_host,
                         params.osystem,
@@ -426,6 +466,7 @@ class TestKernelOpts(MAASTestCase):
                         params.subarch,
                         params.release,
                         params.label,
+                        params.xinstall_path,
                     ),
                 ]
             ),
@@ -433,6 +474,29 @@ class TestKernelOpts(MAASTestCase):
 
     def test_compose_rootfs_over_http_ipv6(self):
         params = make_kernel_parameters(fs_host=factory.make_ipv6_address())
+        self.assertThat(
+            compose_kernel_command_line(params),
+            ContainsAll(
+                [
+                    "ro",
+                    "root=squash:http://[%s]:5248/images/%s/%s/%s/%s/%s/%s"
+                    % (
+                        params.fs_host,
+                        params.osystem,
+                        params.arch,
+                        params.subarch,
+                        params.release,
+                        params.label,
+                        params.xinstall_path,
+                    ),
+                ]
+            ),
+        )
+
+    def test_compose_without_xinstall_path(self):
+        params = make_kernel_parameters(
+            fs_host=factory.make_ipv6_address(), xinstall_path=None
+        )
         self.assertThat(
             compose_kernel_command_line(params),
             ContainsAll(

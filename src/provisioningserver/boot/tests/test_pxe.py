@@ -293,11 +293,11 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
         self.assertThat(
             output,
@@ -345,11 +345,11 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
         self.assertThat(
             output,
@@ -394,11 +394,11 @@ class TestPXEBootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
         self.assertThat(
             output,
@@ -501,6 +501,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
             "kernel_params": make_kernel_parameters(
                 testcase=self,
                 osystem=osystem,
+                kernel_osystem=osystem,
                 subarch=subarch,
                 arch=arch,
                 purpose=self.purpose,
@@ -532,11 +533,18 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
         get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
         get_ephemeral_name.return_value = factory.make_name("ephemeral")
         osystem = factory.make_name("osystem")
+        release = factory.make_name("release")
+        label = factory.make_name("label")
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(
                 testcase=self,
                 osystem=osystem,
+                release=release,
+                label=label,
+                kernel_osystem=osystem,
+                kernel_release=release,
+                kernel_label=label,
                 subarch="generic",
                 purpose="enlist",
             ),

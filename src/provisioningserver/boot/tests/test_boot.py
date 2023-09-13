@@ -243,18 +243,18 @@ class TestBootMethod(MAASTestCase):
     def test_compose_template_namespace(self):
         kernel_params = make_kernel_parameters()
         method = FakeBootMethod()
-        image_dir = compose_image_path(
-            kernel_params.osystem,
+        kernel_dir = compose_image_path(
+            kernel_params.kernel_osystem,
             kernel_params.arch,
             kernel_params.subarch,
-            kernel_params.release,
-            kernel_params.label,
+            kernel_params.kernel_release,
+            kernel_params.kernel_label,
         )
 
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(
-            f"{image_dir}/{kernel_params.initrd}",
+            f"{kernel_dir}/{kernel_params.initrd}",
             template_namespace["initrd_path"](kernel_params),
         )
         self.assertEqual(
@@ -263,7 +263,7 @@ class TestBootMethod(MAASTestCase):
         )
         self.assertEqual(kernel_params, template_namespace["kernel_params"])
         self.assertEqual(
-            f"{image_dir}/{kernel_params.kernel}",
+            f"{kernel_dir}/{kernel_params.kernel}",
             template_namespace["kernel_path"](kernel_params),
         )
         self.assertIsNone(template_namespace["dtb_path"](kernel_params))
@@ -276,18 +276,18 @@ class TestBootMethod(MAASTestCase):
             boot_dtb=None,
         )
         method = FakeBootMethod()
-        image_dir = compose_image_path(
-            kernel_params.osystem,
+        kernel_dir = compose_image_path(
+            kernel_params.kernel_osystem,
             kernel_params.arch,
             kernel_params.subarch,
-            kernel_params.release,
-            kernel_params.label,
+            kernel_params.kernel_release,
+            kernel_params.kernel_label,
         )
 
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(
-            "%s/boot-initrd" % image_dir,
+            "%s/boot-initrd" % kernel_dir,
             template_namespace["initrd_path"](kernel_params),
         )
         self.assertEqual(
@@ -296,29 +296,29 @@ class TestBootMethod(MAASTestCase):
         )
         self.assertEqual(kernel_params, template_namespace["kernel_params"])
         self.assertEqual(
-            "%s/boot-kernel" % image_dir,
+            "%s/boot-kernel" % kernel_dir,
             template_namespace["kernel_path"](kernel_params),
         )
         self.assertEqual(
-            "%s/boot-dtb" % image_dir,
+            "%s/boot-dtb" % kernel_dir,
             template_namespace["dtb_path"](kernel_params),
         )
 
     def test_compose_template_namespace_returns_dtb_file_when_arm(self):
         kernel_params = make_kernel_parameters(subarch="xgene-uboot-mustang")
         method = FakeBootMethod()
-        image_dir = compose_image_path(
-            kernel_params.osystem,
+        kernel_dir = compose_image_path(
+            kernel_params.kernel_osystem,
             kernel_params.arch,
             kernel_params.subarch,
-            kernel_params.release,
-            kernel_params.label,
+            kernel_params.kernel_release,
+            kernel_params.kernel_label,
         )
 
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(
-            f"{image_dir}/{kernel_params.initrd}",
+            f"{kernel_dir}/{kernel_params.initrd}",
             template_namespace["initrd_path"](kernel_params),
         )
         self.assertEqual(
@@ -327,11 +327,11 @@ class TestBootMethod(MAASTestCase):
         )
         self.assertEqual(kernel_params, template_namespace["kernel_params"])
         self.assertEqual(
-            f"{image_dir}/{kernel_params.kernel}",
+            f"{kernel_dir}/{kernel_params.kernel}",
             template_namespace["kernel_path"](kernel_params),
         )
         self.assertEqual(
-            f"{image_dir}/{kernel_params.boot_dtb}",
+            f"{kernel_dir}/{kernel_params.boot_dtb}",
             template_namespace["dtb_path"](kernel_params),
         )
 

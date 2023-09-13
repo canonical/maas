@@ -70,11 +70,11 @@ class TestS390XPartitionBootMethod(MAASTestCase):
         output = s390x_partition.get_reader(None, params, mac)
         output = output.read(output.size).decode()
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
 
         self.assertThat(
@@ -110,11 +110,11 @@ class TestS390XPartitionBootMethod(MAASTestCase):
         output = s390x_partition.get_reader(None, params)
         output = output.read(output.size).decode()
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
 
         self.assertThat(

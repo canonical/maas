@@ -133,6 +133,8 @@ class GetBootConfig(amp.Command):
         (b"subarch", amp.Unicode()),
         (b"osystem", amp.Unicode()),
         (b"release", amp.Unicode()),
+        (b"kernel_osystem", amp.Unicode()),
+        (b"kernel_release", amp.Unicode()),
         # Kernel and initrd are optional as they were introduced
         # in 2.1.1. After 2.2 they can be set to manditory.
         (b"kernel", amp.Unicode(optional=True)),

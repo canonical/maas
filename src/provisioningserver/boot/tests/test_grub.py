@@ -91,11 +91,11 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith('set default="0"'))
         # The UEFI parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
 
         self.assertThat(
@@ -143,11 +143,11 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         self.assertThat(output, StartsWith('set default="0"'))
         # The UEFI parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
 
         self.assertThat(

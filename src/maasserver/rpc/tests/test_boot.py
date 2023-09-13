@@ -121,6 +121,8 @@ class TestGetConfig(MAASServerTestCase):
                     "subarch",
                     "osystem",
                     "release",
+                    "kernel_osystem",
+                    "kernel_release",
                     "kernel",
                     "initrd",
                     "boot_dtb",
@@ -223,6 +225,8 @@ class TestGetConfig(MAASServerTestCase):
                 "subarch": node.split_arch()[1],
                 "osystem": node.osystem,
                 "release": node.distro_series,
+                "kernel_osystem": node.osystem,
+                "kernel_release": node.distro_series,
                 "kernel": "",
                 "initrd": "",
                 "boot_dtb": "",
@@ -269,6 +273,8 @@ class TestGetConfig(MAASServerTestCase):
                 "subarch": node.split_arch()[1],
                 "osystem": node.osystem,
                 "release": node.distro_series,
+                "kernel_osystem": node.osystem,
+                "kernel_release": node.distro_series,
                 "kernel": "",
                 "initrd": "",
                 "boot_dtb": "",
@@ -314,6 +320,8 @@ class TestGetConfig(MAASServerTestCase):
                 "subarch": device.split_arch()[1],
                 "osystem": "",
                 "release": "",
+                "kernel_osystem": "",
+                "kernel_release": "",
                 "kernel": "",
                 "initrd": "",
                 "boot_dtb": "",
@@ -355,6 +363,37 @@ class TestGetConfig(MAASServerTestCase):
         self.patch_autospec(boot_module, "event_log_pxe_request")
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertEqual(config["purpose"], "xinstall")
+
+    def test_custom_ephemeral_deployment(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED, netboot=False, ephemeral_deploy=True
+        )
+        node.boot_cluster_ip = local_ip
+        node.osystem = "centos"
+        node.distro_series = "8"
+        node.architecture = "amd64/generic"
+        node.save()
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertEqual(config["osystem"], "centos")
+        self.assertEqual(config["release"], "8")
+        self.assertEqual(config["arch"], "amd64")
+        self.assertEqual(config["subarch"], "generic")
+        self.assertEqual(
+            config["kernel_osystem"],
+            Config.objects.get_config(name="commissioning_osystem"),
+        )
+        self.assertEqual(
+            config["kernel_release"],
+            Config.objects.get_config(name="commissioning_distro_series"),
         )
         self.assertEqual(config["purpose"], "xinstall")
 
@@ -1833,6 +1872,50 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         self.assertEqual(configs["commissioning_distro_series"], series)
         self.assertEqual(legacy_subarch, config_arch)
         self.assertNotEqual(machine_hwe_kernel, config_arch)
+
+    def test_get_boot_config_for_custom_ephemeral_deployments(
+        self,
+    ):
+        subarch = "generic"
+
+        factory.make_usable_boot_resource(
+            name="centos/8", architecture=f"amd64/{subarch}"
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="centos",
+            distro_series="8",
+            ephemeral_deploy=True,
+        )
+
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+        legacy_subarch = f"ga-{configs['default_distro_series']}"
+        factory.make_usable_boot_resource(
+            name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
+            architecture=f"amd64/{legacy_subarch}",
+        )
+
+        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
+            machine, configs, "local"
+        )
+        self.assertEqual("centos", osystem)
+        self.assertEqual("8", series)
+        self.assertEqual("generic", config_arch)
 
     def test_get_boot_config_for_machine_centos(self):
         subarch = "ga-20.04"

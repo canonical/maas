@@ -165,11 +165,11 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         self.assertThat(output, StartsWith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
-            osystem=params.osystem,
+            osystem=params.kernel_osystem,
             arch=params.arch,
             subarch=params.subarch,
-            release=params.release,
-            label=params.label,
+            release=params.kernel_release,
+            label=params.kernel_label,
         )
         self.assertThat(
             output,
