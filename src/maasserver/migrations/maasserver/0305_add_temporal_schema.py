@@ -8,7 +8,6 @@ class Migration(migrations.Migration):
         ("maasserver", "0304_interface_params_no_autoconf"),
     ]
 
-    operations = [
-        migrations.RunSQL("CREATE SCHEMA temporal;"),
-        migrations.RunSQL("CREATE SCHEMA temporal_visibility;"),
-    ]
+    # skipped due to the maas postgres user lacking
+    # permissions to create schemas
+    operations = []
