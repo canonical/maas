@@ -397,6 +397,42 @@ class TestGetConfig(MAASServerTestCase):
         )
         self.assertEqual(config["purpose"], "xinstall")
 
+    # See https://github.com/canonical/cloud-init/issues/4418 for more details
+    def test_preseed_url_not_using_domain_names_for_custom_ephemeral_deployments(
+        self,
+    ):
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(
+            cidr=str(network.cidr), dhcp_on=True, dns_servers=[]
+        )
+        rack_controller = factory.make_RackController(subnet=subnet)
+        local_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+        ).ip
+        remote_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet,
+        ).ip
+        node = self.make_node_with_extra(
+            subnet=subnet,
+            status=NODE_STATUS.DEPLOYED,
+            netboot=False,
+            ephemeral_deploy=True,
+        )
+        node.boot_cluster_ip = local_ip
+        node.osystem = "centos"
+        node.distro_series = "8"
+        node.architecture = "amd64/generic"
+        node.save()
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        assert ".maas-internal:5248" not in config["preseed_url"]
+        assert local_ip in config["preseed_url"]
+
     def test_returns_kparams_for_known_node(self):
         rack_controller = factory.make_RackController()
         local_ip = factory.make_ip_address()

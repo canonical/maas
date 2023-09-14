@@ -325,10 +325,17 @@ def get_boot_config_for_machine(machine, configs, purpose):
     return osystem, series, subarch, final_osystem, final_series
 
 
-def get_base_url_for_local_ip(local_ip, internal_domain):
+def get_base_url_for_local_ip(
+    local_ip, internal_domain, use_domain_names: bool = True
+):
     """Get the base URL for the preseed using the `local_ip`."""
     subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
-    if subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on:
+    if (
+        use_domain_names
+        and subnet is not None
+        and not subnet.dns_servers
+        and subnet.vlan.dhcp_on
+    ):
         # Use the MAAS internal domain to resolve the IP address of
         # the rack controllers on the subnet.
         return "http://{}.{}:5248/".format(
@@ -503,12 +510,18 @@ def get_config(
         machine.save()
 
         arch, subarch = machine.split_arch()
-
         if configs["use_rack_proxy"]:
+            # Due to https://github.com/canonical/cloud-init/issues/4418 we must not use domain names in the preseed_url in
+            # case of an ephemeral deployment of a non-ubuntu image
+            use_domain_names = (
+                not machine.ephemeral_deploy or machine.osystem == "ubuntu"
+            )
             preseed_url = compose_preseed_url(
                 machine,
                 base_url=get_base_url_for_local_ip(
-                    local_ip, configs["maas_internal_domain"]
+                    local_ip,
+                    configs["maas_internal_domain"],
+                    use_domain_names=use_domain_names,
                 ),
             )
         else:
@@ -612,7 +625,9 @@ def get_config(
         if configs["use_rack_proxy"]:
             preseed_url = compose_enlistment_preseed_url(
                 base_url=get_base_url_for_local_ip(
-                    local_ip, configs["maas_internal_domain"]
+                    local_ip,
+                    configs["maas_internal_domain"],
+                    use_domain_names=True,
                 )
             )
         else:
