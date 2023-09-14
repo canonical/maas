@@ -139,6 +139,16 @@ class TestFindImage(MAASTestCase):
             },
         ),
         (
+            "root.tgz",
+            {
+                "squashfs": False,
+                "tgz": True,
+                "dd": True,
+                "fname": "root.tgz",
+                "expected": ("root.tgz", "tgz"),
+            },
+        ),
+        (
             "root-tbz",
             {
                 "squashfs": False,
@@ -149,6 +159,16 @@ class TestFindImage(MAASTestCase):
             },
         ),
         (
+            "root.tbz",
+            {
+                "squashfs": False,
+                "tgz": True,
+                "dd": True,
+                "fname": "root.tbz",
+                "expected": ("root.tbz", "tbz"),
+            },
+        ),
+        (
             "root-txz",
             {
                 "squashfs": False,
@@ -156,6 +176,16 @@ class TestFindImage(MAASTestCase):
                 "dd": True,
                 "fname": "root-txz",
                 "expected": ("root-txz", "txz"),
+            },
+        ),
+        (
+            "root.txz",
+            {
+                "squashfs": False,
+                "tgz": True,
+                "dd": True,
+                "fname": "root.txz",
+                "expected": ("root.txz", "txz"),
             },
         ),
         (

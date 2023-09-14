@@ -89,11 +89,8 @@ def compose_purpose_opts(params: KernelParameters):
         image_filename = "squashfs"
     image_type = "squash"
 
-    # XXX: We assume that a symlink from `root.tgz` to `root-tgz` has been created for the custom images on the rack.
-    # Update this according to the outcome/implementation of https://warthogs.atlassian.net/browse/MAASENG-2151
-    if image_filename.endswith("tgz"):
+    if image_filename.endswith(".tgz") or image_filename.endswith(".txz"):
         image_type = "tar"
-        image_filename = image_filename.replace("-tgz", ".tgz")
 
     kernel_params = [
         "root=%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s"

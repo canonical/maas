@@ -9,7 +9,7 @@ import random
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
-from maasserver.forms import BootResourceForm
+from maasserver.forms import BootResourceForm, get_uploaded_filename
 from maasserver.models import BootResource, BootResourceFile, Config
 from maasserver.models.signals import bootresourcefiles, bootsources
 from maasserver.testing.architecture import make_usable_architecture
@@ -76,9 +76,9 @@ class TestBootResourceForm(MAASServerTestCase):
         rfile = resource_set.files.first()
         self.assertEqual(title, resource.extra["title"])
         self.assertEqual(subarch, resource.extra["subarches"])
-        self.assertTrue(filetype, rfile.filetype)
-        self.assertTrue(filetype, rfile.filename)
-        self.assertTrue(size, rfile.largefile.total_size)
+        self.assertEqual(filetype, rfile.filetype)
+        self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
+        self.assertEqual(size, rfile.largefile.total_size)
         with rfile.largefile.content.open("rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
@@ -370,9 +370,9 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
-        self.assertTrue(filetype, rfile.filetype)
-        self.assertTrue(filetype, rfile.filename)
-        self.assertTrue(size, rfile.largefile.total_size)
+        self.assertEqual(filetype, rfile.filetype)
+        self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
+        self.assertEqual(size, rfile.largefile.total_size)
         with rfile.largefile.content.open("rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
@@ -405,9 +405,9 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
-        self.assertTrue(filetype, rfile.filetype)
-        self.assertTrue(filetype, rfile.filename)
-        self.assertTrue(size, rfile.largefile.total_size)
+        self.assertEqual(filetype, rfile.filetype)
+        self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
+        self.assertEqual(size, rfile.largefile.total_size)
         with rfile.largefile.content.open("rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
@@ -442,9 +442,9 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
-        self.assertTrue(filetype, rfile.filetype)
-        self.assertTrue(filetype, rfile.filename)
-        self.assertTrue(size, rfile.largefile.total_size)
+        self.assertEqual(filetype, rfile.filetype)
+        self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
+        self.assertEqual(size, rfile.largefile.total_size)
         with rfile.largefile.content.open("rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)

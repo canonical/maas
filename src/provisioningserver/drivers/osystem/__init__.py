@@ -195,8 +195,15 @@ class OperatingSystem(metaclass=ABCMeta):
         if squashfs:
             filetypes.update({"squashfs": "squashfs"})
         if tgz:
+            # Initially uploaded images were named root-$ext, but were
+            # renamed to root.$ext to support ephemeral deploys. We need to
+            # check both old and new formats, since images from the
+            # images.maas.io still uses the old format.
             filetypes.update(
                 {"root-tgz": "tgz", "root-txz": "txz", "root-tbz": "tbz"}
+            )
+            filetypes.update(
+                {"root.tgz": "tgz", "root.txz": "txz", "root.tbz": "tbz"}
             )
         if dd:
             filetypes.update(

@@ -161,8 +161,7 @@ class TestKernelOpts(MAASTestCase):
             ephemeral_opts="nvme-core.multipath=0",
             kernel_label="stable",
             label="stable",
-            # TODO: change according to the proper fix of filenames
-            xinstall_path="root-tgz",
+            xinstall_path="root.tgz",
         )
         cmdline = compose_kernel_command_line(params)
         self.assertThat(

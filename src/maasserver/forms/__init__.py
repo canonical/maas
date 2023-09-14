@@ -2437,6 +2437,17 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
 )
 
 
+def get_uploaded_filename(filetype):
+    # Root tarball images need to have a proper extension to work for
+    # ephemeral deployments.
+    filetype_filename = {
+        BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ: "root.tgz",
+        BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ: "root.tbz",
+        BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ: "root.txz",
+    }
+    return filetype_filename.get(filetype, filetype)
+
+
 class BootResourceForm(MAASModelForm):
     """Form for uploading boot resources."""
 
@@ -2654,7 +2665,7 @@ class BootResourceForm(MAASModelForm):
         return BootResourceFile.objects.create(
             resource_set=resource_set,
             largefile=largefile,
-            filename=filetype,
+            filename=get_uploaded_filename(filetype),
             filetype=filetype,
             size=largefile.total_size,
             sha256=largefile.sha256,
@@ -2746,7 +2757,7 @@ class BootResourceNoContentForm(BootResourceForm):
         return BootResourceFile.objects.create(
             resource_set=resource_set,
             largefile=largefile,
-            filename=filetype,
+            filename=get_uploaded_filename(filetype),
             filetype=filetype,
         )
 
