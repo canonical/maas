@@ -11,8 +11,10 @@ from inspect import getdoc, signature
 import json
 import re
 from textwrap import dedent
+from typing import Any
 
 from django.http import HttpResponse
+from piston3.resource import Resource
 import yaml
 
 from maasserver.api import support
@@ -29,8 +31,19 @@ PARAM_RE = re.compile(
     r"^{(?P<param>\S+)}$",
 )
 
+# https://github.com/canonical/maas.io/issues/806
+# Match variables enclosed by :, ', ` within a docstring, variables cannot contain spaces or the
+# enclosing character within their definition
+MARKERS = [":", "'", "`"]
+MATCHES = [re.compile(rf" {k}[^ ^{k}]*{k} ") for k in MARKERS]
 
-def landing_page(request):
+NEWLINES = re.compile(r"(?<![:.])[\n]+")
+WHITESPACE = re.compile(r"\n\s+")
+PUNCTUATION = re.compile(r"([^\w\s])\1+")
+POINTS = ["*", "+", "-"]
+
+
+def landing_page(request: str) -> HttpResponse:
     """Render a landing page with pointers for the MAAS API.
 
     :return: An `HttpResponse` containing a JSON page with pointers to both
@@ -46,7 +59,7 @@ def landing_page(request):
     )
 
 
-def endpoint(request):
+def endpoint(request: str) -> HttpResponse:
     """Render the OpenApi endpoint.
 
     :return: An `HttpResponse` containing a YAML document that complies
@@ -61,7 +74,7 @@ def endpoint(request):
     )
 
 
-def get_api_landing_page():
+def get_api_landing_page() -> dict[str, str | Any]:
     """Return the API landing page"""
     description = {
         "title": "MAAS API",
@@ -74,23 +87,29 @@ def get_api_landing_page():
                 "title": "this document",
             },
             {
+                "path": "/MAAS/docs",
+                "rel": "service-doc",
+                "type": "text/html",
+                "title": "offline MAAS documentation",
+            },
+            {
                 "path": f"{settings.API_URL_PREFIX}openapi.yaml",
                 "rel": "service-desc",
                 "type": "application/openapi+yaml",
-                "title": "the API definition",
+                "title": "the OpenAPI definition",
             },
             {
                 "path": "/MAAS/api/docs/",
                 "rel": "service-doc",
                 "type": "text/html",
-                "title": "the API documentation",
+                "title": "OpenAPI documentation",
             },
         ],
     }
     return description
 
 
-def get_api_endpoint():
+def get_api_endpoint() -> dict[str, str | Any]:
     """Return the API endpoint"""
     description = {
         "openapi": "3.0.0",
@@ -112,7 +131,7 @@ def get_api_endpoint():
     return description
 
 
-def _get_maas_servers():
+def _get_maas_servers() -> list[dict[str, str]]:
     """Return a servers defintion of the public-facing MAAS address.
 
     :return: An object describing the MAAS public-facing server.
@@ -129,7 +148,7 @@ def _get_maas_servers():
     ]
 
 
-def _new_path_item(params):
+def _new_path_item(params: list[Any]) -> dict[str, dict[str, Any]]:
     path_item = {}
     for p in params:
         path_item.setdefault("parameters", []).append(
@@ -143,17 +162,65 @@ def _new_path_item(params):
     return path_item
 
 
-def _prettify(doc):
-    """Cleans up text by replacing newlines with spaces, so that sentences are
-    not broken apart prematurely.
-    Respects paragraphing by not replacing newlines that occur after periods.
+def _prettify(doc: str) -> str:
+    """Cleans up text by:
+    - Dedenting text to the same depth.
+    - Respecting paragraphing by not replacing newlines that occur after periods or colons
+    - Removeing duplicate punctuation groups and replaces with singular
     """
-    return re.sub("(?<![.\n])[\n]+", " ", dedent(doc)).strip()
+    doc = dedent(doc)
+    doc = NEWLINES.sub(" ", doc)
+    doc = WHITESPACE.sub("\n", doc)
+    doc = PUNCTUATION.sub(r"\1", doc)
+    for idx, point in enumerate(POINTS):
+        doc = re.sub(rf"\n\s*\{point}", f"\n{' '*2*idx}{point}", doc)
+    return doc.strip()
+
+
+def _contains_variables(doc: str) -> list[str] | None:
+    """Search for any instances of :variable:, ''variable'', or `variable`."""
+    for m in MATCHES:
+        if (v := m.findall(doc[doc.find(":") :])) and len(v) > 1:
+            return v
+
+
+def _parse_enumerable(doc: str) -> tuple[str, list[str]]:
+    """Parse docstring for multiple variables. Clean up and represent as the correct
+    form. (https://github.com/canonical/maas.io/issues/806)"""
+    enumerable = {}
+    if variables := _contains_variables(doc):
+        for idx, var in enumerate(variables):
+            start_pos = doc.find(var) + len(var)
+            end_pos = (
+                len(doc)
+                if idx >= len(variables) - 1
+                else doc.find(variables[idx + 1])
+            )
+            var_string = doc[start_pos:end_pos]
+            doc = doc.replace(var + var_string, "")
+            depth = MARKERS.index(var[1])
+            enumerable[var.strip(var[:2]) or " "] = {
+                "description": _parse_enumerable(var_string)[0],
+                "point": POINTS[depth],
+            }
+        doc = "\n".join(
+            [f"{doc}"]
+            + [
+                f"{v['point']} `{k}` {v['description'].strip('.,')}."
+                for k, v in enumerable.items()
+            ]
+        )
+    return doc, list(enumerable.keys())
 
 
 def _render_oapi_oper_item(
-    http_method, op, doc, uri_params, function, resources
-):
+    http_method: str,
+    op: str,
+    doc: str,
+    uri_params: Any,
+    function: object,
+    resources: set[Resource],
+) -> dict[str, str | Any]:
     oper_id = op or support.OperationsResource.crudmap.get(http_method)
     oper_obj = {
         "operationId": f"{doc.name}_{oper_id}",
@@ -171,9 +238,13 @@ def _render_oapi_oper_item(
 
 
 def _oapi_item_from_docstring(
-    function, http_method, uri_params, doc, resources
-):
-    def _type_to_string(schema):
+    function: object,
+    http_method: str,
+    uri_params: Any,
+    doc: str,
+    resources: set[Resource],
+) -> dict[str, str | Any]:
+    def _type_to_string(schema: str) -> str:
         match schema:
             case "Boolean":
                 return "boolean"
@@ -186,7 +257,7 @@ def _oapi_item_from_docstring(
             case _:
                 return "object"
 
-    def _response_pair(ap_dict):
+    def _response_pair(ap_dict: dict[str, str | Any]) -> list[str]:
         status_code = "HTTP Status Code"
         status = content = {}
         paired = []
@@ -215,11 +286,15 @@ def _oapi_item_from_docstring(
         ap.parse(docstring)
         ap_dict = ap.get_dict()
         oper_obj["summary"] = ap_dict["description_title"].strip()
-        oper_obj["description"] = _prettify(ap_dict["description"])
+
+        oper_obj["description"] = _prettify(
+            _parse_enumerable(ap_dict["description"])[0]
+        )
+
         if "deprecated" in oper_obj["description"].lower():
             oper_obj["deprecated"] = True
         for param in ap_dict["params"]:
-            description = _prettify(param["description_stripped"])
+            description = _parse_enumerable(param["description_stripped"])[0]
             # LP 2009140
             stripped_name = PARAM_RE.match(param["name"])
             name = (
@@ -236,7 +311,7 @@ def _oapi_item_from_docstring(
                 param_dict = {
                     "name": name,
                     "in": "path" if name in uri_params else "query",
-                    "description": description,
+                    "description": _prettify(description),
                     "schema": {
                         "type": _type_to_string(param["type"]),
                     },
@@ -244,10 +319,11 @@ def _oapi_item_from_docstring(
                 }
                 oper_obj.setdefault("parameters", []).append(param_dict)
             else:
-                body.setdefault("properties", {})[name] = {
-                    "description": description,
+                params_dict = {
+                    "description": _prettify(description),
                     "type": _type_to_string(param["type"]),
                 }
+                body.setdefault("properties", {})[name] = params_dict
                 if required:
                     body.setdefault("required", []).append(name)
 
@@ -336,13 +412,15 @@ def _oapi_item_from_docstring(
     return oper_obj
 
 
-def _render_oapi_paths():
+def _render_oapi_paths() -> dict[str, str | Any]:
     from maasserver import urls_api as urlconf
 
-    def _resource_key(resource):
+    def _resource_key(resource: Resource) -> str:
         return resource.handler.__class__.__name__
 
-    def _export_key(export):
+    def _export_key(
+        export: tuple[tuple[str, str], object]
+    ) -> tuple[str, object]:
         (http_method, op), function = export
         return http_method, op or "", function
 

@@ -138,12 +138,8 @@ represented in ASCII using ``bsondump example.bson`` and is for
 demonstrative purposes."""
 
         after = """\
-Returns system details -- for example, LLDP and ``lshw`` XML dumps.
-
-
-Returns a ``{detail_type: xml, ...}`` map, where ``detail_type`` is something like "lldp" or "lshw".
-
-
-Note that this is returned as BSON and not JSON. This is for efficiency, but mainly because JSON can''t do binary content without applying additional encoding like base-64. The example output below is represented in ASCII using ``bsondump example.bson`` and is for demonstrative purposes."""
+Returns system details - for example, LLDP and `lshw` XML dumps.
+Returns a `{detail_type: xml, .}` map, where `detail_type` is something like "lldp" or "lshw".
+Note that this is returned as BSON and not JSON. This is for efficiency, but mainly because JSON can't do binary content without applying additional encoding like base-64. The example output below is represented in ASCII using `bsondump example.bson` and is for demonstrative purposes."""
 
         self.assertEqual(_prettify(before), after)

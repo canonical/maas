@@ -259,7 +259,10 @@ api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 openapi.yaml: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_oapi_spec > $@
 
-doc: api-docs.rst openapi.yaml swagger-css swagger-js
+openapi-doc: openapi.yaml swagger-css swagger-js
+.PHONY: openapi-doc
+
+doc: api-docs.rst openapi-doc
 .PHONY: doc
 
 clean-ui:
