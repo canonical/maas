@@ -932,7 +932,7 @@ class NodeHandler(TimestampedModelHandler):
         if interface.vlan is not None:
             return {
                 "id": interface.vlan_id,
-                "name": interface.vlan.name if interface.vlan.name else "",
+                "name": interface.vlan.name,
                 "fabric_id": interface.vlan.fabric.id,
                 "fabric_name": "%s" % interface.vlan.fabric.name,
             }

@@ -2311,7 +2311,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             {
                 "id": interface.vlan_id,
-                "name": interface.vlan.name if interface.vlan.name else "",
+                "name": interface.vlan.name,
                 "fabric_id": interface.vlan.fabric.id,
                 "fabric_name": "%s" % interface.vlan.fabric.name,
             },

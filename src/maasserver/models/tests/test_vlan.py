@@ -125,7 +125,7 @@ class TestVLAN(MAASServerTestCase):
 
     def test_get_name_for_unnamed_vlan(self):
         vlan = factory.make_VLAN()
-        self.assertEqual(str(vlan.vid), vlan.get_name())
+        self.assertEqual(None, vlan.get_name())
 
     def test_creates_vlan(self):
         name = factory.make_name("name")
