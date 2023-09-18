@@ -17,6 +17,8 @@ from django.forms.fields import Field
 from netaddr import IPAddress
 
 from maasserver.enum import (
+    DEPLOYMENT_TARGET,
+    DEPLOYMENT_TARGET_CHOICES,
     NODE_STATUS,
     NODE_STATUS_SHORT_LABEL_CHOICES,
     POWER_STATE,
@@ -633,6 +635,7 @@ STATIC_FILTER_FIELDS = (
     "power_state",
     "simple_status",
     "status",
+    "deployment_target",
 )
 
 
@@ -934,9 +937,24 @@ class FilterNodeForm(forms.Form):
         clean_prefix="=",
     )
 
+    deployment_target = ConstrainedMultipleChoiceField(
+        label="Deployment target",
+        choices=DEPLOYMENT_TARGET_CHOICES,
+        required=False,
+        clean_prefix="=",
+    )
+
+    not_deployment_target = ConstrainedMultipleChoiceField(
+        label="Deployment target",
+        choices=DEPLOYMENT_TARGET_CHOICES,
+        required=False,
+        clean_prefix="=",
+    )
+
     ignore_unknown_constraints = False
 
     NODE_FILTERS = {
+        "deployment_target": ("ephemeral_deploy", _match_any),
         "fabric_classes": (
             "current_config__interface__vlan__fabric__class_type",
             _match_any,
@@ -965,6 +983,7 @@ class FilterNodeForm(forms.Form):
     }
 
     NODE_EXCLUDES = {
+        "not_deployment_target": ("ephemeral_deploy", _match_any),
         "not_fabric_classes": (
             "current_config__interface__vlan__fabric__class_type",
             _match_any,
@@ -1146,6 +1165,27 @@ class FilterNodeForm(forms.Form):
     def clean_not_power_state(self):
         values = self.cleaned_data["not_power_state"]
         return [getattr(POWER_STATE, a.upper()) for a in values]
+
+    def _convert_deployment_target_to_ephemeral_deploy(self, target):
+        if target is None:
+            return None
+        if target == DEPLOYMENT_TARGET.MEMORY:
+            return True
+        return False
+
+    def clean_deployment_target(self):
+        values = self.cleaned_data["deployment_target"]
+        return [
+            self._convert_deployment_target_to_ephemeral_deploy(a)
+            for a in values
+        ]
+
+    def clean_not_deployment_target(self):
+        values = self.cleaned_data["not_deployment_target"]
+        return [
+            self._convert_deployment_target_to_ephemeral_deploy(a)
+            for a in values
+        ]
 
     def clean(self):
         if not self.ignore_unknown_constraints:

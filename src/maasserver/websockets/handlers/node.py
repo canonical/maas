@@ -15,6 +15,7 @@ from django.db.models import Prefetch, Subquery
 from lxml import etree
 
 from maasserver.enum import (
+    DEPLOYMENT_TARGET_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     INTERFACE_TYPE,
@@ -1600,6 +1601,11 @@ class NodeHandler(TimestampedModelHandler):
                     return [
                         {"key": choice, "label": str(choice)}
                         for choice in (True, False)
+                    ]
+                elif key == "deployment_target":
+                    return [
+                        {"key": choice, "label": str(choice)}
+                        for choice in DEPLOYMENT_TARGET_CHOICES
                     ]
             else:
                 return self._get_dynamic_filter_options(key)

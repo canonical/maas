@@ -339,6 +339,47 @@ class TestMachineHandlerNewSchema:
         )
         assert result["groups"][0]["count"] == 1
 
+    def test_filter_deployment_target(self):
+        user, session = factory.make_User_with_session()
+        node_with_ephemeral_deployment = factory.make_Node(
+            owner=user, status=NODE_STATUS.NEW, ephemeral_deploy=True
+        )
+        node_with_standard_deployment = factory.make_Node(
+            owner=user, status=NODE_STATUS.NEW, ephemeral_deploy=False
+        )
+        handler = MachineHandler(
+            user, {}, None, session_id=session.session_key
+        )
+
+        result = handler.list_ids({})
+        assert result["groups"][0]["count"] == 2
+
+        result = handler.list_ids(
+            {
+                "filter": {
+                    "deployment_target": ["=memory"],
+                }
+            }
+        )
+        assert result["groups"][0]["count"] == 1
+        assert (
+            result["groups"][0]["items"][0]["id"]
+            == node_with_ephemeral_deployment.id
+        )
+
+        result = handler.list_ids(
+            {
+                "filter": {
+                    "deployment_target": ["=disk"],
+                }
+            }
+        )
+        assert result["groups"][0]["count"] == 1
+        assert (
+            result["groups"][0]["items"][0]["id"]
+            == node_with_standard_deployment.id
+        )
+
     def test_filter_counters(self):
         user, session = factory.make_User_with_session()
         nodes = [factory.make_Machine(owner=user) for _ in range(2)]

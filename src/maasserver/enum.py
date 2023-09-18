@@ -411,6 +411,16 @@ class POWER_STATE:
 POWER_STATE_CHOICES = enum_choices(POWER_STATE, transform=str.capitalize)
 
 
+class DEPLOYMENT_TARGET:
+    # A node has been deployed ephemerally
+    MEMORY = "memory"
+
+    DISK = "disk"
+
+
+DEPLOYMENT_TARGET_CHOICES = enum_choices(DEPLOYMENT_TARGET)
+
+
 class BOOT_RESOURCE_TYPE:
     """Possible types for `BootResource`."""
 

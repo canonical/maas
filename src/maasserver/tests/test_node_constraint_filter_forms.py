@@ -14,6 +14,7 @@ from testtools.matchers import (
 )
 
 from maasserver.enum import (
+    DEPLOYMENT_TARGET,
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_TYPE,
@@ -1555,6 +1556,8 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_owner": factory.make_User().username,
             "power_state": POWER_STATE.ON,
             "not_power_state": POWER_STATE.OFF,
+            "deployment_target": DEPLOYMENT_TARGET.MEMORY,
+            "not_deployment_target": DEPLOYMENT_TARGET.DISK,
         }
         form = FilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)
@@ -2123,6 +2126,8 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_owner": factory.make_User().username,
             "power_state": POWER_STATE.ON,
             "not_power_state": POWER_STATE.OFF,
+            "deployment_target": DEPLOYMENT_TARGET.MEMORY,
+            "not_deployment_target": DEPLOYMENT_TARGET.DISK,
         }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)

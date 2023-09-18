@@ -5908,6 +5908,20 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "for_grouping": False,
                 },
                 {
+                    "key": "deployment_target",
+                    "label": "Deployment target",
+                    "dynamic": False,
+                    "type": "list[str]",
+                    "for_grouping": False,
+                },
+                {
+                    "key": "not_deployment_target",
+                    "label": "Deployment target",
+                    "dynamic": True,
+                    "type": "list[str]",
+                    "for_grouping": False,
+                },
+                {
                     "key": "storage",
                     "label": "Storage",
                     "dynamic": True,
