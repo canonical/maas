@@ -25,11 +25,29 @@ MACHINE_ACTION_WORKFLOWS = (
 )
 
 
-def get_temporal_queue_for_machine(machine):
+class UnroutableWorkflowException(Exception):
+    pass
+
+
+def get_temporal_queue_for_machine(machine, for_power=False):
     vlan_id = None
-    if machine.boot_interface:
+    if (
+        not for_power
+        and machine.boot_interface
+        and machine.boot_interface.vlan
+    ):
         vlan_id = machine.boot_interface.vlan.id
         return f"vlan-{vlan_id}"
+    else:
+        if machine.bmc:
+            racks = machine.bmc.get_usable_rack_controllers(
+                with_connection=False
+            )
+            if racks:
+                return racks[0].system_id
+    raise UnroutableWorkflowException(
+        f"no suitable task queue for machine {machine.system_id}"
+    )
 
 
 def to_temporal_params(name, objects, extra_params):

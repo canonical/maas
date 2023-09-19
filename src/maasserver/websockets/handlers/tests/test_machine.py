@@ -29,6 +29,7 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver import workflow
 from maasserver.enum import (
     BMC_TYPE,
     BOND_MODE,
@@ -3708,6 +3709,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         self.patch(Machine, "_start").return_value = None
         self.patch(node_action_module, "get_curtin_config")
+        self.patch(
+            workflow, "get_temporal_queue_for_machine"
+        ).return_value = "vlan-1"
         osystem = make_usable_osystem(self)
         handler = MachineHandler(user, {}, request)
         handler.action(
