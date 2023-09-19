@@ -1,7 +1,6 @@
 package workflow
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -14,22 +13,6 @@ var (
 	// ErrSwitchBootOrderFailed is an error for when the workflow failed to switch boot order
 	ErrSwitchBootOrderFailed = errors.New("boot order was not switched")
 )
-
-// SwitchBootOrderParam is an activity parameter for switching boot order
-type SwitchBootOrderParam struct {
-	SystemID string `json:"system_id"`
-}
-
-// SwitchBootOrderResult is a value returned by the SwitchBootOrderActivity
-type SwitchBootOrderResult struct {
-	Success bool `json:"success"`
-}
-
-// SwitchBootOrderActivity is a Temporal activity for switching boot order of a host
-func SwitchBootOrderActivity(ctx context.Context, params SwitchBootOrderParam) error {
-	fmt.Printf("reach out to MAAS to update boot order for: %s\n", params.SystemID)
-	return nil
-}
 
 // EphemeralOSParam is a workflow parameter for the EphemeralOS workflow
 type EphemeralOSParam struct {
@@ -111,12 +94,13 @@ func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 		ctx = workflow.WithActivityOptions(ctx, bootOrderOpts)
 
 		bootOrderParams := SwitchBootOrderParam{
-			SystemID: params.SystemID,
+			SystemID:    params.SystemID,
+			NetworkBoot: false,
 		}
 
 		var bootOrderResults SwitchBootOrderResult
 
-		err := workflow.ExecuteActivity(ctx, SwitchBootOrderActivity, bootOrderParams).Get(ctx, &bootOrderResults)
+		err := workflow.ExecuteActivity(ctx, "switch-boot-order", bootOrderParams).Get(ctx, &bootOrderResults)
 		if err != nil {
 			return err
 		}

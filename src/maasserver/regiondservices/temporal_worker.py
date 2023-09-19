@@ -65,7 +65,10 @@ class TemporalWorkerService(Service):
                 DeployNWorkflow,
                 PowerNWorkflow,
             ],
-            activities=[maas_api_activities.get_rack_controller],
+            activities=[
+                maas_api_activities.get_rack_controller,
+                maas_api_activities.switch_boot_order,
+            ],
         )
 
         task = self._loop.create_task(self.worker.run())

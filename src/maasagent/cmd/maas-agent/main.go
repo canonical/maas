@@ -98,8 +98,7 @@ func Run() int {
 			"power_query":           wf.PowerQuery,
 			"power_cycle":           wf.PowerCycle,
 		}), worker.WithAllowedActivities(map[string]interface{}{
-			"switch_boot_order": wf.SwitchBootOrderActivity,
-			"power":             wf.PowerActivity,
+			"power": wf.PowerActivity,
 		}), worker.WithControlPlaneTaskQueueName("region_controller"))
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
