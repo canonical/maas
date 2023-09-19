@@ -418,7 +418,9 @@ class DEPLOYMENT_TARGET:
     DISK = "disk"
 
 
-DEPLOYMENT_TARGET_CHOICES = enum_choices(DEPLOYMENT_TARGET)
+DEPLOYMENT_TARGET_CHOICES = enum_choices(
+    DEPLOYMENT_TARGET, transform=str.capitalize
+)
 
 
 class BOOT_RESOURCE_TYPE:

@@ -6471,6 +6471,15 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         result = handler.filter_options({"group_key": "interfaces"})
         self.assertEqual(len(result), len(ifaces) + len(tags) + 1)
 
+    def test_filter_options_deployment_target(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "deployment_target"})
+        key_values = list(map(lambda item: item["key"], result))
+        assert len(key_values) == 2
+        assert "memory" in key_values
+        assert "disk" in key_values
+
     def test_unsubscribe_raises_validation_error_with_no_pk(self):
         admin = factory.make_admin()
         handler = MachineHandler(admin, {}, None)
