@@ -127,6 +127,23 @@ class Client:
                 "Client address is only available in the rack."
             )
 
+    def _global_intercept_errback(self, failure):
+        """Intercept exceptions for every call and take actions."""
+        # Due to https://bugs.launchpad.net/maas/+bug/2029417 it might be that a connection is actually
+        # closed, but we still try to use it. In such case, we close the connection here as soon as we detect it.
+        if (
+            failure.check(RuntimeError)
+            and "the handler is closed" in failure.getErrorMessage()
+        ):
+            log.err(
+                f"Closed handler detected! Dropping the connection '{self.ident}' and forwarding the exception."
+            )
+            if self._conn.transport:
+                self._conn.transport.loseConnection()
+
+        # re-raise always!
+        failure.raiseException()
+
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_rack_region_rpc_call_latency",
         get_labels=lambda args, kwargs, retval: {"call": args[1].__name__},
@@ -176,6 +193,7 @@ class Client:
         if timeout is None or timeout <= 0:
             d = self._conn.callRemote(cmd, **kwargs)
             if isinstance(d, Deferred):
+                d.addErrback(self._global_intercept_errback)
                 d.addBoth(lambda x: callOut(x, _free_conn))
             else:
                 _free_conn()
@@ -183,6 +201,7 @@ class Client:
         else:
             d = deferWithTimeout(timeout, self._conn.callRemote, cmd, **kwargs)
             if isinstance(d, Deferred):
+                d.addErrback(self._global_intercept_errback)
                 d.addBoth(lambda x: callOut(x, _free_conn))
             else:
                 _free_conn()
