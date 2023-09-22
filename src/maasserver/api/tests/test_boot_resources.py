@@ -23,6 +23,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
 )
 from maasserver.fields import LargeObjectFile
+from maasserver.forms import get_uploaded_filename
 from maasserver.models import BootResource, LargeFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
@@ -241,7 +242,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertEqual(name, resource.name)
         self.assertEqual(architecture, resource.architecture)
         self.assertEqual("uploaded", resource_set.label)
-        self.assertEqual(filetype, rfile.filename)
+        self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
         self.assertEqual(filetype, rfile.filetype)
         with rfile.largefile.content.open("rb") as stream:
             written_data = stream.read()
