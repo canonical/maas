@@ -273,6 +273,16 @@ EndSection
                 re.match(r"^[\da-z]+$", password, re.IGNORECASE), password
             )
 
+    def test_generate_random_password_with_length(self):
+        for attempt in range(0, 10):
+            password = self.ipmi._generate_random_password(
+                min_length=16, max_length=20
+            )
+            assert 16 <= len(password) <= 20
+            assert (
+                re.match(r"^[\da-z]+$", password, re.IGNORECASE) is not None
+            ), password
+
     def test_generate_random_password_with_special_chars(self):
         # Huawei uses a non-standard IPMI password policy
         special_chars = set("!\"#$%&'()*+-./:;<=>?@[\\]^_`{|}~")
@@ -380,9 +390,11 @@ EndSection
         self.ipmi.username = None
         self.ipmi.password = None
         password = factory.make_name("password")
+        stronger_password = factory.make_name("strongpassword")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
+            stronger_password,
             password_w_spec_chars,
         )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
@@ -429,13 +441,17 @@ EndSection
         self.ipmi.username = None
         self.ipmi.password = None
         password = factory.make_name("password")
+        stronger_password = factory.make_name("strongpassword")
         password_w_spec_chars = factory.make_name("password_w_spec_chars")
         self.patch(self.ipmi, "_generate_random_password").side_effect = (
             password,
+            stronger_password,
             password_w_spec_chars,
         )
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
         mock_bmc_set.side_effect = (
+            None,
+            factory.make_exception(),
             None,
             factory.make_exception(),
             None,
@@ -465,6 +481,8 @@ EndSection
             MockCallsMatch(
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password),
+                call("User2", "Username", "maas"),
+                call("User2", "Password", stronger_password),
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password_w_spec_chars),
                 call("User2", "Lan_Privilege_Limit", "Operator"),

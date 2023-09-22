@@ -194,6 +194,8 @@ class IPMIBase(BMCConfig):
         if not self.password:
             passwords = [
                 self._generate_random_password(),
+                # Some BMC require a longer password https://bugs.launchpad.net/maas/+bug/1993916/
+                self._generate_random_password(min_length=16, max_length=20),
                 self._generate_random_password(with_special_chars=True),
             ]
         else:
