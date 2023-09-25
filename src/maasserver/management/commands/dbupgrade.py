@@ -242,3 +242,5 @@ class Command(BaseCommand):
         if not no_triggers:
             self._perform_trigger_installation(database)
         self._perform_view_installation(database)
+
+        self._temporal_migration(database)
