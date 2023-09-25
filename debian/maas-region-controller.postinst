@@ -74,6 +74,17 @@ configure_migrate_maas_dns() {
     deb-systemd-invoke restart 'bind9.service' >/dev/null || true
 }
 
+configure_change_db_owner() {
+    # Starting from dbconfig-common 2.0.22 the owner of the database
+    # will be PostgreSQL user ($dbc_dbuser). For us this is the desired behavior.
+    # We want $dbc_dbuser user (not `postgres`) to be owner of $dbc_dbname.
+    # 2.0.22 however is not available on jammy, so we mimic this behavior manually.
+    echo "Changed database $dbc_dbname owner to user $dbc_dbuser"
+
+    . /usr/share/dbconfig-common/internal/pgsql
+    _dbc_pgsql_exec_command "ALTER DATABASE $dbc_dbname OWNER TO $dbc_dbuser"
+}
+
 if [ "$1" = "configure" ] && [ -z "$2" ]; then
     #########################################################
     ##########  Configure DEFAULT_MAAS_URL  #################
@@ -109,6 +120,9 @@ if [ "$1" = "configure" ] && [ -z "$2" ]; then
 
     # Create the database
     dbc_go maas-region-controller $@
+
+    configure_change_db_owner
+
     maas-region local_config_set \
         --database-host "localhost" --database-port 5432 --database-name "$dbc_dbname" \
         --database-user "$dbc_dbuser" --database-pass "$dbc_dbpass"
@@ -172,6 +186,12 @@ elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0
             --database-user "$dbc_dbuser" --database-pass "$dbc_dbpass"
 
         mv /etc/maas/maas_local_settings.py /etc/maas/maas_local_settings.py.maas-old
+    fi
+
+    if dpkg --compare-versions "$2" lt 1:3.5.0; then
+      echo "MAAS version $2 requires database ownership change"
+      . /etc/dbconfig-common/maas-region-controller.conf
+      configure_change_db_owner
     fi
 
     maas_sync_migrate_db

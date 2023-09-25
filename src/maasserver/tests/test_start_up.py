@@ -252,6 +252,7 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertIsNotNone(MAAS_ID.get())
 
     def test_syncs_deprecation_notifications(self):
+        self.patch(deprecations, "get_deprecations").return_value = []
         Notification(ident="deprecation_test", message="some text").save()
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
@@ -265,10 +266,13 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test_logs_deprecation_notifications(self):
         self.patch(deprecations, "postgresql_major_version").return_value = 12
+        self.patch(
+            deprecations, "get_database_owner"
+        ).return_value = "postgres"
         mock_log = self.patch(start_up, "log")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
-        mock_log.msg.assert_called_once()
+        self.assertEqual(mock_log.msg.call_count, 2)
 
     def test_updates_version(self):
         with post_commit_hooks:
