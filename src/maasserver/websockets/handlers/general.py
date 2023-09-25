@@ -33,7 +33,6 @@ from maasserver.utils.certificates import (
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
-    list_all_usable_releases,
     list_hwe_kernel_choices,
     list_osystem_choices,
     list_release_choices,
@@ -108,12 +107,11 @@ class GeneralHandler(Handler):
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""
-        releases = list_all_usable_releases()
-        osystems = list_all_usable_osystems(releases)
-        kernels = list_all_usable_hwe_kernels(releases)
+        osystems = list_all_usable_osystems()
+        kernels = list_all_usable_hwe_kernels(osystems)
         return {
             "osystems": list_osystem_choices(osystems, include_default=False),
-            "releases": list_release_choices(releases, include_default=False),
+            "releases": list_release_choices(osystems, include_default=False),
             "kernels": kernels,
             "default_osystem": Config.objects.get_config("default_osystem"),
             "default_release": Config.objects.get_config(

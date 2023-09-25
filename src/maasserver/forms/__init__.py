@@ -173,7 +173,6 @@ from maasserver.utils.osystems import (
     get_working_kernel,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
-    list_all_usable_releases,
     list_osystem_choices,
     list_release_choices,
     validate_min_hwe_kernel,
@@ -560,20 +559,18 @@ def find_osystem_and_release_from_release_name(name):
     """Return os and release for the given release name."""
     osystems = list_all_usable_osystems()
     possible_short_names = []
-    for osystem in osystems:
-        for release in osystem["releases"]:
-            if release["name"] == name:
+    for osystem in osystems.values():
+        for release in osystem.releases.values():
+            if release.name == name:
                 return osystem, release
-            elif osystem["name"] == name:
+            elif osystem.name == name:
                 # If the given release matches the osystem name add it to
                 # our list of possibilities. This allows a user to specify
                 # Ubuntu and get the latest release available.
                 possible_short_names.append(
                     {"osystem": osystem, "release": release}
                 )
-            elif osystem["name"] != "ubuntu" and release["name"].startswith(
-                name
-            ):
+            elif osystem.name != "ubuntu" and release.name.startswith(name):
                 # Check if the given name is a shortened version of a known
                 # name, e.g. centos7 for centos70.  We don't allow short names
                 # for Ubuntu releases
@@ -587,7 +584,7 @@ def find_osystem_and_release_from_release_name(name):
         # will pick centos71
         sorted_list = sorted(
             possible_short_names,
-            key=lambda os_release: os_release["release"]["name"],
+            key=lambda os_release: os_release["release"].name,
             reverse=True,
         )
         return sorted_list[0]["osystem"], sorted_list[0]["release"]
@@ -778,11 +775,10 @@ class MachineForm(NodeForm):
         This needs to be done on the fly so that we can pass a dynamic list of
         usable operating systems and distro_series.
         """
-        releases = list_all_usable_releases()
-        osystems = list_all_usable_osystems(releases)
+        osystems = list_all_usable_osystems()
         if self.has_owner:
             os_choices = list_osystem_choices(osystems)
-            distro_choices = list_release_choices(releases)
+            distro_choices = list_release_choices(osystems)
             invalid_osystem_message = compose_invalid_choice_text(
                 "osystem", os_choices
             )
@@ -924,12 +920,10 @@ class MachineForm(NodeForm):
             )
             if osystem is not None:
                 key_required = get_release_requires_key(release)
-                self.data["osystem"] = osystem["name"]
-                self.data["distro_series"] = "{}/{}{}".format(
-                    osystem["name"],
-                    release["name"],
-                    key_required,
-                )
+                self.data["osystem"] = osystem.name
+                self.data[
+                    "distro_series"
+                ] = f"{osystem.name}/{release.name}{key_required}"
             else:
                 self.data["distro_series"] = series
 
@@ -1805,7 +1799,7 @@ class DeployForm(ConfigForm):
         to filter the releases based on the OS selection. The API uses the
         field defined in settings.py"""
         release_choices = list_release_choices(
-            list_all_usable_releases(), include_default=False
+            list_all_usable_osystems(), include_default=False
         )
         if len(release_choices) == 0:
             release_choices = [("---", "--- No Usable Release ---")]
@@ -2349,9 +2343,9 @@ class LicenseKeyForm(MAASModelForm):
         # Remove the operating systems that do not have any releases that
         # require license keys. Don't want them to show up in the UI or be
         # used in the API.
-        osystems = [
-            osystem for osystem in osystems if osystem["name"] in releases
-        ]
+        for osystem in list(osystems.values()):
+            if osystem.name not in releases:
+                del osystems[osystem.name]
 
         os_choices = list_osystem_choices(osystems, include_default=False)
         distro_choices = list_release_choices(

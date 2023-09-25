@@ -10,7 +10,6 @@ __all__ = [
     "list_all_releases_requiring_keys",
     "list_all_usable_hwe_kernels",
     "list_all_usable_osystems",
-    "list_all_usable_releases",
     "list_commissioning_choices",
     "list_hwe_kernel_choices",
     "list_osystem_choices",
@@ -21,9 +20,10 @@ __all__ = [
     "get_working_kernel",
 ]
 
-from collections import namedtuple, OrderedDict
-from operator import itemgetter
-from typing import List
+from collections import namedtuple
+import dataclasses
+from operator import attrgetter
+from typing import Dict, List
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -35,9 +35,26 @@ from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
 
 
-def list_all_usable_releases():
+@dataclasses.dataclass
+class OSRelease:
+    name: str
+    title: str
+    can_commission: bool = False
+    requires_license_key: bool = False
+
+
+@dataclasses.dataclass
+class OperatingSystem:
+    name: str
+    title: str
+    default_commissioning_release: str | None = None
+    default_release: str = ""
+    releases: Dict[str, OSRelease] = dataclasses.field(default_factory=dict)
+
+
+def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
     """Return all releases for all operating systems that can be used."""
-    distro_series = {}
+    osystems = {}
     seen_releases = set()
     for br in BootResource.objects.filter(bootloader_type=None):
         # An OS can have multiple boot resource for one release. e.g Ubuntu
@@ -48,76 +65,60 @@ def list_all_usable_releases():
         seen_releases.add(br.name)
 
         if "/" in br.name:
-            os_name, release = br.name.split("/")
+            os_name, release_name = br.name.split("/")
         else:
             os_name = "custom"
-            release = br.name
+            release_name = br.name
 
         osystem = OperatingSystemRegistry.get_item(os_name)
         if osystem is not None:
-            title = osystem.get_release_title(release)
-            if title is None:
-                title = release
+            release_title = osystem.get_release_title(release_name)
+            if release_title is None:
+                release_title = release_name
             can_commission = (
-                release in osystem.get_supported_commissioning_releases()
+                release_name in osystem.get_supported_commissioning_releases()
             )
-            requires_license_key = osystem.requires_license_key(release)
+            requires_license_key = osystem.requires_license_key(release_name)
         else:
-            title = br.name
+            release_title = br.name
             can_commission = requires_license_key = False
 
         if br.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             # User may set the title of an uploaded resource.
             if "title" in br.extra:
-                title = br.extra["title"]
+                release_title = br.extra["title"]
             else:
-                title = release
+                release_title = release_name
 
-        if os_name not in distro_series:
-            distro_series[os_name] = []
-        distro_series[os_name].append(
-            {
-                "name": release,
-                "title": title,
-                "can_commission": can_commission,
-                "requires_license_key": requires_license_key,
-            }
-        )
-    for osystem, releases in distro_series.items():
-        distro_series[osystem] = sorted(releases, key=itemgetter("title"))
-    return OrderedDict(sorted(distro_series.items()))
-
-
-def list_all_usable_osystems(releases=None):
-    """Return all operating systems that can be used for nodes."""
-    if releases is None:
-        releases = list_all_usable_releases()
-    osystems = []
-    for os_name, releases in releases.items():
-        osystem = OperatingSystemRegistry.get_item(os_name)
-        if osystem:
-            default_commissioning_release = (
-                osystem.get_default_commissioning_release()
+        if os_name not in osystems:
+            if osystem is not None:
+                default_commissioning_release = (
+                    osystem.get_default_commissioning_release()
+                )
+                default_release = osystem.get_default_release()
+                os_title = osystem.title
+            else:
+                default_commissioning_release = None
+                default_release = ""
+                os_title = os_name
+            osystems[os_name] = OperatingSystem(
+                name=os_name,
+                title=os_title,
+                default_commissioning_release=default_commissioning_release,
+                default_release=default_release,
             )
-            default_release = osystem.get_default_release()
-            title = osystem.title
-        else:
-            default_commissioning_release = ""
-            default_release = ""
-            title = os_name
-        osystems.append(
-            {
-                "name": os_name,
-                "title": title,
-                "default_commissioning_release": default_commissioning_release,
-                "default_release": default_release,
-                "releases": releases,
-            }
+        osystems[os_name].releases[release_name] = OSRelease(
+            name=release_name,
+            title=release_title,
+            can_commission=can_commission,
+            requires_license_key=requires_license_key,
         )
-    return sorted(osystems, key=itemgetter("title"))
+    return osystems
 
 
-def list_osystem_choices(osystems, include_default=True):
+def list_osystem_choices(
+    osystems: Dict[str, OperatingSystem], include_default: bool = True
+):
     """Return Django "choices" list for `osystem`.
 
     :param include_default: When true includes the 'Default OS' in choice
@@ -127,25 +128,25 @@ def list_osystem_choices(osystems, include_default=True):
         choices = [("", "Default OS")]
     else:
         choices = []
-    choices += [(osystem["name"], osystem["title"]) for osystem in osystems]
+    choices += [(osystem.name, osystem.title) for osystem in osystems.values()]
     return sorted(list(set(choices)))
 
 
-def list_all_usable_hwe_kernels(releases):
+def list_all_usable_hwe_kernels(osystems: Dict[str, OperatingSystem]):
     """Return dictionary of usable `kernels` for each os/release."""
     kernels = {}
-    for osystem, osystems in releases.items():
-        if osystem not in kernels:
-            kernels[osystem] = {}
-        for release in osystems:
-            os_release = osystem + "/" + release["name"]
-            kernels[osystem][release["name"]] = list_hwe_kernel_choices(
+    for osystem in osystems.values():
+        if osystem.name not in kernels:
+            kernels[osystem.name] = {}
+        for release in osystem.releases.values():
+            os_release = f"{osystem.name}/{release.name}"
+            kernels[osystem.name][release.name] = list_hwe_kernel_choices(
                 sorted(BootResource.objects.get_kernels(os_release))
             )
-            if len(kernels[osystem][release["name"]]) == 0:
-                kernels[osystem].pop(release["name"])
-        if len(kernels[osystem]) == 0:
-            kernels.pop(osystem)
+            if len(kernels[osystem.name][release.name]) == 0:
+                kernels[osystem.name].pop(release.name)
+        if len(kernels[osystem.name]) == 0:
+            kernels.pop(osystem.name)
     return kernels
 
 
@@ -172,19 +173,22 @@ def list_hwe_kernel_choices(hwe_kernels):
     ]
 
 
-def list_all_releases_requiring_keys(osystems):
+def list_all_releases_requiring_keys(
+    osystems: Dict[str, OperatingSystem]
+) -> Dict[str, OperatingSystem]:
     """Return dictionary of OS name mapping to `releases` that require
     license keys."""
     distro_series = {}
-    for osystem in osystems:
-        releases = [
-            release
-            for release in osystem["releases"]
-            if release["requires_license_key"]
-        ]
+    for osystem in osystems.values():
+        releases = dict(
+            (release.name, release)
+            for release in osystem.releases.values()
+            if release.requires_license_key
+        )
         if len(releases) > 0:
-            distro_series[osystem["name"]] = sorted(
-                releases, key=itemgetter("title")
+            distro_series[osystem.name] = dataclasses.replace(
+                osystem,
+                releases=releases,
             )
     return distro_series
 
@@ -195,13 +199,15 @@ def get_release_requires_key(release):
 
     This is used by the JS, to display the licese_key field.
     """
-    if release["requires_license_key"]:
+    if release.requires_license_key:
         return "*"
     return ""
 
 
 def list_release_choices(
-    releases, include_default=True, with_key_required=True
+    osystems: Dict[str, OperatingSystem],
+    include_default: bool = True,
+    with_key_required: bool = True,
 ):
     """Return Django "choices" list for `releases`.
 
@@ -214,41 +220,21 @@ def list_release_choices(
         choices = [("", "Default OS Release")]
     else:
         choices = []
-    for os_name, os_releases in releases.items():
-        for release in os_releases:
+    for osystem in sorted(osystems.values(), key=attrgetter("title")):
+        for release in sorted(
+            osystem.releases.values(), key=attrgetter("title")
+        ):
             if with_key_required:
                 requires_key = get_release_requires_key(release)
             else:
                 requires_key = ""
-            title = release["title"]
-            if not title:
-                # Uploaded boot resources are not required to have a title.
-                # Fallback to the name of the release when the title is
-                # missing.
-                title = release["name"]
             choices.append(
                 (
-                    "{}/{}{}".format(os_name, release["name"], requires_key),
-                    title,
+                    "{}/{}{}".format(osystem.name, release.name, requires_key),
+                    release.title,
                 )
             )
     return choices
-
-
-def get_osystem_from_osystems(osystems, name):
-    """Return osystem from osystems with the given name."""
-    for osystem in osystems:
-        if osystem["name"] == name:
-            return osystem
-    return None
-
-
-def get_release_from_osystem(osystem, name):
-    """Return release from osystem with the given release name."""
-    for release in osystem["releases"]:
-        if release["name"] == name:
-            return release
-    return None
 
 
 def get_distro_series_initial(osystems, instance, with_key_required=True):
@@ -259,11 +245,11 @@ def get_distro_series_initial(osystems, instance, with_key_required=True):
     """
     osystem_name = instance.osystem
     series = instance.distro_series
-    osystem = get_osystem_from_osystems(osystems, osystem_name)
+    osystem = osystems.get(osystem_name)
     if not with_key_required:
         key_required = ""
     elif osystem is not None:
-        release = get_release_from_osystem(osystem, series)
+        release = osystem.releases.get(series)
         if release is not None:
             key_required = get_release_requires_key(release)
         else:
@@ -283,7 +269,7 @@ def get_distro_series_initial(osystems, instance, with_key_required=True):
 def list_commissioning_choices(osystems):
     """Return Django "choices" list for releases that can be used for
     commissioning."""
-    ubuntu = get_osystem_from_osystems(osystems, "ubuntu")
+    ubuntu = osystems.get("ubuntu")
     if ubuntu is None:
         return []
     else:
@@ -291,14 +277,16 @@ def list_commissioning_choices(osystems):
             name="commissioning_distro_series"
         )
         found_commissioning_series = False
-        sorted_releases = sorted(ubuntu["releases"], key=itemgetter("title"))
+        sorted_releases = sorted(
+            ubuntu.releases.values(), key=attrgetter("title")
+        )
         releases = []
         for release in sorted_releases:
-            if not release["can_commission"]:
+            if not release.can_commission:
                 continue
-            if release["name"] == commissioning_series:
+            if release.name == commissioning_series:
                 found_commissioning_series = True
-            releases.append((release["name"], release["title"]))
+            releases.append((release.name, release.title))
         if found_commissioning_series:
             return releases
         else:
@@ -323,12 +311,12 @@ def validate_osystem_and_distro_series(osystem, distro_series):
         release = distro_series
     release = release.replace("*", "")
     usable_osystems = list_all_usable_osystems()
-    found_osystem = get_osystem_from_osystems(usable_osystems, osystem)
+    found_osystem = usable_osystems.get(osystem)
     if found_osystem is None:
         raise ValidationError(
             "%s is not a supported operating system." % osystem
         )
-    found_release = get_release_from_osystem(found_osystem, release)
+    found_release = found_osystem.releases.get(release)
     if found_release is None:
         raise ValidationError(
             "%s/%s is not a supported operating system and release "
