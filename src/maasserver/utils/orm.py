@@ -1432,3 +1432,16 @@ def count_queries(log_func):
         return inner_wrapper
 
     return wrapper
+
+
+def get_database_owner() -> str:
+    """Return database owner."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+                       SELECT pg_catalog.pg_get_userbyid(d.datdba)
+                       FROM pg_catalog.pg_database d
+                       WHERE d.datname = current_database()"""
+        )
+        row = cursor.fetchone()
+    return row[0]

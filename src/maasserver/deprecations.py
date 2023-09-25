@@ -1,7 +1,7 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasserver.utils.orm import postgresql_major_version
+from maasserver.utils.orm import get_database_owner, postgresql_major_version
 from provisioningserver.logger import LegacyLogger
 
 DEPRECATION_URL = "https://maas.io/deprecations/{id}"
@@ -34,7 +34,13 @@ DEPRECATIONS = {
         since="3.3",
         description="The PostgreSQL version in use is older than 14.",
         link_text="How to upgrade the PostgreSQL server",
-    )
+    ),
+    "WRONG_MAAS_DATABASE_OWNER": Deprecation(
+        id="MD4",
+        since="3.4",
+        description="MAAS database is owned by 'postgres' user.",
+        link_text="How to fix MAAS database owner",
+    ),
 }
 
 
@@ -44,6 +50,8 @@ def get_deprecations():
     deprecations = []
     if postgresql_major_version() < 14:
         deprecations.append(DEPRECATIONS["POSTGRES_OLDER_THAN_14"])
+    if get_database_owner() == "postgres":
+        deprecations.append(DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"])
     return deprecations
 
 
