@@ -33,7 +33,7 @@ class ConfigureWorkerPoolWorkflow:
         )
 
         interface_set = result["interface_set"]
-        vlan_ids = [n["vlan"]["id"] for n in interface_set]
+        vlan_ids = [n["vlan"]["id"] for n in interface_set if n.get("vlan")]
 
         for vlan_id in vlan_ids:
             # If you need to extend workflows/activities that should be
