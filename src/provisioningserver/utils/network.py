@@ -26,7 +26,7 @@ from zlib import crc32
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
 from netaddr.core import AddrFormatError, NotRegisteredError
 import netifaces
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.interfaces import IResolver
 from twisted.names.client import getResolver
 from twisted.names.error import (
@@ -41,7 +41,7 @@ from provisioningserver.utils.ipaddr import get_ip_addr
 from provisioningserver.utils.iproute import get_ip_route
 from provisioningserver.utils.ps import running_in_container
 from provisioningserver.utils.shell import call_and_check, get_env_with_locale
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import asynchronous, synchronous
 
 # Address families in /etc/network/interfaces that MAAS chooses to parse. All
 # other families are ignored.
@@ -751,7 +751,9 @@ def get_all_interface_addresses() -> Iterable[str]:
         yield from get_all_addresses_for_interface(interface)
 
 
-def safe_getaddrinfo(hostname, port, family=AF_INET, proto=IPPROTO_TCP):
+def safe_getaddrinfo(
+    hostname, port, family=AF_INET, proto=IPPROTO_TCP, timeout=10
+):
     if family in (
         AF_INET,
         0,
@@ -764,19 +766,27 @@ def safe_getaddrinfo(hostname, port, family=AF_INET, proto=IPPROTO_TCP):
         socket.SOCK_STREAM if proto == IPPROTO_TCP else socket.SOCK_DGRAM
     )
 
+    @asynchronous(timeout=timeout)
     @inlineCallbacks
     def _v6_lookup():
         resolver = getResolver()
         answers = yield resolver.lookupIPV6Address(hostname)
         return [
-            (AF_INET6, sock_type, proto, "", (ans.address, port, 0, 0))
+            (AF_INET6, sock_type, proto, "", (ans._address, port, 0, 0))
             for ans in answers[0]
         ]
 
     try:
         addr = IPAddress(hostname)
     except AddrFormatError:
-        return _v6_lookup()
+        result = _v6_lookup()
+        # this should only happen in tests where twisted is in the thread,
+        # but this is called from a synchronous context
+        if isinstance(result, Deferred) and result.result:
+            return result.result
+        # synchronous contexts should use sync_safe_getaddrinfo to ensure
+        # this is not a Deferred
+        return result
     else:
         return [(AF_INET6, sock_type, proto, "", (str(addr), port, 0, 0))]
 
