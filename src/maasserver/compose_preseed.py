@@ -36,6 +36,7 @@ RACK_CONTROLLER_PORT = 5248
 def _subnet_uses_dns(subnet):
     return (
         subnet is not None
+        and subnet.allow_dns
         and not subnet.dns_servers
         and (subnet.vlan.dhcp_on or subnet.vlan.relay_vlan_id is not None)
     )

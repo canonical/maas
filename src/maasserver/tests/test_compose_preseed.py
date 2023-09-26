@@ -1305,6 +1305,17 @@ class TestBuildMetadataURL(MAASServerTestCase):
             ),
         )
 
+    def test_uses_rack_ipv4_enlist_without_allow_dns(self):
+        subnet = factory.make_Subnet(
+            cidr="10.10.0.0/24", dns_servers=[], allow_dns=False
+        )
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet, rack)
+        machine_ip = "10.10.0.100"
+        assert "http://10.10.0.2:5248/MAAS" == build_metadata_url(
+            _make_request(machine_ip), "/MAAS", rack
+        )
+
     def test_uses_rack_ipv6_enlist_without_external_dns(self):
         subnet = factory.make_Subnet(
             cidr="fd12:3456:789a::/64", dns_servers=[]
