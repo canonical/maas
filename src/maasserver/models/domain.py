@@ -180,9 +180,11 @@ class Domain(CleanSave, TimestampedModel):
 
     objects = DomainManager()
 
-    # explicitly define the AutoField since default is BigAutoField which
-    # doesn't allow 0 as a value (used for the default domain)
-    id = AutoField(primary_key=True)
+    # explicitly define the AutoField since default is BigAutoField and causing
+    # modifications causes django to include this in the migration and not
+    # allowing 0 as a value
+    id = AutoField(primary_key=True, auto_created=True, verbose_name="ID")
+
     name = DomainNameField(
         max_length=256,
         editable=True,

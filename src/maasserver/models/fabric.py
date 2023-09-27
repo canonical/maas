@@ -8,7 +8,7 @@ from operator import attrgetter
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import CharField, Manager, TextField
+from django.db.models import AutoField, CharField, Manager, TextField
 from django.db.models.query import QuerySet
 
 from maasserver.fields import MODEL_NAME_VALIDATOR
@@ -132,6 +132,11 @@ class Fabric(CleanSave, TimestampedModel):
         verbose_name_plural = "Fabrics"
 
     objects = FabricManager()
+
+    # explicitly define the AutoField since default is BigAutoField and causing
+    # modifications causes django to include this in the migration and not
+    # allowing 0 as a value
+    id = AutoField(primary_key=True, auto_created=True, verbose_name="ID")
 
     # We don't actually allow blank or null name, but that is enforced in
     # clean() and save().
