@@ -9,7 +9,11 @@ from testtools.matchers import ContainsAll, HasLength
 from twisted.internet import reactor
 from twisted.internet.defer import succeed
 
-from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
+from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_TYPE,
+    NODE_STATUS,
+)
 from maasserver.models import BootResource, BootSourceSelection, Config
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
@@ -65,14 +69,12 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             release = factory.make_name("release")
         name = f"{os}/{release}"
         architecture = f"{arch}/{subarch}"
-        resource = factory.make_BootResource(
+        resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
             architecture=architecture,
             extra=extra,
         )
-        resource_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
     def test_returns_connection_error_True(self):
@@ -364,11 +366,49 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource = response["resources"][0]
         self.assertEqual(version, resource["title"])
 
+    def test_returns_can_deploy_to_ram(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        # Use trusty as known to map to "14.04 LTS"
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name="ubuntu/focal",
+            architecture="amd64/generic",
+        )
+        factory.make_custom_boot_resource(
+            name="rhel/9.1",
+            architecture="amd64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        )
+        factory.make_custom_boot_resource(
+            name="rhel/9.1",
+            architecture="amd64/special",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
+        )
+        factory.make_custom_boot_resource(
+            name="rhel/9.1",
+            architecture="arm64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
+        )
+        response = handler.poll({})
+        resources = sorted(
+            (resource["name"], resource["arch"], resource["canDeployToMemory"])
+            for resource in response["resources"]
+        )
+        self.assertEqual(
+            [
+                ("rhel/9.1", "amd64", True),
+                ("rhel/9.1", "arm64", False),
+                ("ubuntu/focal", "amd64", True),
+            ],
+            resources,
+        )
+
     def test_shows_last_deployment_time(self) -> None:
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED
+            name="ubuntu/focal", rtype=BOOT_RESOURCE_TYPE.SYNCED
         )
         os_name, series = resource.name.split("/")
         # The polled datetime only has granularity of order seconds
@@ -994,13 +1034,11 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
         if arch is None:
             arch = factory.make_name("arch")
         architecture = "%s/generic" % arch
-        resource = factory.make_BootResource(
+        resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name="ubuntu-core/16-pc",
             architecture=architecture,
         )
-        resource_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
     def patch_stop_import_resources(self):
@@ -1092,13 +1130,11 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             release = factory.make_name("release")
         name = f"{os}/{release}"
         architecture = f"{arch}/{subarch}"
-        resource = factory.make_BootResource(
+        resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
             architecture=architecture,
         )
-        resource_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(resource_set)
         return resource
 
     def patch_stop_import_resources(self):

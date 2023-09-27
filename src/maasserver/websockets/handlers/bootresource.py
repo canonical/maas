@@ -38,7 +38,10 @@ from maasserver.models import (
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
-from maasserver.utils.osystems import release_a_newer_than_b
+from maasserver.utils.osystems import (
+    list_all_usable_osystems,
+    release_a_newer_than_b,
+)
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
     Handler,
@@ -452,6 +455,25 @@ class BootResourceHandler(Handler):
                 return False
         return True
 
+    def get_can_deploy_to_memory(self, resources: list[BootResource]) -> bool:
+        """Return whether the resource group can be deployed to memory"""
+        osystems = list_all_usable_osystems()
+        for resource in resources:
+            if "/" in resource.name:
+                osystem_name, distro_series_name = resource.name.split("/", 1)
+            else:
+                osystem_name = "custom"
+                distro_series_name = resource.name
+            osystem = osystems[osystem_name]
+            release = osystem.releases[distro_series_name]
+            if resource.architecture not in release.architectures:
+                continue
+            if release.architectures[
+                resource.architecture
+            ].can_deploy_to_memory:
+                return True
+        return False
+
     def get_last_update_for_resources(
         self, resources: list[BootResource]
     ) -> datetime:
@@ -547,6 +569,7 @@ class BootResourceHandler(Handler):
         complete = self.are_all_resources_complete(group)
         progress = self.get_progress_for_resources(group)
         last_deployed = self.get_last_deployed_for_resources(group)
+        can_deploy_to_memory = self.get_can_deploy_to_memory(group)
 
         # Set the computed attributes on the first resource as that will
         # be the only one returned to the UI.
@@ -559,6 +582,7 @@ class BootResourceHandler(Handler):
         resource.number_of_nodes = number_of_nodes
         resource.machine_count = machine_count
         resource.last_deployed = last_deployed
+        resource.can_deploy_to_memory = can_deploy_to_memory
         resource.complete = complete
         if not complete:
             if progress > 0:
@@ -663,6 +687,7 @@ class BootResourceHandler(Handler):
                 "status": resource.status,
                 "icon": resource.icon,
                 "downloading": resource.downloading,
+                "canDeployToMemory": resource.can_deploy_to_memory,
                 "numberOfNodes": resource.number_of_nodes,
                 "machineCount": resource.machine_count,
                 "lastUpdate": resource.last_update.strftime(
