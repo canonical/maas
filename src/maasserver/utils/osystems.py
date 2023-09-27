@@ -29,10 +29,28 @@ from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from maasserver.enum import BOOT_RESOURCE_TYPE
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource, BootSourceCache, Config
+from maasserver.models.bootresourceset import XINSTALL_TYPES
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
+
+
+@dataclasses.dataclass
+class OSReleaseArchitecture:
+    name: str
+    image_type: int
+    file_type: str
+
+    @property
+    def can_deploy_to_memory(self) -> bool:
+        if self.image_type == BOOT_RESOURCE_TYPE.SYNCED:
+            return self.file_type == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+        else:
+            return self.file_type in [
+                BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+                BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
+            ]
 
 
 @dataclasses.dataclass
@@ -41,6 +59,9 @@ class OSRelease:
     title: str
     can_commission: bool = False
     requires_license_key: bool = False
+    architectures: Dict[str, OSReleaseArchitecture] = dataclasses.field(
+        default_factory=dict
+    )
 
 
 @dataclasses.dataclass
@@ -55,14 +76,11 @@ class OperatingSystem:
 def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
     """Return all releases for all operating systems that can be used."""
     osystems = {}
-    seen_releases = set()
-    for br in BootResource.objects.filter(bootloader_type=None):
+    boot_resources = BootResource.objects.filter(bootloader_type=None)
+    for br in boot_resources:
         # An OS can have multiple boot resource for one release. e.g Ubuntu
         # Bionic has ga-18.04 and ga-18.04-lowlatency. This list should only
         # contain one entry per OS.
-        if br.name in seen_releases:
-            continue
-        seen_releases.add(br.name)
 
         if "/" in br.name:
             os_name, release_name = br.name.split("/")
@@ -107,12 +125,29 @@ def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
                 default_commissioning_release=default_commissioning_release,
                 default_release=default_release,
             )
-        osystems[os_name].releases[release_name] = OSRelease(
-            name=release_name,
-            title=release_title,
-            can_commission=can_commission,
-            requires_license_key=requires_license_key,
-        )
+        if release_name not in osystems[os_name].releases:
+            osystems[os_name].releases[release_name] = OSRelease(
+                name=release_name,
+                title=release_title,
+                can_commission=can_commission,
+                requires_license_key=requires_license_key,
+            )
+        latest_set = br.get_latest_set()
+        if latest_set is not None:
+            resource_files = [
+                resource_file
+                for resource_file in latest_set.files.all()
+                if resource_file.filetype in XINSTALL_TYPES
+            ]
+            if resource_files:
+                osystems[os_name].releases[release_name].architectures[
+                    br.architecture
+                ] = OSReleaseArchitecture(
+                    name=br.architecture,
+                    image_type=br.rtype,
+                    file_type=resource_files[0].filetype,
+                )
+
     return osystems
 
 

@@ -10,11 +10,10 @@ import random
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
 
-from maasserver.enum import BOOT_RESOURCE_TYPE
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.models import BootResource, Config
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.osystems import (
     FLAVOURED_WEIGHT,
@@ -128,6 +127,54 @@ class TestOsystems(MAASServerTestCase):
             ),
         )
 
+    def test_list_all_usable_osystems_can_deploy_to_memory(self):
+        factory.make_usable_boot_resource(
+            name="ubuntu/focal",
+            architecture="amd64/generic",
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+        )
+        factory.make_custom_boot_resource(
+            name="rhel/9.1",
+            architecture="amd64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
+        )
+        factory.make_custom_boot_resource(
+            name="rhel/9.1",
+            architecture="arm64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        )
+        factory.make_custom_boot_resource(
+            name="my-custom",
+            architecture="amd64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TBZ,
+        )
+        factory.make_custom_boot_resource(
+            name="my-custom",
+            architecture="arm64/generic",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TXZ,
+        )
+        osystems = list_all_usable_osystems()
+        self.assertEqual(["custom", "rhel", "ubuntu"], sorted(osystems.keys()))
+        ubuntu_release = osystems["ubuntu"].releases["focal"]
+        self.assertTrue(
+            ubuntu_release.architectures["amd64/generic"].can_deploy_to_memory
+        )
+        rhel_release = osystems["rhel"].releases["9.1"]
+        self.assertFalse(
+            rhel_release.architectures["amd64/generic"].can_deploy_to_memory
+        )
+        self.assertTrue(
+            rhel_release.architectures["arm64/generic"].can_deploy_to_memory
+        )
+        custom_release = osystems["custom"].releases["my-custom"]
+        self.assertFalse(
+            custom_release.architectures["amd64/generic"].can_deploy_to_memory
+        )
+        self.assertTrue(
+            custom_release.architectures["arm64/generic"].can_deploy_to_memory
+        )
+
     def make_release_choice(self, os_name, release, include_asterisk=False):
         key = "{}/{}".format(os_name, release.name)
         title = release.title
@@ -210,7 +257,9 @@ class TestOsystems(MAASServerTestCase):
 
     def test_list_release_choices_sorts(self):
         for _ in range(3):
-            factory.make_BootResource(name="custom/%s" % factory.make_name())
+            factory.make_custom_boot_resource(
+                name=f"custom/{factory.make_name()}",
+            )
         custom = list_all_usable_osystems()["custom"]
         choices = [
             self.make_release_choice("custom", release)
@@ -435,27 +484,26 @@ class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
 
     def test_raises_error_if_not_supported_release(self):
         factory.make_Node()
-        osystem = make_usable_osystem(self)
+        factory.make_custom_boot_resource(name="custom/my-release")
         release = factory.make_name("release")
         error = self.assertRaises(
             ValidationError,
             validate_osystem_and_distro_series,
-            osystem["name"],
+            "custom",
             release,
         )
         self.assertEqual(
-            "%s/%s is not a supported operating system and release "
-            "combination." % (osystem["name"], release),
+            f"custom/{release} is not a supported operating system and release "
+            "combination.",
             error.message,
         )
 
     def test_returns_osystem_and_release_with_license_key_stripped(self):
         factory.make_Node()
-        osystem = make_usable_osystem(self)
-        release = osystem["default_release"]
+        factory.make_custom_boot_resource(name="custom/my-release")
         self.assertEqual(
-            (osystem["name"], release),
-            validate_osystem_and_distro_series(osystem["name"], release + "*"),
+            ("custom", "my-release"),
+            validate_osystem_and_distro_series("custom", "my-release*"),
         )
 
 

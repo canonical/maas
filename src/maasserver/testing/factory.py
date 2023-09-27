@@ -2509,6 +2509,7 @@ class Factory(maastesting.factory.Factory):
         bootloader_type=None,
         rolling=False,
         filename=None,
+        image_filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
         base_image="",
         platform="generic",
         supported_platforms="generic",
@@ -2532,15 +2533,7 @@ class Factory(maastesting.factory.Factory):
             BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
             BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
         }
-        filetypes.add(
-            random.choice(
-                [
-                    BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
-                    BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
-                ]
-            )
-        )
-        filetypes.add(random.choice(XINSTALL_TYPES))
+        filetypes.add(image_filetype)
         for filetype in filetypes:
             # We set the filename to the same value as filetype, as in most
             # cases this will always be true. The simplestreams content from
