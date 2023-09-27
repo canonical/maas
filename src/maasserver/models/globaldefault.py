@@ -37,9 +37,10 @@ class GlobalDefault(CleanSave, TimestampedModel):
 
     objects = GlobalDefaultManager()
 
-    # explicitly define the AutoField since default is BigAutoField which
-    # doesn't allow 0 as a value
-    id = AutoField(primary_key=True)
+    # explicitly define the AutoField since default is BigAutoField and causing
+    # modifications causes django to include this in the migration and not
+    # allowing 0 as a value
+    id = AutoField(primary_key=True, auto_created=True, verbose_name="ID")
 
     domain = ForeignKey(
         Domain, null=False, blank=False, editable=True, on_delete=PROTECT

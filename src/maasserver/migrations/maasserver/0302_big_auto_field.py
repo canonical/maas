@@ -164,11 +164,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterField(
-            model_name="domain",
-            name="id",
-            field=models.AutoField(primary_key=True, serialize=False),
-        ),
-        migrations.AlterField(
             model_name="event",
             name="id",
             field=models.BigAutoField(
@@ -180,16 +175,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterField(
             model_name="eventtype",
-            name="id",
-            field=models.BigAutoField(
-                auto_created=True,
-                primary_key=True,
-                serialize=False,
-                verbose_name="ID",
-            ),
-        ),
-        migrations.AlterField(
-            model_name="fabric",
             name="id",
             field=models.BigAutoField(
                 auto_created=True,
@@ -237,11 +222,6 @@ class Migration(migrations.Migration):
                 serialize=False,
                 verbose_name="ID",
             ),
-        ),
-        migrations.AlterField(
-            model_name="globaldefault",
-            name="id",
-            field=models.AutoField(primary_key=True, serialize=False),
         ),
         migrations.AlterField(
             model_name="interface",
@@ -562,11 +542,6 @@ class Migration(migrations.Migration):
                 serialize=False,
                 verbose_name="ID",
             ),
-        ),
-        migrations.AlterField(
-            model_name="resourcepool",
-            name="id",
-            field=models.AutoField(primary_key=True, serialize=False),
         ),
         migrations.AlterField(
             model_name="rootkey",

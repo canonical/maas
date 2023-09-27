@@ -108,9 +108,11 @@ class ResourcePool(CleanSave, TimestampedModel):
 
     objects = ResourcePoolManager()
 
-    # explicitly define the AutoField since default is BigAutoField which
-    # doesn't allow 0 as a value (used for the default resource pool)
-    id = AutoField(primary_key=True)
+    # explicitly define the AutoField since default is BigAutoField and causing
+    # modifications causes django to include this in the migration and not
+    # allowing 0 as a value
+    id = AutoField(primary_key=True, auto_created=True, verbose_name="ID")
+
     name = CharField(
         max_length=256,
         unique=True,
