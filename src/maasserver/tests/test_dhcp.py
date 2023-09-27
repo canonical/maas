@@ -1,6 +1,5 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-import builtins
 from datetime import datetime
 from operator import itemgetter
 import random
@@ -2858,15 +2857,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         client = yield getClientFor(rack_controller.system_id)
         self.patch(
             client._conn, "_sendBoxCommand"
-        ).side_effect = always_fail_with(
-            builtins.RuntimeError("the handler is closed")
-        )
+        ).side_effect = always_fail_with(RuntimeError("the handler is closed"))
 
         ipv4_stub.side_effect = always_succeed_with({})
         ipv6_stub.side_effect = always_succeed_with({})
 
-        # The builtins.RuntimeError is propagated
-        with pytest.raises(builtins.RuntimeError):
+        # The RuntimeError is propagated
+        with pytest.raises(RuntimeError):
             yield dhcp.configure_dhcp(rack_controller)
 
         # But the connection should have been closed and no connections should be available now.
