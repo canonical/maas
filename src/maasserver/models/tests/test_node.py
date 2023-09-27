@@ -50,6 +50,8 @@ from maasserver.clusterrpc.power import (
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_TYPE,
     BRIDGE_TYPE_CHOICES,
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
@@ -8943,6 +8945,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         install_kvm=False,
         register_vmhost=False,
         ephemeral_deploy=False,
+        architecture=None,
     ):
         if network is None:
             # can't use a link-local network as MAAS server IPs for those are
@@ -8980,6 +8983,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             install_kvm=install_kvm,
             register_vmhost=register_vmhost,
             ephemeral_deploy=ephemeral_deploy,
+            architecture=architecture,
         )
         node.acquire(user)
         return node
@@ -9035,17 +9039,110 @@ class TestNode_Start(MAASTransactionServerTestCase):
         with ExpectedException(ValidationError):
             node.start(admin)
 
-    def test_raises_ValidationError_if_ephemeral_deployment_less_bionic(self):
+    def test_raises_ValidationError_if_ephemeral_deployment_not_supported(
+        self,
+    ):
         admin = factory.make_admin()
+        with transaction.atomic():
+            factory.make_custom_boot_resource(
+                name="rhel/9.1",
+                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DD,
+                architecture="amd64/generic",
+            )
         node = self.make_acquired_node_with_interface(
             admin,
             power_type="manual",
             with_boot_disk=False,
             ephemeral_deploy=True,
+            architecture="amd64/generic",
         )
-        node.distro_series = "xenial"
+        node.osystem = "rhel"
+        node.distro_series = "9.1"
+        self.patch(
+            boot_images, "get_common_available_boot_images"
+        ).return_value = [
+            {
+                "osystem": "ubuntu",
+                "release": "focal",
+                "purpose": "xinstall",
+            },
+            {
+                "osystem": "rhel",
+                "release": "9.1",
+                "purpose": "xinstall",
+            },
+        ]
         with ExpectedException(ValidationError):
             node.start(admin)
+
+    def test_no_ValidationError_if_ephemeral_deployment_supported(self):
+        admin = factory.make_admin()
+        with transaction.atomic():
+            factory.make_usable_boot_resource(
+                name="ubuntu/focal",
+                architecture="amd64/generic",
+            )
+            factory.make_custom_boot_resource(
+                name="rhel/9.1",
+                filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+                architecture="amd64/generic",
+            )
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            architecture="amd64/generic",
+        )
+        node.osystem = "rhel"
+        node.distro_series = "9.1"
+        self.patch(
+            boot_images, "get_common_available_boot_images"
+        ).return_value = [
+            {
+                "osystem": "ubuntu",
+                "release": "focal",
+                "purpose": "xinstall",
+            },
+            {
+                "osystem": "rhel",
+                "release": "9.1",
+                "purpose": "xinstall",
+            },
+        ]
+        node.start(admin)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
+
+    def test_no_ValidationError_if_ephemeral_deployment_ubuntu(self):
+        admin = factory.make_admin()
+        with transaction.atomic():
+            # For Ubuntu, we don't store images for 'generic', but for
+            # each specific kernel.
+            factory.make_usable_boot_resource(
+                name="ubuntu/focal",
+                architecture="amd64/ga-20.04",
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            )
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            architecture="amd64/generic",
+        )
+        node.osystem = "ubuntu"
+        node.distro_series = "focal"
+        self.patch(
+            boot_images, "get_common_available_boot_images"
+        ).return_value = [
+            {
+                "osystem": "ubuntu",
+                "release": "focal",
+                "purpose": "xinstall",
+            },
+        ]
+        node.start(admin)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
     def test_doesnt_raise_network_validation_when_all_dhcp(self):
         admin = factory.make_admin()

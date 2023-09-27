@@ -5453,9 +5453,6 @@ class Node(CleanSave, TimestampedModel):
         bridge_fd=None,
         enable_hw_sync=None,
     ):
-        # Avoid circular imports
-        from maasserver.utils.osystems import release_a_newer_than_b
-
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
@@ -5534,14 +5531,31 @@ class Node(CleanSave, TimestampedModel):
             raise ValidationError(
                 "Cannot deploy as a VM host for ephemeral deployments."
             )
-        if (
-            self.ephemeral_deploy
-            and self.osystem == "ubuntu"
-            and not release_a_newer_than_b(self.distro_series, "bionic")
-        ):
-            raise ValidationError(
-                "Ubuntu ephemeral deployments only supported on Ubuntu Bionic 18.04+"
+        if self.ephemeral_deploy:
+            from maasserver.utils.osystems import (
+                get_working_kernel,
+                list_all_usable_osystems,
             )
+
+            osystems = list_all_usable_osystems()
+            release = osystems[self.osystem].releases[self.distro_series]
+            if self.osystem != "ubuntu":
+                kernel_arch = self.architecture
+            else:
+                kernel = get_working_kernel(
+                    requested_kernel=self.hwe_kernel,
+                    min_compatibility_level=self.min_hwe_kernel,
+                    architecture=self.architecture,
+                    osystem=self.osystem,
+                    distro_series=self.distro_series,
+                )
+                main_arch = self.architecture.split("/", 1)[0]
+                kernel_arch = f"{main_arch}/{kernel}"
+            if not release.architectures[kernel_arch].can_deploy_to_memory:
+                raise ValidationError(
+                    "Deployment to memory not supported for "
+                    f"{self.osystem}/{self.distro_series} on {self.architecture}"
+                )
         self._register_request_event(
             user, event, action="start", comment=comment
         )
