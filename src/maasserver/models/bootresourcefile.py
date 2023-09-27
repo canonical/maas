@@ -19,6 +19,7 @@ from maasserver.enum import (
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.largefile import LargeFile
+from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -69,3 +70,14 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     def __str__(self):
         return f"<BootResourceFile {self.filename}/{self.filetype}>"
+
+
+class BootResourceFileSync(CleanSave, TimestampedModel):
+    class Meta:
+        unique_together = (("file", "region"),)
+
+    file = ForeignKey(BootResourceFile, on_delete=CASCADE)
+
+    region = ForeignKey(RegionController, on_delete=CASCADE)
+
+    size = BigIntegerField(default=0)
