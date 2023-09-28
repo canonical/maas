@@ -6636,6 +6636,39 @@ ALTER SEQUENCE public.maasserver_bootresourcefile_id_seq OWNED BY public.maasser
 
 
 --
+-- Name: maasserver_bootresourcefilesync; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_bootresourcefilesync (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    size bigint NOT NULL,
+    file_id bigint NOT NULL,
+    region_id bigint NOT NULL
+);
+
+
+--
+-- Name: maasserver_bootresourcefilesync_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_bootresourcefilesync_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_bootresourcefilesync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_bootresourcefilesync_id_seq OWNED BY public.maasserver_bootresourcefilesync.id;
+
+
+--
 -- Name: maasserver_bootresourceset; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6666,36 +6699,6 @@ CREATE SEQUENCE public.maasserver_bootresourceset_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_bootresourceset_id_seq OWNED BY public.maasserver_bootresourceset.id;
-
-
---
--- Name: maasserver_bootresourceset_sync; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_bootresourceset_sync (
-    id bigint NOT NULL,
-    bootresourceset_id bigint NOT NULL,
-    regioncontroller_id bigint NOT NULL
-);
-
-
---
--- Name: maasserver_bootresourceset_sync_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_bootresourceset_sync_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_bootresourceset_sync_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_bootresourceset_sync_id_seq OWNED BY public.maasserver_bootresourceset_sync.id;
 
 
 --
@@ -10310,17 +10313,17 @@ ALTER TABLE ONLY public.maasserver_bootresourcefile ALTER COLUMN id SET DEFAULT 
 
 
 --
+-- Name: maasserver_bootresourcefilesync id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_bootresourcefilesync ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourcefilesync_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_bootresourceset id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_bootresourceset ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourceset_id_seq'::regclass);
-
-
---
--- Name: maasserver_bootresourceset_sync id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresourceset_sync ALTER COLUMN id SET DEFAULT nextval('public.maasserver_bootresourceset_sync_id_seq'::regclass);
 
 
 --
@@ -11382,6 +11385,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 462	Can change script result	116	change_scriptresult
 463	Can delete script result	116	delete_scriptresult
 464	Can view script result	116	view_scriptresult
+465	Can add boot resource file sync	117	add_bootresourcefilesync
+466	Can change boot resource file sync	117	change_bootresourcefilesync
+467	Can delete boot resource file sync	117	delete_bootresourcefilesync
+468	Can view boot resource file sync	117	view_bootresourcefilesync
 \.
 
 
@@ -11530,6 +11537,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 114	maasserver	scriptset
 115	maasserver	script
 116	maasserver	scriptresult
+117	maasserver	bootresourcefilesync
 \.
 
 
@@ -11904,6 +11912,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 364	maasserver	0308_remove_images_from_db	2023-09-05 03:30:35.88739+00
 365	maasserver	0309_drop_bootloader_filetype	2023-09-06 03:30:38.148484+00
 366	maasserver	0310_rootfs_image_extensions	2023-09-15 03:30:27.345312+00
+367	maasserver	0311_image_sync_tracking	2023-09-28 03:30:52.503645+00
 \.
 
 
@@ -11965,18 +11974,18 @@ COPY public.maasserver_bootresourcefile (id, created, updated, filename, filetyp
 
 
 --
--- Data for Name: maasserver_bootresourceset; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: maasserver_bootresourcefilesync; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootresourceset (id, created, updated, version, label, resource_id) FROM stdin;
+COPY public.maasserver_bootresourcefilesync (id, created, updated, size, file_id, region_id) FROM stdin;
 \.
 
 
 --
--- Data for Name: maasserver_bootresourceset_sync; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: maasserver_bootresourceset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootresourceset_sync (id, bootresourceset_id, regioncontroller_id) FROM stdin;
+COPY public.maasserver_bootresourceset (id, created, updated, version, label, resource_id) FROM stdin;
 \.
 
 
@@ -12975,7 +12984,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 464, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 468, true);
 
 
 --
@@ -13003,14 +13012,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 116, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 366, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 367, true);
 
 
 --
@@ -13056,17 +13065,17 @@ SELECT pg_catalog.setval('public.maasserver_bootresourcefile_id_seq', 1, false);
 
 
 --
+-- Name: maasserver_bootresourcefilesync_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_bootresourcefilesync_id_seq', 1, false);
+
+
+--
 -- Name: maasserver_bootresourceset_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.maasserver_bootresourceset_id_seq', 1, false);
-
-
---
--- Name: maasserver_bootresourceset_sync_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_bootresourceset_sync_id_seq', 1, false);
 
 
 --
@@ -13902,11 +13911,19 @@ ALTER TABLE ONLY public.maasserver_bootresourcefile
 
 
 --
--- Name: maasserver_bootresourceset_sync maasserver_bootresources_bootresourceset_id_regio_df89f279_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bootresourcefilesync maasserver_bootresourcefilesync_file_id_region_id_c44bfcb9_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.maasserver_bootresourceset_sync
-    ADD CONSTRAINT maasserver_bootresources_bootresourceset_id_regio_df89f279_uniq UNIQUE (bootresourceset_id, regioncontroller_id);
+ALTER TABLE ONLY public.maasserver_bootresourcefilesync
+    ADD CONSTRAINT maasserver_bootresourcefilesync_file_id_region_id_c44bfcb9_uniq UNIQUE (file_id, region_id);
+
+
+--
+-- Name: maasserver_bootresourcefilesync maasserver_bootresourcefilesync_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_bootresourcefilesync
+    ADD CONSTRAINT maasserver_bootresourcefilesync_pkey PRIMARY KEY (id);
 
 
 --
@@ -13923,14 +13940,6 @@ ALTER TABLE ONLY public.maasserver_bootresourceset
 
 ALTER TABLE ONLY public.maasserver_bootresourceset
     ADD CONSTRAINT maasserver_bootresourceset_resource_id_version_ec379b98_uniq UNIQUE (resource_id, version);
-
-
---
--- Name: maasserver_bootresourceset_sync maasserver_bootresourceset_sync_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bootresourceset_sync
-    ADD CONSTRAINT maasserver_bootresourceset_sync_pkey PRIMARY KEY (id);
 
 
 --
@@ -15618,24 +15627,24 @@ CREATE INDEX maasserver_bootresourcefile_resource_set_id_2fd093ab ON public.maas
 
 
 --
+-- Name: maasserver_bootresourcefilesync_file_id_22508d9b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_bootresourcefilesync_file_id_22508d9b ON public.maasserver_bootresourcefilesync USING btree (file_id);
+
+
+--
+-- Name: maasserver_bootresourcefilesync_region_id_b11e2230; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_bootresourcefilesync_region_id_b11e2230 ON public.maasserver_bootresourcefilesync USING btree (region_id);
+
+
+--
 -- Name: maasserver_bootresourceset_resource_id_c320a639; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_bootresourceset_resource_id_c320a639 ON public.maasserver_bootresourceset USING btree (resource_id);
-
-
---
--- Name: maasserver_bootresourceset_sync_bootresourceset_id_7fac0b71; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_bootresourceset_sync_bootresourceset_id_7fac0b71 ON public.maasserver_bootresourceset_sync USING btree (bootresourceset_id);
-
-
---
--- Name: maasserver_bootresourceset_sync_regioncontroller_id_8c95570d; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_bootresourceset_sync_regioncontroller_id_8c95570d ON public.maasserver_bootresourceset_sync USING btree (regioncontroller_id);
 
 
 --
@@ -17115,11 +17124,11 @@ ALTER TABLE ONLY public.maasserver_bmcroutablerackcontrollerrelationship
 
 
 --
--- Name: maasserver_bootresourceset_sync maasserver_bootresou_bootresourceset_id_7fac0b71_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bootresourcefilesync maasserver_bootresou_file_id_22508d9b_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.maasserver_bootresourceset_sync
-    ADD CONSTRAINT maasserver_bootresou_bootresourceset_id_7fac0b71_fk_maasserve FOREIGN KEY (bootresourceset_id) REFERENCES public.maasserver_bootresourceset(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.maasserver_bootresourcefilesync
+    ADD CONSTRAINT maasserver_bootresou_file_id_22508d9b_fk_maasserve FOREIGN KEY (file_id) REFERENCES public.maasserver_bootresourcefile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17131,11 +17140,11 @@ ALTER TABLE ONLY public.maasserver_bootresourcefile
 
 
 --
--- Name: maasserver_bootresourceset_sync maasserver_bootresou_regioncontroller_id_8c95570d_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bootresourcefilesync maasserver_bootresou_region_id_b11e2230_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.maasserver_bootresourceset_sync
-    ADD CONSTRAINT maasserver_bootresou_regioncontroller_id_8c95570d_fk_maasserve FOREIGN KEY (regioncontroller_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.maasserver_bootresourcefilesync
+    ADD CONSTRAINT maasserver_bootresou_region_id_b11e2230_fk_maasserve FOREIGN KEY (region_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
