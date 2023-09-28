@@ -1221,7 +1221,13 @@ class TestBootResourceFetch(MAASServerTestCase):
             bootresource, "download_all_image_descriptions"
         )
         mock_download.return_value = BootImageMapping()
-        url = factory.make_url(scheme=random.choice(["http", "https"]))
+        url = factory.make_url(
+            scheme=random.choice(["http", "https"]),
+            path="",
+            params="",
+            query="",
+            fragment="",
+        )
         keyring_data = factory.make_string()
         expected_source = {
             "url": url,
@@ -1243,6 +1249,31 @@ class TestBootResourceFetch(MAASServerTestCase):
             MockCalledOnceWith(
                 [expected_source], user_agent=get_maas_user_agent()
             ),
+        )
+
+    def test_url_without_trailing_slash(self):
+        owner = factory.make_admin()
+        handler = BootResourceHandler(owner, {}, None)
+        mock_write_keyrings = self.patch(bootresource, "write_all_keyrings")
+        mock_write_keyrings.side_effect = lambda _, sources: sources
+        mock_download = self.patch(
+            bootresource, "download_all_image_descriptions"
+        )
+        mock_download.return_value = BootImageMapping()
+        url = "http://example.com"
+        keyring_data = factory.make_string()
+        expected_source = {
+            "url": url + "/",
+            "keyring_data": keyring_data.encode("utf-8"),
+            "selections": [],
+        }
+        self.assertRaises(
+            HandlerError,
+            handler.fetch,
+            {"url": url, "keyring_data": keyring_data},
+        )
+        self.assertThat(
+            mock_write_keyrings, MockCalledOnceWith(ANY, [expected_source])
         )
 
     def test_raises_error_on_downloading_resources(self):

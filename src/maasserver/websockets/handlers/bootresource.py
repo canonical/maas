@@ -730,6 +730,8 @@ class BootResourceHandler(Handler):
             keyring_data = b""
         elif source_type == "custom":
             url = params["url"]
+            if not url.endswith("/"):
+                url += "/"
             keyring_filename = params.get("keyring_filename", "")
             keyring_data = params.get("keyring_data", "").encode("utf-8")
             if keyring_filename == "" and keyring_data == b"":

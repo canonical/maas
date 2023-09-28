@@ -2167,7 +2167,7 @@ class Factory(maastesting.factory.Factory):
     ):
         """Create a new `BootSource`."""
         if url is None:
-            url = "http://%s.com" % self.make_name("source-url")
+            url = "http://%s.com/" % self.make_name("source-url")
         # Only set _one_ of keyring_filename and keyring_data.
         if keyring_filename is None and keyring_data is None:
             keyring_filename = self.make_name("keyring")

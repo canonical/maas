@@ -16,6 +16,7 @@ import random
 import string
 import subprocess
 import time
+from typing import Optional
 import unicodedata
 from unittest import mock
 import urllib.error
@@ -632,13 +633,13 @@ class Factory:
 
     def make_parsed_url(
         self,
-        scheme=None,
-        netloc=None,
-        path=None,
-        port=None,
-        params=None,
-        query=None,
-        fragment=None,
+        scheme: Optional[str] = None,
+        netloc: Optional[str] = None,
+        path: Optional[str] = None,
+        port: Optional[int] = None,
+        params: Optional[str] = None,
+        query: Optional[str] = None,
+        fragment: Optional[str] = None,
     ):
         """Generate a random parsed URL object.
 
@@ -688,12 +689,12 @@ class Factory:
 
     def make_url(
         self,
-        scheme=None,
-        netloc=None,
-        path=None,
-        params=None,
-        query=None,
-        fragment=None,
+        scheme: Optional[str] = None,
+        netloc: Optional[str] = None,
+        path: Optional[str] = None,
+        params: Optional[str] = None,
+        query: Optional[str] = None,
+        fragment: Optional[str] = None,
     ):
         """Generate a random URL.
 
@@ -704,7 +705,7 @@ class Factory:
         :return: string
         """
         return self.make_parsed_url(
-            scheme, netloc, path, params, query, fragment
+            scheme, netloc, path, None, params, query, fragment
         ).geturl()
 
     def make_simple_http_url(self, netloc=None, path=None, port=None):
