@@ -447,3 +447,8 @@ $(BIN_DIR)/golangci-lint: utilities/get_golangci-lint | $(BIN_DIR)
 	GOBIN="$(realpath $(dir $@))"
 	sh utilities/get_golangci-lint "v$(GOLANGCI_VERSION)"
 	touch $@
+
+# Used by maas-release-tools to check variable value
+print-%:
+	@echo $* = $($*)
+
