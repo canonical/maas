@@ -19,7 +19,7 @@ epoch: 3
 
 package-repositories:
   - type: apt
-    ppa: maas-committers/latest-deps
+    ppa: maas/3.4-next
 
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
