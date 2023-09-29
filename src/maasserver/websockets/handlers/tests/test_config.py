@@ -228,6 +228,58 @@ class TestConfigHandler(MAASServerTestCase):
         )
         self.assertEqual({"value": ["Enter a valid URL."]}, error.message_dict)
 
+    def test_bulk_update_as_non_admin_asserts(self):
+        user = factory.make_User()
+        handler = ConfigHandler(user, {}, None)
+        with ExpectedException(HandlerPermissionError):
+            handler.bulk_update({})
+
+    def test_bulk_update_requires_items(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        self.assertRaises(HandlerPKError, handler.bulk_update, {})
+
+    def test_bulk_update_updates_multiple_values(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        bulk_updated = handler.bulk_update(
+            {"items": {"curtin_verbose": True, "enable_analytics": False}}
+        )
+        self.assertEqual(
+            {"curtin_verbose": True, "enable_analytics": False}, bulk_updated
+        )
+        self.assertTrue(Config.objects.get_config("curtin_verbose"))
+        self.assertFalse(Config.objects.get_config("enable_analytics"))
+
+    def test_bulk_update_cannot_bulk_update_maas_url(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        Config.objects.set_config("curtin_verbose", False)
+
+        self.assertFalse(Config.objects.get_config("curtin_verbose"))
+        error = self.assertRaises(
+            HandlerValidationError,
+            handler.bulk_update,
+            {"items": {"maas_url": "maas_url", "curtin_verbose": True}},
+        )
+        self.assertEqual(
+            {"maas_url": ["Configuration parameter does not exist."]},
+            error.message_dict,
+        )
+        self.assertFalse(Config.objects.get_config("curtin_verbose"))
+
+    def test_bulk_update_handles_bad_value(self):
+        user = factory.make_admin()
+        handler = ConfigHandler(user, {}, None)
+        error = self.assertRaises(
+            HandlerValidationError,
+            handler.bulk_update,
+            {"items": {"http_proxy": factory.make_name("invalid")}},
+        )
+        self.assertEqual(
+            {"http_proxy": ["Enter a valid URL."]}, error.message_dict
+        )
+
     def test_on_listen_returns_None_if_excluded(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)

@@ -8,8 +8,10 @@ from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 
 from maasserver.enum import ENDPOINT
+from maasserver.forms import ConfigForm
 from maasserver.forms.settings import (
     CONFIG_ITEMS,
+    CONFIG_ITEMS_KEYS,
     get_config_field,
     get_config_form,
 )
@@ -33,7 +35,7 @@ def get_config_keys(user):
 class ConfigHandler(Handler):
     class Meta:
         pk = "name"
-        allowed_methods = ["list", "get", "update"]
+        allowed_methods = ["list", "get", "update", "bulk_update"]
         listen_channels = ["config"]
 
     def _include_choice(self, config_key):
@@ -83,6 +85,38 @@ class ConfigHandler(Handler):
         over the websocket."""
         if name in errors:
             errors["value"] = errors.pop(name)
+
+    def bulk_update(self, params):
+        """Update config values in bulk."""
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+        if "items" not in params:
+            raise HandlerPKError("Missing map of items in params")
+        items = dict(params["items"])
+        invalid_items = set(items.keys()) - CONFIG_ITEMS_KEYS
+        if invalid_items:
+            raise HandlerValidationError(
+                {
+                    name: ["Configuration parameter does not exist."]
+                    for name in invalid_items
+                }
+            )
+
+        form = ConfigForm(items)
+        for name in items:
+            form.fields[name] = get_config_field(name)
+
+        if form.is_valid():
+            try:
+                request = HttpRequest()
+                request.user = self.user
+                form.save(ENDPOINT.UI, request)
+            except ValidationError as e:
+                raise HandlerValidationError(e.error_dict)
+            else:
+                return items
+        else:
+            raise HandlerValidationError(form.errors)
 
     def update(self, params):
         """Update a config value."""
