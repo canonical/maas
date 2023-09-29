@@ -114,7 +114,7 @@ Depends: dbconfig-pgsql,
          maas-region-api (= ${binary:Version}),
          postgresql (>= 12),
          tcpdump,
-         temporal (>=1.20.3-1-0ubuntu1),
+         temporal (>=1.21.5-0ubuntu1),
          ${misc:Depends},
 Recommends: openssh-server
 Suggests: nmap
