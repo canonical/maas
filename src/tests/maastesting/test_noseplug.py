@@ -9,7 +9,7 @@ from os import devnull, makedirs
 from os.path import dirname, join
 import random
 import unittest
-from unittest.mock import ANY, sentinel
+from unittest.mock import sentinel
 
 import crochet as crochet_module
 import nose.case
@@ -22,7 +22,6 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesListwise,
-    MatchesSetwise,
     MatchesStructure,
 )
 from twisted.python.filepath import FilePath
@@ -31,6 +30,7 @@ from maastesting import noseplug
 from maastesting.factory import factory
 from maastesting.matchers import IsCallable, MockCalledOnceWith, MockNotCalled
 from maastesting.noseplug import (
+    CleanTestToolsFailure,
     Crochet,
     Resources,
     Scenarios,
@@ -528,19 +528,20 @@ class TestMain(MAASTestCase):
     def test_sets_addplugins(self):
         self.patch(noseplug, "TestProgram")
         noseplug.main()
-        self.assertThat(
-            noseplug.TestProgram,
-            MockCalledOnceWith(addplugins=(ANY, ANY, ANY, ANY, ANY, ANY)),
-        )
-        plugins = noseplug.TestProgram.call_args[1]["addplugins"]
-        self.assertThat(
-            plugins,
-            MatchesSetwise(
-                IsInstance(Crochet),
-                IsInstance(Resources),
-                IsInstance(Scenarios),
-                IsInstance(Select),
-                IsInstance(SelectBucket),
-                IsInstance(Subunit),
-            ),
+        noseplug.TestProgram.assert_called_once()
+        plugin_classes = {
+            plugin.__class__
+            for plugin in noseplug.TestProgram.call_args[1]["addplugins"]
+        }
+        self.assertEqual(
+            plugin_classes,
+            {
+                CleanTestToolsFailure,
+                Crochet,
+                Resources,
+                Scenarios,
+                Select,
+                SelectBucket,
+                Subunit,
+            },
         )

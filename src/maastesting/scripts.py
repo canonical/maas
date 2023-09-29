@@ -42,6 +42,7 @@ def update_environ(env=None):
 def run_region():
     """Entry point for region test runner."""
     options = [
+        "--with-clean-testtools-failure",
         "--with-crochet",
         "--with-resources",
         "--with-scenarios",
@@ -110,6 +111,7 @@ def run_region_legacy():
 def run_rack():
     """Entry point for rack test runner."""
     options = [
+        "--with-clean-testtools-failure",
         "--with-crochet",
         "--crochet-no-setup",
         "--with-resources",

@@ -58,3 +58,64 @@ filterwarnings("ignore", category=DeprecationWarning, module=r"^twisted\b")
 sentinel_type = type(mock.sentinel.foo)
 copy._copy_dispatch[sentinel_type] = copy._copy_immutable
 copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
+
+
+# This patches testtools.content.TracebackContent to fix LP:1188420
+# and remove if False crud
+
+import traceback  # noqa: E402
+
+import testtools.content  # noqa: E402
+
+
+class MAASTracebackContent(testtools.content.Content):
+    """Content object for tracebacks.
+
+    This adapts an exc_info tuple to the 'Content' interface.
+    'text/x-traceback;language=python' is used for the mime type, in order to
+    provide room for other languages to format their tracebacks differently.
+    """
+
+    def __init__(self, err, test, capture_locals=False):
+        """Create a TracebackContent for ``err``.
+
+        :param err: An exc_info error tuple.
+        :param test: A test object used to obtain failureException.
+        :param capture_locals: If true, show locals in the traceback.
+        """
+        if err is None:
+            raise ValueError("err may not be None")
+
+        exctype, value, tb = err
+        # Skip test runner traceback levels
+        if testtools.content.StackLinesContent.HIDE_INTERNAL_STACK:
+            while tb and "__unittest" in tb.tb_frame.f_globals:
+                tb = tb.tb_next
+
+        limit = None
+        if (
+            testtools.content.StackLinesContent.HIDE_INTERNAL_STACK
+            and test.failureException
+            and isinstance(value, test.failureException)
+        ):
+            # Skip assert*() traceback levels
+            limit = 0
+            for frame, line_no in traceback.walk_tb(tb):
+                if "__unittest" in frame.f_globals:
+                    break
+                limit += 1
+
+        stack_lines = list(
+            traceback.TracebackException(
+                exctype, value, tb, limit=limit, capture_locals=capture_locals
+            ).format()
+        )
+        content_type = testtools.content.ContentType(
+            "text", "x-traceback", {"language": "python", "charset": "utf8"}
+        )
+        super().__init__(
+            content_type, lambda: [x.encode("utf8") for x in stack_lines]
+        )
+
+
+testtools.content.TracebackContent = MAASTracebackContent

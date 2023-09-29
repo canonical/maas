@@ -155,7 +155,8 @@ class MAASTestCase(
             self.addDetail("Seeds", text_content(" ".join(seed_info)))
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())
-        self.addDetail("Twisted logs", twistedLog.getContent())
+        if twistedLog.events:
+            self.addDetail("Twisted logs", twistedLog.getContent())
 
         self.maybeCloseDatabaseConnections()
         super().setUp()

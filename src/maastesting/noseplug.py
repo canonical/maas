@@ -15,6 +15,7 @@ from nose.core import TestProgram
 from nose.plugins.base import Plugin
 from testresources import OptimisingTestSuite
 from testscenarios import generate_scenarios
+from testtools.testresult.real import _StringException
 from twisted.python.filepath import FilePath
 
 
@@ -463,6 +464,28 @@ class Subunit(Plugin):
         return inspect.getdoc(self)
 
 
+class CleanTestToolsFailure(Plugin):
+    """Clean up the failures and errors from testtools."""
+
+    name = "clean-testtools-failure"
+    log = logging.getLogger("nose.plugins.%s" % name)
+
+    def formatFailure(self, test, err):
+        ec, ev, tb = err
+        if ec is not _StringException:
+            return err
+        return Exception, Exception(*ev.args), tb
+
+    formatError = formatFailure
+
+    def help(self):
+        """Used in the --help text.
+
+        :attention: This is part of the Nose plugin contract.
+        """
+        return inspect.getdoc(self)
+
+
 def main():
     """Invoke Nose's `TestProgram` with extra plugins.
 
@@ -471,6 +494,7 @@ def main():
     """
     return TestProgram(
         addplugins=(
+            CleanTestToolsFailure(),
             Crochet(),
             Resources(),
             Scenarios(),
