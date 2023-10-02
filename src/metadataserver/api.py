@@ -85,6 +85,7 @@ from maasserver.preseed import (
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.utils import find_rack_controller
 from maasserver.utils.orm import get_one, is_retryable_failure
+from maasserver.workflow.signals import temporal_signal
 from metadataserver import logger
 from metadataserver.enum import (
     SCRIPT_STATUS,
@@ -920,6 +921,34 @@ class VersionIndexHandler(MetadataViewHandler):
         return rc.ALL_OK
 
 
+@temporal_signal
+async def signal_cloud_init_start(system_id, node_status, **kwargs):
+    temporal_client = kwargs.get("temporal_client")
+    if node_status == NODE_STATUS.DEPLOYING:
+        workflow_name = "Deploy"
+    elif node_status == NODE_STATUS.COMMISSIONING:
+        workflow_name = "Commission"
+    handle = temporal_client.get_workflow_handle(
+        f"{workflow_name.lower()}-{system_id}"
+    )
+    await handle.signal(
+        f"cloud-init-start-{system_id}", {"system_id": system_id}
+    )
+
+
+@temporal_signal
+async def signal_cloud_init_finished(system_id, node_status, **kwargs):
+    temporal_client = kwargs.get("temporal_client")
+    if node_status == NODE_STATUS.DEPLOYING:
+        workflow_name = "Deploy"
+    elif node_status == NODE_STATUS.COMMISSIONING:
+        workflow_name = "Commission"
+    handle = temporal_client.get_workflow_handle(workflow_name)
+    await handle.signal(
+        f"cloud-init-finished-{system_id}", {"system_id": system_id}
+    )
+
+
 class EnlistMetaDataHandler(OperationsHandler):
     """this has to handle the 'meta-data' portion of the meta-data api
     for enlistment only.  It should mimic the read-only portion
@@ -1136,6 +1165,7 @@ class UserDataHandler(MetadataViewHandler):
                 Event.objects.create_node_event(
                     node, EVENT_TYPES.GATHERING_INFO
                 )
+            signal_cloud_init_start(node.system_id, node.status)
             return HttpResponse(
                 user_data, content_type="application/octet-stream"
             )
@@ -1146,6 +1176,32 @@ class UserDataHandler(MetadataViewHandler):
             return HttpResponse(status=int(http.client.NOT_FOUND))
 
 
+@temporal_signal
+async def signal_curtin_download(system_id, node_status, **kwargs):
+    temporal_client = kwargs.get("temporal_client")
+    if node_status == NODE_STATUS.DEPLOYING:
+        workflow_name = "Deploy"
+    elif node_status == NODE_STATUS.COMMISSIONING:
+        workflow_name = "Commission"
+    handle = temporal_client.get_workflow_handle(
+        f"{workflow_name.lower()}-{system_id}"
+    )
+    await handle.signal(f"curtin-download-{system_id}")
+
+
+@temporal_signal
+async def signal_curting_finished(system_id, node_status, **kwargs):
+    temporal_client = kwargs.get("temporal_client")
+    if node_status == NODE_STATUS.DEPLOYING:
+        workflow_name = "Deploy"
+    elif node_status == NODE_STATUS.COMMISSIONING:
+        workflow_name = "Commission"
+    handle = temporal_client.get_workflow_handle(
+        f"{workflow_name.lower()}-{system_id}"
+    )
+    await handle.signal(f"curtin-finished-{system_id}")
+
+
 class CurtinUserDataHandler(MetadataViewHandler):
     """Curtin user-data blob for a given version."""
 
@@ -1153,6 +1209,7 @@ class CurtinUserDataHandler(MetadataViewHandler):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
         user_data = get_curtin_userdata(request, node)
+        signal_curtin_download(node.system_id, node.status)
         return HttpResponse(user_data, content_type="application/octet-stream")
 
 

@@ -13,6 +13,7 @@ from django.db.models import Q
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, INTERFACE_TYPE
+from maasserver.enum import NODE_STATUS as NODE_STATUS_STATE
 from maasserver.fields import normalise_macaddress
 from maasserver.models import (
     BootResource,
@@ -31,6 +32,7 @@ from maasserver.preseed import (
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import transactional
 from maasserver.utils.osystems import get_working_kernel
+from maasserver.workflow.signals import temporal_signal
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
@@ -42,6 +44,19 @@ maaslog = get_maas_logger("rpc.boot")
 
 
 DEFAULT_ARCH = "i386"
+
+
+@temporal_signal
+async def signal_get_boot_assets(system_id, machine_status, **kwargs):
+    temporal_client = kwargs.get("temporal_client")
+    if machine_status == NODE_STATUS_STATE.DEPLOYING:
+        workflow_name = "Deploy"
+    elif machine_status == NODE_STATUS_STATE.COMMISSIONING:
+        workflow_name = "Commission"
+    handle = temporal_client.get_workflow_handle(
+        f"{workflow_name.lower()}-{system_id}"
+    )
+    await handle.signal(f"tftp-ack-{system_id}", {"system_id": system_id})
 
 
 def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
@@ -533,6 +548,8 @@ def get_config(
         hostname = machine.hostname
         domain = machine.domain.name
         purpose = machine.get_boot_purpose()
+
+        signal_get_boot_assets(system_id, machine.status)
 
         # Ephemeral deployments will have 'local' boot
         # purpose on power cycles.  Set purpose back to

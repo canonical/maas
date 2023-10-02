@@ -1,53 +1,9 @@
-import asyncio
-from collections import defaultdict
-from unittest.mock import Mock
-
 import pytest
-from temporalio.api.workflowservice.v1 import (
-    DescribeNamespaceResponse,
-    RegisterNamespaceResponse,
-)
 from temporalio.worker import Worker as TemporalWorker
 
 from maasserver.workflow.testing.dummy import DummyWorkflow
 from maasserver.workflow.worker import Worker
 from provisioningserver.utils.env import MAAS_SHARED_SECRET
-
-
-@pytest.fixture
-def mock_register_namespace_response():
-    future = asyncio.Future()
-    future.set_result(RegisterNamespaceResponse())
-    return future
-
-
-@pytest.fixture
-def mock_describe_namespace_response():
-    future = asyncio.Future()
-    future.set_result(DescribeNamespaceResponse())
-    return future
-
-
-@pytest.fixture
-def mock_temporal_client(
-    mock_register_namespace_response, mock_describe_namespace_response
-):
-    client = Mock()
-    client.config = lambda: defaultdict(list)
-    client.service_client.workflow_service.register_namespace = (
-        lambda _: mock_register_namespace_response
-    )
-    client.service_client.workflow_service.describe_namespace = (
-        lambda _: mock_describe_namespace_response
-    )
-    return client
-
-
-@pytest.fixture
-def mock_temporal_connect(mocker, mock_temporal_client):
-    return mocker.patch(
-        "temporalio.client.Client.connect", return_value=mock_temporal_client
-    )
 
 
 class TestWorker:
