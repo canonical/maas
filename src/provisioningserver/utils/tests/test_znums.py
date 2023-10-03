@@ -42,10 +42,10 @@ class TestZNumbers(MAASTestCase):
         self.assertEqual(6, len(za))
         self.assertEqual(6, len(zb))
         if a == b:
-            self.assertTrue(za == zb)
+            self.assertEqual(za, zb)
         elif a < b:
-            self.assertTrue(za < zb)
+            self.assertLess(za, zb)
         elif a > b:
-            self.assertTrue(za > zb)
+            self.assertGreater(za, zb)
         else:
             self.fail("Universe broken")

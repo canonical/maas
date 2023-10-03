@@ -374,7 +374,7 @@ class TestCSRF(MAASServerTestCase):
         response = self.client.post(reverse("csrf"))
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
         body = json_load_bytes(response.content)
-        self.assertTrue("csrf" in body)
+        self.assertIn("csrf", body)
         # Should not have an updated CSRF cookie, because it was marked as
         # not used.
         self.assertIsNone(response.cookies.get(settings.CSRF_COOKIE_NAME))

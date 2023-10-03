@@ -126,7 +126,7 @@ class TestGetHTMLDisplayForKey(MAASServerTestCase):
         size = random.randint(101, 200)
         key = factory.make_string(size - 100)
         display = get_html_display_for_key(key, size)
-        self.assertTrue(len(display) < size)
+        self.assertLess(len(display), size)
         self.assertEqual(key, display)
 
     def test_display_returns_cropped_if_unknown_and_large(self):

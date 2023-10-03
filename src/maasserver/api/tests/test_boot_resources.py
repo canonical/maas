@@ -192,7 +192,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertFalse("sets" in parsed_result[0])
+        self.assertNotIn("sets", parsed_result[0])
 
     def test_POST_requires_admin(self):
         params = {
@@ -356,7 +356,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertTrue("sets" in parsed_result)
+        self.assertIn("sets", parsed_result)
 
     def test_POST_validates_boot_resource(self):
         self.become_admin()

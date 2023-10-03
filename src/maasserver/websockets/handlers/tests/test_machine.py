@@ -6320,9 +6320,9 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             )
 
         def _assert_subset(subset, field_name):
-            self.assertTrue(
-                subset
-                <= {
+            self.assertLessEqual(
+                subset,
+                {
                     option["key"]
                     for option in handler.filter_options(
                         {"group_key": field_name}

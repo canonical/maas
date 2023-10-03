@@ -416,7 +416,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         output = method.compose_bcd(kernel_params, local_host)
         self.assertThat(windows_module.open, MockCalledOnceWith(ANY, "rb"))
 
-        self.assertTrue(isinstance(output, BytesReader))
+        self.assertIsInstance(output, BytesReader)
         self.assertEqual(fake_output, output.read(-1))
 
     def test_compose_bcd_missing_template(self):

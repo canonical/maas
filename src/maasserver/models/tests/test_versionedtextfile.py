@@ -82,7 +82,7 @@ class TestVersionedTextFile(MAASServerTestCase):
             textfile = textfile.update(factory.make_string())
             textfiles.append(textfile)
         for f in textfile.previous_versions():
-            self.assertTrue(f in textfiles)
+            self.assertIn(f, textfiles)
 
     def test_revert_zero_does_nothing(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)

@@ -767,9 +767,9 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 )
                 zone_names = {z.zone_name for z in dns_zone_config.zone_info}
                 for exclude in expected[idx].get("excludes", []):
-                    self.assertFalse(exclude in zone_names)
+                    self.assertNotIn(exclude, zone_names)
                 for include in expected[idx].get("includes", []):
-                    self.assertTrue(include in zone_names)
+                    self.assertIn(include, zone_names)
 
     def test_get_ptr_mapping(self):
         name = factory.make_string()

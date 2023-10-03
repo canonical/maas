@@ -872,7 +872,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler = self.make_nodes_handler()
         handler.cache["active_pk"] = factory.make_name("system_id")
         handler.set_active({})
-        self.assertFalse("active_pk" in handler.cache)
+        self.assertNotIn("active_pk", handler.cache)
 
     def test_set_active_returns_data_and_sets_active(self):
         node = factory.make_Node()
@@ -910,8 +910,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             (handler._meta.handler_name, "delete", node.system_id),
             handler.on_listen(sentinel.channel, "delete", node.system_id),
         )
-        self.assertTrue(
-            node.system_id not in handler.cache["loaded_pks"],
+        self.assertNotIn(
+            node.system_id,
+            handler.cache["loaded_pks"],
             "on_listen delete did not remove system_id from loaded_pks",
         )
 
@@ -933,8 +934,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             ),
             handler.on_listen(sentinel.channel, "create", node.system_id),
         )
-        self.assertTrue(
-            node.system_id in handler.cache["loaded_pks"],
+        self.assertIn(
+            node.system_id,
+            handler.cache["loaded_pks"],
             "on_listen create did not add system_id to loaded_pks",
         )
 
@@ -960,8 +962,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             (handler._meta.handler_name, "delete", node.system_id),
             handler.on_listen(sentinel.channel, "update", node.system_id),
         )
-        self.assertTrue(
-            node.system_id not in handler.cache["loaded_pks"],
+        self.assertNotIn(
+            node.system_id,
+            handler.cache["loaded_pks"],
             "on_listen update did not remove system_id from loaded_pks",
         )
 
@@ -977,8 +980,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             ),
             handler.on_listen(sentinel.channel, "update", node.system_id),
         )
-        self.assertTrue(
-            node.system_id in handler.cache["loaded_pks"],
+        self.assertIn(
+            node.system_id,
+            handler.cache["loaded_pks"],
             "on_listen update removed system_id from loaded_pks",
         )
 
@@ -993,8 +997,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             ),
             handler.on_listen(sentinel.channel, "update", node.system_id),
         )
-        self.assertTrue(
-            node.system_id in handler.cache["loaded_pks"],
+        self.assertIn(
+            node.system_id,
+            handler.cache["loaded_pks"],
             "on_listen update didnt add system_id to loaded_pks",
         )
 

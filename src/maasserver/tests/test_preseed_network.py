@@ -607,8 +607,8 @@ class TestNetplan(MAASServerTestCase):
         [output] = compose_curtin_network_config(node, version=2)
         ethernets_line = self.get_line_number(output, "ethernets:")
         bonds_line = self.get_line_number(output, "bonds:")
-        self.assertTrue(
-            ethernets_line < bonds_line, "ethernets: must come before bonds:"
+        self.assertLess(
+            ethernets_line, bonds_line, "ethernets: must come before bonds:"
         )
 
     def test_single_ethernet_interface(self):
@@ -643,9 +643,7 @@ class TestNetplan(MAASServerTestCase):
         )
         netplan = self._render_netplan_dict(node)
         v1_config = self._render_v1_dict(node)
-        self.assertIs(
-            netplan["network"]["ethernets"]["eth0"]["accept-ra"], True
-        )
+        self.assertTrue(netplan["network"]["ethernets"]["eth0"]["accept-ra"])
         self.assertIs(v1_config["network"]["config"][0]["accept-ra"], 1)
 
     def test_multiple_ethernet_interfaces(self):
@@ -1020,9 +1018,8 @@ class TestNetplan(MAASServerTestCase):
         self.expectThat(netplan, Equals(expected_netplan))
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
-        self.assertTrue(
-            "stp: false" in output,
-            "stp: value must be a boolean not an integer",
+        self.assertIn(
+            "stp: false", output, "stp: value must be a boolean not an integer"
         )
 
     def test_bridge_standard_fallback_with_params(self):
@@ -1080,9 +1077,8 @@ class TestNetplan(MAASServerTestCase):
         self.expectThat(netplan, Equals(expected_netplan))
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
-        self.assertTrue(
-            "stp: false" in output,
-            "stp: value must be a boolean not an integer",
+        self.assertIn(
+            "stp: false", output, "stp: value must be a boolean not an integer"
         )
 
     def test_bridge_ovs_with_params(self):
@@ -1145,9 +1141,8 @@ class TestNetplan(MAASServerTestCase):
         self.expectThat(netplan, Equals(expected_netplan))
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
-        self.assertTrue(
-            "stp: false" in output,
-            "stp: value must be a boolean not an integer",
+        self.assertIn(
+            "stp: false", output, "stp: value must be a boolean not an integer"
         )
 
     def test_bridge_ovs_packages(self):

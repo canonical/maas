@@ -1508,7 +1508,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertEqual(response.status_code, http.client.OK)
         node.refresh_from_db()
-        self.assertTrue(node.last_sync > old_last_sync)
+        self.assertGreater(node.last_sync, old_last_sync)
 
 
 class TestMAASScripts(MAASServerTestCase):

@@ -1520,7 +1520,7 @@ class TestCurtinUtilities(
             f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/MAAS/metadata/latest/by-id/{node.system_id}/",
             yaml_conf["late_commands"]["maas"][2],
         )
-        self.assertTrue("debconf_selections" in yaml_conf)
+        self.assertIn("debconf_selections", yaml_conf)
 
     def test_get_curtin_config_has_grub2_debconf_selections(self):
         node = factory.make_Node_with_Interface_on_Subnet(

@@ -44,7 +44,7 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "id": dhcp_snippet.id,
                 "name": dhcp_snippet.name,
@@ -82,7 +82,7 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "id": dhcp_snippet.id,
                 "name": dhcp_snippet.name,

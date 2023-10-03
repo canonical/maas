@@ -529,4 +529,4 @@ class TestKernelOpts(MAASTestCase):
         )
         cmdline = compose_kernel_command_line(params)
         self.assertIn(ephem_opt, cmdline)
-        self.assertTrue(cmdline.find(sep) > cmdline.find(ephem_opt))
+        self.assertGreater(cmdline.find(sep), cmdline.find(ephem_opt))

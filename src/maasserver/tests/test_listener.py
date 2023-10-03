@@ -189,7 +189,7 @@ class TestPostgresListenerService(MAASServerTestCase):
             yield deferToDatabase(self.send_notification, "sys_test", "msg")
             notice = yield deferred
             self.assertEqual(notice.payload, "msg")
-            self.assertFalse("sys_test" in listener.listeners)
+            self.assertNotIn("sys_test", listener.listeners)
         finally:
             yield listener.stopService()
 

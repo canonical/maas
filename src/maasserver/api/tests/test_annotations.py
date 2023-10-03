@@ -92,13 +92,13 @@ class TestAPIAnnotations(APITestCase.ForUser):
     """
 
     def assert_has_api_warning(self, pdict):
-        self.assertTrue(pdict["warnings"].find("API_WARNING") != -1)
+        self.assertNotEqual(pdict["warnings"].find("API_WARNING"), -1)
 
     def assert_has_no_api_warning(self, pdict):
-        self.assertTrue(pdict["warnings"].find("API_WARNING") == -1)
+        self.assertEqual(pdict["warnings"].find("API_WARNING"), -1)
 
     def assert_has_syntax_error(self, pdict):
-        self.assertTrue(pdict["warnings"].find("API_SYNTAX_ERROR") != -1)
+        self.assertNotEqual(pdict["warnings"].find("API_SYNTAX_ERROR"), -1)
 
     def do_parse(self, api_docstring_parser, docstring):
         api_docstring_parser.parse(docstring, uri=self.test_uri_singular)
@@ -109,14 +109,14 @@ class TestAPIAnnotations(APITestCase.ForUser):
         ds_orig = self.sample_api_annotated_docstring
 
         for t in self.allowed_tags:
-            self.assertTrue(ds_orig.find("@%s" % t) != -1)
+            self.assertNotEqual(ds_orig.find("@%s" % t), -1)
 
     def test_all_allowed_types_are_represented_in_test(self):
         """Tests that we have all the allowed types in our sample docstring."""
         ds_orig = self.sample_api_annotated_docstring
 
         for t in self.allowed_types:
-            self.assertTrue(ds_orig.find("(%s)" % t) != -1)
+            self.assertNotEqual(ds_orig.find("(%s)" % t), -1)
 
     def test_parse_annotations(self):
         """Tests whether we can parse the sample."""
@@ -695,7 +695,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
         # The presence of the 'resource-uri' string is a good indicator
         # that the 'read-node' key has picked up the JSON object and
         # converted it to a string for output in API docs.
-        self.assertTrue(s["example"].find("resource_uri") != -1)
+        self.assertNotEqual(s["example"].find("resource_uri"), -1)
 
     def test_template_renders_with_no_warnings(self):
         """The Tempita tmpl-api.rst template should render for the sample

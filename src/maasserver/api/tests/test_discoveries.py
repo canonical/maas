@@ -108,9 +108,15 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface)
         results = self.get_api_results()
-        self.assertTrue(results[0]["last_seen"] >= results[2]["last_seen"])
-        self.assertTrue(results[0]["last_seen"] >= results[1]["last_seen"])
-        self.assertTrue(results[1]["last_seen"] >= results[2]["last_seen"])
+        self.assertGreaterEqual(
+            results[0]["last_seen"], results[2]["last_seen"]
+        )
+        self.assertGreaterEqual(
+            results[0]["last_seen"], results[1]["last_seen"]
+        )
+        self.assertGreaterEqual(
+            results[1]["last_seen"], results[2]["last_seen"]
+        )
 
     def test_by_unknown_mac(self):
         rack = factory.make_RackController()
@@ -536,7 +542,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
 
     def test_populates_results_correctly(self):
         result = user_friendly_scan_results(scan_all_rack_networks())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "result": self.result,
                 "scan_started_on": get_controller_summary(self.started),

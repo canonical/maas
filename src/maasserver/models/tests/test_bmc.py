@@ -1523,7 +1523,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         tag = factory.make_Tag()
         pod.add_tag(tag.name)
         machine = pod.create_machine(discovered_machine, factory.make_User())
-        self.assertTrue(tag in machine.tags.all())
+        self.assertIn(tag, machine.tags.all())
 
     def test_create_machine_sets_interface_names_using_constraint_labels(self):
         discovered_machine = self.make_discovered_machine()

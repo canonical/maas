@@ -1058,14 +1058,14 @@ class TestNode(MAASServerTestCase):
             ephemeral_deploy=True, status=NODE_STATUS.ALLOCATED
         )
         node._start_deployment()
-        self.assertTrue(node.current_installation_script_set is None)
+        self.assertIsNone(node.current_installation_script_set)
 
     def test_ephemeral_deploy_no_scriptstatus_yes(self):
         node = factory.make_Node_with_Interface_on_Subnet(
             ephemeral_deploy=False, status=NODE_STATUS.ALLOCATED
         )
         node._start_deployment()
-        self.assertTrue(node.current_installation_script_set is not None)
+        self.assertIsNotNone(node.current_installation_script_set)
 
     def test_system_id_is_a_valid_znum(self):
         node = factory.make_Node()
@@ -6755,7 +6755,7 @@ class TestNodeTransitions(MAASServerTestCase):
     def test_NODE_TRANSITIONS_initial_states(self):
         allowed_states = set(list(NODE_STATUS_CHOICES_DICT.keys()) + [None])
 
-        self.assertTrue(set(NODE_TRANSITIONS.keys()) <= allowed_states)
+        self.assertLessEqual(set(NODE_TRANSITIONS.keys()), allowed_states)
 
     def test_NODE_TRANSITIONS_destination_state(self):
         all_destination_states = []
@@ -6763,7 +6763,7 @@ class TestNodeTransitions(MAASServerTestCase):
             all_destination_states.extend(destination_states)
         allowed_states = set(NODE_STATUS_CHOICES_DICT.keys())
 
-        self.assertTrue(set(all_destination_states) <= allowed_states)
+        self.assertLessEqual(set(all_destination_states), allowed_states)
 
 
 class TestNodeManager(MAASServerTestCase):

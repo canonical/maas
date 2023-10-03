@@ -3707,8 +3707,9 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Should have 1 AUTO IP addresses with an IP address assigned.",
         )
         self.assertEqual(subnet, observed[0].subnet)
-        self.assertTrue(
-            IPAddress(observed[0].ip) in observed[0].subnet.get_ipnetwork(),
+        self.assertIn(
+            IPAddress(observed[0].ip),
+            observed[0].subnet.get_ipnetwork(),
             "Assigned IP address should be inside the subnet network.",
         )
 

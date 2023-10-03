@@ -224,7 +224,7 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
         form = MachineWithMACAddressesForm(data=self.make_params(hostname=""))
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
-        self.assertTrue(len(node.hostname) > 0)
+        self.assertGreater(len(node.hostname), 0)
 
     def test_form_with_ip_based_hostname_generates_hostname(self):
         ip_based_hostname = "192-168-12-10.maas"
