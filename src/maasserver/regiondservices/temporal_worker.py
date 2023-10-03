@@ -26,11 +26,11 @@ class TemporalWorkerService(Service):
     def __init__(self, reactor):
         super().__init__()
 
-        self.loop = None
+        self._loop = None
         if isinstance(reactor, AsyncioSelectorReactor):
-            self.loop = asyncio.get_event_loop()
+            self._loop = asyncio.get_event_loop()
         else:  # handle crochet reactor
-            self.loop = asyncio.new_event_loop()
+            self._loop = asyncio.new_event_loop()
 
     def get_token(self):
         user = get_worker_user()
@@ -71,10 +71,10 @@ class TemporalWorkerService(Service):
             ],
         )
 
-        task = self.loop.create_task(self.worker.run())
+        task = self._loop.create_task(self.worker.run())
         returnValue(Deferred.fromFuture(task))
 
     def stopService(self):
         if hasattr(self, "worker"):
-            task = self.loop.create_task(self.worker.stop())
+            task = self._loop.create_task(self.worker.stop())
             return Deferred.fromFuture(task)

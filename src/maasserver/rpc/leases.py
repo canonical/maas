@@ -8,7 +8,7 @@ from datetime import datetime
 
 from netaddr import IPAddress
 
-from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE, NODE_STATUS
+from maasserver.enum import IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.fields import normalise_macaddress
 from maasserver.models import (
     DNSResource,
@@ -19,7 +19,6 @@ from maasserver.models import (
     UnknownInterface,
 )
 from maasserver.utils.orm import transactional
-from maasserver.workflow.signals import temporal_signal
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import coerce_to_valid_hostname
 from provisioningserver.utils.twisted import synchronous
@@ -37,25 +36,6 @@ def _is_valid_hostname(hostname):
         and len(hostname) > 0
         and not hostname.isspace()
         and hostname != "(none)"
-    )
-
-
-@temporal_signal
-async def signal_lease(system_id, machine_status, ip, mac, **kwargs):
-    temporal_client = await kwargs.get("temporal_client")
-    if machine_status == NODE_STATUS.DEPLOYING:
-        workflow_name = "Deploy"
-    elif machine_status == NODE_STATUS.COMMISSIONING:
-        workflow_name = "Commission"
-    handle = temporal_client.get_workflow_handle(
-        f"{workflow_name.lower()}-{system_id}"
-    )
-    await handle.signal(
-        f"leases-{system_id}",
-        {
-            "ip": ip,
-            "mac": mac,
-        },
     )
 
 
@@ -149,13 +129,6 @@ def update_lease(
     elif len(interfaces) == 0:
         # No interfaces and not commit action so nothing needs to be done.
         return {}
-
-    if action == "commit":
-        for interface in interfaces:
-            if interface.node_config and interface.node_config.node:
-                system_id = interface.node_config.node.system_id
-                node_status = interface.node_config.node.status
-                signal_lease(system_id, node_status, str(ip), str(mac))
 
     sip = None
     # Delete all discovered IP addresses attached to all interfaces of the same
