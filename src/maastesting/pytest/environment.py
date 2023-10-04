@@ -27,6 +27,9 @@ def setup_testenv(monkeypatch, tmpdir):
     monkeypatch.setenv("MAAS_ROOT", str(maas_root))
     monkeypatch.setenv("MAAS_DATA", str(maas_data))
 
+    res_store = maas_data.join("boot-resources")
+    res_store.mkdir()
+
     # copy all package files into the run dir
     copytree(dev_root / "run-skel", maas_root, dirs_exist_ok=True)
     copytree(dev_root / "package-files", maas_root, dirs_exist_ok=True)
