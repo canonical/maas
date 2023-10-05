@@ -5,6 +5,7 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import defaultdict, namedtuple
 import enum
+from functools import cache
 from io import BytesIO
 import json
 import os
@@ -91,6 +92,7 @@ def _check_service_state_expected(state):
         raise AssertionError(f"Expected state should not be {state!r}.")
 
 
+@cache
 def _running_under_pebble():
     return os.environ.get("PEBBLE") is not None
 

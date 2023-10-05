@@ -258,7 +258,7 @@ target again:
     $ make snap-tree-sync
 
 You should now see that you files were synced to the ``dev-snap/tree``
-directory. Restart the supervisor service to use the synced code:
+directory. Restart the pebble service to use the synced code:
 
 ::
 

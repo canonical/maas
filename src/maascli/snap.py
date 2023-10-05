@@ -9,7 +9,6 @@ import grp
 import os
 from pathlib import Path
 import pwd
-import signal
 import subprocess
 import sys
 from textwrap import dedent
@@ -19,7 +18,6 @@ import time
 import netifaces
 import psycopg2
 from psycopg2.extensions import parse_dsn
-import tempita
 
 from maascli.command import Command, CommandError
 from maascli.configfile import MAASConfiguration
@@ -211,7 +209,9 @@ def restart_pebble(restart_inactive=False):
     is inactive and `restart_inactive` is False."""
 
     if not restart_inactive:
-        status_call = subprocess.run(["snapctl", "services", "maas"], capture_output=True)
+        status_call = subprocess.run(
+            ["snapctl", "services", "maas"], capture_output=True
+        )
         if b"inactive" in status_call.stdout:
             return
 
@@ -670,11 +670,7 @@ class cmd_init(SnapCommand):
                 )
 
         if current_mode != "none":
-
-            def stop_services():
-                stop_pebble()
-
-            perform_work("Stopping services", stop_services)
+            perform_work("Stopping services", stop_pebble)
 
         # Configure the settings.
         settings = {"maas_url": maas_url}
@@ -932,10 +928,9 @@ class cmd_status(SnapCommand):
             print_msg("MAAS is not configured")
             sys.exit(1)
         else:
-            process = subprocess.Popen([
-                    os.path.join(
-                        os.environ["SNAP"], "bin", "run-pebble"
-                    ),
+            process = subprocess.Popen(
+                [
+                    os.path.join(os.environ["SNAP"], "bin", "run-pebble"),
                     "services",
                 ],
                 stdout=subprocess.PIPE,

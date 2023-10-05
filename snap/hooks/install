@@ -4,13 +4,16 @@
 
 mkdir -p \
       "$SNAP_COMMON/maas" \
+      "$SNAP_COMMON/pebble/layers" \
       "$SNAP_DATA/preseeds" \
-      "$SNAP_DATA/root" \
-      "$SNAP_DATA/pebble/layers"
+      "$SNAP_DATA/root"
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
 fi
+
+# Early builds of 3.5 had $PEBBLE in $SNAP_DATA
+rm -rf "$SNAP_DATA/pebble"
 
 # Always overwrite sample preseeds to ensure samples are up-to-date in case we
 # make changes that need to be reflected.
