@@ -608,7 +608,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot deploy as a VM host for ephemeral deployments.",
+            b"A machine can not be a VM host if it is deployed to memory.",
             response.content,
         )
 
@@ -661,7 +661,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot deploy as a VM host for ephemeral deployments.",
+            b"A machine can not be a VM host if it is deployed to memory.",
             response.content,
         )
 
@@ -691,7 +691,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot deploy as a VM host for ephemeral deployments.",
+            b"A machine can not be a VM host if it is deployed to memory.",
             response.content,
         )
 
@@ -723,7 +723,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot deploy as a VM host for ephemeral deployments.",
+            b"A machine can not be a VM host if it is deployed to memory.",
             response.content,
         )
 

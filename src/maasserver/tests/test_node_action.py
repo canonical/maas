@@ -790,8 +790,9 @@ class TestDeployAction(MAASServerTestCase):
         }
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, admin, request).execute(**extra)
-        assert "Cannot deploy as a VM host for ephemeral deployments." == str(
-            exception.value
+        assert (
+            "A machine can not be a VM host if it is deployed to memory."
+            == str(exception.value)
         )
 
         extra = {
@@ -802,8 +803,9 @@ class TestDeployAction(MAASServerTestCase):
         }
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, admin, request).execute(**extra)
-        assert "Cannot deploy as a VM host for ephemeral deployments." == str(
-            exception.value
+        assert (
+            "A machine can not be a VM host if it is deployed to memory."
+            == str(exception.value)
         )
 
     def test_Deploy_sets_osystem_and_series_and_ephemeral_deploy(self):
@@ -856,7 +858,7 @@ class TestDeployAction(MAASServerTestCase):
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, user, request).execute(**extra)
         assert (
-            "An ephemeral deployment must be used for a diskless machine."
+            "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
             == str(exception.value)
         )
 

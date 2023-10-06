@@ -527,11 +527,11 @@ class Deploy(NodeAction):
                 )
         if (install_kvm or register_vmhost) and ephemeral_deploy:
             raise NodeActionError(
-                "Cannot deploy as a VM host for ephemeral deployments."
+                "A machine can not be a VM host if it is deployed to memory."
             )
         if self.node.is_diskless and not ephemeral_deploy:
             raise NodeActionError(
-                "An ephemeral deployment must be used for a diskless machine."
+                "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
             )
         self.node.ephemeral_deploy = ephemeral_deploy
         if self.node.owner is None:

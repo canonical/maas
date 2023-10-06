@@ -5529,7 +5529,7 @@ class Node(CleanSave, TimestampedModel):
             self.install_kvm or self.register_vmhost
         ):
             raise ValidationError(
-                "Cannot deploy as a VM host for ephemeral deployments."
+                "A machine can not be a VM host if it is deployed to memory."
             )
         if self.ephemeral_deploy:
             from maasserver.utils.osystems import (

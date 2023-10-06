@@ -823,7 +823,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             options.install_kvm or options.register_vmhost
         ) and ephemeral_deploy:
             raise MAASAPIBadRequest(
-                "Cannot deploy as a VM host for ephemeral deployments."
+                "A machine can not be a VM host if it is deployed to memory."
             )
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:
