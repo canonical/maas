@@ -42,7 +42,7 @@ class TestCreateAuditEvent(MAASServerTestCase):
         )
         event = Event.objects.get(node=node, type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(request.META["HTTP_USER_AGENT"], event.user_agent)
+        self.assertEqual(request.headers["user-agent"], event.user_agent)
 
     def test_create_audit_event_creates_audit_event_with_description(self):
         node = factory.make_Node()
@@ -63,7 +63,7 @@ class TestCreateAuditEvent(MAASServerTestCase):
         )
         event = Event.objects.get(node=node, type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(request.META["HTTP_USER_AGENT"], event.user_agent)
+        self.assertEqual(request.headers["user-agent"], event.user_agent)
         self.assertEqual(description, event.description)
 
     def test_create_audit_event_creates_audit_event_with_AnonymousUser(self):

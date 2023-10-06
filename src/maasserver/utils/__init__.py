@@ -119,7 +119,7 @@ def get_host_without_port(http_host):
 
 def get_request_host(request):
     """Returns the Host header from the specified HTTP request."""
-    request_host = request.META.get("HTTP_HOST")
+    request_host = request.headers.get("host")
     if request_host is not None:
         request_host = get_host_without_port(request_host)
     return request_host
@@ -133,7 +133,7 @@ def is_valid_ip(ip):
 def get_remote_ip(request):
     """Returns the IP address of the host that initiated the request."""
     # Try to obtain IP Address from X-Forwarded-For first.
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    x_forwarded_for = request.headers.get("x-forwarded-for")
     if x_forwarded_for:
         ip = x_forwarded_for.split(",")[0]
         if is_valid_ip(ip):

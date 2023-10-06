@@ -116,8 +116,8 @@ class TestGetOverridedQueryDict(MAASTestCase):
 
 def make_fake_request(auth_header):
     """Create a very simple fake request, with just an auth header."""
-    FakeRequest = namedtuple("FakeRequest", ["META"])
-    return FakeRequest(META={"HTTP_AUTHORIZATION": auth_header})
+    FakeRequest = namedtuple("FakeRequest", ["headers"])
+    return FakeRequest(headers={"authorization": auth_header})
 
 
 class TestOAuthHelpers(MAASTestCase):

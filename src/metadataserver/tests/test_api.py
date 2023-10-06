@@ -117,7 +117,7 @@ class TestHelpers(MAASServerTestCase):
 
         Pass as arguments any header items you want to include.
         """
-        return namedtuple("FakeRequest", ["META"])(kwargs)
+        return namedtuple("FakeRequest", ["headers"])(kwargs)
 
     def test_make_text_response_presents_text_as_text_plain(self):
         input_text = "Hello."
@@ -146,7 +146,7 @@ class TestHelpers(MAASServerTestCase):
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
-            HTTP_AUTHORIZATION=factory.make_oauth_header(oauth_token=token.key)
+            authorization=factory.make_oauth_header(oauth_token=token.key)
         )
         self.assertEqual(node, get_node_for_request(request))
 
@@ -185,7 +185,7 @@ class TestHelpers(MAASServerTestCase):
         node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
-            HTTP_AUTHORIZATION=factory.make_oauth_header(oauth_token=token.key)
+            authorization=factory.make_oauth_header(oauth_token=token.key)
         )
         self.assertEqual(node, get_queried_node(request))
 

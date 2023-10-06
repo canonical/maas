@@ -141,7 +141,7 @@ class LocalConfigCommand(BaseCommand):
     """
 
     can_import_settings = False
-    requires_system_checks = False
+    requires_system_checks = []
     leave_locale_alone = True
 
 

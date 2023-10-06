@@ -20,7 +20,7 @@ def create_audit_event(
     """
     event_description = description or ""
     if request:
-        user_agent = request.META.get("HTTP_USER_AGENT", "")
+        user_agent = request.headers.get("user-agent", "")
         ip_address = get_remote_ip(request)
         user = (
             None if isinstance(request.user, AnonymousUser) else request.user

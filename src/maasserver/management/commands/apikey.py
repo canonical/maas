@@ -4,7 +4,6 @@
 """Django command: Manage a user's API keys."""
 
 
-import django
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.http import Http404
@@ -62,10 +61,6 @@ class Command(BaseCommand):
             )
         else:
             self.stdout.write(convert_tuple_to_string(get_creds_tuple(token)))
-        # In Django 1.5+, self.stdout.write() adds a newline character at
-        # the end of the message.
-        if django.VERSION < (1, 5):
-            self.stdout.write("\n")
 
     def _generate_token(self, user, consumer_name=None):
         _, token = user.userprofile.create_authorisation_token(consumer_name)

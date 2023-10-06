@@ -370,7 +370,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
         """Upload piece of boot resource file."""
         resource = get_object_or_404(BootResource, id=id)
         rfile = get_object_or_404(BootResourceFile, id=file_id)
-        size = int(request.META.get("CONTENT_LENGTH", "0"))
+        size = int(request.headers.get("content-length", "0"))
         data = request.body
         if size == 0:
             raise MAASAPIBadRequest("Missing data.")

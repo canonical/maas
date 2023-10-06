@@ -7,7 +7,7 @@ import types
 from unittest.mock import sentinel
 
 from django.core.exceptions import ImproperlyConfigured
-from django.urls import include, re_path
+from django.urls import include, path, re_path
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
@@ -132,7 +132,7 @@ class TestFindingResources(MAASTestCase):
         module = self.make_module()
         submodule = self.make_module()
         submodule.urlpatterns = [re_path("^metal", resource)]
-        module.urlpatterns = [re_path("^genre/", include(submodule))]
+        module.urlpatterns = [path("genre/", include(submodule))]
         self.assertSetEqual({resource}, find_api_resources(module))
 
     def test_smoke(self):

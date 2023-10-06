@@ -11,6 +11,7 @@ import logging
 from pprint import pformat
 import sys
 import traceback
+from urllib.parse import quote_plus
 
 from crochet import TimeoutError
 from django.conf import settings
@@ -25,7 +26,6 @@ from django.http import (
 )
 from django.urls import get_resolver, get_urlconf, reverse
 from django.utils.encoding import force_str
-from django.utils.http import urlquote_plus
 
 from maasserver import logger
 from maasserver.clusterrpc.utils import get_error_message_for_exception
@@ -97,7 +97,7 @@ class AccessMiddleware:
 
         if request.user.is_anonymous:
             return HttpResponseRedirect(
-                "/MAAS/?next=%s" % urlquote_plus(request.path)
+                "/MAAS/?next=%s" % quote_plus(request.path)
             )
 
         return self.get_response(request)

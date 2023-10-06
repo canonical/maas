@@ -5,7 +5,7 @@
 
 
 from django.http import HttpResponse
-from django.urls import include, re_path
+from django.urls import include, path, re_path
 from django.views.generic import TemplateView
 
 from maasserver import urls_api
@@ -23,10 +23,10 @@ from maasserver.views.vmhost import vmhost_certificate_handler
 
 # Anonymous views.
 urlpatterns = [
-    re_path(r"^accounts/login/$", login, name="login"),
-    re_path(r"^accounts/authenticate/$", authenticate, name="authenticate"),
-    re_path(
-        r"^accounts/discharge-request/$",
+    path("accounts/login/", login, name="login"),
+    path("accounts/authenticate/", authenticate, name="authenticate"),
+    path(
+        "accounts/discharge-request/",
         MacaroonDischargeRequest(),
         name="discharge-request",
     ),
@@ -41,17 +41,17 @@ urlpatterns = [
         simplestreams_file_handler,
         name="simplestreams_file_handler",
     ),
-    re_path(
-        r"^maas-run-scripts$",
+    path(
+        "maas-run-scripts",
         TemplateView.as_view(
             template_name="maas_run_scripts.template",
             content_type="text/x-python",
         ),
         name="maas-run-scripts",
     ),
-    re_path(r"^metrics$", prometheus_stats_handler, name="metrics"),
-    re_path(
-        r"^metrics/endpoints$",
+    path("metrics", prometheus_stats_handler, name="metrics"),
+    path(
+        "metrics/endpoints",
         prometheus_discovery_handler,
         name="metrics_endpoints",
     ),
@@ -62,8 +62,8 @@ urlpatterns = [
         ),
         name="robots",
     ),
-    re_path(
-        r"^vmhost-certificate/(?P<name>[^/]+)$",
+    path(
+        "vmhost-certificate/<str:name>",
         vmhost_certificate_handler,
         name="vmhost-certificate",
     ),
@@ -71,13 +71,13 @@ urlpatterns = [
 
 # # URLs for logged-in users.
 # Preferences views.
-urlpatterns += [re_path(r"^account/csrf/$", csrf, name="csrf")]
+urlpatterns += [path("account/csrf/", csrf, name="csrf")]
 # Logout view.
-urlpatterns += [re_path(r"^accounts/logout/$", logout, name="logout")]
+urlpatterns += [path("accounts/logout/", logout, name="logout")]
 
 # API URLs. If old API requested, provide error message directing to new API.
 urlpatterns += [
-    re_path(r"^api/$", landing_page),
+    path("api/", landing_page),
     re_path(r"^api/docs/", TemplateView.as_view(template_name="openapi.html")),
     re_path(r"^api/2\.0/", include(urls_api)),
     re_path(
@@ -99,4 +99,4 @@ urlpatterns += [
 
 
 # RPC URLs.
-urlpatterns += [re_path(r"^rpc/$", info, name="rpc-info")]
+urlpatterns += [path("rpc/", info, name="rpc-info")]

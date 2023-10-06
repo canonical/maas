@@ -213,7 +213,7 @@ def extract_oauth_key(request):
 
     Raises :class:`Unauthorized` if no key is found.
     """
-    auth_header = request.META.get("HTTP_AUTHORIZATION")
+    auth_header = request.headers.get("authorization")
     if auth_header is None:
         raise Unauthorized("No authorization header received.")
     key = extract_oauth_key_from_auth_header(auth_header)
