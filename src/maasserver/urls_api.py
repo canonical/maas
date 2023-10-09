@@ -44,6 +44,7 @@ from maasserver.api.domains import DomainHandler, DomainsHandler
 from maasserver.api.events import EventsHandler
 from maasserver.api.fabrics import FabricHandler, FabricsHandler
 from maasserver.api.files import FileHandler, FilesHandler
+from maasserver.api.image_sync import ImageSyncProgressHandler
 from maasserver.api.interfaces import InterfaceHandler, InterfacesHandler
 from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.api.ipranges import IPRangeHandler, IPRangesHandler
@@ -338,6 +339,10 @@ license_keys_handler = AdminRestrictedResource(
 # Internal Handlers
 switch_boot_order_handler = OperationsResource(
     SwitchBootOrderHandler, authentication=api_auth
+)
+
+image_sync_progress_handler = OperationsResource(
+    ImageSyncProgressHandler, authentication=api_auth
 )
 
 
@@ -759,7 +764,12 @@ patterns += [
         r"^switch-boot-order/(?P<system_id>[^/]+)/$",
         switch_boot_order_handler,
         name="switch_boot_order_handler",
-    )
+    ),
+    re_path(
+        r"^image-sync-progress/(?P<file_id>[^/]+)/(?P<system_id>[^/]+)/$",
+        image_sync_progress_handler,
+        name="image_sync_progress_handler",
+    ),
 ]
 
 # Last resort: return an API 404 response.
