@@ -360,6 +360,7 @@ class BootResourceStore(ObjectStore):
         self._finalizing = False
         self._cancel_finalize = False
         self._store_dir = Path(get_maas_data_path("boot-resources"))
+        self._store_dir.mkdir(parents=True, exist_ok=True)
 
     def get_resource_identity(self, resource):
         """Return the formatted identity for the given resource."""
