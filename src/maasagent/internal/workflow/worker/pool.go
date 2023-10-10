@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -36,6 +37,7 @@ type WorkerPool struct {
 	removeWorkerWorkflowName  string
 	configurePoolWorkflowName string
 	controlPlaneTaskQueueName string
+	pid                       int
 	mutex                     sync.Mutex
 }
 
@@ -45,6 +47,7 @@ func NewWorkerPool(systemID string, client client.Client,
 	options ...WorkerPoolOption) *WorkerPool {
 	pool := &WorkerPool{
 		systemID:                  systemID,
+		pid:                       os.Getpid(),
 		client:                    client,
 		workers:                   make(map[string]worker.Worker),
 		addWorkerWorkflowName:     defaultAddWorkerWorkflowName,
@@ -59,7 +62,7 @@ func NewWorkerPool(systemID string, client client.Client,
 
 	// master worker is responsible for adding/removing workers to/from the pool
 	pool.master = worker.New(client, systemID, worker.Options{
-		Identity:     fmt.Sprintf("%s:master", systemID),
+		Identity:     fmt.Sprintf("%s:master:%d", systemID, pool.pid),
 		OnFatalError: func(err error) { pool.fatal <- err },
 	})
 
@@ -148,7 +151,7 @@ type configureWorkerPoolParam struct {
 // This workflow will configure WorkerPool with a proper set of workers.
 func (p *WorkerPool) Configure(ctx context.Context) error {
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        fmt.Sprintf("configure:%s", p.systemID),
+		ID:        fmt.Sprintf("configure:%s:%d", p.systemID, p.pid),
 		TaskQueue: p.controlPlaneTaskQueueName,
 	}
 
@@ -177,7 +180,7 @@ func (p *WorkerPool) addWorker(param addWorkerParam) error {
 	}
 
 	w := worker.New(p.client, param.TaskQueue, worker.Options{
-		Identity:     fmt.Sprintf("%s:%s", p.systemID, param.TaskQueue),
+		Identity:     fmt.Sprintf("%s:%d:%s", p.systemID, p.pid, param.TaskQueue),
 		OnFatalError: func(err error) { p.fatal <- err },
 	})
 
