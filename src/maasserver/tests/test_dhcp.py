@@ -8,6 +8,7 @@ from unittest.mock import ANY
 
 from django.core.exceptions import ValidationError
 from netaddr import IPAddress, IPNetwork
+import pytest
 from testtools import ExpectedException
 from testtools.matchers import (
     AllMatch,
@@ -34,6 +35,7 @@ from maasserver.models import (
     Service,
     VersionedTextFile,
 )
+from maasserver.rpc import getClientFor
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.secrets import SecretManager
 from maasserver.testing.eventloop import (
@@ -51,6 +53,7 @@ from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import always_fail_with, always_succeed_with
+from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
@@ -2837,6 +2840,36 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
                 global_dhcp_snippets=config.global_dhcp_snippets,
             ),
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_closed_handler_drops_connection(self):
+        # ... when DHCP_CONNECT is True.
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+
+        rack_controller, config = yield deferToDatabase(
+            self.create_rack_controller
+        )
+        protocol, ipv4_stub, ipv6_stub = yield deferToThread(
+            self.prepare_rpc, rack_controller
+        )
+
+        # Get the client and simulate a closed handler
+        client = yield getClientFor(rack_controller.system_id)
+        self.patch(
+            client._conn, "_sendBoxCommand"
+        ).side_effect = always_fail_with(RuntimeError("the handler is closed"))
+
+        ipv4_stub.side_effect = always_succeed_with({})
+        ipv6_stub.side_effect = always_succeed_with({})
+
+        # The builtins.RuntimeError is propagated
+        with pytest.raises(RuntimeError):
+            yield dhcp.configure_dhcp(rack_controller)
+
+        # But the connection should have been closed and no connections should be available now.
+        with pytest.raises(exceptions.NoConnectionsAvailable):
+            yield getClientFor(rack_controller.system_id)
 
     @wait_for_reactor
     @inlineCallbacks
