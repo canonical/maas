@@ -641,6 +641,10 @@ class TestAcquireNodeAction(MAASServerTestCase):
 
 
 class TestDeployAction(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        factory.make_RegionController()
+
     def test_Deploy_is_actionable_if_user_doesnt_have_ssh_keys(self):
         owner = factory.make_User()
         node = factory.make_Node(
@@ -1048,6 +1052,10 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
     MAASTransactionServerTestCase, and thus, have been separated
     from the TestDeployAction above.
     """
+
+    def setUp(self):
+        super().setUp()
+        factory.make_RegionController()
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()

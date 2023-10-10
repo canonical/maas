@@ -270,9 +270,10 @@ class BootResourceHandler(Handler):
             resource.size = human_readable_bytes(resource_set.total_size)
             resource.last_update = resource_set.updated
             resource.complete = resource_set.complete
+            # FIXME report progress correctly
             if not resource.complete:
-                progress = resource_set.progress
-                if progress > 0:
+                progress = resource_set.sync_progress
+                if progress > 0.0:
                     resource.status = "Downloading %3.0f%%" % progress
                     resource.downloading = True
                     resource.icon = "in-progress"
@@ -431,7 +432,7 @@ class BootResourceHandler(Handler):
         return max([time, other_time])
 
     def calculate_unique_size_for_resources(self, resources):
-        """Return size of all unique largefiles for the given resources."""
+        """Return size of all unique files for the given resources."""
         shas = set()
         size = 0
         for resource in resources:
@@ -439,10 +440,9 @@ class BootResourceHandler(Handler):
             if resource_set is None:
                 continue
             for rfile in resource_set.files.all():
-                largefile = rfile.largefile
-                if largefile is not None and largefile.sha256 not in shas:
-                    size += largefile.total_size
-                    shas.add(largefile.sha256)
+                if rfile.sha256 not in shas:
+                    size += rfile.size
+                    shas.add(rfile.sha256)
         return size
 
     def are_all_resources_complete(self, resources):
@@ -528,8 +528,8 @@ class BootResourceHandler(Handler):
         for resource in resources:
             resource_set = resource.get_latest_set()
             if resource_set is not None:
-                size += resource_set.size
-                total_size += resource_set.total_size
+                size += resource_set.sync_cur_size
+                total_size += resource_set.sync_total_size
         if size <= 0:
             # Handle division by zero
             return 0

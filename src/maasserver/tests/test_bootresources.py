@@ -13,12 +13,13 @@ from os import environ
 import random
 from random import randint
 from subprocess import CalledProcessError
+from typing import BinaryIO
 from unittest import skip
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 from urllib.parse import urljoin
 
 from django.conf import settings
-from django.db import connections, transaction
+from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.urls import reverse
 from fixtures import FakeLogger, Fixture
@@ -55,9 +56,9 @@ from maasserver.models import (
     BootResourceSet,
     BootSource,
     Config,
-    LargeFile,
     signals,
 )
+from maasserver.models.node import RegionController
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.config import RegionConfigurationFixture
@@ -71,7 +72,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils import absolute_reverse, get_maas_user_agent
 from maasserver.utils.orm import (
     get_one,
@@ -82,17 +82,12 @@ from maasserver.utils.orm import (
 from maasserver.utils.threads import deferToDatabase
 from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.cluster import ListBootImages
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
 
@@ -100,15 +95,18 @@ TIMEOUT = get_testing_timeout()
 wait_for_reactor = wait_for()
 
 
-def make_boot_resource_file_with_stream(size=None):
+def make_boot_resource_file_with_stream(
+    size=None,
+) -> tuple[BootResourceFile, BinaryIO, bytes]:
     resource = factory.make_usable_boot_resource(
         rtype=BOOT_RESOURCE_TYPE.SYNCED, size=size
     )
     rfile = resource.sets.first().files.first()
-    with rfile.largefile.content.open("rb") as stream:
+    lfile = rfile.local_file()
+    with open(lfile.path, "rb") as stream:
         content = stream.read()
-    with rfile.largefile.content.open("wb") as stream:
-        stream.truncate()
+    lfile.unlink()
+    rfile.bootresourcefilesync_set.all().delete()
     return rfile, BytesIO(content), content
 
 
@@ -141,6 +139,10 @@ class SimplestreamsEnvFixture(Fixture):
 
 class TestSimpleStreamsHandler(MAASServerTestCase):
     """Tests for `maasserver.bootresources.SimpleStreamsHandler`."""
+
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
 
     def reverse_stream_handler(self, filename):
         return reverse(
@@ -362,7 +364,9 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         # Incomplete resource_set
         factory.make_BootResourceSet(resource)
         newest_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(newest_set)
+        factory.make_boot_resource_file_with_content(
+            newest_set, synced=[(self.region, -1)]
+        )
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         output_product = output["products"][product]
@@ -375,7 +379,9 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         ]
         versions = []
         for resource_set in resource_sets:
-            factory.make_boot_resource_file_with_content(resource_set)
+            factory.make_boot_resource_file_with_content(
+                resource_set, synced=[(self.region, -1)]
+            )
             versions.append(resource_set.version)
         product = self.get_product_name_for_resource(resource)
         response = self.get_stream_client("maas:v2:download.json")
@@ -424,8 +430,8 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         item = version["items"][resource_file.filename]
         self.assertEqual(path, item["path"])
         self.assertEqual(resource_file.filetype, item["ftype"])
-        self.assertEqual(resource_file.largefile.sha256, item["sha256"])
-        self.assertEqual(resource_file.largefile.total_size, item["size"])
+        self.assertEqual(resource_file.sha256, item["sha256"])
+        self.assertEqual(resource_file.size, item["size"])
         for key, value in resource_file.extra.items():
             self.assertEqual(value, item[key])
 
@@ -485,129 +491,6 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             os, arch, subarch, series, version, filename
         )
         self.assertIsInstance(response, StreamingHttpResponse)
-
-
-class TestConnectionWrapper(MAASTransactionServerTestCase):
-    """Tests the use of StreamingHttpResponse(ConnectionWrapper(stream)).
-
-    We do not run this inside of `MAASServerTestCase` as that wraps a
-    transaction around each test. Since a new connection is created to return
-    the actual content, the transaction to create the data needs be committed.
-    """
-
-    def make_file_for_client(self):
-        # Set up the database information inside of a transaction. This is
-        # done so the information is committed. As the new connection needs
-        # to be able to access the data.
-        with transaction.atomic():
-            os = factory.make_name("os")
-            series = factory.make_name("series")
-            arch = factory.make_name("arch")
-            subarch = factory.make_name("subarch")
-            name = f"{os}/{series}"
-            architecture = f"{arch}/{subarch}"
-            version = factory.make_name("version")
-            filetype = factory.pick_enum(BOOT_RESOURCE_FILE_TYPE)
-            # We set the filename to the same value as filetype, as in most
-            # cases this will always be true. The simplestreams content from
-            # maas.io, is formatted this way.
-            filename = filetype
-            size = randint(1024, 2048)
-            content = factory.make_bytes(size=size)
-            resource = factory.make_BootResource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=name,
-                architecture=architecture,
-            )
-            resource_set = factory.make_BootResourceSet(
-                resource, version=version
-            )
-            largefile = factory.make_LargeFile(content=content, size=size)
-            factory.make_BootResourceFile(
-                resource_set, largefile, filename=filename, filetype=filetype
-            )
-        return (
-            content,
-            reverse(
-                "simplestreams_file_handler",
-                kwargs={
-                    "os": os,
-                    "arch": arch,
-                    "subarch": subarch,
-                    "series": series,
-                    "version": version,
-                    "filename": filename,
-                },
-            ),
-        )
-
-    def read_response(self, response):
-        """Read the streaming_content from the response.
-
-        :rtype: bytes
-        """
-        return b"".join(response.streaming_content)
-
-    def test_download_calls__get_new_connection(self):
-        content, url = self.make_file_for_client()
-        mock_get_new_connection = self.patch(
-            bootresources.ConnectionWrapper, "_get_new_connection"
-        )
-
-        client = MAASSensibleClient()
-        response = client.get(url)
-        self.read_response(response)
-        self.assertThat(mock_get_new_connection, MockCalledOnceWith())
-
-    def test_download_connection_is_not_same_as_django_connections(self):
-        content, url = self.make_file_for_client()
-
-        class AssertConnectionWrapper(bootresources.ConnectionWrapper):
-            def _set_up(self):
-                super()._set_up()
-                # Capture the created connection
-                AssertConnectionWrapper.connection = self._connection
-
-            def close(self):
-                # Close the stream, but we don't want to close the
-                # connection as the test is testing that the connection is
-                # not the same as the connection django is using for other
-                # webrequests.
-                if self._stream is not None:
-                    self._stream.close()
-                    self._stream = None
-                self._connection = None
-
-        self.patch(bootresources, "ConnectionWrapper", AssertConnectionWrapper)
-
-        client = MAASSensibleClient()
-        response = client.get(url)
-        self.read_response(response)
-
-        # Add cleanup to close the connection, since this was removed from
-        # AssertConnectionWrapper.close method.
-        def close():
-            conn = AssertConnectionWrapper.connection
-            conn.in_atomic_block = False
-            conn.commit()
-            conn.set_autocommit(True)
-            conn.close()
-
-        self.addCleanup(close)
-
-        # The connection that is used by the wrapper cannot be the same as the
-        # connection be using for all other webrequests. Without this
-        # seperate the transactional middleware will fail to initialize,
-        # because the the connection will already be in a transaction.
-        #
-        # Note: cannot test if DatabaseWrapper != DatabaseWrapper, as it will
-        # report true, because the __eq__ operator only checks if the aliases
-        # are the same. This is checking the underlying connection is
-        # different, which is the important part.
-        self.assertNotEqual(
-            connections["default"].connection,
-            AssertConnectionWrapper.connection.connection,
-        )
 
 
 def make_product(ftype=None, kflavor=None, subarch=None, platform=None):
@@ -692,12 +575,17 @@ def make_boot_resource_group_from_product(product):
     rfile = factory.make_boot_resource_file_with_content(
         resource_set, filename=product["item_name"], filetype=product["ftype"]
     )
-    product["sha256"] = rfile.largefile.sha256
-    product["size"] = rfile.largefile.total_size
+    product["sha256"] = rfile.sha256
+    product["size"] = rfile.size
     return product, resource
 
 
 class TestBootResourceStore(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        region = factory.make_RegionController()
+        MAAS_ID.set(region.system_id)
+
     def make_boot_resources(self):
         resources = [
             factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -784,7 +672,7 @@ class TestBootResourceStore(MAASServerTestCase):
         store = BootResourceStore()
         mock_prevent = self.patch(store, "prevent_resource_deletion")
         store.get_or_create_boot_resource(product)
-        self.assertThat(mock_prevent, MockCalledOnceWith(resource))
+        mock_prevent.assert_called_once_with(resource)
 
     def test_get_or_create_boot_resource_adds_kflavor_to_subarch(self):
         kflavor = factory.make_name("kflavor")
@@ -830,8 +718,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertDictEqual({"title": "Ubuntu Core 16 PC"}, resource.extra)
 
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
-        self.useFixture(SignalsDisabled("largefiles"))
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         with post_commit_hooks:
             resource.sets.all().delete()
@@ -841,7 +728,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(product["label"], resource_set.label)
 
     def test_get_or_create_boot_resource_set_gets_resource_set(self):
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         expected = resource.sets.first()
         store = BootResourceStore()
@@ -850,25 +737,28 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(product["label"], resource_set.label)
 
     def test_get_or_create_boot_resource_file_creates_resource_file(self):
-        self.useFixture(SignalsDisabled("largefiles"))
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
         with post_commit_hooks:
             resource_set.files.all().delete()
         store = BootResourceStore()
-        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        rfile, _ = store.get_or_create_boot_resource_file(
+            resource_set, product
+        )
         self.assertEqual(os.path.basename(product["path"]), rfile.filename)
         self.assertEqual(product["ftype"], rfile.filetype)
         self.assertEqual(product["kpackage"], rfile.extra["kpackage"])
 
     def test_get_or_create_boot_resource_file_gets_resource_file(self):
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
         expected = resource_set.files.first()
         store = BootResourceStore()
-        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        rfile, _ = store.get_or_create_boot_resource_file(
+            resource_set, product
+        )
         self.assertEqual(expected, rfile)
         self.assertEqual(product["ftype"], rfile.filetype)
         self.assertEqual(product["kpackage"], rfile.extra["kpackage"])
@@ -880,18 +770,20 @@ class TestBootResourceStore(MAASServerTestCase):
             "src_release",
             "src_version",
         ]
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         for extra_field in extra_fields:
             product[extra_field] = factory.make_name(extra_field)
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
         store = BootResourceStore()
-        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        rfile, _ = store.get_or_create_boot_resource_file(
+            resource_set, product
+        )
         for extra_field in extra_fields:
             self.assertEqual(product[extra_field], rfile.extra[extra_field])
 
     def test_get_or_create_boot_resources_can_handle_duplicate_ftypes(self):
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         product, resource = make_boot_resource_group_from_product(product)
         resource_set = resource.sets.first()
         store = BootResourceStore()
@@ -901,11 +793,9 @@ class TestBootResourceStore(MAASServerTestCase):
                 item_name = factory.make_name("item_name")
                 product["item_name"] = item_name
                 files.append(item_name)
-                rfile = store.get_or_create_boot_resource_file(
+                rfile, _ = store.get_or_create_boot_resource_file(
                     resource_set, product
                 )
-                rfile.largefile = factory.make_LargeFile()
-                rfile.save()
             for rfile in resource_set.files.all():
                 self.assertIn(rfile.filename, files)
                 self.assertEqual(rfile.filetype, product["ftype"])
@@ -949,26 +839,25 @@ class TestBootResourceStore(MAASServerTestCase):
         size = int(2.5 * store.read_size)
         rfile, reader, content = make_boot_resource_file_with_stream(size=size)
         store.write_content_thread(rfile.id, reader)
+        lfile = rfile.local_file()
         self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
-        with rfile.largefile.content.open("rb") as stream:
+        self.assertTrue(os.access(lfile.path, os.F_OK))
+        with open(lfile.path, "rb") as stream:
             written_data = stream.read()
         self.assertEqual(content, written_data)
-        rfile.largefile = reload_object(rfile.largefile)
-        self.assertEqual(rfile.largefile.size, len(written_data))
-        self.assertEqual(rfile.largefile.size, rfile.largefile.total_size)
+        self.assertEqual(rfile.size, len(written_data))
+        self.assertEqual(rfile.size, lfile.size)
 
     def test_write_content_doesnt_write_if_cancel(self):
         store = BootResourceStore()
         size = int(2.5 * store.read_size)
-        rfile, reader, content = make_boot_resource_file_with_stream(size=size)
+        rfile, reader, _ = make_boot_resource_file_with_stream(size=size)
+        lfile = rfile.local_file()
         store._cancel_finalize = True
         store.write_content_thread(rfile.id, reader)
         self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
-        with rfile.largefile.content.open("rb") as stream:
-            written_data = stream.read()
-        self.assertEqual(b"", written_data)
-        rfile.largefile = reload_object(rfile.largefile)
-        self.assertEqual(rfile.largefile.size, 0)
+        self.assertEqual(lfile.size, 0)
+        self.assertFalse(os.access(lfile.path, os.F_OK))
 
     @skip(
         "XXX blake_r: Skipped because it causes the test that runs after this "
@@ -984,7 +873,6 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
 
     def test_delete_content_to_finalize_deletes_items(self):
-        self.useFixture(SignalsDisabled("largefiles"))
         rfile_one, _, _ = make_boot_resource_file_with_stream()
         rfile_two, _, _ = make_boot_resource_file_with_stream()
         store = BootResourceStore()
@@ -1005,9 +893,9 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_perform_write = self.patch(store, "perform_write")
         mock_resource_set_cleaner = self.patch(store, "resource_set_cleaner")
         store.finalize()
-        self.expectThat(mock_resource_cleaner, MockNotCalled())
-        self.expectThat(mock_perform_write, MockNotCalled())
-        self.expectThat(mock_resource_set_cleaner, MockNotCalled())
+        mock_resource_cleaner.assert_not_called()
+        mock_perform_write.assert_not_called()
+        mock_resource_set_cleaner.assert_not_called()
 
     def test_finalize_calls_methods_if_new_resources_need_to_be_saved(self):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -1018,9 +906,9 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_resource_set_cleaner = self.patch(store, "resource_set_cleaner")
         store.finalize()
         self.assertTrue(store._finalizing)
-        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
-        self.expectThat(mock_perform_write, MockCalledOnceWith())
-        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+        mock_resource_cleaner.assert_called_once_with()
+        mock_perform_write.assert_called_once_with()
+        mock_resource_set_cleaner.assert_called_once_with()
 
     def test_finalize_calls_methods_if_resources_to_delete_has_changed(self):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -1030,9 +918,9 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_perform_write = self.patch(store, "perform_write")
         mock_resource_set_cleaner = self.patch(store, "resource_set_cleaner")
         store.finalize()
-        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
-        self.expectThat(mock_perform_write, MockCalledOnceWith())
-        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+        mock_resource_cleaner.assert_called_once_with()
+        mock_perform_write.assert_called_once_with()
+        mock_resource_set_cleaner.assert_called_once_with()
 
     def test_finalize_calls_methods_with_delete_if_cancel_finalize(self):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -1044,9 +932,9 @@ class TestBootResourceStore(MAASServerTestCase):
         store._cancel_finalize = True
         store.finalize()
         self.assertFalse(store._finalizing)
-        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
-        self.expectThat(mock_delete, MockCalledOnceWith())
-        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+        mock_resource_cleaner.assert_called_once_with()
+        mock_delete.assert_called_once_with()
+        mock_resource_set_cleaner.assert_called_once_with()
 
     def test_finalize_calls_delete_after_write_if_cancel_finalize(self):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
@@ -1063,10 +951,10 @@ class TestBootResourceStore(MAASServerTestCase):
         mock_perform_write.side_effect = set_cancel
         store.finalize()
         self.assertTrue(store._finalizing)
-        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
-        self.expectThat(mock_perform_write, MockCalledOnceWith())
-        self.expectThat(mock_delete, MockCalledOnceWith())
-        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+        mock_resource_cleaner.assert_called_once_with()
+        mock_perform_write.assert_called_once_with()
+        mock_delete.assert_called_once_with()
+        mock_resource_set_cleaner.assert_called_once_with()
 
 
 class TestBootResourceTransactional(MAASTransactionServerTestCase):
@@ -1076,70 +964,49 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
     flushed after each test run.
     """
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+        MAAS_ID.set(self.region.system_id)
+
     def test_insert_does_nothing_if_file_already_exists(self):
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
             rfile = resource.sets.first().files.first()
-        largefile = rfile.largefile
         store = BootResourceStore()
         mock_save_later = self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
-        self.assertEqual(largefile, reload_object(rfile).largefile)
-        self.assertThat(mock_save_later, MockNotCalled())
-
-    def test_insert_uses_already_existing_largefile(self):
-        name, architecture, product = make_product()
-        with transaction.atomic():
-            product, resource = make_boot_resource_group_from_product(product)
-            resource_set = resource.sets.first()
-            with post_commit_hooks:
-                resource_set.files.all().delete()
-            largefile = factory.make_LargeFile()
-        product["sha256"] = largefile.sha256
-        product["size"] = largefile.total_size
-        store = BootResourceStore()
-        mock_save_later = self.patch(store, "save_content_later")
-        store.insert(product, sentinel.reader)
-        self.assertEqual(
-            largefile,
-            get_one(reload_object(resource_set).files.all()).largefile,
-        )
-        self.assertThat(mock_save_later, MockNotCalled())
+        lfile = rfile.local_file()
+        self.assertTrue(os.access(lfile.path, os.F_OK))
+        mock_save_later.assert_not_called()
 
     def test_insert_deletes_mismatch_largefile(self):
         self.patch(bootresources.Event.objects, "create_region_event")
-        self.useFixture(SignalsDisabled("largefiles"))
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
             rfile = resource.sets.first().files.first()
-            delete_largefile = rfile.largefile
-            largefile = factory.make_LargeFile()
-        product["sha256"] = largefile.sha256
-        product["size"] = largefile.total_size
+            lfile = rfile.local_file()
+            orig_path = lfile.path
+        product["sha256"] = "cadecafe"
+        product["size"] = rfile.size
+        self.assertTrue(os.access(orig_path, os.F_OK))
         store = BootResourceStore()
-        mock_save_later = self.patch(store, "save_content_later")
+        self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
-        self.assertFalse(
-            LargeFile.objects.filter(id=delete_largefile.id).exists()
-        )
-        self.assertEqual(largefile, reload_object(rfile).largefile)
-        self.assertThat(mock_save_later, MockNotCalled())
+        self.assertFalse(os.access(orig_path, os.F_OK))
 
     def test_insert_deletes_root_image_if_squashfs_available(self):
-        self.useFixture(SignalsDisabled("largefiles"))
-        name, architecture, product = make_product(
-            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
-        )
+        _, _, product = make_product(BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
-            squashfs = factory.make_LargeFile()
+            rfile = resource.sets.first().files.first()
         product["ftype"] = BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
         product["itemname"] = "squashfs"
         product["path"] = "/path/to/squashfs"
-        product["sha256"] = squashfs.sha256
-        product["size"] = squashfs.total_size
+        product["sha256"] = rfile.sha256
+        product["size"] = rfile.size
         store = BootResourceStore()
         mock_save_later = self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
@@ -1156,22 +1023,21 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
             ).count(),
         )
-        self.assertThat(mock_save_later, MockNotCalled())
+        mock_save_later.assert_not_called()
 
     def test_insert_prints_warning_if_mismatch_largefile(self):
         self.patch(bootresources.Event.objects, "create_region_event")
-        self.useFixture(SignalsDisabled("largefiles"))
-        name, architecture, product = make_product()
+        _, _, product = make_product()
         with transaction.atomic():
             product, resource = make_boot_resource_group_from_product(product)
-            largefile = factory.make_LargeFile()
-        product["sha256"] = largefile.sha256
-        product["size"] = largefile.total_size
+            rfile = resource.sets.first().files.first()
+        product["sha256"] = "cadecafe"
+        product["size"] = rfile.size
         store = BootResourceStore()
         with FakeLogger("maas", logging.WARNING) as logger:
             store.insert(product, sentinel.reader)
         self.assertDocTestMatches(
-            "Hash mismatch for prev_file=...", logger.output
+            "Hash mismatch for resourceset=...", logger.output
         )
 
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
@@ -1198,29 +1064,25 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             other_file = factory.make_boot_resource_file_with_content(
                 resource_set, filename=other_type, filetype=other_type
             )
-            rfile = factory.make_BootResourceFile(
+            other_lfile = other_file.local_file()
+            factory.make_BootResourceFile(
                 resource_set,
-                other_file.largefile,
                 filename=product["item_name"],
                 filetype=product["ftype"],
+                sha256=other_file.sha256,
+                size=other_file.size,
             )
-            largefile = factory.make_LargeFile()
-        product["sha256"] = largefile.sha256
-        product["size"] = largefile.total_size
+            lfile = factory.make_boot_file()
+        product["sha256"] = lfile.sha256
+        product["size"] = lfile.total_size
         store = BootResourceStore()
         mock_save_later = self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
-        self.assertEqual(largefile, reload_object(rfile).largefile)
-        self.assertTrue(
-            LargeFile.objects.filter(id=other_file.largefile.id).exists()
-        )
+        self.assertTrue(os.access(other_lfile.path, os.F_OK))
         self.assertTrue(
             BootResourceFile.objects.filter(id=other_file.id).exists()
         )
-        self.assertEqual(
-            other_file.largefile, reload_object(other_file).largefile
-        )
-        self.assertThat(mock_save_later, MockNotCalled())
+        mock_save_later.assert_not_called()
 
     def test_insert_creates_new_largefile(self):
         name, architecture, product = make_product()
@@ -1239,17 +1101,14 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         mock_save_later = self.patch(store, "save_content_later")
         store.insert(product, sentinel.reader)
         rfile = get_one(reload_object(resource_set).files.all())
-        self.assertEqual(product["sha256"], rfile.largefile.sha256)
-        self.assertEqual(product["size"], rfile.largefile.total_size)
-        self.assertThat(
-            mock_save_later, MockCalledOnceWith(rfile, sentinel.reader)
-        )
+        self.assertEqual(product["sha256"], rfile.sha256)
+        self.assertEqual(product["size"], rfile.size)
+        mock_save_later.assert_called_once_with(rfile, sentinel.reader)
 
     def test_insert_prints_error_when_breaking_resources(self):
         # Test case for bug 1419041: if the call to insert() makes
         # an existing complete resource incomplete: print an error in the
         # log.
-        self.useFixture(SignalsDisabled("largefiles"))
         self.patch(bootresources.Event.objects, "create_region_event")
         name, architecture, product = make_product()
         with transaction.atomic():
@@ -1261,12 +1120,14 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             )
             release_name = resource.name.split("/")[1]
             resource_set = factory.make_BootResourceSet(
-                resource, version=product["version_name"]
+                resource,
+                version=product["version_name"],
             )
             factory.make_boot_resource_file_with_content(
                 resource_set,
                 filename=product["ftype"],
                 filetype=product["ftype"],
+                synced=[(self.region, -1)],
             )
             # The resource has a complete set.
             self.assertIsNotNone(resource.get_latest_complete_set())
@@ -1279,12 +1140,12 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         product["sha256"] = factory.make_string(size=64)
         product["size"] = randint(1024, 2048)
         store = BootResourceStore()
-
         with FakeLogger("maas", logging.ERROR) as logger:
             store.insert(product, sentinel.reader)
 
+        self.assertIsNone(resource.get_latest_complete_set())
         self.assertDocTestMatches(
-            "Resource %s has no complete resource set!" % resource,
+            f"Resource {resource} has no complete resource set!",
             logger.output,
         )
 
@@ -1324,7 +1185,6 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
 
     def test_resource_cleaner_removes_boot_resources_not_in_selections(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        self.useFixture(SignalsDisabled("largefiles"))
         with transaction.atomic():
             # Make random selection as one is required, and empty set of
             # selections will not delete anything.
@@ -1348,7 +1208,6 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
 
     def test_resource_cleaner_removes_extra_subarch_boot_resource(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        self.useFixture(SignalsDisabled("largefiles"))
         with transaction.atomic():
             # Make selection that will keep both subarches.
             arch = factory.make_name("arch")
@@ -1431,18 +1290,22 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         )
 
     def test_resource_set_cleaner_keeps_only_newest_completed_set(self):
-        self.useFixture(SignalsDisabled("largefiles"))
         with transaction.atomic():
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED
             )
             old_complete_sets = []
+            sync = [(r, -1) for r in RegionController.objects.all()]
             for _ in range(3):
                 resource_set = factory.make_BootResourceSet(resource)
-                factory.make_boot_resource_file_with_content(resource_set)
+                factory.make_boot_resource_file_with_content(
+                    resource_set, synced=sync
+                )
                 old_complete_sets.append(resource_set)
             newest_set = factory.make_BootResourceSet(resource)
-            factory.make_boot_resource_file_with_content(newest_set)
+            factory.make_boot_resource_file_with_content(
+                newest_set, synced=sync
+            )
         store = BootResourceStore()
         store.resource_set_cleaner()
         self.assertCountEqual([newest_set], resource.sets.all())
@@ -1472,7 +1335,8 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 self.assertTrue(
                     BootResourceFile.objects.filter(id=rfile.id).exists()
                 )
-                with rfile.largefile.content.open("rb") as stream:
+                lfile = rfile.local_file()
+                with open(lfile.path, "rb") as stream:
                     written_data = stream.read()
                 self.assertEqual(content, written_data)
 
@@ -1620,11 +1484,8 @@ class TestImportImages(MAASTransactionServerTestCase):
         source_url = factory.make_url()
         mock_UrlMirrorReader = self.patch(bootresources, "UrlMirrorReader")
         download_boot_resources(source_url, store, None, None)
-        self.assertThat(
-            mock_UrlMirrorReader,
-            MockCalledOnceWith(
-                ANY, policy=ANY, user_agent=get_maas_user_agent()
-            ),
+        mock_UrlMirrorReader.assert_called_once_with(
+            ANY, policy=ANY, user_agent=get_maas_user_agent()
         )
 
     def test_download_boot_resources_fallsback_to_no_user_agent(self):
@@ -1634,12 +1495,11 @@ class TestImportImages(MAASTransactionServerTestCase):
         mock_UrlMirrorReader = self.patch(bootresources, "UrlMirrorReader")
         mock_UrlMirrorReader.side_effect = [TypeError(), Mock()]
         download_boot_resources(source_url, store, None, None)
-        self.assertThat(
-            mock_UrlMirrorReader,
-            MockCallsMatch(
+        mock_UrlMirrorReader.assert_has_calls(
+            [
                 call(ANY, policy=ANY, user_agent=get_maas_user_agent()),
                 call(ANY, policy=ANY),
-            ),
+            ]
         )
 
     def test_download_all_boot_resources_calls_download_boot_resources(self):
@@ -1656,14 +1516,11 @@ class TestImportImages(MAASTransactionServerTestCase):
         download_all_boot_resources(
             sources=[source], product_mapping=product_mapping, store=store
         )
-        self.assertThat(
-            fake_download,
-            MockCalledOnceWith(
-                source["url"],
-                store,
-                product_mapping,
-                keyring_file=source["keyring"],
-            ),
+        fake_download.assert_called_once_with(
+            source["url"],
+            store,
+            product_mapping,
+            keyring_file=source["keyring"],
         )
 
     def test_download_all_boot_resources_calls_finalize_on_store(self):
@@ -1676,7 +1533,7 @@ class TestImportImages(MAASTransactionServerTestCase):
         success = download_all_boot_resources(
             sources=[], product_mapping=product_mapping, store=store
         )
-        self.assertThat(fake_finalize, MockCalledOnceWith(notify=None))
+        fake_finalize.assert_called_once_with(notify=None)
         self.assertTrue(success)
 
     def test_download_all_boot_resources_registers_stop_handler(self):
@@ -1715,8 +1572,8 @@ class TestImportImages(MAASTransactionServerTestCase):
             product_mapping=product_mapping,
             store=store,
         )
-        self.assertThat(mock_cancel, MockCalledOnce())
-        self.assertThat(mock_finalize, Not(MockCalledOnce()))
+        mock_cancel.assert_called_once()
+        mock_finalize.assert_not_called()
         self.assertFalse(success)
 
     def test_download_all_boot_resources_calls_cancel_finalize_in_stop(self):
@@ -1741,8 +1598,8 @@ class TestImportImages(MAASTransactionServerTestCase):
             product_mapping=product_mapping,
             store=store,
         )
-        self.assertThat(mock_finalize, MockCalledOnce())
-        self.assertThat(mock_cancel, MockCalledOnce())
+        mock_finalize.assert_called_once()
+        mock_cancel.assert_called_once()
         self.assertFalse(success)
 
     def test_download_all_boot_resources_reraises_download_failure(self):
@@ -1796,7 +1653,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             bootresources._import_resources()
         # The test for set_simplestreams_env is not called if the
         # lock is already held.
-        self.assertThat(set_simplestreams_env, MockNotCalled())
+        set_simplestreams_env.assert_not_called()
 
     def test_import_resources_holds_lock(self):
         fake_write_all_keyrings = self.patch(
@@ -1832,21 +1689,16 @@ class TestImportImages(MAASTransactionServerTestCase):
 
         bootresources._import_resources()
 
-        self.expectThat(bootresources.create_gnupg_home, MockCalledOnceWith())
-        self.expectThat(
-            bootresources.ensure_boot_source_definition, MockCalledOnceWith()
+        bootresources.create_gnupg_home.assert_called_once_with()
+        bootresources.ensure_boot_source_definition.assert_called_once_with()
+        bootresources.cache_boot_sources.assert_called_once_with()
+        write_all_keyrings.assert_called_once_with(ANY, [])
+        image_descriptions.assert_called_once_with([], get_maas_user_agent())
+        map_products.assert_called_once_with(descriptions)
+        download_all_boot_resources.assert_called_once_with(
+            [], sentinel.mapping, notify=None
         )
-        self.expectThat(bootresources.cache_boot_sources, MockCalledOnceWith())
-        self.expectThat(write_all_keyrings, MockCalledOnceWith(ANY, []))
-        self.expectThat(
-            image_descriptions, MockCalledOnceWith([], get_maas_user_agent())
-        )
-        self.expectThat(map_products, MockCalledOnceWith(descriptions))
-        self.expectThat(
-            download_all_boot_resources,
-            MockCalledOnceWith([], sentinel.mapping, notify=None),
-        )
-        self.expectThat(set_global_default_releases, MockCalledOnceWith())
+        set_global_default_releases.assert_called_once_with()
 
     def test_import_resources_has_env_GNUPGHOME_set(self):
         fake_image_descriptions = self.patch(
@@ -1885,12 +1737,8 @@ class TestImportImages(MAASTransactionServerTestCase):
         from maasserver.clusterrpc import boot_images
 
         self.patch(boot_images.RackControllersImporter, "run")
-
         bootresources._import_resources()
-
-        self.assertThat(
-            boot_images.RackControllersImporter.run, MockCalledOnceWith()
-        )
+        boot_images.RackControllersImporter.run.assert_called_once_with()
 
     def test_restarts_import_if_source_changed(self):
         # Regression test for LP:1766370
@@ -1999,17 +1847,15 @@ class TestImportResourcesInThread(MAASTestCase):
     def test_defers__import_resources_to_thread(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
-        self.assertThat(
-            deferToDatabase,
-            MockCalledOnceWith(bootresources._import_resources, notify=None),
+        deferToDatabase.assert_called_once_with(
+            bootresources._import_resources, notify=None
         )
 
     def tests__defaults_force_to_False(self):
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         bootresources._import_resources_in_thread()
-        self.assertThat(
-            deferToDatabase,
-            MockCalledOnceWith(bootresources._import_resources, notify=None),
+        deferToDatabase.assert_called_once_with(
+            bootresources._import_resources, notify=None
         )
 
     def test_logs_errors_and_does_not_errback(self):
@@ -2061,7 +1907,7 @@ class TestStopImportResources(MAASTransactionServerTestCase):
         mock_defer = self.patch(bootresources, "deferToDatabase")
         mock_defer.return_value = succeed(False)
         yield bootresources.stop_import_resources()
-        self.assertThat(mock_defer, MockCalledOnce())
+        mock_defer.assert_called_once()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2119,9 +1965,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
         maybe_import_resources = asynchronous(service.maybe_import_resources)
         maybe_import_resources().wait(TIMEOUT)
 
-        self.assertThat(
-            bootresources._import_resources_in_thread, MockCalledOnceWith()
-        )
+        bootresources._import_resources_in_thread.assert_called_once_with()
 
     def test_no_auto_import_if_dev(self):
         self.patch(bootresources, "_import_resources_in_thread")
@@ -2133,9 +1977,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
         maybe_import_resources = asynchronous(service.maybe_import_resources)
         maybe_import_resources().wait(TIMEOUT)
 
-        self.assertThat(
-            bootresources._import_resources_in_thread, MockNotCalled()
-        )
+        bootresources._import_resources_in_thread.assert_not_called()
 
     def test_does_not_import_resources_in_thread_if_not_auto(self):
         self.patch(bootresources, "_import_resources_in_thread")
@@ -2147,9 +1989,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
         maybe_import_resources = asynchronous(service.maybe_import_resources)
         maybe_import_resources().wait(TIMEOUT)
 
-        self.assertThat(
-            bootresources._import_resources_in_thread, MockNotCalled()
-        )
+        bootresources._import_resources_in_thread.assert_not_called()
 
 
 class TestImportResourcesProgressService(MAASServerTestCase):
@@ -2382,7 +2222,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        mock_insert.assert_not_called()
 
     def test_insert_prefers_squashfs_over_root_image(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2400,7 +2240,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        mock_insert.assert_not_called()
 
     def test_insert_allows_squashfs(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2415,7 +2255,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
+        mock_insert.assert_called_once()
 
     def test_insert_allows_root_image(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2430,7 +2270,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
+        mock_insert.assert_called_once()
 
     def test_insert_allows_archive_tar_xz(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2445,7 +2285,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
+        mock_insert.assert_called_once()
 
     def test_insert_ignores_unknown_ftypes(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2461,7 +2301,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, unknown_ftype)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        mock_insert.assert_not_called()
 
     def test_insert_validates_ubuntu(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2476,7 +2316,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
+        mock_insert.assert_called_once()
 
     def test_validate_ubuntu_rejects_unknown_version(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2492,7 +2332,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        mock_insert.assert_not_called()
 
     def test_validates_ubuntu_core(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2507,7 +2347,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockCalledOnce())
+        mock_insert.assert_called_once()
 
     def test_validates_ubuntu_core_rejects_unknown_version(self):
         boot_resource_repo_writer = BootResourceRepoWriter(
@@ -2524,4 +2364,4 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
         pedigree = (product, version, BOOT_RESOURCE_FILE_TYPE.ROOT_DDXZ)
         mock_insert = self.patch(boot_resource_repo_writer.store, "insert")
         boot_resource_repo_writer.insert_item(data, src, None, pedigree, None)
-        self.assertThat(mock_insert, MockNotCalled())
+        mock_insert.assert_not_called()

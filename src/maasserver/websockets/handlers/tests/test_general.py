@@ -33,6 +33,7 @@ from provisioningserver.utils.version import MAASVersion
 class TestGeneralHandler(MAASServerTestCase):
     def setUp(self):
         super().setUp()
+        factory.make_RegionController()
         # Disable boot sources signals otherwise the test fails due to unrun
         # post-commit tasks at the end of the test.
         self.useFixture(SignalsDisabled("bootsources"))

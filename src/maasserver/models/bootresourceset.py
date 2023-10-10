@@ -86,44 +86,40 @@ class BootResourceSet(CleanSave, TimestampedModel):
     @property
     def total_size(self):
         """Total amount of space this set will consume."""
-        total_size = self.files.all().aggregate(
-            total_size=Sum("largefile__total_size")
-        )["total_size"]
-        if total_size is None:
-            total_size = 0
-        return total_size
+        total_size = self.files.all().aggregate(total_size=Sum("size"))[
+            "total_size"
+        ]
+        return total_size or 0
 
     @property
-    def size(self):
-        """Amount of space this set currently consumes."""
-        size = self.files.all().aggregate(size=Sum("largefile__size"))["size"]
-        if size is None:
-            size = 0
-        return size
-
-    @property
-    def progress(self):
-        """Percentage complete for all files in the set."""
-        size_info = self.files.all().aggregate(
-            total_size=Sum("largefile__total_size"),
-            size=Sum("largefile__size"),
-        )
-        if size_info["size"] is None:
-            size_info["size"] = 0
-        if size_info["total_size"] is None:
-            size_info["total_size"] = 0
-        if size_info["size"] <= 0:
-            # Handle division by zero
-            return 0
-        return 100.0 * size_info["size"] / float(size_info["total_size"])
-
-    @property
-    def complete(self):
-        """True if all files in the set are complete."""
+    def sync_cur_size(self):
         if not self.files.exists():
-            return False
-        size_info = self.files.all().aggregate(
-            total_size=Sum("largefile__total_size"),
-            size=Sum("largefile__size"),
+            return 0.0
+        return (
+            self.files.all().aggregate(
+                total_size=Sum("bootresourcefilesync__size")
+            )["total_size"]
+            or 0
         )
-        return size_info["total_size"] == size_info["size"]
+
+    @property
+    def sync_total_size(self):
+        from maasserver.models.node import RegionController
+
+        n_regions = RegionController.objects.count()
+        if n_regions == 0:
+            return 0.0
+        return self.total_size * n_regions
+
+    @property
+    def sync_progress(self) -> float:
+        """Percentage complete for all files in the set."""
+        if (total_size := self.sync_total_size) > 0:
+            return 100.0 * self.sync_cur_size / total_size
+        else:
+            return 0.0
+
+    @property
+    def complete(self) -> bool:
+        """True if all regions are synchronized."""
+        return self.sync_progress == 100.0

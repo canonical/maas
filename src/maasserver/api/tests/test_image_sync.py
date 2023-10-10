@@ -26,13 +26,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_update_creates_default_size(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         uri = get_image_sync_uri(file.id, region.id)
         response = self.client.put(uri, {})
         self.assertEqual(
@@ -43,13 +42,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_update(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         test_size = random.randint(1, 30)
         uri = get_image_sync_uri(file.id, region.id)
         response = self.client.put(uri, {"size": test_size})
@@ -61,13 +59,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_update_existing_brfsync(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         syncset = file.bootresourcefilesync_set.create(region=region)
         test_size = random.randint(1, 30)
         uri = get_image_sync_uri(file.id, region.id)
@@ -80,13 +77,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_update_fail_no_file(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         test_size = random.randint(1, 30)
         uri = get_image_sync_uri((file.id + 1), region.id)
         response = self.client.put(uri, {"size": test_size})
@@ -96,13 +92,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_read_nonexistent_brfsync(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         uri = get_image_sync_uri(file.id, region.id)
         response = self.client.get(uri)
         self.assertEqual(
@@ -113,13 +108,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_read_existing_brfsync(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         test_size = random.randint(1, 10)
         filesync = file.bootresourcefilesync_set.create(
             region=region, size=test_size
@@ -134,13 +128,12 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
 
     def test_read_nonexistent_file(self):
         region = factory.make_RegionController()
-        size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
-        content = factory.make_bytes(size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_BootResourceSet(resource)
-        file = factory.make_BootResourceFile(resource_set, largefile)
+        file = factory.make_boot_resource_file_with_content(
+            resource_set, size=total_size
+        )
         uri = get_image_sync_uri((file.id + 1), region.id)
         response = self.client.get(uri)
         self.assertEqual(

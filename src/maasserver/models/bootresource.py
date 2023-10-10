@@ -260,9 +260,9 @@ class BootResourceManager(Manager):
             architecture = ""
 
         sets_prefetch = BootResourceSet.objects.annotate(
-            files_count=Count("files__id"),
-            files_size=Sum("files__largefile__size"),
-            files_total_size=Sum("files__largefile__total_size"),
+            files_count=Count("files__id", distinct=True),
+            files_size=Sum("files__size"),
+            sync_size=Sum("files__bootresourcefilesync__size"),
         )
         sets_prefetch = sets_prefetch.prefetch_related("files")
         sets_prefetch = sets_prefetch.order_by("id")
@@ -621,23 +621,25 @@ class BootResource(CleanSave, TimestampedModel):
     def get_latest_complete_set(self):
         """Return latest `BootResourceSet` where all `BootResouceFile`'s
         are complete."""
+        from maasserver.models.node import RegionController
+
         if (
             not hasattr(self, "_prefetched_objects_cache")
             or "sets" not in self._prefetched_objects_cache
         ):
             resource_sets = self.sets.order_by("-id").annotate(
-                files_count=Count("files__id"),
-                files_size=Sum("files__largefile__size"),
-                files_total_size=Sum("files__largefile__total_size"),
+                files_count=Count("files__id", distinct=True),
+                files_size=Sum("files__size"),
+                sync_size=Sum("files__bootresourcefilesync__size"),
             )
         else:
             resource_sets = sorted(
                 self.sets.all(), key=attrgetter("id"), reverse=True
             )
+        n_regions = RegionController.objects.count()
         for resource_set in resource_sets:
-            if (
-                resource_set.files_count > 0
-                and resource_set.files_size == resource_set.files_total_size
+            if resource_set.files_count > 0 and resource_set.sync_size == (
+                n_regions * resource_set.files_size
             ):
                 return resource_set
         return None

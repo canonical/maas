@@ -56,6 +56,10 @@ class PatchOSInfoMixin:
 
 
 class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def make_other_resource(
         self, os=None, arch=None, subarch=None, release=None, extra=None
     ):
@@ -555,7 +559,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combines_subarch_resources_into_one_resource(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         for subarch in subarches:
@@ -574,10 +578,10 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_calculates_unique_size(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        largefile = factory.make_LargeFile()
+        lfile = factory.make_boot_file()
         for subarch in subarches:
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -585,11 +589,13 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
-            factory.make_BootResourceFile(resource_set, largefile)
+            factory.make_BootResourceFile(
+                resource_set, sha256=lfile.sha256, size=lfile.total_size
+            )
         response = handler.poll({})
         resource = response["resources"][0]
         self.assertEqual(
-            human_readable_bytes(largefile.total_size), resource["size"]
+            human_readable_bytes(lfile.total_size), resource["size"]
         )
 
     def test_combined_subarch_resource_calculates_num_of_nodes_deployed(self):
@@ -625,7 +631,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_calculates_complete_True(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         resources = [
@@ -646,7 +652,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_calculates_complete_False(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         incomplete_subarch = subarches.pop()
@@ -668,12 +674,10 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_calculates_progress(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        largefile = factory.make_LargeFile()
-        largefile.total_size = largefile.total_size * 2
-        largefile.save()
+        lfile = factory.make_boot_file()
         for subarch in subarches:
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -681,7 +685,13 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
-            factory.make_BootResourceFile(resource_set, largefile)
+            rfile = factory.make_BootResourceFile(
+                resource_set, sha256=lfile.sha256, size=lfile.total_size
+            )
+            rfile.bootresourcefilesync_set.create(
+                region=self.region,
+                size=lfile.total_size / 2,
+            )
         response = handler.poll({})
         resource = response["resources"][0]
         self.assertEqual("Downloading  50%", resource["status"])
@@ -690,10 +700,11 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_shows_queued_if_no_progress(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        largefile = factory.make_LargeFile(content=b"", size=1000)
+        lfile = factory.make_boot_file(size=1000)
+        lfile.unlink()
         for subarch in subarches:
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -701,7 +712,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
-            factory.make_BootResourceFile(resource_set, largefile)
+            factory.make_BootResourceFile(
+                resource_set, sha256=lfile.sha256, size=lfile.total_size
+            )
         response = handler.poll({})
         resource = response["resources"][0]
         self.assertEqual("Queued for download", resource["status"])
@@ -710,7 +723,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_shows_complete_status(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         resources = [
@@ -732,7 +745,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_shows_waiting_for_cluster_to_sync(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         for subarch in subarches:
@@ -754,7 +767,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
     def test_combined_subarch_resource_shows_clusters_syncing(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        name = "ubuntu/%s" % factory.make_name("series")
+        name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         for subarch in subarches:
@@ -1487,7 +1500,6 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_makes_correct_calls_for_downloading_resources(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        self.useFixture(SignalsDisabled("largefiles"))
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         os = factory.make_name("os")
@@ -1515,7 +1527,6 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
 
     def test_deletes_uploaded_image(self):
         self.useFixture(SignalsDisabled("bootsources"))
-        self.useFixture(SignalsDisabled("largefiles"))
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         name = factory.make_name("name")

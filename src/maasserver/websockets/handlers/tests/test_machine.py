@@ -3699,6 +3699,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertIsNone(reload_object(node))
 
     def test_action_performs_action_passing_extra(self):
+        factory.make_RegionController()
         user = factory.make_User()
         request = HttpRequest()
         request.user = user
@@ -6282,6 +6283,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
     def test_filter_options(self):
         user = factory.make_User()
         handler = MachineHandler(user, {}, None)
+        factory.make_RegionController()
         architectures = [
             "amd64/generic",
             "arm64/generic",

@@ -1,3 +1,4 @@
+import hashlib
 from hashlib import sha256
 from pathlib import Path
 
@@ -6,6 +7,10 @@ import pytest
 
 from maasserver.bootresources import export_images_from_db
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
+from maasserver.fields import LargeObjectFile
+from maasserver.models.bootresourcefile import BootResourceFile
+from maasserver.models.bootresourceset import BootResourceSet
+from maasserver.models.largefile import LargeFile
 from maasserver.utils.orm import reload_object
 
 
@@ -20,6 +25,48 @@ def list_files(base_path):
 
 @pytest.mark.usefixtures("maasdb")
 class TestExportImagesFromDB:
+    def make_LargeFile(self, factory, content: bytes = None, size=None):
+        if content is None:
+            content_size = size
+            if content_size is None:
+                content_size = 512
+            content = factory.make_bytes(size=content_size)
+        if size is None:
+            size = len(content)
+        sha256 = hashlib.sha256()
+        sha256.update(content)
+        digest = sha256.hexdigest()
+        largeobject = LargeObjectFile()
+        with largeobject.open("wb") as stream:
+            stream.write(content)
+        return LargeFile.objects.create(
+            sha256=digest,
+            size=len(content),
+            total_size=size,
+            content=largeobject,
+        )
+
+    def make_boot_resource_file_with_content_largefile(
+        self,
+        factory,
+        resource_set: BootResourceSet,
+        filename: str | None = None,
+        filetype: str | None = None,
+        extra: str | None = None,
+        content: bytes | None = None,
+        size: int | None = None,
+    ) -> BootResourceFile:
+        largefile = self.make_LargeFile(factory, content=content, size=size)
+        return factory.make_BootResourceFile(
+            resource_set,
+            filename=filename,
+            filetype=filetype,
+            size=largefile.size,
+            sha256=largefile.sha256,
+            extra=extra,
+            largefile=largefile,
+        )
+
     def test_empty(self, target_dir):
         export_images_from_db(target_dir)
         assert list_files(target_dir) == {"bootloaders"}
@@ -35,7 +82,8 @@ class TestExportImagesFromDB:
             label="stable",
         )
         content1 = b"ubuntu-jammy"
-        factory.make_boot_resource_file_with_content(
+        self.make_boot_resource_file_with_content_largefile(
+            factory,
             resource_set=resource_set1,
             filename="boot-initrd",
             content=content1,
@@ -51,7 +99,8 @@ class TestExportImagesFromDB:
             label="candidate",
         )
         content2 = b"centos-8"
-        factory.make_boot_resource_file_with_content(
+        self.make_boot_resource_file_with_content_largefile(
+            factory,
             resource_set=resource_set2,
             filename="boot-kernel",
             content=content2,
@@ -87,7 +136,8 @@ class TestExportImagesFromDB:
             version="20230901",
             label="stable",
         )
-        factory.make_boot_resource_file_with_content(
+        self.make_boot_resource_file_with_content_largefile(
+            factory,
             resource_set=resource_set,
             filename="boot-initrd",
             content=content,
@@ -105,7 +155,8 @@ class TestExportImagesFromDB:
             version="20230901",
             label="stable",
         )
-        resource_file = factory.make_boot_resource_file_with_content(
+        resource_file = self.make_boot_resource_file_with_content_largefile(
+            factory,
             resource_set=resource_set,
             filename="boot-initrd",
             content=b"some content",
@@ -165,7 +216,8 @@ class TestExportImagesFromDB:
                 },
             )
         )
-        factory.make_boot_resource_file_with_content(
+        self.make_boot_resource_file_with_content_largefile(
+            factory,
             resource_set=resource_set,
             filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
             filename="grub2-signed.tar.xz",

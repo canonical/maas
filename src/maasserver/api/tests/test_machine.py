@@ -119,6 +119,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def setUp(self):
         super().setUp()
+        self.region = factory.make_RegionController()
         self.patch(node_module.Node, "_pc_power_control_node")
 
     def test_handler_path(self):

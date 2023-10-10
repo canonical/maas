@@ -15,6 +15,7 @@ __all__ = [
 ]
 
 from datetime import timedelta
+from io import BytesIO
 from operator import itemgetter
 import os
 from pathlib import Path
@@ -24,11 +25,11 @@ import tarfile
 from textwrap import dedent
 import threading
 import time
+from typing import BinaryIO
 
-from django.db import connection, connections, transaction
+from django.db import connection, transaction
 from django.db.models import F
-from django.db.utils import load_backend
-from django.http import HttpResponse, StreamingHttpResponse
+from django.http import FileResponse, HttpResponse
 from pkg_resources import parse_version
 from simplestreams import util as sutil
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
@@ -58,7 +59,6 @@ from maasserver.enum import (
 )
 from maasserver.eventloop import services
 from maasserver.exceptions import MAASAPINotFound
-from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
     BootResourceFile,
@@ -68,6 +68,7 @@ from maasserver.models import (
     Event,
     LargeFile,
 )
+from maasserver.models.node import RegionController
 from maasserver.release_notifications import ReleaseNotifications
 from maasserver.rpc import getAllClients
 from maasserver.utils import (
@@ -75,6 +76,7 @@ from maasserver.utils import (
     get_maas_user_agent,
     synchronised,
 )
+from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import (
     get_one,
@@ -97,6 +99,7 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.fs import tempdir
@@ -122,67 +125,6 @@ def get_simplestream_endpoint():
         "keyring_data": b"",
         "selections": [],
     }
-
-
-class ConnectionWrapper:
-    """Wraps `LargeObjectFile` in a new database connection.
-
-    `StreamingHttpResponse` runs outside of django context, so connection
-    that is not shared by django is needed.
-
-    A new database connection is made at the start of the interation and is
-    closed upon close of wrapper.
-    """
-
-    def __init__(self, largeobject, alias="default"):
-        self.largeobject = largeobject
-        self.alias = alias
-        self._connection = None
-        self._stream = None
-
-    def _get_new_connection(self):
-        """Create new database connection."""
-        db = connections.databases[self.alias]
-        backend = load_backend(db["ENGINE"])
-        return backend.DatabaseWrapper(db, self.alias)
-
-    def _set_up(self):
-        """Sets up the connection and stream.
-
-        This uses lazy initialisation because it is called each time
-        `next` is called.
-        """
-        if self._connection is None:
-            self._connection = self._get_new_connection()
-            self._connection.connect()
-            self._connection.set_autocommit(False)
-            self._connection.in_atomic_block = True
-        if self._stream is None:
-            self._stream = self.largeobject.open(
-                "rb", connection=self._connection
-            )
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self._set_up()
-        data = self._stream.read(self.largeobject.block_size)
-        if len(data) == 0:
-            raise StopIteration
-        return data
-
-    def close(self):
-        """Close the connection and stream."""
-        if self._stream is not None:
-            self._stream.close()
-            self._stream = None
-        if self._connection is not None:
-            self._connection.in_atomic_block = False
-            self._connection.commit()
-            self._connection.set_autocommit(True)
-            self._connection.close()
-            self._connection = None
 
 
 class SimpleStreamsHandler:
@@ -212,9 +154,10 @@ class SimpleStreamsHandler:
 
     def get_product_name(self, resource):
         """Return product name for the given resource."""
-        return "maas:boot:%s:%s:%s:%s" % self.get_boot_resource_identifiers(
+        os, arch, subarch, series = self.get_boot_resource_identifiers(
             resource
         )
+        return f"maas:boot:{os}:{arch}:{subarch}:{series}"
 
     def gen_complete_boot_resources(self):
         """Return generator of `BootResource` that contains a complete set."""
@@ -249,8 +192,7 @@ class SimpleStreamsHandler:
         }
         data = sutil.dump_data(index) + b"\n"
         log.debug(
-            "Simplestreams product index: {index}.",
-            index=data.decode("utf-8", "replace"),
+            f"Simplestreams product index: {data.decode('utf-8', 'replace')}.",
         )
         return self.get_json_response(data)
 
@@ -259,19 +201,12 @@ class SimpleStreamsHandler:
         os, arch, subarch, series = self.get_boot_resource_identifiers(
             resource
         )
-        path = "{}/{}/{}/{}/{}/{}".format(
-            os,
-            arch,
-            subarch,
-            series,
-            resource_set.version,
-            rfile.filename,
-        )
+        path = f"{os}/{arch}/{subarch}/{series}/{resource_set.version}/{rfile.filename}"
         item = {
             "path": path,
             "ftype": rfile.filetype,
-            "sha256": rfile.largefile.sha256,
-            "size": rfile.largefile.total_size,
+            "sha256": rfile.sha256,
+            "size": rfile.size,
         }
         item.update(rfile.extra)
         return item
@@ -344,30 +279,28 @@ class SimpleStreamsHandler:
         raise MAASAPINotFound()
 
     def files_handler(
-        self, request, os, arch, subarch, series, version, filename
+        self, request, osystem, arch, subarch, series, version, filename
     ):
         """Handles requests for getting the boot resource data."""
-        if os == "custom":
+        if osystem == "custom":
             name = series
         else:
-            name = f"{os}/{series}"
+            name = f"{osystem}/{series}"
         arch = f"{arch}/{subarch}"
         try:
             resource = BootResource.objects.get(name=name, architecture=arch)
-        except BootResource.DoesNotExist:
-            raise MAASAPINotFound()
-        try:
             resource_set = resource.sets.get(version=version)
-        except BootResourceSet.DoesNotExist:
-            raise MAASAPINotFound()
-        try:
             rfile = resource_set.files.get(filename=filename)
-        except BootResourceFile.DoesNotExist:
+        except (
+            BootResource.DoesNotExist,
+            BootResourceFile.DoesNotExist,
+            BootResourceSet.DoesNotExist,
+        ):
             raise MAASAPINotFound()
-        response = StreamingHttpResponse(
-            ConnectionWrapper(rfile.largefile.content),
-            content_type="application/octet-stream",
-        )
+        lfile = rfile.local_file()
+        if not lfile.complete:
+            raise MAASAPINotFound()
+        response = FileResponse(open(lfile.path, "rb"))
         return response
 
 
@@ -426,16 +359,13 @@ class BootResourceStore(ObjectStore):
         self._content_to_finalize = {}
         self._finalizing = False
         self._cancel_finalize = False
-
-    def get_resource_identifiers(self, resource):
-        """Return os, arch, subarch, and series for the given resource."""
-        os, series = resource.name.split("/")
-        arch, subarch = resource.split_arch()
-        return os, arch, subarch, series
+        self._store_dir = Path(get_maas_data_path("boot-resources"))
 
     def get_resource_identity(self, resource):
         """Return the formatted identity for the given resource."""
-        return "%s/%s/%s/%s" % self.get_resource_identifiers(resource)
+        os, series = resource.name.split("/")
+        arch, subarch = resource.split_arch()
+        return f"{os}/{arch}/{subarch}/{series}"
 
     def cache_current_resources(self):
         """Load all current synced resources into 'self._resources_to_delete'.
@@ -464,7 +394,7 @@ class BootResourceStore(ObjectStore):
         ident = self.get_resource_identity(resource)
         self._resources_to_delete.discard(ident)
 
-    def save_content_later(self, rfile, content):
+    def save_content_later(self, rfile: BootResourceFile, content: BinaryIO):
         """Register content to be saved later on to the given resource file.
 
         This action will actually be performed during the finalize method.
@@ -486,7 +416,7 @@ class BootResourceStore(ObjectStore):
             kflavor = product.get("kernel_snap", "generic")
             release = product["release"]
             gadget = product["gadget_snap"]
-            architecture = "%s/generic" % arch
+            architecture = f"{arch}/generic"
             series = f"{release}-{gadget}"
         elif bootloader_type is None:
             # The rack controller assumes the subarch is the kernel. We need to
@@ -506,7 +436,7 @@ class BootResourceStore(ObjectStore):
             architecture = f"{arch}/{subarch}"
             series = product["release"]
         else:
-            architecture = "%s/generic" % arch
+            architecture = f"{arch}/generic"
             series = bootloader_type
 
         name = f"{os}/{series}"
@@ -549,9 +479,7 @@ class BootResourceStore(ObjectStore):
             resource_set = BootResourceSet(resource=resource, version=version)
         resource_set.label = product["label"]
         log.debug(
-            "Got boot resource set id={id} {set}.",
-            id=resource_set.id,
-            set=resource_set,
+            f"Got boot resource set id={resource_set.id} {resource_set}."
         )
         resource_set.save()
         return resource_set
@@ -561,16 +489,20 @@ class BootResourceStore(ObjectStore):
         product or create a new one if one does not exist."""
         # For synced resources the filename is the same as the filetype. This
         # is the way the data is from maas.io so we emulate that here.
+        created = False
         filetype = product["ftype"]
         filename = os.path.basename(product["path"])
         rfile = get_one(resource_set.files.filter(filename=filename))
         if rfile is None:
+            sha256 = sutil.item_checksums(product)["sha256"]
             rfile = BootResourceFile(
-                resource_set=resource_set, filename=filename
+                resource_set=resource_set,
+                filename=filename,
+                sha256=sha256,
+                size=int(product["size"]),
             )
-        log.debug(
-            "Got boot resource file id={id} {set}.", id=rfile.id, set=rfile
-        )
+            created = True
+        log.debug(f"Got boot resource file id={rfile}.")
         rfile.filetype = filetype
         rfile.extra = {}
 
@@ -597,10 +529,7 @@ class BootResourceStore(ObjectStore):
             if extra_key in product:
                 rfile.extra[extra_key] = product[extra_key]
 
-        # Don't save rfile here, because if new then largefile is None which
-        # will cause a ValidationError. The setting of largefile and saving of
-        # object should be handled by the calling function.
-        return rfile
+        return rfile, created
 
     def get_resource_file_log_identifier(
         self, rfile, resource_set=None, resource=None
@@ -615,6 +544,25 @@ class BootResourceStore(ObjectStore):
             resource_set.version,
             rfile.filename,
         )
+
+    def unlink_rfile(
+        self, sha256: str, rfile: BootResourceFile | None
+    ) -> None:
+        """Remove file from disk
+
+        Files can be shared by multiple BootResourceFile instances, so we
+        need to check if the File is orphan before removing it
+
+        Args:
+            sha256 (str): file hash
+            rfile (BootResourceFile): ignore this instance when checking
+        """
+        qs = BootResourceFile.objects.filter(sha256=sha256)
+        if rfile is not None:
+            qs = qs.exclude(id=rfile.id)
+        if not qs.exists():
+            lfile = LocalBootResourceFile(sha256=sha256, total_size=0)
+            lfile.unlink()
 
     @transactional
     def insert(self, product, reader):
@@ -635,7 +583,9 @@ class BootResourceStore(ObjectStore):
             resource.get_latest_complete_set() is not None
         )
         resource_set = self.get_or_create_boot_resource_set(resource, product)
-        rfile = self.get_or_create_boot_resource_file(resource_set, product)
+        rfile, new_rfile = self.get_or_create_boot_resource_file(
+            resource_set, product
+        )
 
         # A ROOT_IMAGE may already be downloaded for the release if the stream
         # switched from one not containg SquashFS images to one that does. We
@@ -647,49 +597,18 @@ class BootResourceStore(ObjectStore):
 
         checksums = sutil.item_checksums(product)
         sha256 = checksums["sha256"]
-        total_size = int(product["size"])
-        needs_saving = False
-        prev_largefile = None
 
-        largefile = rfile.largefile
-        if largefile is not None and largefile.sha256 != sha256:
-            # The content from simplestreams is different then what is in
-            # the database. We hold the previous largefile so that it can
-            # be removed once the new largefile is created. The largefile
-            # cannot be removed here, because then the `BootResourceFile`
-            # would have to set the largefile field to null, and that is
-            # not allowed.
-            prev_largefile = largefile
-            largefile = None
-            msg = f"Hash mismatch for prev_file={prev_largefile} resourceset={resource_set} resource={resource}"
+        if rfile.sha256 != sha256:
+            self.unlink_rfile(rfile.sha256, rfile)
+            rfile.bootresourcefilesync_set.all().delete()
+            msg = f"Hash mismatch for resourceset={resource_set} resource={resource}"
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_WARNING, msg
             )
             maaslog.warning(msg)
 
-        if largefile is None:
-            # The resource file current does not have a largefile linked. Lets
-            # check that a largefile does not already exist for this sha256.
-            # If it does then there will be no reason to save the content into
-            # the database.
-            largefile = get_one(LargeFile.objects.filter(sha256=sha256))
-
-        if largefile is None:
-            # No largefile exist for this resource file in the database, so a
-            # new one will be created to store the data for this file.
-            largeobject = LargeObjectFile()
-            largeobject.open().close()
-            largefile = LargeFile.objects.create(
-                sha256=sha256, total_size=total_size, content=largeobject
-            )
-            needs_saving = True
-            log.debug("New large file created {lf}.", lf=largefile)
-
-        # A largefile now exists for this resource file. Its either a new
-        # largefile or an existing one that already existed in the database.
-        rfile.largefile = largefile
-        rfile.sha256 = largefile.sha256
-        rfile.size = largefile.total_size
+        rfile.sha256 = sha256
+        rfile.size = int(product["size"])
         rfile.save()
 
         is_resource_broken = (
@@ -697,34 +616,22 @@ class BootResourceStore(ObjectStore):
             and resource.get_latest_complete_set() is None
         )
         if is_resource_broken:
-            msg = "Resource %s has no complete resource set!" % resource
+            msg = f"Resource {resource} has no complete resource set!"
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_ERROR, msg
             )
             maaslog.error(msg)
 
-        if prev_largefile is not None:
-            # If the previous largefile had a miss matching sha256 then it
-            # will be deleted so that its not taking up space in the database.
-            #
-            # Note: This is done after the resource file has been saved with
-            # the new largefile. Doing so removed the previous largefile
-            # reference to the resource file. Without removing the reference
-            # then the largefile would not be deleted, because it was still
-            # referenced by another object. See `LargeFile.delete`.
-            prev_largefile.delete()
+        lfile = rfile.local_file()
 
-        if needs_saving:
-            # The content for this resource file needs to be placed into the
-            # database. This method only performs the saving of metadata into
-            # the database. This resource is marked to be saved later, which
-            # will occur in the finalize method.
+        if not lfile.complete:
+            # FIXME try to find another Region with this file first
             self.save_content_later(rfile, reader)
         else:
             ident = self.get_resource_file_log_identifier(
                 rfile, resource_set, resource
             )
-            log.debug("Boot image already up-to-date {ident}.", ident=ident)
+            log.debug(f"Boot image already up-to-date {ident}.")
 
     def write_content_thread(self, rid, reader):
         """Writes the data from the given reader, into the object storage
@@ -734,67 +641,55 @@ class BootResourceStore(ObjectStore):
         def get_rfile_and_ident():
             rfile = BootResourceFile.objects.get(id=rid)
             ident = self.get_resource_file_log_identifier(rfile)
-            rfile.largefile  # Preload largefile in the transaction.
-            return rfile, ident
+            sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
+                region=RegionController.objects.get_running_controller()
+            )
+            return rfile, ident, sync_status
 
-        rfile, ident = get_rfile_and_ident()
-        cksummer = sutil.checksummer({"sha256": rfile.largefile.sha256})
-        log.debug("Finalizing boot image {ident}.", ident=ident)
+        rfile, ident, sync_status = get_rfile_and_ident()
+        lfile = rfile.local_file()
+        log.debug(f"Finalizing boot image {ident}.")
+        log.debug(f"Local file {lfile}")
 
-        # Ensure that the size of the largefile starts at zero.
-        rfile.largefile.size = 0
-        transactional(rfile.largefile.save)(update_fields=["size"])
+        @transactional
+        def set_progress(size: int):
+            sync_status.size = size
+            sync_status.save()
 
         @transactional
         def write_chunk():
-            """Write a chunk into the database with a transaction per trunk.
+            # keep sync status behind the actual progress, we don't want to
+            # report 100% in the DB before checking if the file is valid
+            sync_status.size = lfile.size
+            sync_status.save()
+            buf = BytesIO(reader.read(self.read_size))
+            lfile.store(buf, autocommit=False)
+            return lfile.complete
 
-            This ensures that the content and the size is committed into the
-            database per chunk. This makes the process be reported correctly.
-            """
-            with rfile.largefile.content.open("wb") as stream:
-                buf = reader.read(self.read_size)
-                stream.seek(0, 2)
-                stream.write(buf)
-                cksummer.update(buf)
-                buf_len = len(buf)
-                rfile.largefile.size += buf_len
-                rfile.largefile.save(update_fields=["size"])
-                if buf_len != self.read_size:
-                    return True
-                else:
-                    return False
+        with lfile.lock():
+            while not (lfile.complete or self._cancel_finalize):
+                write_chunk()
+            if lfile.valid:
+                lfile.commit()
+                set_progress(lfile.size)
+                log.debug(f"Finalized boot image {ident}.")
+                return
 
-        # Write chunks until it says its done.
-        while not self._cancel_finalize:
-            if write_chunk():
-                break
-
-        # Don't check the checksum if finalization was cancelled.
         if self._cancel_finalize:
-            return
-
-        if not cksummer.check():
+            set_progress(0)
+        else:
             # Calculated sha256 hash from the data does not match, what
             # simplestreams is telling us it should be. This resource file
             # will be deleted since it is corrupt.
             msg = (
-                "Failed to finalize boot image %s. Unexpected "
-                "checksum '%s' (found: %s expected: %s)"
-                % (
-                    ident,
-                    cksummer.algorithm,
-                    cksummer.hexdigest(),
-                    cksummer.expected,
-                )
+                f"Failed to finalize boot image {ident}. "
+                "Unexpected checksum."
             )
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_ERROR, msg
             )
             maaslog.error(msg)
             transactional(rfile.delete)()
-        else:
-            log.debug("Finalized boot image {ident}.", ident=ident)
 
     def perform_write(self):
         """Performs all writing of content into the object storage.
@@ -901,17 +796,14 @@ class BootResourceStore(ObjectStore):
                         os, arch, subarch, series
                     ):
                         # It was selected for removal.
-                        log.debug(
-                            "Deleting boot image {ident}.",
-                            ident=self.get_resource_identity(delete_resource),
-                        )
+                        log.debug(f"Deleting boot image {ident}.")
                         delete_resource.delete()
                     else:
                         msg = (
-                            "Boot image %s no longer exists in stream, but "
+                            f"Boot image {self.get_resource_identity(delete_resource)} "
+                            "no longer exists in stream, but "
                             "remains in selections. To delete this image "
                             "remove its selection."
-                            % self.get_resource_identity(delete_resource)
                         )
                         Event.objects.create_region_event(
                             EVENT_TYPES.REGION_IMPORT_INFO, msg
@@ -921,8 +813,7 @@ class BootResourceStore(ObjectStore):
                     # No resource set on the boot resource so it should be
                     # removed as it has not files.
                     log.debug(
-                        "Deleting boot image {ident}.",
-                        ident=self.get_resource_identity(delete_resource),
+                        f"Deleting boot image {self.get_resource_identity(delete_resource)}."
                     )
                     delete_resource.delete()
 
@@ -941,8 +832,7 @@ class BootResourceStore(ObjectStore):
                     # At this point all resource sets should be complete.
                     # Delete the extras that are not.
                     log.debug(
-                        "Deleting incomplete resourceset {set}.",
-                        set=resource_set,
+                        f"Deleting incomplete resourceset {resource_set}.",
                     )
                     resource_set.delete()
                 else:
@@ -951,8 +841,7 @@ class BootResourceStore(ObjectStore):
                         found_complete = True
                     else:
                         log.debug(
-                            "Deleting obsolete resourceset {set}.",
-                            set=resource_set,
+                            f"Deleting obsolete resourceset {resource_set}.",
                         )
                         resource_set.delete()
 
@@ -964,7 +853,7 @@ class BootResourceStore(ObjectStore):
             rtype=BOOT_RESOURCE_TYPE.SYNCED
         ):
             if not resource.sets.exists():
-                log.debug("Deleting empty resource {res}.", res=resource)
+                log.debug(f"Deleting empty resource {resource}.")
                 resource.delete()
 
     @transactional
@@ -990,21 +879,19 @@ class BootResourceStore(ObjectStore):
         # but we want to handle the case or all the images will be deleted and
         # no nodes will be able to be provisioned.
         log.debug(
-            "Finalize will delete {num} images(s).",
-            num=len(self._resources_to_delete),
+            f"Finalize will delete {len(self._resources_to_delete)} images(s).",
         )
         log.debug(
-            "Finalize will save {num} new images(s).",
-            num=len(self._content_to_finalize),
+            f"Finalize will save {len(self._content_to_finalize)} new images(s).",
         )
         if (
-            self._resources_to_delete == self._init_resources_to_delete
+            len(self._resources_to_delete) > 0
+            and self._resources_to_delete == self._init_resources_to_delete
             and len(self._content_to_finalize) == 0
         ):
             error_msg = (
                 "Finalization of imported images skipped, "
-                "or all %s synced images would be deleted."
-                % (self._resources_to_delete)
+                f"or all {self._resources_to_delete} synced images would be deleted."
             )
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_ERROR, error_msg
@@ -1099,8 +986,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             supported_version = parse_version(maas_supported)
             if supported_version > DISTRIBUTION.parsed_version:
                 maaslog.warning(
-                    "Ignoring %s, requires a newer version of MAAS(%s)"
-                    % (product_name, supported_version)
+                    f"Ignoring {product_name}, requires a newer "
+                    f"version of MAAS({supported_version})"
                 )
                 return
         if item["ftype"] == "notifications":
@@ -1117,12 +1004,12 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         elif item["ftype"] not in dict(BOOT_RESOURCE_FILE_TYPE_CHOICES).keys():
             # Skip filetypes that we don't know about.
             maaslog.warning(
-                "Ignoring unsupported filetype(%s) from %s %s"
-                % (item["ftype"], product_name, version_name)
+                f"Ignoring unsupported filetype({item['ftype']}) "
+                f"from {product_name} {version_name}"
             )
             return
         elif not validate_product(item, product_name):
-            maaslog.warning("Ignoring unsupported product %s" % product_name)
+            maaslog.warning(f"Ignoring unsupported product {product_name}")
             return
         else:
             self.store.insert(item, contentsource)
@@ -1204,7 +1091,7 @@ def download_all_boot_resources(
 
     with listener.listen("sys_stop_import", stop_import):
         for source in sources:
-            msg = "Importing images from source: %s" % source["url"]
+            msg = f"Importing images from source: {source['url']}"
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_INFO, msg
             )
@@ -1337,8 +1224,9 @@ def _import_resources_without_lock(notify=None):
     with tempdir("keyrings") as keyrings_path:
         sources = get_boot_sources()
         sources = write_all_keyrings(keyrings_path, sources)
-        msg = "Started importing of boot images from %d source(s)." % len(
-            sources
+        msg = (
+            "Started importing of boot images from "
+            f"{len(sources)} source(s)."
         )
         Event.objects.create_region_event(EVENT_TYPES.REGION_IMPORT_INFO, msg)
         maaslog.info(msg)
@@ -1383,13 +1271,11 @@ def _import_resources_without_lock(notify=None):
             _import_resources_without_lock(notify)
         else:
             maaslog.info(
-                "Finished importing of boot images from %d source(s).",
-                len(sources),
+                f"Finished importing of boot images from {len(sources)} source(s)."
             )
     else:
         maaslog.warning(
-            "Importing of boot images from %d source(s) was cancelled.",
-            len(sources),
+            f"Importing of boot images from {len(sources)} source(s) was cancelled.",
         )
 
 

@@ -32,6 +32,10 @@ from maasserver.tests.models import GenericTestModel
 
 
 class TestHelpers(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def make_usable_boot_resource(self, arch=None, subarch=None):
         """Create a set of boot resources, so the architecture becomes usable.
 

@@ -67,6 +67,7 @@ __all__ = [
     "ZoneForm",
 ]
 
+from io import BytesIO
 from itertools import chain
 import json
 import re
@@ -111,7 +112,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.fields import LargeObjectFile, MACAddressFormField
+from maasserver.fields import MACAddressFormField
 from maasserver.forms.settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
@@ -135,7 +136,6 @@ from maasserver.models import (
     Domain,
     Filesystem,
     Interface,
-    LargeFile,
     LicenseKey,
     Machine,
     Node,
@@ -151,6 +151,7 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bootresource import LINUX_OSYSTEMS
+from maasserver.models.node import RegionController
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.sshkey import SSHKey
@@ -160,6 +161,7 @@ from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
+from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
@@ -2650,20 +2652,26 @@ class BootResourceForm(MAASModelForm):
         }
         return filetypes.get(value)
 
-    def create_resource_file(self, resource_set, data):
+    def create_resource_file(self, resource_set: BootResourceSet, data):
         """Creates a new `BootResourceFile` on the given resource set."""
         filetype = self.get_resource_filetype(data["filetype"])
-        largefile = LargeFile.objects.get_or_create_file_from_content(
-            data["content"]
-        )
-        return BootResourceFile.objects.create(
+        if isinstance(data["content"], bytes):
+            content = BytesIO(data["content"])
+        else:
+            content = data["content"]
+        lfile = LocalBootResourceFile.create_from_content(content)
+        rfile = BootResourceFile.objects.create(
             resource_set=resource_set,
-            largefile=largefile,
             filename=get_uploaded_filename(filetype),
             filetype=filetype,
-            size=largefile.total_size,
-            sha256=largefile.sha256,
+            sha256=lfile.sha256,
+            size=lfile.total_size,
         )
+        rfile.bootresourcefilesync_set.create(
+            region=RegionController.objects.get_running_controller(),
+            size=lfile.total_size,
+        )
+        return rfile
 
     def validate_unique(self):
         """Override to allow the same `BootResource` to already exist.
@@ -2732,27 +2740,23 @@ class BootResourceNoContentForm(BootResourceForm):
         """Creates a new `BootResourceFile` on the given resource set."""
         filetype = self.get_resource_filetype(data["filetype"])
         sha256 = data["sha256"]
-        total_size = data["size"]
-        largefile = LargeFile.objects.get_file(sha256)
-        if largefile is not None:
-            if total_size != largefile.total_size:
-                raise ValidationError(
-                    "File already exists with sha256 that is of "
-                    "different size."
-                )
-        else:
-            # Create an empty large object. It must be opened and closed
-            # for the object to be created in the database.
-            largeobject = LargeObjectFile()
-            largeobject.open().close()
-            largefile = LargeFile.objects.create(
-                sha256=sha256, total_size=total_size, content=largeobject
+        size = data["size"]
+
+        if (
+            BootResourceFile.objects.filter(sha256=sha256)
+            .exclude(size=size)
+            .exists()
+        ):
+            raise ValidationError(
+                "File already exists with sha256 that is of " "different size."
             )
+
         return BootResourceFile.objects.create(
             resource_set=resource_set,
-            largefile=largefile,
             filename=get_uploaded_filename(filetype),
             filetype=filetype,
+            sha256=sha256,
+            size=size,
         )
 
 

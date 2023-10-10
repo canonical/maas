@@ -4,6 +4,7 @@
 """Tests for `BootResourceSet`."""
 
 
+from itertools import repeat
 import random
 from unittest import skip
 
@@ -90,9 +91,11 @@ class TestBootResourceSet(MAASServerTestCase):
         for size in sizes:
             total_size += size
             filetype = types.pop()
-            largefile = factory.make_LargeFile(size=size)
-            factory.make_BootResourceFile(
-                resource_set, largefile, filename=filetype, filetype=filetype
+            factory.make_boot_resource_file_with_content(
+                resource_set,
+                filename=filetype,
+                filetype=filetype,
+                size=size,
             )
         self.assertEqual(total_size, resource_set.total_size)
 
@@ -111,103 +114,37 @@ class TestBootResourceSet(MAASServerTestCase):
             final_size += size
             filetype = types.pop()
             content = factory.make_bytes(size=size)
-            largefile = factory.make_LargeFile(
-                content=content, size=total_sizes.pop()
+            factory.make_boot_resource_file_with_content(
+                resource_set,
+                filename=filetype,
+                filetype=filetype,
+                content=content,
+                size=total_sizes.pop(),
             )
-            factory.make_BootResourceFile(
-                resource_set, largefile, filename=filetype, filetype=filetype
-            )
-        self.assertEqual(final_size, resource_set.size)
-
-    def test_progress_handles_zero_division(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
-        total_size = random.randint(1025, 2048)
-        largefile = factory.make_LargeFile(content=b"", size=total_size)
-        factory.make_BootResourceFile(
-            resource_set, largefile, filename=filetype, filetype=filetype
-        )
-        self.assertEqual(0, resource_set.progress)
-
-    def test_progress_increases_from_0_to_100(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
-        total_size = 100
-        current_size = 0
-        largefile = factory.make_LargeFile(content=b"", size=total_size)
-        factory.make_BootResourceFile(
-            resource_set, largefile, filename=filetype, filetype=filetype
-        )
-        stream = largefile.content.open()
-        self.addCleanup(stream.close)
-        self.assertEqual(0, resource_set.progress)
-        for _ in range(total_size):
-            stream.write(b"a")
-            largefile.size += 1
-            largefile.save()
-            current_size += 1
-            self.assertAlmostEqual(
-                100.0 * current_size / float(total_size), resource_set.progress
-            )
-
-    def test_progress_accumulates_all_files(self):
-        resource = factory.make_BootResource()
-        resource_set = factory.make_BootResourceSet(resource)
-        final_size = 0
-        final_total_size = 0
-        sizes = [random.randint(512, 1024) for _ in range(3)]
-        total_sizes = [random.randint(1025, 2048) for _ in range(3)]
-        types = [
-            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
-        ]
-        for size in sizes:
-            final_size += size
-            total_size = total_sizes.pop()
-            final_total_size += total_size
-            filetype = types.pop()
-            content = factory.make_bytes(size=size)
-            largefile = factory.make_LargeFile(
-                content=content, size=total_size
-            )
-            factory.make_BootResourceFile(
-                resource_set, largefile, filename=filetype, filetype=filetype
-            )
-        progress = 100.0 * final_size / float(final_total_size)
-        self.assertAlmostEqual(progress, resource_set.progress)
+        self.assertEqual(final_size, resource_set.total_size)
 
     def test_complete_returns_false_for_no_files(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         self.assertFalse(resource_set.complete)
 
-    def test_complete_returns_false_for_one_incomplete_file(self):
+    def test_complete_returns_false_for_missing_sync(self):
+        file_size = random.randint(1, 1024)
+        sync_status = [
+            (factory.make_RegionController(), random.randint(0, file_size - 1))
+            for _ in range(3)
+        ]
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
-        types = [
-            BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
-            BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
-        ]
-        for _ in range(2):
-            filetype = types.pop()
-            factory.make_boot_resource_file_with_content(
-                resource_set, filename=filetype, filetype=filetype
-            )
-        size = random.randint(512, 1024)
-        total_size = random.randint(1025, 2048)
-        filetype = types.pop()
-        content = factory.make_bytes(size=size)
-        largefile = factory.make_LargeFile(content=content, size=total_size)
         factory.make_BootResourceFile(
-            resource_set, largefile, filename=filetype, filetype=filetype
+            resource_set, size=file_size, synced=sync_status
         )
         self.assertFalse(resource_set.complete)
 
-    def test_complete_returns_true_for_complete_files(self):
+    def test_complete_returns_true_for_synced_set(self):
+        regions = [factory.make_RegionController() for _ in range(3)]
+        file_sizes = [random.randint(1, 1024) for _ in range(3)]
+
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         types = [
@@ -217,7 +154,13 @@ class TestBootResourceSet(MAASServerTestCase):
         ]
         for _ in range(3):
             filetype = types.pop()
+            size = file_sizes.pop()
+            sync_status = zip(regions, repeat(size))
             factory.make_boot_resource_file_with_content(
-                resource_set, filename=filetype, filetype=filetype
+                resource_set,
+                filename=filetype,
+                filetype=filetype,
+                size=size,
+                synced=sync_status,
             )
         self.assertTrue(resource_set.complete)

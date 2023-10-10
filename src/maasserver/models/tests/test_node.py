@@ -9116,6 +9116,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
     def test_no_ValidationError_if_ephemeral_deployment_ubuntu(self):
         admin = factory.make_admin()
         with transaction.atomic():
+            factory.make_RegionController()
             # For Ubuntu, we don't store images for 'generic', but for
             # each specific kernel.
             factory.make_usable_boot_resource(

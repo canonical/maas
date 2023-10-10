@@ -999,6 +999,7 @@ class TestGetWorkingKernel(MAASServerTestCase):
     def test_get_working_kernel_uses_base_image_for_lookup_with_custom_images(
         self,
     ):
+        factory.make_RegionController()
         factory.make_usable_boot_resource(
             name="ubuntu/bionic",
             architecture="amd64/ga-18.04",

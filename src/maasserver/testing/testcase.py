@@ -13,6 +13,7 @@ __all__ = [
 ]
 
 from itertools import count
+import os
 import sys
 import threading
 from unittest.util import strclass
@@ -83,8 +84,6 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
         self._set_db_application_name()
         if self.mock_cache_boot_source:
             self.patch(signals.bootsources, "post_commit_do")
-        if self.mock_delete_large_object_content_later:
-            self.patch(signals.largefiles, "post_commit_do")
 
     def setUpFixtures(self):
         """This should be called by a subclass once other set-up is done."""
@@ -161,6 +160,8 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.beginTransaction()
         self.addCleanup(self.endTransaction)
         self.setUpFixtures()
+        if maas_data := os.getenv("MAAS_DATA"):
+            os.mkdir(f"{maas_data}/boot-resources")
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
@@ -198,6 +199,8 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.assertNotInTransaction()
         self.addCleanup(self.assertNotInTransaction)
         self.setUpFixtures()
+        if maas_data := os.getenv("MAAS_DATA"):
+            os.mkdir(f"{maas_data}/boot-resources")
 
 
 class SerializationFailureTestCase(

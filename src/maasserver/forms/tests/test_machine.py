@@ -41,6 +41,10 @@ class FakeRequest:
 
 
 class TestMachineForm(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_contains_limited_set_of_fields(self):
         form = MachineForm()
 

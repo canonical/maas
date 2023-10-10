@@ -28,6 +28,10 @@ from provisioningserver.testing.os import make_osystem
 class TestBootResourceManager(MAASServerTestCase):
     """Tests for the `BootResource` model manager."""
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def make_boot_resource(self, rtype, name):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
@@ -113,16 +117,16 @@ class TestBootResourceManager(MAASServerTestCase):
 
     def test_get_usable_architectures(self):
         arches = [
-            "{}/{}".format(
-                factory.make_name("arch"), factory.make_name("subarch")
-            )
+            f"{factory.make_name('arch')}/{factory.make_name('subarch')}"
             for _ in range(4)
         ]
         incomplete_arch = arches.pop()
         factory.make_incomplete_boot_resource(architecture=incomplete_arch)
         for arch in arches:
             factory.make_usable_boot_resource(
-                architecture=arch, platform=None, supported_platforms=None
+                architecture=arch,
+                platform=None,
+                supported_platforms=None,
             )
         usable_arches = BootResource.objects.get_usable_architectures()
         self.assertIsInstance(usable_arches, list)
@@ -260,7 +264,9 @@ class TestBootResourceManager(MAASServerTestCase):
         arches = ["i386/generic", "amd64/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=arch
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name,
+                architecture=arch,
             )
         self.assertEqual(
             "i386/generic",
@@ -276,7 +282,9 @@ class TestBootResourceManager(MAASServerTestCase):
         arches = ["amd64/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=arch
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name,
+                architecture=arch,
             )
         self.assertEqual(
             "amd64/generic",
@@ -292,7 +300,9 @@ class TestBootResourceManager(MAASServerTestCase):
         arches = ["ppc64el/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=arch
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name,
+                architecture=arch,
             )
         self.assertEqual(
             "arm64/generic",
@@ -350,6 +360,7 @@ class TestBootResourceManager(MAASServerTestCase):
 class TestGetAvailableCommissioningResources(MAASServerTestCase):
     def setUp(self):
         super().setUp()
+        self.region = factory.make_RegionController()
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
@@ -439,6 +450,10 @@ class TestGetAvailableCommissioningResources(MAASServerTestCase):
 
 class TestGetResourcesMatchingBootImages(MAASServerTestCase):
     """Tests for `get_resources_matching_boot_images`."""
+
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
 
     def test_returns_empty_list_if_no_resources_but_images(self):
         BootResource.objects.all().delete()
@@ -624,6 +639,10 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
 class TestBootImagesAreInSync(MAASServerTestCase):
     """Tests for `boot_images_are_in_sync`."""
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_returns_True_if_both_empty(self):
         BootResource.objects.all().delete()
         self.assertTrue(BootResource.objects.boot_images_are_in_sync([]))
@@ -777,6 +796,10 @@ class TestGetKernels(MAASServerTestCase):
         ),
     )
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_returns_usable_kernels(self):
         if self.subarch == "generic":
             generic_kernels = []
@@ -835,6 +858,10 @@ class TestGetKernels(MAASServerTestCase):
 class TestGetKpackageForNode(MAASServerTestCase):
     """Tests for `get_kpackage_for_node`."""
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_returns_kpackage(self):
         resource = factory.make_BootResource(
             name="ubuntu/trusty",
@@ -847,6 +874,7 @@ class TestGetKpackageForNode(MAASServerTestCase):
             filename="boot-kernel",
             filetype="boot-kernel",
             extra={"kpackage": "linux-image-generic-lts-trusty"},
+            synced=[(self.region, -1)],
         )
         node = factory.make_Node(
             interface=True,
@@ -885,6 +913,10 @@ class TestGetKpackageForNode(MAASServerTestCase):
 class TestGetKparamsForNode(MAASServerTestCase):
     """Tests for `get_kparams_for_node`."""
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_returns_kpackage(self):
         resource = factory.make_BootResource(
             name="ubuntu/trusty",
@@ -900,6 +932,7 @@ class TestGetKparamsForNode(MAASServerTestCase):
                 "kpackage": "linux-image-generic-lts-trusty",
                 "kparams": "a=b",
             },
+            synced=[(self.region, -1)],
         )
         node = factory.make_Node(
             interface=True,
@@ -921,13 +954,19 @@ class TestGetKparamsForNode(MAASServerTestCase):
 class TestBootResource(MAASServerTestCase):
     """Tests for the `BootResource` model."""
 
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def make_complete_boot_resource_set(self, resource):
         resource_set = factory.make_BootResourceSet(resource)
         filename = factory.make_name("name")
         filetype = factory.pick_enum(BOOT_RESOURCE_FILE_TYPE)
-        largefile = factory.make_LargeFile()
-        factory.make_BootResourceFile(
-            resource_set, largefile, filename=filename, filetype=filetype
+        factory.make_boot_resource_file_with_content(
+            resource_set,
+            filename=filename,
+            filetype=filetype,
+            synced=[(self.region, -1)],
         )
         return resource_set
 

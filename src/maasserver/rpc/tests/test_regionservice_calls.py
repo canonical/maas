@@ -339,6 +339,7 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
         rack_controller = yield deferToDatabase(
             transactional(factory.make_RackController)
         )
+        yield deferToDatabase(factory.make_RegionController)
         yield deferToDatabase(make_usable_architecture, self)
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()

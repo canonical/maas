@@ -75,6 +75,7 @@ class TestKparamsMerge(MAASServerTestCase):
 class TestGetConfig(MAASServerTestCase):
     def setUp(self):
         super().setUp()
+        self.region = factory.make_RegionController()
         self.useFixture(RegionConfigurationFixture())
 
     def tearDown(self):
@@ -1559,13 +1560,19 @@ class TestGetConfig(MAASServerTestCase):
 
 
 class TestGetBootFilenames(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_get_filenames(self):
         release = factory.make_default_ubuntu_release_bootable()
         arch, subarch = release.architecture.split("/")
         osystem, series = release.name.split("/")
         boot_resource_set = release.get_latest_complete_set()
         factory.make_boot_resource_file_with_content(
-            boot_resource_set, filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
+            boot_resource_set,
+            filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB,
+            synced=[(self.region, -1)],
         )
 
         kernel, initrd, boot_dbt = get_boot_filenames(
@@ -1597,7 +1604,9 @@ class TestGetBootFilenames(MAASServerTestCase):
         osystem, series = release.name.split("/")
         boot_resource_set = release.get_latest_complete_set()
         factory.make_boot_resource_file_with_content(
-            boot_resource_set, filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
+            boot_resource_set,
+            filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB,
+            synced=[(self.region, -1)],
         )
 
         kernel, initrd, boot_dbt = get_boot_filenames(
@@ -1671,6 +1680,10 @@ class TestGetBootFilenames(MAASServerTestCase):
 
 
 class TestGetBootConfigForMachine(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+
     def test_get_boot_config_for_machine_builtin_image(self):
         machine = factory.make_Machine(
             status=NODE_STATUS.DEPLOYING,

@@ -6,7 +6,6 @@
 __all__ = [
     "blockdevices",
     "bmc",
-    "bootresourcefiles",
     "bootsources",
     "config",
     "controllerinfo",
@@ -15,7 +14,6 @@ __all__ = [
     "interfaces",
     "iprange",
     "keysource",
-    "largefiles",
     "nodes",
     "partitions",
     "podhints",
@@ -29,7 +27,6 @@ __all__ = [
 from maasserver.models.signals import (
     blockdevices,
     bmc,
-    bootresourcefiles,
     bootsources,
     config,
     controllerinfo,
@@ -38,7 +35,6 @@ from maasserver.models.signals import (
     interfaces,
     iprange,
     keysource,
-    largefiles,
     nodes,
     partitions,
     podhints,

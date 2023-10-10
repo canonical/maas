@@ -11,7 +11,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm, get_uploaded_filename
 from maasserver.models import BootResource, BootResourceFile, Config
-from maasserver.models.signals import bootresourcefiles, bootsources
+from maasserver.models.signals import bootsources
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -20,6 +20,7 @@ from provisioningserver.drivers.osystem import (
     CustomOS,
     OperatingSystemRegistry,
 )
+from provisioningserver.utils.env import MAAS_ID
 
 
 class TestBootResourceForm(MAASServerTestCase):
@@ -27,8 +28,8 @@ class TestBootResourceForm(MAASServerTestCase):
         super().setUp()
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()
-        self.addCleanup(bootresourcefiles.signals.enable)
-        bootresourcefiles.signals.disable()
+        self.region = factory.make_RegionController()
+        MAAS_ID.set(self.region.system_id)
 
     def pick_filetype(self):
         filetypes = {
@@ -74,18 +75,19 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
+        lfile = rfile.local_file()
         self.assertEqual(title, resource.extra["title"])
         self.assertEqual(subarch, resource.extra["subarches"])
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
-        self.assertEqual(size, rfile.largefile.total_size)
-        with rfile.largefile.content.open("rb") as stream:
+        self.assertEqual(size, rfile.size)
+        with open(lfile.path, "rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
 
     def test_prevents_reserved_name(self):
         bsc = factory.make_BootSourceCache()
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -101,7 +103,7 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_prevents_reserved_osystem(self):
         bsc = factory.make_BootSourceCache()
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -117,7 +119,7 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_prevents_reserved_release(self):
         bsc = factory.make_BootSourceCache()
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -134,7 +136,7 @@ class TestBootResourceForm(MAASServerTestCase):
     def test_prevents_reversed_osystem_from_driver(self):
         reserved_name = factory.make_name("name")
         OperatingSystemRegistry.register_item(reserved_name, CustomOS())
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -149,8 +151,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_prevents_reserved_centos_names(self):
-        reserved_name = "centos%d" % random.randint(0, 99)
-        upload_type, filetype = self.pick_filetype()
+        reserved_name = f"centos{random.randint(0, 99)}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -165,11 +167,10 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_prevents_unsupported_osystem(self):
-        reserved_name = "{}/{}".format(
-            factory.make_name("osystem"),
-            factory.make_name("series"),
+        reserved_name = (
+            f"{factory.make_name('osystem')}/{factory.make_name('series')}"
         )
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -184,8 +185,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_windows_does_not_require_base_image(self):
-        name = "windows/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"windows/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -200,8 +201,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
     def test_esxi_does_not_require_base_image(self):
-        name = "esxi/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"esxi/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -216,8 +217,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
     def test_rhel_does_not_require_base_image(self):
-        name = "rhel/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"rhel/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -232,8 +233,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
     def test_validates_custom_image_base_os(self):
-        name = "custom/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"custom/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -250,7 +251,7 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_validates_custom_image_base_image_no_prefix(self):
         name = factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -266,8 +267,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
     def test_saved_bootresource_saves_base_image(self):
-        name = "custom/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"custom/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -284,8 +285,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertEqual(image.base_image, data["base_image"])
 
     def test_update_does_not_require_base_image(self):
-        name = "custom/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"custom/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -304,8 +305,8 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertEqual(image.base_image, data["base_image"])
 
     def test_uses_commissioning_os_for_nonexistent_custom_image_base_os(self):
-        name = "custom/%s" % factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        name = f"custom/{factory.make_name('name')}"
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -329,7 +330,7 @@ class TestBootResourceForm(MAASServerTestCase):
 
     def test_invalidates_nonexistent_custom_image_base_os_no_prefix(self):
         name = factory.make_name("name")
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -370,10 +371,11 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
+        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
-        self.assertEqual(size, rfile.largefile.total_size)
-        with rfile.largefile.content.open("rb") as stream:
+        self.assertEqual(size, rfile.size)
+        with open(lfile.path, "rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
 
@@ -405,10 +407,11 @@ class TestBootResourceForm(MAASServerTestCase):
         )
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
+        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
-        self.assertEqual(size, rfile.largefile.total_size)
-        with rfile.largefile.content.open("rb") as stream:
+        self.assertEqual(size, rfile.size)
+        with open(lfile.path, "rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
 
@@ -442,10 +445,11 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = reload_object(resource)
         resource_set = resource.sets.order_by("id").last()
         rfile = resource_set.files.first()
+        lfile = rfile.local_file()
         self.assertEqual(filetype, rfile.filetype)
         self.assertEqual(get_uploaded_filename(filetype), rfile.filename)
-        self.assertEqual(size, rfile.largefile.total_size)
-        with rfile.largefile.content.open("rb") as stream:
+        self.assertEqual(size, rfile.size)
+        with open(lfile.path, "rb") as stream:
             written_content = stream.read()
         self.assertEqual(content, written_content)
         self.assertEqual(resource.rtype, BOOT_RESOURCE_TYPE.UPLOADED)
@@ -471,7 +475,7 @@ class TestBootResourceForm(MAASServerTestCase):
             name=name,
             architecture=architecture,
         )
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")
         upload_name = factory.make_name("filename")
@@ -496,7 +500,7 @@ class TestBootResourceForm(MAASServerTestCase):
         self,
     ):
         architecture = make_usable_architecture(self)
-        upload_type, filetype = self.pick_filetype()
+        upload_type, _ = self.pick_filetype()
         content = factory.make_string(1024).encode("utf-8")
         upload_name = factory.make_name("filename")
         uploaded_file = SimpleUploadedFile(content=content, name=upload_name)

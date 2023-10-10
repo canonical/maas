@@ -10,7 +10,7 @@ import logging
 import os
 import random
 import time
-from typing import Dict, List
+from typing import Dict, Iterable, List
 
 from distro_info import UbuntuDistroInfo
 from django.conf import settings
@@ -42,7 +42,6 @@ from maasserver.enum import (
     POWER_STATE,
     RDNS_MODE,
 )
-from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BlockDevice,
     BootResource,
@@ -68,7 +67,6 @@ from maasserver.models import (
     ForwardDNSServer,
     IPRange,
     KeySource,
-    LargeFile,
     LicenseKey,
     MDNS,
     Neighbour,
@@ -112,6 +110,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC
 from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.interface import Interface, InterfaceRelationship
+from maasserver.models.largefile import LargeFile
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE, NodeConfig
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
@@ -123,6 +122,7 @@ from maasserver.sessiontimeout import SessionStore
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
+from maasserver.utils.bootresource import LocalBootResourceFile
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import get_one, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
@@ -2340,34 +2340,30 @@ class Factory(maastesting.factory.Factory):
             description=description,
         )
 
-    def make_LargeFile(self, content: bytes = None, size=None):
-        """Create `LargeFile`.
+    def make_boot_file(
+        self, content: bytes | None = None, size: int | None = None
+    ) -> LocalBootResourceFile:
+        """Create a boot resource file with content
+        the file will be named after its SHA256 hash
 
         :param content: Data to store in large file object.
         :param size: Size of `content`. If `content` is None
-            then it will be a random string of this size. If content is
-            provided and `size` is not the same length, then it will
-            be an inprogress file.
+            then it will be a random string of this size.
+
+        returns LocalBootResourceFile
         """
         if content is None:
-            content_size = size
-            if content_size is None:
-                content_size = 512
-            content = factory.make_bytes(size=content_size)
+            size = size or 512
+            content = factory.make_bytes(size=size)
         if size is None:
             size = len(content)
         sha256 = hashlib.sha256()
         sha256.update(content)
-        sha256 = sha256.hexdigest()
-        largeobject = LargeObjectFile()
-        with largeobject.open("wb") as stream:
-            stream.write(content)
-        return LargeFile.objects.create(
-            sha256=sha256,
-            size=len(content),
-            total_size=size,
-            content=largeobject,
-        )
+        filehash = sha256.hexdigest()
+
+        lf = LocalBootResourceFile(sha256=filehash, total_size=size)
+        lf.store(BytesIO(content))
+        return lf
 
     def make_base_image_name(self, osystem=None, release=None):
         if osystem is None:
@@ -2388,7 +2384,7 @@ class Factory(maastesting.factory.Factory):
         base_image="",
         platform="generic",
         supported_platforms="generic",
-    ):
+    ) -> BootResource:
         if rtype is None:
             if base_image:
                 rtype = BOOT_RESOURCE_TYPE.UPLOADED
@@ -2437,7 +2433,12 @@ class Factory(maastesting.factory.Factory):
         )
         return result
 
-    def make_BootResourceSet(self, resource, version=None, label=None):
+    def make_BootResourceSet(
+        self,
+        resource: BootResource,
+        version: str | None = None,
+        label: str | None = None,
+    ) -> BootResourceSet:
         if version is None:
             version = self.make_name("version")
         if label is None:
@@ -2448,14 +2449,19 @@ class Factory(maastesting.factory.Factory):
 
     def make_BootResourceFile(
         self,
-        resource_set,
-        largefile,
-        filename=None,
-        filetype=None,
-        sha256=None,
-        extra=None,
-        size=0,
-    ):
+        resource_set: BootResourceSet,
+        filename: str | None = None,
+        filetype: str | None = None,
+        sha256: str | None = None,
+        extra: dict | None = None,
+        size: int = 0,
+        largefile: LargeFile | None = None,
+        synced: Iterable[tuple[RegionController, int]] | None = None,
+    ) -> BootResourceFile:
+        if sha256 is None:
+            sha256 = (
+                largefile.sha256 if largefile else factory.make_hex_string(64)
+            )
         if filename is None:
             filename = self.make_name("name")
         if filetype is None:
@@ -2465,35 +2471,44 @@ class Factory(maastesting.factory.Factory):
                 self.make_name("key"): self.make_name("value")
                 for _ in range(3)
             }
-        if largefile:
-            sha256 = largefile.sha256
-            size = largefile.total_size
-        return BootResourceFile.objects.create(
+        rfile = BootResourceFile.objects.create(
             resource_set=resource_set,
-            largefile=largefile,
             filename=filename,
             filetype=filetype,
             extra=extra,
             sha256=sha256,
             size=size,
+            largefile=largefile,
         )
+
+        if synced:
+            for st in synced:
+                sync_size = rfile.size if st[1] < 0 else st[1]
+                rfile.bootresourcefilesync_set.create(
+                    region=st[0], size=sync_size
+                )
+
+        return rfile
 
     def make_boot_resource_file_with_content(
         self,
-        resource_set,
-        filename=None,
-        filetype=None,
-        extra=None,
-        content=None,
-        size=None,
-    ):
-        largefile = self.make_LargeFile(content=content, size=size)
+        resource_set: BootResourceSet,
+        filename: str | None = None,
+        filetype: str | None = None,
+        extra: str | None = None,
+        content: bytes | None = None,
+        size: int | None = None,
+        synced: Iterable[tuple[RegionController, int]] | None = None,
+    ) -> BootResourceFile:
+        lfile = self.make_boot_file(content=content, size=size)
         return self.make_BootResourceFile(
             resource_set,
-            largefile,
             filename=filename,
             filetype=filetype,
+            sha256=lfile.sha256,
+            size=lfile.size,
             extra=extra,
+            synced=synced,
         )
 
     def make_usable_boot_resource(
@@ -2527,7 +2542,9 @@ class Factory(maastesting.factory.Factory):
             supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
-            resource, version=version, label=label
+            resource,
+            version=version,
+            label=label,
         )
         filetypes = {
             BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
@@ -2544,6 +2561,7 @@ class Factory(maastesting.factory.Factory):
                 filetype=filetype,
                 size=None,
                 extra=extra,
+                synced=[(r, -1) for r in RegionController.objects.all()],
             )
         return resource
 
@@ -2570,7 +2588,9 @@ class Factory(maastesting.factory.Factory):
             supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
-            resource, version=version, label=label
+            resource,
+            version=version,
+            label=label,
         )
         if filetype is None:
             filetype = random.choice(
@@ -2580,13 +2600,13 @@ class Factory(maastesting.factory.Factory):
                     BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
                 ]
             )
-
         self.make_boot_resource_file_with_content(
             resource_set,
             filename=filename,
             filetype=filetype,
             size=None,
             extra=extra,
+            synced=[(r, -1) for r in RegionController.objects.all()],
         )
         return resource
 
@@ -2604,6 +2624,7 @@ class Factory(maastesting.factory.Factory):
         filename=None,
         platform=None,
         supported_platforms=None,
+        resource_synced: list[RegionController] | None = None,
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2616,7 +2637,9 @@ class Factory(maastesting.factory.Factory):
             supported_platforms=supported_platforms,
         )
         resource_set = self.make_BootResourceSet(
-            resource, version=version, label=label
+            resource,
+            version=version,
+            label=label,
         )
         filetypes = {
             BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
@@ -2635,13 +2658,18 @@ class Factory(maastesting.factory.Factory):
             # Create a half completed file.
             size = 512
             content = factory.make_bytes(256)
+            sync_status = (
+                [(r, -1) for r in resource_synced] if resource_synced else None
+            )
             self.make_boot_resource_file_with_content(
                 resource_set,
                 filename=filename,
                 filetype=filetype,
                 size=size,
                 content=content,
+                synced=sync_status,
             )
+
         return resource
 
     def make_default_ubuntu_release_bootable(self, arch=None, extra=None):

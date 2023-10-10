@@ -42,6 +42,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
         # Disable boot sources signals otherwise the test fails due to unrun
         # post-commit tasks at the end of the test.
         self.useFixture(SignalsDisabled("bootsources"))
+        factory.make_RegionController()
         factory.make_BootSourceCache(os=name, subarch=kernel, release=release)
         factory.make_usable_boot_resource(
             name=name,

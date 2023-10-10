@@ -10,7 +10,7 @@ __all__ = [
 ]
 
 import http.client
-import os
+from io import BytesIO
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -36,6 +36,13 @@ from maasserver.exceptions import (
 )
 from maasserver.forms import BootResourceForm, BootResourceNoContentForm
 from maasserver.models import BootResource, BootResourceFile
+from maasserver.models.bootresourceset import BootResourceSet
+from maasserver.models.node import RegionController
+from maasserver.utils.bootresource import (
+    LocalBootResourceFile,
+    LocalStoreInvalidHash,
+    LocalStoreWriteBeyondEOF,
+)
 from maasserver.utils.orm import post_commit_do
 
 TYPE_MAPPING = {
@@ -52,17 +59,17 @@ def get_content_parameter(request):
     return content.read()
 
 
-def boot_resource_file_to_dict(rfile):
+def boot_resource_file_to_dict(rfile: BootResourceFile):
     """Return dictionary representation of `BootResourceFile`."""
     dict_representation = {
         "filename": rfile.filename,
         "filetype": rfile.filetype,
-        "sha256": rfile.largefile.sha256,
-        "size": rfile.largefile.total_size,
-        "complete": rfile.largefile.complete,
+        "sha256": rfile.sha256,
+        "size": rfile.size,
+        "complete": rfile.complete,
     }
     if not dict_representation["complete"]:
-        dict_representation["progress"] = rfile.largefile.progress
+        dict_representation["progress"] = rfile.sync_progress
         resource = rfile.resource_set.resource
         if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
             dict_representation["upload_uri"] = reverse(
@@ -73,7 +80,7 @@ def boot_resource_file_to_dict(rfile):
     return dict_representation
 
 
-def boot_resource_set_to_dict(resource_set):
+def boot_resource_set_to_dict(resource_set: BootResourceSet):
     """Return dictionary representation of `BootResourceSet`."""
     dict_representation = {
         "version": resource_set.version,
@@ -82,7 +89,7 @@ def boot_resource_set_to_dict(resource_set):
         "complete": resource_set.complete,
     }
     if not dict_representation["complete"]:
-        dict_representation["progress"] = resource_set.progress
+        dict_representation["progress"] = resource_set.sync_progress
     dict_representation["files"] = {}
     for rfile in resource_set.files.all():
         rfile_dict = boot_resource_file_to_dict(rfile)
@@ -382,33 +389,27 @@ class BootResourceFileUploadHandler(OperationsHandler):
             raise MAASAPIForbidden(
                 f"Cannot upload to a resource of type: {resource.rtype}."
             )
-        if rfile.largefile.complete:
+        sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
+            region=RegionController.objects.get_running_controller()
+        )
+        lfile = LocalBootResourceFile(
+            sha256=rfile.sha256,
+            total_size=rfile.size,
+            size=sync_status.size,
+        )
+        if lfile.complete:
             raise MAASAPIBadRequest("Cannot upload to a complete file.")
 
-        with rfile.largefile.content.open("wb") as stream:
-            stream.seek(0, os.SEEK_END)
-
-            # Check that the uploading data will not make the file larger
-            # than expected.
-            current_size = stream.tell()
-            if current_size + size > rfile.largefile.total_size:
-                raise MAASAPIBadRequest("Too much data received.")
-
-            stream.write(data)
-            rfile.largefile.size = current_size + size
-            rfile.largefile.save()
-
-        if rfile.largefile.complete:
-            if not rfile.largefile.valid:
-                raise MAASAPIBadRequest(
-                    "Saved content does not match given SHA256 value."
-                )
-            # Avoid circular import.
-            from maasserver.clusterrpc.boot_images import (
-                RackControllersImporter,
+        try:
+            lfile.store(BytesIO(data))
+            sync_status.size += size
+            sync_status.save()
+        except LocalStoreWriteBeyondEOF:
+            raise MAASAPIBadRequest("Too much data received.")
+        except LocalStoreInvalidHash:
+            raise MAASAPIBadRequest(
+                "Saved content does not match given SHA256 value."
             )
-
-            post_commit_do(RackControllersImporter.schedule)
         return rc.ALL_OK
 
     @classmethod

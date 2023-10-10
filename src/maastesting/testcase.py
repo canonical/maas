@@ -12,6 +12,7 @@ from functools import wraps
 from importlib import import_module
 import os
 import random
+from typing import Any
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -89,11 +90,11 @@ class MAASTestCase(
     # not guaranteed that the next class in the inheritance chain is
     # unittest.TestCase.
 
-    resources = (
+    resources: tuple[Any] = (
         # (resource-name, resource),
     )
 
-    scenarios = (
+    scenarios: tuple[Any] = (
         # (scenario-name, {instance-attribute-name: value, ...}),
     )
 

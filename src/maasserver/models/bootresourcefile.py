@@ -10,6 +10,8 @@ from django.db.models import (
     CharField,
     ForeignKey,
     JSONField,
+    Manager,
+    Sum,
 )
 
 from maasserver.enum import (
@@ -21,6 +23,11 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.largefile import LargeFile
 from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.bootresource import LocalBootResourceFile
+
+
+class BootResourceFileManager(Manager):
+    pass
 
 
 class BootResourceFile(CleanSave, TimestampedModel):
@@ -32,8 +39,6 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     :ivar resource_set: `BootResourceSet` file belongs to. When
         `BootResourceSet` is deleted, this `BootResourceFile` will be deleted.
-    :ivar largefile: Actual file information and data. See
-        :class:`LargeFile` (obsolete).
     :ivar filename: Name of the file.
     :ivar filetype: Type of the file. See the vocabulary
         :class:`BOOT_RESOURCE_FILE_TYPE`.
@@ -43,6 +48,8 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     class Meta:
         unique_together = (("resource_set", "filename"),)
+
+    objects = BootResourceFileManager()
 
     resource_set = ForeignKey(
         BootResourceSet,
@@ -68,6 +75,30 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     size = BigIntegerField(default=0)
 
+    @property
+    def sync_progress(self) -> float:
+        """Percentage complete for all files in the set."""
+        from maasserver.models.node import RegionController
+
+        if not self.bootresourcefilesync_set.exists():
+            return 0.0
+        sync_size = (
+            self.bootresourcefilesync_set.all().aggregate(
+                total_size=Sum("size")
+            )["total_size"]
+            or 0
+        )
+        n_regions = RegionController.objects.count()
+        return 100.0 * sync_size / (self.size * n_regions)
+
+    @property
+    def complete(self) -> bool:
+        """True if all regions are synchronized."""
+        return self.sync_progress == 100.0
+
+    def local_file(self) -> LocalBootResourceFile:
+        return LocalBootResourceFile(self.sha256, self.size)
+
     def __str__(self):
         return f"<BootResourceFile {self.filename}/{self.filetype}>"
 
@@ -81,3 +112,6 @@ class BootResourceFileSync(CleanSave, TimestampedModel):
     region = ForeignKey(RegionController, on_delete=CASCADE)
 
     size = BigIntegerField(default=0)
+
+    def __str__(self):
+        return f"<BootResourceFileSync {self.file.filename}@{self.region.system_id} = {self.size}B>"

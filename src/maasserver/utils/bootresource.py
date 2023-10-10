@@ -210,5 +210,6 @@ class LocalBootResourceFile:
         content.seek(0, os.SEEK_SET)
 
         localfile = cls(hexdigest, total_size)
-        localfile.store(content)
+        if not localfile.complete:
+            localfile.store(content)
         return localfile
