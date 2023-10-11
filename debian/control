@@ -95,6 +95,7 @@ Depends: bind9 (>= 1:9.10.3.dfsg.P2-5~),
          python3-sqlalchemy (>= 2.0.0),
          python3-starlette,
          python3-temporalio,
+         temporal (>=1.21.5-0ubuntu1),
          ubuntu-keyring,
          ${misc:Depends},
          ${python3:Depends}
@@ -114,7 +115,6 @@ Depends: dbconfig-pgsql,
          maas-region-api (= ${binary:Version}),
          postgresql (>= 12),
          tcpdump,
-         temporal (>=1.21.5-0ubuntu1),
          ${misc:Depends},
 Recommends: openssh-server
 Suggests: nmap
