@@ -24,14 +24,6 @@ License: AGPL-3.0+
  You should have received a copy of the GNU Affero General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-Files: src/maasserver/static/js/angular/3rdparty/ng-tags-input.js
-Copyright: Copyright (c) 2013-2015 Michael Benford.
-License: MIT
-
-Files: src/maasserver/static/js/angular/3rdparty/vs-repeat.js
-Copyright: 2018 Kamil Pękala.
-License: MIT
-
 Files: src/maasserver/websockets/websockets.py
 Copyright: Twisted Matrix Laboratories
            2011-2012 Oregon State University Open Source Lab
