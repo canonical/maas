@@ -82,9 +82,6 @@ class SubnetsHandler(OperationsHandler):
         to. Only used when vlan is not provided. Picks the VLAN with this VID
         in the provided fabric or the default fabric if one is not given.
 
-        @param (string) "space" [required=false] Space this subnet is in.
-        Defaults to the default space.
-
         @param (string) "gateway_ip" [required=false] The gateway IP address
         for this subnet.
 
@@ -103,14 +100,14 @@ class SubnetsHandler(OperationsHandler):
         @param (int) "allow_proxy" [required=false] Configure maas-proxy to
         allow requests from this subnet. '0' == False, '1' == True.
 
-        @param (string) "dns_servers" [required=false] Comma-seperated list of
+        @param (string) "dns_servers" [required=false] Comma-separated list of
         DNS servers for this subnet.
 
         @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
         all subnets are assumed to be managed by default.
 
         @param (string) "disabled_boot_architectures" [required=false] A comma
-        or space seperated list of boot architectures which will not be
+        or space separated list of boot architectures which will not be
         responded to by isc-dhcpd. Values may be the MAAS name for the boot
         architecture, the IANA hex value, or the isc-dhcpd octet.
 
@@ -209,9 +206,6 @@ class SubnetHandler(OperationsHandler):
         to. Only used when vlan is not provided. Picks the VLAN with this VID
         in the provided fabric or the default fabric if one is not given.
 
-        @param (string) "space" [required=false] Space this subnet is in.
-        Defaults to the default space.
-
         @param (string) "gateway_ip" [required=false] The gateway IP address
         for this subnet.
 
@@ -230,14 +224,14 @@ class SubnetHandler(OperationsHandler):
         @param (int) "allow_proxy" [required=false] Configure maas-proxy to
         allow requests from this subnet. '0' == False, '1' == True.
 
-        @param (string) "dns_servers" [required=false] Comma-seperated list of
+        @param (string) "dns_servers" [required=false] Comma-separated list of
         DNS servers for this subnet.
 
         @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
         all subnets are assumed to be managed by default.
 
         @param (string) "disabled_boot_architectures" [required=false] A comma
-        or space seperated list of boot architectures which will not be
+        or space separated list of boot architectures which will not be
         responded to by isc-dhcpd. Values may be the MAAS name for the boot
         architecture, the IANA hex value, or the isc-dhcpd octet.
 
