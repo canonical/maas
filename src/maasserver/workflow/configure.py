@@ -19,11 +19,10 @@ class ConfigureWorkerPoolWorkflow:
 
     @workflow.run
     async def run(self, input: ConfigureWorkerPoolInput) -> None:
-        result = await workflow.execute_local_activity(
+        result = await workflow.execute_activity(
             "get-rack-controller",
             GetRackControllerInput(input.system_id),
             start_to_close_timeout=timedelta(seconds=10),
-            schedule_to_close_timeout=timedelta(seconds=10),
             retry_policy=RetryPolicy(
                 backoff_coefficient=2.0,
                 maximum_attempts=5,
