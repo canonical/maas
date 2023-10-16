@@ -731,11 +731,10 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         base64-encoded user-data to be made available to the machines through
         the metadata service.
 
-        @param (string) "osystem" [required=false] If present, this parameter
-        specifies the OS the machine will use.
-
         @param (string) "distro_series" [required=false] If present, this
         parameter specifies the OS release the machine will use.
+        @param-example "distro_series"
+            ubuntu/jammy
 
         @param (string) "hwe_kernel" [required=false] If present, this
         parameter specified the kernel to be used on the machine
