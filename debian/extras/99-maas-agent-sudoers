@@ -1,1 +1,5 @@
 maas ALL= NOPASSWD: /usr/sbin/maas-agent
+maas ALL= NOPASSWD: /bin/systemctl reload maas-agent
+maas ALL= NOPASSWD: /bin/systemctl restart maas-agent
+maas ALL= NOPASSWD: /bin/systemctl start maas-agent
+maas ALL= NOPASSWD: /bin/systemctl status maas-agent
