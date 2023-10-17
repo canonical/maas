@@ -37,6 +37,13 @@ maas ALL= NOPASSWD: /bin/systemctl restart maas-syslog
 maas ALL= NOPASSWD: /bin/systemctl start maas-syslog
 maas ALL= NOPASSWD: /bin/systemctl status maas-syslog
 
+# Control of the Temporal server: MAAS needs to restart it after editing
+# its configuration file, and start it again if stopped manually.
+maas ALL= NOPASSWD: /bin/systemctl reload maas-temporal
+maas ALL= NOPASSWD: /bin/systemctl restart maas-temporal
+maas ALL= NOPASSWD: /bin/systemctl start maas-temporal
+maas ALL= NOPASSWD: /bin/systemctl status maas-temporal
+
 # Writing and deleting files as root.
 maas ALL= NOPASSWD: /usr/lib/maas/maas-delete-file
 maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file

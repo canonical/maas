@@ -5,40 +5,29 @@
 
 import os
 from pathlib import Path
-import sys
 
+from django.conf import settings
+from django.db import connection as django_connection
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.config import RegionConfiguration
-from maasserver.djangosettings.settings import _get_default_db_config
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
-from provisioningserver.logger import LegacyLogger
-from provisioningserver.path import get_tentative_data_path
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.fs import atomic_write, snap
 
-log = LegacyLogger()
-
 
 class RegionTemporalService(Service):
-    def __init__(self):
-        super().__init__()
-
     def startService(self):
         self._configure()
         super().startService()
-
-    def stopService(self):
-        super().stopService()
 
     def _configure(self):
         """Update the Temporal configuration for the Temporal service."""
         template = load_template("temporal", "production.yaml.template")
 
-        with RegionConfiguration.open() as config:
-            dbconf = _get_default_db_config(config)
+        dbconf = settings.DATABASES[django_connection.alias]
 
         connection_attributes = {}
         host = dbconf["HOST"]
@@ -64,11 +53,19 @@ class RegionTemporalService(Service):
 
         rendered = template.substitute(environ).encode()
 
-        target_path = Path(
-            os.path.join(get_temporal_config_dir(), "production.yaml")
+        temporal_config_dir = Path(
+            os.environ.get(
+                "MAAS_TEMPORAL_CONFIG_DIR", get_maas_data_path("temporal")
+            )
         )
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        atomic_write(rendered, target_path, overwrite=True, mode=0o644)
+        temporal_config_dir.mkdir(parents=True, exist_ok=True)
+
+        atomic_write(
+            rendered,
+            temporal_config_dir / "production.yaml",
+            overwrite=True,
+            mode=0o600,
+        )
 
     @inlineCallbacks
     def _reload_service(self):
@@ -76,16 +73,3 @@ class RegionTemporalService(Service):
             yield service_monitor.restartService("temporal")
         else:
             yield service_monitor.reloadService("temporal")
-
-
-def get_temporal_config_dir():
-    """Location of MAAS' Temporal configuration file"""
-    setting = os.getenv(
-        "MAAS_TEMPORAL_CONFIG_DIR",
-        get_tentative_data_path("/var/lib/maas/temporal"),
-    )
-    if isinstance(setting, bytes):
-        fsenc = sys.getfilesystemencoding()
-        return setting.decode(fsenc)
-    else:
-        return setting
