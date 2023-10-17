@@ -27,7 +27,9 @@ class RegionTemporalService(Service):
         """Update the Temporal configuration for the Temporal service."""
         template = load_template("temporal", "production.yaml.template")
 
-        dbconf = settings.DATABASES[django_connection.alias]
+        # Can't use the public attribute since it hits
+        # maasserver.utils.orm.DisabledDatabaseConnection
+        dbconf = settings.DATABASES[django_connection._alias]
 
         connection_attributes = {}
         host = dbconf["HOST"]
