@@ -26,7 +26,6 @@ class TemporalWorkerService(Service):
     def __init__(self, reactor):
         super().__init__()
 
-        self._loop = None
         if isinstance(reactor, AsyncioSelectorReactor):
             self._loop = asyncio.get_event_loop()
         else:  # handle crochet reactor
@@ -39,7 +38,7 @@ class TemporalWorkerService(Service):
         else:
             return create_auth_token(user)
 
-    def get_maas_url(self):
+    def get_maas_url(self) -> str:
         with RegionConfiguration.open() as config:
             base_url = config.maas_url
         return base_url

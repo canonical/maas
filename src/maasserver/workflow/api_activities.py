@@ -20,19 +20,23 @@ class SwitchBootOrderInput:
 
 
 class MAASAPIActivities:
-    def __init__(self, url, token):
-        self.url = url
-        self.token = token
+    def __init__(self, url: str, token):
+        self._url = url.rstrip("/")
+        self._oauth = MAASOAuth(*get_creds_tuple(token))
 
     def _internal_request(
         self, method: str, url: str, data: dict[str, Any] = None
     ):
         headers = {}
 
-        oauth = MAASOAuth(*get_creds_tuple(self.token))
-        oauth.sign_request(url, headers)
+        self._oauth.sign_request(url, headers)
         response = requests.request(
-            method, url, headers=headers, verify=False, data=data
+            method,
+            url,
+            headers=headers,
+            verify=False,
+            data=data,
+            proxies={"http": "", "https": ""},
         )
         response.raise_for_status()
 
@@ -40,12 +44,12 @@ class MAASAPIActivities:
 
     @activity.defn(name="get-rack-controller")
     async def get_rack_controller(self, input: GetRackControllerInput):
-        url = f"{self.url}/api/2.0/rackcontrollers/{input.system_id}/"
+        url = f"{self._url}/api/2.0/rackcontrollers/{input.system_id}/"
         return self._internal_request("GET", url)
 
     @activity.defn(name="switch-boot-order")
     async def switch_boot_order(self, input: SwitchBootOrderInput):
-        url = f"{self.url}/api/2.0/switch-boot-order/{input.system_id}/"
+        url = f"{self._url}/api/2.0/switch-boot-order/{input.system_id}/"
         return self._internal_requests(
             "PUT",
             url,
