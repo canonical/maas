@@ -435,7 +435,11 @@ class TestScriptForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertEqual(
-            {"script_type": ["Script type must be testing or commissioning"]},
+            {
+                "script_type": [
+                    "Script type must be commissioning, testing or release"
+                ]
+            },
             form.errors,
         )
         self.assertCountEqual([], VersionedTextFile.objects.all())

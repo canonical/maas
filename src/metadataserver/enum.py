@@ -50,11 +50,13 @@ class SCRIPT_TYPE:
     COMMISSIONING = 0
     # 1 is skipped to keep numbering the same as RESULT_TYPE
     TESTING = 2
+    RELEASE = 3
 
 
 SCRIPT_TYPE_CHOICES = (
     (SCRIPT_TYPE.COMMISSIONING, "Commissioning script"),
     (SCRIPT_TYPE.TESTING, "Testing script"),
+    (SCRIPT_TYPE.RELEASE, "Release script"),
 )
 
 
@@ -62,12 +64,14 @@ class RESULT_TYPE:
     COMMISSIONING = 0
     INSTALLATION = 1
     TESTING = 2
+    RELEASE = 3
 
 
 RESULT_TYPE_CHOICES = (
     (RESULT_TYPE.COMMISSIONING, "Commissioning"),
     (RESULT_TYPE.INSTALLATION, "Installation"),
     (RESULT_TYPE.TESTING, "Testing"),
+    (RESULT_TYPE.RELEASE, "Release"),
 )
 
 

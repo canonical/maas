@@ -51,8 +51,12 @@ def translate_script_type(script_type):
         return SCRIPT_TYPE.TESTING
     elif script_type in ["commission", "commissioning"]:
         return SCRIPT_TYPE.COMMISSIONING
+    elif script_type == "release":
+        return SCRIPT_TYPE.RELEASE
     else:
-        raise ValidationError("Script type must be testing or commissioning")
+        raise ValidationError(
+            "Script type must be commissioning, testing or release"
+        )
 
 
 def translate_hardware_type(hardware_type):
