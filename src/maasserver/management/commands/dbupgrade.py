@@ -167,7 +167,7 @@ class Command(BaseCommand):
                 print(e.stderr.decode("utf-8"))
                 sys.exit(e.returncode)
 
-        schema_path = get_path("/var/lib/maas/temporal/schema")
+        schema_path = get_path("/var/lib/temporal/schema")
 
         temporal_schema_path = os.path.join(
             schema_path, "temporal", "versioned"
