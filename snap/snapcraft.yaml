@@ -220,7 +220,7 @@ parts:
       - usr/share/perl5
       - usr/share/squid*
       - var/lib/ieee-data
-      - var/lib/maas/temporal
+      - var/lib/temporal
     override-build: |
       craftctl default
       cp -a package-files/* $CRAFT_PART_INSTALL
