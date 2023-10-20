@@ -58,8 +58,8 @@ class NodeScriptsHandler(OperationsHandler):
         for this script.
 
         @param (string) "type" [required=false] The script_type defines when
-        the script should be used: ``testing`` or ``commissioning``. Defaults
-        to ``testing``.
+        the script should be used: ``commissioning`` or ``testing`` or
+        ``release``.  Defaults to ``testing``.
 
         @param (string) "hardware_type" [required=false] The hardware_type
         defines what type of hardware the script is assoicated with. May be
@@ -101,6 +101,7 @@ class NodeScriptsHandler(OperationsHandler):
         @success (json) "success-json" A JSON object containing information
         about the new script.
         @success-example "success-json" [exkey=scripts-create] placeholder text
+
         """
         data = request.data.copy()
         if "script" in request.FILES:
@@ -123,8 +124,8 @@ class NodeScriptsHandler(OperationsHandler):
         ``/script/?type=testing``.
 
         @param (string) "type" [required=false] Only return scripts with the
-        given type. This can be ``testing`` or ``commissioning``. Defaults to
-        showing both.
+        given type. This can be ``commissioning``, ``testing`` or
+        ``release``. Defaults to showing all.
 
         @param (string) "hardware_type" [required=false] Only return scripts
         for the given hardware type.  Can be ``cpu``, ``memory``, ``storage``,
@@ -140,6 +141,7 @@ class NodeScriptsHandler(OperationsHandler):
         @success (json) "success-json" A JSON object containing a list of
         script objects.
         @success-example "success-json" [exkey=scripts-read] placeholder text
+
         """
         qs = Script.objects.all()
 
@@ -324,8 +326,8 @@ class NodeScriptHandler(OperationsHandler):
         for this script.
 
         @param (string) "type" [required=false] The type defines when the
-        script should be used. Can be ``testing`` or ``commissioning``,
-        defaults to ``testing``.
+        script should be used. Can be ``commissioing``, ``testing`` or
+        ``release``.  It defaults to ``testing``.
 
         @param (string) "hardware_type" [required=false] The hardware_type
         defines what type of hardware the script is assoicated with. May be
@@ -375,6 +377,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
             No Script matches the given query.
+
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
