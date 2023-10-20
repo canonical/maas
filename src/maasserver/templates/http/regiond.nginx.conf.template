@@ -10,10 +10,6 @@ upstream apiserver {
     server unix:{{apiserver_socket_path}};
 }
 
-upstream temporal {
-    server localhost:7233;
-}
-
 upstream temporal-metrics {
     server localhost:9000;
 }
@@ -157,7 +153,7 @@ server {
     # required for rackd to get images
     location /MAAS/images-stream {
         proxy_pass http://regiond-webapp;
-    }   
+    }
 
     location ~ ^/MAAS/boot-resources/([^/]+)/?(.*)$ {
         # /MAAS/boot-resources/$hash/$labels -> {{boot_resources_dir}}/$hash (labels ignored)
@@ -172,87 +168,3 @@ server {
     }
 }
 {{endif}}
-
-server {
-    listen [::]:5271 http2;
-    listen 5271 http2;
-
-    grpc_connect_timeout 75s;
-    grpc_read_timeout 75s;
-    grpc_send_timeout 75s;
-
-    location / {
-        grpc_pass grpc://temporal;
-    }
-
-    # Standard HTTP-to-gRPC status code mappings
-    # Ref: https://github.com/grpc/grpc/blob/master/doc/http-grpc-status-mapping.md
-    error_page 400 = @grpc_internal;
-    error_page 401 = @grpc_unauthenticated;
-    error_page 403 = @grpc_permission_denied;
-    error_page 404 = @grpc_unimplemented;
-    error_page 429 = @grpc_unavailable;
-    error_page 502 = @grpc_unavailable;
-    error_page 503 = @grpc_unavailable;
-    error_page 504 = @grpc_unavailable;
-
-    # NGINX-to-gRPC status code mappings
-    # Ref: https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
-    error_page 405 = @grpc_internal; # Method not allowed
-    error_page 408 = @grpc_deadline_exceeded; # Request timeout
-    error_page 413 = @grpc_resource_exhausted; # Payload too large
-    error_page 414 = @grpc_resource_exhausted; # Request URI too large
-    error_page 415 = @grpc_internal; # Unsupported media type;
-    error_page 426 = @grpc_internal; # HTTP request was sent to HTTPS port
-    error_page 495 = @grpc_unauthenticated; # Client certificate authentication error
-    error_page 496 = @grpc_unauthenticated; # Client certificate not presented
-    error_page 497 = @grpc_internal; # HTTP request was sent to mutual TLS port
-    error_page 500 = @grpc_internal; # Server error
-    error_page 501 = @grpc_internal; # Not implemented
-
-    # gRPC error responses
-    # Ref: https://github.com/grpc/grpc-go/blob/master/codes/codes.go
-    location @grpc_deadline_exceeded {
-        add_header grpc-status 4;
-        add_header grpc-message 'deadline exceeded';
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_permission_denied {
-        add_header grpc-status 7;
-        add_header grpc-message 'permission denied';
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_resource_exhausted {
-        add_header grpc-status 8;
-        add_header grpc-message 'resource exhausted';
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_unimplemented {
-        add_header grpc-status 12;
-        add_header grpc-message unimplemented;
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_internal {
-        add_header grpc-status 13;
-        add_header grpc-message 'internal error';
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_unavailable {
-        add_header grpc-status 14;
-        add_header grpc-message unavailable;
-        add_header content-type application/grpc;
-        return 200;
-    }
-    location @grpc_unauthenticated {
-        add_header grpc-status 16;
-        add_header grpc-message unauthenticated;
-        add_header content-type application/grpc;
-        return 200;
-    }
-    default_type application/grpc;   # Ensure gRPC for all error responses
-}

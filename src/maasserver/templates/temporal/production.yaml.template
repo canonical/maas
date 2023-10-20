@@ -9,16 +9,16 @@ persistence:
   datastores:
     default:
       sql:
-        user: {{ user }}
-        password: {{ password }}
+        user: "{{ user }}"
+        password: "{{ password }}"
         pluginName: "postgres12"
-        databaseName: {{ database }}
-        connectAddr: {{ address | repr }}
+        databaseName: "{{ database }}"
+        connectAddr: "{{ address }}"
         connectProtocol: "tcp"
         connectAttributes:
           search_path: "temporal"
         {{for k, v in connect_attributes.items()}}
-          {{ k }}: {{ v | repr }}
+          {{ k }}: "{{ v }}" 
         {{endfor}}
         maxConns: 20
         maxIdleConns: 20
@@ -26,16 +26,16 @@ persistence:
 
     visibility:
       sql:
-        user: {{ user }}
-        password: {{ password }}
+        user: "{{ user }}"
+        password: "{{ password }}"
         pluginName: "postgres12"
-        databaseName: {{ database }}
-        connectAddr: {{ address | repr }}
+        databaseName: "{{ database }}"
+        connectAddr: "{{ address }}"
         connectProtocol: "tcp"
         connectAttributes:
           search_path: "temporal_visibility"
         {{for k, v in connect_attributes.items()}}
-          {{ k }}: {{ v | repr }}
+          {{ k }}: "{{ v }}"
         {{endfor}}
         maxConns: 2
         maxIdleConns: 2
@@ -44,39 +44,41 @@ persistence:
 global:
   membership:
     maxJoinDuration: 30s
-    broadcastAddress: "127.0.0.1"
+    broadcastAddress: "{{ broadcast_address }}"
   pprof:
-    port: 7936
+    # disable pprof
+    port: 0
   metrics:
     prometheus:
       framework: "tally"
       timerType: "histogram"
+      # metrics are exposed via load balancer
       listenAddress: "127.0.0.1:9000"
 
 services:
   frontend:
     rpc:
-      grpcPort: 7233
-      membershipPort: 6933
-      bindOnLocalHost: true
+      grpcPort: 5271
+      membershipPort: 5281
+      bindOnIP: "0.0.0.0"
 
   matching:
     rpc:
-      grpcPort: 7235
-      membershipPort: 6935
-      bindOnLocalHost: true
+      grpcPort: 5272
+      membershipPort: 5282
+      bindOnIP: "0.0.0.0"
 
   history:
     rpc:
-      grpcPort: 7234
-      membershipPort: 6934
-      bindOnLocalHost: true
+      grpcPort: 5273
+      membershipPort: 5283
+      bindOnIP: "0.0.0.0"
 
   worker:
     rpc:
-      grpcPort: 7239
-      membershipPort: 6939
-      bindOnLocalHost: true
+      grpcPort: 5274
+      membershipPort: 5284
+      bindOnIP: "0.0.0.0"
 
 clusterMetadata:
   enableGlobalNamespace: false
@@ -90,5 +92,3 @@ clusterMetadata:
       rpcName: "frontend"
       rpcAddress: "localhost:7233"
 
-dcRedirectionPolicy:
-  policy: "noop"

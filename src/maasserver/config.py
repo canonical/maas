@@ -45,6 +45,14 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         ),
     )
 
+    # TODO: This should be considered a fallback scenario
+    # MAAS should automatically find reachable IP address and use it.
+    membership_address = ConfigurationOption(
+        "membership_address",
+        "IPv4 address used for communication between Region controllers",
+        UnicodeString(if_missing="127.0.0.1", accept_python=False),
+    )
+
     # Database options.
     database_host = ConfigurationOption(
         "database_host",

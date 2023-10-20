@@ -21,7 +21,7 @@ from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 REGION_TASK_QUEUE = "region_controller"
 TEMPORAL_HOST = "localhost"
-TEMPORAL_PORT = 7233
+TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
 
 _client = None

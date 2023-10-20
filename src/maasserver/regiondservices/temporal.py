@@ -11,6 +11,7 @@ from django.db import connection as django_connection
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver.config import RegionConfiguration
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
 from provisioningserver.path import get_maas_data_path
@@ -45,12 +46,17 @@ class RegionTemporalService(Service):
         application_name = f"maas-temporal-{maas_id}"
         connection_attributes["application_name"] = application_name
 
+        # TODO: This should be considered a fallback scenario
+        with RegionConfiguration.open() as config:
+            broadcast_address = config.membership_address
+
         environ = {
             "database": dbconf["NAME"],
             "user": dbconf.get("USER", ""),
             "password": dbconf.get("PASSWORD", ""),
             "address": f"{host}:{dbconf['PORT']}",
             "connect_attributes": connection_attributes,
+            "broadcast_address": broadcast_address,
         }
 
         rendered = template.substitute(environ).encode()
