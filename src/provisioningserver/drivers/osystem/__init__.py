@@ -268,6 +268,9 @@ from provisioningserver.drivers.osystem.custom import (  # noqa:E402 isort:skip
 from provisioningserver.drivers.osystem.esxi import (  # noqa:E402 isort:skip
     ESXi,
 )
+from provisioningserver.drivers.osystem.ol import (  # noqa:E402 isort:skip
+    OL,
+)
 from provisioningserver.drivers.osystem.rhel import (  # noqa:E402 isort:skip
     RHELOS,
 )
@@ -294,6 +297,7 @@ builtin_osystems = [
     WindowsOS(),
     SUSEOS(),
     ESXi(),
+    OL(),
 ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

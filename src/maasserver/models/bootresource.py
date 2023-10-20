@@ -34,7 +34,7 @@ from maasserver.utils.orm import get_first, get_one
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.twisted import undefined
 
-LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel")
+LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel", "ol")
 
 
 class BootResourceManager(Manager):

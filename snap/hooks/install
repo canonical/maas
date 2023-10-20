@@ -21,6 +21,7 @@ declare -a PRESEEDS=(
     curtin_userdata
     curtin_userdata_centos
     curtin_userdata_custom
+    curtin_userdata_ol
     curtin_userdata_windows
 )
 for preseed in "${PRESEEDS[@]}"; do

@@ -28,6 +28,8 @@ menuentry 'Local' {
                 rhel/grubx64.efi \
                 suse/shim.efi \
                 suse/grubx64.efi \
+                ol/shim.efi \
+                ol/grubx64.efi \
                 red/grubx64.efi; do
             search --set=root --file /efi/$bootloader
             if [ $? -eq 0 ]; then

@@ -614,7 +614,7 @@ def get_curtin_config(request, node, base_osystem=None, base_series=None):
     if "s390x" in node.architecture:
         command = {"maas_00": "chreipl node /dev/" + node.get_boot_disk().name}
         config["late_commands"].update(command)
-    if base_osystem in ["centos", "rhel"] and context["http_proxy"]:
+    if base_osystem in ("centos", "rhel", "ol") and context["http_proxy"]:
         # The echo command must be one argument so direction works.
         config["late_commands"].update(
             {
@@ -647,6 +647,7 @@ DEPS_PER_OS = {
     "centos": (_CLOUD_INIT,),
     "rhel": (_CLOUD_INIT,),
     "suse": (_CLOUD_INIT,),
+    "ol": (_CLOUD_INIT,),
 }
 
 
