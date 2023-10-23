@@ -629,6 +629,11 @@ class BootResourceStore(ObjectStore):
             # FIXME try to find another Region with this file first
             self.save_content_later(rfile, reader)
         else:
+            sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
+                region=RegionController.objects.get_running_controller()
+            )
+            sync_status.size = rfile.size
+            sync_status.save()
             ident = self.get_resource_file_log_identifier(
                 rfile, resource_set, resource
             )
