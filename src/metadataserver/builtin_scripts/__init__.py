@@ -3,14 +3,11 @@
 
 """Builtin scripts commited to Script model."""
 
+import dataclasses
+from pathlib import Path
+from typing import Any
 
-import os
-
-import attr
-from attr.validators import instance_of, optional
 import tempita
-from zope.interface import Attribute, implementer, Interface
-from zope.interface.verify import verifyObject
 
 from maasserver.forms.script import ScriptForm
 from maasserver.models.controllerinfo import get_maas_version
@@ -33,45 +30,40 @@ from provisioningserver.refresh.node_info_scripts import (
 )
 
 
-class IBuiltinScript(Interface):
-    name = Attribute("Name")
-    filename = Attribute("Filename")
-    substitutes = Attribute("Substitutes")
-    inject_file = Attribute("Inject File")
-
-
-@implementer(IBuiltinScript)
-@attr.s
+@dataclasses.dataclass
 class BuiltinScript:
-    name = attr.ib(default=None, validator=instance_of(str))
-    filename = attr.ib(default=None, validator=instance_of(str))
-    substitutes = attr.ib(default={}, validator=optional(instance_of(dict)))
-    inject_file = attr.ib(default=None, validator=optional(instance_of(str)))
+    name: str
+    filename: str
+    substitutes: dict[str, Any] = dataclasses.field(default_factory=dict)
+    inject_file: str | None = None
 
-    def _find_file(self, filename):
-        base_path = os.path.dirname(__file__)
+    def _find_file(self, filename: str) -> Path:
+        base_path = Path(__file__).parent
         for search_path in {
-            os.path.join(base_path, "commissioning_scripts"),
-            os.path.join(base_path, "testing_scripts"),
+            "commissioning_scripts",
+            "testing_scripts",
             # Controllers run a subset of commissioning scripts but don't
             # have the ability to download commissioning scripts from the
             # metadata server. Since rack controllers can be installed
             # without a region controller these scripts must be stored
             # in the rack's source tree.
-            os.path.join(base_path, "../../provisioningserver/refresh"),
+            "../../provisioningserver/refresh",
         }:
-            path = os.path.realpath(os.path.join(search_path, filename))
-            if os.path.exists(path):
+            path = base_path / search_path / filename
+            if path.exists():
                 return path
-        # This should never happen and will be caught by multiple unit tests.
+
+        # This should never happen
         raise FileNotFoundError(filename)
 
     @property
-    def script_path(self):
+    def script_path(self) -> Path:
         return self._find_file(self.filename)
 
     @property
-    def inject_path(self):
+    def inject_path(self) -> Path | None:
+        if not self.inject_file:
+            return None
         return self._find_file(self.inject_file)
 
 
@@ -199,13 +191,6 @@ BUILTIN_SCRIPTS = [
         inject_file="base-connectivity.sh",
     ),
 ]
-
-
-# The IBuiltinScript interface isn't necessary, but it does serve two
-# purposes: it documents expectations for future implementors, and the
-# verifyObject calls below give early feedback about missing pieces.
-for script in BUILTIN_SCRIPTS:
-    verifyObject(IBuiltinScript, script)
 
 
 def load_builtin_scripts():
