@@ -9746,6 +9746,17 @@ ALTER SEQUENCE temporal.buffered_events_id_seq OWNED BY temporal.buffered_events
 
 
 --
+-- Name: build_id_to_task_queue; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.build_id_to_task_queue (
+    namespace_id bytea NOT NULL,
+    build_id character varying(255) NOT NULL,
+    task_queue_name character varying(255) NOT NULL
+);
+
+
+--
 -- Name: child_execution_info_maps; Type: TABLE; Schema: temporal; Owner: -
 --
 
@@ -10052,6 +10063,19 @@ CREATE TABLE temporal.signals_requested_sets (
 
 
 --
+-- Name: task_queue_user_data; Type: TABLE; Schema: temporal; Owner: -
+--
+
+CREATE TABLE temporal.task_queue_user_data (
+    namespace_id bytea NOT NULL,
+    task_queue_name character varying(255) NOT NULL,
+    data bytea NOT NULL,
+    data_encoding character varying(16) NOT NULL,
+    version bigint NOT NULL
+);
+
+
+--
 -- Name: task_queues; Type: TABLE; Schema: temporal; Owner: -
 --
 
@@ -10181,7 +10205,9 @@ CREATE TABLE temporal_visibility.executions_visibility (
     text03 tsvector GENERATED ALWAYS AS (((search_attributes ->> 'Text03'::text))::tsvector) STORED,
     keywordlist01 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList01'::text)) STORED,
     keywordlist02 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList02'::text)) STORED,
-    keywordlist03 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList03'::text)) STORED
+    keywordlist03 jsonb GENERATED ALWAYS AS ((search_attributes -> 'KeywordList03'::text)) STORED,
+    history_size_bytes bigint,
+    buildids jsonb GENERATED ALWAYS AS ((search_attributes -> 'BuildIds'::text)) STORED
 );
 
 
@@ -11913,6 +11939,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 365	maasserver	0309_drop_bootloader_filetype	2023-09-06 03:30:38.148484+00
 366	maasserver	0310_rootfs_image_extensions	2023-09-15 03:30:27.345312+00
 367	maasserver	0311_image_sync_tracking	2023-09-28 03:30:52.503645+00
+368	maasserver	0312_release_script_type	2023-10-24 03:52:07.798195+00
 \.
 
 
@@ -12701,6 +12728,14 @@ COPY temporal.buffered_events (shard_id, namespace_id, workflow_id, run_id, id, 
 
 
 --
+-- Data for Name: build_id_to_task_queue; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.build_id_to_task_queue (namespace_id, build_id, task_queue_name) FROM stdin;
+\.
+
+
+--
 -- Data for Name: child_execution_info_maps; Type: TABLE DATA; Schema: temporal; Owner: -
 --
 
@@ -12853,6 +12888,7 @@ COPY temporal.schema_update_history (version_partition, year, month, update_time
 0	2023	9	2023-09-01 03:30:50.491825	create cluster metadata info table to store cluster information and executions to store tiered storage queue	366b8b49d6701a6a09778e51ad1682ed	1.7	1.6
 0	2023	9	2023-09-01 03:30:50.496234	drop unused tasks table; Expand VARCHAR columns governed by maxIDLength to VARCHAR(255)	229846b5beb0b96f49e7a3c5fde09fa7	1.8	1.7
 0	2023	9	2023-09-01 03:30:50.502285	add history tasks table	b62e4e5826967e152e00b75da42d12ea	1.9	1.8
+0	2023	10	2023-10-24 03:52:08.21352	add storage for update records and create task_queue_user_data table	2b0c361b0d4ab7cf09ead5566f0db520	1.10	1.9
 \.
 
 
@@ -12861,7 +12897,7 @@ COPY temporal.schema_update_history (version_partition, year, month, update_time
 --
 
 COPY temporal.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2023-09-01 03:30:50.501821	1.9	1.0
+0	maas	2023-10-24 03:52:08.21298	1.10	1.0
 \.
 
 
@@ -12886,6 +12922,14 @@ COPY temporal.signal_info_maps (shard_id, namespace_id, workflow_id, run_id, ini
 --
 
 COPY temporal.signals_requested_sets (shard_id, namespace_id, workflow_id, run_id, signal_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: task_queue_user_data; Type: TABLE DATA; Schema: temporal; Owner: -
+--
+
+COPY temporal.task_queue_user_data (namespace_id, task_queue_name, data, data_encoding, version) FROM stdin;
 \.
 
 
@@ -12941,7 +12985,7 @@ COPY temporal.visibility_tasks (shard_id, task_id, data, data_encoding) FROM std
 -- Data for Name: executions_visibility; Type: TABLE DATA; Schema: temporal_visibility; Owner: -
 --
 
-COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time, execution_time, workflow_id, workflow_type_name, status, close_time, history_length, memo, encoding, task_queue, search_attributes) FROM stdin;
+COPY temporal_visibility.executions_visibility (namespace_id, run_id, start_time, execution_time, workflow_id, workflow_type_name, status, close_time, history_length, memo, encoding, task_queue, search_attributes, history_size_bytes) FROM stdin;
 \.
 
 
@@ -12954,6 +12998,7 @@ COPY temporal_visibility.schema_update_history (version_partition, year, month, 
 0	2023	9	2023-09-01 03:30:50.66697	base version of visibility schema	6a739dc4ceb78e29e490cd7cef662a80	1.0	0.0
 0	2023	9	2023-09-01 03:30:50.668808	add close time & status index	3bc835a57de6e863cf545c25aa418aa3	1.1	1.0
 0	2023	9	2023-09-01 03:30:50.821314	update schema to support advanced visibility	3943d27399fe3df0f1be869a4982c0bb	1.2	1.1
+0	2023	10	2023-10-24 03:52:08.304127	add history size bytes and build IDs visibility columns and indices	62928bdd9093a8c18bb4a39bfe8e3a22	1.3	1.2
 \.
 
 
@@ -12962,7 +13007,7 @@ COPY temporal_visibility.schema_update_history (version_partition, year, month, 
 --
 
 COPY temporal_visibility.schema_version (version_partition, db_name, creation_time, curr_version, min_compatible_version) FROM stdin;
-0	maas	2023-09-01 03:30:50.820729	1.2	0.1
+0	maas	2023-10-24 03:52:08.303597	1.3	0.1
 \.
 
 
@@ -13019,7 +13064,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 367, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 368, true);
 
 
 --
@@ -15175,6 +15220,14 @@ ALTER TABLE ONLY temporal.buffered_events
 
 
 --
+-- Name: build_id_to_task_queue build_id_to_task_queue_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.build_id_to_task_queue
+    ADD CONSTRAINT build_id_to_task_queue_pkey PRIMARY KEY (namespace_id, build_id, task_queue_name);
+
+
+--
 -- Name: child_execution_info_maps child_execution_info_maps_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
 --
 
@@ -15356,6 +15409,14 @@ ALTER TABLE ONLY temporal.signal_info_maps
 
 ALTER TABLE ONLY temporal.signals_requested_sets
     ADD CONSTRAINT signals_requested_sets_pkey PRIMARY KEY (shard_id, namespace_id, workflow_id, run_id, signal_id);
+
+
+--
+-- Name: task_queue_user_data task_queue_user_data_pkey; Type: CONSTRAINT; Schema: temporal; Owner: -
+--
+
+ALTER TABLE ONLY temporal.task_queue_user_data
+    ADD CONSTRAINT task_queue_user_data_pkey PRIMARY KEY (namespace_id, task_queue_name);
 
 
 --
@@ -16726,6 +16787,13 @@ CREATE INDEX by_bool_03 ON temporal_visibility.executions_visibility USING btree
 
 
 --
+-- Name: by_build_ids; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_build_ids ON temporal_visibility.executions_visibility USING gin (namespace_id, buildids jsonb_path_ops);
+
+
+--
 -- Name: by_datetime_01; Type: INDEX; Schema: temporal_visibility; Owner: -
 --
 
@@ -16779,6 +16847,13 @@ CREATE INDEX by_execution_time ON temporal_visibility.executions_visibility USIN
 --
 
 CREATE INDEX by_history_length ON temporal_visibility.executions_visibility USING btree (namespace_id, history_length, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
+
+
+--
+-- Name: by_history_size_bytes; Type: INDEX; Schema: temporal_visibility; Owner: -
+--
+
+CREATE INDEX by_history_size_bytes ON temporal_visibility.executions_visibility USING btree (namespace_id, history_size_bytes, COALESCE(close_time, '9999-12-31 23:59:59'::timestamp without time zone) DESC, start_time DESC, run_id);
 
 
 --
