@@ -12,6 +12,7 @@ __all__ = [
     "BootResource",
     "BootResourceFile",
     "BootResourceSet",
+    "BootResourceSetSync",
     "BootSource",
     "BootSourceCache",
     "BootSourceSelection",

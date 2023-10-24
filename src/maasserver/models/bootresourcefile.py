@@ -96,6 +96,25 @@ class BootResourceFile(CleanSave, TimestampedModel):
         """True if all regions are synchronized."""
         return self.sync_progress == 100.0
 
+    @property
+    def has_complete_copy(self) -> bool:
+        """True if at least one Region has a complete copy of this file"""
+        return self.bootresourcefilesync_set.filter(size=self.size).exists()
+
+    def get_regions_with_complete_copy(self) -> list[str]:
+        """Get synchronisation sources
+
+        List Region Controllers that have the complete file.
+
+        Returns:
+            list[str]: A list of system IDs
+        """
+        return [
+            *self.bootresourcefilesync_set.filter(size=self.size).values_list(
+                "region__system_id", flat=True
+            )
+        ]
+
     def local_file(self) -> LocalBootResourceFile:
         return LocalBootResourceFile(self.sha256, self.size)
 
