@@ -179,19 +179,41 @@ class Command(BaseCommand):
 
         # This multi-step approach is taken from Temporal auto-setup:
         # https://github.com/temporalio/docker-builds/blob/0e21f3235ec3168d851a6457aa1b1e9c5ac15fc1/docker/auto-setup.sh#L204
-        _temporal_sql_tool(
-            ["setup-schema", "-v", "0.0"],
-            "temporal",
-        )
+        setup_temporal_schema, setup_temporal_visibility_schema = False, False
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT to_regclass('temporal.schema_version')")
+            if not cursor.fetchone()[0]:
+                setup_temporal_schema = True
+            else:
+                cursor.execute(
+                    "UPDATE temporal.schema_version set db_name = current_database()"
+                )
+
+            cursor.execute(
+                "SELECT to_regclass('temporal_visibility.schema_version')"
+            )
+            if not cursor.fetchone()[0]:
+                setup_temporal_visibility_schema = True
+            else:
+                cursor.execute(
+                    "UPDATE temporal_visibility.schema_version set db_name = current_database()"
+                )
+
+        if setup_temporal_schema:
+            _temporal_sql_tool(
+                ["setup-schema", "-v", "0.0"],
+                "temporal",
+            )
+
+        if setup_temporal_visibility_schema:
+            _temporal_sql_tool(
+                ["setup-schema", "-v", "0.0"],
+                "temporal_visibility",
+            )
 
         _temporal_sql_tool(
             ["update-schema", "-d", temporal_schema_path],
             "temporal",
-        )
-
-        _temporal_sql_tool(
-            ["setup-schema", "-v", "0.0"],
-            "temporal_visibility",
         )
 
         _temporal_sql_tool(
