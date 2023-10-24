@@ -11940,6 +11940,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 366	maasserver	0310_rootfs_image_extensions	2023-09-15 03:30:27.345312+00
 367	maasserver	0311_image_sync_tracking	2023-09-28 03:30:52.503645+00
 368	maasserver	0312_release_script_type	2023-10-24 03:52:07.798195+00
+369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
 \.
 
 
@@ -13064,7 +13065,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 368, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 369, true);
 
 
 --

@@ -21,7 +21,7 @@ def get_worker_user():
             last_name="Special user",
             email="maas@localhost",
             is_staff=False,
-            is_superuser=False,
+            is_superuser=True,
         ),
     )
     return worker_user

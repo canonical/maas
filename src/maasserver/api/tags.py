@@ -33,7 +33,7 @@ from maasserver.models import (
 )
 from maasserver.models.user import get_auth_tokens
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import get_one, prefetch_queryset
+from maasserver.utils.orm import prefetch_queryset
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -375,18 +375,10 @@ class TagHandler(OperationsHandler):
         @error-example "not-found"
             No Tag matches the given query.
         """
-        tag = get_tag_or_404(name=name, user=request.user)
-        rack_controller = None
         if not request.user.is_superuser:
-            system_id = request.data.get("rack_controller", None)
-            if system_id is None:
-                raise PermissionDenied(
-                    "Must be a superuser or supply a rack_controller"
-                )
-            rack_controller = get_one(
-                RackController.objects.filter(system_id=system_id)
-            )
-            check_rack_controller_access(request, rack_controller)
+            raise PermissionDenied()
+
+        tag = get_tag_or_404(name=name, user=request.user)
         definition = request.data.get("definition", None)
         if definition is not None and tag.definition != definition:
             return HttpResponse(

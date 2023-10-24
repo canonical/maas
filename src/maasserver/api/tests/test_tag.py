@@ -681,19 +681,6 @@ class TestTagAPI(APITestCase.ForUser):
         self.assertEqual({"added": 1, "removed": 0}, parsed_result)
         self.assertCountEqual([node], tag.node_set.all())
 
-    def test_POST_update_nodes_refuses_unidentified_rack_controller(self):
-        tag = factory.make_Tag()
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node()
-        client = make_worker_client(rack_controller)
-        # We don't pass rack controller system_id so we get refused.
-        response = client.post(
-            self.get_tag_uri(tag),
-            {"op": "update_nodes", "add": [node.system_id]},
-        )
-        self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertCountEqual([], tag.node_set.all())
-
     def test_POST_update_nodes_refuses_non_rack_controller(self):
         tag = factory.make_Tag()
         rack_controller = factory.make_RackController()
