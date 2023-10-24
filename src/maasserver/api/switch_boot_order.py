@@ -12,6 +12,7 @@ class SwitchBootOrderHandler(OperationsHandler):
 
     api_doc_section_name = "SwitchBootOrder"
     read = create = delete = None
+    hidden = True
     fields = ()
 
     @classmethod
