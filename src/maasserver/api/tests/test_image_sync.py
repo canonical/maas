@@ -17,10 +17,10 @@ def get_image_sync_uri(file_id, system_id):
     return reverse("image_sync_progress_handler", args=[file_id, system_id])
 
 
-class TestImageSyncProgressHandler(APITestCase.ForUser):
+class TestImageSyncProgressHandler(APITestCase.ForAdmin):
     def test_handler_path(self):
         self.assertEqual(
-            "/MAAS/api/2.0/image-sync-progress/1/a/",
+            "/MAAS/api/2.0/images-sync-progress/1/a/",
             get_image_sync_uri(1, "a"),
         )
 
@@ -32,7 +32,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
         file = factory.make_boot_resource_file_with_content(
             resource_set, size=total_size
         )
-        uri = get_image_sync_uri(file.id, region.id)
+        uri = get_image_sync_uri(file.id, region.system_id)
         response = self.client.put(uri, {})
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -49,7 +49,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
             resource_set, size=total_size
         )
         test_size = random.randint(1, 30)
-        uri = get_image_sync_uri(file.id, region.id)
+        uri = get_image_sync_uri(file.id, region.system_id)
         response = self.client.put(uri, {"size": test_size})
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -67,7 +67,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
         )
         syncset = file.bootresourcefilesync_set.create(region=region)
         test_size = random.randint(1, 30)
-        uri = get_image_sync_uri(file.id, region.id)
+        uri = get_image_sync_uri(file.id, region.system_id)
         response = self.client.put(uri, {"size": test_size})
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -84,7 +84,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
             resource_set, size=total_size
         )
         test_size = random.randint(1, 30)
-        uri = get_image_sync_uri((file.id + 1), region.id)
+        uri = get_image_sync_uri((file.id + 1), region.system_id)
         response = self.client.put(uri, {"size": test_size})
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
@@ -98,7 +98,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
         file = factory.make_boot_resource_file_with_content(
             resource_set, size=total_size
         )
-        uri = get_image_sync_uri(file.id, region.id)
+        uri = get_image_sync_uri(file.id, region.system_id)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -118,7 +118,7 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
         filesync = file.bootresourcefilesync_set.create(
             region=region, size=test_size
         )
-        uri = get_image_sync_uri(file.id, region.id)
+        uri = get_image_sync_uri(file.id, region.system_id)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -134,8 +134,52 @@ class TestImageSyncProgressHandler(APITestCase.ForUser):
         file = factory.make_boot_resource_file_with_content(
             resource_set, size=total_size
         )
-        uri = get_image_sync_uri((file.id + 1), region.id)
+        uri = get_image_sync_uri((file.id + 1), region.system_id)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
+        )
+
+
+class TestImagesSyncProgressHandler(APITestCase.ForAdmin):
+    def test_read(self):
+        regions = [factory.make_RegionController() for _ in range(3)]
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        resource_set = factory.make_BootResourceSet(resource)
+
+        complete = factory.make_BootResourceFile(
+            resource_set=resource_set,
+            synced=[(r, -1) for r in regions],
+        )
+        partial_sync = factory.make_BootResourceFile(
+            resource_set=resource_set,
+            synced=[(r, -1) for r in regions[2:]],
+        )
+        factory.make_BootResourceFile(
+            resource_set=resource_set,
+            size=512,
+            synced=[(regions[0], 256)],
+        )
+        response = self.client.get(reverse("images_sync_progress_handler"))
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        status = response.json()
+        self.assertEqual(complete.size, status[str(complete.id)]["size"])
+        self.assertEqual(complete.sha256, status[str(complete.id)]["sha256"])
+        self.assertEqual(
+            partial_sync.size, status[str(partial_sync.id)]["size"]
+        )
+        self.assertEqual(
+            partial_sync.sha256, status[str(partial_sync.id)]["sha256"]
+        )
+        self.assertItemsEqual(
+            (str(partial_sync.id), str(complete.id)), set(status.keys())
+        )
+        self.assertItemsEqual(
+            [r.system_id for r in regions], status[str(complete.id)]["sources"]
+        )
+        self.assertItemsEqual(
+            [r.system_id for r in regions[2:]],
+            status[str(partial_sync.id)]["sources"],
         )
