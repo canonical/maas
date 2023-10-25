@@ -170,3 +170,13 @@ class TestLocalBootResourceFile:
         assert f.valid
         assert f.size == FILE_SIZE
         assert f.sha256 == file_sha256
+
+    def test_lock_acquire(self, image_store_dir: Path, file_sha256: str):
+        f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
+        assert f.acquire_lock()
+        f.release_lock()
+
+    def test_lock_acquire_try(self, image_store_dir: Path, file_sha256: str):
+        f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
+        assert f.acquire_lock(try_lock=True)
+        f.release_lock()

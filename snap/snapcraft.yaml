@@ -115,6 +115,7 @@ parts:
       - nginx-core
       - nmap
       - openssh-client
+      - python3-aiofiles
       - python3-asyncpg
       - python3-attr
       - python3-babel

@@ -66,7 +66,6 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
     Event,
-    LargeFile,
 )
 from maasserver.models.node import RegionController
 from maasserver.release_notifications import ReleaseNotifications
@@ -76,7 +75,10 @@ from maasserver.utils import (
     get_maas_user_agent,
     synchronised,
 )
-from maasserver.utils.bootresource import LocalBootResourceFile
+from maasserver.utils.bootresource import (
+    get_bootresource_store_path,
+    LocalBootResourceFile,
+)
 from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import (
     get_one,
@@ -99,7 +101,7 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.path import get_maas_data_path
+from provisioningserver.path import get_maas_lock_path
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.fs import tempdir
@@ -359,8 +361,6 @@ class BootResourceStore(ObjectStore):
         self._content_to_finalize = {}
         self._finalizing = False
         self._cancel_finalize = False
-        self._store_dir = Path(get_maas_data_path("boot-resources"))
-        self._store_dir.mkdir(parents=True, exist_ok=True)
 
     def get_resource_identity(self, resource):
         """Return the formatted identity for the given resource."""
@@ -536,15 +536,9 @@ class BootResourceStore(ObjectStore):
         self, rfile, resource_set=None, resource=None
     ):
         """Return identifier that is used for the maaslog."""
-        if resource_set is None:
-            resource_set = rfile.resource_set
-        if resource is None:
-            resource = resource_set.resource
-        return "{}/{}/{}".format(
-            self.get_resource_identity(resource),
-            resource_set.version,
-            rfile.filename,
-        )
+        resource_set = resource_set or rfile.resource_set
+        resource = resource or resource_set.resource
+        return f"{self.get_resource_identity(resource)}/{resource_set.version}/{rfile.filename}"
 
     def unlink_rfile(
         self, sha256: str, rfile: BootResourceFile | None
@@ -1377,6 +1371,8 @@ class ImportResourcesService(TimerService):
 
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super().__init__(interval.total_seconds(), self.maybe_import_resources)
+        for p in [get_maas_lock_path(), get_bootresource_store_path()]:
+            p.mkdir(parents=True, exist_ok=True)
 
     def maybe_import_resources(self):
         def determine_auto():
@@ -1493,6 +1489,8 @@ class ImportResourcesProgressService(TimerService):
 
 
 def export_images_from_db(target_dir: Path):
+    from maasserver.models import LargeFile
+
     log.info(f"Exporting image files to {target_dir}")
     target_dir.mkdir(parents=True, exist_ok=True)
     bootloaders_dir = target_dir / "bootloaders"
