@@ -61,7 +61,7 @@ func NewWorkerPool(systemID string, client client.Client,
 	}
 
 	// master worker is responsible for adding/removing workers to/from the pool
-	pool.master = worker.New(client, systemID, worker.Options{
+	pool.master = worker.New(client, fmt.Sprintf("agent:%s", systemID), worker.Options{
 		Identity:     fmt.Sprintf("%s:master:%d", systemID, pool.pid),
 		OnFatalError: func(err error) { pool.fatal <- err },
 	})

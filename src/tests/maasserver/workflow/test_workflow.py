@@ -39,7 +39,7 @@ class TestGetTemporalQueueForMachine:
         machine.boot_interface = machine_iface
         machine.save()
         queue = get_temporal_queue_for_machine(machine)
-        assert queue == rack.system_id
+        assert queue == f"agent:{rack.system_id}"
 
     def test_get_temporal_queue_for_machine_without_boot_interface(
         self, factory
@@ -57,7 +57,7 @@ class TestGetTemporalQueueForMachine:
         bmc = factory.make_BMC(ip_address=ip)
         machine = factory.make_Machine(bmc=bmc)
         queue = get_temporal_queue_for_machine(machine)
-        assert queue == rack.system_id
+        assert queue == f"agent:{rack.system_id}"
 
     def test_get_temporal_queue_for_power_management(self, factory):
         vlan = factory.make_VLAN()
@@ -76,4 +76,4 @@ class TestGetTemporalQueueForMachine:
         machine.boot_interface = boot_iface
         machine.save()
         queue = get_temporal_queue_for_machine(machine, for_power=True)
-        assert queue == rack.system_id
+        assert queue == f"agent:{rack.system_id}"

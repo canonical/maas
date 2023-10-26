@@ -17,35 +17,27 @@ from temporalio.worker import Worker as TemporalWorker
 
 from maasserver.utils.asynchronous import async_retry
 from maasserver.workflow.codec.encryptor import EncryptionCodec
-from provisioningserver.utils.env import MAAS_SHARED_SECRET
+from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
 REGION_TASK_QUEUE = "region_controller"
 TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
 
-_client = None
-
 
 @async_retry()
 async def get_client_async():
-    global _client
-    if not _client:
-        _client = await Client.connect(
-            f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
-            data_converter=dataclasses.replace(
-                temporalio.converter.default(),
-                payload_codec=EncryptionCodec(
-                    MAAS_SHARED_SECRET.get().encode()
-                ),
-            ),
-        )
-    return _client
+    return await Client.connect(
+        f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
+        data_converter=dataclasses.replace(
+            temporalio.converter.default(),
+            payload_codec=EncryptionCodec(MAAS_SHARED_SECRET.get().encode()),
+        ),
+    )
 
 
 class Worker:
     namespace_name = "default"
-    _worker = None
 
     def __init__(
         self,
@@ -54,10 +46,11 @@ class Worker:
         workflows=None,
         activities=None,
     ):
+        self._worker = None
         self._client = client
         self._task_queue = task_queue
-        self._workflows = [] if workflows is None else workflows
-        self._activities = [] if activities is None else activities
+        self._workflows = workflows or []
+        self._activities = activities or []
         self._workflow_retention = Duration()
         self._workflow_retention.FromJsonString(TEMPORAL_WORKFLOW_RETENTION)
 
@@ -81,15 +74,15 @@ class Worker:
                 raise e
 
     async def run(self):
-        self._client = (
-            await get_client_async() if self._client is None else self._client
-        )
+        self._client = self._client or await get_client_async()
         await self._setup_namespace()
+        maas_id = MAAS_ID.get()
         self._worker = TemporalWorker(
             self._client,
             task_queue=self._task_queue,
             workflows=self._workflows,
             activities=self._activities,
+            identity=f"{self._task_queue}@{maas_id}",
         )
         await self._worker.run()
 

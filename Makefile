@@ -248,6 +248,7 @@ format-py:
 
 format-go:
 	@$(MAKE) -C src/host-info format
+	@$(MAKE) -C src/maasagent format
 .PHONY: format-go
 
 check: clean test

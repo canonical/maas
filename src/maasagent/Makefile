@@ -52,3 +52,7 @@ $(VENDOR_DIR)/modules.txt: go.mod
 .PHONY: clean
 clean:
 	rm -rf $(VENDOR_DIR) $(BIN_DIR) $(BUILD_DIR)
+
+format:
+	@go fmt maas.io/core/src/maasagent/...
+.PHONY: format

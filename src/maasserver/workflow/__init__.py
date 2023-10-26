@@ -44,7 +44,7 @@ def get_temporal_queue_for_machine(machine, for_power=False):
                 with_connection=False
             )
             if racks:
-                return racks[0].system_id
+                return f"agent:{racks[0].system_id}"
     raise UnroutableWorkflowException(
         f"no suitable task queue for machine {machine.system_id}"
     )
@@ -137,15 +137,20 @@ def to_temporal_params(name, objects, extra_params):
 
 
 __all__ = [
-    "CommissionParam",
     "CommissionNParam",
     "CommissionNWorkflow",
-    "DeployParam",
+    "CommissionParam",
+    "DeleteBootResourceWorkflow",
     "DeployNParam",
     "DeployNWorkflow",
+    "DeployParam",
+    "DownloadBootResourceWorkflow",
     "MACHINE_ACTION_WORKFLOWS",
     "PowerAction",
-    "PowerParam",
     "PowerNParam",
     "PowerNWorkflow",
+    "PowerParam",
+    "ResourceDeleteParam",
+    "ResourceDownloadParam",
+    "SyncBootResourcesWorkflow",
 ]

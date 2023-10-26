@@ -43,7 +43,7 @@ class ConfigureWorkerPoolWorkflow:
                 id=f"add-worker:{input.system_id}:task_queue:vlan-{vlan_id}",
                 parent_close_policy=ParentClosePolicy.ABANDON,
                 workflow="add_worker",
-                task_queue=input.system_id,
+                task_queue=f"agent:{input.system_id}",
                 arg={
                     "task_queue": f"vlan-{vlan_id}",
                     "workflows": ["check_ip"],

@@ -13,7 +13,9 @@ nginx-core
 postgresql
 pxelinux
 python3-apt
+python3-aiodns
 python3-aiofiles
+python3-aiohttp
 python3-asyncpg
 python3-attr
 python3-bson

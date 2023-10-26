@@ -281,6 +281,7 @@ RegionController = (
 )
 RegionControllerRule = Rule(
     Allow("aiofiles|aiofiles.**"),
+    Allow("aiohttp|aiohttp.**"),
     Allow("apiclient.creds.*"),
     Allow("apiclient.maas_client.MAASOAuth"),
     Allow("apiclient.multipart.*"),
