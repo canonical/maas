@@ -1,22 +1,26 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
 
 from temporalio import workflow
 
+POWER_ACTION_WORKFLOWS = (
+    "power_on",
+    "power_off",
+    "power_cycle",
+    "power_query",
+)
 
-class PowerAction(Enum):
-    ON = 1
-    OFF = 2
-    CYCLE = 3
-    QUERY = 4
+
+class InvalidPowerActionException(Exception):
+    pass
 
 
 @dataclass
 class PowerParam:
     system_id: str
-    action: PowerAction
+    action: str
     queue: str
+    power_type: str
     params: dict[str, Any]
 
 
@@ -25,26 +29,37 @@ class PowerNParam:
     params: list[PowerParam]
 
 
+@dataclass
+class PowerResult:
+    status: str
+
+
 @workflow.defn(name="PowerNWorkflow", sandboxed=False)
 class PowerNWorkflow:
     @workflow.run
-    async def run(self, params: PowerNParam):
+    async def run(self, params: PowerNParam) -> list[PowerResult]:
+        results = []
+        info = workflow.info()
+        # parent workflow_id should contain a monotonic timestamp
+        # to ensure uniqueness
+        timestamp = info.workflow_id.split(":")[-1]
         for param in params.params:
-            workflow = ""
-            match param.action:
-                case PowerAction.ON:
-                    workflow = "power_on"
-                case PowerAction.OFF:
-                    workflow = "power_off"
-                case PowerAction.CYCLE:
-                    workflow = "power_cycle"
-                case PowerAction.QUERY:
-                    workflow = "power_query"
+            workflow_name = ""
+            if param.action in POWER_ACTION_WORKFLOWS:
+                workflow_name = param.action
 
-            if workflow:
-                await workflow.execute_child_workflow(
-                    workflow,
+            if workflow_name:
+                result = await workflow.execute_child_workflow(
+                    workflow_name,
                     param,
-                    id=f"power-{param.system_id}",
+                    id=f"power:{workflow_name}:{param.system_id}:{timestamp}",
                     task_queue=param.queue,
                 )
+                if result:
+                    results.append(result)
+            else:
+                raise InvalidPowerActionException(
+                    f"invalid power action: {param.action}"
+                )
+
+        return results

@@ -37,15 +37,32 @@ class ConfigureWorkerPoolWorkflow:
         )
 
         for vlan_id in vlan_ids:
+            workflow_id = (
+                f"add-worker:{input.system_id}:task_queue:vlan-{vlan_id}"
+            )
+
+            existing = workflow.get_external_workflow_handle(workflow_id)
+            if existing and existing.run_id:
+                continue
+
             # If you need to extend workflows/activities that should be
             # registered, ensure they are allowed by the worker pool
             await workflow.start_child_workflow(
-                id=f"add-worker:{input.system_id}:task_queue:vlan-{vlan_id}",
+                id=workflow_id,
                 parent_close_policy=ParentClosePolicy.ABANDON,
                 workflow="add_worker",
                 task_queue=f"agent:{input.system_id}",
                 arg={
                     "task_queue": f"vlan-{vlan_id}",
-                    "workflows": ["check_ip"],
+                    "workflows": [
+                        "check_ip",
+                        "power_query",
+                        "power_cycle",
+                        "power_on",
+                        "power_off",
+                    ],
+                    "activities": [
+                        "power",
+                    ],
                 },
             )

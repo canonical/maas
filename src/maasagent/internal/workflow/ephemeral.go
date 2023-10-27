@@ -27,7 +27,7 @@ func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 
 	systemIDTag := tag.TargetSystemID(params.SystemID)
 
-	var powerStatus PowerQueryResult
+	var powerStatus PowerResult
 
 	log.Debug("querying power status", systemIDTag)
 
@@ -38,7 +38,7 @@ func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 
 	log.Debug("powering on machine", systemIDTag)
 
-	if powerStatus.Status == "on" {
+	if powerStatus.State == "on" {
 		err = workflow.ExecuteChildWorkflow(ctx, PowerCycle, params.Power).Get(ctx, nil)
 	} else {
 		err = workflow.ExecuteChildWorkflow(ctx, PowerOn, params.Power).Get(ctx, nil)

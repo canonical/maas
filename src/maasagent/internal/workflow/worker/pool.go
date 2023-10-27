@@ -12,6 +12,8 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+
+	wf "maas.io/core/src/maasagent/internal/workflow"
 )
 
 const (
@@ -19,6 +21,10 @@ const (
 	defaultRemoveWorkerWorkflowName  = "remove_worker"
 	defaultConfigurePoolWorkflowName = "configure_worker_pool"
 	defaultControlPlaneTaskQueueName = "control_plane"
+	defaultPowerOnWorkflowName       = "power_on"
+	defaultPowerOffWorkflowName      = "power_off"
+	defaultPowerCycleWorkflowName    = "power_cycle"
+	defaultPowerQueryWorkflowName    = "power_query"
 )
 
 // WorkerPool contains a collection of Temporal Workers that can be added or
@@ -37,6 +43,10 @@ type WorkerPool struct {
 	removeWorkerWorkflowName  string
 	configurePoolWorkflowName string
 	controlPlaneTaskQueueName string
+	powerOnWorkflowName       string
+	powerOffWorkflowName      string
+	powerCycleWorkflowName    string
+	powerQueryWorkflowName    string
 	pid                       int
 	mutex                     sync.Mutex
 }
@@ -54,6 +64,10 @@ func NewWorkerPool(systemID string, client client.Client,
 		removeWorkerWorkflowName:  defaultRemoveWorkerWorkflowName,
 		configurePoolWorkflowName: defaultConfigurePoolWorkflowName,
 		controlPlaneTaskQueueName: defaultControlPlaneTaskQueueName,
+		powerOnWorkflowName:       defaultPowerOnWorkflowName,
+		powerOffWorkflowName:      defaultPowerOffWorkflowName,
+		powerCycleWorkflowName:    defaultPowerCycleWorkflowName,
+		powerQueryWorkflowName:    defaultPowerQueryWorkflowName,
 	}
 
 	for _, opt := range options {
@@ -77,6 +91,36 @@ func NewWorkerPool(systemID string, client client.Client,
 		localActivityExec[removeWorkerParam](pool.removeWorker),
 		workflow.RegisterOptions{
 			Name: pool.removeWorkerWorkflowName,
+		},
+	)
+
+	pool.master.RegisterActivity(wf.PowerActivity)
+
+	pool.master.RegisterWorkflowWithOptions(
+		wf.PowerOn,
+		workflow.RegisterOptions{
+			Name: pool.powerOnWorkflowName,
+		},
+	)
+
+	pool.master.RegisterWorkflowWithOptions(
+		wf.PowerOff,
+		workflow.RegisterOptions{
+			Name: pool.powerOffWorkflowName,
+		},
+	)
+
+	pool.master.RegisterWorkflowWithOptions(
+		wf.PowerCycle,
+		workflow.RegisterOptions{
+			Name: pool.powerCycleWorkflowName,
+		},
+	)
+
+	pool.master.RegisterWorkflowWithOptions(
+		wf.PowerQuery,
+		workflow.RegisterOptions{
+			Name: pool.powerQueryWorkflowName,
 		},
 	)
 

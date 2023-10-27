@@ -411,6 +411,24 @@ class POWER_STATE:
 POWER_STATE_CHOICES = enum_choices(POWER_STATE, transform=str.capitalize)
 
 
+class POWER_WORKFLOW_ACTIONS:
+    # Temporal parameter to execute a workflow for powering on
+    # a machine
+    ON = "power_on"
+
+    # Temporal parameter to execute a workflow for powering on
+    # a machine
+    OFF = "power_off"
+
+    # Temporal parameter to execute a workflow for powering on
+    # a machine
+    CYCLE = "power_cycle"
+
+    # Temporal parameter to execute a workflow for powering on
+    # a machine
+    QUERY = "power_query"
+
+
 class DEPLOYMENT_TARGET:
     # A node has been deployed ephemerally
     MEMORY = "memory"

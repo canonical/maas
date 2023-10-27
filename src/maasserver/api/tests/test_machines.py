@@ -10,6 +10,7 @@ from django.conf import settings
 from django.test import RequestFactory
 from django.urls import reverse
 from testtools.matchers import Contains, Equals, Not
+from twisted.internet.defer import succeed
 
 from maasserver import eventloop
 from maasserver.api import auth
@@ -29,7 +30,6 @@ from maasserver.models import node as node_module
 from maasserver.models import ScriptSet
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -49,9 +49,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase
-from maastesting.twisted import always_succeed_with
 from metadataserver.enum import SCRIPT_TYPE
-from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.utils.enum import map_enum
 
 
@@ -3609,16 +3607,6 @@ class TestPowerState(APITransactionTestCase.ForUser):
         """Get the API URI for a machine."""
         return reverse("machine_handler", args=[machine.system_id])
 
-    def prepare_rpc(self, rack_controller, side_effect=None):
-        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = self.rpc_fixture.makeCluster(
-            rack_controller, cluster_module.PowerQuery
-        )
-        if side_effect is None:
-            protocol.PowerQuery.side_effect = always_succeed_with({})
-        else:
-            protocol.PowerQuery.side_effect = side_effect
-
     def assertPowerState(self, machine, state):
         dbtasks = eventloop.services.getServiceNamed("database-tasks")
         dbtasks.syncTask().wait(
@@ -3629,15 +3617,14 @@ class TestPowerState(APITransactionTestCase.ForUser):
     def test_returns_actual_state(self):
         machine = factory.make_Node_with_Interface_on_Subnet(power_type="ipmi")
         random_state = random.choice(["on", "off", "error"])
-        self.prepare_rpc(
-            machine.get_boot_primary_rack_controller(),
-            side_effect=always_succeed_with({"state": random_state}),
+
+        self.patch(Node, "_power_control_node").return_value = succeed(
+            {"state": random_state}
         )
 
         response = self.client.get(
             self.get_machine_uri(machine), {"op": "query_power_state"}
         )
-
         self.assertThat(response, HasStatusCode(http.client.OK))
         response = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)

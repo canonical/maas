@@ -19,7 +19,7 @@ from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Model, Q
 from django.utils.encoding import is_protected_type
-from twisted.internet.defer import Deferred, ensureDeferred
+from twisted.internet.defer import ensureDeferred
 from twisted.internet.threads import deferToThread
 
 from maasapiserver.client import APIServerClient
@@ -30,7 +30,7 @@ from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
+from maasserver.workflow import execute_workflow
 from provisioningserver.certificates import Certificate
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous, IAsynchronous
@@ -446,21 +446,8 @@ class Handler(metaclass=HandlerMetaclass):
                 deferToDatabase, prep_user_execute, params
             )
 
-    @asynchronous
     def _execute_workflow(self, workflow_name, workflow_id, params=None):
-        loop = asyncio.get_event_loop()
-
-        async def _execute_workflow(workflow_name, params):
-            temporal_client = await get_client_async()
-            await temporal_client.execute_workflow(
-                workflow_name,
-                params,
-                id=workflow_id,
-                task_queue=REGION_TASK_QUEUE,
-            )
-
-        task = loop.create_task(_execute_workflow(workflow_name, params))
-        return Deferred.fromFuture(task)
+        return execute_workflow(workflow_name, workflow_id, params=params)
 
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_websocket_call_latency",

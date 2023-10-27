@@ -1,3 +1,14 @@
+# Copyright 2023 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+import asyncio
+from functools import wraps
+from typing import Any, Optional
+
+from twisted.internet.defer import Deferred, succeed
+
+from maasserver.eventloop import services
+from maasserver.regiondservices.temporal_worker import TemporalWorkerService
 from maasserver.workflow.commission import (
     CommissionNParam,
     CommissionNWorkflow,
@@ -8,16 +19,11 @@ from maasserver.workflow.deploy import (
     DeployNWorkflow,
     DeployParam,
 )
-from maasserver.workflow.power import (
-    PowerAction,
-    PowerNParam,
-    PowerNWorkflow,
-    PowerParam,
-)
+from maasserver.workflow.power import PowerNParam, PowerNWorkflow, PowerParam
+from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
+from provisioningserver.utils.twisted import asynchronous
 
 MACHINE_ACTION_WORKFLOWS = (
-    "commission",
-    "deploy",
     "power_on",
     "power_off",
     "power_query",
@@ -29,7 +35,9 @@ class UnroutableWorkflowException(Exception):
     pass
 
 
-def get_temporal_queue_for_machine(machine, for_power=False):
+def get_temporal_queue_for_machine(
+    machine: Any, for_power: Optional[bool] = False
+) -> str:
     vlan_id = None
     if (
         not for_power
@@ -50,7 +58,9 @@ def get_temporal_queue_for_machine(machine, for_power=False):
     )
 
 
-def to_temporal_params(name, objects, extra_params):
+def to_temporal_params(
+    name: str, objects: list[Any], extra_params: Optional[Any] = None
+) -> tuple[str, Any]:
     match name:
         case "commission":
             return (
@@ -85,8 +95,10 @@ def to_temporal_params(name, objects, extra_params):
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=PowerAction.ON,
+                            action=name,
                             queue=get_temporal_queue_for_machine(o),
+                            power_type=extra_params.power_type,
+                            params=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -99,8 +111,10 @@ def to_temporal_params(name, objects, extra_params):
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=PowerAction.OFF,
+                            action=name,
                             queue=get_temporal_queue_for_machine(o),
+                            power_type=extra_params.power_type,
+                            params=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -113,8 +127,10 @@ def to_temporal_params(name, objects, extra_params):
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=PowerAction.QUERY,
+                            action=name,
                             queue=get_temporal_queue_for_machine(o),
+                            power_type=extra_params.power_type,
+                            params=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -127,13 +143,71 @@ def to_temporal_params(name, objects, extra_params):
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=PowerAction.CYCLE,
+                            action=name,
                             queue=get_temporal_queue_for_machine(o),
+                            power_type=extra_params.power_type,
+                            params=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
                 ),
             )
+
+
+def run_in_temporal_eventloop(fn, *args, **kwargs):
+    temporal_worker = TemporalWorkerService(
+        services.getServiceNamed("temporal-worker")
+    )
+    run = fn(*args, **kwargs)
+    if asyncio.iscoroutine(run):
+        return temporal_worker._loop.create_task(run)
+    return temporal_worker._loop.create_task(asyncio.ensure_future(run))
+
+
+@asynchronous(timeout=60)
+def temporal_wrapper(func):
+    """
+    This decorator ensures Temporal code is always executed
+    with an asyncio eventloop.
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            loop = asyncio.get_event_loop()
+            run = func(*args, **kwargs)
+            if asyncio.iscoroutine(run):
+                task = loop.create_task(run)
+            else:
+                task = loop.create_task(asyncio.ensure_future(run))
+            return Deferred.fromFuture(task)
+        except RuntimeError:
+            try:
+                task = run_in_temporal_eventloop(func, *args, **kwargs)
+                return Deferred.fromFuture(task)
+            except KeyError:  # in worker proc
+                asyncio.run(func(*args, **kwargs))
+                return succeed()
+
+    return wrapper
+
+
+@temporal_wrapper
+async def execute_workflow(
+    workflow_name: str,
+    workflow_id: str,
+    params: Optional[Any] = None,
+    task_queue: Optional[str] = REGION_TASK_QUEUE,
+) -> Optional[Any]:
+    temporal_client = await get_client_async()
+    result = await temporal_client.execute_workflow(
+        workflow_name,
+        params,
+        id=workflow_id,
+        task_queue=task_queue,
+    )
+    if result:
+        return result
 
 
 __all__ = [
@@ -143,13 +217,15 @@ __all__ = [
     "DeleteBootResourceWorkflow",
     "DeployNParam",
     "DeployNWorkflow",
-    "DeployParam",
-    "DownloadBootResourceWorkflow",
+    "get_temporal_queue_for_machine",
     "MACHINE_ACTION_WORKFLOWS",
-    "PowerAction",
+    "PowerParam",
     "PowerNParam",
     "PowerNWorkflow",
-    "PowerParam",
+    "run_in_temporal_eventloop",
+    "temporal_wrapper",
+    "to_temporal_params",
+    "UnroutableWorkflowException",
     "ResourceDeleteParam",
     "ResourceDownloadParam",
     "SyncBootResourcesWorkflow",

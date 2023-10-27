@@ -23,6 +23,7 @@ import random
 import re
 import socket
 from socket import gethostname
+import time
 from typing import List
 from urllib.parse import urlparse
 
@@ -73,11 +74,7 @@ from twisted.python.threadable import isInIOThread
 
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
-    power_cycle,
     power_driver_check,
-    power_off_node,
-    power_on_node,
-    power_query,
     power_query_all,
     set_boot_order,
 )
@@ -98,6 +95,7 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
     POWER_STATE_CHOICES,
+    POWER_WORKFLOW_ACTIONS,
     SERVICE_STATUS,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUSES_MAP_REVERSED,
@@ -171,6 +169,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
+from maasserver.workflow import execute_workflow, to_temporal_params
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -5783,11 +5782,11 @@ class Node(CleanSave, TimestampedModel):
         # Request that the node be powered on post-commit.
         if self.power_state == POWER_STATE.ON and allow_power_cycle:
             d = self._power_control_node(
-                d, power_cycle, power_info, boot_order
+                d, POWER_WORKFLOW_ACTIONS.CYCLE, power_info, boot_order
             )
         else:
             d = self._power_control_node(
-                d, power_on_node, power_info, boot_order
+                d, POWER_WORKFLOW_ACTIONS.ON, power_info, boot_order
             )
 
         # Set the deployment timeout so the node is marked failed after
@@ -5865,8 +5864,11 @@ class Node(CleanSave, TimestampedModel):
         # Request that the node be powered off post-commit.
         d = post_commit()
         return self._power_control_node(
-            d, power_off_node, power_info, boot_order
+            d, POWER_WORKFLOW_ACTIONS.OFF, power_info, boot_order
         )
+
+    def _execute_workflow(self, workflow_name, workflow_id, params=None):
+        return execute_workflow(workflow_name, workflow_id, params=params)
 
     @asynchronous
     def power_query(self):
@@ -5887,7 +5889,7 @@ class Node(CleanSave, TimestampedModel):
 
         def cb_query(power_info):
             d = self._power_control_node(
-                succeed(None), power_query, power_info
+                succeed(None), POWER_WORKFLOW_ACTIONS.QUERY, power_info
             )
             d.addCallback(lambda result: (result, power_info))
             return d
@@ -5939,7 +5941,9 @@ class Node(CleanSave, TimestampedModel):
         d.addCallback(cb_update_power)
         return d
 
-    def _power_control_node(self, defer, power_method, power_info, order=None):
+    def _power_control_node(
+        self, defer, power_method_name, power_info, order=None
+    ):
         # Check if the BMC is accessible. If not we need to do some work to
         # make sure we can determine which rack controller can power
         # control this node.
@@ -6023,10 +6027,37 @@ class Node(CleanSave, TimestampedModel):
                     power_info,
                     order,
                 )
-            if power_method:
+            if power_method_name:
                 d.addCallback(
-                    power_method, self.system_id, self.hostname, power_info
+                    lambda _: deferToDatabase(
+                        to_temporal_params,
+                        power_method_name,
+                        [self],
+                        power_info,
+                    ),
                 )
+
+                def exec_power_workflow(workflow_info):
+                    workflow_name, workflow_params = workflow_info
+                    return self._execute_workflow(
+                        workflow_name,
+                        f"{power_method_name}:{self.system_id}:{time.monotonic()}",
+                        workflow_params,
+                    )
+
+                d.addCallback(exec_power_workflow)
+
+                def _handle_workflow_result(result):
+                    if result:
+                        # workflow assumes bulk execution, return only result
+                        if type(result) is list:
+                            return result[0]
+                        return result
+                    else:
+                        return {"state": POWER_STATE.UNKNOWN}
+
+                d.addCallback(_handle_workflow_result)
+
             return d
 
         # Power control the node.
@@ -6054,7 +6085,9 @@ class Node(CleanSave, TimestampedModel):
 
         # Request that the node be power cycled post-commit.
         d = post_commit()
-        return self._power_control_node(d, power_cycle, power_info, boot_order)
+        return self._power_control_node(
+            d, POWER_WORKFLOW_ACTIONS.CYCLE, power_info, boot_order
+        )
 
     @transactional
     def start_rescue_mode(self, user):

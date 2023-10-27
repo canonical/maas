@@ -20,6 +20,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
+
 	wf "maas.io/core/src/maasagent/internal/workflow"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
@@ -88,15 +89,11 @@ func Run() int {
 
 	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
 		worker.WithAllowedWorkflows(map[string]interface{}{
-			"check_ip":              wf.CheckIP,
-			"commission":            wf.Commission,
-			"deploy":                wf.Deploy,
-			"deployed_os_workflow":  wf.DeployedOS,
-			"ephemeral_os_workflow": wf.EphemeralOS,
-			"power_on":              wf.PowerOn,
-			"power_off":             wf.PowerOff,
-			"power_query":           wf.PowerQuery,
-			"power_cycle":           wf.PowerCycle,
+			"check_ip":    wf.CheckIP,
+			"power_on":    wf.PowerOn,
+			"power_off":   wf.PowerOff,
+			"power_query": wf.PowerQuery,
+			"power_cycle": wf.PowerCycle,
 		}), worker.WithAllowedActivities(map[string]interface{}{
 			"power": wf.PowerActivity,
 		}), worker.WithControlPlaneTaskQueueName("region_controller"))

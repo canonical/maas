@@ -23,6 +23,7 @@ REGION_TASK_QUEUE = "region_controller"
 TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
+TEMPORAL_NAMESPACE = "default"
 
 
 @async_retry()
@@ -37,7 +38,8 @@ async def get_client_async():
 
 
 class Worker:
-    namespace_name = "default"
+    namespace_name = TEMPORAL_NAMESPACE
+    _worker = None
 
     def __init__(
         self,

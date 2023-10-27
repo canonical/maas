@@ -40,14 +40,9 @@ import yaml
 from maasserver import bootresources
 from maasserver import preseed as preseed_module
 from maasserver import server_address
+from maasserver import workflow as workflow_module
 from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
-from maasserver.clusterrpc.power import (
-    power_cycle,
-    power_off_node,
-    power_on_node,
-    power_query,
-)
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -2681,9 +2676,8 @@ class TestNode(MAASServerTestCase):
 
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters["power_off_mode"] = "hard"
-        self.expectThat(
-            node._power_control_node,
-            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
+        node._power_control_node.assert_called_once_with(
+            d, "power_off", expected_power_info, []
         )
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
@@ -6498,6 +6492,9 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         yield deferToDatabase(_assert_no_routable)
 
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
         client = Mock()
         client.ident = other_rack_controller.system_id
         self.patch(bmc_module, "getAllClients").return_value = [client]
@@ -6515,7 +6512,7 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         power_info = yield deferToDatabase(node.get_effective_power_info)
         yield node._power_control_node(
-            defer.succeed(None), power_query, power_info
+            defer.succeed(None), "power_query", power_info
         )
 
         def _assert_routable():
@@ -6548,6 +6545,9 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         yield deferToDatabase(_create_initial_relationship)
 
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
         self.patch(bmc_module, "getAllClients").return_value = []
         self.patch(node_module, "getAllClients").return_value = []
         client2 = Mock()
@@ -6561,7 +6561,7 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         power_info = yield deferToDatabase(node.get_effective_power_info)
         yield node._power_control_node(
-            defer.succeed(None), power_query, power_info
+            defer.succeed(None), "power_query", power_info
         )
 
         def _assert_no_routable():
@@ -9854,7 +9854,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(mock_claim_auto_ips, MockCalledOnce())
 
         # Calls _power_control_node when power_cycle.
-        mock_power_control.assert_called_once_with(ANY, power_cycle, ANY, [])
+        mock_power_control.assert_called_once_with(ANY, "power_cycle", ANY, [])
 
     def test_claims_auto_ips_when_script_needs_it(self):
         user = factory.make_User()
@@ -9949,7 +9949,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         mock_power_control.assert_called_once_with(
             ANY,
-            power_cycle if on else power_on_node,
+            "power_cycle" if on else "power_on",
             node.get_effective_power_info(),
             node._get_boot_order(True),
         )
@@ -10017,7 +10017,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
 
         # Calls _power_control_node when power_cycle.
-        mock_power_control.assert_called_once_with(ANY, power_cycle, ANY, [])
+        mock_power_control.assert_called_once_with(ANY, "power_cycle", ANY, [])
 
     def test_aborts_all_scripts_and_logs(self):
         user = factory.make_User()
@@ -10207,9 +10207,8 @@ class TestNode_Stop(MAASServerTestCase):
         node.stop(admin, stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters["power_off_mode"] = stop_mode
-        self.assertThat(
-            mock_power_control,
-            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
+        mock_power_control.assert_called_once_with(
+            d, "power_off", expected_power_info, []
         )
 
     def test_stop_allows_no_user(self):
@@ -10221,9 +10220,8 @@ class TestNode_Stop(MAASServerTestCase):
         node.stop(stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
         expected_power_info.power_parameters["power_off_mode"] = stop_mode
-        self.assertThat(
-            mock_power_control,
-            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
+        mock_power_control.assert_called_once_with(
+            d, "power_off", expected_power_info, []
         )
 
 
@@ -10240,9 +10238,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
         )
         observed_state = yield node.power_query()
         self.assertEqual(POWER_STATE.OFF, observed_state)
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_query, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
 
     @wait_for_reactor
     @defer.inlineCallbacks
@@ -10257,9 +10253,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
         mock_update_power_state = self.patch(node, "update_power_state")
         observed_state = yield node.power_query()
         self.assertEqual(POWER_STATE.ON, observed_state)
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_query, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
         self.assertThat(mock_update_power_state, MockNotCalled())
 
     @wait_for_reactor
@@ -10278,9 +10272,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
         observed_state = yield node.power_query()
 
         self.assertEqual(POWER_STATE.UNKNOWN, observed_state)
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_query, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
         self.assertThat(
             mock_update_power_state, MockCalledOnceWith(POWER_STATE.UNKNOWN)
         )
@@ -10300,9 +10292,7 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
         observed_state = yield node.power_query()
 
         self.assertEqual(POWER_STATE.ERROR, observed_state)
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_query, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
         self.assertThat(
             mock_create_node_event,
             MockCalledOnceWith(
@@ -10339,7 +10329,7 @@ class TestNode_PowerCycle(MAASServerTestCase):
         node._power_cycle()
         expected_power_info = node.get_effective_power_info()
         mock_power_control.assert_called_once_with(
-            d, power_cycle, expected_power_info, []
+            d, "power_cycle", expected_power_info, []
         )
 
     def test_calls__power_control_node_with_power_cycle_and_boot_order(self):
@@ -10350,7 +10340,7 @@ class TestNode_PowerCycle(MAASServerTestCase):
         node._power_cycle()
         expected_power_info = node.get_effective_power_info()
         mock_power_control.assert_called_once_with(
-            d, power_cycle, expected_power_info, node._get_boot_order(True)
+            d, "power_cycle", expected_power_info, node._get_boot_order(True)
         )
 
 
@@ -10434,8 +10424,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # the value we are expecting.
         self.patch(node.bmc, "is_accessible").return_value = True
 
-        power_method = Mock()
-        yield node._power_control_node(d, power_method, power_info)
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
+        yield node._power_control_node(d, "power_query", power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -10444,12 +10436,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.assertThat(
             mock_confirm_power_driver,
             MockCalledOnceWith(client, power_info.power_type, client.ident),
-        )
-        self.assertThat(
-            power_method,
-            MockCalledOnceWith(
-                client, node.system_id, node.hostname, power_info
-            ),
         )
 
     @wait_for_reactor
@@ -10494,7 +10480,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # the value we are expecting.
         self.patch(node.bmc, "is_accessible").return_value = True
 
-        power_method = Mock()
         with ExpectedException(
             PowerActionFail,
             re.escape(
@@ -10504,7 +10489,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
                 % (rack_controller_fqdn, package_list)
             ),
         ):
-            yield node._power_control_node(d, power_method, power_info)
+            yield node._power_control_node(d, "power_query", power_info)
 
     @wait_for_reactor
     @defer.inlineCallbacks
@@ -10535,8 +10520,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # the value we are expecting.
         self.patch(node.bmc, "is_accessible").return_value = True
 
-        power_method = Mock()
-        yield node._power_control_node(d, power_method, power_info)
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
+        yield node._power_control_node(d, "power_query", power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -10545,12 +10532,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.assertThat(
             mock_confirm_power_driver,
             MockCalledOnceWith(client, power_info.power_type, client.ident),
-        )
-        self.assertThat(
-            power_method,
-            MockCalledOnceWith(
-                client, node.system_id, node.hostname, power_info
-            ),
         )
 
     @wait_for_reactor
@@ -10596,8 +10577,10 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # the value we are expecting.
         self.patch(node.bmc, "is_accessible").return_value = True
 
-        power_method = Mock()
-        yield node._power_control_node(d, power_method, power_info)
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
+        yield node._power_control_node(d, "power_query", power_info)
 
         self.assertThat(
             mock_getClientFromIdentifiers,
@@ -10609,12 +10592,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.assertThat(
             mock_confirm_power_driver,
             MockCalledOnceWith(client, power_info.power_type, client.ident),
-        )
-        self.assertThat(
-            power_method,
-            MockCalledOnceWith(
-                client, node.system_id, node.hostname, power_info
-            ),
         )
 
     @wait_for_reactor
@@ -10670,6 +10647,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node_module, "getAllClients").return_value = all_clients
         self.patch(bmc_module, "getAllClients").return_value = all_clients
 
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
         # Mock the confirm power driver check, we check in the test to make
         # sure it gets called.
         mock_confirm_power_driver = self.patch(
@@ -10678,8 +10658,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         mock_confirm_power_driver.return_value = defer.succeed(None)
 
         d = defer.succeed(None)
-        power_method = Mock()
-        yield node._power_control_node(d, power_method, power_info)
+        yield node._power_control_node(d, "power_query", power_info)
 
         # Makes the correct calls.
         client = selected_client[0]
@@ -10694,12 +10673,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.assertThat(
             mock_confirm_power_driver,
             MockCalledOnceWith(client, power_info.power_type, client.ident),
-        )
-        self.assertThat(
-            power_method,
-            MockCalledOnceWith(
-                client, node.system_id, node.hostname, power_info
-            ),
         )
 
         # Test that the node and the BMC routable rack information was
@@ -10773,9 +10746,11 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         # the value we are expecting.
         self.patch(node.bmc, "is_accessible").return_value = True
 
-        mock_power_method = Mock()
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow")
+
         yield node._power_control_node(
-            d, mock_power_method, power_info, boot_order
+            d, "power_query", power_info, boot_order
         )
 
         mock_getClientFromIdentifiers.assert_called_with(
@@ -10786,9 +10761,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         )
         mock_set_boot_order.assert_called_with(
             client, node.system_id, node.hostname, power_info, boot_order
-        )
-        mock_power_method.assert_called_with(
-            client, node.system_id, node.hostname, power_info
         )
 
     @wait_for_reactor
