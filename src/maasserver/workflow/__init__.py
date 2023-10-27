@@ -21,7 +21,7 @@ from maasserver.workflow.deploy import (
 )
 from maasserver.workflow.power import PowerNParam, PowerNWorkflow, PowerParam
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import asynchronous, FOREVER
 
 MACHINE_ACTION_WORKFLOWS = (
     "power_on",
@@ -164,7 +164,7 @@ def run_in_temporal_eventloop(fn, *args, **kwargs):
     return temporal_worker._loop.create_task(asyncio.ensure_future(run))
 
 
-@asynchronous(timeout=60)
+@asynchronous(timeout=FOREVER)
 def temporal_wrapper(func):
     """
     This decorator ensures Temporal code is always executed
@@ -198,6 +198,7 @@ async def execute_workflow(
     workflow_id: str,
     params: Optional[Any] = None,
     task_queue: Optional[str] = REGION_TASK_QUEUE,
+    **kwargs,
 ) -> Optional[Any]:
     temporal_client = await get_client_async()
     result = await temporal_client.execute_workflow(
@@ -205,6 +206,7 @@ async def execute_workflow(
         params,
         id=workflow_id,
         task_queue=task_queue,
+        **kwargs,
     )
     if result:
         return result
