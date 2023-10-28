@@ -4,8 +4,10 @@
 """Temporal Worker service."""
 
 import asyncio
+from pathlib import Path
 
 from twisted.application.service import Service
+from twisted.internet import reactor
 from twisted.internet.asyncioreactor import AsyncioSelectorReactor
 from twisted.internet.defer import (
     Deferred,
@@ -13,21 +15,24 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
 )
+from twisted.internet.task import deferLater
 
 from maasserver.config import RegionConfiguration
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.service_monitor import service_monitor, SERVICE_STATE
 from maasserver.utils.threads import deferToDatabase
 from maasserver.worker_user import get_worker_user
-from maasserver.workflow.api_activities import MAASAPIActivities
 from maasserver.workflow.bootresource import (
-    BootResourcesActivities,
+    BootResourcesActivity,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
 )
 from maasserver.workflow.commission import CommissionNWorkflow
-from maasserver.workflow.configure import ConfigureWorkerPoolWorkflow
+from maasserver.workflow.configure import (
+    ConfigureWorkerPoolActivity,
+    ConfigureWorkerPoolWorkflow,
+)
 from maasserver.workflow.deploy import DeployNWorkflow
 from maasserver.workflow.power import PowerNWorkflow
 from maasserver.workflow.worker import Worker
@@ -59,18 +64,32 @@ class TemporalWorkerService(Service):
     @inlineCallbacks
     def startService(self):
         temporal_status = SERVICE_STATE.UNKNOWN
+        webapp_is_running = False
         while temporal_status != SERVICE_STATE.ON:
             status = yield service_monitor.getServiceState(
                 "temporal", now=True
             )
             temporal_status = status.active_state
+            yield deferLater(reactor, 1, lambda: None)
+
+        from maasserver.regiondservices.http import RegionHTTPService
+
+        paths = RegionHTTPService.worker_socket_paths()
+        while not webapp_is_running:
+            if all([Path(path) for path in paths]):
+                webapp_is_running = True
+            else:
+                yield deferLater(reactor, 1, lambda: None)
 
         maas_url = yield deferToDatabase(self.get_maas_url)
         token = yield deferToDatabase(self.get_token)
         maas_id = MAAS_ID.get()
 
-        maas_api_activities = MAASAPIActivities(url=maas_url, token=token)
-        boot_res_activities = BootResourcesActivities(
+        configure_activity = ConfigureWorkerPoolActivity(
+            url=maas_url, token=token
+        )
+
+        boot_res_activity = BootResourcesActivity(
             url=maas_url, token=token, region_id=maas_id
         )
 
@@ -83,10 +102,10 @@ class TemporalWorkerService(Service):
                     SyncBootResourcesWorkflow,
                 ],
                 activities=[
-                    boot_res_activities.delete_bootresourcefile,
-                    boot_res_activities.download_bootresourcefile,
-                    boot_res_activities.get_bootresourcefile_endpoints,
-                    boot_res_activities.get_bootresourcefile_sync_status,
+                    boot_res_activity.delete_bootresourcefile,
+                    boot_res_activity.download_bootresourcefile,
+                    boot_res_activity.get_bootresourcefile_endpoints,
+                    boot_res_activity.get_bootresourcefile_sync_status,
                 ],
             ),
             Worker(
@@ -100,11 +119,10 @@ class TemporalWorkerService(Service):
                     SyncBootResourcesWorkflow,
                 ],
                 activities=[
-                    boot_res_activities.delete_bootresourcefile,
-                    boot_res_activities.download_bootresourcefile,
-                    boot_res_activities.get_bootresourcefile_sync_status,
-                    maas_api_activities.get_rack_controller,
-                    maas_api_activities.switch_boot_order,
+                    boot_res_activity.delete_bootresourcefile,
+                    boot_res_activity.download_bootresourcefile,
+                    boot_res_activity.get_bootresourcefile_sync_status,
+                    configure_activity.get_rack_controller,
                 ],
             ),
         ]

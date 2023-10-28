@@ -59,6 +59,13 @@ class RegionHTTPService(Service):
             self.listener.unregister("sys_reverse_proxy", self._consume_event)
         return super().stopService()
 
+    @staticmethod
+    def worker_socket_paths() -> list[str]:
+        return [
+            RegionHTTPService.build_unix_socket_path_for_worker(worker_id)
+            for worker_id in WorkersService.get_worker_ids()
+        ]
+
     def _getConfiguration(self):
         cert = get_maas_certificate()
         port = Config.objects.get_config("tls_port")
@@ -72,12 +79,6 @@ class RegionHTTPService(Service):
             get_maas_data_path("apiserver-http.sock"),
         )
 
-        # Load balancing the unix sockets
-        worker_socket_paths = [
-            self.build_unix_socket_path_for_worker(worker_id)
-            for worker_id in WorkersService.get_worker_ids()
-        ]
-
         if configuration.tls_enabled:
             key_path, cert_path = self._create_cert_files(configuration.cert)
         else:
@@ -88,7 +89,7 @@ class RegionHTTPService(Service):
             "tls_port": configuration.port,
             "tls_key_path": key_path,
             "tls_cert_path": cert_path,
-            "worker_socket_paths": worker_socket_paths,
+            "worker_socket_paths": RegionHTTPService.worker_socket_paths(),
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
             "boot_resources_dir": get_maas_data_path("boot-resources"),

@@ -14,7 +14,7 @@ from maasserver.utils.bootresource import (
     LocalBootResourceFile,
     LocalStoreInvalidHash,
 )
-from maasserver.workflow.api_activities import MAASAPIClient
+from maasserver.workflow.api_client import MAASAPIClient
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from provisioningserver.utils.url import compose_URL
 
@@ -49,7 +49,7 @@ class BootResourceImportCancelled(Exception):
     """Operation was cancelled"""
 
 
-class BootResourcesActivities(MAASAPIClient):
+class BootResourcesActivity(MAASAPIClient):
     def __init__(self, url: str, token: str, region_id: str):
         super().__init__(url, token)
         self.region_id = region_id
@@ -64,8 +64,8 @@ class BootResourcesActivities(MAASAPIClient):
         Returns:
            requests.Response: Response object
         """
-        url = f"{self._url}/api/2.0/images-sync-progress/{rfile}/{self.region_id}/"
-        return await self.ainternal_request(
+        url = f"{self.url}/api/2.0/images-sync-progress/{rfile}/{self.region_id}/"
+        return await self.request_async(
             "PUT",
             url,
             data={
@@ -75,13 +75,13 @@ class BootResourcesActivities(MAASAPIClient):
 
     @activity.defn(name="get-bootresourcefile-sync-status")
     async def get_bootresourcefile_sync_status(self) -> dict:
-        url = f"{self._url}/api/2.0/images-sync-progress/"
-        return await self.ainternal_request("GET", url)
+        url = f"{self.url}/api/2.0/images-sync-progress/"
+        return await self.request_async("GET", url)
 
     @activity.defn(name="get-bootresourcefile-endpoints")
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
-        url = f"{self._url}/api/2.0/regioncontrollers/"
-        regions = await self.ainternal_request("GET", url)
+        url = f"{self.url}/api/2.0/regioncontrollers/"
+        regions = await self.request_async("GET", url)
         return {
             r["system_id"]: [
                 compose_URL("http://:5240/MAAS/boot-resources/", src)

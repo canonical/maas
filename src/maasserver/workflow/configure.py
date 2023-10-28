@@ -1,11 +1,26 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
-from temporalio import workflow
+from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from temporalio.workflow import ParentClosePolicy
 
-from maasserver.workflow.api_activities import GetRackControllerInput
+from maasserver.workflow.api_client import MAASAPIClient
+
+
+@dataclass
+class GetRackControllerInput:
+    system_id: str
+
+
+class ConfigureWorkerPoolActivity(MAASAPIClient):
+    def __init__(self, url: str, token: str):
+        super().__init__(url, token)
+
+    @activity.defn(name="get-rack-controller")
+    async def get_rack_controller(self, input: GetRackControllerInput):
+        url = f"{self.url}/api/2.0/rackcontrollers/{input.system_id}/"
+        return await self.request_async("GET", url)
 
 
 @dataclass
