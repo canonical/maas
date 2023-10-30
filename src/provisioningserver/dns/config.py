@@ -80,7 +80,13 @@ class DynamicDNSUpdate:
             name_split = ip.reverse_dns.split(".")
             suffix = [zone]
             if not zone:
-                suffix = [f"0-{subnet.prefixlen}"] + name_split[1:]
+                if ip.version == 4:
+                    first_octet = str(subnet.network).split(".")[-1]
+                else:
+                    first_octet = str(subnet.network).split(":")[-1]
+
+                suffix = [f"{first_octet}-{subnet.prefixlen}"] + name_split[1:]
+                zone = ".".join(suffix)
 
             name_split = name_split[:1] + suffix
             name = ".".join(name_split)

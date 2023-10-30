@@ -783,7 +783,7 @@ class TestDynamicDNSUpdate(MAASTestCase):
         expected_rev_update = DynamicDNSUpdate(
             operation="INSERT",
             zone=domain,
-            name="1.0-126.0.0.8.4.4.8.a.6.7.0.a.d.a.c.7.0.b.7.5.a.e.5.a.c.7.c.4.5.5.c.f.ip6.arpa.",
+            name="1.8000-126.0.0.8.4.4.8.a.6.7.0.a.d.a.c.7.0.b.7.5.a.e.5.a.c.7.c.4.5.5.c.f.ip6.arpa.",
             rectype="PTR",
             ttl=fwd_update.ttl,
             subnet=str(subnet),
@@ -795,3 +795,30 @@ class TestDynamicDNSUpdate(MAASTestCase):
         self.assertEqual(expected_rev_update.name, rev_update.name)
         self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
         self.assertEqual(expected_rev_update.answer, rev_update.answer)
+
+    def test_as_reverse_record_update_no_zone_set(self):
+        domain = factory.make_name()
+        subnet = IPNetwork("10.1.1.128/25")
+        fwd_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone=domain,
+            name=f"{factory.make_name()}.{domain}",
+            rectype="A",
+            answer=str("10.1.1.161"),
+        )
+        expected_rev_update = DynamicDNSUpdate(
+            operation="INSERT",
+            zone="128-25.1.1.10.in-addr.arpa.",
+            name="161.128-25.1.1.10.in-addr.arpa.",
+            rectype="PTR",
+            ttl=fwd_update.ttl,
+            subnet=str(subnet),
+            answer=fwd_update.name,
+        )
+        rev_update = DynamicDNSUpdate.as_reverse_record_update(
+            fwd_update, subnet
+        )
+        self.assertEqual(expected_rev_update.name, rev_update.name)
+        self.assertEqual(expected_rev_update.rectype, rev_update.rectype)
+        self.assertEqual(expected_rev_update.answer, rev_update.answer)
+        self.assertEqual(expected_rev_update.zone, rev_update.zone)
