@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -60,6 +61,16 @@ func shouldIgnorePowerOption(key string) bool {
 	return ignore
 }
 
+// powerCLIExecutableName returns correct MAAS Power CLI executable name
+// depending on the installation type (snap or deb package)
+func powerCLIExecutableName() string {
+	if os.Getenv("SNAP") == "" {
+		return "maas.power"
+	}
+
+	return "maas-power"
+}
+
 func fmtPowerOpts(driver string, opts map[string]interface{}) []string {
 	var res []string
 
@@ -103,7 +114,8 @@ type PowerResult struct {
 func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult, error) {
 	log := activity.GetLogger(ctx)
 
-	maasPowerCLI, err := exec.LookPath("maas.power")
+	maasPowerCLI, err := exec.LookPath(powerCLIExecutableName())
+
 	if err != nil {
 		log.Error("error looking up MAAS power CLI executable", "error", err)
 		return nil, err
