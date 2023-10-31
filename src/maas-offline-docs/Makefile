@@ -1,11 +1,10 @@
-.DEFAULT_GOAL := src
+BUILD_TYPE ?= snap
+DOCSDIR := $(DESTDIR)/usr/share/maas/web/static/docs/
 
-src:
-	git submodule update --init --remote
+.DEFAULT_GOAL := install
 
-install: BUILD_TYPE ?= snap
-install: DOCSDIR = $(DESTDIR)/usr/share/maas/web/static/docs/
-install: src
+install:
+	git submodule update --init --remote src
 	install -d $(DOCSDIR)
 	cp -a src/production-html-$(BUILD_TYPE)/* $(DOCSDIR)
 .PHONY: install
