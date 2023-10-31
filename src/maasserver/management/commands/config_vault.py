@@ -123,7 +123,7 @@ class Command(BaseCommand):
         notify("sys_vault_migration")
         print(" - Signal sent. Waiting for 5 seconds...")
         time.sleep(5)
-        attempts_allowed = 5
+        attempts_allowed = 10
         for attempt in range(1, attempts_allowed + 1):
             print(
                 f"\nWait for active regions to restart (attempt {attempt}/{attempts_allowed})"
