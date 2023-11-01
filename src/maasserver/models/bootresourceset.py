@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resource Set."""
-
-
 from django.db.models import CASCADE, CharField, ForeignKey, Sum
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE

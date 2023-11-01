@@ -18,6 +18,7 @@ from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
     boot_resource_set_to_dict,
     boot_resource_to_dict,
+    filestore_add_file,
 )
 from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
@@ -32,6 +33,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
+from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from provisioningserver.utils.env import MAAS_ID
@@ -131,6 +133,21 @@ class TestHelpers(APITestCase.ForUser):
         resource = factory.make_BootResource(base_image=base_image)
         dict_representation = boot_resource_to_dict(resource)
         self.assertIn("base_image", dict_representation)
+
+    def test_filestore_add_file(self):
+        exec_mock = self.patch(boot_resources, "execute_workflow")
+        bootres = factory.make_BootResource()
+        bootres_set = factory.make_BootResourceSet(bootres)
+        bootres_file = factory.make_BootResourceFile(bootres_set)
+        filestore_add_file(bootres_file)
+        exec_mock.assert_called()
+        workflow, wid, params = exec_mock.call_args.args
+        self.assertEqual(workflow, "sync-bootresources")
+        self.assertEqual(wid, f"sync_boot_resources:upload:{bootres_file.id}")
+        self.assertEqual(params.resources[0].rfile_id, bootres_file.id)
+        self.assertEqual(
+            exec_mock.call_args.kwargs["task_queue"], REGION_TASK_QUEUE
+        )
 
 
 def prevent_scheduling_of_image_imports(test):

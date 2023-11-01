@@ -11,8 +11,8 @@ __all__ = [
     "BondInterface",
     "BootResource",
     "BootResourceFile",
+    "BootResourceFileSync",
     "BootResourceSet",
-    "BootResourceSetSync",
     "BootSource",
     "BootSourceCache",
     "BootSourceSelection",
@@ -118,7 +118,10 @@ from maasserver.models.bmc import (
     Pod,
 )
 from maasserver.models.bootresource import BootResource
-from maasserver.models.bootresourcefile import BootResourceFile
+from maasserver.models.bootresourcefile import (
+    BootResourceFile,
+    BootResourceFileSync,
+)
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourcecache import BootSourceCache

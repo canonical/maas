@@ -3,14 +3,21 @@
 
 """Boot Resource File."""
 
+from __future__ import annotations
+
+import uuid
 
 from django.db.models import (
     BigIntegerField,
     CASCADE,
     CharField,
+    Exists,
     ForeignKey,
+    Index,
     JSONField,
     Manager,
+    OuterRef,
+    QuerySet,
     Sum,
 )
 
@@ -18,16 +25,59 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
 )
+from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.largefile import LargeFile
 from maasserver.models.node import RegionController
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.bootresource import LocalBootResourceFile
+from maasserver.workflow import execute_workflow
+from maasserver.workflow.bootresource import ResourceDeleteParam
 
 
 class BootResourceFileManager(Manager):
-    pass
+    def filestore_remove_file(self, rfile: BootResourceFile):
+        qs = self.filter(sha256=rfile.sha256).exclude(id=rfile.id)
+        if not qs.exists():
+            execute_workflow(
+                "delete-bootresource",
+                f"bootresource_del_{rfile.id}",
+                ResourceDeleteParam(files=[rfile.sha256]),
+            )
+        rfile.bootresourcefilesync_set.all().delete()
+
+    def filestore_remove_files(self, rfile_qs: QuerySet):
+        other_res = self.filter(sha256=OuterRef("sha256")).exclude(
+            id=OuterRef("id")
+        )
+        rfiles = rfile_qs.annotate(shared=Exists(other_res)).values(
+            "sha256", "shared"
+        )
+        to_remove = [file["sha256"] for file in rfiles if not file["shared"]]
+        if to_remove:
+            execute_workflow(
+                "delete-bootresource",
+                str(uuid.uuid4()),
+                ResourceDeleteParam(files=to_remove),
+            )
+        BootResourceFileSync.objects.filter(file__in=rfile_qs).delete()
+
+    def filestore_remove_set(self, rset: BootResourceSet):
+        qs = self.filter(resource_set=rset)
+        self.filestore_remove_files(qs)
+
+    def filestore_remove_sets(self, qsset: QuerySet):
+        qs = self.filter(resource_set__in=qsset)
+        self.filestore_remove_files(qs)
+
+    def filestore_remove_resource(self, resource: BootResource):
+        qs = self.filter(resource_set__resource=resource)
+        self.filestore_remove_files(qs)
+
+    def filestore_remove_resources(self, resources: QuerySet):
+        qs = self.filter(resource_set__resource__in=resources)
+        self.filestore_remove_files(qs)
 
 
 class BootResourceFile(CleanSave, TimestampedModel):
@@ -48,6 +98,9 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     class Meta:
         unique_together = (("resource_set", "filename"),)
+        indexes = [
+            Index(fields=["sha256"]),
+        ]
 
     objects = BootResourceFileManager()
 

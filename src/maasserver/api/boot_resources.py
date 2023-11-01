@@ -9,6 +9,7 @@ __all__ = [
     "BootResourceFileUploadHandler",
 ]
 
+from datetime import timedelta
 import http.client
 from io import BytesIO
 
@@ -20,6 +21,7 @@ from django.urls import reverse
 from piston3.emitters import JSONEmitter
 from piston3.handler import typemapper
 from piston3.utils import rc
+from temporalio.common import WorkflowIDReusePolicy
 
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_optional_param
@@ -44,6 +46,13 @@ from maasserver.utils.bootresource import (
     LocalStoreWriteBeyondEOF,
 )
 from maasserver.utils.orm import post_commit_do
+from maasserver.workflow import execute_workflow
+from maasserver.workflow.bootresource import (
+    DOWNLOAD_TIMEOUT,
+    ResourceDownloadParam,
+    SyncRequestParam,
+)
+from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 
 TYPE_MAPPING = {
     "synced": BOOT_RESOURCE_TYPE.SYNCED,
@@ -123,6 +132,28 @@ def json_object(obj, request):
     emitter = JSONEmitter(obj, typemapper, None)
     stream = emitter.render(request)
     return stream
+
+
+def filestore_add_file(rfile: BootResourceFile):
+    params = SyncRequestParam(
+        resources=[
+            ResourceDownloadParam(
+                rfile_id=rfile.id,
+                source_list=[],
+                sha256=rfile.sha256,
+                total_size=rfile.size,
+            )
+        ]
+    )
+    return execute_workflow(
+        "sync-bootresources",
+        f"sync_boot_resources:upload:{rfile.id}",
+        params,
+        task_queue=REGION_TASK_QUEUE,
+        execution_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+        run_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+        id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+    )
 
 
 class BootResourcesHandler(OperationsHandler):

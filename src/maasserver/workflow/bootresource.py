@@ -42,7 +42,7 @@ class SyncRequestParam:
 
 @dataclass
 class ResourceDeleteParam:
-    sha256: str
+    files: list[str]
 
 
 class BootResourceImportCancelled(Exception):
@@ -163,15 +163,18 @@ class BootResourcesActivity(MAASAPIClient):
     async def delete_bootresourcefile(
         self, param: ResourceDeleteParam
     ) -> bool:
-        """Delete this file from disk"""
-        lfile = LocalBootResourceFile(param.sha256, 0)
-        try:
-            while not lfile.acquire_lock(try_lock=True):
-                activity.heartbeat()
-                await asyncio.sleep(5)
-            lfile.unlink()
-        finally:
-            lfile.release_lock()
+        """Delete files from disk"""
+        for file in param.files:
+            activity.logger.debug(f"attempt to delete {file}")
+            lfile = LocalBootResourceFile(file, 0)
+            try:
+                while not lfile.acquire_lock(try_lock=True):
+                    activity.heartbeat()
+                    await asyncio.sleep(5)
+                lfile.unlink()
+            finally:
+                lfile.release_lock()
+            activity.logger.info(f"file {file} deleted")
         return True
 
 
@@ -266,13 +269,21 @@ class SyncBootResourcesWorkflow:
 
 @workflow.defn(name="delete-bootresource", sandboxed=False)
 class DeleteBootResourceWorkflow:
-    """Delete a BootResourceFile from this controller"""
+    """Delete a BootResourceFile from this cluster"""
 
     @workflow.run
     async def run(self, input: ResourceDeleteParam) -> None:
-        return await workflow.execute_activity(
-            "delete-bootresourcefile",
-            input,
-            start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
-            schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+        # remove file from cluster
+        endpoints = await workflow.execute_activity(
+            "get-bootresourcefile-endpoints",
+            start_to_close_timeout=timedelta(seconds=30),
         )
+        regions = frozenset(endpoints.keys())
+        for r in regions:
+            await workflow.execute_activity(
+                "delete-bootresourcefile",
+                input,
+                task_queue=f"{r}:region",
+                start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+                schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+            )

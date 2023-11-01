@@ -9,6 +9,13 @@ from twisted.internet.defer import Deferred, succeed
 
 from maasserver.eventloop import services
 from maasserver.regiondservices.temporal_worker import TemporalWorkerService
+from maasserver.workflow.bootresource import (
+    DeleteBootResourceWorkflow,
+    DownloadBootResourceWorkflow,
+    ResourceDeleteParam,
+    ResourceDownloadParam,
+    SyncBootResourcesWorkflow,
+)
 from maasserver.workflow.commission import (
     CommissionNParam,
     CommissionNWorkflow,
@@ -213,22 +220,26 @@ async def execute_workflow(
 
 
 __all__ = [
+    "cancel_workflow",
     "CommissionNParam",
     "CommissionNWorkflow",
     "CommissionParam",
     "DeleteBootResourceWorkflow",
     "DeployNParam",
     "DeployNWorkflow",
+    "DownloadBootResourceWorkflow",
+    "execute_workflow",
     "get_temporal_queue_for_machine",
     "MACHINE_ACTION_WORKFLOWS",
-    "PowerParam",
     "PowerNParam",
     "PowerNWorkflow",
+    "PowerParam",
+    "REGION_TASK_QUEUE",
+    "ResourceDeleteParam",
+    "ResourceDownloadParam",
     "run_in_temporal_eventloop",
+    "SyncBootResourcesWorkflow",
     "temporal_wrapper",
     "to_temporal_params",
     "UnroutableWorkflowException",
-    "ResourceDeleteParam",
-    "ResourceDownloadParam",
-    "SyncBootResourcesWorkflow",
 ]
