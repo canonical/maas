@@ -55,16 +55,27 @@ class TestPowerDriverCommand(MAASTestCase):
                 "name": "version",
                 "label": "Driver Version",
                 "required": True,
+                "field_type": "choice",
+                "choices": [("1", "one"), ("2", "two")],
+            },
+            {
+                "name": "multi_flag",
+                "label": "Multiple flags",
+                "required": True,
+                "field_type": "multiple_choice",
                 "choices": [("1", "one"), ("2", "two")],
             },
         ]
 
         power_driver_command._create_subparser(driver_settings, parser)
 
-        args = parser.parse_args(["--password", "pass", "--version", "1"])
+        args = parser.parse_args(
+            ["--password", "pass", "--version", "1", "--multi-flag", "1"]
+        )
 
         self.assertEqual(args.password, "pass")
         self.assertEqual(args.version, "1")
+        self.assertEqual(args.multi_flag, ["1"])
 
     def test_parse_args_virsh(self):
         args = power_driver_command._parse_args(
@@ -96,6 +107,10 @@ class TestPowerDriverCommand(MAASTestCase):
                 "power_address",
                 "--power-driver",
                 "LAN_2_0",
+                "--workaround-flags",
+                "opensesspriv",
+                "--workaround-flags",
+                "authcap",
             ]
         )
 
@@ -103,6 +118,7 @@ class TestPowerDriverCommand(MAASTestCase):
         self.assertEqual(args.driver, "ipmi")
         self.assertEqual(args.power_address, "power_address")
         self.assertEqual(args.power_driver, "LAN_2_0")
+        self.assertEqual(args.workaround_flags, ["opensesspriv", "authcap"])
 
     @inlineCallbacks
     def test_run(self):

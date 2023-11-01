@@ -20,8 +20,11 @@ def _create_subparser(driver_settings, parser):
     for setting in driver_settings:
         arg_name = setting["name"].replace("_", "-")
 
+        action = "store"
         if setting["choices"]:
             choices = [c[0] for c in setting["choices"]]
+            if setting["field_type"] == "multiple_choice":
+                action = "append"
         else:
             choices = None
 
@@ -31,6 +34,7 @@ def _create_subparser(driver_settings, parser):
             help=setting["label"],
             required=setting["required"],
             choices=choices,
+            action=action,
         )
 
 
