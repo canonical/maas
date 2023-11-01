@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from temporalio import workflow
+from temporalio.common import RetryPolicy
 
 
 @dataclass
@@ -24,4 +25,5 @@ class DeployNWorkflow:
                 param,
                 id=f"deploy-{param.system_id}",
                 task_queue=param.queue,
+                retry_policy=RetryPolicy(maximum_attempts=5),
             )

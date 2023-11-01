@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from temporalio import workflow
+from temporalio.common import RetryPolicy
 
 POWER_ACTION_WORKFLOWS = (
     "power_on",
@@ -54,6 +55,7 @@ class PowerNWorkflow:
                     param,
                     id=f"power:{workflow_name}:{param.system_id}:{timestamp}",
                     task_queue=param.queue,
+                    retry_policy=RetryPolicy(maximum_attempts=5),
                 )
                 if result:
                     results.append(result)

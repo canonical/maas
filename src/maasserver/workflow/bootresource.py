@@ -192,9 +192,7 @@ class DownloadBootResourceWorkflow:
             heartbeat_timeout=timedelta(seconds=HEARTBEAT_TIMEOUT),
             cancellation_type=ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
             retry_policy=RetryPolicy(
-                backoff_coefficient=2.0,
                 maximum_attempts=5,
-                initial_interval=timedelta(seconds=1),
                 maximum_interval=timedelta(seconds=60),
             ),
         )
@@ -216,6 +214,7 @@ class SyncBootResourcesWorkflow:
                 task_timeout=timedelta(seconds=LOCK_TIMEOUT),
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 task_queue=f"{region}:region" if region else REGION_TASK_QUEUE,
+                retry_policy=RetryPolicy(maximum_attempts=5),
             )
 
         # fetch resources from upstream
@@ -232,12 +231,14 @@ class SyncBootResourcesWorkflow:
         endpoints = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
             start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         regions = frozenset(endpoints.keys())
 
         sync_status = await workflow.execute_activity(
             "get-bootresourcefile-sync-status",
             start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         if len(regions) < 2:
             workflow.logger.info("Sync complete")
@@ -277,6 +278,7 @@ class DeleteBootResourceWorkflow:
         endpoints = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
             start_to_close_timeout=timedelta(seconds=30),
+            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         regions = frozenset(endpoints.keys())
         for r in regions:
@@ -286,4 +288,5 @@ class DeleteBootResourceWorkflow:
                 task_queue=f"{r}:region",
                 start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
                 schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+                retry_policy=RetryPolicy(maximum_attempts=5),
             )

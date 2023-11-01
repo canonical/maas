@@ -5,6 +5,7 @@ import asyncio
 from functools import wraps
 from typing import Any, Optional
 
+from temporalio.common import RetryPolicy
 from temporalio.service import RPCError
 from twisted.internet.defer import Deferred, succeed
 
@@ -209,6 +210,8 @@ async def execute_workflow(
     **kwargs,
 ) -> Optional[Any]:
     temporal_client = await get_client_async()
+    if "retry_policy" not in kwargs:
+        kwargs["retry_policy"] = RetryPolicy(maximum_attempts=5)
     result = await temporal_client.execute_workflow(
         workflow_name,
         params,
