@@ -26,6 +26,7 @@ class Configuration:
     system_id: str
     secret: str
     controllers: list[str]
+    log_level: str
 
 
 @synchronous

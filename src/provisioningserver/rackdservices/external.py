@@ -405,12 +405,14 @@ class RackAgent(RackOnlyExternalService):
         controllers = []
         with ClusterConfiguration.open() as config:
             controllers = [urlparse(url).hostname for url in config.maas_url]
+            debug_enabled = config.debug
 
         config = agent_config.Configuration(
             maas_uuid=MAAS_UUID.get(),
             system_id=MAAS_ID.get(),
             secret=MAAS_SHARED_SECRET.get(),
             controllers=controllers,
+            log_level="debug" if debug_enabled else "info",
         )
 
         agent_config.write_config(config)

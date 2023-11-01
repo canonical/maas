@@ -36,21 +36,12 @@ type config struct {
 	MAASUUID    string   `yaml:"maas_uuid"`
 	SystemID    string   `yaml:"system_id"`
 	Secret      string   `yaml:"secret"`
+	LogLevel    string   `yaml:"log_level"`
 	Controllers []string `yaml:"controllers,flow"`
 }
 
 func Run() int {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-
-	if envLogLevel, ok := os.LookupEnv("LOG_LEVEL"); ok {
-		if logLevel, err := zerolog.ParseLevel(envLogLevel); err != nil {
-			log.Warn().Str("LOG_LEVEL", envLogLevel).Msg("Unknown log level, defaulting to INFO")
-		} else {
-			zerolog.SetGlobalLevel(logLevel)
-		}
-	}
 
 	cfg, err := getConfig()
 	if err != nil {
@@ -64,6 +55,17 @@ func Run() int {
 		log.Error().Err(err).Msg("Encryption codec setup failed")
 		return 1
 	}
+
+	var logLevel zerolog.Level
+
+	logLevel, err = zerolog.ParseLevel(cfg.LogLevel)
+	if err != nil || logLevel == zerolog.NoLevel {
+		logLevel = zerolog.InfoLevel
+	}
+
+	zerolog.SetGlobalLevel(logLevel)
+
+	log.Info().Msg(fmt.Sprintf("Logger is configured with log level %q", logLevel.String()))
 
 	clientBackoff := backoff.NewExponentialBackOff()
 	clientBackoff.MaxElapsedTime = 60 * time.Second
