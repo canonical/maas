@@ -5,6 +5,7 @@ import asyncio
 from functools import wraps
 from typing import Any, Optional
 
+from temporalio.service import RPCError
 from twisted.internet.defer import Deferred, succeed
 
 from maasserver.eventloop import services
@@ -193,8 +194,8 @@ def temporal_wrapper(func):
                 task = run_in_temporal_eventloop(func, *args, **kwargs)
                 return Deferred.fromFuture(task)
             except KeyError:  # in worker proc
-                asyncio.run(func(*args, **kwargs))
-                return succeed()
+                ret = asyncio.run(func(*args, **kwargs))
+                return succeed(ret)
 
     return wrapper
 
@@ -215,8 +216,18 @@ async def execute_workflow(
         task_queue=task_queue,
         **kwargs,
     )
-    if result:
-        return result
+    return result
+
+
+@temporal_wrapper
+async def cancel_workflow(workflow_id: str) -> bool:
+    temporal_client = await get_client_async()
+    hdl = temporal_client.get_workflow_handle(workflow_id=workflow_id)
+    try:
+        await hdl.cancel()
+        return True
+    except RPCError:
+        return False
 
 
 __all__ = [
