@@ -11941,6 +11941,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 367	maasserver	0311_image_sync_tracking	2023-09-28 03:30:52.503645+00
 368	maasserver	0312_release_script_type	2023-10-24 03:52:07.798195+00
 369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
+370	maasserver	0314_bootresourcefile_sha256_index	2023-11-02 03:30:47.980664+00
 \.
 
 
@@ -13065,7 +13066,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 369, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 370, true);
 
 
 --
@@ -15602,6 +15603,13 @@ CREATE INDEX maasserver__node_id_e4a8dd_idx ON public.maasserver_event USING btr
 --
 
 CREATE INDEX maasserver__power_p_511df2_hash ON public.maasserver_bmc USING hash (power_parameters);
+
+
+--
+-- Name: maasserver__sha256_f07a8e_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver__sha256_f07a8e_idx ON public.maasserver_bootresourcefile USING btree (sha256);
 
 
 --
