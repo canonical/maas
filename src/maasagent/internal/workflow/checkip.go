@@ -23,7 +23,7 @@ type CheckIPResult struct {
 // CheckIP is a Temporal workflow for checking available IP addresses
 func CheckIP(ctx workflow.Context, param CheckIPParam) (CheckIPResult, error) {
 	ao := workflow.LocalActivityOptions{
-		StartToCloseTimeout: 10 * time.Second,
+		ScheduleToCloseTimeout: 5 * time.Second,
 	}
 	ctx = workflow.WithLocalActivityOptions(ctx, ao)
 
