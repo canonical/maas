@@ -16,7 +16,6 @@ import os.path
 from pathlib import Path
 import re
 import sys
-from typing import Optional
 
 from netaddr import AddrFormatError, IPAddress
 
@@ -44,10 +43,11 @@ class DynamicDNSUpdate:
     name: str
     zone: str
     rectype: str
-    rev_zone: Optional[str] = None
-    ttl: Optional[int] = None
-    subnet: Optional[str] = None  # for reverse updates
-    answer: Optional[str] = None
+    rev_zone: str | None = None
+    ttl: int | None = None
+    subnet: str | None = None  # for reverse updates
+    answer: str | None = None
+    ip: str | None = None
 
     @classmethod
     def create_from_trigger(cls, **kwargs):
@@ -99,6 +99,7 @@ class DynamicDNSUpdate:
             ttl=fwd_update.ttl,
             answer=fwd_update.name,
             rectype="PTR",
+            ip=fwd_update.answer,
         )
 
     @cached_property

@@ -965,6 +965,7 @@ class TestProcessDNSUpdateNotify(MAASServerTestCase):
                     subnet=subnet.cidr,
                     answer=f"{resource.name}.{domain.name}",
                     rectype="PTR",
+                    ip=str(ip),
                 )
             ],
             [

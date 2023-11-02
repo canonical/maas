@@ -14,6 +14,7 @@ from netaddr.core import AddrFormatError
 from provisioningserver.dns.actions import freeze_thaw_zone, NSUpdateCommand
 from provisioningserver.dns.config import (
     compose_zone_file_config_path,
+    DynamicDNSUpdate,
     render_dns_template,
     report_missing_config_dir,
 )
@@ -109,6 +110,13 @@ def networks_overlap(net1, net2):
     return net1 in net2 or net2 in net1
 
 
+def record_for_network(update: DynamicDNSUpdate, network: IPNetwork) -> bool:
+    if update.rectype != "PTR":
+        return True
+
+    return IPAddress(update.ip) in network
+
+
 class DomainInfo:
     """Information about a DNS zone"""
 
@@ -184,10 +192,12 @@ class DomainConfigBase:
                 if update.zone == zone_info.zone_name
                 or (
                     networks_overlap(IPNetwork(update.subnet), network)
+                    and record_for_network(update, network)
                     if network
                     else networks_overlap(
                         IPNetwork(update.subnet), zone_info.subnetwork
                     )
+                    and record_for_network(update, zone_info.subnetwork)
                 )
             ],
             serial=self.serial,
@@ -639,7 +649,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
                 )
             )
             if not self.force_config_write and self.zone_file_exists(zi):
-                self.dynamic_update(zi, network=self._network)
+                self.dynamic_update(zi, network=zi.subnetwork)
                 PROMETHEUS_METRICS.update(
                     "maas_dns_dynamic_update_count",
                     "inc",
