@@ -10230,15 +10230,28 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_updates_power_state(self):
         node = yield deferToDatabase(
-            transactional(factory.make_Node), power_state=POWER_STATE.ON
+            transactional(factory.make_Node),
+            power_state=POWER_STATE.ON,
+            status=NODE_STATUS.READY,
         )
         mock_power_control = self.patch(node, "_power_control_node")
         mock_power_control.return_value = defer.succeed(
             {"state": POWER_STATE.OFF}
         )
+        # Simulate a deploy workflow changing the status to DEPLOYING
+        yield deferToDatabase(
+            transactional(
+                lambda: Node.objects.filter(id=node.id).update(
+                    status=NODE_STATUS.DEPLOYING
+                )
+            )
+        )
         observed_state = yield node.power_query()
+        yield deferToDatabase(transactional(node.refresh_from_db))
         self.assertEqual(POWER_STATE.OFF, observed_state)
+        self.assertEqual(POWER_STATE.OFF, node.power_state)
         mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
     @wait_for_reactor
     @defer.inlineCallbacks
@@ -10263,19 +10276,27 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
             transactional(factory.make_Node),
             power_type="manual",
             power_state=POWER_STATE.ON,
+            status=NODE_STATUS.READY,
         )
         mock_power_control = self.patch(node, "_power_control_node")
         mock_power_control.return_value = defer.succeed(
             {"state": POWER_STATE.OFF}
         )
-        mock_update_power_state = self.patch(node, "update_power_state")
+        # Simulate a deploy workflow changing the status to DEPLOYING
+        yield deferToDatabase(
+            transactional(
+                lambda: Node.objects.filter(id=node.id).update(
+                    status=NODE_STATUS.DEPLOYING
+                )
+            )
+        )
         observed_state = yield node.power_query()
 
+        yield deferToDatabase(transactional(node.refresh_from_db))
         self.assertEqual(POWER_STATE.UNKNOWN, observed_state)
         mock_power_control.assert_called_once_with(ANY, "power_query", ANY)
-        self.assertThat(
-            mock_update_power_state, MockCalledOnceWith(POWER_STATE.UNKNOWN)
-        )
+        self.assertEqual(POWER_STATE.UNKNOWN, node.power_state)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
     @wait_for_reactor
     @defer.inlineCallbacks

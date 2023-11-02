@@ -3998,7 +3998,6 @@ class Node(CleanSave, TimestampedModel):
         self.error_description = ""
         self.save()
 
-    @transactional
     def update_power_state(self, power_state):
         """Update a node's power state"""
         # Avoid circular imports.
@@ -5901,14 +5900,15 @@ class Node(CleanSave, TimestampedModel):
             power_error = (
                 response["error_msg"] if "error_msg" in response else None
             )
+            node = Node.objects.get(id=self.id)
             if power_error is None:
                 log.debug(
-                    f"Power state queried for node {self.system_id}: "
+                    f"Power state queried for node {node.system_id}: "
                     f"{power_state}"
                 )
             else:
                 Event.objects.create_node_event(
-                    self,
+                    node,
                     EVENT_TYPES.NODE_POWER_QUERY_FAILED,
                     event_description=power_error,
                 )
@@ -5921,7 +5921,8 @@ class Node(CleanSave, TimestampedModel):
 
                 @transactional
                 def cb_update_queryable_node():
-                    self.update_power_state(power_state)
+                    node = Node.objects.get(id=self.id)
+                    node.update_power_state(power_state)
                     return power_state
 
                 return deferToDatabase(cb_update_queryable_node)
@@ -5929,7 +5930,8 @@ class Node(CleanSave, TimestampedModel):
 
                 @transactional
                 def cb_update_non_queryable_node():
-                    self.update_power_state(POWER_STATE.UNKNOWN)
+                    node = Node.objects.get(id=self.id)
+                    node.update_power_state(POWER_STATE.UNKNOWN)
                     return POWER_STATE.UNKNOWN
 
                 return deferToDatabase(cb_update_non_queryable_node)
@@ -5948,12 +5950,13 @@ class Node(CleanSave, TimestampedModel):
         # make sure we can determine which rack controller can power
         # control this node.
         def is_bmc_accessible():
-            if self.bmc is None:
+            node = Node.objects.get(id=self.id)
+            if node.bmc is None:
                 raise PowerProblem(
                     "No BMC is defined.  Cannot power control node."
                 )
             else:
-                return self.bmc.is_accessible()
+                return node.bmc.is_accessible()
 
         defer.addCallback(
             lambda _: deferToDatabase(transactional(is_bmc_accessible))
@@ -5967,16 +5970,17 @@ class Node(CleanSave, TimestampedModel):
 
                 @transactional
                 def cb_update_routable(result):
+                    node = Node.objects.get(id=self.id)
                     power_state, routable_racks, non_routable_racks = result
                     if (
                         power_info.can_be_queried
-                        and self.power_state != power_state
+                        and node.power_state != power_state
                     ):
                         # MAAS will query power types that even say they don't
                         # support query. But we only update the power_state on
                         # those we are saying MAAS reports on.
-                        self.update_power_state(power_state)
-                    self.bmc.update_routable_racks(
+                        node.update_power_state(power_state)
+                    node.bmc.update_routable_racks(
                         routable_racks, non_routable_racks
                     )
 
