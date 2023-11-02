@@ -1136,12 +1136,14 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             ],
         )
 
-    def test_dynamic_updates_included_when_large_cidr_has_been_split(self):
+    def test_dynamic_updates_are_only_sent_for_specific_domain_info(self):
         patch_zone_file_config_path(self)
         domain = factory.make_string()
-        network = IPNetwork("10.0.0.0/21")
-        ip1 = factory.pick_ip_in_network(network)
-        ip2 = factory.pick_ip_in_network(network)
+        network = IPNetwork("10.246.64.0/21")
+        subnetwork1 = IPNetwork("10.246.64.0/24")
+        subnetwork2 = IPNetwork("10.246.65.0/24")
+        ip1 = factory.pick_ip_in_network(subnetwork1)
+        ip2 = factory.pick_ip_in_network(subnetwork2)
         hostname1 = f"{factory.make_string()}.{domain}"
         hostname2 = f"{factory.make_string()}.{domain}"
         fwd_updates = [
@@ -1169,28 +1171,60 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         zone = DNSReverseZoneConfig(
             domain,
             serial=random.randint(1, 100),
-            network=IPNetwork("10.0.0.0/24"),
+            network=network,
             dynamic_updates=rev_updates,
         )
+
         run_command = self.patch(actions, "run_command")
         zone.write_config()
         zone.write_config()
-        expected_stdin = "\n".join(
+
+        expected_stdin1 = "\n".join(
             [
                 "server localhost",
-                "zone 0.0.10.in-addr.arpa",
+                "zone 64.246.10.in-addr.arpa",
                 f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
-                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
-                f"update add 0.0.10.in-addr.arpa {zone.default_ttl} SOA 0.0.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                f"update add 64.246.10.in-addr.arpa {zone.default_ttl} SOA 64.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
                 "send\n",
             ]
         )
-        run_command.assert_called_once_with(
+
+        expected_stdin2 = "\n".join(
+            [
+                "server localhost",
+                "zone 65.246.10.in-addr.arpa",
+                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
+                f"update add 65.246.10.in-addr.arpa {zone.default_ttl} SOA 65.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                "send\n",
+            ]
+        )
+
+        expected_stdin3 = "\n".join(
+            [
+                "server localhost",
+                "zone 71.246.10.in-addr.arpa",
+                f"update add 71.246.10.in-addr.arpa {zone.default_ttl} SOA 71.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
+                "send\n",
+            ]
+        )
+
+        run_command.assert_any_call(
             "nsupdate",
             "-k",
             get_nsupdate_key_path(),
-            "-v",
-            stdin=expected_stdin.encode("ascii"),
+            stdin=expected_stdin1.encode("ascii"),
+        )
+        run_command.assert_any_call(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            stdin=expected_stdin2.encode("ascii"),
+        )
+        run_command.assert_any_call(
+            "nsupdate",
+            "-k",
+            get_nsupdate_key_path(),
+            stdin=expected_stdin3.encode("ascii"),
         )
 
 
