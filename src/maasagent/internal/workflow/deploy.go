@@ -20,9 +20,7 @@ type DeployParam struct {
 func Deploy(ctx workflow.Context, params DeployParam) error {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
-	log.Info("starting deployment", systemIDTag)
+	log.Info("Starting deployment", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	var err error
 
@@ -62,7 +60,7 @@ func Deploy(ctx workflow.Context, params DeployParam) error {
 		return err
 	}
 
-	log.Info("deployment successful", systemIDTag)
+	log.Info("Deployment successful", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	return nil
 }

@@ -25,18 +25,16 @@ type EphemeralOSParam struct {
 func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
 	var powerStatus PowerResult
 
-	log.Debug("querying power status", systemIDTag)
+	log.Debug("Querying power status", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	err := workflow.ExecuteChildWorkflow(ctx, PowerQuery, params.Power).Get(ctx, &powerStatus)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("powering on machine", systemIDTag)
+	log.Debug("Powering on machine", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	if powerStatus.State == "on" {
 		err = workflow.ExecuteChildWorkflow(ctx, PowerCycle, params.Power).Get(ctx, nil)
@@ -55,12 +53,12 @@ func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 
 	log.Debug(
 		fmt.Sprintf(
-			"received lease %s %s for: %s\n",
+			"Received lease %s %s for: %s\n",
 			leaseSignal.IP,
 			leaseSignal.MAC,
 			params.SystemID,
 		),
-		systemIDTag,
+		tag.Builder().TargetSystemID(params.SystemID).KeyVals...,
 	)
 
 	bootAssetsSignal := receive[BootAssetsSignal](ctx, params.SystemID)
@@ -68,24 +66,24 @@ func EphemeralOS(ctx workflow.Context, params EphemeralOSParam) error {
 		return ErrBootAssetsNotRequested
 	}
 
-	log.Debug("boot assets downloaded", systemIDTag)
+	log.Debug("Boot assets downloaded", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	curtinDownloadSignal := receive[CurtinDownloadSignal](ctx, params.SystemID)
 	if len(curtinDownloadSignal.SystemID) == 0 {
 		return ErrCurtinNotDownloaded
 	}
 
-	log.Debug("curtin downloaded", systemIDTag)
+	log.Debug("Curtin downloaded", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	curtinFinishedSignal := receive[CurtinFinishedSignal](ctx, params.SystemID)
 	if !curtinFinishedSignal.Success {
 		return ErrCurtinFailed
 	}
 
-	log.Debug("curtin finished", systemIDTag)
+	log.Debug("Curtin finished", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	if params.SetBootOrder {
-		log.Debug("setting boot order to local first", systemIDTag)
+		log.Debug("Setting boot order to local first", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 		bootOrderOpts := workflow.ActivityOptions{
 			StartToCloseTimeout: 10 * time.Second,

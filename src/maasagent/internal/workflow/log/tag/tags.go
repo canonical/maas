@@ -1,20 +1,24 @@
 package tag
 
-// targetSystemID is a Temporal logger tag for target
-// system_id's
-type targetSystemID string
-
-// TargetSystemID provides a tag for the given system_id
-func TargetSystemID(systemID string) targetSystemID {
-	return targetSystemID(systemID)
+type builder struct {
+	KeyVals []interface{}
 }
 
-// Key implements the temporal tag.Tag interface's Key() method
-func (t targetSystemID) Key() string {
-	return "target_system_id"
+func Builder() *builder {
+	return &builder{}
 }
 
-// Value implements the temporal tag.Tag interface's Value() method
-func (t targetSystemID) Value() interface{} {
-	return t
+// TargetSystemID provides KV with a tag for the given systemID
+func (b *builder) TargetSystemID(systemID string) *builder {
+	return b.KV("target_system_id", systemID)
+}
+
+// Error provides a KV with a tag for the given error
+func (b *builder) Error(err error) *builder {
+	return b.KV("error", err)
+}
+
+func (b *builder) KV(key, value interface{}) *builder {
+	b.KeyVals = append(b.KeyVals, key, value)
+	return b
 }

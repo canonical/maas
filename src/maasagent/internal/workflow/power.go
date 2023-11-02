@@ -1,11 +1,13 @@
 package workflow
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"time"
 
@@ -21,7 +23,7 @@ const (
 var (
 	// ErrWrongPowerState is an error for when a power operation executes
 	// and the machine is found in an incorrect power state
-	ErrWrongPowerState = errors.New("BMC is in wrong power state")
+	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
 )
 
 var (
@@ -79,21 +81,24 @@ func fmtPowerOpts(driver string, opts map[string]interface{}) []string {
 			continue
 		}
 
-		if vStr, ok := v.(string); ok {
+		k = strings.ReplaceAll(k, "_", "-")
+
+		switch reflect.TypeOf(v).Kind() {
+		case reflect.Slice:
+			s := reflect.ValueOf(v)
+			for i := 0; i < s.Len(); i++ {
+				vStr := fmt.Sprintf("%v", s.Index(i))
+
+				res = append(res, fmt.Sprintf("--%s", k), vStr)
+			}
+		default:
+			vStr := fmt.Sprintf("%v", v)
 			if len(vStr) == 0 {
 				continue
 			}
 
-			v = strings.TrimSpace(
-				strings.ReplaceAll(vStr, "\n", ""),
-			)
+			res = append(res, fmt.Sprintf("--%s", k), vStr)
 		}
-
-		res = append(res, fmt.Sprintf(
-			"--%s=%v",
-			strings.ReplaceAll(k, "_", "-"),
-			v,
-		))
 	}
 
 	return res
@@ -117,27 +122,36 @@ func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult
 	maasPowerCLI, err := exec.LookPath(powerCLIExecutableName())
 
 	if err != nil {
-		log.Error("error looking up MAAS power CLI executable", "error", err)
+		log.Error("MAAS power CLI executable path lookup failure",
+			tag.Builder().Error(err).KeyVals...)
 		return nil, err
 	}
 
 	driverOpts := fmtPowerOpts(params.Driver, params.DriverOpts)
 	args := append([]string{params.Operation, params.Driver}, driverOpts...)
 
-	log.Info("executing MAAS power CLI")
+	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)
 
 	//nolint:gosec // gosec's G204 flags any command execution using variables
 	cmd := exec.CommandContext(ctx, maasPowerCLI, args...)
 
-	out, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err = cmd.Run()
 	if err != nil {
-		log.Error("error executing power command", "stdout", out, "error", err)
+		log.Error(
+			"Error executing power command",
+			tag.Builder().Error(err).
+				KV("stdout", stdout.String()).
+				KV("stderr", stderr.String()).KeyVals...)
 
 		return nil, err
 	}
 
 	res := &PowerResult{
-		State: strings.TrimSpace(string(out)),
+		State: strings.TrimSpace(stdout.String()),
 	}
 
 	return res, nil
@@ -148,10 +162,6 @@ func execPowerActivity(ctx workflow.Context, params PowerActivityParam) workflow
 		StartToCloseTimeout: powerActivityDuration,
 	})
 
-	log := workflow.GetLogger(ctx)
-
-	log.Debug("executing power command")
-
 	return workflow.ExecuteActivity(ctx, PowerActivity, params)
 }
 
@@ -159,9 +169,7 @@ func execPowerActivity(ctx workflow.Context, params PowerActivityParam) workflow
 func PowerOn(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
-	log.Info("powering on", systemIDTag)
+	log.Info("Powering on", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
 		Operation:  "on",
@@ -186,9 +194,7 @@ func PowerOn(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 func PowerOff(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
-	log.Info("powering off", systemIDTag)
+	log.Info("Powering off", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
 		Operation:  "off",
@@ -213,9 +219,7 @@ func PowerOff(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 func PowerCycle(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
-	log.Info("cycling power", systemIDTag)
+	log.Info("Cycling power", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
 		Operation:  "cycle",
@@ -240,9 +244,7 @@ func PowerCycle(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 func PowerQuery(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log := workflow.GetLogger(ctx)
 
-	systemIDTag := tag.TargetSystemID(params.SystemID)
-
-	log.Info("querying power status", systemIDTag)
+	log.Info("Querying power status", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
 		Operation:  "status",
