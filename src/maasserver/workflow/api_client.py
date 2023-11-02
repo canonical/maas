@@ -19,16 +19,26 @@ class MAASAPIClient:
         self._paths = RegionHTTPService.worker_socket_paths()
 
     async def request_async(
-        self, method: str, url: str, data: dict[str, Any] = None
+        self,
+        method: str,
+        url: str,
+        params: dict[str, Any] = None,
+        data: dict[str, Any] = None,
     ):
         path = random.choice(self._paths)
         conn = UnixConnector(path=path)
 
-        headers = {}
+        headers = {
+            "User-Agent": self.user_agent,
+        }
         self._oauth.sign_request(url, headers)
         async with ClientSession(connector=conn, headers=headers) as session:
             async with session.request(
-                method, url, verify_ssl=False, data=data
+                method,
+                url,
+                verify_ssl=False,
+                data=data,
+                params=params,
             ) as response:
                 response.raise_for_status()
                 return await response.json()

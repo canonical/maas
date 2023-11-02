@@ -35,6 +35,7 @@ from maasserver.models import (
     Config,
     Node,
 )
+from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import transactional
@@ -1007,8 +1008,10 @@ class BootResourceHandler(Handler):
                     selection.delete()
 
             # Remove the whole set of resources.
+            BootResourceFile.objects.filestore_remove_resources(resources)
             resources.delete()
         else:
             # Delete just this resource.
+            BootResourceFile.objects.filestore_remove_resource(resource)
             resource.delete()
         return self.poll({})

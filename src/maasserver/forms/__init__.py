@@ -2706,6 +2706,7 @@ class BootResourceForm(MAASModelForm):
                 resource_set__resource=resource
             )
             old_brfs = old_brfs.exclude(resource_set=resource_set)
+            BootResourceFile.objects.filestore_remove_files(old_brfs)
             old_brfs.delete()
 
         return resource

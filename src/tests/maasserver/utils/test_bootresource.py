@@ -116,11 +116,21 @@ class TestLocalBootResourceFile:
     def test_allocate_raise_error(
         self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
     ):
-        f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
-        with f.path.open("wb") as stream:
-            stream.write(file_content.read())
+        f = LocalBootResourceFile(
+            sha256=file_sha256, total_size=FILE_SIZE, size=1
+        )
         with pytest.raises(LocalStoreAllocationFail):
             f.allocate()
+
+    def test_allocate_truncates_rogue_file(
+        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+    ):
+        f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
+        with f.path.open("wb") as stream:
+            stream.write(b"random_content")
+        f.allocate()
+        st = f.partial_file_path.stat()
+        assert st.st_size == FILE_SIZE
 
     def test_store(
         self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str

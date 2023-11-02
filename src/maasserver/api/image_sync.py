@@ -5,6 +5,7 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404
 
 from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.api.utils import get_optional_param
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.node import RegionController
 
@@ -21,6 +22,7 @@ class ImagesSyncProgressHandler(OperationsHandler):
 
     @admin_method
     def read(self, request):
+        with_sources = get_optional_param(request.GET, "sources", True)
         qs = (
             BootResourceFile.objects.prefetch_related(
                 "bootresourcefilesync_set__region"
@@ -32,10 +34,11 @@ class ImagesSyncProgressHandler(OperationsHandler):
             file.id: {
                 "sha256": file.sha256,
                 "size": file.size,
-                "sources": [
-                    r.region.system_id
-                    for r in file.bootresourcefilesync_set.all()
-                ],
+                "sources": file.bootresourcefilesync_set.all().values_list(
+                    "region__system_id", flat=True
+                )
+                if with_sources
+                else [],
             }
             for file in qs
         }

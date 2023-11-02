@@ -9,6 +9,7 @@ import http.client
 from io import BytesIO
 import os
 import random
+from typing import Iterable
 
 from django.urls import reverse
 from testtools.matchers import ContainsAll
@@ -28,6 +29,7 @@ from maasserver.enum import (
 )
 from maasserver.forms import get_uploaded_filename
 from maasserver.models import BootResource
+from maasserver.models.node import RegionController
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -251,6 +253,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
 
     def test_POST_creates_boot_resource(self):
         prevent_scheduling_of_image_imports(self)
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -279,9 +282,11 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         with open(lfile.path, "rb") as stream:
             written_data = stream.read()
         self.assertEqual(sample_binary_data, written_data)
+        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_default_filetype(self):
         prevent_scheduling_of_image_imports(self)
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         name = factory.make_name("name")
@@ -300,8 +305,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
         self.assertEqual(BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, rfile.filetype)
+        mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_already_existing_file(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         lfile = factory.make_boot_file()
@@ -323,8 +330,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         rfile = resource_set.files.first()
         lfile = rfile.local_file()
         self.assertTrue(os.access(lfile.path, os.F_OK))
+        mock_filestore.assert_not_called()
 
     def test_POST_creates_boot_resource_with_empty_file(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         sha256 = factory.make_string(size=64)
@@ -353,8 +362,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
                 rfile.complete,
             ),
         )
+        mock_filestore.assert_not_called()
 
     def test_POST_validates_size_matches_total_size_for_file(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         other = factory.make_usable_boot_resource()
@@ -373,8 +384,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        mock_filestore.assert_not_called()
 
     def test_POST_returns_full_definition_of_boot_resource(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
@@ -390,8 +403,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertEqual(http.client.CREATED, response.status_code)
         parsed_result = json_load_bytes(response.content)
         self.assertIn("sets", parsed_result)
+        mock_filestore.assert_called_once()
 
     def test_POST_validates_boot_resource(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         params = {
@@ -399,8 +414,10 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        mock_filestore.assert_not_called()
 
     def test_POST_calls_import_boot_images_on_all_clusters(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
         from maasserver.clusterrpc import boot_images
@@ -420,6 +437,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         self.assertThat(
             boot_images.RackControllersImporter.schedule, MockCalledOnceWith()
         )
+        mock_filestore.assert_called_once()
 
     def test_import_requires_admin(self):
         response = self.client.post(
@@ -494,8 +512,8 @@ class TestBootResourceAPI(APITestCase.ForUser):
 class TestBootResourceFileUploadAPI(APITestCase.ForUser):
     def setUp(self):
         super().setUp()
-        region = factory.make_RegionController()
-        MAAS_ID.set(region.system_id)
+        self.region = factory.make_RegionController()
+        MAAS_ID.set(self.region.system_id)
 
     def get_boot_resource_file_upload_uri(self, rfile):
         """Return a boot resource file's URI on the API."""
@@ -505,7 +523,10 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
         )
 
     def make_empty_resource_file(
-        self, rtype=None, content: bytes | None = None
+        self,
+        rtype=None,
+        content: bytes | None = None,
+        synced: Iterable[tuple[RegionController, int]] | None = None,
     ):
         if content is None:
             content = factory.make_bytes(1024)
@@ -518,7 +539,10 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
         resource = factory.make_BootResource(rtype=rtype)
         resource_set = factory.make_BootResourceSet(resource)
         rfile = factory.make_BootResourceFile(
-            resource_set, sha256=hexdigest, size=total_size
+            resource_set,
+            sha256=hexdigest,
+            size=total_size,
+            synced=synced,
         )
         return rfile, content
 
@@ -536,6 +560,7 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
 
     def test_PUT_resource_file_writes_content(self):
         prevent_scheduling_of_image_imports(self)
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
         rfile, content = self.make_empty_resource_file()
         response = self.client.put(
@@ -545,6 +570,7 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         self.assertEqual(content, self.read_content(rfile))
+        mock_filestore.assert_called_once()
 
     def test_PUT_requires_admin(self):
         rfile, content = self.make_empty_resource_file()
@@ -579,10 +605,9 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
 
     def test_PUT_returns_bad_request_when_resource_file_is_complete(self):
         self.become_admin()
-        rfile, content = self.make_empty_resource_file()
-        lfile = rfile.local_file()
-        with open(lfile.path, "wb") as stream:
-            stream.write(content)
+        rfile, content = self.make_empty_resource_file(
+            synced=[(self.region, 1)]
+        )
 
         response = self.client.put(
             self.get_boot_resource_file_upload_uri(rfile), data=content
@@ -614,6 +639,7 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
         )
 
     def test_PUT_with_multiple_requests_and_large_content(self):
+        mock_filestore = self.patch(boot_resources, "filestore_add_file")
         prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
@@ -630,3 +656,4 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
                 http.client.OK, response.status_code, response.content
             )
         self.assertEqual(content, self.read_content(rfile))
+        mock_filestore.assert_called_once()

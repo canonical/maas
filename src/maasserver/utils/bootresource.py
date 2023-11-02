@@ -14,7 +14,9 @@ import aiofiles
 
 from provisioningserver.path import get_maas_data_path, get_maas_lock_path
 
-CHUNK_SIZE = 1024 * 1024
+CHUNK_SIZE = 4 * (2**20)
+
+BOOTLOADERS_DIR = "bootloaders"
 
 
 class LocalStoreWriteBeyondEOF(Exception):
@@ -52,7 +54,7 @@ class LocalBootResourceFile:
         self._base_path = get_bootresource_store_path() / self.sha256
         self._lock_fd: int | None = None
 
-    def __str__(self):
+    def __repr__(self):
         return f"<LocalBootResourceFile {self.sha256} {self._size}/{self.total_size}>"
 
     @property
@@ -145,7 +147,7 @@ class LocalBootResourceFile:
 
     def allocate(self):
         """Allocates disk space for this file"""
-        if self.size > 0:
+        if self._size > 0:
             raise LocalStoreAllocationFail("File already exists")
         try:
             with self.partial_file_path.open("wb") as stream:

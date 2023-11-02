@@ -3,6 +3,7 @@ from asyncio import gather
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from io import BytesIO
+import tarfile
 from typing import Coroutine
 
 from aiohttp import ClientSession
@@ -11,6 +12,7 @@ from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.workflow import ActivityCancellationType
 
 from maasserver.utils.bootresource import (
+    get_bootresource_store_path,
     LocalBootResourceFile,
     LocalStoreInvalidHash,
 )
@@ -33,6 +35,7 @@ class ResourceDownloadParam:
     total_size: int
     size: int = 0
     force: bool = False
+    extract_path: str | None = None
 
 
 @dataclass
@@ -45,14 +48,20 @@ class ResourceDeleteParam:
     files: list[str]
 
 
+@dataclass
+class ResourceCleanupParam:
+    expected_files: list[str]
+
+
 class BootResourceImportCancelled(Exception):
     """Operation was cancelled"""
 
 
 class BootResourcesActivity(MAASAPIClient):
-    def __init__(self, url: str, token: str, region_id: str):
+    def __init__(self, url: str, token: str, region_id: str, user_agent: str):
         super().__init__(url, token)
         self.region_id = region_id
+        self.user_agent = user_agent
 
     async def report_progress(self, rfile: int, size: int):
         """Report progress back to MAAS
@@ -74,9 +83,13 @@ class BootResourcesActivity(MAASAPIClient):
         )
 
     @activity.defn(name="get-bootresourcefile-sync-status")
-    async def get_bootresourcefile_sync_status(self) -> dict:
+    async def get_bootresourcefile_sync_status(
+        self, with_sources: bool = True
+    ) -> dict:
         url = f"{self.url}/api/2.0/images-sync-progress/"
-        return await self.request_async("GET", url)
+        return await self.request_async(
+            "GET", url, params={"sources": str(with_sources)}
+        )
 
     @activity.defn(name="get-bootresourcefile-endpoints")
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
@@ -120,11 +133,16 @@ class BootResourcesActivity(MAASAPIClient):
                 await self.report_progress(param.rfile_id, lfile.size)
                 return True
 
-            async with ClientSession() as session, session.get(
+            headers = {
+                "User-Agent": self.user_agent,
+            }
+
+            async with ClientSession(trust_env=True) as session, session.get(
                 url,
                 verify_ssl=False,
                 chunked=True,
                 read_bufsize=READ_BUF,
+                headers=headers,
             ) as response:
                 response.raise_for_status()
                 last_update = datetime.now()
@@ -149,6 +167,17 @@ class BootResourcesActivity(MAASAPIClient):
             if await lfile.avalid():
                 lfile.commit()
                 activity.logger.debug(f"file commited {lfile.size}")
+
+                if param.extract_path:
+                    store = get_bootresource_store_path()
+                    target_dir = store / param.extract_path
+                    target_dir.mkdir(exist_ok=True, parents=True)
+                    activity.heartbeat()
+                    with tarfile.open(lfile.path, mode="r") as tar:
+                        for member in tar:
+                            tar.extract(member, path=target_dir.absolute())
+                            activity.heartbeat()
+
                 await self.report_progress(param.rfile_id, lfile.size)
                 return True
             else:
@@ -176,6 +205,21 @@ class BootResourcesActivity(MAASAPIClient):
                 lfile.release_lock()
             activity.logger.info(f"file {file} deleted")
         return True
+
+    @activity.defn(name="cleanup-bootresources")
+    async def cleanup_bootresources(self, param: ResourceCleanupParam) -> None:
+        """Remove unknown files from disk"""
+        store = get_bootresource_store_path()
+        bootloaders_dir = store / "bootloaders"
+        bootloaders_dir.mkdir(exist_ok=True)
+        expected = {store / f for f in param.expected_files}
+        expected |= {bootloaders_dir}
+
+        existing = set(store.iterdir())
+        for file in existing - expected:
+            activity.logger.info(f"removing unexpected file: {file}")
+            activity.heartbeat()
+            file.unlink()
 
 
 @workflow.defn(name="download-bootresource", sandboxed=False)
@@ -289,4 +333,33 @@ class DeleteBootResourceWorkflow:
                 start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
                 schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
                 retry_policy=RetryPolicy(maximum_attempts=5),
+            )
+
+
+@workflow.defn(name="cleanup-bootresource", sandboxed=False)
+class CleanupBootResourceWorkflow:
+    """Clean orphan BootResourceFiles from this cluster"""
+
+    @workflow.run
+    async def run(self) -> None:
+        # remove orphan files from cluster
+        sync_status = await workflow.execute_activity(
+            "get-bootresourcefile-sync-status",
+            False,
+            start_to_close_timeout=timedelta(seconds=30),
+        )
+        expected_files = set(f["sha256"] for _, f in sync_status)
+
+        endpoints = await workflow.execute_activity(
+            "get-bootresourcefile-endpoints",
+            start_to_close_timeout=timedelta(seconds=30),
+        )
+        regions = frozenset(endpoints.keys())
+        for r in regions:
+            await workflow.execute_activity(
+                "cleanup-bootresourcefile",
+                ResourceCleanupParam(expected_files),
+                task_queue=f"{r}:region",
+                start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+                schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
             )

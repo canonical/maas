@@ -15,7 +15,6 @@ __all__ = [
 ]
 
 from datetime import timedelta
-from io import BytesIO
 from operator import itemgetter
 import os
 from pathlib import Path
@@ -24,16 +23,16 @@ from subprocess import CalledProcessError
 import tarfile
 from textwrap import dedent
 import threading
-import time
-from typing import BinaryIO
 
 from django.db import connection, transaction
 from django.db.models import F
 from django.http import FileResponse, HttpResponse
 from pkg_resources import parse_version
 from simplestreams import util as sutil
+from simplestreams.log import LOG, WARNING
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
+from temporalio.common import WorkflowIDReusePolicy
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
@@ -67,7 +66,6 @@ from maasserver.models import (
     Config,
     Event,
 )
-from maasserver.models.node import RegionController
 from maasserver.release_notifications import ReleaseNotifications
 from maasserver.rpc import getAllClients
 from maasserver.utils import (
@@ -76,8 +74,8 @@ from maasserver.utils import (
     synchronised,
 )
 from maasserver.utils.bootresource import (
+    BOOTLOADERS_DIR,
     get_bootresource_store_path,
-    LocalBootResourceFile,
 )
 from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import (
@@ -87,6 +85,16 @@ from maasserver.utils.orm import (
     with_connection,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.workflow import (
+    cancel_workflow,
+    execute_workflow,
+    REGION_TASK_QUEUE,
+)
+from maasserver.workflow.bootresource import (
+    DOWNLOAD_TIMEOUT,
+    ResourceDownloadParam,
+    SyncRequestParam,
+)
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
@@ -347,18 +355,12 @@ class BootResourceStore(ObjectStore):
     soon as possible.
     """
 
-    # Number of threads to run at the same time to write the contents of
-    # files from simplestreams into the database. Increasing this number
-    # might cause high network and database load.
-    write_threads = 2
-
-    # Read at 10MiB per chunk.
-    read_size = 1024 * 1024 * 10
+    WORKFLOW_ID = "sync_boot_resources:streams"
 
     def __init__(self):
         """Initialize store."""
         self.cache_current_resources()
-        self._content_to_finalize = {}
+        self._content_to_finalize: dict[int, ResourceDownloadParam] = {}
         self._finalizing = False
         self._cancel_finalize = False
 
@@ -380,10 +382,6 @@ class BootResourceStore(ObjectStore):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED
             )
         }
-
-        # XXX blake_r 2014-10-30 bug=1387133: We store a copy of the resources
-        # to delete, so we can check if all the same resources will be delete
-        # in the finalize call.
         self._init_resources_to_delete = set(self._resources_to_delete)
 
     def prevent_resource_deletion(self, resource):
@@ -395,16 +393,16 @@ class BootResourceStore(ObjectStore):
         ident = self.get_resource_identity(resource)
         self._resources_to_delete.discard(ident)
 
-    def save_content_later(self, rfile: BootResourceFile, content: BinaryIO):
-        """Register content to be saved later on to the given resource file.
+    def save_content_later(
+        self, rfile: BootResourceFile, request: ResourceDownloadParam
+    ):
+        """Schedule a download operation
 
-        This action will actually be performed during the finalize method.
-
-        :param rfile: Resource file.
-        :type rfile: BootResourceFile
-        :param content: File-like object.
+        Args:
+            rfile (BootResourceFile): instance
+            request (ResourceDownloadParam): a resource synchronisation request
         """
-        self._content_to_finalize[rfile.id] = content
+        self._content_to_finalize[rfile.id] = request
 
     def get_or_create_boot_resource(self, product):
         """Get existing `BootResource` for the given product or create a new
@@ -540,27 +538,8 @@ class BootResourceStore(ObjectStore):
         resource = resource or resource_set.resource
         return f"{self.get_resource_identity(resource)}/{resource_set.version}/{rfile.filename}"
 
-    def unlink_rfile(
-        self, sha256: str, rfile: BootResourceFile | None
-    ) -> None:
-        """Remove file from disk
-
-        Files can be shared by multiple BootResourceFile instances, so we
-        need to check if the File is orphan before removing it
-
-        Args:
-            sha256 (str): file hash
-            rfile (BootResourceFile): ignore this instance when checking
-        """
-        qs = BootResourceFile.objects.filter(sha256=sha256)
-        if rfile is not None:
-            qs = qs.exclude(id=rfile.id)
-        if not qs.exists():
-            lfile = LocalBootResourceFile(sha256=sha256, total_size=0)
-            lfile.unlink()
-
     @transactional
-    def insert(self, product, reader):
+    def insert(self, product, source_list):
         """Insert file into store.
 
         This method only stores the metadata from the product in the database.
@@ -571,8 +550,9 @@ class BootResourceStore(ObjectStore):
 
         :param product: Entries product data.
         :type product: dict
-        :param reader: File-like object.
+        :param source_list: sources list
         """
+        assert isinstance(source_list, list)
         resource = self.get_or_create_boot_resource(product)
         is_resource_initially_complete = (
             resource.get_latest_complete_set() is not None
@@ -586,16 +566,19 @@ class BootResourceStore(ObjectStore):
         # switched from one not containg SquashFS images to one that does. We
         # want to use the SquashFS image so ignore the tgz.
         if product["ftype"] == BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE:
-            resource_set.files.filter(
+            qs = resource_set.files.filter(
                 filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
-            ).delete()
+            )
+            BootResourceFile.objects.filestore_remove_files(qs)
+            qs.delete()
 
         checksums = sutil.item_checksums(product)
         sha256 = checksums["sha256"]
 
+        force_download = False
         if rfile.sha256 != sha256:
-            self.unlink_rfile(rfile.sha256, rfile)
-            rfile.bootresourcefilesync_set.all().delete()
+            BootResourceFile.objects.filestore_remove_file(rfile)
+            force_download = True
             msg = f"Hash mismatch for resourceset={resource_set} resource={resource}"
             Event.objects.create_region_event(
                 EVENT_TYPES.REGION_IMPORT_WARNING, msg
@@ -619,110 +602,29 @@ class BootResourceStore(ObjectStore):
 
         lfile = rfile.local_file()
 
-        if not lfile.complete:
-            # FIXME try to find another Region with this file first
-            self.save_content_later(rfile, reader)
-        else:
-            sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
-                region=RegionController.objects.get_running_controller()
-            )
-            sync_status.size = rfile.size
-            sync_status.save()
+        if lfile.complete and rfile.complete:
             ident = self.get_resource_file_log_identifier(
                 rfile, resource_set, resource
             )
             log.debug(f"Boot image already up-to-date {ident}.")
-
-    def write_content_thread(self, rid, reader):
-        """Writes the data from the given reader, into the object storage
-        for the given `BootResourceFile`."""
-
-        @transactional
-        def get_rfile_and_ident():
-            rfile = BootResourceFile.objects.get(id=rid)
-            ident = self.get_resource_file_log_identifier(rfile)
-            sync_status, _ = rfile.bootresourcefilesync_set.get_or_create(
-                region=RegionController.objects.get_running_controller()
-            )
-            return rfile, ident, sync_status
-
-        rfile, ident, sync_status = get_rfile_and_ident()
-        lfile = rfile.local_file()
-        log.debug(f"Finalizing boot image {ident}.")
-        log.debug(f"Local file {lfile}")
-
-        @transactional
-        def set_progress(size: int):
-            sync_status.size = size
-            sync_status.save()
-
-        @transactional
-        def write_chunk():
-            # keep sync status behind the actual progress, we don't want to
-            # report 100% in the DB before checking if the file is valid
-            sync_status.size = lfile.size
-            sync_status.save()
-            buf = BytesIO(reader.read(self.read_size))
-            lfile.store(buf, autocommit=False)
-            return lfile.complete
-
-        with lfile.lock():
-            while not (lfile.complete or self._cancel_finalize):
-                write_chunk()
-            if lfile.valid:
-                lfile.commit()
-                set_progress(lfile.size)
-                log.debug(f"Finalized boot image {ident}.")
-                return
-
-        if self._cancel_finalize:
-            set_progress(0)
         else:
-            # Calculated sha256 hash from the data does not match, what
-            # simplestreams is telling us it should be. This resource file
-            # will be deleted since it is corrupt.
-            msg = (
-                f"Failed to finalize boot image {ident}. "
-                "Unexpected checksum."
+            ext_sync = (
+                force_download or new_rfile or not rfile.has_complete_copy
             )
-            Event.objects.create_region_event(
-                EVENT_TYPES.REGION_IMPORT_ERROR, msg
+            req = ResourceDownloadParam(
+                rfile_id=rfile.id,
+                source_list=source_list if ext_sync else [],
+                total_size=rfile.size,
+                sha256=rfile.sha256,
+                force=force_download,
             )
-            maaslog.error(msg)
-            transactional(rfile.delete)()
-
-    def perform_write(self):
-        """Performs all writing of content into the object storage.
-
-        This method will spawn threads to perform the writing. Maximum of
-        `write_threads` will be running at once."""
-        threads = []
-        while True:
-            # Update list to only those that are still running.
-            threads = [thread for thread in threads if thread.is_alive()]
-            if len(threads) >= self.write_threads:
-                # Cannot start any more threads as the maximum is already
-                # running. Lets wait a second and try again.
-                time.sleep(1)
-                continue
-
-            if self._cancel_finalize or len(self._content_to_finalize) == 0:
-                # No more threads to spawn because the finalization has been
-                # cancelled or all of the content has been de-queued. Wait for
-                # all the remaining running threads to finish.
-                for thread in threads:
-                    thread.join()
-                break
-
-            # Spawn a writer thread with a resource file and reader from
-            # the queue of content to be saved.
-            rid, reader = self._content_to_finalize.popitem()
-            # FIXME: Use deferToDatabase and the coiterator if possible.
-            thread = threading.Thread(
-                target=self.write_content_thread, args=(rid, reader)
-            )
-            thread.start()
-            threads.append(thread)
+            if (
+                rfile.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+                and resource.bootloader_type
+            ):
+                req.extract_path = f"{BOOTLOADERS_DIR}/{resource.bootloader_type}/{resource.architecture}"
+            log.info(f"Scheduling image download: {req}")
+            self.save_content_later(rfile, req)
 
     def _other_resources_exists(self, os, arch, subarch, series):
         """Return `True` when simplestreams provided an image with the same
@@ -796,7 +698,9 @@ class BootResourceStore(ObjectStore):
                         os, arch, subarch, series
                     ):
                         # It was selected for removal.
-                        log.debug(f"Deleting boot image {ident}.")
+                        BootResourceFile.objects.filestore_remove_resource(
+                            delete_resource
+                        )
                         delete_resource.delete()
                     else:
                         msg = (
@@ -834,6 +738,7 @@ class BootResourceStore(ObjectStore):
                     log.debug(
                         f"Deleting incomplete resourceset {resource_set}.",
                     )
+                    BootResourceFile.objects.filestore_remove_set(resource_set)
                     resource_set.delete()
                 else:
                     # It is complete, only keep the newest complete set.
@@ -842,6 +747,9 @@ class BootResourceStore(ObjectStore):
                     else:
                         log.debug(
                             f"Deleting obsolete resourceset {resource_set}.",
+                        )
+                        BootResourceFile.objects.filestore_remove_set(
+                            resource_set
                         )
                         resource_set.delete()
 
@@ -859,25 +767,20 @@ class BootResourceStore(ObjectStore):
     @transactional
     def delete_content_to_finalize(self):
         """Deletes all content that was set to be finalized."""
-        for rid in self._content_to_finalize.keys():
+        for rid, _ in self._content_to_finalize.items():
             BootResourceFile.objects.filter(id=rid).delete()
-        self._content_to_finalize = {}
+        self._content_to_finalize.clear()
 
-    def finalize(self, notify=None):
-        """Perform the finalization of data into the database.
+    def finalize(self, notify: Deferred | None = None):
+        """Perform the finalization of data into the filesystem.
 
-        This will remove the un-needed `BootResource`'s and write the
-        file data into the large object store.
+        This will remove the un-needed `BootResource`'s and download the
+        file data into the file store.
 
         :param notify: Instance of `Deferred` that is called when all the
             metadata has been downloaded and the image data download has been
             started.
         """
-        # XXX blake_r 2014-10-30 bug=1387133: A scenario can occur where insert
-        # never gets called by the writer, causing this method to delete all
-        # of the synced resources. The actual cause of this issue is unknown,
-        # but we want to handle the case or all the images will be deleted and
-        # no nodes will be able to be provisioned.
         log.debug(
             f"Finalize will delete {len(self._resources_to_delete)} images(s).",
         )
@@ -902,7 +805,7 @@ class BootResourceStore(ObjectStore):
                 reactor.callFromThread(notify.errback, failure)
             return
 
-        # Cancel finalize was set before the threading operation is started.
+        # Cancel finalize was set before the workflow operation is started.
         if self._cancel_finalize:
             self.resource_cleaner()
             self.delete_content_to_finalize()
@@ -917,10 +820,25 @@ class BootResourceStore(ObjectStore):
             # data for the images.
             if notify is not None:
                 reactor.callFromThread(notify.callback, None)
-            self.perform_write()
-            if self._cancel_finalize:
-                self.delete_content_to_finalize()
+
+            try:
+                if len(self._content_to_finalize) > 0:
+                    sync_req = SyncRequestParam(
+                        resources=[*self._content_to_finalize.values()],
+                    )
+                    execute_workflow(
+                        "sync-bootresources",
+                        self.WORKFLOW_ID,
+                        sync_req,
+                        task_queue=REGION_TASK_QUEUE,
+                        execution_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+                        run_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+                        id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+                    )
+            finally:
+                self._content_to_finalize.clear()
             self.resource_set_cleaner()
+            log.info("Boot Resources synchronisation has completed")
 
     def cancel_finalize(self, notify=None):
         """Cancel the finalization. This can be called instead of `finalize` or
@@ -933,9 +851,8 @@ class BootResourceStore(ObjectStore):
                 notify is None
             ), "notify is not supported if finalization already started."
             # Finalization is already started so cancel the finalization.
-            # Setting to True triggers that running thread spawning process
-            # to stop, and perform the cleanup.
             self._cancel_finalize = True
+            cancel_workflow(self.WORKFLOW_ID)
 
 
 class BootResourceRepoWriter(BasicMirrorWriter):
@@ -955,7 +872,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             config={
                 # Only download the latest version. Without this all versions
                 # will be downloaded from simplestreams.
-                "max_items": 1
+                "max_items": 1,
+                "external_download": True,
             }
         )
 
@@ -972,7 +890,7 @@ class BootResourceRepoWriter(BasicMirrorWriter):
             sutil.products_exdata(src, pedigree)
         )
 
-    def insert_item(self, data, src, target, pedigree, contentsource):
+    def insert_item(self, data, src, target, pedigree, source_list):
         """Overridable from `BasicMirrorWriter`."""
         item = sutil.products_exdata(src, pedigree)
         product_name = pedigree[0]
@@ -1007,12 +925,10 @@ class BootResourceRepoWriter(BasicMirrorWriter):
                 f"Ignoring unsupported filetype({item['ftype']}) "
                 f"from {product_name} {version_name}"
             )
-            return
         elif not validate_product(item, product_name):
             maaslog.warning(f"Ignoring unsupported product {product_name}")
-            return
         else:
-            self.store.insert(item, contentsource)
+            self.store.insert(item, source_list)
 
 
 def download_boot_resources(path, store, product_mapping, keyring_file=None):
@@ -1029,14 +945,9 @@ def download_boot_resources(path, store, product_mapping, keyring_file=None):
     writer = BootResourceRepoWriter(store, product_mapping)
     (mirror, rpath) = sutil.path_from_mirror_url(path, None)
     policy = get_signing_policy(rpath, keyring_file)
-    try:
-        reader = UrlMirrorReader(
-            mirror, policy=policy, user_agent=get_maas_user_agent()
-        )
-    except TypeError:
-        # UrlMirrorReader doesn't support the user_agent argument.
-        # simplestream >=bzr429 is required for this feature.
-        reader = UrlMirrorReader(mirror, policy=policy)
+    reader = UrlMirrorReader(
+        mirror, policy=policy, user_agent=get_maas_user_agent()
+    )
     writer.sync(reader, rpath)
 
 
@@ -1169,6 +1080,7 @@ def _import_resources(notify=None):
     # Sync boot resources into the region.
     d = deferToDatabase(_import_resources_with_lock, notify=notify)
 
+    # FIXME alexsander: remove this
     def cb_import(_):
         d = deferToDatabase(RackControllersImporter.new)
         d.addCallback(lambda importer: importer.run())
@@ -1181,8 +1093,8 @@ def _import_resources(notify=None):
     return d.addCallbacks(cb_import, eb_import)
 
 
-def _import_resources_without_lock(notify=None):
-    """Import boot resources once the `import_images` without a lock.
+def _import_resources_internal(notify=None):
+    """Import boot resources once the `import_images` lock is acquired.
 
     This should *not* be called in a transaction; it will manage transactions
     itself, and attempt to keep them short.
@@ -1213,6 +1125,8 @@ def _import_resources_without_lock(notify=None):
 
     # Ensure that boot sources exist.
     ensure_boot_source_definition()
+
+    # TODO migrate files from DB
 
     # Cache the boot sources before import.
     cache_boot_sources()
@@ -1268,7 +1182,7 @@ def _import_resources_without_lock(notify=None):
                 new_selections = True
                 break
         if new_selections:
-            _import_resources_without_lock(notify)
+            _import_resources_internal(notify)
         else:
             maaslog.info(
                 f"Finished importing of boot images from {len(sources)} source(s)."
@@ -1284,7 +1198,7 @@ def _import_resources_without_lock(notify=None):
 @synchronised(locks.import_images.TRY)  # TRY is important; read docstring.
 def _import_resources_with_lock(notify=None):
     """Import boot resources once the `import_images` lock is held."""
-    return _import_resources_without_lock(notify)
+    return _import_resources_internal(notify)
 
 
 def _import_resources_in_thread(notify=None):
@@ -1355,7 +1269,7 @@ def stop_import_resources():
         )
         if not running:
             break
-        yield pause(0.2)
+        yield pause(1)
 
 
 # How often the import service runs.
@@ -1371,6 +1285,7 @@ class ImportResourcesService(TimerService):
 
     def __init__(self, interval=IMPORT_RESOURCES_SERVICE_PERIOD):
         super().__init__(interval.total_seconds(), self.maybe_import_resources)
+        LOG.setLevel(WARNING)  # reduce simplestreams verbosity
         for p in [get_maas_lock_path(), get_bootresource_store_path()]:
             p.mkdir(parents=True, exist_ok=True)
 
@@ -1425,6 +1340,7 @@ class ImportResourcesProgressService(TimerService):
             # We can ask racks if they somehow have some imported images
             # already, from another source perhaps. We can provide a better
             # message to the user in this case.
+            # TODO alexsander: remove this
             if (yield self.are_boot_images_available_in_any_rack()):
                 warning = self.warning_rack_has_boot_images
             else:
@@ -1460,6 +1376,7 @@ class ImportResourcesProgressService(TimerService):
     @transactional
     def are_boot_images_available_in_the_region(self):
         """Return true if there are boot images available in the region."""
+        # TODO alexsander: it's not this simple
         return BootResource.objects.all().exists()
 
     @asynchronous(timeout=90)
@@ -1469,6 +1386,7 @@ class ImportResourcesProgressService(TimerService):
         Only considers racks that are currently connected, and ignores
         errors resulting from communicating with the racks.
         """
+        # TODO alexsander: remove this
         clients = getAllClients()
 
         def get_images(client):

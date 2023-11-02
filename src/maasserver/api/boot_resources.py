@@ -270,6 +270,8 @@ class BootResourcesHandler(OperationsHandler):
                 RackControllersImporter,
             )
 
+            rfile = resource.sets.first().files.first()
+            post_commit_do(filestore_add_file, rfile)
             post_commit_do(RackControllersImporter.schedule)
 
         stream = json_object(
@@ -307,6 +309,7 @@ class BootResourcesHandler(OperationsHandler):
         @success (content) "success-content"
             Import of boot resources is being stopped.
         """
+        # FIXME not awaiting for Deferred
         stop_import_resources()
         return HttpResponse(
             "Import of boot resources is being stopped",
@@ -382,6 +385,7 @@ class BootResourceHandler(OperationsHandler):
         """
         resource = BootResource.objects.get(id=id)
         if resource is not None:
+            BootResourceFile.objects.filestore_remove_resource(resource)
             resource.delete()
         return rc.DELETED
 
@@ -428,13 +432,15 @@ class BootResourceFileUploadHandler(OperationsHandler):
             total_size=rfile.size,
             size=sync_status.size,
         )
-        if lfile.complete:
+        if sync_status.size == lfile.total_size:
             raise MAASAPIBadRequest("Cannot upload to a complete file.")
 
         try:
             lfile.store(BytesIO(data))
             sync_status.size += size
             sync_status.save()
+            if lfile.complete:
+                post_commit_do(filestore_add_file, rfile)
         except LocalStoreWriteBeyondEOF:
             raise MAASAPIBadRequest("Too much data received.")
         except LocalStoreInvalidHash:

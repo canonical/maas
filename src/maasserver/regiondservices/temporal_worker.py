@@ -20,10 +20,12 @@ from twisted.internet.task import deferLater
 from maasserver.config import RegionConfiguration
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.service_monitor import service_monitor, SERVICE_STATE
+from maasserver.utils import get_maas_user_agent
 from maasserver.utils.threads import deferToDatabase
 from maasserver.worker_user import get_worker_user
 from maasserver.workflow.bootresource import (
     BootResourcesActivity,
+    CleanupBootResourceWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
@@ -83,6 +85,7 @@ class TemporalWorkerService(Service):
 
         maas_url = yield deferToDatabase(self.get_maas_url)
         token = yield deferToDatabase(self.get_token)
+        user_agent = yield deferToDatabase(get_maas_user_agent)
         maas_id = MAAS_ID.get()
 
         configure_activity = ConfigureWorkerPoolActivity(
@@ -90,18 +93,23 @@ class TemporalWorkerService(Service):
         )
 
         boot_res_activity = BootResourcesActivity(
-            url=maas_url, token=token, region_id=maas_id
+            url=maas_url,
+            token=token,
+            region_id=maas_id,
+            user_agent=user_agent,
         )
 
         self._workers = [
             Worker(
                 task_queue=f"{maas_id}:region",
                 workflows=[
+                    CleanupBootResourceWorkflow,
                     DeleteBootResourceWorkflow,
                     DownloadBootResourceWorkflow,
                     SyncBootResourcesWorkflow,
                 ],
                 activities=[
+                    boot_res_activity.cleanup_bootresources,
                     boot_res_activity.delete_bootresourcefile,
                     boot_res_activity.download_bootresourcefile,
                     boot_res_activity.get_bootresourcefile_endpoints,
@@ -110,6 +118,7 @@ class TemporalWorkerService(Service):
             ),
             Worker(
                 workflows=[
+                    CleanupBootResourceWorkflow,
                     CommissionNWorkflow,
                     ConfigureWorkerPoolWorkflow,
                     DeleteBootResourceWorkflow,
@@ -121,6 +130,7 @@ class TemporalWorkerService(Service):
                 activities=[
                     boot_res_activity.delete_bootresourcefile,
                     boot_res_activity.download_bootresourcefile,
+                    boot_res_activity.get_bootresourcefile_endpoints,
                     boot_res_activity.get_bootresourcefile_sync_status,
                     configure_activity.get_rack_controller,
                 ],
