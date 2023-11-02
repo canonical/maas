@@ -58,10 +58,9 @@ class BootResourceImportCancelled(Exception):
 
 
 class BootResourcesActivity(MAASAPIClient):
-    def __init__(self, url: str, token: str, region_id: str, user_agent: str):
-        super().__init__(url, token)
+    def __init__(self, url: str, token: str, user_agent: str, region_id: str):
+        super().__init__(url, token, user_agent=user_agent)
         self.region_id = region_id
-        self.user_agent = user_agent
 
     async def report_progress(self, rfile: int, size: int):
         """Report progress back to MAAS

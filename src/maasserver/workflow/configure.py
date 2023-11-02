@@ -14,9 +14,6 @@ class GetRackControllerInput:
 
 
 class ConfigureWorkerPoolActivity(MAASAPIClient):
-    def __init__(self, url: str, token: str):
-        super().__init__(url, token)
-
     @activity.defn(name="get-rack-controller")
     async def get_rack_controller(self, input: GetRackControllerInput):
         url = f"{self.url}/api/2.0/rackcontrollers/{input.system_id}/"

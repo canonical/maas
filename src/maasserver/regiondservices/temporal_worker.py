@@ -89,14 +89,16 @@ class TemporalWorkerService(Service):
         maas_id = MAAS_ID.get()
 
         configure_activity = ConfigureWorkerPoolActivity(
-            url=maas_url, token=token
+            url=maas_url,
+            token=token,
+            user_agent=user_agent,
         )
 
         boot_res_activity = BootResourcesActivity(
             url=maas_url,
             token=token,
-            region_id=maas_id,
             user_agent=user_agent,
+            region_id=maas_id,
         )
 
         self._workers = [

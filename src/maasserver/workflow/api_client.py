@@ -8,8 +8,9 @@ from maasserver.models.user import get_creds_tuple
 
 
 class MAASAPIClient:
-    def __init__(self, url: str, token):
+    def __init__(self, url: str, token, user_agent: str = ""):
         self.url = url.rstrip("/")
+        self.user_agent = user_agent
         self._oauth = MAASOAuth(*get_creds_tuple(token))
 
         # We run all activities on the same host as the Region.
@@ -22,15 +23,15 @@ class MAASAPIClient:
         self,
         method: str,
         url: str,
-        params: dict[str, Any] = None,
-        data: dict[str, Any] = None,
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
     ):
         path = random.choice(self._paths)
         conn = UnixConnector(path=path)
 
-        headers = {
-            "User-Agent": self.user_agent,
-        }
+        headers = {}
+        if self.user_agent:
+            headers["User-Agent"] = self.user_agent
         self._oauth.sign_request(url, headers)
         async with ClientSession(connector=conn, headers=headers) as session:
             async with session.request(
