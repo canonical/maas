@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/workflow/log/tag"
 )
@@ -160,6 +161,9 @@ func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult
 func execPowerActivity(ctx workflow.Context, params PowerActivityParam) workflow.Future {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: powerActivityDuration,
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 5,
+		},
 	})
 
 	return workflow.ExecuteActivity(ctx, PowerActivity, params)
