@@ -9,7 +9,6 @@ __all__ = [
     "BootResourceFileUploadHandler",
 ]
 
-from datetime import timedelta
 import http.client
 from io import BytesIO
 
@@ -138,7 +137,7 @@ def filestore_add_file(rfile: BootResourceFile):
     params = SyncRequestParam(
         resources=[
             ResourceDownloadParam(
-                rfile_id=rfile.id,
+                rfile_ids=[rfile.id],
                 source_list=[],
                 sha256=rfile.sha256,
                 total_size=rfile.size,
@@ -150,8 +149,8 @@ def filestore_add_file(rfile: BootResourceFile):
         f"sync_boot_resources:upload:{rfile.id}",
         params,
         task_queue=REGION_TASK_QUEUE,
-        execution_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
-        run_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+        execution_timeout=DOWNLOAD_TIMEOUT,
+        run_timeout=DOWNLOAD_TIMEOUT,
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
     )
 

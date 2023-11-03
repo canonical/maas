@@ -79,6 +79,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.workflow.bootresource import ResourceDownloadParam
 from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
@@ -621,9 +622,15 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def test_save_content_later_adds_to__content_to_finalize_var(self):
         _, _, rfile = make_boot_resource_group()
+        req = ResourceDownloadParam(
+            rfile_ids=[rfile.id],
+            source_list=[],
+            sha256=rfile.sha256,
+            total_size=rfile.size,
+        )
         store = BootResourceStore()
         store.save_content_later(rfile, [])
-        self.assertEqual({rfile.id: []}, store._content_to_finalize)
+        self.assertEqual({rfile.sha256: req}, store._content_to_finalize)
 
     def test_get_or_create_boot_resource_creates_resource(self):
         name, architecture, product = make_product()
@@ -834,8 +841,12 @@ class TestBootResourceStore(MAASServerTestCase):
         rfile_two, _, _ = make_boot_resource_file_with_stream()
         store = BootResourceStore()
         store._content_to_finalize = {
-            rfile_one.id: rfile_one,
-            rfile_two.id: rfile_two,
+            rfile_one.sha256: ResourceDownloadParam(
+                rfile_ids=[rfile_one.id, rfile_two.id],
+                source_list=[],
+                sha256=rfile_one.sha256,
+                total_size=rfile_one.size,
+            ),
         }
         store.delete_content_to_finalize()
         self.assertIsNone(reload_object(rfile_one))
@@ -1052,7 +1063,9 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         rfile = get_one(reload_object(resource_set).files.all())
         self.assertEqual(product["sha256"], rfile.sha256)
         self.assertEqual(product["size"], rfile.size)
-        mock_save_later.assert_called_once_with(rfile, ANY)
+        mock_save_later.assert_called_once_with(
+            rfile, source_list=[], force=False, extract_path=None
+        )
 
     def test_insert_prints_error_when_breaking_resources(self):
         # Test case for bug 1419041: if the call to insert() makes

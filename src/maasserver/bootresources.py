@@ -360,7 +360,7 @@ class BootResourceStore(ObjectStore):
     def __init__(self):
         """Initialize store."""
         self.cache_current_resources()
-        self._content_to_finalize: dict[int, ResourceDownloadParam] = {}
+        self._content_to_finalize: dict[str, ResourceDownloadParam] = {}
         self._finalizing = False
         self._cancel_finalize = False
 
@@ -394,15 +394,38 @@ class BootResourceStore(ObjectStore):
         self._resources_to_delete.discard(ident)
 
     def save_content_later(
-        self, rfile: BootResourceFile, request: ResourceDownloadParam
+        self,
+        rfile: BootResourceFile,
+        source_list: list[str],
+        force: bool = False,
+        extract_path: str | None = None,
     ):
         """Schedule a download operation
 
+        Multiple requests for the same SHA256 are combined in a single
+        operation.
+
         Args:
-            rfile (BootResourceFile): instance
-            request (ResourceDownloadParam): a resource synchronisation request
+            rfile (BootResourceFile): resource file instance
+            source_list (list[str]): sources for this resource
+            force (bool, optional): truncate existing files. Defaults to False.
+            extract_path (str | None, optional): extracts file to this path. Defaults to None.
         """
-        self._content_to_finalize[rfile.id] = request
+        req = self._content_to_finalize.setdefault(
+            rfile.sha256,
+            ResourceDownloadParam(
+                rfile_ids=[],
+                source_list=[],
+                total_size=rfile.size,
+                sha256=rfile.sha256,
+                extract_paths=[],
+            ),
+        )
+        req.rfile_ids.append(rfile.id)
+        req.source_list.extend(source_list)
+        if extract_path is not None:
+            req.extract_paths.append(extract_path)
+        req.force |= force
 
     def get_or_create_boot_resource(self, product):
         """Get existing `BootResource` for the given product or create a new
@@ -600,31 +623,30 @@ class BootResourceStore(ObjectStore):
             )
             maaslog.error(msg)
 
+        ident = self.get_resource_file_log_identifier(
+            rfile, resource_set, resource
+        )
         lfile = rfile.local_file()
-
         if lfile.complete and rfile.complete:
-            ident = self.get_resource_file_log_identifier(
-                rfile, resource_set, resource
-            )
             log.debug(f"Boot image already up-to-date {ident}.")
-        else:
-            ext_sync = (
-                force_download or new_rfile or not rfile.has_complete_copy
-            )
-            req = ResourceDownloadParam(
-                rfile_id=rfile.id,
-                source_list=source_list if ext_sync else [],
-                total_size=rfile.size,
-                sha256=rfile.sha256,
-                force=force_download,
-            )
-            if (
-                rfile.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
-                and resource.bootloader_type
-            ):
-                req.extract_path = f"{BOOTLOADERS_DIR}/{resource.bootloader_type}/{resource.architecture}"
-            log.info(f"Scheduling image download: {req}")
-            self.save_content_later(rfile, req)
+            return
+
+        log.info(f"Scheduling image download: {ident}")
+
+        ext_sync = force_download or new_rfile or not rfile.has_complete_copy
+        extract_path = None
+        if (
+            rfile.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+            and resource.bootloader_type
+        ):
+            extract_path = f"{BOOTLOADERS_DIR}/{resource.bootloader_type}/{resource.architecture}"
+
+        self.save_content_later(
+            rfile,
+            source_list=source_list if ext_sync else [],
+            force=force_download,
+            extract_path=extract_path,
+        )
 
     def _other_resources_exists(self, os, arch, subarch, series):
         """Return `True` when simplestreams provided an image with the same
@@ -767,8 +789,8 @@ class BootResourceStore(ObjectStore):
     @transactional
     def delete_content_to_finalize(self):
         """Deletes all content that was set to be finalized."""
-        for rid, _ in self._content_to_finalize.items():
-            BootResourceFile.objects.filter(id=rid).delete()
+        for req in self._content_to_finalize.values():
+            BootResourceFile.objects.filter(id__in=req.rfile_ids).delete()
         self._content_to_finalize.clear()
 
     def finalize(self, notify: Deferred | None = None):
@@ -831,8 +853,8 @@ class BootResourceStore(ObjectStore):
                         self.WORKFLOW_ID,
                         sync_req,
                         task_queue=REGION_TASK_QUEUE,
-                        execution_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
-                        run_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
+                        execution_timeout=DOWNLOAD_TIMEOUT,
+                        run_timeout=DOWNLOAD_TIMEOUT,
                         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                     )
             finally:

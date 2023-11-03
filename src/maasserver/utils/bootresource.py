@@ -8,6 +8,7 @@ import hashlib
 import mmap
 import os
 from pathlib import Path
+import tarfile
 from typing import BinaryIO, Iterator
 
 import aiofiles
@@ -319,3 +320,12 @@ class LocalBootResourceFile:
         if not localfile.complete:
             localfile.store(content)
         return localfile
+
+    def extract_file(self, extract_path: str):
+        store = get_bootresource_store_path()
+        target_dir = store / extract_path
+        target_dir.mkdir(exist_ok=True, parents=True)
+        with tarfile.open(self.path, mode="r") as tar:
+            tar.extractall(
+                path=target_dir.absolute(), filter=tarfile.tar_filter
+            )

@@ -1,10 +1,10 @@
 import asyncio
 from asyncio import gather
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from io import BytesIO
-import tarfile
-from typing import Coroutine
+import random
+from typing import Coroutine, Sequence
 
 from aiohttp import ClientSession
 from temporalio import activity, workflow
@@ -21,36 +21,37 @@ from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from provisioningserver.utils.url import compose_URL
 
 READ_BUF = 4 * (1 << 20)  # 4 MB
-HEARTBEAT_TIMEOUT = 30
-DISK_TIMEOUT = 15 * 60  # 15 minutes
-LOCK_TIMEOUT = 15 * 60  # 15 minutes
-DOWNLOAD_TIMEOUT = 2 * 60 * 60  # 2 hours
+REPORT_INTERVAL = timedelta(seconds=10)
+HEARTBEAT_TIMEOUT = timedelta(seconds=30)
+DISK_TIMEOUT = timedelta(minutes=15)
+DOWNLOAD_TIMEOUT = timedelta(hours=2)
+MAX_SOURCES = 5
 
 
 @dataclass
 class ResourceDownloadParam:
-    rfile_id: int
+    rfile_ids: list[int]
     source_list: list[str]
     sha256: str
     total_size: int
     size: int = 0
     force: bool = False
-    extract_path: str | None = None
+    extract_paths: list[str] = field(default_factory=list)
 
 
 @dataclass
 class SyncRequestParam:
-    resources: list[ResourceDownloadParam]
+    resources: Sequence[ResourceDownloadParam]
 
 
 @dataclass
 class ResourceDeleteParam:
-    files: list[str]
+    files: Sequence[str]
 
 
 @dataclass
 class ResourceCleanupParam:
-    expected_files: list[str]
+    expected_files: Sequence[str]
 
 
 class BootResourceImportCancelled(Exception):
@@ -129,7 +130,10 @@ class BootResourcesActivity(MAASAPIClient):
             if await lfile.avalid():
                 activity.logger.info("file already downloaded, skipping")
                 lfile.commit()
-                await self.report_progress(param.rfile_id, lfile.size)
+                for target in param.extract_paths:
+                    lfile.extract_file(target)
+                    activity.heartbeat()
+                await self.report_progress(param.rfile_ids[0], lfile.size)
                 return True
 
             headers = {
@@ -145,15 +149,13 @@ class BootResourcesActivity(MAASAPIClient):
             ) as response:
                 response.raise_for_status()
                 last_update = datetime.now()
-                chunk_cnt = 0
                 async for data, _ in response.content.iter_chunks():
                     activity.heartbeat()
-                    chunk_cnt += 1
                     dt_now = datetime.now()
-                    if dt_now > (last_update + timedelta(seconds=10)) or (
-                        chunk_cnt % 10 == 0
-                    ):
-                        await self.report_progress(param.rfile_id, lfile.size)
+                    if dt_now > (last_update + REPORT_INTERVAL):
+                        await self.report_progress(
+                            param.rfile_ids[0], lfile.size
+                        )
                         last_update = dt_now
                     try:
                         await lfile.astore(BytesIO(data), autocommit=False)
@@ -167,21 +169,17 @@ class BootResourcesActivity(MAASAPIClient):
                 lfile.commit()
                 activity.logger.debug(f"file commited {lfile.size}")
 
-                if param.extract_path:
-                    store = get_bootresource_store_path()
-                    target_dir = store / param.extract_path
-                    target_dir.mkdir(exist_ok=True, parents=True)
+                for target in param.extract_paths:
+                    lfile.extract_file(target)
                     activity.heartbeat()
-                    with tarfile.open(lfile.path, mode="r") as tar:
-                        for member in tar:
-                            tar.extract(member, path=target_dir.absolute())
-                            activity.heartbeat()
 
-                await self.report_progress(param.rfile_id, lfile.size)
+                for id in param.rfile_ids:
+                    await self.report_progress(id, lfile.size)
                 return True
             else:
                 activity.logger.warn("Download failed, invalid checksum")
-                await self.report_progress(param.rfile_id, 0)
+                for id in param.rfile_ids:
+                    await self.report_progress(id, 0)
                 lfile.unlink()
                 return False
         finally:
@@ -230,9 +228,8 @@ class DownloadBootResourceWorkflow:
         return await workflow.execute_activity(
             "download-bootresourcefile",
             input,
-            activity_id=f"download_{input.rfile_id}",
-            start_to_close_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
-            heartbeat_timeout=timedelta(seconds=HEARTBEAT_TIMEOUT),
+            start_to_close_timeout=DOWNLOAD_TIMEOUT,
+            heartbeat_timeout=HEARTBEAT_TIMEOUT,
             cancellation_type=ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
             retry_policy=RetryPolicy(
                 maximum_attempts=5,
@@ -251,10 +248,9 @@ class SyncBootResourcesWorkflow:
             return workflow.execute_child_workflow(
                 "download-bootresource",
                 res,
-                id=f"bootresource_download_{res.rfile_id}@{region or REGION_TASK_QUEUE}",
-                execution_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
-                run_timeout=timedelta(seconds=DOWNLOAD_TIMEOUT),
-                task_timeout=timedelta(seconds=LOCK_TIMEOUT),
+                id=f"bootresource_download_{res.sha256[:12]}",
+                execution_timeout=DOWNLOAD_TIMEOUT,
+                run_timeout=DOWNLOAD_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 task_queue=f"{region}:region" if region else REGION_TASK_QUEUE,
                 retry_policy=RetryPolicy(maximum_attempts=5),
@@ -271,14 +267,14 @@ class SyncBootResourcesWorkflow:
             await gather(*upstream_jobs)
 
         # distribute files inside cluster
-        endpoints = await workflow.execute_activity(
+        endpoints: dict[str, list] = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=5),
         )
-        regions = frozenset(endpoints.keys())
+        regions: frozenset[str] = frozenset(endpoints.keys())
 
-        sync_status = await workflow.execute_activity(
+        sync_status: dict[str, dict] = await workflow.execute_activity(
             "get-bootresourcefile-sync-status",
             start_to_close_timeout=timedelta(seconds=30),
             retry_policy=RetryPolicy(maximum_attempts=5),
@@ -289,22 +285,25 @@ class SyncBootResourcesWorkflow:
 
         sync_jobs: list[Coroutine] = []
         for res in input.resources:
-            if res.rfile_id not in sync_status:
-                workflow.logger.warn(
-                    f"File {res.rfile_id} has no complete copy available, skipping"
+            missing: set[str] = set()
+            for id in res.rfile_ids:
+                missing.update(regions - set(sync_status[str(id)]["sources"]))
+            if missing == regions:
+                workflow.logger.error(
+                    f"File {res.sha256} has no complete copy available, skipping"
                 )
                 continue
-            sources = set(sync_status[res.rfile_id]["sources"])
-            missing = regions - sources
+            sources = regions - missing
+            eps = [
+                f"{ep}{res.sha256}/"
+                for reg in sources
+                for ep in endpoints[reg]
+            ]
+            new_res = replace(
+                res,
+                source_list=random.sample(eps, min(len(eps), MAX_SOURCES)),
+            )
             for region in missing:
-                new_res = replace(
-                    res,
-                    source_list=[
-                        f"{ep}{res.sha256}/"
-                        for reg in sources
-                        for ep in endpoints[reg]
-                    ],
-                )
                 sync_jobs.append(_schedule(new_res, region))
         if sync_jobs:
             await gather(*sync_jobs)
@@ -329,8 +328,8 @@ class DeleteBootResourceWorkflow:
                 "delete-bootresourcefile",
                 input,
                 task_queue=f"{r}:region",
-                start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
-                schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+                start_to_close_timeout=DISK_TIMEOUT,
+                schedule_to_close_timeout=DISK_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=5),
             )
 
@@ -347,7 +346,7 @@ class CleanupBootResourceWorkflow:
             False,
             start_to_close_timeout=timedelta(seconds=30),
         )
-        expected_files = set(f["sha256"] for _, f in sync_status)
+        expected_files = list(set(f["sha256"] for _, f in sync_status))
 
         endpoints = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
@@ -359,6 +358,6 @@ class CleanupBootResourceWorkflow:
                 "cleanup-bootresourcefile",
                 ResourceCleanupParam(expected_files),
                 task_queue=f"{r}:region",
-                start_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
-                schedule_to_close_timeout=timedelta(seconds=DISK_TIMEOUT),
+                start_to_close_timeout=DISK_TIMEOUT,
+                schedule_to_close_timeout=DISK_TIMEOUT,
             )
