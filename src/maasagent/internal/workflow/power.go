@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	// ErrWrongPowerState is an error for when a power operation executes
+	// ErrWrongPowerState is an error for when a power action executes
 	// and the machine is found in an incorrect power state
 	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
 )
@@ -49,9 +49,9 @@ var (
 type PowerParam struct {
 	SystemID   string                 `json:"system_id"`
 	Action     string                 `json:"action"`
-	Queue      string                 `json:"queue"`
-	DriverOpts map[string]interface{} `json:"params"`
-	Driver     string                 `json:"power_type"`
+	TaskQueue  string                 `json:"task_queue"`
+	DriverOpts map[string]interface{} `json:"driver_opts"`
+	DriverType string                 `json:"driver_type"`
 }
 
 func shouldIgnoreMACDriverType(driver, key string) bool {
@@ -107,7 +107,7 @@ func fmtPowerOpts(driver string, opts map[string]interface{}) []string {
 
 // PowerActivityParam is the activity parameter for PowerActivity
 type PowerActivityParam struct {
-	Operation string `json:"operation"`
+	Action string `json:"action"`
 	PowerParam
 }
 
@@ -116,7 +116,7 @@ type PowerResult struct {
 	State string `json:"state"`
 }
 
-// PowerActivity executes power operations via the maas.power CLI
+// PowerActivity executes power actions via the maas.power CLI
 func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult, error) {
 	log := activity.GetLogger(ctx)
 
@@ -128,8 +128,8 @@ func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult
 		return nil, err
 	}
 
-	driverOpts := fmtPowerOpts(params.Driver, params.DriverOpts)
-	args := append([]string{params.Operation, params.Driver}, driverOpts...)
+	opts := fmtPowerOpts(params.DriverType, params.DriverOpts)
+	args := append([]string{params.Action, params.DriverType}, opts...)
 
 	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)
 
@@ -176,7 +176,7 @@ func PowerOn(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log.Info("Powering on", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
-		Operation:  "on",
+		Action:     "on",
 		PowerParam: params,
 	}
 
@@ -201,7 +201,7 @@ func PowerOff(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log.Info("Powering off", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
-		Operation:  "off",
+		Action:     "off",
 		PowerParam: params,
 	}
 
@@ -226,7 +226,7 @@ func PowerCycle(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log.Info("Cycling power", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
-		Operation:  "cycle",
+		Action:     "cycle",
 		PowerParam: params,
 	}
 
@@ -251,7 +251,7 @@ func PowerQuery(ctx workflow.Context, params PowerParam) (*PowerResult, error) {
 	log.Info("Querying power status", tag.Builder().TargetSystemID(params.SystemID).KeyVals...)
 
 	activityParams := PowerActivityParam{
-		Operation:  "status",
+		Action:     "status",
 		PowerParam: params,
 	}
 

@@ -36,7 +36,7 @@ from maasserver.workflow.configure import (
     ConfigureWorkerPoolWorkflow,
 )
 from maasserver.workflow.deploy import DeployNWorkflow
-from maasserver.workflow.power import PowerNWorkflow
+from maasserver.workflow.power import PowerManyWorkflow
 from maasserver.workflow.worker import Worker
 from provisioningserver.utils.env import MAAS_ID
 
@@ -126,7 +126,7 @@ class TemporalWorkerService(Service):
                     DeleteBootResourceWorkflow,
                     DeployNWorkflow,
                     DownloadBootResourceWorkflow,
-                    PowerNWorkflow,
+                    PowerManyWorkflow,
                     SyncBootResourcesWorkflow,
                 ],
                 activities=[

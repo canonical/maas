@@ -28,7 +28,11 @@ from maasserver.workflow.deploy import (
     DeployNWorkflow,
     DeployParam,
 )
-from maasserver.workflow.power import PowerNParam, PowerNWorkflow, PowerParam
+from maasserver.workflow.power import (
+    PowerManyParam,
+    PowerManyWorkflow,
+    PowerParam,
+)
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
 from provisioningserver.utils.twisted import asynchronous, FOREVER
 
@@ -99,15 +103,15 @@ def to_temporal_params(
             )
         case "power_on":
             return (
-                "PowerNWorkflow",
-                PowerNParam(
+                "power-many",
+                PowerManyParam(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
                             action=name,
-                            queue=get_temporal_queue_for_machine(o),
-                            power_type=extra_params.power_type,
-                            params=extra_params.power_parameters,
+                            task_queue=get_temporal_queue_for_machine(o),
+                            driver_type=extra_params.power_type,
+                            driver_opts=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -115,15 +119,15 @@ def to_temporal_params(
             )
         case "power_off":
             return (
-                "PowerNWorkflow",
-                PowerNParam(
+                "power-many",
+                PowerManyParam(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
                             action=name,
-                            queue=get_temporal_queue_for_machine(o),
-                            power_type=extra_params.power_type,
-                            params=extra_params.power_parameters,
+                            task_queue=get_temporal_queue_for_machine(o),
+                            driver_type=extra_params.power_type,
+                            driver_opts=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -131,15 +135,15 @@ def to_temporal_params(
             )
         case "power_query":
             return (
-                "PowerNWorkflow",
-                PowerNParam(
+                "power-many",
+                PowerManyParam(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
                             action=name,
-                            queue=get_temporal_queue_for_machine(o),
-                            power_type=extra_params.power_type,
-                            params=extra_params.power_parameters,
+                            task_queue=get_temporal_queue_for_machine(o),
+                            driver_type=extra_params.power_type,
+                            driver_opts=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -147,15 +151,15 @@ def to_temporal_params(
             )
         case "power_cycle":
             return (
-                "PowerNWorkflow",
-                PowerNParam(
+                "power-many",
+                PowerManyParam(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
                             action=name,
-                            queue=get_temporal_queue_for_machine(o),
-                            power_type=extra_params.power_type,
-                            params=extra_params.power_parameters,
+                            task_queue=get_temporal_queue_for_machine(o),
+                            driver_type=extra_params.power_type,
+                            driver_opts=extra_params.power_parameters,
                         )
                         for o in objects
                     ]
@@ -245,8 +249,8 @@ __all__ = [
     "execute_workflow",
     "get_temporal_queue_for_machine",
     "MACHINE_ACTION_WORKFLOWS",
-    "PowerNParam",
-    "PowerNWorkflow",
+    "PowerManyParam",
+    "PowerManyWorkflow",
     "PowerParam",
     "REGION_TASK_QUEUE",
     "ResourceDeleteParam",
