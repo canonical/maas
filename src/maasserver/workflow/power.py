@@ -12,10 +12,6 @@ POWER_ACTION_WORKFLOWS = (
 )
 
 
-class InvalidPowerActionException(Exception):
-    pass
-
-
 @dataclass
 class PowerParam:
     system_id: str
@@ -41,22 +37,19 @@ class PowerManyWorkflow:
     async def run(self, params: PowerManyParam) -> list[PowerResult]:
         results = []
         for param in params.params:
-            workflow_name = ""
-            if param.action in POWER_ACTION_WORKFLOWS:
-                workflow_name = param.action
+            if param.action not in POWER_ACTION_WORKFLOWS:
+                workflow.logger.warn(
+                    f"Invalid power action {param.action} for machine {param.system_id}"
+                )
+                continue
 
-            if workflow_name:
-                result = await workflow.execute_child_workflow(
-                    workflow_name,
-                    param,
-                    task_queue=param.task_queue,
-                    retry_policy=RetryPolicy(maximum_attempts=5),
-                )
-                if result:
-                    results.append(result)
-            else:
-                raise InvalidPowerActionException(
-                    f"Invalid power action: {param.action}"
-                )
+            result = await workflow.execute_child_workflow(
+                param.action,
+                param,
+                task_queue=param.task_queue,
+                retry_policy=RetryPolicy(maximum_attempts=5),
+            )
+            if result:
+                results.append(result)
 
         return results
