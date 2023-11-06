@@ -4,8 +4,12 @@
 import random
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
-from maasserver.forms.parameters import ParametersForm
+from maasserver.forms.parameters import (
+    DEFAULTS_FROM_MAAS_CONFIG,
+    ParametersForm,
+)
 from maasserver.models import Config
+from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
@@ -1329,3 +1333,7 @@ class TestParametersForm(MAASServerTestCase):
             },
             form.errors,
         )
+
+    def test_default_config_keys_exist(self):
+        defaults_all = get_default_config().keys()
+        self.assertGreaterEqual(defaults_all, DEFAULTS_FROM_MAAS_CONFIG)

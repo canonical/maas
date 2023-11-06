@@ -26,7 +26,7 @@ DEFAULTS_FROM_MAAS_CONFIG = {
     "maas_auto_ipmi_user",
     "maas_auto_ipmi_user_privilege_level",
     "maas_auto_ipmi_k_g_bmc_key",
-    "maas_auto_ipmi_cipher_suit_id",
+    "maas_auto_ipmi_cipher_suite_id",
 }
 
 
