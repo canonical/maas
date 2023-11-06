@@ -46,6 +46,10 @@
 #       - [OPERATOR, Operator]
 #       - [ADMIN, Administrator]
 #     argument_format: --ipmi-privilege-level={input}
+#   maas_auto_ipmi_cipher_suite_id:
+#     type: string
+#     max: 2
+#     argument_format: --ipmi-cipher-suite-id={input}
 # packages:
 #   apt:
 #     - freeipmi-tools
