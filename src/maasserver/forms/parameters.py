@@ -29,6 +29,17 @@ DEFAULTS_FROM_MAAS_CONFIG = {
     "maas_auto_ipmi_cipher_suite_id",
 }
 
+PARAMETER_TYPES = (
+    "boolean",
+    "choice",
+    "interface",
+    "password",
+    "runtime",
+    "storage",
+    "string",
+    "url",
+)
+
 
 class ParametersForm(Form):
     """Parameters forms."""
@@ -202,24 +213,11 @@ class ParametersForm(Form):
                 )
 
             # Check parameter type is supported and required.
-            if (
-                param_type
-                not in (
-                    "storage",
-                    "interface",
-                    "url",
-                    "runtime",
-                    "string",
-                    "password",
-                    "choice",
-                )
-                and param_required
-            ):
+            if param_type not in PARAMETER_TYPES and param_required:
                 set_form_error(
                     self,
                     "parameters",
-                    "%s: type must be either storage, interface, url, "
-                    "runtime, string, password, or choice" % param_type,
+                    f"{param_type}: type must be one of {', '.join(PARAMETER_TYPES)}",
                 )
             if param_type in ("storage", "interface", "url", "choice") and (
                 param_min is not None or param_max is not None
@@ -273,14 +271,6 @@ class ParametersForm(Form):
                             "parameters",
                             "%s: argument_format must contain one of {input}, "
                             "{name}, {mac}, {vendor}, {product}" % param_type,
-                        )
-                else:
-                    if "{input}" not in param_argument_format:
-                        set_form_error(
-                            self,
-                            "parameters",
-                            "%s: argument_format must contain {input}"
-                            % param_type,
                         )
 
         return parameters

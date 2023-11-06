@@ -329,6 +329,31 @@ class TestTestForm(MAASServerTestCase):
             ),
         )
 
+    def test_class_start_testing_with_boolean_param(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, interface=True)
+        user = factory.make_admin()
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING,
+            parameters={
+                "arg": {"type": "boolean", "argument_format": "--arg"}
+            },
+        )
+        mock_start_testing = self.patch_autospec(node, "start_testing")
+        form = TestForm(
+            instance=node,
+            user=user,
+            data={"testing_scripts": script.name, "arg": True},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertIsNotNone(node)
+        mock_start_testing.assert_called_once_with(
+            user,
+            False,
+            [script.name],
+            {script.name: {"arg": True}},
+        )
+
     def test_class_start_testing_can_override_global_param(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, interface=True)
         bd = factory.make_PhysicalBlockDevice(node=node)

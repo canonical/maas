@@ -107,6 +107,14 @@ class TestForm(Form):
                         self.fields[pname] = CharField(
                             required=False, initial=None
                         )
+                elif ptype == "boolean":
+                    self.fields[combined_name] = BooleanField(
+                        required=False, initial=None
+                    )
+                    if pname not in self.fields:
+                        self.fields[pname] = BooleanField(
+                            required=False, initial=None
+                        )
                 elif ptype == "choice":
                     # Support a Django choice list or a string list
                     choices = [

@@ -162,21 +162,6 @@ class TestParametersForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test_validates_parameter_field_argument_format_non_runtime_type(self):
-        form = ParametersForm(
-            data={
-                "runtime": {
-                    "type": "runtime",
-                    "argument_format": factory.make_name("argument_format"),
-                }
-            }
-        )
-        self.assertFalse(form.is_valid())
-        self.assertDictEqual(
-            {"parameters": ["runtime: argument_format must contain {input}"]},
-            form.errors,
-        )
-
     def test_validates_parameter_field_default_is_str(self):
         param_default = random.randint(0, 1000)
         form = ParametersForm(
@@ -232,6 +217,7 @@ class TestParametersForm(MAASServerTestCase):
     def test_checks_for_supported_parameter_types(self):
         form = ParametersForm(
             data={
+                "boolean": {"type": "boolean"},
                 "storage": {"type": "storage"},
                 "interface": {"type": "interface"},
                 "url": {"type": "url"},
@@ -247,8 +233,8 @@ class TestParametersForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "parameters": [
-                    "%s: type must be either storage, interface, url, "
-                    "runtime, string, password, or choice" % unsupported_type
+                    f"{unsupported_type}: type must be one of boolean, "
+                    "choice, interface, password, runtime, storage, string, url"
                 ]
             },
             form.errors,
