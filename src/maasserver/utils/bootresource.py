@@ -2,14 +2,17 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities for working with local boot resources."""
-from contextlib import contextmanager
+from __future__ import annotations
+
+from contextlib import asynccontextmanager, contextmanager
 import fcntl
 import hashlib
 import mmap
 import os
 from pathlib import Path
 import tarfile
-from typing import BinaryIO, Iterator
+from tempfile import NamedTemporaryFile
+from typing import BinaryIO
 
 import aiofiles
 
@@ -38,6 +41,43 @@ class LocalStoreLockException(Exception):
 
 def get_bootresource_store_path() -> Path:
     return Path(get_maas_data_path("boot-resources"))
+
+
+class MMapedLocalFile(mmap.mmap):
+    def __new__(cls, lfile: LocalBootResourceFile, fileno: int):
+        obj = super().__new__(cls, fileno=fileno, length=lfile.total_size)
+        obj.lfile = lfile
+        return obj
+
+    def write(self, content: bytes) -> int:
+        self._check_content_size(content)
+        try:
+            wrote = super().write(content)
+            self.lfile._size = self.tell()
+            return wrote
+        except ValueError as e:
+            raise LocalStoreWriteBeyondEOF(e)
+
+    def _check_content_size(self, content):
+        """Check if `content` fits in the file
+
+        This works only for "seekable" contents
+
+        Args:
+            content (Buffer): The content to be written
+
+        Raises:
+            LocalStoreWriteBeyondEOF: Content too big
+        """
+        if hasattr(content, "seekable") and content.seekable():
+            to_write = content.seek(0, os.SEEK_END)  # type: ignore[attr-defined]
+            if self.lfile._size + to_write > self.lfile.total_size:
+                msg = (
+                    "Attempt to write beyond EOF, current "
+                    f"{self.lfile._size}/{self.lfile.total_size}, new {to_write}"
+                )
+                raise LocalStoreWriteBeyondEOF(msg)
+            content.seek(0, os.SEEK_SET)  # type: ignore[attr-defined]
 
 
 class LocalBootResourceFile:
@@ -158,31 +198,11 @@ class LocalBootResourceFile:
         except IOError as e:
             raise LocalStoreAllocationFail(e)
 
-    def _check_content_size(self, content: BinaryIO | Iterator[bytes]):
-        """Check if `content` fits in the file
-
-        This works only for "seekable" contents
-
-        Args:
-            content (BinaryIO | Iterator[bytes]): The content to be written
-
-        Raises:
-            LocalStoreWriteBeyondEOF: Content too big
-        """
-        if hasattr(content, "seekable") and content.seekable():
-            content_len = content.seek(0, os.SEEK_END)  # type: ignore[attr-defined]
-            if self._size + content_len > self.total_size:
-                msg = f"Attempt to write beyond EOF, current {self._size}/{self.total_size}, new {content_len}"
-                raise LocalStoreWriteBeyondEOF(msg)
-            content.seek(0, os.SEEK_SET)  # type: ignore[attr-defined]
-
-    def store(
-        self, content: BinaryIO | Iterator[bytes], autocommit: bool = True
-    ) -> bool:
+    @contextmanager
+    def store(self, autocommit: bool = True) -> MMapedLocalFile:
         """Store file in the local disk
 
         Args:
-            content (BinaryIO): the file content
             autocommit (bool, optional): whether the file should be validated
                 when complete. Defaults to True.
 
@@ -193,31 +213,28 @@ class LocalBootResourceFile:
         Returns:
             bool: Whether the file is complete
         """
-        self._check_content_size(content)
         if self._size == 0:
             self.allocate()
-        with self.partial_file_path.open("rb+") as stream, mmap.mmap(
-            stream.fileno(), self.total_size
+        elif self.complete:
+            raise LocalStoreWriteBeyondEOF()
+
+        with self.partial_file_path.open("rb+") as stream, MMapedLocalFile(
+            fileno=stream.fileno(),
+            lfile=self,
         ) as mm:
             mm.seek(self._size, os.SEEK_SET)
-            for data in content:
-                mm.write(data)
-            self._size = mm.tell()
-        if autocommit:
-            if self.complete:
-                if self.valid:
-                    return self.commit()
-                else:
-                    raise LocalStoreInvalidHash()
-            return False
-        else:
-            return self.complete
+            yield mm
+        if autocommit and self.complete:
+            if self.valid:
+                self.commit()
+            else:
+                raise LocalStoreInvalidHash()
 
-    async def astore(self, content: BinaryIO, autocommit: bool = True) -> bool:
+    @asynccontextmanager
+    async def astore(self, autocommit: bool = True) -> MMapedLocalFile:
         """Store file in the local disk (async)
 
         Args:
-            content (BinaryIO): the file content
             autocommit (bool, optional): whether the file should be validated
                 when complete. Defaults to True.
 
@@ -228,25 +245,22 @@ class LocalBootResourceFile:
         Returns:
             bool: Whether the file is complete
         """
-        self._check_content_size(content)
         if self._size == 0:
             self.allocate()
-        with self.partial_file_path.open("rb+") as stream, mmap.mmap(
-            stream.fileno(), self.total_size
+        elif self.complete:
+            raise LocalStoreWriteBeyondEOF()
+
+        with self.partial_file_path.open("rb+") as stream, MMapedLocalFile(
+            fileno=stream.fileno(),
+            lfile=self,
         ) as mm:
             mm.seek(self._size, os.SEEK_SET)
-            for data in content:
-                mm.write(data)
-            self._size = mm.tell()
-        if autocommit:
-            if self.complete:
-                if await self.avalid():
-                    return self.commit()
-                else:
-                    raise LocalStoreInvalidHash()
-            return False
-        else:
-            return self.complete
+            yield mm
+        if autocommit and self.complete:
+            if await self.avalid():
+                self.commit()
+            else:
+                raise LocalStoreInvalidHash()
 
     def unlink(self):
         """Removes the file from local disk"""
@@ -309,17 +323,20 @@ class LocalBootResourceFile:
         Returns:
             LocalBootResourceFile: the local file object
         """
-        sha256 = hashlib.sha256()
-        for data in content:
-            sha256.update(data)
-        hexdigest = sha256.hexdigest()
-        total_size = content.tell()
-        content.seek(0, os.SEEK_SET)
-
-        localfile = cls(hexdigest, total_size)
-        if not localfile.complete:
-            localfile.store(content)
-        return localfile
+        with NamedTemporaryFile(
+            mode="+wb",
+            dir=get_bootresource_store_path(),
+        ) as tmp:
+            sha256 = hashlib.sha256()
+            for data in content:
+                sha256.update(data)
+                tmp.write(data)
+            size = tmp.tell()
+            hexdigest = sha256.hexdigest()
+            localfile = cls(hexdigest, size)
+            if not localfile.path.exists():
+                os.link(tmp.name, localfile.path)
+            return localfile
 
     def extract_file(self, extract_path: str):
         store = get_bootresource_store_path()

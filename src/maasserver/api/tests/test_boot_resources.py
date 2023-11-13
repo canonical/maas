@@ -7,7 +7,6 @@
 import hashlib
 import http.client
 from io import BytesIO
-import os
 import random
 from typing import Iterable
 
@@ -329,7 +328,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
         lfile = rfile.local_file()
-        self.assertTrue(os.access(lfile.path, os.F_OK))
+        self.assertTrue(lfile.path.exists())
         mock_filestore.assert_not_called()
 
     def test_POST_creates_boot_resource_with_empty_file(self):
@@ -606,7 +605,7 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
     def test_PUT_returns_bad_request_when_resource_file_is_complete(self):
         self.become_admin()
         rfile, content = self.make_empty_resource_file(
-            synced=[(self.region, 1)]
+            synced=[(self.region, -1)]
         )
 
         response = self.client.put(

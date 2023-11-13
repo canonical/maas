@@ -10,7 +10,6 @@ __all__ = [
 ]
 
 import http.client
-from io import BytesIO
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -435,7 +434,8 @@ class BootResourceFileUploadHandler(OperationsHandler):
             raise MAASAPIBadRequest("Cannot upload to a complete file.")
 
         try:
-            lfile.store(BytesIO(data))
+            with lfile.store() as m:
+                m.write(data)
             sync_status.size += size
             sync_status.save()
             if lfile.complete:

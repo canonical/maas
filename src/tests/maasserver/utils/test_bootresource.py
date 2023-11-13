@@ -4,7 +4,6 @@ from itertools import islice, repeat
 import os
 from pathlib import Path
 import shutil
-from typing import BinaryIO
 
 import pytest
 
@@ -34,18 +33,16 @@ def image_store_dir(mocker, maas_data_dir):
 
 
 @pytest.fixture
-def file_content() -> BinaryIO:
-    zeroes = repeat(b"\x01")
-    content = b"".join(islice(zeroes, FILE_SIZE))
-    yield BytesIO(content)
+def file_content() -> bytes:
+    ones = repeat(b"\x01")
+    content = bytes(b"".join(islice(ones, FILE_SIZE)))
+    yield content
 
 
 @pytest.fixture
-def file_sha256(file_content: BinaryIO):
+def file_sha256(file_content: bytes):
     sha256 = hashlib.sha256()
-    for data in file_content:
-        sha256.update(data)
-    file_content.seek(0, os.SEEK_SET)  # rewind
+    sha256.update(file_content)
     yield str(sha256.hexdigest())
 
 
@@ -92,18 +89,16 @@ class TestLocalBootResourceFile:
         assert not os.access(f.path, os.F_OK)
 
     def test_valid(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytes, file_sha256: str
     ):
         with open(image_store_dir / file_sha256, "wb") as stream:
-            for data in file_content:
-                stream.write(data)
+            stream.write(file_content)
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
         assert f.valid
 
-    def test_valid_not_ok(self, image_store_dir: Path, file_content: BinaryIO):
+    def test_valid_not_ok(self, image_store_dir: Path, file_content: bytes):
         with open(image_store_dir / "invalidhash", "wb") as stream:
-            for data in file_content:
-                stream.write(data)
+            stream.write(file_content)
         f = LocalBootResourceFile(sha256="invalidhash", total_size=FILE_SIZE)
         assert not f.valid
 
@@ -114,7 +109,7 @@ class TestLocalBootResourceFile:
         assert st.st_size == FILE_SIZE
 
     def test_allocate_raise_error(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytearray, file_sha256: str
     ):
         f = LocalBootResourceFile(
             sha256=file_sha256, total_size=FILE_SIZE, size=1
@@ -123,7 +118,7 @@ class TestLocalBootResourceFile:
             f.allocate()
 
     def test_allocate_truncates_rogue_file(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytearray, file_sha256: str
     ):
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
         with f.path.open("wb") as stream:
@@ -133,38 +128,40 @@ class TestLocalBootResourceFile:
         assert st.st_size == FILE_SIZE
 
     def test_store(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytes, file_sha256: str
     ):
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
-        assert f.store(file_content)
+        with f.store() as mm:
+            mm.write(file_content)
         assert os.access(f.path, os.F_OK)
         assert f.valid
 
     def test_store_append(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytes, file_sha256: str
     ):
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
-        while slice := file_content.read(FILE_SLICE):
-            buf = BytesIO(slice)
-            f.store(buf)
+        for s in islice(file_content, None, None, FILE_SLICE):
+            with f.store() as mm:
+                mm.write(file_content[s : s + FILE_SLICE])
         assert os.access(f.path, os.F_OK)
         assert f.valid
 
     def test_store_beyond_eof(
-        self, image_store_dir: Path, file_content: BinaryIO, file_sha256: str
+        self, image_store_dir: Path, file_content: bytes, file_sha256: str
     ):
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE - 1)
         with pytest.raises(LocalStoreWriteBeyondEOF):
-            while slice := file_content.read(FILE_SLICE):
-                buf = BytesIO(slice)
-                f.store(buf)
+            for s in islice(file_content, None, None, FILE_SLICE):
+                with f.store() as mm:
+                    mm.write(file_content[s : s + FILE_SLICE])
 
     def test_store_corrupt_file(
-        self, image_store_dir: Path, file_content: BinaryIO
+        self, image_store_dir: Path, file_content: bytes
     ):
         f = LocalBootResourceFile(sha256="invalidhash", total_size=FILE_SIZE)
         with pytest.raises(LocalStoreInvalidHash):
-            f.store(file_content)
+            with f.store() as mm:
+                mm.write(file_content)
         assert not os.access(f.path, os.F_OK)
         assert os.access(f.partial_file_path, os.F_OK)
         assert not f.valid
@@ -172,10 +169,10 @@ class TestLocalBootResourceFile:
     def test_create_from_content(
         self,
         image_store_dir: Path,
-        file_content: BinaryIO,
+        file_content: bytes,
         file_sha256: str,
     ):
-        f = LocalBootResourceFile.create_from_content(file_content)
+        f = LocalBootResourceFile.create_from_content(BytesIO(file_content))
         assert os.access(f.path, os.F_OK)
         assert f.valid
         assert f.size == FILE_SIZE

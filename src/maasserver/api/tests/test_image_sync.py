@@ -183,3 +183,58 @@ class TestImagesSyncProgressHandler(APITestCase.ForAdmin):
             [r.system_id for r in regions[2:]],
             status[str(partial_sync.id)]["sources"],
         )
+
+    def test_bulk_create(self):
+        regions = [factory.make_RegionController() for _ in range(2)]
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        resource_set = factory.make_BootResourceSet(resource)
+        rfiles = [
+            factory.make_BootResourceFile(resource_set=resource_set)
+            for _ in range(3)
+        ]
+        response = self.client.post(
+            reverse("images_sync_progress_handler"),
+            {
+                "ids": [f.id for f in rfiles[:1]],
+                "system_id": regions[0].system_id,
+                "size": 1,
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        for f in rfiles[:1]:
+            self.assertEqual(
+                1, f.bootresourcefilesync_set.get(region=regions[0]).size
+            )
+        self.assertFalse(
+            rfiles[0]
+            .bootresourcefilesync_set.filter(region=regions[1])
+            .exists()
+        )
+        self.assertFalse(
+            rfiles[2]
+            .bootresourcefilesync_set.filter(region=regions[0])
+            .exists()
+        )
+
+    def test_bulk_create_single_val(self):
+        regions = [factory.make_RegionController() for _ in range(2)]
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        resource_set = factory.make_BootResourceSet(resource)
+        rfiles = [factory.make_BootResourceFile(resource_set=resource_set)]
+        response = self.client.post(
+            reverse("images_sync_progress_handler"),
+            {
+                "ids": [f.id for f in rfiles],
+                "system_id": regions[0].system_id,
+                "size": 1,
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        for f in rfiles:
+            self.assertEqual(
+                1, f.bootresourcefilesync_set.get(region=regions[0]).size
+            )

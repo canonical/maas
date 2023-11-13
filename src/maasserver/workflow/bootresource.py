@@ -2,11 +2,10 @@ import asyncio
 from asyncio import gather
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-from io import BytesIO
 import random
 from typing import Coroutine, Sequence
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.workflow import ActivityCancellationType
@@ -15,6 +14,7 @@ from maasserver.utils.bootresource import (
     get_bootresource_store_path,
     LocalBootResourceFile,
     LocalStoreInvalidHash,
+    LocalStoreWriteBeyondEOF,
 )
 from maasserver.workflow.api_client import MAASAPIClient
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
@@ -63,21 +63,23 @@ class BootResourcesActivity(MAASAPIClient):
         super().__init__(url, token, user_agent=user_agent)
         self.region_id = region_id
 
-    async def report_progress(self, rfile: int, size: int):
+    async def report_progress(self, rfiles: list[int], size: int):
         """Report progress back to MAAS
 
         Args:
-            rfile (int): BootResourceFile id
+            rfiles (list[int]): BootResourceFile ids
             size (int): current size, in bytes
 
         Returns:
            requests.Response: Response object
         """
-        url = f"{self.url}/api/2.0/images-sync-progress/{rfile}/{self.region_id}/"
+        url = f"{self.url}/api/2.0/images-sync-progress/"
         return await self.request_async(
-            "PUT",
+            "POST",
             url,
             data={
+                "system_id": self.region_id,
+                "ids": rfiles,
                 "size": size,
             },
         )
@@ -133,33 +135,40 @@ class BootResourcesActivity(MAASAPIClient):
                 for target in param.extract_paths:
                     lfile.extract_file(target)
                     activity.heartbeat()
-                await self.report_progress(param.rfile_ids[0], lfile.size)
+                await self.report_progress(param.rfile_ids, lfile.size)
                 return True
 
             headers = {
                 "User-Agent": self.user_agent,
             }
-
-            async with ClientSession(trust_env=True) as session, session.get(
+            timeout = ClientTimeout(total=60 * 60, sock_read=120)
+            async with ClientSession(
+                trust_env=True,
+                timeout=timeout,
+            ) as session, session.get(
                 url,
                 verify_ssl=False,
                 chunked=True,
                 read_bufsize=READ_BUF,
                 headers=headers,
-            ) as response:
+            ) as response, lfile.astore(
+                autocommit=False
+            ) as store:
                 response.raise_for_status()
                 last_update = datetime.now()
                 async for data, _ in response.content.iter_chunks():
                     activity.heartbeat()
                     dt_now = datetime.now()
                     if dt_now > (last_update + REPORT_INTERVAL):
-                        await self.report_progress(
-                            param.rfile_ids[0], lfile.size
-                        )
+                        await self.report_progress(param.rfile_ids, lfile.size)
                         last_update = dt_now
                     try:
-                        await lfile.astore(BytesIO(data), autocommit=False)
-                    except (IOError, LocalStoreInvalidHash) as ex:
+                        store.write(data)
+                    except (
+                        IOError,
+                        LocalStoreInvalidHash,
+                        LocalStoreWriteBeyondEOF,
+                    ) as ex:
                         activity.logger.warn(f"Download failed {str(ex)}")
                         raise
 
@@ -173,13 +182,11 @@ class BootResourcesActivity(MAASAPIClient):
                     lfile.extract_file(target)
                     activity.heartbeat()
 
-                for id in param.rfile_ids:
-                    await self.report_progress(id, lfile.size)
+                await self.report_progress(param.rfile_ids, lfile.size)
                 return True
             else:
                 activity.logger.warn("Download failed, invalid checksum")
-                for id in param.rfile_ids:
-                    await self.report_progress(id, 0)
+                await self.report_progress(param.rfile_ids, 0)
                 lfile.unlink()
                 return False
         finally:

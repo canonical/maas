@@ -2362,7 +2362,8 @@ class Factory(maastesting.factory.Factory):
         filehash = sha256.hexdigest()
 
         lf = LocalBootResourceFile(sha256=filehash, total_size=size)
-        lf.store(BytesIO(content))
+        with lf.store() as m:
+            m.write(content)
         return lf
 
     def make_base_image_name(self, osystem=None, release=None):

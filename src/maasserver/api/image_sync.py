@@ -12,7 +12,7 @@ from maasserver.models.node import RegionController
 
 class ImagesSyncProgressHandler(OperationsHandler):
     api_doc_section_name = "ImagesSyncProgress"
-    create = update = delete = None
+    update = delete = None
     fields = ()
     hidden = True
 
@@ -42,6 +42,23 @@ class ImagesSyncProgressHandler(OperationsHandler):
             }
             for file in qs
         }
+
+    @admin_method
+    def create(self, request):
+        data = request.data
+        region = get_object_or_404(
+            RegionController, system_id=data.get("system_id")
+        )
+        size = data.get("size")
+        ids = data.getlist("ids")
+        qs = BootResourceFile.objects.filter(id__in=ids).prefetch_related(
+            "bootresourcefilesync_set"
+        )
+        for file in qs:
+            file.bootresourcefilesync_set.update_or_create(
+                defaults=dict(size=size),
+                region=region,
+            )
 
 
 class ImageSyncProgressHandler(OperationsHandler):
@@ -74,11 +91,10 @@ class ImageSyncProgressHandler(OperationsHandler):
         size = data.get("size", 0)
         boot_file = get_object_or_404(BootResourceFile, id=file_id)
         region = get_object_or_404(RegionController, system_id=system_id)
-        syncstatus, _ = boot_file.bootresourcefilesync_set.get_or_create(
-            region=region
+        boot_file.bootresourcefilesync_set.update_or_create(
+            defaults=dict(size=size),
+            region=region,
         )
-        syncstatus.size = size
-        syncstatus.save()
 
     @admin_method
     def read(self, request, file_id, system_id):
