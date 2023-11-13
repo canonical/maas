@@ -32,6 +32,7 @@ from simplestreams import util as sutil
 from simplestreams.log import LOG, WARNING
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.objectstores import ObjectStore
+from temporalio.client import WorkflowFailureError
 from temporalio.common import WorkflowIDReusePolicy
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
@@ -857,6 +858,11 @@ class BootResourceStore(ObjectStore):
                         run_timeout=DOWNLOAD_TIMEOUT,
                         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                     )
+            except WorkflowFailureError:
+                if not self._cancel_finalize:
+                    raise
+                log.info("Boot Resources synchronisation aborted")
+                return
             finally:
                 self._content_to_finalize.clear()
             self.resource_set_cleaner()

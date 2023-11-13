@@ -22,7 +22,7 @@ from provisioningserver.utils.url import compose_URL
 
 READ_BUF = 4 * (1 << 20)  # 4 MB
 REPORT_INTERVAL = timedelta(seconds=10)
-HEARTBEAT_TIMEOUT = timedelta(seconds=30)
+HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
 DOWNLOAD_TIMEOUT = timedelta(hours=2)
 MAX_SOURCES = 5
