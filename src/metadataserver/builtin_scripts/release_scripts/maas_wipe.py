@@ -1,6 +1,39 @@
-#!/usr/bin/python3
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
+#!/usr/bin/env python3
+#
+# wipe-disks - Wipe disks content.
+#
+# Copyright (C) 2016-2023 Canonical
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# --- Start MAAS 1.0 script metadata ---
+# name: wipe-disks
+# title: Wipe disks content
+# description: Wipe disks content, optionally with quick or secure erase
+# tags: wipe, disk, storage
+# script_type: release
+# parameters:
+#   quick_erase:
+#     type: boolean
+#     argument_format: --quick-erase
+#   secure_erase:
+#     type: boolean
+#     argument_format: --secure-erase
+# packages:
+#   apt:
+#     - nvme-cli
+# --- End MAAS 1.0 script metadata --
 
 import mmap
 import os
@@ -480,15 +513,15 @@ def main():
         epilog=textwrap.dedent(
             """\
             If neither --secure-erase nor --quick-erase are specified,
-            maas-wipe will overwrite the whole disk with null bytes. This
+            wipe-disks will overwrite the whole disk with null bytes. This
             can be very slow.
 
             If both --secure-erase and --quick-erase are specified and the
-            drive does NOT have a secure erase feature, maas-wipe will
+            drive does NOT have a secure erase feature, wipe-disks will
             behave as if only --quick-erase was specified.
 
             If --secure-erase is specified and --quick-erase is NOT specified
-            and the drive does NOT have a secure erase feature, maas-wipe
+            and the drive does NOT have a secure erase feature, wipe-disks
             will behave as if --secure-erase was NOT specified, i.e. will
             overwrite the whole disk with null bytes. This can be very slow.
             """

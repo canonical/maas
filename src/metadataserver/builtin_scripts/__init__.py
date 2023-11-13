@@ -42,6 +42,7 @@ class BuiltinScript:
         for search_path in {
             "commissioning_scripts",
             "testing_scripts",
+            "release_scripts",
             # Controllers run a subset of commissioning scripts but don't
             # have the ability to download commissioning scripts from the
             # metadata server. Since rack controllers can be installed
@@ -189,6 +190,11 @@ BUILTIN_SCRIPTS = [
         name="rack-controller-connectivity",
         filename="rack-controller-connectivity.sh",
         inject_file="base-connectivity.sh",
+    ),
+    # Release scripts
+    BuiltinScript(
+        name="wipe-disks",
+        filename="maas_wipe.py",
     ),
 ]
 
