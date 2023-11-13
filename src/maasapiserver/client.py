@@ -13,7 +13,7 @@ class APIServerClient:
         self,
         session_id: str,
         session: Optional[Session] = None,
-        version: int = 1,
+        version: int = 2,
     ):
         self.session = session or Session()
         add_dict_to_cookiejar(self.session.cookies, {"sessionid": session_id})

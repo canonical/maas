@@ -6,9 +6,9 @@ from fastapi import FastAPI
 from httpx import AsyncClient
 import pytest
 
-from maasapiserver.db import Database
+from maasapiserver.common.db import Database
 from maasapiserver.main import create_app
-from maasapiserver.models.v1.entities.user import User
+from maasapiserver.v2.models.entities.user import User
 
 from .db import Fixture
 

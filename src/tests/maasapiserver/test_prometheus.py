@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.api.db import DatabaseMetricsMiddleware
-from maasapiserver.db import Database
+from maasapiserver.common.api.db import DatabaseMetricsMiddleware
+from maasapiserver.common.db import Database
 from maasapiserver.prometheus import metrics, PrometheusMiddleware
 
 

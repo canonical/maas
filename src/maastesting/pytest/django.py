@@ -8,7 +8,7 @@ import pytest
 from requests.exceptions import ConnectionError
 
 from maasapiserver.client import APIServerClient
-from maasapiserver.db import Database
+from maasapiserver.common.db import Database
 from maasapiserver.main import run
 from maasapiserver.settings import DatabaseConfig
 from maasserver.djangosettings import development

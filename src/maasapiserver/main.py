@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 import uvicorn
 
-from .api.db import DatabaseMetricsMiddleware, TransactionMiddleware
-from .api.v1 import APIv1
-from .db import Database
+from .common.api.db import DatabaseMetricsMiddleware, TransactionMiddleware
+from .common.db import Database
 from .prometheus import metrics, PrometheusMiddleware
 from .settings import api_service_socket_path, read_db_config
+from .v2.api.handlers import APIv2
+from .v3.api.handlers import APIv3
 
 
 def create_app(
@@ -27,7 +28,8 @@ def create_app(
 
     # Register URL handlers
     app.router.add_api_route("/metrics", metrics, methods=["GET"])
-    APIv1.register(app.router)
+    APIv2.register(app.router)
+    APIv3.register(app.router)
     return app
 
 
