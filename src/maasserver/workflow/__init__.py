@@ -209,11 +209,13 @@ def temporal_wrapper(func):
 @temporal_wrapper
 async def execute_workflow(
     workflow_name: str,
-    workflow_id: Optional[str] = str(uuid.uuid4()),
+    workflow_id: Optional[str] = None,
     params: Optional[Any] = None,
     task_queue: Optional[str] = REGION_TASK_QUEUE,
     **kwargs,
 ) -> Optional[Any]:
+    if not workflow_id:
+        workflow_id = str(uuid.uuid4())
     temporal_client = await get_client_async()
     if "retry_policy" not in kwargs:
         kwargs["retry_policy"] = RetryPolicy(maximum_attempts=5)
