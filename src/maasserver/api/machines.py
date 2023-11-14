@@ -70,7 +70,7 @@ from maasserver.forms import (
     MachineForm,
 )
 from maasserver.forms.clone import CloneForm
-from maasserver.forms.ephemeral import CommissionForm
+from maasserver.forms.ephemeral import CommissionForm, ReleaseForm
 from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
@@ -959,22 +959,14 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (content) "no-release" The machine is in a state that prevents
         it from being released.
         """
-        comment = get_optional_param(request.POST, "comment")
-        erase = get_optional_param(
-            request.POST, "erase", default=False, validator=StringBool
-        )
-        secure_erase = get_optional_param(
-            request.POST, "secure_erase", default=None, validator=StringBool
-        )
-        quick_erase = get_optional_param(
-            request.POST, "quick_erase", default=None, validator=StringBool
-        )
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
         )
-        force = get_optional_param(
-            request.POST, "force", default=None, validator=StringBool
+        form = ReleaseForm(
+            instance=machine, user=request.user, data=request.data
         )
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
         if machine.status in (NODE_STATUS.RELEASING, NODE_STATUS.READY):
             # Nothing to do if this machine is already releasing, otherwise
             # this may be a redundant retry, and the
@@ -983,16 +975,16 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         elif machine.status in RELEASABLE_STATUSES:
             machine.release_or_erase(
                 request.user,
-                comment,
-                erase=erase,
-                secure_erase=secure_erase,
-                quick_erase=quick_erase,
-                force=force,
+                form.cleaned_data["comment"],
+                erase=form.cleaned_data["erase"],
+                secure_erase=form.cleaned_data["secure_erase"],
+                quick_erase=form.cleaned_data["quick_erase"],
+                force=form.cleaned_data["force"],
             )
         else:
             raise NodeStateViolation(
-                "Machine cannot be released in its current state ('%s')."
-                % machine.display_status()
+                "Machine cannot be released in its current "
+                f"state ('{machine.display_status()}')."
             )
         return machine
 

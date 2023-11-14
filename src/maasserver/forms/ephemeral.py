@@ -51,13 +51,15 @@ class ScriptForm(Form):
         self._set_up_parameter_fields()
 
     def clean(self):
-        action = get_node_action(self.instance, self.name, self.user)
-        if action is None:
+        if not self._is_actionable():
             raise ValidationError(
                 f"{self.display} is not available because "
                 "of the current state of the node."
             )
         return super().clean()
+
+    def _is_actionable(self):
+        return bool(get_node_action(self.instance, self.name, self.user))
 
     def _clean_fields(self):
         # before validating fields, split values for the list of scripts
@@ -310,3 +312,36 @@ class CommissionForm(TestForm):
             params,
         )
         return self.instance
+
+
+class ReleaseForm(ScriptForm):
+    name = "release"
+    display = "Release"
+    script_fields_details = (("scripts", SCRIPT_TYPE.RELEASE, True),)
+
+    comment = CharField(required=False, initial=None)
+    erase = BooleanField(required=False, initial=False)
+    secure_erase = BooleanField(required=False, initial=False)
+    quick_erase = BooleanField(required=False, initial=False)
+    force = BooleanField(required=False, initial=False)
+
+    WIPE_SCRIPT = "wipe-disks"
+
+    def clean(self):
+        # convert explicit erase fields into script parameters
+        erase = self.cleaned_data.get("erase", False)
+        secure_erase = self.cleaned_data.get("secure_erase", False)
+        quick_erase = self.cleaned_data.get("quick_erase", False)
+        if erase or secure_erase or quick_erase:
+            scripts = self.cleaned_data.setdefault("scripts", [])
+            if self.WIPE_SCRIPT not in scripts:
+                scripts.append(self.WIPE_SCRIPT)
+            if secure_erase:
+                self.cleaned_data[f"{self.WIPE_SCRIPT}_secure_erase"] = True
+            if quick_erase:
+                self.cleaned_data[f"{self.WIPE_SCRIPT}_quick_erase"] = True
+        return super().clean()
+
+    def _is_actionable(self):
+        # status check is performend on calling sites
+        return True

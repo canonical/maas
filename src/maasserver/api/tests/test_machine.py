@@ -1521,9 +1521,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.expectThat(owned_machine.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(owned_machine.owner, Equals(self.user))
 
-    def test_POST_release_does_nothing_for_unowned_machine(self):
+    def test_POST_release_does_nothing_for_ready_machine(self):
         machine = factory.make_Node_with_Interface_on_Subnet(
-            status=NODE_STATUS.READY, owner=self.user
+            status=NODE_STATUS.READY
         )
         response = self.client.post(
             self.get_machine_uri(machine), {"op": "release"}
@@ -1723,16 +1723,13 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine),
             {"op": "release", "comment": comment},
         )
-        self.assertThat(
-            machine_release,
-            MockCalledOnceWith(
-                self.user,
-                comment,
-                erase=False,
-                quick_erase=None,
-                secure_erase=None,
-                force=None,
-            ),
+        machine_release.assert_called_once_with(
+            self.user,
+            comment,
+            erase=False,
+            quick_erase=False,
+            secure_erase=False,
+            force=False,
         )
 
     def test_POST_release_passes_erase_options(self):
@@ -1755,16 +1752,13 @@ class TestMachineAPI(APITestCase.ForUser):
                 "quick_erase": quick_erase,
             },
         )
-        self.assertThat(
-            machine_release,
-            MockCalledOnceWith(
-                self.user,
-                None,
-                erase=True,
-                quick_erase=quick_erase,
-                secure_erase=secure_erase,
-                force=None,
-            ),
+        machine_release.assert_called_once_with(
+            self.user,
+            "",
+            erase=True,
+            quick_erase=quick_erase,
+            secure_erase=secure_erase,
+            force=False,
         )
 
     def test_POST_release_passes_force_option(self):
@@ -1780,16 +1774,13 @@ class TestMachineAPI(APITestCase.ForUser):
         self.client.post(
             self.get_machine_uri(machine), {"op": "release", "force": force}
         )
-        self.assertThat(
-            machine_release,
-            MockCalledOnceWith(
-                self.user,
-                None,
-                erase=False,
-                quick_erase=None,
-                secure_erase=None,
-                force=force,
-            ),
+        machine_release.assert_called_once_with(
+            self.user,
+            "",
+            erase=False,
+            quick_erase=False,
+            secure_erase=False,
+            force=force,
         )
 
     def test_POST_release_handles_missing_comment(self):
@@ -1802,16 +1793,13 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         machine_release = self.patch(node_module.Machine, "release_or_erase")
         self.client.post(self.get_machine_uri(machine), {"op": "release"})
-        self.assertThat(
-            machine_release,
-            MockCalledOnceWith(
-                self.user,
-                None,
-                erase=False,
-                quick_erase=None,
-                secure_erase=None,
-                force=None,
-            ),
+        machine_release.assert_called_once_with(
+            self.user,
+            "",
+            erase=False,
+            quick_erase=False,
+            secure_erase=False,
+            force=False,
         )
 
     def test_POST_commission_commissions_machine(self):
