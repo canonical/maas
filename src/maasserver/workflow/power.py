@@ -5,10 +5,10 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 POWER_ACTION_WORKFLOWS = (
-    "power_on",
-    "power_off",
-    "power_cycle",
-    "power_query",
+    "power-on",
+    "power-off",
+    "power-cycle",
+    "power-query",
 )
 
 

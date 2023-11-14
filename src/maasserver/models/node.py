@@ -23,7 +23,6 @@ import random
 import re
 import socket
 from socket import gethostname
-import time
 from typing import List
 from urllib.parse import urlparse
 
@@ -5866,9 +5865,6 @@ class Node(CleanSave, TimestampedModel):
             d, POWER_WORKFLOW_ACTIONS.OFF, power_info, boot_order
         )
 
-    def _execute_workflow(self, workflow_name, workflow_id, params=None):
-        return execute_workflow(workflow_name, workflow_id, params=params)
-
     @asynchronous
     def power_query(self):
         """Query the power state of the BMC for this node.
@@ -6043,10 +6039,9 @@ class Node(CleanSave, TimestampedModel):
 
                 def exec_power_workflow(workflow_info):
                     workflow_name, workflow_params = workflow_info
-                    return self._execute_workflow(
+                    return execute_workflow(
                         workflow_name,
-                        f"{power_method_name}:{self.system_id}:{time.monotonic()}",
-                        workflow_params,
+                        params=workflow_params,
                     )
 
                 d.addCallback(exec_power_workflow)

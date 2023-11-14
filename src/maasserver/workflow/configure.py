@@ -3,7 +3,6 @@ from datetime import timedelta
 
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
-from temporalio.workflow import ParentClosePolicy
 
 from maasserver.workflow.api_client import MAASAPIClient
 
@@ -23,9 +22,10 @@ class ConfigureWorkerPoolActivity(MAASAPIClient):
 @dataclass
 class ConfigureWorkerPoolInput:
     system_id: str
+    task_queue: str
 
 
-@workflow.defn(name="configure_worker_pool", sandboxed=False)
+@workflow.defn(name="configure-worker-pool", sandboxed=False)
 class ConfigureWorkerPoolWorkflow:
     """A ConfigureWorkerPool workflow to setup MAAS Agent workers"""
 
@@ -48,30 +48,43 @@ class ConfigureWorkerPoolWorkflow:
             [n["vlan"]["id"] for n in interface_set if n.get("vlan")]
         )
 
+        # add worker for {systemID}@agent
+        # this is a unicast task queue picked only by agent running on systemID
+        await workflow.start_child_workflow(
+            workflow="add-worker",
+            task_queue=input.task_queue,
+            arg={
+                "task_queue": f"{input.system_id}@agent",
+                "workflows": [
+                    "check-ip",
+                    "power-query",
+                    "power-cycle",
+                    "power-on",
+                    "power-off",
+                ],
+                "activities": [
+                    "power",
+                ],
+            },
+        )
+
+        # for each VLAN add anycast workers agent:vlan-{vlan_id}
+        # this is an anycast task queue polled by multiple agents that can
+        # reach specified VLAN
         for vlan_id in vlan_ids:
-            workflow_id = (
-                f"add-worker:{input.system_id}:task_queue:vlan-{vlan_id}"
-            )
-
-            existing = workflow.get_external_workflow_handle(workflow_id)
-            if existing and existing.run_id:
-                continue
-
             # If you need to extend workflows/activities that should be
             # registered, ensure they are allowed by the worker pool
             await workflow.start_child_workflow(
-                id=workflow_id,
-                parent_close_policy=ParentClosePolicy.ABANDON,
-                workflow="add_worker",
-                task_queue=f"agent:{input.system_id}",
+                workflow="add-worker",
+                task_queue=input.task_queue,
                 arg={
-                    "task_queue": f"vlan-{vlan_id}",
+                    "task_queue": f"agent:vlan-{vlan_id}",
                     "workflows": [
-                        "check_ip",
-                        "power_query",
-                        "power_cycle",
-                        "power_on",
-                        "power_off",
+                        "check-ip",
+                        "power-query",
+                        "power-cycle",
+                        "power-on",
+                        "power-off",
                     ],
                     "activities": [
                         "power",

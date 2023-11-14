@@ -4,6 +4,7 @@
 """Temporal Worker wrapper"""
 
 import dataclasses
+import os
 
 from google.protobuf.duration_pb2 import Duration
 from temporalio.api.workflowservice.v1 import (
@@ -19,7 +20,7 @@ from maasserver.utils.asynchronous import async_retry
 from maasserver.workflow.codec.encryptor import EncryptionCodec
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
-REGION_TASK_QUEUE = "region_controller"
+REGION_TASK_QUEUE = "region"
 TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds
@@ -28,8 +29,11 @@ TEMPORAL_NAMESPACE = "default"
 
 @async_retry()
 async def get_client_async():
+    maas_id = MAAS_ID.get()
+    pid = os.getpid()
     return await Client.connect(
         f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
+        identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
             temporalio.converter.default(),
             payload_codec=EncryptionCodec(MAAS_SHARED_SECRET.get().encode()),
@@ -78,13 +82,11 @@ class Worker:
     async def run(self):
         self._client = self._client or await get_client_async()
         await self._setup_namespace()
-        maas_id = MAAS_ID.get()
         self._worker = TemporalWorker(
             self._client,
             task_queue=self._task_queue,
             workflows=self._workflows,
             activities=self._activities,
-            identity=f"{self._task_queue}@{maas_id}",
         )
         await self._worker.run()
 

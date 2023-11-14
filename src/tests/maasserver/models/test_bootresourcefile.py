@@ -34,7 +34,7 @@ class TestFileStore:
         exec_workflow_mock.assert_called()
         workflow, wid, _ = exec_workflow_mock.call_args.args
         assert workflow == "delete-bootresource"
-        assert wid == f"bootresource_del_{bootres_file.id}"
+        assert wid == f"bootresource-del-{bootres_file.id}"
 
     def test_filestore_remove_file_shared(
         self, exec_workflow_mock, bootres_file, bootres_file_shared
@@ -47,7 +47,8 @@ class TestFileStore:
         qs = BootResourceFile.objects.filter(id=bootres_file.id)
         BootResourceFile.objects.filestore_remove_files(qs)
         exec_workflow_mock.assert_called()
-        workflow, _, params = exec_workflow_mock.call_args.args
+        workflow = exec_workflow_mock.call_args.args[0]
+        params = exec_workflow_mock.call_args.kwargs["params"]
         assert workflow == "delete-bootresource"
         assert params.files[0] == bootres_file.sha256
 
@@ -64,7 +65,8 @@ class TestFileStore:
     ):
         BootResourceFile.objects.filestore_remove_set(bootres_set)
         exec_workflow_mock.assert_called()
-        workflow, _, params = exec_workflow_mock.call_args.args
+        workflow = exec_workflow_mock.call_args.args[0]
+        params = exec_workflow_mock.call_args.kwargs["params"]
         assert workflow == "delete-bootresource"
         assert params.files[0] == bootres_file.sha256
 
@@ -74,7 +76,8 @@ class TestFileStore:
         qset = BootResourceSet.objects.filter(id=bootres_set.id)
         BootResourceFile.objects.filestore_remove_sets(qset)
         exec_workflow_mock.assert_called()
-        workflow, _, params = exec_workflow_mock.call_args.args
+        workflow = exec_workflow_mock.call_args.args[0]
+        params = exec_workflow_mock.call_args.kwargs["params"]
         assert workflow == "delete-bootresource"
         assert params.files[0] == bootres_file.sha256
 
@@ -95,7 +98,8 @@ class TestFileStore:
     ):
         BootResourceFile.objects.filestore_remove_resource(bootres)
         exec_workflow_mock.assert_called()
-        workflow, _, params = exec_workflow_mock.call_args.args
+        workflow = exec_workflow_mock.call_args.args[0]
+        params = exec_workflow_mock.call_args.kwargs["params"]
         assert workflow == "delete-bootresource"
         assert params.files[0] == bootres_file.sha256
 
@@ -105,7 +109,8 @@ class TestFileStore:
         qset = BootResource.objects.filter(id=bootres.id)
         BootResourceFile.objects.filestore_remove_resources(qset)
         exec_workflow_mock.assert_called()
-        workflow, _, params = exec_workflow_mock.call_args.args
+        workflow = exec_workflow_mock.call_args.args[0]
+        params = exec_workflow_mock.call_args.kwargs["params"]
         assert workflow == "delete-bootresource"
         assert params.files[0] == bootres_file.sha256
 

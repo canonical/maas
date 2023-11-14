@@ -446,7 +446,7 @@ class Handler(metaclass=HandlerMetaclass):
                 deferToDatabase, prep_user_execute, params
             )
 
-    def _execute_workflow(self, workflow_name, workflow_id, params=None):
+    def _execute_workflow(self, workflow_name, workflow_id=None, params=None):
         return execute_workflow(workflow_name, workflow_id, params=params)
 
     @PROMETHEUS_METRICS.record_call_latency(

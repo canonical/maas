@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"time"
 
@@ -12,124 +11,80 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-
-	wf "maas.io/core/src/maasagent/internal/workflow"
 )
 
 const (
-	defaultAddWorkerWorkflowName     = "add_worker"
-	defaultRemoveWorkerWorkflowName  = "remove_worker"
-	defaultConfigurePoolWorkflowName = "configure_worker_pool"
-	defaultControlPlaneTaskQueueName = "control_plane"
-	defaultPowerOnWorkflowName       = "power_on"
-	defaultPowerOffWorkflowName      = "power_off"
-	defaultPowerCycleWorkflowName    = "power_cycle"
-	defaultPowerQueryWorkflowName    = "power_query"
+	defaultAddWorkerWorkflowName     = "add-worker"
+	defaultRemoveWorkerWorkflowName  = "remove-worker"
+	defaultConfigurePoolWorkflowName = "configure-worker-pool"
+	defaultControlPlaneTaskQueueName = "control-plane"
 )
 
 // WorkerPool contains a collection of Temporal Workers that can be added or
-// removed during runtime by master worker which is responsible for execution of
-// special workflows `add_worker` and `remove_worker`.
+// removed during runtime by main worker which is responsible for execution of
+// special workflows `add-worker` and `remove-worker`.
 type WorkerPool struct {
 	fatal  chan error
 	client client.Client
 	// worker for control plane workflows like Add or Remove workers
-	master                    worker.Worker
+	main                      worker.Worker
 	workers                   map[string]worker.Worker
 	allowedWorkflows          map[string]interface{}
 	allowedActivities         map[string]interface{}
 	systemID                  string
+	taskQueue                 string
 	addWorkerWorkflowName     string
 	removeWorkerWorkflowName  string
 	configurePoolWorkflowName string
 	controlPlaneTaskQueueName string
-	powerOnWorkflowName       string
-	powerOffWorkflowName      string
-	powerCycleWorkflowName    string
-	powerQueryWorkflowName    string
-	pid                       int
 	mutex                     sync.Mutex
 }
 
-// NewWorkerPool returns WorkerPool that has a master worker listening to a
-// Temporal Task Queue named after systemID
+// NewWorkerPool returns WorkerPool that has a main worker listening to a
+// Temporal Task Queue named after systemID@main
 func NewWorkerPool(systemID string, client client.Client,
 	options ...WorkerPoolOption) *WorkerPool {
 	pool := &WorkerPool{
 		systemID:                  systemID,
-		pid:                       os.Getpid(),
+		taskQueue:                 fmt.Sprintf("%s@main", systemID),
 		client:                    client,
 		workers:                   make(map[string]worker.Worker),
 		addWorkerWorkflowName:     defaultAddWorkerWorkflowName,
 		removeWorkerWorkflowName:  defaultRemoveWorkerWorkflowName,
 		configurePoolWorkflowName: defaultConfigurePoolWorkflowName,
 		controlPlaneTaskQueueName: defaultControlPlaneTaskQueueName,
-		powerOnWorkflowName:       defaultPowerOnWorkflowName,
-		powerOffWorkflowName:      defaultPowerOffWorkflowName,
-		powerCycleWorkflowName:    defaultPowerCycleWorkflowName,
-		powerQueryWorkflowName:    defaultPowerQueryWorkflowName,
 	}
 
 	for _, opt := range options {
 		opt(pool)
 	}
 
-	// master worker is responsible for adding/removing workers to/from the pool
-	pool.master = worker.New(client, fmt.Sprintf("agent:%s", systemID), worker.Options{
-		Identity:     fmt.Sprintf("%s:master:%d", systemID, pool.pid),
-		OnFatalError: func(err error) { pool.fatal <- err },
+	// main worker is responsible for adding/removing workers to/from the pool
+	pool.main = worker.New(client, pool.taskQueue, worker.Options{
+		DisableRegistrationAliasing: true,
+		OnFatalError:                func(err error) { pool.fatal <- err },
 	})
 
-	pool.master.RegisterWorkflowWithOptions(
-		localActivityExec[addWorkerParam](pool.addWorker),
+	pool.main.RegisterWorkflowWithOptions(
+		exec[addWorkerParam](pool.addWorker),
 		workflow.RegisterOptions{
 			Name: pool.addWorkerWorkflowName,
 		},
 	)
 
-	pool.master.RegisterWorkflowWithOptions(
-		localActivityExec[removeWorkerParam](pool.removeWorker),
+	pool.main.RegisterWorkflowWithOptions(
+		exec[removeWorkerParam](pool.removeWorker),
 		workflow.RegisterOptions{
 			Name: pool.removeWorkerWorkflowName,
-		},
-	)
-
-	pool.master.RegisterActivity(wf.PowerActivity)
-
-	pool.master.RegisterWorkflowWithOptions(
-		wf.PowerOn,
-		workflow.RegisterOptions{
-			Name: pool.powerOnWorkflowName,
-		},
-	)
-
-	pool.master.RegisterWorkflowWithOptions(
-		wf.PowerOff,
-		workflow.RegisterOptions{
-			Name: pool.powerOffWorkflowName,
-		},
-	)
-
-	pool.master.RegisterWorkflowWithOptions(
-		wf.PowerCycle,
-		workflow.RegisterOptions{
-			Name: pool.powerCycleWorkflowName,
-		},
-	)
-
-	pool.master.RegisterWorkflowWithOptions(
-		wf.PowerQuery,
-		workflow.RegisterOptions{
-			Name: pool.powerQueryWorkflowName,
 		},
 	)
 
 	return pool
 }
 
-// Start starts the master worker process that controls worker pool
+// Start starts the main worker process that controls worker pool
 func (p *WorkerPool) Start() error {
-	return p.master.Start()
+	return p.main.Start()
 }
 
 func (p *WorkerPool) Error() chan error {
@@ -140,7 +95,7 @@ func (p *WorkerPool) Error() chan error {
 type WorkerPoolOption func(*WorkerPool)
 
 // WithAddWorkerWorkflowName sets custom addWorkerWorkflowName
-// (default: "add_worker")
+// (default: "add-worker")
 func WithAddWorkerWorkflowName(s string) WorkerPoolOption {
 	return func(p *WorkerPool) {
 		p.addWorkerWorkflowName = s
@@ -148,7 +103,7 @@ func WithAddWorkerWorkflowName(s string) WorkerPoolOption {
 }
 
 // WithRemoveWorkerWorkflowName sets custom removeWorkerWorkflowName
-// (default: "remove_worker")
+// (default: "remove-worker")
 func WithRemoveWorkerWorkflowName(s string) WorkerPoolOption {
 	return func(p *WorkerPool) {
 		p.removeWorkerWorkflowName = s
@@ -156,7 +111,7 @@ func WithRemoveWorkerWorkflowName(s string) WorkerPoolOption {
 }
 
 // WithConfigurePoolWorkflowName sets custom configurePoolWorkflowName
-// (default: "configure_worker_pool")
+// (default: "configure-worker-pool")
 func WithConfigurePoolWorkflowName(s string) WorkerPoolOption {
 	return func(p *WorkerPool) {
 		p.configurePoolWorkflowName = s
@@ -164,7 +119,7 @@ func WithConfigurePoolWorkflowName(s string) WorkerPoolOption {
 }
 
 // WithControlPlaneTaskQueueName sets custom controlPlaneTaskQueueName
-// (default: "control_plane")
+// (default: "control-plane")
 func WithControlPlaneTaskQueueName(s string) WorkerPoolOption {
 	return func(p *WorkerPool) {
 		p.controlPlaneTaskQueueName = s
@@ -185,22 +140,37 @@ func WithAllowedActivities(activities map[string]interface{}) WorkerPoolOption {
 	}
 }
 
-// configureWorkerPoolParam is a parameter that should be provided to the
-// `configure_worker_pool` workflow
-type configureWorkerPoolParam struct {
-	SystemID string `json:"system_id"`
+// WithMainWorkerTaskQueueSuffix sets main worker Task Queue suffix
+// Main TaskQueue has format: {systemID}@{suffix}
+// (default: "main")
+func WithMainWorkerTaskQueueSuffix(s string) WorkerPoolOption {
+	return func(p *WorkerPool) {
+		p.taskQueue = fmt.Sprintf("%s@%s", p.systemID, s)
+	}
 }
 
-// Configure calls `configure_worker_pool` workflow to be executed.
+// configureWorkerPoolParam is a parameter that should be provided to the
+// `configure-worker-pool` workflow
+type configureWorkerPoolParam struct {
+	SystemID  string `json:"system_id"`
+	TaskQueue string `json:"task_queue"`
+}
+
+// Configure calls `configure-worker-pool` workflow to be executed.
 // This workflow will configure WorkerPool with a proper set of workers.
 func (p *WorkerPool) Configure(ctx context.Context) error {
 	workflowOptions := client.StartWorkflowOptions{
-		ID:        fmt.Sprintf("configure:%s:%d", p.systemID, p.pid),
 		TaskQueue: p.controlPlaneTaskQueueName,
+		// If we failed to execute this workflow in 120 seconds, then something bad
+		// is going on and we don't want to keep it in a task queue.
+		WorkflowExecutionTimeout: 120 * time.Second,
 	}
 
 	workflowRun, err := p.client.ExecuteWorkflow(ctx, workflowOptions,
-		p.configurePoolWorkflowName, configureWorkerPoolParam{SystemID: p.systemID})
+		p.configurePoolWorkflowName, configureWorkerPoolParam{
+			SystemID:  p.systemID,
+			TaskQueue: p.taskQueue,
+		})
 	if err != nil {
 		return err
 	}
@@ -224,8 +194,8 @@ func (p *WorkerPool) addWorker(param addWorkerParam) error {
 	}
 
 	w := worker.New(p.client, param.TaskQueue, worker.Options{
-		Identity:     fmt.Sprintf("%s:%d:%s", p.systemID, p.pid, param.TaskQueue),
-		OnFatalError: func(err error) { p.fatal <- err },
+		DisableRegistrationAliasing: true,
+		OnFatalError:                func(err error) { p.fatal <- err },
 	})
 
 	if err := register("workflow", param.Workflows, p.allowedWorkflows,
@@ -263,9 +233,10 @@ func register(t string, s []string, allowed map[string]interface{},
 		}
 
 		return temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("Failed registering %s", t),
+			fmt.Sprintf("failed registering %s. %q is not allowed", t, val),
 			fmt.Sprintf("%sNotAllowed", t),
-			fmt.Errorf("%s %q is not allowed", t, val))
+			nil,
+		)
 	}
 
 	return nil
@@ -291,8 +262,8 @@ func (p *WorkerPool) removeWorker(param removeWorkerParam) error {
 	return nil
 }
 
-// localActivityExec will execute provided function as Local Activity
-func localActivityExec[T any](fn any) func(ctx workflow.Context, param T) error {
+// exec returns workflow that executes provided function as Local Activity
+func exec[T any](fn any) func(ctx workflow.Context, param T) error {
 	return func(ctx workflow.Context, param T) error {
 		lao := workflow.LocalActivityOptions{
 			ScheduleToCloseTimeout: 5 * time.Second,
@@ -305,20 +276,20 @@ func localActivityExec[T any](fn any) func(ctx workflow.Context, param T) error 
 
 // failedToAddWorkerError returns a non retryable error
 func failedToAddWorkerError(taskQueue string) error {
-	return temporal.NewNonRetryableApplicationError("Failed adding worker",
-		"failedToAddWorker",
-		fmt.Errorf("worker for task queue %q already exists", taskQueue))
+	return temporal.NewNonRetryableApplicationError(
+		fmt.Sprintf("worker for task queue %q already exists", taskQueue),
+		"failedToAddWorker", nil)
 }
 
 // failedToRemoveWorkerError returns a non retryable error
 func failedToRemoveWorkerError(taskQueue string) error {
-	return temporal.NewNonRetryableApplicationError("Failed removing worker",
-		"failedToRemoveWorker",
-		fmt.Errorf("worker for task queue %q doesn't exist", taskQueue))
+	return temporal.NewNonRetryableApplicationError(
+		fmt.Sprintf("worker for task queue %q doesn't exist", taskQueue),
+		"failedToRemoveWorker", nil)
 }
 
 // failedToStartWorkerError returns a non retryable error
 func failedToStartWorkerError(err error) error {
-	return temporal.NewNonRetryableApplicationError("Failed to start worker",
+	return temporal.NewNonRetryableApplicationError("failed to start worker",
 		"failedToStartWorker", err)
 }

@@ -144,7 +144,7 @@ class TestHelpers(APITestCase.ForUser):
         exec_mock.assert_called()
         workflow, wid, params = exec_mock.call_args.args
         self.assertEqual(workflow, "sync-bootresources")
-        self.assertEqual(wid, f"sync_boot_resources:upload:{bootres_file.id}")
+        self.assertEqual(wid, f"sync-boot-resources:upload:{bootres_file.id}")
         self.assertCountEqual(params.resources[0].rfile_ids, [bootres_file.id])
         self.assertEqual(
             exec_mock.call_args.kwargs["task_queue"], REGION_TASK_QUEUE

@@ -4,6 +4,7 @@
 import asyncio
 from functools import wraps
 from typing import Any, Optional
+import uuid
 
 from temporalio.common import RetryPolicy
 from temporalio.service import RPCError
@@ -58,14 +59,14 @@ def get_temporal_queue_for_machine(
         and machine.boot_interface.vlan
     ):
         vlan_id = machine.boot_interface.vlan.id
-        return f"vlan-{vlan_id}"
+        return f"agent:vlan-{vlan_id}"
     else:
         if machine.bmc:
             racks = machine.bmc.get_usable_rack_controllers(
                 with_connection=False
             )
             if racks:
-                return f"agent:{racks[0].system_id}"
+                return f"{racks[0].system_id}@agent"
     raise UnroutableWorkflowException(
         f"no suitable task queue for machine {machine.system_id}"
     )
@@ -108,7 +109,7 @@ def to_temporal_params(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=name,
+                            action="power-on",
                             task_queue=get_temporal_queue_for_machine(o),
                             driver_type=extra_params.power_type,
                             driver_opts=extra_params.power_parameters,
@@ -124,7 +125,7 @@ def to_temporal_params(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=name,
+                            action="power-off",
                             task_queue=get_temporal_queue_for_machine(o),
                             driver_type=extra_params.power_type,
                             driver_opts=extra_params.power_parameters,
@@ -140,7 +141,7 @@ def to_temporal_params(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=name,
+                            action="power-query",
                             task_queue=get_temporal_queue_for_machine(o),
                             driver_type=extra_params.power_type,
                             driver_opts=extra_params.power_parameters,
@@ -156,7 +157,7 @@ def to_temporal_params(
                     params=[
                         PowerParam(
                             system_id=o.system_id,
-                            action=name,
+                            action="power-cycle",
                             task_queue=get_temporal_queue_for_machine(o),
                             driver_type=extra_params.power_type,
                             driver_opts=extra_params.power_parameters,
@@ -208,7 +209,7 @@ def temporal_wrapper(func):
 @temporal_wrapper
 async def execute_workflow(
     workflow_name: str,
-    workflow_id: str,
+    workflow_id: Optional[str] = str(uuid.uuid4()),
     params: Optional[Any] = None,
     task_queue: Optional[str] = REGION_TASK_QUEUE,
     **kwargs,

@@ -145,7 +145,7 @@ def filestore_add_file(rfile: BootResourceFile):
     )
     return execute_workflow(
         "sync-bootresources",
-        f"sync_boot_resources:upload:{rfile.id}",
+        f"sync-boot-resources:upload:{rfile.id}",
         params,
         task_queue=REGION_TASK_QUEUE,
         execution_timeout=DOWNLOAD_TIMEOUT,

@@ -255,7 +255,7 @@ class SyncBootResourcesWorkflow:
             return workflow.execute_child_workflow(
                 "download-bootresource",
                 res,
-                id=f"bootresource_download_{res.sha256[:12]}",
+                id=f"bootresource-download-{res.sha256[:12]}",
                 execution_timeout=DOWNLOAD_TIMEOUT,
                 run_timeout=DOWNLOAD_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,

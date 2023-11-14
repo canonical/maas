@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import uuid
-
 from django.db.models import (
     BigIntegerField,
     CASCADE,
@@ -42,7 +40,7 @@ class BootResourceFileManager(Manager):
         if not qs.exists():
             execute_workflow(
                 "delete-bootresource",
-                f"bootresource_del_{rfile.id}",
+                f"bootresource-del-{rfile.id}",
                 ResourceDeleteParam(files=[rfile.sha256]),
             )
         rfile.bootresourcefilesync_set.all().delete()
@@ -58,8 +56,7 @@ class BootResourceFileManager(Manager):
         if to_remove:
             execute_workflow(
                 "delete-bootresource",
-                str(uuid.uuid4()),
-                ResourceDeleteParam(files=to_remove),
+                params=ResourceDeleteParam(files=to_remove),
             )
         BootResourceFileSync.objects.filter(file__in=rfile_qs).delete()
 

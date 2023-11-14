@@ -75,6 +75,7 @@ func Run() int {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
 				HostPort: fmt.Sprintf("%s:%d", cfg.Controllers[0], TemporalPort),
+				Identity: fmt.Sprintf("%s@agent:%d", cfg.SystemID, os.Getpid()),
 				Logger:   wflog.NewZerologAdapter(log.Logger),
 				DataConverter: converter.NewCodecDataConverter(
 					converter.GetDefaultDataConverter(),
@@ -91,14 +92,17 @@ func Run() int {
 
 	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
 		worker.WithAllowedWorkflows(map[string]interface{}{
-			"check_ip":    wf.CheckIP,
-			"power_on":    wf.PowerOn,
-			"power_off":   wf.PowerOff,
-			"power_query": wf.PowerQuery,
-			"power_cycle": wf.PowerCycle,
+			"check-ip":    wf.CheckIP,
+			"power-on":    wf.PowerOn,
+			"power-off":   wf.PowerOff,
+			"power-query": wf.PowerQuery,
+			"power-cycle": wf.PowerCycle,
 		}), worker.WithAllowedActivities(map[string]interface{}{
 			"power": wf.PowerActivity,
-		}), worker.WithControlPlaneTaskQueueName("region_controller"))
+		}),
+		worker.WithControlPlaneTaskQueueName("region"),
+		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
+	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
 	workerPoolBackoff.MaxElapsedTime = 60 * time.Second

@@ -166,7 +166,7 @@ func execPowerActivity(ctx workflow.Context, params PowerActivityParam) workflow
 		},
 	})
 
-	return workflow.ExecuteActivity(ctx, PowerActivity, params)
+	return workflow.ExecuteActivity(ctx, "power", params)
 }
 
 // PowerOn will power on a host

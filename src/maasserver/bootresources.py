@@ -356,7 +356,7 @@ class BootResourceStore(ObjectStore):
     soon as possible.
     """
 
-    WORKFLOW_ID = "sync_boot_resources:streams"
+    WORKFLOW_ID = "sync-boot-resources:streams"
 
     def __init__(self):
         """Initialize store."""
