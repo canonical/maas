@@ -24,7 +24,6 @@ from django.db.models import (
 )
 from django.db.models.functions import Concat
 
-from maasserver import workflow
 from maasserver.enum import (
     BMC_TYPE,
     INTERFACE_LINK_TYPE,
@@ -1101,16 +1100,6 @@ class MachineHandler(NodeHandler):
             )
 
     def _action(self, obj, action_name, extra_params):
-        if action_name in workflow.MACHINE_ACTION_WORKFLOWS:
-            workflow_name, workflow_params = workflow.to_temporal_params(
-                action_name, [obj], extra_params
-            )
-            self._execute_workflow(
-                workflow_name,
-                f"{action_name}-{obj.system_id}",
-                workflow_params,
-            )
-
         action = get_node_action(
             obj, action_name, self.user, request=self.request
         )
@@ -1125,18 +1114,6 @@ class MachineHandler(NodeHandler):
         machines = self._filter(
             self.get_queryset(for_list=True), None, filter_params
         )
-        if action_name in workflow.MACHINE_ACTION_WORKFLOWS:
-            id = f"bulk-{action_name}"
-            for machine in machines:
-                id += f"-{machine.system_id}"
-            workflow_name, workflow_params = workflow.to_temporal_params(
-                action_name, machines, extra_params
-            )
-            self._execute_workflow(
-                workflow_name,
-                id,
-                workflow_params,
-            )
         success_count = 0
         failed_system_ids = []
         failure_details = defaultdict(list)

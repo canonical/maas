@@ -30,7 +30,6 @@ from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.workflow import execute_workflow
 from provisioningserver.certificates import Certificate
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous, IAsynchronous
@@ -445,9 +444,6 @@ class Handler(metaclass=HandlerMetaclass):
             return concurrency.webapp.run(
                 deferToDatabase, prep_user_execute, params
             )
-
-    def _execute_workflow(self, workflow_name, workflow_id=None, params=None):
-        return execute_workflow(workflow_name, workflow_id, params=params)
 
     @PROMETHEUS_METRICS.record_call_latency(
         "maas_websocket_call_latency",
