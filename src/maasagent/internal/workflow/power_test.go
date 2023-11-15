@@ -31,6 +31,10 @@ func TestFmtPowerOpts(t *testing.T) {
 			in:  map[string]interface{}{"key1": "multi\nline\nstring"},
 			out: []string{"--key1", "multi\nline\nstring"},
 		},
+		"ignore system_id": {
+			in:  map[string]interface{}{"system_id": "value1"},
+			out: []string{},
+		},
 	}
 
 	for name, tc := range testcases {
@@ -38,7 +42,7 @@ func TestFmtPowerOpts(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			res := fmtPowerOpts("driver", tc.in)
+			res := fmtPowerOpts(tc.in)
 			assert.ElementsMatch(t, tc.out, res)
 		})
 	}

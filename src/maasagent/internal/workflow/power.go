@@ -27,24 +27,6 @@ var (
 	ErrWrongPowerState = errors.New("BMC is in the wrong power state")
 )
 
-var (
-	// power parameters fetched from the DB contain extra
-	// parameters the CLI does not need and will cause errors in the CLI
-	// so we ignore them
-	ignoredPowerOptions = map[string]struct{}{
-		"power_id":       {},
-		"system_id":      {},
-		"boot_mode":      {},
-		"power_off_mode": {},
-	}
-
-	// these driver types do not take a MAC address argument on the CLI
-	ignoredMACDriverTypes = map[string]struct{}{
-		"lxd":   {},
-		"virsh": {},
-	}
-)
-
 // PowerParam is the workflow parameter for power management of a host
 type PowerParam struct {
 	SystemID   string                 `json:"system_id"`
@@ -52,16 +34,6 @@ type PowerParam struct {
 	TaskQueue  string                 `json:"task_queue"`
 	DriverOpts map[string]interface{} `json:"driver_opts"`
 	DriverType string                 `json:"driver_type"`
-}
-
-func shouldIgnoreMACDriverType(driver, key string) bool {
-	_, ignore := ignoredMACDriverTypes[driver]
-	return ignore && key == "mac_address"
-}
-
-func shouldIgnorePowerOption(key string) bool {
-	_, ignore := ignoredPowerOptions[key]
-	return ignore
 }
 
 // powerCLIExecutableName returns correct MAAS Power CLI executable name
@@ -74,11 +46,13 @@ func powerCLIExecutableName() string {
 	return "maas-power"
 }
 
-func fmtPowerOpts(driver string, opts map[string]interface{}) []string {
+func fmtPowerOpts(opts map[string]interface{}) []string {
 	var res []string
 
 	for k, v := range opts {
-		if shouldIgnoreMACDriverType(driver, k) || shouldIgnorePowerOption(k) {
+		// skip 'system_id' which is added to parameters.
+		// it has nothing to do with power driver parameters
+		if k == "system_id" {
 			continue
 		}
 
@@ -128,7 +102,7 @@ func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult
 		return nil, err
 	}
 
-	opts := fmtPowerOpts(params.DriverType, params.DriverOpts)
+	opts := fmtPowerOpts(params.DriverOpts)
 	args := append([]string{params.Action, params.DriverType}, opts...)
 
 	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)

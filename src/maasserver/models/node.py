@@ -3115,33 +3115,21 @@ class Node(CleanSave, TimestampedModel):
         # TODO: This default ought to be in the virsh template.
         if self.bmc is not None and self.bmc.power_type == "virsh":
             power_params.setdefault("power_address", "qemu://localhost/system")
-        else:
-            power_params.setdefault("power_address", "")
-        power_params.setdefault("username", "")
-        power_params.setdefault("power_id", self.system_id)
-        power_params.setdefault("power_driver", "")
-        power_params.setdefault("power_pass", "")
-        power_params.setdefault("power_off_mode", "")
+            power_params.setdefault("power_id", self.system_id)
 
-        # The "mac" parameter defaults to the node's boot interace MAC
-        # address, but only if not already set.
-        if "mac_address" not in power_params:
-            boot_interface = self.get_boot_interface()
-            if (
-                boot_interface is not None
-                and boot_interface.mac_address is not None
-            ):
-                power_params["mac_address"] = boot_interface.mac_address
+        if self.bmc is not None and self.bmc.power_type == "ipmi":
+            power_params.setdefault("power_off_mode", "")
 
         # boot_mode is something that tells the template whether this is
         # a PXE boot or a local HD boot.
-        if (
-            self.status == NODE_STATUS.DEPLOYED
-            or self.node_type != NODE_TYPE.MACHINE
-        ):
-            power_params["boot_mode"] = "local"
-        else:
-            power_params["boot_mode"] = "pxe"
+        if self.bmc is not None and self.bmc.power_type == "amt":
+            if (
+                self.status == NODE_STATUS.DEPLOYED
+                or self.node_type != NODE_TYPE.MACHINE
+            ):
+                power_params["boot_mode"] = "local"
+            else:
+                power_params["boot_mode"] = "pxe"
 
         return power_params
 
@@ -5857,7 +5845,8 @@ class Node(CleanSave, TimestampedModel):
             boot_order = []
 
         # Smuggle in a hint about how to power-off the self.
-        power_info.power_parameters["power_off_mode"] = stop_mode
+        if power_info.power_type == "ipmi":
+            power_info.power_parameters["power_off_mode"] = stop_mode
 
         # Request that the node be powered off post-commit.
         d = post_commit()

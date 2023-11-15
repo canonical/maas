@@ -1607,31 +1607,18 @@ class TestNode(MAASServerTestCase):
             node.system_id, node.get_effective_power_parameters()["system_id"]
         )
 
-    def test_get_effective_power_parameters_adds_mac_if_no_params_set(self):
-        node = factory.make_Node()
-        mac = factory.make_mac_address()
-        node.add_physical_interface(mac)
-        self.assertEqual(
-            mac, node.get_effective_power_parameters()["mac_address"]
-        )
-
     def test_get_effective_power_parameters_adds_no_mac_if_params_set(self):
         node = factory.make_Node(power_parameters={"foo": "bar"})
         mac = factory.make_mac_address()
         node.add_physical_interface(mac)
         self.assertNotIn("mac", node.get_effective_power_parameters())
 
-    def test_get_effective_power_parameters_adds_empty_power_off_mode(self):
-        node = factory.make_Node()
-        params = node.get_effective_power_parameters()
-        self.assertEqual("", params["power_off_mode"])
-
     def test_get_effective_power_type_no_default_power_address_if_not_virsh(
         self,
     ):
         node = factory.make_Node(power_type="manual")
         params = node.get_effective_power_parameters()
-        self.assertEqual("", params["power_address"])
+        self.assertEqual(None, params.get("power_address"))
 
     def test_get_effective_power_type_defaults_power_address_if_virsh(self):
         node = factory.make_Node(power_type="virsh")
@@ -1639,13 +1626,13 @@ class TestNode(MAASServerTestCase):
         self.assertEqual("qemu://localhost/system", params["power_address"])
 
     def test_get_effective_power_parameters_sets_local_boot_mode(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, power_type="amt")
         params = node.get_effective_power_parameters()
         self.assertEqual("local", params["boot_mode"])
 
     def test_get_effective_power_parameters_sets_pxe_boot_mode(self):
         status = factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.DEPLOYED])
-        node = factory.make_Node(status=status)
+        node = factory.make_Node(status=status, power_type="amt")
         params = node.get_effective_power_parameters()
         self.assertEqual("pxe", params["boot_mode"])
 
@@ -2675,7 +2662,6 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.install_rackd, Is(False))
 
         expected_power_info = node.get_effective_power_info()
-        expected_power_info.power_parameters["power_off_mode"] = "hard"
         node._power_control_node.assert_called_once_with(
             d, "power_off", expected_power_info, []
         )
@@ -10274,7 +10260,7 @@ class TestNode_Stop(MAASServerTestCase):
         d = self.patch_post_commit()
         admin = factory.make_admin()
         stop_mode = factory.make_name("stop")
-        node = self.make_acquired_node_with_interface(admin)
+        node = self.make_acquired_node_with_interface(admin, power_type="ipmi")
         mock_power_control = self.patch_autospec(node, "_power_control_node")
         node.stop(admin, stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
@@ -10287,7 +10273,7 @@ class TestNode_Stop(MAASServerTestCase):
         d = self.patch_post_commit()
         admin = factory.make_admin()
         stop_mode = factory.make_name("stop")
-        node = self.make_acquired_node_with_interface(admin)
+        node = self.make_acquired_node_with_interface(admin, power_type="ipmi")
         mock_power_control = self.patch_autospec(node, "_power_control_node")
         node.stop(stop_mode=stop_mode)
         expected_power_info = node.get_effective_power_info()
