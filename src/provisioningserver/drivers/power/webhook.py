@@ -101,9 +101,12 @@ class WebhookPowerDriver(PowerDriver):
         headers = {
             b"User-Agent": [f"MAAS {get_running_version()}".encode()],
             b"Accept": [b"application/json"],
-            b"System_Id": [system_id.encode()],
             **extra_headers,
         }
+
+        if system_id:
+            headers[b"System_Id"] = [system_id.encode()]
+
         if power_token:
             headers[b"Authorization"] = [f"Bearer {power_token}".encode()]
         elif power_user and power_pass:
