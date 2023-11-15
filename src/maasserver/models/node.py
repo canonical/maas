@@ -6057,6 +6057,17 @@ class Node(CleanSave, TimestampedModel):
 
                 d.addCallback(_handle_workflow_result)
 
+                @transactional
+                def _update_node_power_state(result):
+                    result = result.get("state", None)
+                    self.update_power_state(result)
+
+                d.addCallback(
+                    lambda result: deferToDatabase(
+                        _update_node_power_state, result
+                    )
+                )
+
             return d
 
         # Power control the node.

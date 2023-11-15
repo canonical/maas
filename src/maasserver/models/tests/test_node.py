@@ -6493,7 +6493,9 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
         yield deferToDatabase(_assert_no_routable)
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         client = Mock()
         client.ident = other_rack_controller.system_id
@@ -6546,7 +6548,9 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
         yield deferToDatabase(_create_initial_relationship)
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         self.patch(bmc_module, "getAllClients").return_value = []
         self.patch(node_module, "getAllClients").return_value = []
@@ -6573,6 +6577,74 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
             )
 
         yield deferToDatabase(_assert_no_routable)
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_control_node_updates_power_state(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet,
+            bmc=bmc,
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        other_rack_controller = yield deferToDatabase(
+            factory.make_RackController
+        )
+
+        def _assert_no_routable():
+            self.assertRaises(
+                BMCRoutableRackControllerRelationship.DoesNotExist,
+                BMCRoutableRackControllerRelationship.objects.get,
+                bmc=node.bmc,
+                rack_controller=other_rack_controller,
+            )
+
+        yield deferToDatabase(_assert_no_routable)
+
+        self.patch(workflow_module, "temporal_wrapper")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
+
+        client = Mock()
+        client.ident = other_rack_controller.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.patch(node_module, "getAllClients").return_value = [client]
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "power_cycle").return_value = defer.succeed(
+            (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
+        )
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        yield node._power_control_node(
+            defer.succeed(None), "power_cycle", power_info
+        )
+
+        def _assert_node_status_updated():
+            self.assertEqual(
+                NODE_STATUS.DEPLOYED, Node.objects.get(id=node.id).status
+            )
+
+        yield deferToDatabase(_assert_node_status_updated)
 
 
 class TestDecomposeMachineMixin:
@@ -10446,7 +10518,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         yield node._power_control_node(d, "power_query", power_info)
 
@@ -10542,7 +10616,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         yield node._power_control_node(d, "power_query", power_info)
 
@@ -10599,7 +10675,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         yield node._power_control_node(d, "power_query", power_info)
 
@@ -10669,7 +10747,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(bmc_module, "getAllClients").return_value = all_clients
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": new_power_state
+        }
 
         # Mock the confirm power driver check, we check in the test to make
         # sure it gets called.
@@ -10768,7 +10848,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
         self.patch(node.bmc, "is_accessible").return_value = True
 
         self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow")
+        self.patch(node_module, "execute_workflow").return_value = {
+            "state": "on"
+        }
 
         yield node._power_control_node(
             d, "power_query", power_info, boot_order
