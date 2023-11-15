@@ -35,6 +35,10 @@ func TestFmtPowerOpts(t *testing.T) {
 			in:  map[string]interface{}{"system_id": "value1"},
 			out: []string{},
 		},
+		"ignore null": {
+			in:  map[string]interface{}{"key1": nil},
+			out: []string{},
+		},
 	}
 
 	for name, tc := range testcases {

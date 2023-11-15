@@ -50,9 +50,10 @@ func fmtPowerOpts(opts map[string]interface{}) []string {
 	var res []string
 
 	for k, v := range opts {
-		// skip 'system_id' which is added to parameters.
-		// it has nothing to do with power driver parameters
-		if k == "system_id" {
+		// skip 'system_id' as it is not required by any power driver contract.
+		// it is added by the region when driver is called directly (not via CLI)
+		// also skip 'null' values (some power options might have them empty)
+		if k == "system_id" || v == nil {
 			continue
 		}
 
