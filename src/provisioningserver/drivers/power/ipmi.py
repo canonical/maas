@@ -233,6 +233,11 @@ IPMI_WORKAROUND_FLAG_CHOICES = [
     ["", "None"],
 ]
 
+IPMI_POWER_OFF_MODE_CHOICES = [
+    ["soft", "Soft power off"],
+    ["hard", "Power off"],
+]
+
 
 @enum.unique
 class IPMI_PRIVILEGE_LEVEL(enum.Enum):
@@ -305,6 +310,14 @@ class IPMIPowerDriver(PowerDriver):
         ),
         make_setting_field(
             "mac_address", "Power MAC", scope=SETTING_SCOPE.NODE
+        ),
+        make_setting_field(
+            "power_off_mode",
+            "Power off mode",
+            field_type="choice",
+            choices=IPMI_POWER_OFF_MODE_CHOICES,
+            default="hard",
+            required=False,
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")

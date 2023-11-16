@@ -111,6 +111,8 @@ class TestPowerDriverCommand(MAASTestCase):
                 "opensesspriv",
                 "--workaround-flags",
                 "authcap",
+                "--power-off-mode",
+                "hard",
             ]
         )
 
