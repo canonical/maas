@@ -47,7 +47,7 @@ class PowerManyWorkflow:
                 param.action,
                 param,
                 task_queue=param.task_queue,
-                retry_policy=RetryPolicy(maximum_attempts=5),
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
             if result:
                 results.append(result)
