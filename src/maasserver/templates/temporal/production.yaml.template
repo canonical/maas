@@ -18,11 +18,11 @@ persistence:
         connectAttributes:
           search_path: "temporal"
         {{for k, v in connect_attributes.items()}}
-          {{ k }}: "{{ v }}" 
+          {{ k }}: "{{ v }}"
         {{endfor}}
-        maxConns: 20
-        maxIdleConns: 20
-        maxConnLifetime: "1h"
+        maxConns: 5
+        maxIdleConns: 5
+        maxConnLifetime: "5m"
 
     visibility:
       sql:
@@ -37,9 +37,9 @@ persistence:
         {{for k, v in connect_attributes.items()}}
           {{ k }}: "{{ v }}"
         {{endfor}}
-        maxConns: 2
-        maxIdleConns: 2
-        maxConnLifetime: "1h"
+        maxConns: 1
+        maxIdleConns: 1
+        maxConnLifetime: "5m"
 
 global:
   membership:
