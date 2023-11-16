@@ -6048,8 +6048,8 @@ class Node(CleanSave, TimestampedModel):
 
                 @transactional
                 def _update_node_power_state(result):
-                    result = result.get("state", None)
-                    self.update_power_state(result)
+                    self.update_power_state(result.get("state"))
+                    return result
 
                 d.addCallback(
                     lambda result: deferToDatabase(
