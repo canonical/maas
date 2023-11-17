@@ -497,6 +497,13 @@ class VmHostsHandler(OperationsHandler):
         project that MAAS will manage. If not provided, the ``default`` project
         will be used. If a nonexistent name is given, a new project with that
         name will be created.
+        @param (string) "certificate" [required=false]: X.509 certificate used
+        to verify the identity of the user. If ``certificate`` and ``key`` are
+        not provided, and the VM created is LXD type, a X.509 certificate will
+        be created.
+        @param (string) "key" [required=false]: private key used for
+        authentication. If ``certificate`` and ``key`` are not provided, and
+        the VM created is LXD type, a RSA key will be created.
 
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing a VM host object.
