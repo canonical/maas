@@ -2,11 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import asyncio
+from datetime import timedelta
 from functools import wraps
 from typing import Any, Optional
 import uuid
 
-from temporalio.common import RetryPolicy
 from temporalio.service import RPCError
 from twisted.internet.defer import Deferred, succeed
 
@@ -217,8 +217,8 @@ async def execute_workflow(
     if not workflow_id:
         workflow_id = str(uuid.uuid4())
     temporal_client = await get_client_async()
-    if "retry_policy" not in kwargs:
-        kwargs["retry_policy"] = RetryPolicy(maximum_attempts=5)
+    if "execution_timeout" not in kwargs:
+        kwargs["execution_timeout"] = timedelta(minutes=60)
     result = await temporal_client.execute_workflow(
         workflow_name,
         params,
