@@ -418,7 +418,11 @@ class RackAgent(RackOnlyExternalService):
         agent_config.write_config(config)
 
     def _tryUpdate(self, config):
-        return deferToThread(self._configure)
+        d = deferToThread(self._configure)
+        d.addCallback(
+            callOut, service_monitor.restartService, self.service_name
+        )
+        return d
 
 
 class RackExternalService(TimerService):
