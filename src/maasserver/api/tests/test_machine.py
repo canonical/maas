@@ -42,7 +42,7 @@ from maasserver.enum import (
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Domain, Filesystem, Machine, Node
 from maasserver.models import node as node_module
-from maasserver.models import NodeKey, NodeUserData, StaticIPAddress
+from maasserver.models import NodeKey, NodeUserData, ScriptSet, StaticIPAddress
 from maasserver.models.bmc import Pod
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.signals.testing import SignalsDisabled
@@ -73,9 +73,13 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
+from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.nodeinituser import get_node_init_user
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+    NODE_INFO_SCRIPTS,
+)
 from provisioningserver.utils.enum import map_enum
 
 
@@ -3563,6 +3567,64 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
         )
         self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
         self.assertThat(mock_restore_network_interfaces, MockCalledOnce())
+
+    def test_restore_networking_configuration_no_gateway_link_ipv4_conflict(
+        self,
+    ):
+        # See also LP#2015411
+        self.become_admin()
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=NODE_STATUS.READY
+        )
+
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                machine, scripts=[lxd_script.name]
+            )
+        )
+        machine.current_commissioning_script_set = commissioning_script_set
+        output = test_hooks.make_lxd_output_json()
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(machine)
+
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine
+        )
+        network = factory.make_ipv4_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr))
+
+        link_v4 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_network(network),
+            subnet=subnet,
+            interface=interface,
+        )
+        machine.gateway_link_ipv4 = link_v4
+        machine.save()
+
+        machine.restore_network_interfaces()
+        machine.set_initial_networking_configuration()
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "restore_networking_configuration"},
+        )
+
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            machine.system_id, json_load_bytes(response.content)["system_id"]
+        )
 
     def test_restore_networking_configuration_requires_admin(self):
         machine = factory.make_Machine()

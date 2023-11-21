@@ -4794,6 +4794,7 @@ class Node(CleanSave, TimestampedModel):
         update_node_network_information(
             self, data, NUMANode.objects.filter(node=self)
         )
+        self.save()
 
     def get_commissioning_resources(self):
         script = self.current_commissioning_script_set.find_script_result(
@@ -4854,6 +4855,7 @@ class Node(CleanSave, TimestampedModel):
                 continue
             if interface.enabled:
                 interface.ensure_link_up()
+        self.save()
 
     def set_networking_configuration_from_node(self, source_node):
         """Set the networking configuration for this node from the source
