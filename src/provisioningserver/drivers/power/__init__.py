@@ -16,6 +16,7 @@ from provisioningserver.drivers import (
     MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import IAsynchronous, pause
 
 # We specifically declare this here so that a node not knowing its own
@@ -60,6 +61,9 @@ JSON_POWER_DRIVERS_SCHEMA = {
     "type": "array",
     "items": JSON_POWER_DRIVER_SCHEMA,
 }
+
+
+maaslog = get_maas_logger("drivers.power")
 
 
 def is_power_parameter_set(param):
@@ -384,6 +388,7 @@ class PowerDriver(PowerDriverBase):
                 if not self.queryable:
                     return
                 # Wait before checking state.
+                maaslog.debug(f"Pausing {waiting_time} before checking state")
                 yield pause(waiting_time, self.clock)
                 # Try to get power state.
                 try:
@@ -405,6 +410,10 @@ class PowerDriver(PowerDriverBase):
                     # If state is now the correct state, done.
                     if state == state_desired:
                         return
+                    else:
+                        maaslog.info(
+                            f"Machine is {state} and not {state_desired} as expected."
+                        )
 
         if exc_info == (None, None, None):
             # No error found, so communication to the BMC is good, state must
