@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	powerActivityDuration = 60 * time.Second
+	// Maximum power activity duration (to cope with broken BMCs)
+	powerActivityDuration = 5 * time.Minute
 )
 
 var (
