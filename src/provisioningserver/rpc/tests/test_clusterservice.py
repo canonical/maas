@@ -1545,7 +1545,6 @@ class TestClusterClient(MAASTestCase):
         self.useFixture(
             ClusterConfigurationFixture(
                 maas_url=factory.make_simple_http_url(),
-                cluster_uuid=factory.make_UUID(),
             )
         )
         self.patch(
@@ -2072,7 +2071,6 @@ class TestClusterClient(MAASTestCase):
             hostname=hostname,
             interfaces={},
             url=urlparse(maas_url),
-            nodegroup_uuid=None,
             beacon_support=True,
             version=str(get_running_version()),
         )

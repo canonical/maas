@@ -19,7 +19,7 @@ from operator import itemgetter
 import os
 from pathlib import Path
 import shutil
-from subprocess import CalledProcessError
+from subprocess import CalledProcessError, check_call
 import tarfile
 from textwrap import dedent
 import threading
@@ -96,6 +96,7 @@ from maasserver.workflow.bootresource import (
     ResourceDownloadParam,
     SyncRequestParam,
 )
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.import_images.download_descriptions import (
@@ -112,7 +113,7 @@ from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_lock_path
 from provisioningserver.rpc.cluster import ListBootImages
-from provisioningserver.upgrade_cluster import create_gnupg_home
+from provisioningserver.utils import snap
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
@@ -1119,6 +1120,18 @@ def _import_resources(notify=None):
         maaslog.info("Skipping import as another import is already running.")
 
     return d.addCallbacks(cb_import, eb_import)
+
+
+def create_gnupg_home():
+    """create maas user's GNUPG home directory."""
+    gpghome = get_maas_user_gpghome()
+    if not os.path.isdir(gpghome):
+        os.makedirs(gpghome)
+        if os.geteuid() == 0 and not snap.running_in_snap():
+            # Make the maas user the owner of its GPG home.  Do this only if
+            # running as root; otherwise it would probably fail.  We want to
+            # be able to start a development instance without triggering that.
+            check_call(["chown", "maas:maas", gpghome])
 
 
 def _import_resources_internal(notify=None):

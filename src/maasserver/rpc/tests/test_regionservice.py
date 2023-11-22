@@ -354,31 +354,6 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_register_calls_handle_upgrade(self):
-        yield self.installFakeRegion()
-        rack_controller = yield deferToDatabase(factory.make_RackController)
-        protocol = self.make_Region()
-        protocol.transport = MagicMock()
-        ng_uuid = factory.make_UUID()
-        mock_handle_upgrade = self.patch(
-            regionservice.rackcontrollers, "handle_upgrade"
-        )
-        yield call_responder(
-            protocol,
-            RegisterRackController,
-            {
-                "system_id": rack_controller.system_id,
-                "hostname": rack_controller.hostname,
-                "interfaces": {},
-                "nodegroup_uuid": ng_uuid,
-            },
-        )
-        self.assertThat(
-            mock_handle_upgrade, MockCalledOnceWith(rack_controller, ng_uuid)
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_register_sets_ident(self):
         yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)

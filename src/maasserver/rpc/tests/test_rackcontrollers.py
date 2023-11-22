@@ -10,73 +10,23 @@ from fixtures import FakeLogger
 
 from maasserver import locks, worker_user
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
-from maasserver.models import (
-    NodeGroupToRackController,
-    RackController,
-    RegionController,
-)
+from maasserver.models import RackController, RegionController
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import rackcontrollers
 from maasserver.rpc.rackcontrollers import (
-    handle_upgrade,
     register,
     report_neighbours,
     update_foreign_dhcp,
     update_last_image_sync,
     update_state,
 )
-from maasserver.testing.commissioning import FakeCommissioningData, LXDAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
-from metadataserver.builtin_scripts.network import update_node_interfaces
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
-
-
-class TestHandleUpgrade(MAASServerTestCase):
-    def test_migrates_nodegroup_subnet(self):
-        rack = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-        ip = factory.pick_ip_in_Subnet(subnet)
-        data = FakeCommissioningData()
-        data.create_physical_network("eth0")
-        data.networks["eth0"].addresses = [
-            LXDAddress(str(ip), subnet.get_ipnetwork().prefixlen)
-        ]
-        update_node_interfaces(rack, data.render())
-        ng_uuid = factory.make_UUID()
-        NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
-        handle_upgrade(rack, ng_uuid)
-        vlan = reload_object(vlan)
-        self.assertEqual(rack.system_id, vlan.primary_rack.system_id)
-        self.assertTrue(vlan.dhcp_on)
-        self.assertCountEqual([], NodeGroupToRackController.objects.all())
-
-    def test_logs_migration(self):
-        logger = self.useFixture(FakeLogger("maas"))
-        rack = factory.make_RackController()
-        vlan = factory.make_VLAN()
-        subnet = factory.make_Subnet(vlan=vlan)
-        ip = factory.pick_ip_in_Subnet(subnet)
-        data = FakeCommissioningData()
-        data.create_physical_network("eth0")
-        data.networks["eth0"].addresses = [
-            LXDAddress(str(ip), subnet.get_ipnetwork().prefixlen)
-        ]
-        update_node_interfaces(rack, data.render())
-        ng_uuid = factory.make_UUID()
-        NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
-        handle_upgrade(rack, ng_uuid)
-        vlan = reload_object(vlan)
-        self.assertEqual(
-            "DHCP setting from NodeGroup(%s) have been migrated to %s."
-            % (ng_uuid, vlan),
-            logger.output.strip(),
-        )
 
 
 class TestRegisterRackController(MAASServerTestCase):

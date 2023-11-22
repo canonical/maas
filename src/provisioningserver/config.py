@@ -129,7 +129,6 @@ from provisioningserver.utils.config import (
     ExtendedURL,
     OneWayStringBool,
     UnicodeString,
-    UUIDString,
 )
 from provisioningserver.utils.fs import atomic_write, RunLock
 
@@ -801,13 +800,6 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     def grub_root(self):
         "The root directory for GRUB resources."
         return os.path.join(self.tftp_root, "grub")
-
-    # NodeGroup UUID Option, used for migrating to rack controller
-    cluster_uuid = ConfigurationOption(
-        "cluster_uuid",
-        "The UUID for this cluster controller",
-        UUIDString(if_missing=UUID_NOT_SET),
-    )
 
     # Debug options.
     debug = ConfigurationOption(

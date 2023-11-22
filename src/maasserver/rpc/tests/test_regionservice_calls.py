@@ -246,8 +246,6 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_doesnt_raises_other_errors(self):
-        uuid = factory.make_name("uuid")
-
         # Cause a random exception
         self.patch(
             leases_module, "update_lease"
@@ -259,7 +257,6 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
                 Region(),
                 UpdateLease,
                 {
-                    "cluster_uuid": uuid,
                     "action": "expiry",
                     "mac": factory.make_mac_address(),
                     "ip_family": "ipv4",
@@ -287,7 +284,6 @@ class TestRegionProtocol_UpdateLeases(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_update_lease_called_N_times(self):
-        uuid = factory.make_name("uuid")
         update_lease_mock = self.patch_autospec(leases_module, "update_lease")
         updates = [
             {
@@ -306,7 +302,6 @@ class TestRegionProtocol_UpdateLeases(MAASTransactionServerTestCase):
                 Region(),
                 UpdateLeases,
                 {
-                    "cluster_uuid": uuid,
                     "updates": updates,
                 },
             )

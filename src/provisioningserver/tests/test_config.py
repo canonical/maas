@@ -9,7 +9,6 @@ from operator import delitem, methodcaller, setitem
 import os.path
 import sqlite3
 from unittest.mock import sentinel
-from uuid import uuid4
 
 from fixtures import EnvironmentVariableFixture
 import formencode
@@ -653,18 +652,6 @@ class TestClusterConfiguration(MAASTestCase):
         self.assertEqual(example_dir, config.tftp_root)
         # It's also stored in the configuration database.
         self.assertEqual({"tftp_root": example_dir}, config.store)
-
-    def test_default_cluster_uuid(self):
-        config = ClusterConfiguration({})
-        self.assertIsNone(config.cluster_uuid)
-
-    def test_set_and_get_cluster_uuid(self):
-        example_uuid = uuid4()
-        config = ClusterConfiguration({})
-        config.cluster_uuid = example_uuid
-        self.assertEqual(str(example_uuid), config.cluster_uuid)
-        # It's also stored in the configuration database.
-        self.assertEqual({"cluster_uuid": str(example_uuid)}, config.store)
 
     def test_default_debug(self):
         config = ClusterConfiguration({})

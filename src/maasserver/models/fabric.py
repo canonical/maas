@@ -86,15 +86,6 @@ class FabricManager(Manager, FabricQueriesMixin):
         else:
             return Fabric.objects.create()
 
-    def filter_by_nodegroup_interface(self, nodegroup, ifname):
-        """Query for the Fabric associated with the specified NodeGroup,
-        where the NodeGroupInterface matches the specified name.
-        """
-        return self.filter(
-            vlan__subnet__nodegroupinterface__nodegroup=nodegroup,
-            vlan__subnet__nodegroupinterface__interface=ifname,
-        )
-
     def get_fabric_or_404(self, specifiers, user, perm):
         """Fetch a `Fabric` by its id.  Raise exceptions if no `Fabric` with
         this id exist or if the provided user has not the required permission

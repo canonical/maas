@@ -16,7 +16,7 @@ from testtools import ExpectedException
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import cluster_config_command
-from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
+from provisioningserver.config import ClusterConfiguration
 from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
@@ -129,61 +129,6 @@ class TestUpdateMaasClusterConf(MAASTestCase):
         with ClusterConfiguration.open() as config:
             observed = config.maas_url
         self.assertEqual(expected, observed)
-
-    def test_config_set_cluster_uuid_sets_cluster_uuid(self):
-        expected = str(uuid.uuid4())
-        cluster_config_command.run(self.make_args(uuid=expected))
-        with ClusterConfiguration.open() as config:
-            observed = config.cluster_uuid
-        self.assertEqual(expected, observed)
-
-    def get_parsed_uuid_from_config(self):
-        with ClusterConfiguration.open() as config:
-            observed = config.cluster_uuid
-        try:
-            parsed_observed = str(uuid.UUID(observed))
-        except Exception:
-            parsed_observed = None
-
-        return (parsed_observed, observed)
-
-    def test_config_set_cluster_uuid_without_setting_does_nothing(self):
-        expected_previous_value = str(uuid.uuid4())
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = expected_previous_value
-        with ClusterConfiguration.open() as config:
-            observed_previous_value = config.cluster_uuid
-        self.assertEqual(expected_previous_value, observed_previous_value)
-
-        cluster_config_command.run(self.make_args(uuid=None))
-
-        parsed_observed, observed = self.get_parsed_uuid_from_config()
-        self.assertEqual(parsed_observed, observed)
-        self.assertEqual(parsed_observed, expected_previous_value)
-
-    def test_config_init_creates_initial_cluster_id(self):
-        with ClusterConfiguration.open() as config:
-            observed_default = config.cluster_uuid
-        self.assertEqual(UUID_NOT_SET, observed_default)
-
-        cluster_config_command.run(self.make_args(init=True))
-
-        expected, observed = self.get_parsed_uuid_from_config()
-        self.assertEqual(expected, observed)
-
-    def test_config_init_when_already_configured_does_nothing(self):
-        expected_previous_value = str(uuid.uuid4())
-        with ClusterConfiguration.open_for_update() as config:
-            config.cluster_uuid = expected_previous_value
-        with ClusterConfiguration.open() as config:
-            observed_previous_value = config.cluster_uuid
-        self.assertEqual(expected_previous_value, observed_previous_value)
-
-        cluster_config_command.run(self.make_args(init=True))
-
-        parsed_observed, observed = self.get_parsed_uuid_from_config()
-        self.assertEqual(parsed_observed, observed)
-        self.assertEqual(parsed_observed, expected_previous_value)
 
     def test_config_set_tftp_port_sets_tftp_port(self):
         expected = factory.pick_port()

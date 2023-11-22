@@ -1015,10 +1015,6 @@ class ClusterClient(Cluster):
 
     @inlineCallbacks
     def registerRackWithRegion(self):
-        # Grab the cluster UUID. It is possible that the cluster UUID is blank.
-        with ClusterConfiguration.open() as config:
-            cluster_uuid = config.cluster_uuid
-
         # Grab the set system_id if already set for this controller.
         system_id = MAAS_ID.get() or ""
 
@@ -1038,7 +1034,6 @@ class ClusterClient(Cluster):
                 hostname=hostname,
                 interfaces=interfaces,
                 url=parsed_url,
-                nodegroup_uuid=cluster_uuid,
                 beacon_support=True,
                 version=version,
             )

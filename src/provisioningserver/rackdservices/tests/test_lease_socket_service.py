@@ -176,10 +176,9 @@ class TestLeaseSocketService(MAASTestCase):
         # Notification to region.
         packet = self.create_lease_notification()
         payload = {
-            "cluster_uuid": None,
             "updates": [packet],
         }
         yield service.processNotification(payload, clock=reactor)
         protocol.UpdateLeases.assert_called_once_with(
-            protocol, cluster_uuid=client.localIdent, updates=[packet]
+            protocol, updates=[packet]
         )

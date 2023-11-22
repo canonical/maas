@@ -11,7 +11,6 @@ import provisioningserver.dns.commands.edit_named_options
 import provisioningserver.dns.commands.get_named_conf
 import provisioningserver.dns.commands.setup_dns
 import provisioningserver.register_command
-import provisioningserver.upgrade_cluster
 import provisioningserver.utils.arp
 import provisioningserver.utils.avahi
 import provisioningserver.utils.beaconing
@@ -32,7 +31,6 @@ RACK_ONLY_COMMANDS = {
     "config": provisioningserver.cluster_config_command,
     "install-shared-secret": security.InstallSharedSecretScript,
     "register": provisioningserver.register_command,
-    "upgrade-cluster": provisioningserver.upgrade_cluster,
 }
 
 

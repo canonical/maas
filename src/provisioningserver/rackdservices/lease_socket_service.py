@@ -104,7 +104,6 @@ class LeaseSocketService(Service, DatagramProtocol):
             payload.append(self.notifications.popleft())
 
         notification = {
-            "cluster_uuid": None,  # TBD when sending
             "updates": payload,
         }
         return self.processNotification(notification, clock=clock)
@@ -129,5 +128,4 @@ class LeaseSocketService(Service, DatagramProtocol):
         # Notification contains all the required data except for the cluster
         # UUID. Add that into the notification and send the information to
         # the region for processing.
-        notification["cluster_uuid"] = client.localIdent
         yield client(UpdateLeases, **notification)

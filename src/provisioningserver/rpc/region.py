@@ -72,8 +72,6 @@ class RegisterRackController(amp.Command):
         (b"interfaces", StructureAsJSON()),
         # The URL for the region as seen by the rack controller.
         (b"url", ParsedURL(optional=True)),
-        # The old nodegroup UUID.
-        (b"nodegroup_uuid", amp.Unicode(optional=True)),
         (b"beacon_support", amp.Boolean(optional=True)),
         (b"version", amp.Unicode(optional=True)),
     ]
@@ -491,7 +489,6 @@ class UpdateLease(amp.Command):
     """
 
     arguments = [
-        (b"cluster_uuid", amp.Unicode()),
         (b"action", amp.Unicode()),
         (b"mac", amp.Unicode()),
         (b"ip_family", amp.Unicode()),
@@ -510,7 +507,6 @@ class UpdateLeases(amp.Command):
     """
 
     arguments = [
-        (b"cluster_uuid", amp.Unicode()),
         (
             b"updates",
             AmpList(

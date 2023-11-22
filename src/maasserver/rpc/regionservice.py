@@ -115,7 +115,6 @@ class Region(RPCProtocol):
     @region.UpdateLease.responder
     def update_lease(
         self,
-        cluster_uuid,
         action,
         mac,
         ip_family,
@@ -125,7 +124,7 @@ class Region(RPCProtocol):
         hostname=None,
     ):
         """update_lease(
-            cluster_uuid, action, mac, ip_family, ip, timestamp,
+            action, mac, ip_family, ip, timestamp,
             lease_time, hostname)
 
         Implementation of
@@ -155,9 +154,8 @@ class Region(RPCProtocol):
         return d
 
     @region.UpdateLeases.responder
-    def update_leases(self, cluster_uuid, updates):
-        """update_leases(
-            cluster_uuid, updates)
+    def update_leases(self, updates):
+        """update_leases(updates)
 
         Implementation of
         :py:class`~provisioningserver.rpc.region.UpdateLeases`.
@@ -710,7 +708,6 @@ class RegionServer(Region):
         hostname,
         interfaces,
         url,
-        nodegroup_uuid=None,
         beacon_support=False,
         version=None,
     ):
@@ -719,7 +716,6 @@ class RegionServer(Region):
             hostname,
             interfaces,
             url,
-            nodegroup_uuid=nodegroup_uuid,
             version=version,
         )
         if beacon_support:
@@ -737,7 +733,6 @@ class RegionServer(Region):
         hostname,
         interfaces,
         url,
-        nodegroup_uuid=None,
         version=None,
     ):
         try:
@@ -752,14 +747,6 @@ class RegionServer(Region):
                 is_loopback=is_loopback,
                 version=version,
             )
-
-            # Check for upgrade.
-            if nodegroup_uuid is not None:
-                yield deferToDatabase(
-                    rackcontrollers.handle_upgrade,
-                    rack_controller,
-                    nodegroup_uuid,
-                )
 
             yield self.initResponder(rack_controller)
         except Exception:

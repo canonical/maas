@@ -4,7 +4,6 @@
 """RPC helpers relating to rack controllers."""
 
 __all__ = [
-    "handle_upgrade",
     "register",
     "update_last_image_sync",
 ]
@@ -20,7 +19,6 @@ from maasserver.models import (
     ControllerInfo,
     Domain,
     Node,
-    NodeGroupToRackController,
     RackController,
     RegionController,
     ScriptSet,
@@ -36,34 +34,6 @@ from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("rpc.rackcontrollers")
-
-
-@synchronous
-@transactional
-def handle_upgrade(rack_controller, nodegroup_uuid):
-    """Handle upgrading from MAAS 1.9. Set the VLAN the rack controller
-    should manage."""
-    if (
-        nodegroup_uuid is not None
-        and len(nodegroup_uuid) > 0
-        and not nodegroup_uuid.isspace()
-    ):
-        ng_to_racks = NodeGroupToRackController.objects.filter(
-            uuid=nodegroup_uuid
-        )
-        vlans = [ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks]
-        # The VLAN object can only be related to a RackController
-        for nic in rack_controller.current_config.interface_set.all():
-            if nic.vlan in vlans:
-                nic.vlan.primary_rack = rack_controller
-                nic.vlan.dhcp_on = True
-                nic.vlan.save()
-                maaslog.info(
-                    "DHCP setting from NodeGroup(%s) have been migrated "
-                    "to %s." % (nodegroup_uuid, nic.vlan)
-                )
-        for ng_to_rack in ng_to_racks:
-            ng_to_rack.delete()
 
 
 @synchronous

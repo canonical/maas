@@ -86,26 +86,7 @@ configure_shared_secret() {
 }
 
 upgrade_from_cluster_controller() {
-    # If we are upgrading from an older (1.7, 1.8) version, then we need
-    # to obtain the cluster UUID from the old configuration file and set
-    # it with the new configuration tool.
-    if [ -f /etc/maas/maas_cluster.conf ]; then
-        uuid=$(extract_cluster_uuid /etc/maas/maas_cluster.conf)
-        maas-rack config --uuid "$uuid"
-        maas_url=$(extract_maas_url /etc/maas/maas_cluster.conf)
-        maas-rack config --region-url "$maas_url"
-        db_set maas-rack-controller/maas-url "$maas_url"
-        mv /etc/maas/maas_cluster.conf /etc/maas/maas_cluster.conf.maas-old
-        mv /etc/maas/pserv.yaml /etc/maas/pserv.yaml.maas-old
-    fi
-    # If we are upgrading from (1.9, 1.10) version, then we need to obtain
-    # the maas_url and set it to debconf. Otherwise, the config file used
-    # is exactly the same.
-    if [ -f /etc/maas/clusterd.conf.1.10 ]; then
-        mv /etc/maas/clusterd.conf.1.10 /etc/maas/rackd.conf
-        maas_url=$(extract_maas_url /etc/maas/rackd.conf)
-        db_set maas-rack-controller/maas-url "$maas_url"
-    fi
+    # Nothing to do for now
 }
 
 edit_named_options() {
@@ -152,7 +133,6 @@ if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_libdir
     configure_maas_url
     configure_cluster_uuid
-    maas-rack upgrade-cluster
     upgrade_from_cluster_controller
     configure_shared_secret
     # Configure DNS
@@ -176,7 +156,6 @@ elif [ -n "$DEBCONF_RECONFIGURE" ]; then
 elif [ "$1" = "configure" ] && dpkg --compare-versions "$2" gt 0.1+bzr266+dfsg-0ubuntu1; then
     configure_logging
     configure_libdir
-    maas-rack upgrade-cluster
     # Configure DNS
     # If /etc/bind/maas is empty, setup dns.
     if [ ! "$(ls -A /etc/bind/maas)" ]; then
