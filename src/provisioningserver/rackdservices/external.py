@@ -401,13 +401,18 @@ class RackAgent(RackOnlyExternalService):
 
     service_name = "agent"
 
-    def _configure(self):
+    def _tryUpdate(self, config):
+        d = maybeDeferred(self._getConfiguration)
+        d.addCallback(self._maybeApplyConfiguration)
+        return d
+
+    def _getConfiguration(self):
         controllers = []
         with ClusterConfiguration.open() as config:
             controllers = [urlparse(url).hostname for url in config.maas_url]
             debug_enabled = config.debug
 
-        config = agent_config.Configuration(
+        return agent_config.Configuration(
             maas_uuid=MAAS_UUID.get(),
             system_id=MAAS_ID.get(),
             secret=MAAS_SHARED_SECRET.get(),
@@ -415,10 +420,11 @@ class RackAgent(RackOnlyExternalService):
             log_level="debug" if debug_enabled else "info",
         )
 
-        agent_config.write_config(config)
+    def _configure(self, configuration):
+        deferToThread(agent_config.write_config, configuration)
 
-    def _tryUpdate(self, config):
-        d = deferToThread(self._configure)
+    def _applyConfiguration(self, configuration):
+        d = deferToThread(self._configure, configuration)
         d.addCallback(
             callOut, service_monitor.restartService, self.service_name
         )
