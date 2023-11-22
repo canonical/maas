@@ -4,17 +4,19 @@
 """NTP service configuration."""
 
 
+from contextlib import nullcontext
 from functools import partial
 from itertools import dropwhile, groupby
+from os.path import exists
 import re
 
 from netaddr import AddrFormatError, IPAddress
 
-from provisioningserver.path import get_tentative_data_path
+from provisioningserver.path import get_data_path
 from provisioningserver.utils.fs import sudo_write_file
 
-_ntp_conf_name = "chrony/chrony.conf"
-_ntp_maas_conf_name = "chrony/maas.conf"
+_NTP_CONF_NAME = "chrony/chrony.conf"
+_NTP_MAAS_CONF_NAME = "chrony/maas.conf"
 
 
 def configure(servers, peers, offset):
@@ -31,12 +33,12 @@ def configure(servers, peers, offset):
         would be 0 and a rack controller would be 1.
     """
     ntp_maas_conf = _render_ntp_maas_conf(servers, peers, offset)
-    ntp_maas_conf_path = get_tentative_data_path("etc", _ntp_maas_conf_name)
+    ntp_maas_conf_path = get_data_path("etc", _NTP_MAAS_CONF_NAME)
     sudo_write_file(
         ntp_maas_conf_path, ntp_maas_conf.encode("utf-8"), mode=0o644
     )
     ntp_conf = _render_ntp_conf(ntp_maas_conf_path)
-    ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
+    ntp_conf_path = get_data_path("etc", _NTP_CONF_NAME)
     sudo_write_file(ntp_conf_path, ntp_conf.encode("utf-8"), mode=0o644)
 
 
@@ -66,10 +68,14 @@ def _render_ntp_conf(includefile):
 
     This configuration includes the file named by `includefile`.
     """
-    ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
-    with open(ntp_conf_path, encoding="utf-8") as fd:
-        lines = _render_ntp_conf_from_source(fd, includefile)
-        return "".join(lines)
+    ntp_conf_path = get_data_path("etc", _NTP_CONF_NAME)
+    if exists(ntp_conf_path):
+        cm = open(ntp_conf_path, encoding="utf-8")
+    else:
+        cm = nullcontext([])
+    with cm as fd:
+        content = "".join(_render_ntp_conf_from_source(fd, includefile))
+    return content
 
 
 def _render_ntp_conf_from_source(lines, includefile):
@@ -150,7 +156,7 @@ def _disable_existing_pools_and_servers(lines):
 
 
 _re_maas_includefile = re.compile(
-    r" ^ \s* include \s+ .* \b %s \b " % re.escape(_ntp_maas_conf_name),
+    r" ^ \s* include \s+ .* \b %s \b " % re.escape(_NTP_MAAS_CONF_NAME),
     re.VERBOSE,
 )
 
