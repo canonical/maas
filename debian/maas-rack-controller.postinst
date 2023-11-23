@@ -85,10 +85,6 @@ configure_shared_secret() {
     fi
 }
 
-upgrade_from_cluster_controller() {
-    # Nothing to do for now
-}
-
 edit_named_options() {
     # Remove any existing MAAS-related include line from
     # /etc/bind/named.conf.local, then re-add it.
@@ -133,7 +129,6 @@ if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_libdir
     configure_maas_url
     configure_cluster_uuid
-    upgrade_from_cluster_controller
     configure_shared_secret
     # Configure DNS
     # If /etc/bind/maas is empty, setup dns.
