@@ -63,11 +63,6 @@ extract_maas_url(){
     grep -Eo "https?://[^ ]+" "$1" | cut -d"\"" -f1
 }
 
-configure_cluster_uuid(){
-    # This will configure a UUID if one has not previously been set.
-    maas-rack config --init
-}
-
 configure_maas_url(){
     # Get the MAAS URL on configure/reconfigure and write it to the conf files.
     db_get maas-rack-controller/maas-url || true
@@ -128,7 +123,6 @@ if [ "$1" = "configure" ] && [ -z "$2" ]; then
     configure_logging
     configure_libdir
     configure_maas_url
-    configure_cluster_uuid
     configure_shared_secret
     # Configure DNS
     # If /etc/bind/maas is empty, setup dns.
