@@ -102,6 +102,7 @@ func Run() int {
 		}),
 		worker.WithControlPlaneTaskQueueName("region"),
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
+		worker.WithConfigureWorkerPoolWorkflowName("configure-agent"),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()

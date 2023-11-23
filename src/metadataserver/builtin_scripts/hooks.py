@@ -5,6 +5,7 @@
 
 
 from collections import defaultdict
+from datetime import timedelta
 import fnmatch
 import functools
 from functools import partial
@@ -17,8 +18,14 @@ import re
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from temporalio.common import RetryPolicy
 
-from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
+from maasserver.enum import (
+    NODE_DEVICE_BUS,
+    NODE_METADATA,
+    NODE_STATUS,
+    NODE_TYPE,
+)
 from maasserver.models import (
     Event,
     Interface,
@@ -42,6 +49,7 @@ from maasserver.storage_custom import (
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
+from maasserver.workflow import execute_workflow, REGION_TASK_QUEUE
 from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_SYNC_ACTIONS, HARDWARE_TYPE
 from provisioningserver.events import EVENT_TYPES
@@ -1131,6 +1139,19 @@ def process_lxd_results(node, output, exit_status):
         not missing_extensions
     ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
+    # If there is a change in the Rack controller configuration, we should
+    # trigger configure-agent workflow execution, so MAAS Agent can consume
+    # workflows from certain task queues.
+    configuration_required = False
+    if node.node_type in (
+        NODE_TYPE.RACK_CONTROLLER,
+        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+    ):
+        configuration_required = True
+        old_vlans = set(
+            node.current_config.interface_set.values_list("vlan", flat=True)
+        )
+
     try:
         _process_lxd_environment(node, data["environment"])
         _process_lxd_resources(node, data)
@@ -1140,6 +1161,22 @@ def process_lxd_results(node, output, exit_status):
         raise
 
     node.save()
+
+    if configuration_required:
+        new_vlans = set(
+            node.current_config.interface_set.values_list("vlan", flat=True)
+        )
+        if new_vlans != old_vlans:
+            execute_workflow(
+                "configure-agent",
+                params={
+                    "system_id": node.system_id,
+                    "task_queue": f"{node.system_id}@agent:main",
+                },
+                task_queue=REGION_TASK_QUEUE,
+                retry_policy=RetryPolicy(maximum_attempts=1),
+                execution_timeout=timedelta(seconds=120),
+            )
 
     for pod in node.get_hosted_pods():
         pod.sync_hints_from_nodes()

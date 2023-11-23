@@ -25,7 +25,7 @@ class ConfigureWorkerPoolInput:
     task_queue: str
 
 
-@workflow.defn(name="configure-worker-pool", sandboxed=False)
+@workflow.defn(name="configure-agent", sandboxed=False)
 class ConfigureWorkerPoolWorkflow:
     """A ConfigureWorkerPool workflow to setup MAAS Agent workers"""
 
@@ -36,10 +36,7 @@ class ConfigureWorkerPoolWorkflow:
             GetRackControllerInput(input.system_id),
             start_to_close_timeout=timedelta(seconds=10),
             retry_policy=RetryPolicy(
-                backoff_coefficient=2.0,
                 maximum_attempts=5,
-                initial_interval=timedelta(seconds=1),
-                maximum_interval=timedelta(seconds=2),
             ),
         )
 
@@ -48,12 +45,12 @@ class ConfigureWorkerPoolWorkflow:
             [n["vlan"]["id"] for n in interface_set if n.get("vlan")]
         )
 
+        params = []
         # add worker for {systemID}@agent
-        # this is a unicast task queue picked only by agent running on systemID
-        await workflow.start_child_workflow(
-            workflow="add-worker",
-            task_queue=input.task_queue,
-            arg={
+        # this is a unicast task queue picked only by the agent running on
+        # machine identified by systemID
+        params.append(
+            {
                 "task_queue": f"{input.system_id}@agent",
                 "workflows": [
                     "check-ip",
@@ -69,15 +66,14 @@ class ConfigureWorkerPoolWorkflow:
         )
 
         # for each VLAN add anycast workers agent:vlan-{vlan_id}
-        # this is an anycast task queue polled by multiple agents that can
-        # reach specified VLAN
-        for vlan_id in vlan_ids:
-            # If you need to extend workflows/activities that should be
-            # registered, ensure they are allowed by the worker pool
-            await workflow.start_child_workflow(
-                workflow="add-worker",
-                task_queue=input.task_queue,
-                arg={
+        # this is an anycast task queue polled by multiple agents
+        # that can reach a certain VLAN
+        #
+        # If you need to extend workflows/activities that should be
+        # registered, ensure they are allowed by the worker pool (MAAS Agent)
+        params.extend(
+            [
+                {
                     "task_queue": f"agent:vlan-{vlan_id}",
                     "workflows": [
                         "check-ip",
@@ -89,5 +85,14 @@ class ConfigureWorkerPoolWorkflow:
                     "activities": [
                         "power",
                     ],
-                },
-            )
+                }
+                for vlan_id in vlan_ids
+            ],
+        )
+
+        await workflow.execute_activity(
+            "configure-worker-pool",
+            params,
+            task_queue=input.task_queue,
+            start_to_close_timeout=timedelta(seconds=30),
+        )
