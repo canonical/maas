@@ -6,8 +6,9 @@
 Managers all the external services that the rack controller runs.
 """
 
+from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from datetime import timedelta
 from urllib.parse import urlparse
@@ -15,7 +16,13 @@ from urllib.parse import urlparse
 import attr
 from netaddr import IPAddress
 from twisted.application.internet import TimerService
-from twisted.internet.defer import DeferredList, inlineCallbacks, maybeDeferred
+from twisted.internet.defer import (
+    Deferred,
+    DeferredList,
+    inlineCallbacks,
+    maybeDeferred,
+    succeed,
+)
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.agent import config as agent_config
@@ -46,11 +53,12 @@ log = LegacyLogger()
 
 
 class RackOnlyExternalService(metaclass=ABCMeta):
-    """Service that should only run when it rack-only mode."""
+    """Service that should only run when in rack-only mode."""
 
     _configuration = None
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def service_name(self):
         """Name of the service in `service_monitor`."""
 
@@ -362,7 +370,7 @@ class RackSyslog(RackOnlyExternalService):
         )
 
     def _applyConfiguration(self, configuration):
-        """Configure the proxy server.
+        """Configure the syslog server.
 
         :param configuration: The configuration object obtained from
             `_getConfiguration`.
@@ -401,12 +409,12 @@ class RackAgent(RackOnlyExternalService):
 
     service_name = "agent"
 
-    def _tryUpdate(self, config):
-        d = maybeDeferred(self._getConfiguration)
+    def _tryUpdate(self, config: _Configuration) -> Deferred:
+        d = succeed(self._getConfiguration())
         d.addCallback(self._maybeApplyConfiguration)
         return d
 
-    def _getConfiguration(self):
+    def _getConfiguration(self) -> agent_config.Configuration:
         controllers = []
         with ClusterConfiguration.open() as config:
             controllers = [urlparse(url).hostname for url in config.maas_url]
@@ -420,15 +428,18 @@ class RackAgent(RackOnlyExternalService):
             log_level="debug" if debug_enabled else "info",
         )
 
-    def _configure(self, configuration):
-        deferToThread(agent_config.write_config, configuration)
-
-    def _applyConfiguration(self, configuration):
+    def _applyConfiguration(
+        self, configuration: agent_config.Configuration
+    ) -> Deferred:
+        """Configure the maas agent"""
         d = deferToThread(self._configure, configuration)
         d.addCallback(
             callOut, service_monitor.restartService, self.service_name
         )
         return d
+
+    def _configure(self, configuration: agent_config.Configuration) -> None:
+        agent_config.write_config(configuration)
 
 
 class RackExternalService(TimerService):

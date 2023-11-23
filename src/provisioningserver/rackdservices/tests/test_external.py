@@ -8,18 +8,12 @@ import random
 from unittest.mock import Mock
 
 import attr
-from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver import services
@@ -27,7 +21,9 @@ from provisioningserver.rackdservices import external
 from provisioningserver.rpc import clusterservice, common, exceptions, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
+from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.service_monitor import SERVICE_STATE
+from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 TIMEOUT = get_testing_timeout()
 
@@ -178,7 +174,7 @@ class TestRackExternalService(MAASTestCase):
             yield service._tryUpdate()
 
         self.assertEqual("", logger.output)
-        self.assertThat(ntp._tryUpdate, MockNotCalled())
+        ntp._tryUpdate.assert_not_called()
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_rack_is_not_recognised(self):
@@ -201,7 +197,7 @@ class TestRackExternalService(MAASTestCase):
             yield service._tryUpdate()
 
         self.assertEqual("", logger.output)
-        self.assertThat(ntp._tryUpdate, MockNotCalled())
+        ntp._tryUpdate.assert_not_called()
 
 
 class TestRackNTP(MAASTestCase):
@@ -254,15 +250,10 @@ class TestRackNTP(MAASTestCase):
         )
 
         self.assertIsInstance(observed, external._NTPConfiguration)
-        self.assertThat(
-            observed,
-            MatchesStructure.byEquality(
-                references=servers,
-                peers=peers,
-                is_region=is_region,
-                is_rack=is_rack,
-            ),
-        )
+        self.assertEqual(observed.references, servers)
+        self.assertEqual(observed.peers, peers)
+        self.assertEqual(observed.is_region, is_region)
+        self.assertEqual(observed.is_rack, is_rack)
 
     @inlineCallbacks
     def test_tryUpdate_updates_ntp_server(self):
@@ -277,13 +268,13 @@ class TestRackNTP(MAASTestCase):
 
         config = yield service._getConfiguration()
         yield ntp._tryUpdate(config)
-        self.assertThat(configure_rack, MockCalledOnceWith(servers, peers))
-        self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
+        configure_rack.assert_called_once_with(servers, peers)
+        restartService.assert_called_once_with("ntp_rack")
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure`.
         yield ntp._tryUpdate(config)
-        self.assertThat(configure_rack, MockCalledOnceWith(servers, peers))
-        self.assertThat(restartService, MockCalledOnceWith("ntp_rack"))
+        configure_rack.assert_called_once_with(servers, peers)
+        restartService.assert_called_once_with("ntp_rack")
 
     @inlineCallbacks
     def test_is_silent_does_nothing_but_saves_config_when_is_region(self):
@@ -310,7 +301,7 @@ class TestRackNTP(MAASTestCase):
         # on a region+rack.
         self.assertIsInstance(ntp._configuration, external._NTPConfiguration)
         # The configuration was not applied.
-        self.assertThat(external.configure_rack, MockNotCalled())
+        external.configure_rack.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
 
@@ -344,7 +335,7 @@ class TestRackNTP(MAASTestCase):
         # on a region+rack.
         self.assertIsInstance(ntp._configuration, external._NTPConfiguration)
         # The configuration was not applied.
-        self.assertThat(ntp._configure, MockNotCalled())
+        ntp._configure.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
 
@@ -392,18 +383,7 @@ class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
         self.useFixture(MAASRootFixture())
         with TwistedLoggerFixture() as logger:
             yield service._orig_tryUpdate()
-
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
-                """
-                Failed to update NTP configuration.
-                Traceback (most recent call last):
-                ...
-                maastesting.factory.TestException#...
-                """
-            ),
-        )
+        self.assertIn("Failed to update NTP configuration", logger.output)
 
 
 class TestRackDNS(MAASTestCase):
@@ -461,15 +441,10 @@ class TestRackDNS(MAASTestCase):
         )
 
         self.assertIsInstance(observed, external._DNSConfiguration)
-        self.assertThat(
-            observed,
-            MatchesStructure.byEquality(
-                upstream_dns=region_ips,
-                trusted_networks=trusted_networks,
-                is_region=is_region,
-                is_rack=is_rack,
-            ),
-        )
+        self.assertEqual(observed.upstream_dns, region_ips)
+        self.assertEqual(observed.trusted_networks, trusted_networks)
+        self.assertEqual(observed.is_region, is_region)
+        self.assertEqual(observed.is_rack, is_rack)
 
     @inlineCallbacks
     def test_tryUpdate_updates_dns_server(self):
@@ -501,33 +476,25 @@ class TestRackDNS(MAASTestCase):
 
         yield service._orig_tryUpdate()
 
-        self.assertThat(
-            bind_write_options,
-            MockCalledOnceWith(
-                upstream_dns=list(sorted(region_ips)), dnssec_validation="no"
-            ),
+        bind_write_options.assert_called_once_with(
+            upstream_dns=sorted(region_ips), dnssec_validation="no"
         )
-        self.assertThat(
-            bind_write_configuration,
-            MockCalledOnceWith([], list(sorted(trusted_networks))),
+        bind_write_configuration.assert_called_once_with(
+            [], sorted(trusted_networks)
         )
-        self.assertThat(mock_ensureService, MockCalledOnceWith("dns_rack"))
-        self.assertThat(bind_reload_with_retries, MockCalledOnceWith())
+        mock_ensureService.assert_called_once_with("dns_rack")
+        bind_reload_with_retries.assert_called_once_with()
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
-        self.assertThat(
-            bind_write_options,
-            MockCalledOnceWith(
-                upstream_dns=list(sorted(region_ips)), dnssec_validation="no"
-            ),
+        bind_write_options.assert_called_once_with(
+            upstream_dns=list(sorted(region_ips)), dnssec_validation="no"
         )
-        self.assertThat(
-            bind_write_configuration,
-            MockCalledOnceWith([], list(sorted(trusted_networks))),
+        bind_write_configuration.assert_called_once_with(
+            [], list(sorted(trusted_networks))
         )
-        self.assertThat(mock_ensureService, MockCalledOnceWith("dns_rack"))
-        self.assertThat(bind_reload_with_retries, MockCalledOnceWith())
+        mock_ensureService.assert_called_once_with("dns_rack")
+        bind_reload_with_retries.assert_called_once_with()
 
     @inlineCallbacks
     def test_is_silent_does_nothing_but_saves_config_when_is_region(self):
@@ -553,7 +520,7 @@ class TestRackDNS(MAASTestCase):
         # on a region+rack.
         self.assertIsInstance(dns._configuration, external._DNSConfiguration)
         # The configuration was not applied.
-        self.assertThat(dns._configure, MockNotCalled())
+        dns._configure.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
 
@@ -587,7 +554,7 @@ class TestRackDNS(MAASTestCase):
         # on a region+rack.
         self.assertIsInstance(dns._configuration, external._DNSConfiguration)
         # The configuration was not applied.
-        self.assertThat(dns._configure, MockNotCalled())
+        dns._configure.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
 
@@ -601,7 +568,7 @@ class TestRackDNS(MAASTestCase):
                 eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
-                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_conn.address = (ip, factory.pick_port(5240, 5250))
                 mock_rpc.connections[eventloop] = {mock_conn}
 
         dns = external.RackDNS()
@@ -618,7 +585,7 @@ class TestRackDNS(MAASTestCase):
                 eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
-                mock_conn.address = (ip, random.randint(5240, 5250))
+                mock_conn.address = (ip, factory.pick_port(5240, 5250))
                 mock_rpc.connections[eventloop] = {mock_conn}
 
         dns = external.RackDNS()
@@ -670,7 +637,7 @@ class TestRackProxy(MAASTestCase):
         allowed_cidrs = self.make_cidrs()
         proxy_enabled = factory.pick_bool()
         proxy_prefer_v4_proxy = factory.pick_bool()
-        proxy_port = random.randint(1000, 8000)
+        proxy_port = factory.pick_port()
         rpc_service, protocol = yield prepareRegion(
             self,
             is_region=is_region,
@@ -695,25 +662,20 @@ class TestRackProxy(MAASTestCase):
         )
 
         self.assertIsInstance(observed, external._ProxyConfiguration)
-        self.assertThat(
-            observed,
-            MatchesStructure.byEquality(
-                enabled=proxy_enabled,
-                port=proxy_port,
-                allowed_cidrs=allowed_cidrs,
-                prefer_v4_proxy=proxy_prefer_v4_proxy,
-                upstream_proxies=region_ips,
-                is_region=is_region,
-                is_rack=is_rack,
-            ),
-        )
+        self.assertEqual(observed.enabled, proxy_enabled)
+        self.assertEqual(observed.port, proxy_port)
+        self.assertEqual(observed.allowed_cidrs, allowed_cidrs)
+        self.assertEqual(observed.prefer_v4_proxy, proxy_prefer_v4_proxy)
+        self.assertEqual(observed.upstream_proxies, region_ips)
+        self.assertEqual(observed.is_region, is_region)
+        self.assertEqual(observed.is_rack, is_rack)
 
     @inlineCallbacks
     def test_tryUpdate_updates_proxy_server(self):
         self.useFixture(MAASRootFixture())
         allowed_cidrs = self.make_cidrs()
         proxy_prefer_v4_proxy = factory.pick_bool()
-        proxy_port = random.randint(1000, 8000)
+        proxy_port = factory.pick_port()
         rpc_service, _ = yield prepareRegion(
             self,
             proxy_allowed_cidrs=allowed_cidrs,
@@ -736,33 +698,23 @@ class TestRackProxy(MAASTestCase):
         expected_peers = sorted(
             f"http://{ip}:{proxy_port}" for ip in region_ips
         )
-        self.assertThat(
-            write_config,
-            MockCalledOnceWith(
-                allowed_cidrs,
-                peer_proxies=expected_peers,
-                prefer_v4_proxy=proxy_prefer_v4_proxy,
-                maas_proxy_port=proxy_port,
-            ),
+        write_config.assert_called_once_with(
+            allowed_cidrs,
+            peer_proxies=expected_peers,
+            prefer_v4_proxy=proxy_prefer_v4_proxy,
+            maas_proxy_port=proxy_port,
         )
-        self.assertThat(
-            service_monitor.reloadService, MockCalledOnceWith("proxy_rack")
-        )
+        service_monitor.reloadService.assert_called_once_with("proxy_rack")
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
-        self.assertThat(
-            write_config,
-            MockCalledOnceWith(
-                allowed_cidrs,
-                peer_proxies=expected_peers,
-                prefer_v4_proxy=proxy_prefer_v4_proxy,
-                maas_proxy_port=proxy_port,
-            ),
+        write_config.assert_called_once_with(
+            allowed_cidrs,
+            peer_proxies=expected_peers,
+            prefer_v4_proxy=proxy_prefer_v4_proxy,
+            maas_proxy_port=proxy_port,
         )
-        self.assertThat(
-            service_monitor.reloadService, MockCalledOnceWith("proxy_rack")
-        )
+        service_monitor.reloadService.assert_called_once_with("proxy_rack")
 
     @inlineCallbacks
     def test_sets_proxy_rack_service_to_any_when_is_region(self):
@@ -798,7 +750,7 @@ class TestRackProxy(MAASTestCase):
             proxy._configuration, external._ProxyConfiguration
         )
         # The configuration was not applied.
-        self.assertThat(proxy._configure, MockNotCalled())
+        proxy._configure.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
 
@@ -852,16 +804,11 @@ class TestRackSyslog(MAASTestCase):
         )
 
         self.assertIsInstance(observed, external._SyslogConfiguration)
-        self.assertThat(
-            observed,
-            MatchesStructure.byEquality(
-                port=port,
-                forwarders=forwarders,
-                is_region=is_region,
-                is_rack=is_rack,
-                promtail_port=5555,
-            ),
-        )
+        self.assertEqual(observed.port, port)
+        self.assertEqual(observed.forwarders, forwarders)
+        self.assertEqual(observed.promtail_port, 5555)
+        self.assertEqual(observed.is_region, is_region)
+        self.assertEqual(observed.is_rack, is_rack)
 
     @inlineCallbacks
     def test_tryUpdate_updates_syslog_server(self):
@@ -884,33 +831,23 @@ class TestRackSyslog(MAASTestCase):
         expected_forwards = [
             {"name": name, "ip": ip} for name, ip in forwarders
         ]
-        self.assertThat(
-            write_config,
-            MockCalledOnceWith(
-                False,
-                forwarders=expected_forwards,
-                port=port,
-                promtail_port=5555,
-            ),
+        write_config.assert_called_once_with(
+            False,
+            forwarders=expected_forwards,
+            port=port,
+            promtail_port=5555,
         )
-        self.assertThat(
-            service_monitor.restartService, MockCalledOnceWith("syslog_rack")
-        )
+        service_monitor.restartService.assert_called_once_with("syslog_rack")
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
-        self.assertThat(
-            write_config,
-            MockCalledOnceWith(
-                False,
-                forwarders=expected_forwards,
-                port=port,
-                promtail_port=5555,
-            ),
+        write_config.assert_called_once_with(
+            False,
+            forwarders=expected_forwards,
+            port=port,
+            promtail_port=5555,
         )
-        self.assertThat(
-            service_monitor.restartService, MockCalledOnceWith("syslog_rack")
-        )
+        service_monitor.restartService.assert_called_once_with("syslog_rack")
 
     @inlineCallbacks
     def test_sets_syslog_rack_service_to_any_when_is_region(self):
@@ -946,6 +883,71 @@ class TestRackSyslog(MAASTestCase):
             syslog._configuration, external._SyslogConfiguration
         )
         # The configuration was not applied.
-        self.assertThat(syslog._configure, MockNotCalled())
+        syslog._configure.assert_not_called()
         # Nothing was logged; there's no need for lots of chatter.
         self.assertEqual("", logger.output)
+
+
+class TestRackAgent(MAASTestCase):
+    """Tests for `RackAgent` for `RackExternalService`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
+
+    def setUp(self):
+        super().setUp()
+        self.useFixture(
+            ClusterConfigurationFixture(
+                debug=False,
+                maas_url=[
+                    "http://127.0.0.1:5240/MAAS",
+                    "http://127.0.0.2:5240/MAAS",
+                ],
+            )
+        )
+
+    def test_getConfiguration_returns_configuration_object(self):
+        maas_uuid = factory.make_UUID()
+        system_id = factory.make_name("system-id")
+        self.useFixture(MAASUUIDFixture(maas_uuid))
+        self.useFixture(MAASIDFixture(system_id))
+
+        agent = external.RackAgent()
+        observed = agent._getConfiguration()
+
+        self.assertEqual(observed.maas_uuid, maas_uuid)
+        self.assertEqual(observed.system_id, system_id)
+        self.assertEqual(observed.controllers, ["127.0.0.1", "127.0.0.2"])
+        self.assertEqual(observed.log_level, "info")
+
+    @inlineCallbacks
+    def test_maybeApplyConfiguration_only_restarts_when_new_config(self):
+        self.useFixture(MAASUUIDFixture(factory.make_UUID()))
+        self.useFixture(MAASIDFixture(factory.make_name("system-id")))
+
+        restartService = self.patch_autospec(service_monitor, "restartService")
+        agent = external.RackAgent()
+        agent._configure = Mock()
+        self.assertIsNone(agent._configuration)
+
+        config = agent._getConfiguration()
+
+        yield agent._maybeApplyConfiguration(config)
+        agent._configure.assert_called_once_with(config)
+        restartService.assert_called_once_with("agent")
+        self.assertIsNotNone(agent._configuration)
+
+        agent._configure.reset_mock()
+        restartService.reset_mock()
+        yield agent._maybeApplyConfiguration(config)
+        agent._configure.assert_not_called()
+        restartService.assert_not_called()
+
+    @inlineCallbacks
+    def test_tryUpdate_uses_maybeApplyConfiguration(self):
+        self.patch_autospec(service_monitor, "restartService")
+        agent = external.RackAgent()
+        config = agent._getConfiguration()
+        agent._maybeApplyConfiguration = Mock()
+        yield agent._tryUpdate(Mock())
+
+        agent._maybeApplyConfiguration.assert_called_once_with(config)
