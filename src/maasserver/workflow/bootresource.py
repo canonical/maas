@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 import random
 from typing import Coroutine, Sequence
 
-from aiohttp import ClientSession, ClientTimeout
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.workflow import ActivityCancellationType
@@ -20,7 +19,6 @@ from maasserver.workflow.api_client import MAASAPIClient
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from provisioningserver.utils.url import compose_URL
 
-READ_BUF = 4 * (1 << 20)  # 4 MB
 REPORT_INTERVAL = timedelta(seconds=10)
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
@@ -138,22 +136,9 @@ class BootResourcesActivity(MAASAPIClient):
                 await self.report_progress(param.rfile_ids, lfile.size)
                 return True
 
-            headers = {
-                "User-Agent": self.user_agent,
-            }
-            timeout = ClientTimeout(total=60 * 60, sock_read=120)
-            async with ClientSession(
-                trust_env=True,
-                timeout=timeout,
-            ) as session, session.get(
-                url,
-                verify_ssl=False,
-                chunked=True,
-                read_bufsize=READ_BUF,
-                headers=headers,
-            ) as response, lfile.astore(
-                autocommit=False
-            ) as store:
+            async with self.session.get(
+                url, verify_ssl=False, chunked=True
+            ) as response, lfile.astore(autocommit=False) as store:
                 response.raise_for_status()
                 last_update = datetime.now()
                 async for data, _ in response.content.iter_chunks():
