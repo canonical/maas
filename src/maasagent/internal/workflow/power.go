@@ -31,7 +31,6 @@ var (
 // PowerParam is the workflow parameter for power management of a host
 type PowerParam struct {
 	SystemID   string                 `json:"system_id"`
-	Action     string                 `json:"action"`
 	TaskQueue  string                 `json:"task_queue"`
 	DriverOpts map[string]interface{} `json:"driver_opts"`
 	DriverType string                 `json:"driver_type"`
@@ -118,11 +117,16 @@ func PowerActivity(ctx context.Context, params PowerActivityParam) (*PowerResult
 
 	err = cmd.Run()
 	if err != nil {
-		log.Error(
-			"Error executing power command",
-			tag.Builder().Error(err).
-				KV("stdout", stdout.String()).
-				KV("stderr", stderr.String()).KeyVals...)
+		t := tag.Builder().Error(err)
+		if stdout.String() != "" {
+			t = t.KV("stdout", stdout.String())
+		}
+
+		if stderr.String() != "" {
+			t = t.KV("stderr", stderr.String())
+		}
+
+		log.Error("Error executing power command", t.KeyVals...)
 
 		return nil, err
 	}

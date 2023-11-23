@@ -168,7 +168,8 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
-from maasserver.workflow import execute_workflow, to_temporal_params
+from maasserver.workflow import execute_workflow
+from maasserver.workflow.power import convert_power_action_to_power_workflow
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -6019,9 +6020,9 @@ class Node(CleanSave, TimestampedModel):
             if power_method_name:
                 d.addCallback(
                     lambda _: deferToDatabase(
-                        to_temporal_params,
+                        convert_power_action_to_power_workflow,
                         power_method_name,
-                        [self],
+                        self,
                         power_info,
                     ),
                 )

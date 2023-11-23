@@ -19,16 +19,6 @@ from maasserver.workflow.bootresource import (
     ResourceDownloadParam,
     SyncBootResourcesWorkflow,
 )
-from maasserver.workflow.commission import (
-    CommissionNParam,
-    CommissionNWorkflow,
-    CommissionParam,
-)
-from maasserver.workflow.deploy import (
-    DeployNParam,
-    DeployNWorkflow,
-    DeployParam,
-)
 from maasserver.workflow.power import (
     PowerManyParam,
     PowerManyWorkflow,
@@ -36,136 +26,6 @@ from maasserver.workflow.power import (
 )
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
 from provisioningserver.utils.twisted import asynchronous, FOREVER
-
-MACHINE_ACTION_WORKFLOWS = (
-    "power_on",
-    "power_off",
-    "power_query",
-    "power_cycle",
-)
-
-
-class UnroutableWorkflowException(Exception):
-    pass
-
-
-def get_temporal_queue_for_machine(
-    machine: Any, for_power: Optional[bool] = False
-) -> str:
-    vlan_id = None
-    if (
-        not for_power
-        and machine.boot_interface
-        and machine.boot_interface.vlan
-    ):
-        vlan_id = machine.boot_interface.vlan.id
-        return f"agent:vlan-{vlan_id}"
-    else:
-        if machine.bmc:
-            racks = machine.bmc.get_usable_rack_controllers(
-                with_connection=False
-            )
-            if racks:
-                return f"{racks[0].system_id}@agent"
-    raise UnroutableWorkflowException(
-        f"no suitable task queue for machine {machine.system_id}"
-    )
-
-
-def to_temporal_params(
-    name: str, objects: list[Any], extra_params: Optional[Any] = None
-) -> tuple[str, Any]:
-    match name:
-        case "commission":
-            return (
-                "CommissionNWorkflow",
-                CommissionNParam(
-                    params=[
-                        CommissionParam(
-                            system_id=o.system_id,
-                            queue=get_temporal_queue_for_machine(o),
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
-        case "deploy":
-            return (
-                "DeployNWorkflow",
-                DeployNParam(
-                    params=[
-                        DeployParam(
-                            system_id=o.system_id,
-                            queue=get_temporal_queue_for_machine(o),
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
-        case "power_on":
-            return (
-                "power-many",
-                PowerManyParam(
-                    params=[
-                        PowerParam(
-                            system_id=o.system_id,
-                            action="power-on",
-                            task_queue=get_temporal_queue_for_machine(o),
-                            driver_type=extra_params.power_type,
-                            driver_opts=extra_params.power_parameters,
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
-        case "power_off":
-            return (
-                "power-many",
-                PowerManyParam(
-                    params=[
-                        PowerParam(
-                            system_id=o.system_id,
-                            action="power-off",
-                            task_queue=get_temporal_queue_for_machine(o),
-                            driver_type=extra_params.power_type,
-                            driver_opts=extra_params.power_parameters,
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
-        case "power_query":
-            return (
-                "power-many",
-                PowerManyParam(
-                    params=[
-                        PowerParam(
-                            system_id=o.system_id,
-                            action="power-query",
-                            task_queue=get_temporal_queue_for_machine(o),
-                            driver_type=extra_params.power_type,
-                            driver_opts=extra_params.power_parameters,
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
-        case "power_cycle":
-            return (
-                "power-many",
-                PowerManyParam(
-                    params=[
-                        PowerParam(
-                            system_id=o.system_id,
-                            action="power-cycle",
-                            task_queue=get_temporal_queue_for_machine(o),
-                            driver_type=extra_params.power_type,
-                            driver_opts=extra_params.power_parameters,
-                        )
-                        for o in objects
-                    ]
-                ),
-            )
 
 
 def run_in_temporal_eventloop(fn, *args, **kwargs):
@@ -242,16 +102,9 @@ async def cancel_workflow(workflow_id: str) -> bool:
 
 __all__ = [
     "cancel_workflow",
-    "CommissionNParam",
-    "CommissionNWorkflow",
-    "CommissionParam",
     "DeleteBootResourceWorkflow",
-    "DeployNParam",
-    "DeployNWorkflow",
     "DownloadBootResourceWorkflow",
     "execute_workflow",
-    "get_temporal_queue_for_machine",
-    "MACHINE_ACTION_WORKFLOWS",
     "PowerManyParam",
     "PowerManyWorkflow",
     "PowerParam",
@@ -261,6 +114,4 @@ __all__ = [
     "run_in_temporal_eventloop",
     "SyncBootResourcesWorkflow",
     "temporal_wrapper",
-    "to_temporal_params",
-    "UnroutableWorkflowException",
 ]

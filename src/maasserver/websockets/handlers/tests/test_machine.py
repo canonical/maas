@@ -29,7 +29,6 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver import workflow
 from maasserver.enum import (
     BMC_TYPE,
     BOND_MODE,
@@ -123,6 +122,7 @@ from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.machine import Node as node_model
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maasserver.websockets.handlers.node_result import NodeResultHandler
+from maasserver.workflow import power as power_workflow
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
@@ -3711,7 +3711,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.patch(Machine, "_start").return_value = None
         self.patch(node_action_module, "get_curtin_config")
         self.patch(
-            workflow, "get_temporal_queue_for_machine"
+            power_workflow, "get_temporal_task_queue_for_bmc"
         ).return_value = "vlan-1"
         osystem = make_usable_osystem(self)
         handler = MachineHandler(user, {}, request)

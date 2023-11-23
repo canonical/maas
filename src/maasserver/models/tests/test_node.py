@@ -6514,58 +6514,6 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test_power_control_node_removes_non_routable_rack_controllers(self):
-        bmc = yield deferToDatabase(factory.make_BMC)
-        node = yield deferToDatabase(
-            factory.make_Node_with_Interface_on_Subnet, bmc=bmc
-        )
-        rack_ip = yield deferToDatabase(factory.make_ip_address)
-        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
-        yield deferToDatabase(
-            factory.make_Interface, node=rack_controller, ip=rack_ip
-        )
-
-        def _create_initial_relationship():
-            b = BMCRoutableRackControllerRelationship(
-                bmc=bmc, rack_controller=rack_controller, routable=True
-            )
-            b.save()
-
-        yield deferToDatabase(_create_initial_relationship)
-
-        self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
-        }
-
-        self.patch(bmc_module, "getAllClients").return_value = []
-        self.patch(node_module, "getAllClients").return_value = []
-        client2 = Mock()
-        client2.return_value = defer.succeed({"missing_packages": []})
-        d1 = defer.succeed(client2)
-        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
-        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
-        self.patch(
-            node_module, "power_query_all"
-        ).return_value = defer.succeed((POWER_STATE.ON, set(), set()))
-
-        power_info = yield deferToDatabase(node.get_effective_power_info)
-        yield node._power_control_node(
-            defer.succeed(None), "power_query", power_info
-        )
-
-        def _assert_no_routable():
-            self.assertRaises(
-                BMCRoutableRackControllerRelationship.DoesNotExist,
-                BMCRoutableRackControllerRelationship.objects.get,
-                bmc=node.bmc,
-                rack_controller=rack_controller,
-            )
-
-        yield deferToDatabase(_assert_no_routable)
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
     def test_power_control_node_updates_power_state(self):
         bmc = yield deferToDatabase(factory.make_BMC)
         node = yield deferToDatabase(
@@ -6588,27 +6536,13 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         yield deferToDatabase(_create_initial_relationship)
 
-        other_rack_controller = yield deferToDatabase(
-            factory.make_RackController
-        )
-
-        def _assert_no_routable():
-            self.assertRaises(
-                BMCRoutableRackControllerRelationship.DoesNotExist,
-                BMCRoutableRackControllerRelationship.objects.get,
-                bmc=node.bmc,
-                rack_controller=other_rack_controller,
-            )
-
-        yield deferToDatabase(_assert_no_routable)
-
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
             "state": "on"
         }
 
         client = Mock()
-        client.ident = other_rack_controller.system_id
+        client.ident = rack_controller.system_id
         self.patch(bmc_module, "getAllClients").return_value = [client]
         self.patch(node_module, "getAllClients").return_value = [client]
         client2 = Mock()
@@ -6616,9 +6550,6 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
         d1 = defer.succeed(client2)
         self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
         self.patch(node_module, "getClientFromIdentifiers").return_value = d1
-        self.patch(node_module, "power_cycle").return_value = defer.succeed(
-            (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
-        )
 
         power_info = yield deferToDatabase(node.get_effective_power_info)
         yield node._power_control_node(
@@ -10571,51 +10502,6 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             ),
         ):
             yield node._power_control_node(d, "power_query", power_info)
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_bmc_is_accessible_uses_fallback_client_first(self):
-        d = self.patch_post_commit()
-        rack_controller = yield deferToDatabase(self.make_rack_controller)
-        node, power_info = yield deferToDatabase(
-            self.make_node, primary_rack=rack_controller
-        )
-
-        client = Mock()
-        client.ident = rack_controller.system_id
-        mock_getClientFromIdentifiers = self.patch(
-            node_module, "getClientFromIdentifiers"
-        )
-        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
-
-        # Mock the confirm power driver check, we check in the test to make
-        # sure it gets called.
-        mock_confirm_power_driver = self.patch(
-            Node, "confirm_power_driver_operable"
-        )
-        mock_confirm_power_driver.return_value = defer.succeed(None)
-
-        # Testing only allows one thread at a time, but the way we are testing
-        # this would actually require multiple to be started at once. To
-        # by-pass this issue we mock `is_accessible` on the BMC model to return
-        # the value we are expecting.
-        self.patch(node.bmc, "is_accessible").return_value = True
-
-        self.patch(workflow_module, "temporal_wrapper")
-        self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
-        }
-
-        yield node._power_control_node(d, "power_query", power_info)
-
-        self.assertThat(
-            mock_getClientFromIdentifiers,
-            MockCalledOnceWith([rack_controller.system_id]),
-        )
-        self.assertThat(
-            mock_confirm_power_driver,
-            MockCalledOnceWith(client, power_info.power_type, client.ident),
-        )
 
     @wait_for_reactor
     @defer.inlineCallbacks

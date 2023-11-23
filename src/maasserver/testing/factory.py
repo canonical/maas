@@ -107,7 +107,7 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.bmc import BMC
+from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.interface import Interface, InterfaceRelationship
 from maasserver.models.largefile import LargeFile
@@ -3620,6 +3620,11 @@ class Factory(maastesting.factory.Factory):
             node_device=node_device, key=key, value=value
         )
         return metadata
+
+    def make_BMCRoutableRackControllerRelationship(self, bmc, rack):
+        BMCRoutableRackControllerRelationship(
+            bmc=bmc, rack_controller=rack, routable=True
+        ).save()
 
 
 # Create factory singleton.
