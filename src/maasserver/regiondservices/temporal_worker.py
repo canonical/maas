@@ -102,39 +102,45 @@ class TemporalWorkerService(Service):
         )
 
         self._workers = [
+            # Every region has a dedicated task queue.
             Worker(
                 task_queue=f"{maas_id}:region",
                 workflows=[
-                    CleanupBootResourceWorkflow,
-                    DeleteBootResourceWorkflow,
+                    # Boot resources workflows
                     DownloadBootResourceWorkflow,
-                    SyncBootResourcesWorkflow,
                 ],
                 activities=[
+                    # Boot resources activities
                     boot_res_activity.cleanup_bootresources,
                     boot_res_activity.delete_bootresourcefile,
                     boot_res_activity.download_bootresourcefile,
-                    boot_res_activity.get_bootresourcefile_endpoints,
-                    boot_res_activity.get_bootresourcefile_sync_status,
                 ],
             ),
+            # All regions listen to a shared task queue. The first to pick up a task will execute it.
             Worker(
                 workflows=[
-                    CleanupBootResourceWorkflow,
-                    CommissionNWorkflow,
+                    # Configuration workflows
                     ConfigureWorkerPoolWorkflow,
+                    # Boot resources workflows
+                    CleanupBootResourceWorkflow,
                     DeleteBootResourceWorkflow,
-                    DeployNWorkflow,
+                    # DownloadBootResourceWorkflow is run by the region that executes SyncBootResourcesWorkflow to download
+                    # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
+                    # other regions if the HA is being used.
                     DownloadBootResourceWorkflow,
-                    PowerManyWorkflow,
                     SyncBootResourcesWorkflow,
+                    # Lifecycle workflows
+                    DeployNWorkflow,
+                    CommissionNWorkflow,
+                    PowerManyWorkflow,
                 ],
                 activities=[
-                    boot_res_activity.delete_bootresourcefile,
+                    # Configuration activities
+                    configure_activity.get_rack_controller,
+                    # Boot resources activities
                     boot_res_activity.download_bootresourcefile,
                     boot_res_activity.get_bootresourcefile_endpoints,
                     boot_res_activity.get_bootresourcefile_sync_status,
-                    configure_activity.get_rack_controller,
                 ],
             ),
         ]
