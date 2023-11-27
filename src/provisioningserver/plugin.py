@@ -85,27 +85,6 @@ class ProvisioningServiceMaker:
         )
         tftp_service.setName("tftp")
 
-        # *** EXPERIMENTAL ***
-        # https://code.launchpad.net/~allenap/maas/tftp-offload/+merge/312146
-        # If the TFTP port has been set to zero, use the experimental offload
-        # service. Otherwise stick to the normal in-process TFTP service.
-        if tftp_port == 0:
-            from twisted.internet.endpoints import UNIXServerEndpoint
-
-            from provisioningserver.path import get_maas_data_path
-            from provisioningserver.rackdservices import tftp_offload
-
-            tftp_offload_socket = get_maas_data_path("tftp-offload.sock")
-            tftp_offload_endpoint = UNIXServerEndpoint(
-                reactor, tftp_offload_socket, wantPID=False
-            )
-            tftp_offload_service = tftp_offload.TFTPOffloadService(
-                reactor, tftp_offload_endpoint, tftp_service.backend
-            )
-            tftp_offload_service.setName("tftp-offload")
-            return tftp_offload_service
-        # *** /EXPERIMENTAL ***
-
         return tftp_service
 
     def _makeImageDownloadService(self, rpc_service, tftp_root):

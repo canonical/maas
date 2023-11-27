@@ -54,7 +54,6 @@ from provisioningserver.rackdservices.service_monitor_service import (
     ServiceMonitorService,
 )
 from provisioningserver.rackdservices.tftp import TFTPBackend, TFTPService
-from provisioningserver.rackdservices.tftp_offload import TFTPOffloadService
 from provisioningserver.rackdservices.version_update_check import (
     VersionUpdateCheckService,
 )
@@ -231,22 +230,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertThat(
             logger.configure, MockCalledOnceWith(3, logger.LoggingMode.TWISTD)
         )
-
-    def test_makeService_with_EXPERIMENTAL_tftp_offload_service(self):
-        """
-        Only the site service is created when no options are given.
-        """
-        # Activate the offload service by setting port to 0.
-        self.useFixture(ClusterConfigurationFixture(tftp_port=0))
-
-        options = Options()
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options, clock=None)
-        self.assertIsInstance(service, MultiService)
-        self.assertNotIn("tftp", service.namedServices)
-        self.assertIn("tftp-offload", service.namedServices)
-        tftp_offload_service = service.getServiceNamed("tftp-offload")
-        self.assertIsInstance(tftp_offload_service, TFTPOffloadService)
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = self.patch(plugin_module, "add_patches_to_txtftp")
