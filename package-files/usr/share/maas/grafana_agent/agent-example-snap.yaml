@@ -1,0 +1,134 @@
+server:
+  log_level: info
+metrics:
+  wal_directory: ${AGENT_WAL_DIR}
+  global:
+    scrape_interval: 30s
+    external_labels:
+      maas_az: ${MAAS_AZ:default}
+      maas_region: ${MAAS_IS_REGION:False}
+      maas_rack: ${MAAS_IS_RACK:False}
+      host: ${HOSTNAME}
+    remote_write:
+      - url: ${PROMETHEUS_REMOTE_WRITE_URL}
+        name: prom-export
+  configs:
+    - name: "maas"
+      scrape_configs:
+        - job_name: "maas-metrics"
+          static_configs:
+            - targets: ["${HOSTNAME}:5239"]
+        - job_name: "maas-cluster-metrics"
+          static_configs:
+            - targets: ["${HOSTNAME}:5240"]
+          metrics_path: "/MAAS/metrics"
+logs:
+  positions_directory: ${AGENT_POS_DIR}
+  configs:
+    - name: "maas"
+      clients:
+        - url: ${LOKI_API_URL}
+      scrape_configs:
+        - job_name: maas-audit
+          syslog:
+            listen_address: localhost:5238
+            labels:
+              job: "maas-audit"
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              maas_module: "audit"
+          relabel_configs:
+            - source_labels: ["__syslog_message_hostname"]
+              target_label: "host"
+            - source_labels: ["__syslog_message_app_name"]
+              target_label: "maas_module"
+          pipeline_stages:
+            - regex:
+                expression: "^(?s) \\[(?P<severity>\\S+?)\\] ((?P<machine>\\S+): )?(?P<content>.*)$"
+            - output:
+                source: content
+            - labels:
+                severity:
+                machine:
+        - job_name: maas-console
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-regiond, SYSLOG_IDENTIFIER=maas-rackd
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-console"
+        - job_name: maas-dhcpd
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-dhcpd, SYSLOG_IDENTIFIER=maas-dhcpd6
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-dhcpd"
+        - job_name: maas-metadata
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-http
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-metadata"
+        - job_name: maas-named
+          journal:
+            matches: SYSLOG_IDENTIFIER=named
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-named"
+        - job_name: maas-ntpd
+          journal:
+            matches: SYSLOG_IDENTIFIER=chronyd
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-ntpd"
+        - job_name: maas-proxy
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-proxy
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-proxy"
+        - job_name: maas-temporal
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-temporal
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-temporal"
+        - job_name: maas-apiserver
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-apiserver
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-apiserver"
+        - job_name: maas-agent
+          journal:
+            matches: SYSLOG_IDENTIFIER=maas-agent
+            labels:
+              host: ${HOSTNAME}
+              maas_az: ${MAAS_AZ:default}
+              maas_region: ${MAAS_IS_REGION:False}
+              maas_rack: ${MAAS_IS_RACK:False}
+              job: "maas-agent"
