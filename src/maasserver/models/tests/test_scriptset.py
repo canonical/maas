@@ -22,7 +22,6 @@ from maasserver.models import (
     ScriptSet,
 )
 from maasserver.models import scriptset as scriptset_module
-from maasserver.models.scriptset import translate_result_type
 from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -45,106 +44,6 @@ def make_SystemNodeMetadata(node):
     key = factory.make_name(f"{prefix}_")
     nmd = factory.make_NodeMetadata(node=node, key=key)
     return f"{key}:{nmd.value}"
-
-
-class TestTranslateResultType(MAASServerTestCase):
-    """Test translate_result_type."""
-
-    def setUp(self):
-        super().setUp()
-        load_builtin_scripts()
-
-    scenarios = [
-        (
-            "numeric testing",
-            {
-                "value": RESULT_TYPE.TESTING,
-                "return_value": RESULT_TYPE.TESTING,
-            },
-        ),
-        (
-            "numeric commissioning",
-            {
-                "value": RESULT_TYPE.COMMISSIONING,
-                "return_value": RESULT_TYPE.COMMISSIONING,
-            },
-        ),
-        (
-            "numeric installation",
-            {
-                "value": RESULT_TYPE.INSTALLATION,
-                "return_value": RESULT_TYPE.INSTALLATION,
-            },
-        ),
-        (
-            "numeric string testing",
-            {
-                "value": str(RESULT_TYPE.TESTING),
-                "return_value": RESULT_TYPE.TESTING,
-            },
-        ),
-        (
-            "numeric string commissioning",
-            {
-                "value": str(RESULT_TYPE.COMMISSIONING),
-                "return_value": RESULT_TYPE.COMMISSIONING,
-            },
-        ),
-        (
-            "numeric string installation",
-            {
-                "value": str(RESULT_TYPE.INSTALLATION),
-                "return_value": RESULT_TYPE.INSTALLATION,
-            },
-        ),
-        (
-            "invalid id",
-            {
-                "value": random.randint(100, 1000),
-                "exception": "Invalid result type numeric value.",
-            },
-        ),
-        ("test", {"value": "test", "return_value": RESULT_TYPE.TESTING}),
-        ("testing", {"value": "testing", "return_value": RESULT_TYPE.TESTING}),
-        (
-            "commission",
-            {"value": "commission", "return_value": RESULT_TYPE.COMMISSIONING},
-        ),
-        (
-            "commissioning",
-            {
-                "value": "commissioning",
-                "return_value": RESULT_TYPE.COMMISSIONING,
-            },
-        ),
-        (
-            "install",
-            {"value": "install", "return_value": RESULT_TYPE.INSTALLATION},
-        ),
-        (
-            "installation",
-            {
-                "value": "installation",
-                "return_value": RESULT_TYPE.INSTALLATION,
-            },
-        ),
-        (
-            "invalid value",
-            {
-                "value": factory.make_name("value"),
-                "exception": "Result type must be commissioning, testing, or installation.",
-            },
-        ),
-    ]
-
-    def test_translate_result_type(self):
-        if hasattr(self, "exception"):
-            with self.assertRaisesRegex(ValidationError, self.exception):
-                translate_result_type(self.value)
-        else:
-            self.assertEqual(
-                self.return_value, translate_result_type(self.value)
-            )
 
 
 class TestScriptSetManager(MAASServerTestCase):

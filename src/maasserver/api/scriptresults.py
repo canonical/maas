@@ -92,8 +92,8 @@ class NodeScriptResultsHandler(OperationsHandler):
         @param (string) "{system_id}" [required=true] The machine's system_id.
 
         @param (string) "type" [required=false] Only return scripts with the
-        given type. This can be ``commissioning``, ``testing``, or
-        ``installion``. Defaults to showing all.
+        given type. This can be ``commissioning``, ``testing``, ``installion``
+        or ``release``. Defaults to showing all.
 
         @param (string) "hardware_type" [required=false] Only return scripts
         for the given hardware type.  Can be ``node``, ``cpu``, ``memory``, or

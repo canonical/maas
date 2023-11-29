@@ -112,20 +112,21 @@ def get_status_from_list_qs(script_result_statuses: list[int]) -> int:
 def translate_result_type(result_type):
     if isinstance(result_type, int) or result_type.isdigit():
         ret = int(result_type)
-        for result_type_id, _ in RESULT_TYPE_CHOICES:
-            if ret == result_type_id:
-                return ret
-        raise ValidationError("Invalid result type numeric value.")
-    elif result_type in ["test", "testing"]:
-        return RESULT_TYPE.TESTING
-    elif result_type in ["commission", "commissioning"]:
-        return RESULT_TYPE.COMMISSIONING
-    elif result_type in ["install", "installation"]:
-        return RESULT_TYPE.INSTALLATION
-    else:
-        raise ValidationError(
-            "Result type must be commissioning, testing, or installation."
-        )
+        if ret not in [type_id for type_id, _ in RESULT_TYPE_CHOICES]:
+            raise ValidationError("Invalid result type numeric value.")
+        return ret
+
+    match result_type:
+        case "test" | "testing":
+            return RESULT_TYPE.TESTING
+        case "commission" | "commissioning":
+            return RESULT_TYPE.COMMISSIONING
+        case "install" | "installation":
+            return RESULT_TYPE.INSTALLATION
+        case "release":
+            return RESULT_TYPE.RELEASE
+        case _:
+            raise ValidationError("Invalid result type name")
 
 
 class ScriptSetManager(Manager):
