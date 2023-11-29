@@ -252,6 +252,7 @@ NodeTable = Table(
     Column("current_commissioning_script_set_id", Integer, nullable=True),
     Column("current_installation_script_set_id", Integer, nullable=True),
     Column("current_testing_script_set_id", Integer, nullable=True),
+    Column("current_release_script_set_id", Integer, nullable=True),
     Column("install_rackd", Boolean, nullable=False),
     Column("locked", Boolean, nullable=False),
     Column(

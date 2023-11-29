@@ -3743,6 +3743,7 @@ CREATE TABLE public.maasserver_node (
     enable_hw_sync boolean NOT NULL,
     last_sync timestamp with time zone,
     sync_interval integer,
+    current_release_script_set_id bigint,
     CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
 );
 
@@ -11942,6 +11943,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 368	maasserver	0312_release_script_type	2023-10-24 03:52:07.798195+00
 369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
 370	maasserver	0314_bootresourcefile_sha256_index	2023-11-02 03:30:47.980664+00
+371	maasserver	0315_add_current_release_script_set_to_node_model	2023-11-28 13:29:59.274246+00
 \.
 
 
@@ -12265,7 +12267,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval, current_release_script_set_id) FROM stdin;
 \.
 
 
@@ -13066,7 +13068,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 370, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 371, true);
 
 
 --
@@ -16075,6 +16077,13 @@ CREATE INDEX maasserver_node_current_installation_script_set_id_a6e40738 ON publ
 
 
 --
+-- Name: maasserver_node_current_release_script_set_id_1c3d13f5; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_node_current_release_script_set_id_1c3d13f5 ON public.maasserver_node USING btree (current_release_script_set_id);
+
+
+--
 -- Name: maasserver_node_current_testing_script_set_id_4636f4f9; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17493,6 +17502,14 @@ ALTER TABLE ONLY public.maasserver_node
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_boot_disk_id_db8131e9_fk_maasserve FOREIGN KEY (boot_disk_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_release_scri_1c3d13f5_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_release_scri_1c3d13f5_fk_maasserve FOREIGN KEY (current_release_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

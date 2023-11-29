@@ -1242,6 +1242,15 @@ class Node(CleanSave, TimestampedModel):
         related_name="+",
     )
 
+    # The ScriptSet for the currently running, or last run, release ScriptSet.
+    current_release_script_set = ForeignKey(
+        "maasserver.ScriptSet",
+        blank=True,
+        null=True,
+        on_delete=SET_NULL,
+        related_name="+",
+    )
+
     locked = BooleanField(default=False)
 
     last_applied_storage_layout = CharField(max_length=50, blank=True)

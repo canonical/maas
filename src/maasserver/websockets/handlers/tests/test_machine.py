@@ -249,6 +249,7 @@ class TestMachineHandlerUtils:
                     node.current_installation_script_set
                 )
             ),
+            "current_release_script_set": node.current_release_script_set_id,
             "has_logs": (
                 log_results.difference(script_output_nsmap.keys()) == set()
             ),
