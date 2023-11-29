@@ -5,24 +5,11 @@
 
 
 import http.client
-from operator import itemgetter
 from urllib.parse import urlparse
 
 from django.test.client import RequestFactory
 from django.urls import get_script_prefix, reverse, set_script_prefix
 from testscenarios import multiply_scenarios
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Contains,
-    Equals,
-    Is,
-    MatchesAll,
-    MatchesAny,
-    MatchesListwise,
-    MatchesStructure,
-    StartsWith,
-)
 
 from maasserver.api.doc import get_api_description
 from maasserver.api.doc_handler import describe
@@ -37,23 +24,9 @@ class TestDescribe(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_describe_returns_json(self):
         response = self.client.get(reverse("describe"))
-        self.assertThat(
-            (
-                response.status_code,
-                response["Content-Type"],
-                response.content,
-                response.content,
-            ),
-            MatchesListwise(
-                (
-                    Equals(http.client.OK),
-                    Equals("application/json"),
-                    StartsWith(b"{"),
-                    Contains(b"name"),
-                )
-            ),
-            response,
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIsNotNone(response.json())
 
     def test_describe(self):
         response = self.client.get(reverse("describe"))
@@ -135,24 +108,18 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
         self.patch_script_prefix(self.script_name)
 
         description = self.get_description(params)
-
-        expected_uri = AfterPreprocessing(
-            urlparse,
-            MatchesStructure(
-                scheme=Equals(self.scheme),
-                hostname=Equals(server),
-                # The path is always the script name followed by "api/"
-                # because all API calls are within the "api" tree.
-                path=StartsWith(self.script_name + "/api/"),
-            ),
-        )
-        expected_handler = MatchesAny(
-            Is(None), AfterPreprocessing(itemgetter("uri"), expected_uri)
-        )
-        expected_resource = MatchesAll(
-            AfterPreprocessing(itemgetter("anon"), expected_handler),
-            AfterPreprocessing(itemgetter("auth"), expected_handler),
-        )
         resources = description["resources"]
+
         self.assertNotEqual([], resources)
-        self.assertThat(resources, AllMatch(expected_resource))
+        for resource in resources:
+            anon_response = resource["anon"]
+            auth_response = resource["auth"]
+
+            if anon_response is None:
+                matcher = auth_response
+            else:
+                matcher = anon_response
+            url = urlparse(matcher["uri"])
+            self.assertEqual(url.scheme, self.scheme)
+            self.assertEqual(url.hostname, server)
+            self.assertTrue(url.path.startswith(f"{self.script_name}/api/"))

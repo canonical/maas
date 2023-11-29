@@ -8,8 +8,6 @@ from django.urls import reverse
 from maasserver.enum import NODE_DEVICE_BUS_CHOICES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
-from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import HARDWARE_TYPE_CHOICES
 
@@ -31,7 +29,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         response = self.client.get(
             f"/MAAS/api/2.0/nodes/{node.system_id}/devices/",
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in response.json()],
@@ -129,8 +127,8 @@ class TestNodeDeviceAPI(APITestCase.ForUser):
         node_device = factory.make_NodeDevice()
 
         response = self.client.get(self.get_node_device_uri(node_device))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_result = response.json()
 
         self.assertEqual(
             {
@@ -161,12 +159,12 @@ class TestNodeDeviceAPI(APITestCase.ForUser):
         node_device = factory.make_NodeDevice()
 
         response = self.client.delete(self.get_node_device_uri(node_device))
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(node_device))
 
     def test_DELETE_admin_only(self):
         node_device = factory.make_NodeDevice()
 
         response = self.client.delete(self.get_node_device_uri(node_device))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
         self.assertIsNotNone(reload_object(node_device))

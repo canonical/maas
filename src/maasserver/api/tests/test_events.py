@@ -11,15 +11,6 @@ from urllib.parse import parse_qsl, urlparse
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsDict,
-    Equals,
-    HasLength,
-    MatchesDict,
-    MatchesStructure,
-)
 
 from maasserver.api import events as events_module
 from maasserver.api.events import event_to_dict
@@ -42,11 +33,6 @@ def make_events(count=None, **kwargs):
     ]
 
 
-def extract_event_desc(parsed_result):
-    """List the system_ids of the nodes in `parsed_result`'s events."""
-    return [event["description"] for event in parsed_result["events"]]
-
-
 def extract_event_ids(parsed_result):
     """List the system_ids of the nodes in `parsed_result`'s events."""
     return [event["id"] for event in parsed_result["events"]]
@@ -58,34 +44,23 @@ def shuffled(things):
     return things
 
 
-def AfterBeingDecoded(matcher):
-    return AfterPreprocessing(
-        (lambda content: content.decode(settings.DEFAULT_CHARSET)), matcher
-    )
-
-
 class TestEventToDict(APITestCase.ForUser):
     """Test for `event_to_dict` function."""
 
     def test_node_not_None(self):
         event = factory.make_Event()
-        self.assertThat(
-            event_to_dict(event),
-            MatchesDict(
-                {
-                    "username": Equals(event.owner),
-                    "node": Equals(event.node.system_id),
-                    "hostname": Equals(event.hostname),
-                    "id": Equals(event.id),
-                    "level": Equals(event.type.level_str),
-                    "created": Equals(
-                        event.created.strftime("%a, %d %b. %Y %H:%M:%S")
-                    ),
-                    "type": Equals(event.type.description),
-                    "description": Equals(event.description),
-                }
-            ),
+        event_dict = event_to_dict(event)
+        self.assertEqual(event_dict["username"], event.owner)
+        self.assertEqual(event_dict["node"], event.node.system_id)
+        self.assertEqual(event_dict["hostname"], event.hostname)
+        self.assertEqual(event_dict["id"], event.id)
+        self.assertEqual(event_dict["level"], event.type.level_str)
+        self.assertEqual(
+            event_dict["created"],
+            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
         )
+        self.assertEqual(event_dict["type"], event.type.description)
+        self.assertEqual(event_dict["description"], event.description)
 
     def test_node_and_user_is_None(self):
         user = factory.make_User()
@@ -94,42 +69,34 @@ class TestEventToDict(APITestCase.ForUser):
         node.delete()
         user.delete()
         event = reload_object(event)
-        self.assertThat(
-            event_to_dict(event),
-            MatchesDict(
-                {
-                    "username": Equals(event.owner),
-                    "node": Equals(None),
-                    "hostname": Equals(event.hostname),
-                    "id": Equals(event.id),
-                    "level": Equals(event.type.level_str),
-                    "created": Equals(
-                        event.created.strftime("%a, %d %b. %Y %H:%M:%S")
-                    ),
-                    "type": Equals(event.type.description),
-                    "description": Equals(event.description),
-                }
-            ),
+        event_dict = event_to_dict(event)
+        self.assertEqual(event_dict["username"], event.owner)
+        self.assertIs(event_dict["node"], None)
+        self.assertEqual(event_dict["hostname"], event.hostname)
+        self.assertEqual(event_dict["id"], event.id)
+        self.assertEqual(event_dict["level"], event.type.level_str)
+        self.assertEqual(
+            event_dict["created"],
+            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
         )
+        self.assertEqual(event_dict["type"], event.type.description)
+        self.assertEqual(event_dict["description"], event.description)
 
     def test_type_level_AUDIT(self):
         event = factory.make_Event()
-        self.assertThat(
-            event_to_dict(event),
-            MatchesDict(
-                {
-                    "username": Equals(event.owner),
-                    "node": Equals(event.node.system_id),
-                    "hostname": Equals(event.hostname),
-                    "id": Equals(event.id),
-                    "level": Equals(event.type.level_str),
-                    "created": Equals(
-                        event.created.strftime("%a, %d %b. %Y %H:%M:%S")
-                    ),
-                    "type": Equals(event.type.description),
-                    "description": Equals(event.render_audit_description),
-                }
-            ),
+        event_dict = event_to_dict(event)
+        self.assertEqual(event_dict["username"], event.owner)
+        self.assertEqual(event_dict["node"], event.node.system_id)
+        self.assertEqual(event_dict["hostname"], event.hostname)
+        self.assertEqual(event_dict["id"], event.id)
+        self.assertEqual(event_dict["level"], event.type.level_str)
+        self.assertEqual(
+            event_dict["created"],
+            event.created.strftime("%a, %d %b. %Y %H:%M:%S"),
+        )
+        self.assertEqual(event_dict["type"], event.type.description)
+        self.assertEqual(
+            event_dict["description"], event.render_audit_description
         )
 
 
@@ -150,11 +117,10 @@ class TestEventsAPI(APITestCase.ForUser):
     def test_GET_query_without_events_returns_empty_list(self):
         # If there are no nodes to list, the "query" op returns an empty list.
         response = self.client.get(reverse("events_handler"), {"op": "query"})
-        self.expectThat(response.status_code, Equals(http.client.OK))
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict({"count": Equals(0), "events": HasLength(0)}),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        response_dict = json_load_bytes(response.content)
+        self.assertEqual(response_dict.get("count"), 0)
+        self.assertEqual(response_dict.get("events"), [])
 
     def test_GET_query_returns_events_in_order_newest_first(self):
         node = factory.make_Node()
@@ -163,7 +129,7 @@ class TestEventsAPI(APITestCase.ForUser):
             reverse("events_handler"), {"op": "query", "level": "DEBUG"}
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events)],
             extract_event_ids(parsed_result),
         )
@@ -194,10 +160,9 @@ class TestEventsAPI(APITestCase.ForUser):
         response = self.client.get(
             reverse("events_handler"), {"op": "query", "id": [nonexistent_id]}
         )
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict({"count": Equals(0), "events": HasLength(0)}),
-        )
+        response_dict = json_load_bytes(response.content)
+        self.assertEqual(response_dict.get("count"), 0)
+        self.assertEqual(response_dict.get("events"), [])
 
     def test_GET_query_with_ids_orders_by_id_reverse(self):
         # Even when node ids are passed to "list," events for nodes are
@@ -215,7 +180,7 @@ class TestEventsAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events)],
             extract_event_ids(parsed_result),
         )
@@ -298,13 +263,10 @@ class TestEventsAPI(APITestCase.ForUser):
                 "level": "DEBUG",
             },
         )
-        self.expectThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.expectThat(
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertIn(
+            b"Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX",
             response.content,
-            Contains(
-                b"Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, "
-                b"00:E0:81:DD:D1:XX"
-            ),
         )
 
     def test_GET_query_with_agent_name_filters_by_agent_name(self):
@@ -326,7 +288,7 @@ class TestEventsAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
 
         # Only events pertaining to node1 are returned.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(node1_events)],
             extract_event_ids(parsed_result),
         )
@@ -349,7 +311,7 @@ class TestEventsAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
 
         # Only events pertaining to node1 are returned.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(node1_events)],
             extract_event_ids(parsed_result),
         )
@@ -366,7 +328,7 @@ class TestEventsAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events)],
             extract_event_ids(parsed_result),
         )
@@ -407,9 +369,9 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         system_ids = {event["node"] for event in parsed_result["events"]}
-        self.assertThat(
+        self.assertEqual(
             system_ids.intersection(device.system_id for device in devices),
-            HasLength(0),
+            set(),
         )
         self.assertEqual(
             len(machines) + len(rack_controllers), parsed_result["count"]
@@ -430,7 +392,7 @@ class TestEventsAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(node1_events)],
             extract_event_ids(parsed_result),
         )
@@ -445,7 +407,7 @@ class TestEventsAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events)][:test_limit],
             extract_event_ids(parsed_result),
         )
@@ -460,15 +422,10 @@ class TestEventsAPI(APITestCase.ForUser):
             reverse("events_handler"),
             {"op": "query", "limit": str(test_limit)},
         )
-        self.expectThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.expectThat(
-            response.content,
-            AfterBeingDecoded(
-                Contains(
-                    "Requested number of events %d is greater than limit: %d"
-                    % (test_limit, artificial_limit)
-                )
-            ),
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertIn(
+            f"Requested number of events {test_limit} is greater than limit: {artificial_limit}",
+            response.content.decode("utf-8"),
         )
 
     def test_GET_query_with_without_limit_limits_to_default_newest(self):
@@ -481,7 +438,7 @@ class TestEventsAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events)][:artificial_limit],
             extract_event_ids(parsed_result),
         )
@@ -501,7 +458,7 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         # Two events created AFTER events[1] are returned, newest first.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [events[3].id, events[2].id], extract_event_ids(parsed_result)
         )
         self.assertEqual(2, parsed_result["count"])
@@ -515,7 +472,7 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         # Three events created AFTER events[2] are returned, newest first.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [event.id for event in reversed(events[3:])],
             extract_event_ids(parsed_result),
         )
@@ -535,7 +492,7 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         # Two events created BEFORE events[3] are returned, newest first.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [events[2].id, events[1].id], extract_event_ids(parsed_result)
         )
         self.assertEqual(2, parsed_result["count"])
@@ -549,7 +506,7 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json_load_bytes(response.content)
         # Three events created BEFORE events[3] are returned, newest first.
-        self.assertSequenceEqual(
+        self.assertEqual(
             [events[2].id, events[1].id, events[0].id],
             extract_event_ids(parsed_result),
         )
@@ -561,12 +518,10 @@ class TestEventsAPI(APITestCase.ForUser):
         response = self.client.get(
             reverse("events_handler"), {"op": "query", "level": invalid_level}
         )
-        self.expectThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.expectThat(
-            response.content,
-            AfterBeingDecoded(
-                Contains("Unrecognised log level: %s" % invalid_level)
-            ),
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertIn(
+            f"Unrecognised log level: {invalid_level}",
+            response.content.decode("utf-8"),
         )
 
     def test_GET_query_with_log_level_returns_that_level_and_greater(self):
@@ -583,7 +538,7 @@ class TestEventsAPI(APITestCase.ForUser):
             parsed_result = json_load_bytes(response.content)
             # Events of the same or higher level are returned.
             self.assertCountEqual(
-                (event.id for event in chain.from_iterable(events[: idx + 1])),
+                [event.id for event in chain.from_iterable(events[: idx + 1])],
                 extract_event_ids(parsed_result),
             )
 
@@ -603,9 +558,7 @@ class TestEventsAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, default_response.status_code)
         default_result = json_load_bytes(default_response.content)
 
-        self.assertSequenceEqual(
-            default_result["events"], info_result["events"]
-        )
+        self.assertEqual(default_result["events"], info_result["events"])
 
     def test_GET_query_with_log_level_AUDIT_returns_only_that_level(self):
         user = factory.make_User()
@@ -759,13 +712,13 @@ class TestEventsURIs(APITestCase.ForUser):
 
         prev_uri = urlparse(parsed_result["prev_uri"])
         prev_uri_params = dict(parse_qsl(prev_uri.query))
-        self.assertThat(prev_uri_params, Contains("before"), prev_uri)
+        self.assertIn("before", prev_uri_params, prev_uri)
         self.assertEqual(str(before), prev_uri_params["before"])
         self.assertNotIn("after", prev_uri_params)
 
         next_uri = urlparse(parsed_result["next_uri"])
         next_uri_params = dict(parse_qsl(next_uri.query))
-        self.assertThat(next_uri_params, Contains("after"), next_uri)
+        self.assertIn("after", next_uri_params, next_uri)
         self.assertEqual(str(after), next_uri_params["after"])
         self.assertNotIn("before", next_uri_params)
 
@@ -790,14 +743,10 @@ class TestEventsURIs(APITestCase.ForUser):
         query = {"op": "query", "before": "3", "after": "1"}
         response = self.client.get(reverse("events_handler"), query)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertThat(
-            response.content,
-            AfterBeingDecoded(
-                Equals(
-                    "There is undetermined behaviour when both "
-                    "`after` and `before` are specified."
-                )
-            ),
+        self.assertEqual(
+            response.content.decode("utf-8"),
+            "There is undetermined behaviour when both "
+            "`after` and `before` are specified.",
         )
 
     def test_GET_prev_and_next_uris_contain_search_parameters(self):
@@ -820,9 +769,8 @@ class TestEventsURIs(APITestCase.ForUser):
         }
         event = factory.make_Event(node=machine)
         prev_params, next_params = self.assertURIs(query, event.id, event.id)
-        params_expected = {p: Equals(v) for p, v in query.items()}
-        self.assertThat(prev_params, ContainsDict(params_expected))
-        self.assertThat(next_params, ContainsDict(params_expected))
+        self.assertGreater(prev_params.items(), query.items())
+        self.assertGreater(next_params.items(), query.items())
 
 
 # Parameters used in queries, excluding "op", which
@@ -885,16 +833,12 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
         # next_uri is always set because new matching events may be
         # logged at a later date.
         next_uri = urlparse(parsed_result["next_uri"])
-        self.assertThat(
-            next_uri,
-            MatchesStructure.byEquality(
-                scheme="",
-                netloc="",
-                params="",
-                path=expected_uri_path,
-                fragment="",
-            ),
-        )
+        self.assertEqual(next_uri.scheme, "")
+        self.assertEqual(next_uri.netloc, "")
+        self.assertEqual(next_uri.params, "")
+        self.assertEqual(next_uri.path, expected_uri_path)
+        self.assertEqual(next_uri.fragment, "")
+
         next_uri_params = dict(
             parse_qsl(next_uri.query, keep_blank_values=True)
         )
@@ -905,26 +849,21 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
             expected_params = request_params.copy()
             before = expected_params.pop("before")
             expected_params["after"] = str(int(before) - 1)
-            self.assertDictEqual(expected_params, next_uri_params)
+            self.assertEqual(expected_params, next_uri_params)
         else:
             # Because we have not created any actual events in the database,
             # the next_uri has the same parameters as we already requested.
-            self.assertDictEqual(request_params, next_uri_params)
+            self.assertEqual(request_params, next_uri_params)
 
         # prev_uri is set when there MAY be older matching events, but
         # sometimes we can know there aren't any.
         if "after" in request_params:
             prev_uri = urlparse(parsed_result["prev_uri"])
-            self.assertThat(
-                prev_uri,
-                MatchesStructure.byEquality(
-                    scheme="",
-                    netloc="",
-                    params="",
-                    path=expected_uri_path,
-                    fragment="",
-                ),
-            )
+            self.assertEqual(prev_uri.scheme, "")
+            self.assertEqual(prev_uri.netloc, "")
+            self.assertEqual(prev_uri.params, "")
+            self.assertEqual(prev_uri.path, expected_uri_path)
+            self.assertEqual(prev_uri.fragment, "")
             prev_uri_params = dict(
                 parse_qsl(prev_uri.query, keep_blank_values=True)
             )
@@ -935,11 +874,11 @@ class TestEventsURIsWithoutEvents(APITestCase.ForUser):
                 expected_params = request_params.copy()
                 after = expected_params.pop("after")
                 expected_params["before"] = str(int(after) + 1)
-                self.assertDictEqual(expected_params, prev_uri_params)
+                self.assertEqual(expected_params, prev_uri_params)
             else:
                 # Because we have not created any actual test events, the
                 # prev_uri has the same parameters as we already requested.
-                self.assertDictEqual(request_params, prev_uri_params)
+                self.assertEqual(request_params, prev_uri_params)
         else:
             # Because we have not created any actual test events AND the
             # search window was not limited by `after`, we can be certain that

@@ -10,7 +10,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models import GlobalDefault
 from maasserver.models.dnspublication import zone_serial
@@ -45,12 +44,7 @@ class TestDomainsAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         expected_ids = [domain.id for domain in Domain.objects.all()]
-        result_ids = [
-            domain["id"]
-            for domain in json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET)
-            )
-        ]
+        result_ids = [domain["id"] for domain in response.json()]
         self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
@@ -150,19 +144,10 @@ class TestDomainAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_domain = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertThat(
-            parsed_domain,
-            ContainsDict(
-                {
-                    "id": Equals(domain.id),
-                    "name": Equals(domain.get_name()),
-                    "resource_record_count": Equals(3),
-                }
-            ),
-        )
+        parsed_domain = response.json()
+        self.assertEqual(parsed_domain["id"], domain.id)
+        self.assertEqual(parsed_domain["name"], domain.get_name())
+        self.assertEqual(parsed_domain["resource_record_count"], 3)
 
     def test_read_includes_default_domain(self):
         defaults = GlobalDefault.objects.instance()
@@ -175,23 +160,15 @@ class TestDomainAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_domain = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertThat(
-            parsed_domain, ContainsDict({"is_default": Equals(True)})
-        )
+        parsed_domain = response.json()
+        self.assertTrue(parsed_domain.get("is_default"))
         uri = get_domain_uri(old_default)
         response = self.client.get(uri)
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_domain = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertThat(
-            parsed_domain, ContainsDict({"is_default": Equals(False)})
-        )
+        parsed_domain = response.json()
+        self.assertFalse(parsed_domain.get("is_default"))
 
     def test_read_404_when_bad_id(self):
         uri = reverse("domain_handler", args=[random.randint(100, 1000)])
@@ -241,7 +218,7 @@ class TestDomainAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        ret = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        ret = response.json()
         domain = reload_object(domain)
         self.assertTrue(ret["is_default"])
         self.assertTrue(domain.is_default())

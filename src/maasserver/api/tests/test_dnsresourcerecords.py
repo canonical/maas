@@ -10,7 +10,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models.dnsdata import DNSData
 from maasserver.testing.api import APITestCase
@@ -304,17 +303,10 @@ class TestDNSResourceRecordAPI(APITestCase.ForUser):
         parsed_dnsresource = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_dnsresource,
-            ContainsDict(
-                {
-                    "id": Equals(dnsdata.id),
-                    "fqdn": Equals(dnsdata.fqdn),
-                    "rrtype": Equals(dnsdata.rrtype),
-                    "rrdata": Equals(dnsdata.rrdata),
-                }
-            ),
-        )
+        self.assertEqual(parsed_dnsresource.get("id"), dnsdata.id)
+        self.assertEqual(parsed_dnsresource.get("fqdn"), dnsdata.fqdn)
+        self.assertEqual(parsed_dnsresource.get("rrtype"), dnsdata.rrtype)
+        self.assertEqual(parsed_dnsresource.get("rrdata"), dnsdata.rrdata)
 
     def test_read_404_when_bad_id(self):
         uri = reverse(

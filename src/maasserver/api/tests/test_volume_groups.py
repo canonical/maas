@@ -11,7 +11,6 @@ import uuid
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -175,10 +174,8 @@ class TestVolumeGroups(APITestCase.ForUser):
         parsed_device_ids = [
             device["id"] for device in parsed_volume_group["devices"]
         ]
-        self.assertThat(
-            parsed_volume_group,
-            ContainsDict({"uuid": Equals(vguuid), "name": Equals(name)}),
-        )
+        self.assertEqual(parsed_volume_group.get("uuid"), vguuid)
+        self.assertEqual(parsed_volume_group.get("name"), name)
         self.assertCountEqual(
             block_device_ids + partition_ids, parsed_device_ids
         )
@@ -248,36 +245,37 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         parsed_logical_volume_ids = [
             lv["id"] for lv in parsed_volume_group["logical_volumes"]
         ]
-        self.assertThat(
-            parsed_volume_group,
-            ContainsDict(
-                {
-                    "id": Equals(volume_group.id),
-                    "uuid": Equals(volume_group.uuid),
-                    "name": Equals(volume_group.name),
-                    "size": Equals(volume_group.get_size()),
-                    "human_size": Equals(
-                        human_readable_bytes(volume_group.get_size())
-                    ),
-                    "available_size": Equals(
-                        volume_group.get_lvm_free_space()
-                    ),
-                    "human_available_size": Equals(
-                        human_readable_bytes(volume_group.get_lvm_free_space())
-                    ),
-                    "used_size": Equals(volume_group.get_lvm_allocated_size()),
-                    "human_used_size": Equals(
-                        human_readable_bytes(
-                            volume_group.get_lvm_allocated_size()
-                        )
-                    ),
-                    "resource_uri": Equals(
-                        get_volume_group_uri(volume_group, test_plural=False)
-                    ),
-                    "system_id": Equals(node.system_id),
-                }
-            ),
+        self.assertEqual(parsed_volume_group.get("id"), volume_group.id)
+        self.assertEqual(parsed_volume_group.get("uuid"), volume_group.uuid)
+        self.assertEqual(parsed_volume_group.get("name"), volume_group.name)
+        self.assertEqual(
+            parsed_volume_group.get("size"), volume_group.get_size()
         )
+        self.assertEqual(
+            parsed_volume_group.get("human_size"),
+            human_readable_bytes(volume_group.get_size()),
+        )
+        self.assertEqual(
+            parsed_volume_group.get("available_size"),
+            volume_group.get_lvm_free_space(),
+        )
+        self.assertEqual(
+            parsed_volume_group.get("human_available_size"),
+            human_readable_bytes(volume_group.get_lvm_free_space()),
+        )
+        self.assertEqual(
+            parsed_volume_group.get("used_size"),
+            volume_group.get_lvm_allocated_size(),
+        )
+        self.assertEqual(
+            parsed_volume_group.get("human_used_size"),
+            human_readable_bytes(volume_group.get_lvm_allocated_size()),
+        )
+        self.assertEqual(
+            parsed_volume_group.get("resource_uri"),
+            get_volume_group_uri(volume_group, test_plural=False),
+        )
+        self.assertEqual(parsed_volume_group.get("system_id"), node.system_id)
         self.assertCountEqual(
             block_device_ids + partitions_ids, parsed_device_ids
         )
@@ -491,16 +489,11 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         expected_size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False
         )
-        self.assertThat(
-            logical_volume,
-            ContainsDict(
-                {
-                    "name": Equals(f"{volume_group.name}-{name}"),
-                    "uuid": Equals(vguuid),
-                    "size": Equals(expected_size),
-                }
-            ),
+        self.assertEqual(
+            logical_volume.get("name"), f"{volume_group.name}-{name}"
         )
+        self.assertEqual(logical_volume.get("uuid"), vguuid)
+        self.assertEqual(logical_volume.get("size"), expected_size)
 
     def test_create_logical_volume_creates_max_logical_volume_if_size_empty(
         self,

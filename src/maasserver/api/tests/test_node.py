@@ -21,14 +21,12 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import osystems
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from metadataserver.enum import (
     HARDWARE_TYPE,
     RESULT_TYPE,
@@ -254,7 +252,7 @@ class TestNodeAPI(APITestCase.ForUser):
         def status_name(s):
             return SCRIPT_STATUS_CHOICES[status(s)][1]
 
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             status(commissioning_script_result),
             parsed_result["commissioning_status"],
@@ -352,8 +350,8 @@ class TestNodeAPI(APITestCase.ForUser):
         response = self.client.get(self.get_node_uri(machine))
         parsed_result = json_load_bytes(response.content)
 
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertDictEqual(
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(
             {
                 "system_vendor": system_vendor.value,
                 "system_product": system_product.value,
@@ -740,7 +738,7 @@ class TestPowerMixin(APITestCase.ForUser):
             self.get_node_uri(machine), {"op": "power_off"}
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertThat(machine_stop, MockNotCalled())
+        machine_stop.assert_not_called()
 
     def test_POST_power_off_returns_nothing_if_machine_was_not_stopped(self):
         # The machine may not be stopped because, for example, its power type
@@ -754,9 +752,7 @@ class TestPowerMixin(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertIsNone(json_load_bytes(response.content))
-        self.assertThat(
-            machine_stop, MockCalledOnceWith(ANY, stop_mode=ANY, comment=None)
-        )
+        machine_stop.mock_called_once_with(ANY, stop_mode=ANY, comment=None)
 
     def test_POST_power_off_returns_machine(self):
         machine = factory.make_Node(owner=self.user)
@@ -789,11 +785,8 @@ class TestPowerMixin(APITestCase.ForUser):
             self.get_node_uri(machine),
             {"op": "power_off", "stop_mode": stop_mode, "comment": comment},
         )
-        self.assertThat(
-            machine_stop,
-            MockCalledOnceWith(
-                self.user, stop_mode=stop_mode, comment=comment
-            ),
+        machine_stop.mock_called_once_with(
+            self.user, stop_mode=stop_mode, comment=comment
         )
 
     def test_POST_power_off_handles_missing_comment(self):
@@ -804,9 +797,8 @@ class TestPowerMixin(APITestCase.ForUser):
             self.get_node_uri(machine),
             {"op": "power_off", "stop_mode": stop_mode},
         )
-        self.assertThat(
-            machine_stop,
-            MockCalledOnceWith(self.user, stop_mode=stop_mode, comment=None),
+        machine_stop.mock_called_once_with(
+            self.user, stop_mode=stop_mode, comment=None
         )
 
     def test_POST_power_off_returns_503_when_power_already_in_progress(self):
@@ -818,9 +810,7 @@ class TestPowerMixin(APITestCase.ForUser):
         response = self.client.post(
             self.get_node_uri(machine), {"op": "power_off"}
         )
-        self.assertThat(
-            response, HasStatusCode(http.client.SERVICE_UNAVAILABLE)
-        )
+        self.assertEqual(response.status_code, http.client.SERVICE_UNAVAILABLE)
         self.assertIn(
             exc_text, response.content.decode(settings.DEFAULT_CHARSET)
         )
@@ -997,7 +987,7 @@ class TestPowerMixin(APITestCase.ForUser):
         response = self.client.post(
             self.get_node_uri(node), {"op": "override_failed_testing"}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         node = reload_object(node)
         self.assertEqual(NODE_STATUS.READY, node.status)
 
@@ -1025,7 +1015,7 @@ class TestPowerMixin(APITestCase.ForUser):
         self.client.post(
             self.get_node_uri(node), {"op": "abort", "comment": comment}
         )
-        self.assertThat(node_method, MockCalledOnceWith(self.user, comment))
+        node_method.mock_called_once_with(self.user, comment)
 
     def test_abort_handles_missing_comment(self):
         self.become_admin()
@@ -1034,4 +1024,4 @@ class TestPowerMixin(APITestCase.ForUser):
         )
         node_method = self.patch(node_module.Node, "abort_operation")
         self.client.post(self.get_node_uri(node), {"op": "abort"})
-        self.assertThat(node_method, MockCalledOnceWith(self.user, None))
+        node_method.mock_called_once_with(self.user, None)

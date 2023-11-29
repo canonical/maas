@@ -20,7 +20,6 @@ from maasserver.testing.factory import factory
 from maasserver.utils import strip_domain
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import get_one, reload_object
-from maastesting.matchers import MockNotCalled
 
 
 class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
@@ -464,7 +463,7 @@ class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
         self.assertEqual(architecture, machine.architecture)
         for key, value in power_parameters.items():
             self.assertEqual(machine.bmc.get_power_parameters()[key], value)
-        self.assertThat(mock_create_machine, MockNotCalled())
+        mock_create_machine.assert_not_called()
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
         )

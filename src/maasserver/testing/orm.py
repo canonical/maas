@@ -8,7 +8,6 @@ from contextlib import contextmanager
 
 from django.db import transaction
 import testtools
-from testtools.matchers import HasLength
 
 from maasserver.utils.orm import gen_description_of_hooks, post_commit_hooks
 
@@ -47,11 +46,9 @@ class PostCommitHooksTestMixin(testtools.TestCase):
             description_of_hooks = "\n".join(
                 gen_description_of_hooks(post_commit_hooks.hooks)
             )
-            self.expectThat(
-                post_commit_hooks.hooks,
-                HasLength(0),
-                "One or more post-commit tasks were present before "
-                "commencing this test:\n" + description_of_hooks,
+            assert len(post_commit_hooks.hooks) == 0, (
+                "One or more post-commit tasks were present before commencing this test:\n"
+                + description_of_hooks
             )
         finally:
             # By this point we will have reported the leaked post-commit
@@ -64,11 +61,9 @@ class PostCommitHooksTestMixin(testtools.TestCase):
             description_of_hooks = "\n".join(
                 gen_description_of_hooks(post_commit_hooks.hooks)
             )
-            self.expectThat(
-                post_commit_hooks.hooks,
-                HasLength(0),
-                "One or more post-commit tasks were present at the end of "
-                "this test.\n" + description_of_hooks,
+            assert len(post_commit_hooks.hooks) == 0, (
+                "One or more post-commit tasks were present at the end of this test:\n"
+                + description_of_hooks
             )
             super().tearDown()
         finally:

@@ -9,7 +9,6 @@ from unittest.mock import ANY
 from uuid import uuid4
 
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.api import bcache as bcache_module
 from maasserver.enum import (
@@ -23,7 +22,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import human_readable_bytes, json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -154,16 +152,13 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         self.assertEqual(backing_size, parsed_device["virtual_device"]["size"])
         self.assertEqual("bcache0", parsed_device["name"])
         self.assertEqual(uuid, parsed_device["uuid"])
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Created bcache.",
-            ),
-        )
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Created bcache.",
+        ),
 
     def test_create_with_missing_cache_set_fails(self):
         """Tests Bcache device creation without a cache set."""
@@ -250,33 +245,33 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_bcache = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_bcache,
-            ContainsDict(
-                {
-                    "id": Equals(bcache.id),
-                    "uuid": Equals(bcache.uuid),
-                    "name": Equals(bcache.name),
-                    "size": Equals(bcache.get_size()),
-                    "human_size": Equals(
-                        human_readable_bytes(bcache.get_size())
-                    ),
-                    "resource_uri": Equals(get_bcache_device_uri(bcache)),
-                    "virtual_device": ContainsDict(
-                        {"id": Equals(bcache.virtual_device.id)}
-                    ),
-                    "cache_set": ContainsDict(
-                        {
-                            "id": Equals(cache_set.id),
-                            "name": Equals(cache_set.name),
-                        }
-                    ),
-                    "backing_device": ContainsDict(
-                        {"id": Equals(backing_block_device.id)}
-                    ),
-                    "system_id": Equals(bcache.get_node().system_id),
-                }
-            ),
+        self.assertEqual(parsed_bcache.get("id"), bcache.id)
+        self.assertEqual(parsed_bcache.get("uuid"), bcache.uuid)
+        self.assertEqual(parsed_bcache.get("name"), bcache.name)
+        self.assertEqual(parsed_bcache.get("size"), bcache.get_size())
+        self.assertEqual(
+            parsed_bcache.get("human_size"),
+            human_readable_bytes(bcache.get_size()),
+        )
+        self.assertEqual(
+            parsed_bcache.get("resource_uri"), get_bcache_device_uri(bcache)
+        )
+        self.assertEqual(
+            parsed_bcache.get("virtual_device", {}).get("id"),
+            bcache.virtual_device.id,
+        )
+        self.assertEqual(
+            parsed_bcache.get("cache_set", {}).get("id"), cache_set.id
+        )
+        self.assertEqual(
+            parsed_bcache.get("cache_set", {}).get("name"), cache_set.name
+        )
+        self.assertEqual(
+            parsed_bcache.get("backing_device", {}).get("id"),
+            backing_block_device.id,
+        )
+        self.assertEqual(
+            parsed_bcache.get("system_id"), bcache.get_node().system_id
         )
 
     def test_read_404_when_not_bcache(self):
@@ -306,15 +301,12 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             http.client.NO_CONTENT, response.status_code, response.content
         )
         self.assertIsNone(reload_object(bcache))
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Deleted bcache.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Deleted bcache.",
         )
 
     def test_delete_403_when_not_admin(self):
@@ -392,15 +384,12 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         self.assertListEqual(
             filesystem_ids, [fs.id for fs in bcache.filesystems.all()]
         )
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Updated bcache.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Updated bcache.",
         )
 
     def test_change_bcache_backing(self):
@@ -425,15 +414,12 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device["backing_device"]["id"])
         self.assertEqual("physical", parsed_device["backing_device"]["type"])
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Updated bcache.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Updated bcache.",
         )
 
     def test_change_storages_to_partitions_bcache(self):
@@ -460,15 +446,12 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_backing.id, parsed_device["backing_device"]["id"])
         self.assertEqual("partition", parsed_device["backing_device"]["type"])
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Updated bcache.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Updated bcache.",
         )
 
     def test_invalid_change_fails(self):

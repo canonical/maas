@@ -8,7 +8,6 @@ from unittest.mock import ANY, call
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import MatchesStructure
 
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import NODE_STATUS
@@ -24,7 +23,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from provisioningserver.events import AUDIT, EVENT_TYPES
 
 
@@ -146,13 +144,13 @@ class TestTagAPI(APITestCase.ForUser):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")
         tag = Tag(name=factory.make_name("tag"), definition="//node/foo")
         tag.save()
-        self.expectThat(populate_nodes, MockCalledOnceWith(tag))
+        populate_nodes.assert_called_once_with(tag)
         self.become_admin()
         response = self.client.put(
             self.get_tag_uri(tag), {"definition": "//node/bar"}
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.expectThat(populate_nodes, MockCallsMatch(call(tag), call(tag)))
+        populate_nodes.assert_has_calls([call(tag), call(tag)])
 
     def test_GET_nodes_with_no_nodes(self):
         tag = factory.make_Tag()
@@ -366,7 +364,7 @@ class TestTagAPI(APITestCase.ForUser):
             [rack.system_id], [r["system_id"] for r in parsed_result]
         )
 
-    @skip("XXX: ltrager 2919-11-29 bug=1854546")
+    @skip("XXX: ltrager 2019-11-29 bug=1854546")
     def test_GET_rack_controllers_query_count(self):
         self.become_admin()
 
@@ -746,14 +744,14 @@ class TestTagAPI(APITestCase.ForUser):
         tag = Tag(name=factory.make_name("tag"), definition="//foo/bar")
         tag.save()
         self.become_admin()
-        self.assertThat(populate_nodes, MockCalledOnceWith(tag))
+        populate_nodes.assert_called_once_with(tag)
         response = self.client.post(self.get_tag_uri(tag), {"op": "rebuild"})
         self.assertEqual(http.client.OK, response.status_code)
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual({"rebuilding": tag.name}, parsed_result)
-        self.assertThat(populate_nodes, MockCallsMatch(call(tag), call(tag)))
+        populate_nodes.assert_has_calls([call(tag), call(tag)])
 
     def test_POST_rebuild_leaves_manual_tags(self):
         tag = factory.make_Tag(definition="")
@@ -823,7 +821,7 @@ class TestTagsAPI(APITestCase.ForUser):
         self.assertEqual(comment, parsed_result["comment"])
         self.assertEqual(definition, parsed_result["definition"])
         self.assertTrue(Tag.objects.filter(name=name).exists())
-        self.assertThat(Tag.populate_nodes, MockCalledOnceWith(ANY))
+        Tag.populate_nodes.assert_called_once_with(ANY)
 
     def test_POST_creates_event_log(self):
         self.patch_autospec(Tag, "populate_nodes")
@@ -900,7 +898,7 @@ class TestTagsAPI(APITestCase.ForUser):
         self.assertEqual(
             extra_kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts
         )
-        self.assertThat(Tag.populate_nodes, MockCalledOnceWith(ANY))
+        Tag.populate_nodes.assert_called_once_with(ANY)
 
     def test_POST_new_populates_nodes(self):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")
@@ -913,12 +911,9 @@ class TestTagsAPI(APITestCase.ForUser):
             {"name": name, "comment": comment, "definition": definition},
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(populate_nodes, MockCalledOnceWith(ANY))
+        populate_nodes.assert_called_once_with(ANY)
         # The tag passed to populate_nodes() is the one created above.
         [tag], _ = populate_nodes.call_args
-        self.assertThat(
-            tag,
-            MatchesStructure.byEquality(
-                name=name, comment=comment, definition=definition
-            ),
-        )
+        self.assertEqual(tag.name, name)
+        self.assertEqual(tag.comment, comment)
+        self.assertEqual(tag.definition, definition)

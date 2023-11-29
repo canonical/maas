@@ -7,7 +7,6 @@
 import http.client
 
 from django.urls import reverse
-from testtools.matchers import MatchesStructure
 
 from maasserver.api.boot_sources import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
@@ -61,8 +60,9 @@ class TestBootSourceAPI(APITestCase.ForUser):
         # Remove created and updated that is handled by django.
         del returned_boot_source["created"]
         del returned_boot_source["updated"]
-        self.assertThat(
-            boot_source, MatchesStructure.byEquality(**returned_boot_source)
+
+        self.assertGreater(
+            vars(boot_source).items(), returned_boot_source.items()
         )
         self.assertNotIn(b"<memory at", returned_boot_source["keyring_data"])
 
@@ -95,7 +95,10 @@ class TestBootSourceAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         boot_source = reload_object(boot_source)
-        self.assertAttributes(boot_source, new_values)
+        self.assertEqual(boot_source.url, new_values["url"])
+        self.assertEqual(
+            boot_source.keyring_filename, new_values["keyring_filename"]
+        )
 
     def test_PUT_requires_admin(self):
         boot_source = factory.make_BootSource()
@@ -153,11 +156,11 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
 
         boot_source = BootSource.objects.get(id=parsed_result["id"])
-        # boot_source.keyring_data is returned as a read-only buffer, test
-        # it separately from the rest of the attributes.
-        self.assertEqual(b"", boot_source.keyring_data)
-        del params["keyring_data"]
-        self.assertAttributes(boot_source, params)
+        self.assertEqual(boot_source.keyring_data, b"")
+        self.assertEqual(
+            boot_source.keyring_filename, params["keyring_filename"]
+        )
+        self.assertEqual(boot_source.url, params["url"])
 
     def test_POST_creates_boot_source_with_keyring_data(self):
         self.become_admin()
@@ -177,8 +180,10 @@ class TestBootSourcesAPI(APITestCase.ForUser):
         # boot_source.keyring_data is returned as a read-only buffer, test
         # it separately from the rest of the attributes.
         self.assertEqual(sample_binary_data, bytes(boot_source.keyring_data))
-        del params["keyring_data"]
-        self.assertAttributes(boot_source, params)
+        self.assertEqual(
+            boot_source.keyring_filename, params["keyring_filename"]
+        )
+        self.assertEqual(boot_source.url, params["url"])
 
     def test_POST_validates_boot_source(self):
         self.become_admin()

@@ -12,6 +12,7 @@ __all__ = [
 
 import abc
 import functools
+import unittest
 
 from django.contrib.auth.models import AnonymousUser
 from testscenarios import multiply_scenarios
@@ -132,6 +133,8 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     # a subclass; it will be set for you.
     client = None
 
+    assertThat = expectThat = NotImplemented
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Create scenarios for userfactories and clientfactories.
@@ -173,6 +176,15 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
         self.user = self.userfactory()
         self.client = self.clientfactory()
         self.client.login(user=self.user)
+
+    def assertIsInstance(self, *args, **kwargs):
+        return unittest.TestCase.assertIsInstance(self, *args, **kwargs)
+
+    def assertSequenceEqual(self, *args, **kwargs):
+        return unittest.TestCase.assertSequenceEqual(self, *args, **kwargs)
+
+    def assertRaises(self, *args, **kwargs):
+        return unittest.TestCase.assertRaises(self, *args, **kwargs)
 
     @transactional
     def become_admin(self):

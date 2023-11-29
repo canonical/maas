@@ -6,13 +6,6 @@ import http.client
 import random
 
 from django.urls import reverse
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    MatchesDict,
-    MatchesListwise,
-    MatchesSetwise,
-)
 
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
@@ -248,19 +241,13 @@ class TestInterfacesAPI(APITestCase.ForUser):
             self.assertEqual(
                 http.client.OK, response.status_code, response.content
             )
-            self.assertThat(
-                json_load_bytes(response.content),
-                ContainsDict(
-                    {
-                        "mac_address": Equals(mac),
-                        "name": Equals(name),
-                        "vlan": ContainsDict({"id": Equals(vlan.id)}),
-                        "type": Equals("physical"),
-                        "tags": Equals(tags),
-                        "enabled": Equals(True),
-                    }
-                ),
-            )
+            interface_dict = response.json()
+            self.assertEqual(interface_dict.get("mac_address"), mac)
+            self.assertEqual(interface_dict.get("name"), name)
+            self.assertEqual(interface_dict.get("vlan", {}).get("id"), vlan.id)
+            self.assertEqual(interface_dict.get("type"), "physical")
+            self.assertEqual(interface_dict.get("tags"), tags)
+            self.assertTrue(interface_dict.get("enabled"))
 
     def test_create_physical_on_device(self):
         parent = factory.make_Node()
@@ -284,19 +271,13 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
-                {
-                    "mac_address": Equals(mac),
-                    "name": Equals(name),
-                    "vlan": ContainsDict({"id": Equals(vlan.id)}),
-                    "type": Equals("physical"),
-                    "tags": Equals(tags),
-                    "enabled": Equals(True),
-                }
-            ),
-        )
+        interface_dict = response.json()
+        self.assertEqual(interface_dict.get("mac_address"), mac)
+        self.assertEqual(interface_dict.get("name"), name)
+        self.assertEqual(interface_dict.get("vlan", {}).get("id"), vlan.id)
+        self.assertEqual(interface_dict.get("type"), "physical")
+        self.assertEqual(interface_dict.get("tags"), tags)
+        self.assertTrue(interface_dict.get("enabled"))
 
     def test_create_physical_disabled(self):
         self.become_admin()
@@ -322,19 +303,13 @@ class TestInterfacesAPI(APITestCase.ForUser):
             self.assertEqual(
                 http.client.OK, response.status_code, response.content
             )
-            self.assertThat(
-                json_load_bytes(response.content),
-                ContainsDict(
-                    {
-                        "mac_address": Equals(mac),
-                        "name": Equals(name),
-                        "vlan": ContainsDict({"id": Equals(vlan.id)}),
-                        "type": Equals("physical"),
-                        "tags": Equals(tags),
-                        "enabled": Equals(False),
-                    }
-                ),
-            )
+            interface_dict = response.json()
+            self.assertEqual(interface_dict.get("mac_address"), mac)
+            self.assertEqual(interface_dict.get("name"), name)
+            self.assertEqual(interface_dict.get("vlan", {}).get("id"), vlan.id)
+            self.assertEqual(interface_dict.get("type"), "physical")
+            self.assertEqual(interface_dict.get("tags"), tags)
+            self.assertFalse(interface_dict.get("enabled"))
 
     def test_create_physical_requires_admin(self):
         node = factory.make_Node()
@@ -451,24 +426,17 @@ class TestInterfacesAPI(APITestCase.ForUser):
             self.assertEqual(
                 http.client.OK, response.status_code, response.content
             )
-            parsed_interface = json_load_bytes(response.content)
-            self.assertThat(
-                parsed_interface,
-                ContainsDict(
-                    {
-                        "mac_address": Equals(
-                            "%s" % parent_1_iface.mac_address
-                        ),
-                        "name": Equals(name),
-                        "vlan": ContainsDict({"id": Equals(vlan.id)}),
-                        "type": Equals("bond"),
-                        "tags": Equals(tags),
-                    }
-                ),
+            interface_dict = response.json()
+            self.assertEqual(
+                interface_dict.get("mac_address"), parent_1_iface.mac_address
             )
+            self.assertEqual(interface_dict.get("name"), name)
+            self.assertEqual(interface_dict.get("vlan", {}).get("id"), vlan.id)
+            self.assertEqual(interface_dict.get("type"), "bond")
+            self.assertEqual(interface_dict.get("tags"), tags)
             self.assertCountEqual(
                 [parent_1_iface.name, parent_2_iface.name],
-                parsed_interface["parents"],
+                interface_dict["parents"],
             )
 
     def test_create_bond_404_on_device(self):
@@ -575,19 +543,16 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_interface = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_interface,
-            ContainsDict(
-                {
-                    "mac_address": Equals("%s" % parent_iface.mac_address),
-                    "vlan": ContainsDict({"id": Equals(tagged_vlan.id)}),
-                    "type": Equals("vlan"),
-                    "parents": Equals([parent_iface.name]),
-                    "tags": Equals(tags),
-                }
-            ),
+        interface_dict = response.json()
+        self.assertEqual(
+            interface_dict.get("mac_address"), parent_iface.mac_address
         )
+        self.assertEqual(
+            interface_dict.get("vlan", {}).get("id"), tagged_vlan.id
+        )
+        self.assertEqual(interface_dict.get("parents"), [parent_iface.name])
+        self.assertEqual(interface_dict.get("type"), "vlan")
+        self.assertEqual(interface_dict.get("tags"), tags)
 
     def test_create_vlan_404_on_device(self):
         parent = factory.make_Node()
@@ -663,20 +628,17 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_interface = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_interface,
-            ContainsDict(
-                {
-                    "name": Equals(name),
-                    "mac_address": Equals("%s" % parent_iface.mac_address),
-                    "vlan": ContainsDict({"id": Equals(untagged_vlan.id)}),
-                    "type": Equals("bridge"),
-                    "parents": Equals([parent_iface.name]),
-                    "tags": MatchesSetwise(*map(Equals, tags)),
-                }
-            ),
+        interface_dict = response.json()
+        self.assertEqual(interface_dict.get("name"), name)
+        self.assertEqual(
+            interface_dict.get("mac_address"), parent_iface.mac_address
         )
+        self.assertEqual(
+            interface_dict.get("vlan", {}).get("id"), untagged_vlan.id
+        )
+        self.assertEqual(interface_dict.get("parents"), [parent_iface.name])
+        self.assertEqual(interface_dict.get("type"), "bridge")
+        self.assertEqual(interface_dict.get("tags"), tags)
 
     def test_create_bridge_404_on_device(self):
         parent = factory.make_Node()
@@ -757,32 +719,22 @@ class TestInterfacesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_interface = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_interface,
-            ContainsDict(
-                {
-                    "name": Equals(name),
-                    "mac_address": Equals("%s" % parent_iface.mac_address),
-                    "vlan": ContainsDict({"id": Equals(parent_vlan.id)}),
-                    "type": Equals("bridge"),
-                    "parents": Equals([parent_iface.name]),
-                    "tags": MatchesSetwise(*map(Equals, tags)),
-                    "links": MatchesListwise(
-                        [
-                            ContainsDict(
-                                {
-                                    "id": Equals(parent_sip.id),
-                                    "ip_address": Equals(parent_sip.ip),
-                                    "subnet": ContainsDict(
-                                        {"cidr": Equals(parent_subnet.cidr)}
-                                    ),
-                                }
-                            )
-                        ]
-                    ),
-                }
-            ),
+        interface_dict = response.json()
+        self.assertEqual(
+            interface_dict.get("mac_address"), parent_iface.mac_address
+        )
+        self.assertEqual(
+            interface_dict.get("vlan", {}).get("id"), parent_vlan.id
+        )
+        self.assertEqual(interface_dict.get("parents"), [parent_iface.name])
+        self.assertEqual(interface_dict.get("type"), "bridge")
+        self.assertEqual(interface_dict.get("tags"), tags)
+        self.assertEqual(len(interface_dict.get("links")), 1)
+        link = interface_dict.get("links")[0]
+        self.assertEqual(link.get("id"), parent_sip.id)
+        self.assertEqual(link.get("ip_address"), parent_sip.ip)
+        self.assertEqual(
+            link.get("subnet", {}).get("cidr"), parent_subnet.cidr
         )
 
     def test_create_acquired_bridge_not_allowed_in_ready(self):
@@ -1389,10 +1341,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             self.assertEqual(
                 http.client.OK, response.status_code, response.content
             )
-            parsed_response = json_load_bytes(response.content)
-            self.assertThat(
-                parsed_response["links"][0],
-                ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.DHCP)}),
+            parsed_response = response.json()
+            self.assertEqual(
+                parsed_response["links"][0].get("mode"),
+                INTERFACE_LINK_TYPE.DHCP,
             )
 
     def test_link_subnet_creates_link_on_device(self):
@@ -1414,10 +1366,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.STATIC)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.STATIC,
         )
 
     def test_link_subnet_allows_subnet_with_link_up(self):
@@ -1439,10 +1391,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.LINK_UP,
         )
         self.assertEqual(
             subnet.id, parsed_response["links"][0]["subnet"]["id"]
@@ -1470,10 +1422,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.LINK_UP,
         )
         self.assertNotIn("subnet", parsed_response["links"][0])
 
@@ -1505,10 +1457,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.LINK_UP,
         )
         self.assertEqual(
             subnet2.id, parsed_response["links"][0]["subnet"]["id"]
@@ -1574,10 +1526,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.LINK_UP,
         )
         self.assertEqual(
             subnet2.id, parsed_response["links"][0]["subnet"]["id"]
@@ -1613,10 +1565,10 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_response = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_response["links"][0],
-            ContainsDict({"mode": Equals(INTERFACE_LINK_TYPE.LINK_UP)}),
+        parsed_response = response.json()
+        self.assertEqual(
+            parsed_response["links"][0].get("mode"),
+            INTERFACE_LINK_TYPE.LINK_UP,
         )
         self.assertEqual(
             subnet2.id, parsed_response["links"][0]["subnet"]["id"]
@@ -2012,7 +1964,6 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
 
         # First link is a DHCP link.
-        links = []
         dhcp_subnet = factory.make_Subnet()
         dhcp_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP,
@@ -2027,16 +1978,6 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             subnet=dhcp_subnet,
             interface=interface,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(dhcp_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
-                    "subnet": ContainsDict({"id": Equals(dhcp_subnet.id)}),
-                    "ip_address": Equals(discovered_ip),
-                }
-            )
-        )
 
         # Second link is a STATIC ip link.
         static_subnet = factory.make_Subnet()
@@ -2046,16 +1987,6 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             ip=static_ip,
             subnet=static_subnet,
             interface=interface,
-        )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(sip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.STATIC),
-                    "ip_address": Equals(static_ip),
-                    "subnet": ContainsDict({"id": Equals(static_subnet.id)}),
-                }
-            )
         )
 
         # Third link is just a LINK_UP. In reality this cannot exist while the
@@ -2069,15 +2000,6 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             subnet=link_subnet,
             interface=interface,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(link_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
-                    "subnet": ContainsDict({"id": Equals(link_subnet.id)}),
-                }
-            )
-        )
 
         # Add MTU parameter.
         interface.params = {"mtu": random.randint(800, 2000)}
@@ -2088,25 +2010,42 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_interface = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_interface,
-            ContainsDict(
-                {
-                    "id": Equals(interface.id),
-                    "name": Equals(interface.name),
-                    "type": Equals(interface.type),
-                    "vlan": ContainsDict({"id": Equals(interface.vlan.id)}),
-                    "mac_address": Equals(str(interface.mac_address)),
-                    "tags": Equals(interface.tags),
-                    "resource_uri": Equals(get_interface_uri(interface)),
-                    "params": Equals(interface.params),
-                    "effective_mtu": Equals(interface.get_effective_mtu()),
-                    "numa_node": Equals(0),
-                }
-            ),
+        parsed_interface = response.json()
+        self.assertEqual(parsed_interface.get("id"), interface.id)
+        self.assertEqual(parsed_interface.get("name"), interface.name)
+        self.assertEqual(parsed_interface.get("type"), interface.type)
+        self.assertEqual(
+            parsed_interface.get("vlan", {}).get("id"), interface.vlan.id
         )
-        self.assertThat(parsed_interface["links"], MatchesSetwise(*links))
+        self.assertEqual(
+            parsed_interface.get("mac_address"), str(interface.mac_address)
+        )
+        self.assertEqual(parsed_interface.get("tags"), interface.tags)
+        self.assertEqual(
+            parsed_interface.get("resource_uri"), get_interface_uri(interface)
+        )
+        self.assertEqual(parsed_interface.get("params"), interface.params)
+        self.assertEqual(
+            parsed_interface.get("effective_mtu"),
+            interface.get_effective_mtu(),
+        )
+        self.assertEqual(parsed_interface.get("numa_node"), 0)
+
+        dhcp, static, link = parsed_interface["links"]
+        self.assertEqual(dhcp.get("id"), dhcp_ip.id)
+        self.assertEqual(dhcp.get("mode"), INTERFACE_LINK_TYPE.DHCP)
+        self.assertEqual(dhcp.get("subnet", {}).get("id"), dhcp_subnet.id)
+        self.assertEqual(dhcp.get("ip_address"), discovered_ip)
+
+        self.assertEqual(static.get("id"), sip.id)
+        self.assertEqual(static.get("mode"), INTERFACE_LINK_TYPE.STATIC)
+        self.assertEqual(static.get("subnet", {}).get("id"), static_subnet.id)
+        self.assertEqual(static.get("ip_address"), static_ip)
+
+        self.assertEqual(link.get("id"), link_ip.id)
+        self.assertEqual(link.get("mode"), INTERFACE_LINK_TYPE.LINK_UP)
+        self.assertEqual(link.get("subnet", {}).get("id"), link_subnet.id)
+
         json_discovered = parsed_interface["discovered"][0]
         self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
         self.assertEqual(discovered_ip, json_discovered["ip_address"])

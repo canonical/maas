@@ -7,7 +7,6 @@
 import http.client
 
 from django.urls import reverse
-from testtools.matchers import MatchesStructure
 
 from maasserver.api.boot_source_selections import (
     DISPLAYED_BOOTSOURCESELECTION_FIELDS,
@@ -66,9 +65,9 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
             set(DISPLAYED_BOOTSOURCESELECTION_FIELDS),
             returned_boot_source_selection.keys(),
         )
-        self.assertThat(
-            boot_source_selection,
-            MatchesStructure.byEquality(**returned_boot_source_selection),
+        self.assertGreater(
+            vars(boot_source_selection).items(),
+            returned_boot_source_selection.items(),
         )
 
     def test_GET_requires_admin(self):
@@ -122,7 +121,19 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         boot_source_selection = reload_object(boot_source_selection)
-        self.assertAttributes(boot_source_selection, new_values)
+        self.assertEqual(boot_source_selection.os, new_os)
+        self.assertEqual(boot_source_selection.release, new_release)
+        self.assertEqual(
+            boot_source_selection.arches,
+            [boot_source_caches[0].arch, boot_source_caches[1].arch],
+        )
+        self.assertEqual(
+            boot_source_selection.subarches,
+            [boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+        )
+        self.assertEqual(
+            boot_source_selection.labels, [boot_source_caches[0].label]
+        )
 
     def test_PUT_requires_admin(self):
         boot_source_selection = factory.make_BootSourceSelection()
@@ -202,7 +213,18 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
         boot_source_selection = BootSourceSelection.objects.get(
             id=parsed_result["id"]
         )
-        self.assertAttributes(boot_source_selection, params)
+        self.assertEqual(boot_source_selection.release, new_release)
+        self.assertEqual(
+            boot_source_selection.arches,
+            [boot_source_caches[0].arch, boot_source_caches[1].arch],
+        )
+        self.assertEqual(
+            boot_source_selection.subarches,
+            [boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+        )
+        self.assertEqual(
+            boot_source_selection.labels, [boot_source_caches[0].label]
+        )
 
     def test_POST_requires_admin(self):
         boot_source = factory.make_BootSource()

@@ -4088,15 +4088,11 @@ class TestStoreNodeParameters(APITestCase.ForUser):
         mock_get_driver_types.return_value = {}
         power_type = factory.pick_power_type()
         self.request.POST = {"power_type": power_type}
-        error = self.assertRaises(
-            ClusterUnavailable,
-            store_node_power_parameters,
-            self.node,
-            self.request,
-        )
+        with self.assertRaises(ClusterUnavailable) as cm:
+            store_node_power_parameters(self.node, self.request)
         self.assertEqual(
             "No rack controllers connected to validate the power_type.",
-            str(error),
+            str(cm.exception),
         )
         mock_get_driver_types.assert_called_once()
 

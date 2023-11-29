@@ -10,7 +10,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.api.dnsresources import get_dnsresource_queryset
 from maasserver.enum import NODE_STATUS
@@ -332,10 +331,8 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         parsed_dnsresource = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_dnsresource,
-            ContainsDict({"id": Equals(dnsrr.id), "fqdn": Equals(dnsrr.fqdn)}),
-        )
+        self.assertEqual(parsed_dnsresource.get("id"), dnsrr.id)
+        self.assertEqual(parsed_dnsresource.get("fqdn"), dnsrr.fqdn)
 
     def test_read_404_when_bad_id(self):
         uri = reverse("dnsresource_handler", args=[random.randint(100, 1000)])

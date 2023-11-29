@@ -9,7 +9,6 @@ import inspect
 
 import crochet
 from testtools.content import Content, UTF8_TEXT
-from testtools.matchers import Equals
 from twisted.internet.defer import ensureDeferred
 import wrapt
 
@@ -104,13 +103,9 @@ class EventualResultCatchingMixin:
                     Content(UTF8_TEXT, lambda: message),
                 )
 
-        # Use expectThat() so that other clean-up tasks run to completion
-        # before, at the last moment, the test is failed.
-        self.expectThat(
-            fail_count,
-            Equals(0),
-            "Unfired and/or unhandled EventualResult(s); see test details.",
-        )
+        assert (
+            fail_count == 0
+        ), "Unfired and/or unhandled EventualResult(s); see test details."
 
 
 class TimeoutInTestException(Exception):

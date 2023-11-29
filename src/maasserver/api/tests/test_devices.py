@@ -16,7 +16,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnce
 
 
 class TestDeviceOwnerData(APITestCase.ForUser):
@@ -400,7 +399,7 @@ class TestDeviceAPI(APITestCase.ForUser):
         self.assertEqual(
             device.system_id, json_load_bytes(response.content)["system_id"]
         )
-        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+        mock_set_initial_networking_config.assert_called_once()
 
     def test_restore_networking_configuration_requires_admin(self):
         device = factory.make_Device()
@@ -424,7 +423,7 @@ class TestDeviceAPI(APITestCase.ForUser):
         self.assertEqual(
             device.system_id, json_load_bytes(response.content)["system_id"]
         )
-        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+        mock_set_initial_networking_config.assert_called_once()
 
     def test_restore_default_configuration_requires_admin(self):
         device = factory.make_Device()

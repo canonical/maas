@@ -286,12 +286,9 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         expected_msg = [
             "Invalid MAC address(es): 00:E0:81:DD:D1:ZZ, 00:E0:81:DD:D1:XX"
         ]
-        ex = self.assertRaises(
-            MAASAPIValidationError,
-            nodes_module.filtered_nodes_list_from_request,
-            query,
-        )
-        self.assertEqual(expected_msg, ex.messages)
+        with self.assertRaises(MAASAPIValidationError) as cm:
+            nodes_module.filtered_nodes_list_from_request(query)
+        self.assertEqual(expected_msg, cm.exception.messages)
 
     def test_node_list_with_agent_name_filters_by_agent_name(self):
         factory.make_Node(agent_name=factory.make_name("other_agent_name"))

@@ -7,7 +7,6 @@ import random
 from unittest.mock import ANY
 
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.api import bcache_cacheset as bcache_cacheset_module
 from maasserver.enum import ENDPOINT, FILESYSTEM_GROUP_TYPE, NODE_STATUS
@@ -15,7 +14,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -76,15 +74,12 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
         )
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(cache_device.id, parsed_device["cache_device"]["id"])
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Created bcache cache set.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Created bcache cache set.",
         )
 
     def test_create_403_when_not_admin(self):
@@ -142,21 +137,19 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_cache_set = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_cache_set,
-            ContainsDict(
-                {
-                    "id": Equals(cache_set.id),
-                    "name": Equals(cache_set.name),
-                    "resource_uri": Equals(
-                        get_bcache_cache_set_uri(cache_set)
-                    ),
-                    "cache_device": ContainsDict(
-                        {"id": Equals(cache_block_device.id)}
-                    ),
-                    "system_id": Equals(cache_set.get_node().system_id),
-                }
-            ),
+        self.assertEqual(parsed_cache_set.get("id"), cache_set.id)
+        self.assertEqual(parsed_cache_set.get("name"), cache_set.name)
+        self.assertEqual(
+            parsed_cache_set.get("resource_uri"),
+            get_bcache_cache_set_uri(cache_set),
+        )
+        self.assertEqual(
+            parsed_cache_set.get("cache_device", {}).get("id"),
+            cache_block_device.id,
+        )
+
+        self.assertEqual(
+            parsed_cache_set.get("system_id"), cache_set.get_node().system_id
         )
 
     def test_read_404_when_invalid_id(self):
@@ -192,15 +185,12 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
             http.client.NO_CONTENT, response.status_code, response.content
         )
         self.assertIsNone(reload_object(cache_set))
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Deleted bcache cache set.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Deleted bcache cache set.",
         )
 
     def test_delete_403_when_not_admin(self):
@@ -268,15 +258,12 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
         )
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(new_device.id, parsed_device["cache_device"]["id"])
-        self.assertThat(
-            mock_create_audit_event,
-            MockCalledOnceWith(
-                EVENT_TYPES.NODE,
-                ENDPOINT.API,
-                ANY,
-                node.system_id,
-                "Updated bcache cache set.",
-            ),
+        mock_create_audit_event.assert_called_once_with(
+            EVENT_TYPES.NODE,
+            ENDPOINT.API,
+            ANY,
+            node.system_id,
+            "Updated bcache cache set.",
         )
 
     def test_update_403_when_not_admin(self):

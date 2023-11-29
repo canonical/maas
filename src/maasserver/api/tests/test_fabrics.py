@@ -8,7 +8,6 @@ import http.client
 import random
 
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models.fabric import Fabric
 from maasserver.testing.api import APITestCase
@@ -131,16 +130,9 @@ class TestFabricAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_fabric = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_fabric,
-            ContainsDict(
-                {
-                    "id": Equals(fabric.id),
-                    "name": Equals(fabric.get_name()),
-                    "class_type": Equals(class_type),
-                }
-            ),
-        )
+        self.assertEqual(parsed_fabric.get("id"), fabric.id)
+        self.assertEqual(parsed_fabric.get("name"), fabric.get_name())
+        self.assertEqual(parsed_fabric.get("class_type"), class_type)
         self.assertCountEqual(
             [vlan.id for vlan in fabric.vlan_set.all()],
             [vlan["id"] for vlan in parsed_fabric["vlans"]],

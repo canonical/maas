@@ -2,21 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
-import json
-from operator import itemgetter
 import random
 
 from django.conf import settings
 from django.urls import reverse
 from testtools.content import text_content
-from testtools.matchers import (
-    AfterPreprocessing,
-    Equals,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-)
 
 from maasserver.forms.settings import CONFIG_ITEMS_KEYS
 from maasserver.models import PackageRepository
@@ -28,7 +18,6 @@ from maasserver.testing.osystems import (
     make_usable_osystem,
     patch_usable_osystems,
 )
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 
 # Names forbidden for use via the Web API.
@@ -119,36 +108,11 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 response.serialize().decode(settings.DEFAULT_CHARSET)
             ),
         )
-        self.expectThat(
-            response,
-            MatchesAll(
-                # An HTTP 400 response,
-                MatchesStructure(status_code=Equals(http.client.BAD_REQUEST)),
-                # with a JSON body,
-                AfterPreprocessing(
-                    itemgetter("Content-Type"), Equals("application/json")
-                ),
-                # containing a serialised ValidationError.
-                AfterPreprocessing(
-                    lambda response: json.loads(
-                        response.content.decode(settings.DEFAULT_CHARSET)
-                    ),
-                    MatchesDict(
-                        {
-                            name: MatchesListwise(
-                                [
-                                    DocTestMatches(
-                                        name
-                                        + " is not a valid config setting "
-                                        "(valid settings are: ...)."
-                                    )
-                                ]
-                            )
-                        }
-                    ),
-                ),
-                first_only=True,
-            ),
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertIn(
+            f"{name} is not a valid config setting (valid settings are: ",
+            response.json().get(name, [""])[0],
         )
 
     def test_get_config_forbidden_config_items(self):
@@ -177,24 +141,9 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
         response = self.client.get(
             reverse("maas_handler"), {"op": "get_config", "name": "ntp_server"}
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(status_code=Equals(http.client.OK)),
-                # with a JSON body,
-                AfterPreprocessing(
-                    itemgetter("Content-Type"), Equals("application/json")
-                ),
-                # containing the ntp_servers setting.
-                AfterPreprocessing(
-                    lambda response: json.loads(
-                        response.content.decode(settings.DEFAULT_CHARSET)
-                    ),
-                    Equals(ntp_servers),
-                ),
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), ntp_servers)
 
     def test_set_config_ntp_server_alias_for_ntp_servers(self):
         self.become_admin()
@@ -203,15 +152,7 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
             reverse("maas_handler"),
             {"op": "set_config", "name": "ntp_server", "value": ntp_servers},
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(
-                    status_code=Equals(http.client.OK), content=Equals(b"OK")
-                )
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(ntp_servers, Config.objects.get_config("ntp_servers"))
 
     def test_get_main_archive_overrides_to_package_repository(self):
@@ -224,24 +165,9 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
             reverse("maas_handler"),
             {"op": "get_config", "name": "main_archive"},
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(status_code=Equals(http.client.OK)),
-                # with a JSON body,
-                AfterPreprocessing(
-                    itemgetter("Content-Type"), Equals("application/json")
-                ),
-                # containing the main_archive setting.
-                AfterPreprocessing(
-                    lambda response: json.loads(
-                        response.content.decode(settings.DEFAULT_CHARSET)
-                    ),
-                    Equals(main_url),
-                ),
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), main_url)
 
     def test_get_ports_archive_overrides_to_package_repository(self):
         PackageRepository.objects.all().delete()
@@ -253,24 +179,9 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
             reverse("maas_handler"),
             {"op": "get_config", "name": "ports_archive"},
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(status_code=Equals(http.client.OK)),
-                # with a JSON body,
-                AfterPreprocessing(
-                    itemgetter("Content-Type"), Equals("application/json")
-                ),
-                # containing the main_archive setting.
-                AfterPreprocessing(
-                    lambda response: json.loads(
-                        response.content.decode(settings.DEFAULT_CHARSET)
-                    ),
-                    Equals(ports_url),
-                ),
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), ports_url)
 
     def test_set_main_archive_overrides_to_package_repository(self):
         self.become_admin()
@@ -283,15 +194,7 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 "value": main_archive,
             },
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(
-                    status_code=Equals(http.client.OK), content=Equals(b"OK")
-                )
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             main_archive, PackageRepository.get_main_archive().url
         )
@@ -307,15 +210,7 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
                 "value": ports_archive,
             },
         )
-        self.assertThat(
-            response,
-            MatchesAll(
-                # An HTTP 200 response,
-                MatchesStructure(
-                    status_code=Equals(http.client.OK), content=Equals(b"OK")
-                )
-            ),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             ports_archive, PackageRepository.get_ports_archive().url
         )

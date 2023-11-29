@@ -7,7 +7,6 @@ import uuid
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -896,23 +895,19 @@ class TestRaidAPI(APITestCase.ForUser):
         parsed_spare_device_ids = [
             device["id"] for device in parsed_raid["spare_devices"]
         ]
-        self.assertThat(
-            parsed_raid,
-            ContainsDict(
-                {
-                    "id": Equals(raid.id),
-                    "uuid": Equals(raid.uuid),
-                    "name": Equals(raid.name),
-                    "level": Equals(raid.group_type),
-                    "size": Equals(raid.get_size()),
-                    "human_size": Equals(
-                        human_readable_bytes(raid.get_size())
-                    ),
-                    "resource_uri": Equals(get_raid_device_uri(raid)),
-                    "system_id": Equals(node.system_id),
-                }
-            ),
+        self.assertEqual(parsed_raid.get("id"), raid.id)
+        self.assertEqual(parsed_raid.get("uuid"), raid.uuid)
+        self.assertEqual(parsed_raid.get("name"), raid.name)
+        self.assertEqual(parsed_raid.get("level"), raid.group_type)
+        self.assertEqual(parsed_raid.get("size"), raid.get_size())
+        self.assertEqual(
+            parsed_raid.get("human_size"),
+            human_readable_bytes(raid.get_size()),
         )
+        self.assertEqual(
+            parsed_raid.get("resource_uri"), get_raid_device_uri(raid)
+        )
+        self.assertEqual(parsed_raid.get("system_id"), node.system_id)
         self.assertCountEqual(
             block_device_ids + partitions_ids, parsed_device_ids
         )

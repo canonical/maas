@@ -10,7 +10,6 @@ import json
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.urls import reverse
-from testtools.matchers import ContainsAll
 
 import maasserver.api.auth
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
@@ -248,9 +247,9 @@ class TestUsers(APITestCase.ForUser):
         )
 
         listing = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
-            [user["username"] for user in listing],
-            ContainsAll([user.username for user in users]),
+        self.assertGreater(
+            {user["username"] for user in listing},
+            {user.username for user in users},
         )
 
     def test_whoami_returns_user(self):

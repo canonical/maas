@@ -9,7 +9,6 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals, Is, MatchesStructure
 
 from maasserver.enum import NODE_STATUS
 from maasserver.models.partition import MIN_PARTITION_SIZE
@@ -173,18 +172,14 @@ class TestPartitions(APITestCase.ForUser):
         parsed_partition = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_partition,
-            ContainsDict(
-                {
-                    "bootable": Is(True),
-                    "id": Equals(partition.id),
-                    "size": Equals(partition.size),
-                    "system_id": Equals(device.node_config.node.system_id),
-                    "device_id": Equals(device.id),
-                }
-            ),
+        self.assertEqual(parsed_partition.get("bootable"), True)
+        self.assertEqual(parsed_partition.get("id"), partition.id)
+        self.assertEqual(parsed_partition.get("size"), partition.size)
+        self.assertEqual(
+            parsed_partition.get("system_id"),
+            device.node_config.node.system_id,
         )
+        self.assertEqual(parsed_partition.get("device_id"), device.id)
 
     def test_read_partition_by_name(self):
         device = factory.make_PhysicalBlockDevice(
@@ -574,26 +569,17 @@ class TestPartitions(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_device = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
+        parsed_device = response.json()
+        self.assertEqual(
+            parsed_device["filesystem"].get("mount_point"), mount_point
         )
-        self.assertThat(
-            parsed_device["filesystem"],
-            ContainsDict(
-                {
-                    "mount_point": Equals(mount_point),
-                    "mount_options": Equals(mount_options),
-                }
-            ),
+        self.assertEqual(
+            parsed_device["filesystem"].get("mount_options"), mount_options
         )
-        self.assertThat(
-            reload_object(filesystem),
-            MatchesStructure(
-                mount_point=Equals(mount_point),
-                mount_options=Equals(mount_options),
-                is_mounted=Is(True),
-            ),
-        )
+        fs = reload_object(filesystem)
+        self.assertEqual(fs.mount_point, mount_point)
+        self.assertEqual(fs.mount_options, mount_options)
+        self.assertIs(fs.is_mounted, True)
 
     def test_mount_sets_mount_path_on_filesystem_as_user(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
@@ -622,23 +608,16 @@ class TestPartitions(APITestCase.ForUser):
         parsed_device = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_device["filesystem"],
-            ContainsDict(
-                {
-                    "mount_point": Equals(mount_point),
-                    "mount_options": Equals(mount_options),
-                }
-            ),
+        self.assertEqual(
+            parsed_device["filesystem"].get("mount_point"), mount_point
         )
-        self.assertThat(
-            reload_object(filesystem),
-            MatchesStructure(
-                mount_point=Equals(mount_point),
-                mount_options=Equals(mount_options),
-                is_mounted=Is(True),
-            ),
+        self.assertEqual(
+            parsed_device["filesystem"].get("mount_options"), mount_options
         )
+        fs = reload_object(filesystem)
+        self.assertEqual(fs.mount_point, mount_point)
+        self.assertEqual(fs.mount_options, mount_options)
+        self.assertIs(fs.is_mounted, True)
 
     def test_mount_returns_400_on_missing_mount_point(self):
         self.become_admin()
@@ -719,20 +698,20 @@ class TestPartitions(APITestCase.ForUser):
         )
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {"op": "unmount"})
-        content = response.content.decode(settings.DEFAULT_CHARSET)
-        self.assertEqual(http.client.OK, response.status_code, content)
-        self.assertThat(
-            json.loads(content)["filesystem"],
-            ContainsDict({"mount_point": Is(None), "mount_options": Is(None)}),
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            reload_object(filesystem),
-            MatchesStructure(
-                mount_point=Is(None),
-                mount_options=Is(None),
-                is_mounted=Is(False),
-            ),
+        parsed_device = response.json()
+        self.assertIsNone(
+            parsed_device["filesystem"].get("mount_point", object())
         )
+        self.assertIsNone(
+            parsed_device["filesystem"].get("mount_options", object())
+        )
+        fs = reload_object(filesystem)
+        self.assertIsNone(fs.mount_point)
+        self.assertIsNone(fs.mount_options)
+        self.assertIs(fs.is_mounted, False)
 
     def test_unmount_unmounts_filesystem_as_user(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
@@ -742,20 +721,20 @@ class TestPartitions(APITestCase.ForUser):
         )
         uri = get_partition_uri(partition)
         response = self.client.post(uri, {"op": "unmount"})
-        content = response.content.decode(settings.DEFAULT_CHARSET)
-        self.assertEqual(http.client.OK, response.status_code, content)
-        self.assertThat(
-            json.loads(content)["filesystem"],
-            ContainsDict({"mount_point": Is(None), "mount_options": Is(None)}),
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            reload_object(filesystem),
-            MatchesStructure(
-                mount_point=Is(None),
-                mount_options=Is(None),
-                is_mounted=Is(False),
-            ),
+        parsed_device = response.json()
+        self.assertIsNone(
+            parsed_device["filesystem"].get("mount_point", object())
         )
+        self.assertIsNone(
+            parsed_device["filesystem"].get("mount_options", object())
+        )
+        fs = reload_object(filesystem)
+        self.assertIsNone(fs.mount_point)
+        self.assertIsNone(fs.mount_options)
+        self.assertIs(fs.is_mounted, False)
 
     def test_add_tag_returns_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)

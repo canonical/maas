@@ -15,7 +15,6 @@ from piston3.utils import rc
 from maasserver.models import Event, Script
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
@@ -61,9 +60,9 @@ class TestAdminCommissioningScriptsAPI(APITestCase.ForAdmin):
                 "content": factory.make_file_upload(content=content.encode()),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
 
-        returned_script = json_load_bytes(response.content)
+        returned_script = response.json()
         self.assertEqual(name, returned_script["name"])
         self.assertEqual(
             content.encode(), b64decode(returned_script["content"])
@@ -84,7 +83,7 @@ class TestAdminCommissioningScriptsAPI(APITestCase.ForAdmin):
                 "content": factory.make_file_upload(content=content.encode()),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
         ret = json_load_bytes(response.content)
         self.assertDictEqual(
@@ -99,13 +98,13 @@ class TestCommissioningScriptsAPI(APITestCase.ForUser):
 
     def test_GET_is_forbidden(self):
         response = self.client.get(self.get_url())
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_POST_is_forbidden(self):
         response = self.client.post(
             self.get_url(), {"name": factory.make_name("script")}
         )
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestAdminCommissioningScriptAPI(APITestCase.ForAdmin):
@@ -117,7 +116,7 @@ class TestAdminCommissioningScriptAPI(APITestCase.ForAdmin):
     def test_GET_returns_script_contents(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.get(self.get_url(script.name))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script.script.data, response.content.decode("utf-8"))
 
     def test_PUT_updates_contents(self):
@@ -131,7 +130,7 @@ class TestAdminCommissioningScriptAPI(APITestCase.ForAdmin):
             self.get_url(script.name),
             {"content": factory.make_file_upload(content=new_content)},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(rc.ALL_OK.content, response.content)
 
         self.assertEqual(
@@ -158,7 +157,7 @@ class TestAdminCommissioningScriptAPI(APITestCase.ForAdmin):
                 "content": factory.make_file_upload(content=new_content),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
         ret = json_load_bytes(response.content)
         self.assertDictEqual(
@@ -187,19 +186,19 @@ class TestCommissioningScriptAPI(APITestCase.ForUser):
         # (consumers of the MAAS) to see these.
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.get(self.get_url(script.name))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_PUT_is_forbidden(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.put(
             self.get_url(script.name), {"content": factory.make_string()}
         )
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_DELETE_is_forbidden(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         response = self.client.put(self.get_url(script.name))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
@@ -238,7 +237,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url, {"system_id": [node.system_id]})
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         for parsed_result in parsed_results:
             if parsed_result["name"] == script_result.name:
@@ -289,7 +288,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             [
@@ -316,7 +315,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url, {"system_id": [node.system_id]})
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             [
@@ -343,7 +342,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url, {"system_id": [node.system_id]})
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             [
@@ -376,7 +375,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url, {"system_id": [node.system_id]})
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             {script_result.id for script_result in script_results},
@@ -393,7 +392,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url, {"name": script_result.name})
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertEqual(script_result.id, parsed_results[0]["id"])
 
@@ -406,7 +405,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertEqual([], parsed_results)
 
@@ -426,7 +425,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             {script_result.id for script_result in script_results},
@@ -455,7 +454,7 @@ class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
 
         url = reverse("node_results_handler")
         response = self.client.get(url)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
         self.assertCountEqual(
             {script_result.id for script_result in expected_results},

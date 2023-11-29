@@ -9,22 +9,11 @@ import json
 import random
 
 from django.urls import reverse
-from testtools.matchers import (
-    AfterPreprocessing,
-    ContainsDict,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesDict,
-    MatchesSetwise,
-)
 
 from maasserver.models.notification import Notification, NotificationDismissal
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 
 
@@ -52,42 +41,46 @@ class TestURIs(MAASServerTestCase):
         )
 
 
-def MatchesNotification(notification):
-    """Match the expected JSON rendering of `notification`."""
-    return MatchesDict(
-        {
-            "id": Equals(notification.id),
-            "ident": Equals(notification.ident),
-            "user": (
-                Is(None)
-                if notification.user_id is None
-                else ContainsDict(
-                    {"username": Equals(notification.user.username)}
-                )
-            ),
-            "users": Is(notification.users),
-            "admins": Is(notification.admins),
-            "message": Equals(notification.message),
-            "context": Equals(notification.context),
-            "category": Equals(notification.category),
-            "dismissable": Equals(notification.dismissable),
-            "resource_uri": Equals(get_notification_uri(notification)),
-        }
-    )
+class AssertNotificationsMixin:
+    def assert_notification_matches(self, notification, parsed_notification):
+        """Assert the expected JSON rendering of `notification`."""
+        self.assertEqual(parsed_notification.get("id"), notification.id)
+        self.assertEqual(parsed_notification.get("ident"), notification.ident)
+        if notification.user_id is None:
+            self.assertIsNone(parsed_notification.get("user", object()))
+        else:
+            self.assertEqual(
+                parsed_notification.get("user").get("username"),
+                notification.user.username,
+            )
+            self.assertEqual(
+                parsed_notification.get("users"), notification.users
+            )
+            self.assertEqual(
+                parsed_notification.get("admins"), notification.admins
+            )
+            self.assertEqual(
+                parsed_notification.get("message"), notification.message
+            )
+            self.assertEqual(
+                parsed_notification.get("context"), notification.context
+            )
+            self.assertEqual(
+                parsed_notification.get("category"), notification.category
+            )
+            self.assertEqual(
+                parsed_notification.get("dismissable"),
+                notification.dismissable,
+            )
+            self.assertEqual(
+                parsed_notification.get("resource_uri"),
+                get_notification_uri(notification),
+            )
 
 
-def HasBeenDismissedBy(user):
-    """Match a notification that has been dismissed by the given user."""
-
-    def dismissal_exists(notification):
-        return NotificationDismissal.objects.filter(
-            notification=notification, user=user
-        ).exists()
-
-    return AfterPreprocessing(dismissal_exists, Is(True))
-
-
-class TestNotificationsAPI(APITestCase.ForUserAndAdmin):
+class TestNotificationsAPI(
+    AssertNotificationsMixin, APITestCase.ForUserAndAdmin
+):
     def test_read(self):
         notifications = [
             factory.make_Notification(
@@ -98,30 +91,28 @@ class TestNotificationsAPI(APITestCase.ForUserAndAdmin):
         ]
         uri = get_notifications_uri()
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
-            json_load_bytes(response.content),
-            MatchesSetwise(
-                *(
-                    MatchesNotification(notification)
-                    for notification in notifications
-                    if notification.is_relevant_to(self.user)
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_notifications = response.json()
+        for notification, parsed_notification in zip(
+            notifications, parsed_notifications
+        ):
+            if notification.is_relevant_to(self.user):
+                self.assert_notification_matches(
+                    notification, parsed_notification
                 )
-            ),
-        )
 
     def test_create_with_minimal_fields(self):
         message = factory.make_name("message")
         uri = get_notifications_uri()
         response = self.client.post(uri, {"message": message})
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            response = json_load_bytes(response.content)
-            self.assertThat(response, ContainsDict({"id": IsInstance(int)}))
+            self.assertEqual(response.status_code, http.client.OK)
+            response = response.json()
+            self.assertIsInstance(response.get("id"), int)
             notification = Notification.objects.get(id=response["id"])
-            self.assertThat(response, MatchesNotification(notification))
+            self.assert_notification_matches(notification, response)
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_create_with_all_fields(self):
         context = {factory.make_name("key"): factory.make_name("value")}
@@ -138,51 +129,50 @@ class TestNotificationsAPI(APITestCase.ForUserAndAdmin):
         uri = get_notifications_uri()
         response = self.client.post(uri, data)
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            self.assertThat(
-                json_load_bytes(response.content),
-                ContainsDict(
-                    {
-                        "id": IsInstance(int),
-                        "ident": Equals(data["ident"]),
-                        "user": ContainsDict(
-                            {"username": Equals(self.user.username)}
-                        ),
-                        "users": Is(data["users"] == "true"),
-                        "admins": Is(data["admins"] == "true"),
-                        "message": Equals(data["message"]),
-                        "context": Equals(context),
-                        "category": Equals(data["category"]),
-                        "dismissable": Is(data["dismissable"] == "true"),
-                    }
-                ),
+            self.assertEqual(response.status_code, http.client.OK)
+            notification = response.json()
+            self.assertIsInstance(notification.get("id"), int)
+            self.assertEqual(notification.get("ident"), data["ident"])
+            self.assertEqual(
+                notification.get("user").get("username"), self.user.username
+            )
+            self.assertEqual(
+                notification.get("users"), data["users"] == "true"
+            )
+            self.assertEqual(
+                notification.get("admins"), data["admins"] == "true"
+            )
+            self.assertEqual(notification.get("message"), data["message"])
+            self.assertEqual(notification.get("context"), context)
+            self.assertEqual(notification.get("category"), data["category"])
+            self.assertEqual(
+                notification.get("dismissable"), data["dismissable"] == "true"
             )
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestNotificationsAPI_Anonymous(APITestCase.ForAnonymous):
     def test_read(self):
         uri = get_notifications_uri()
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
     def test_create(self):
         uri = get_notifications_uri()
         response = self.client.post(uri, {"message": factory.make_name()})
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
 
-class TestNotificationAPI(APITestCase.ForUserAndAdmin):
+class TestNotificationAPI(
+    AssertNotificationsMixin, APITestCase.ForUserAndAdmin
+):
     def test_read_notification_for_self(self):
         notification = factory.make_Notification(user=self.user)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
-            json_load_bytes(response.content),
-            MatchesNotification(notification),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assert_notification_matches(notification, response.json())
 
     def test_read_notification_for_other(self):
         other = factory.make_User()
@@ -190,36 +180,27 @@ class TestNotificationAPI(APITestCase.ForUserAndAdmin):
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            self.assertThat(
-                json_load_bytes(response.content),
-                MatchesNotification(notification),
-            )
+            self.assertEqual(response.status_code, http.client.OK)
+            self.assert_notification_matches(notification, response.json())
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_read_notification_for_users(self):
         notification = factory.make_Notification(users=True)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
-            json_load_bytes(response.content),
-            MatchesNotification(notification),
-        )
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assert_notification_matches(notification, response.json())
 
     def test_read_notification_for_admins(self):
         notification = factory.make_Notification(admins=True)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            self.assertThat(
-                json_load_bytes(response.content),
-                MatchesNotification(notification),
-            )
+            self.assertEqual(response.status_code, http.client.OK)
+            self.assert_notification_matches(notification, response.json())
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_update_is_for_admins_only(self):
         notification = factory.make_Notification()
@@ -227,59 +208,65 @@ class TestNotificationAPI(APITestCase.ForUserAndAdmin):
         uri = get_notification_uri(notification)
         response = self.client.put(uri, {"message": message_new})
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.OK))
+            self.assertEqual(response.status_code, http.client.OK)
             notification = reload_object(notification)
             self.assertEqual(message_new, notification.message)
-            self.assertThat(
-                json_load_bytes(response.content),
-                MatchesNotification(notification),
-            )
+            self.assert_notification_matches(notification, response.json())
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_delete_is_for_admins_only(self):
         notification = factory.make_Notification()
         uri = get_notification_uri(notification)
         response = self.client.delete(uri)
         if self.user.is_superuser:
-            self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+            self.assertEqual(response.status_code, http.client.NO_CONTENT)
             self.assertIsNone(reload_object(notification))
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_dismiss_notification_for_self(self):
         notification = factory.make_Notification(user=self.user)
         uri = get_notification_uri(notification)
         response = self.client.post(uri, {"op": "dismiss"})
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(notification, HasBeenDismissedBy(self.user))
+        self.assertEqual(response.status_code, http.client.OK)
+        has_been_dismissed = NotificationDismissal.objects.filter(
+            notification=notification, user=self.user
+        ).exists()
+        self.assertTrue(has_been_dismissed)
 
     def test_dismiss_notification_for_other(self):
         other = factory.make_User()
         notification = factory.make_Notification(user=other)
         uri = get_notification_uri(notification)
         response = self.client.post(uri, {"op": "dismiss"})
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_dismiss_notification_for_users(self):
         notification = factory.make_Notification(users=True)
         uri = get_notification_uri(notification)
         response = self.client.post(uri, {"op": "dismiss"})
         if notification.is_relevant_to(self.user):
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            self.assertThat(notification, HasBeenDismissedBy(self.user))
+            self.assertEqual(response.status_code, http.client.OK)
+            has_been_dismissed = NotificationDismissal.objects.filter(
+                notification=notification, user=self.user
+            ).exists()
+            self.assertTrue(has_been_dismissed)
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_dismiss_notification_for_admins(self):
         notification = factory.make_Notification(admins=True)
         uri = get_notification_uri(notification)
         response = self.client.post(uri, {"op": "dismiss"})
         if notification.is_relevant_to(self.user):
-            self.assertThat(response, HasStatusCode(http.client.OK))
-            self.assertThat(notification, HasBeenDismissedBy(self.user))
+            self.assertEqual(response.status_code, http.client.OK)
+            has_been_dismissed = NotificationDismissal.objects.filter(
+                notification=notification, user=self.user
+            ).exists()
+            self.assertTrue(has_been_dismissed)
         else:
-            self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+            self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestNotificationAPI_Anonymous(APITestCase.ForAnonymous):
@@ -288,29 +275,29 @@ class TestNotificationAPI_Anonymous(APITestCase.ForAnonymous):
         notification = factory.make_Notification(user=other)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
     def test_read_notification_for_users(self):
         notification = factory.make_Notification(users=True)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
     def test_read_notification_for_admins(self):
         notification = factory.make_Notification(admins=True)
         uri = get_notification_uri(notification)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
     def test_update_is_for_admins_only(self):
         notification = factory.make_Notification()
         message_new = factory.make_name("message")
         uri = get_notification_uri(notification)
         response = self.client.put(uri, {"message": message_new})
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
 
     def test_delete_is_for_admins_only(self):
         notification = factory.make_Notification()
         uri = get_notification_uri(notification)
         response = self.client.delete(uri)
-        self.assertThat(response, HasStatusCode(http.client.UNAUTHORIZED))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)

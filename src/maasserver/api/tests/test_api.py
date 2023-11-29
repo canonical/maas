@@ -14,7 +14,6 @@ from django.conf import settings
 from django.urls import reverse
 from piston3.doc import generate_doc
 from requests.exceptions import RequestException
-from testtools.matchers import Contains, Equals, MatchesListwise
 
 from maasserver import urls_api as urlconf
 from maasserver.api import account as account_module
@@ -30,7 +29,6 @@ from maasserver.models.user import get_auth_tokens
 from maasserver.testing import get_data
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import (
     MAASSensibleClient,
@@ -39,12 +37,6 @@ from maasserver.testing.testclient import (
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.keys import ImportSSHKeysError
 from maasserver.utils.orm import get_one
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.events import AUDIT
 
@@ -122,12 +114,8 @@ class TestAuthentication(MAASServerTestCase):
         # Delete the user's API keys.
         get_auth_tokens(user).delete()
         response = client.post(reverse("nodes_handler"), {"op": "start"})
-        observed = response.status_code, response.content
-        expected = (
-            Equals(http.client.UNAUTHORIZED),
-            Contains(b"Invalid access token:"),
-        )
-        self.assertThat(observed, MatchesListwise(expected))
+        self.assertEqual(response.status_code, http.client.UNAUTHORIZED)
+        self.assertIn(b"Invalid access token:", response.content)
 
 
 class TestXSSBugs(APITestCase.ForUser):
@@ -174,7 +162,7 @@ class TestAccountAPI(APITestCase.ForUser):
         self.assertIsInstance(parsed_result["token_key"], str)
         self.assertIsInstance(parsed_result["token_secret"], str)
         self.assertIsInstance(parsed_result["name"], str)
-        self.assertThat(mock_create_audit_event, MockCalledOnce())
+        mock_create_audit_event.assert_called_once()
 
     def test_create_authorisation_token_with_token_name(self):
         # The api operation create_authorisation_token can also accept
@@ -193,7 +181,7 @@ class TestAccountAPI(APITestCase.ForUser):
         )
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(parsed_result["name"], token_name)
-        self.assertThat(mock_create_audit_event, MockCalledOnce())
+        mock_create_audit_event.assert_called_once()
 
     def test_delete_authorisation_token_not_found(self):
         # If the provided token_key does not exist (for the currently
@@ -207,7 +195,7 @@ class TestAccountAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
-        self.assertThat(mock_create_audit_event, MockNotCalled())
+        mock_create_audit_event.assert_not_called()
 
     def test_delete_authorisation_token_bad_request_no_token(self):
         # token_key is a mandatory parameter when calling
@@ -221,7 +209,7 @@ class TestAccountAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertThat(mock_create_audit_event, MockNotCalled())
+        mock_create_audit_event.assert_not_called()
 
     def test_update_authorisation_token(self):
         token_name_orig = "Test_Token"
@@ -256,7 +244,7 @@ class TestAccountAPI(APITestCase.ForUser):
         for token in parsed_list_response:
             if token["token"] == created_token:
                 self.assertEqual(token["name"], token_name_updated)
-        self.assertThat(mock_create_audit_event, MockCallsMatch(ANY, ANY))
+        mock_create_audit_event.assert_has_calls([ANY, ANY])
 
     def test_update_authorisation_token_with_token_key(self):
         # We use only "token_key" portion of the authorisation token
@@ -293,7 +281,7 @@ class TestAccountAPI(APITestCase.ForUser):
         for token in parsed_list_response:
             if token["token"] == created_token:
                 self.assertEqual(token["name"], token_name_updated)
-        self.assertThat(mock_create_audit_event, MockCallsMatch(ANY, ANY))
+        mock_create_audit_event.assert_has_calls([ANY, ANY])
 
     def test_update_authorisation_token_name_not_found(self):
         # If the provided token_key does not exist (for the currently
@@ -311,7 +299,7 @@ class TestAccountAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
-        self.assertThat(mock_create_audit_event, MockNotCalled())
+        mock_create_audit_event.assert_not_called()
 
     def test_update_authorisation_token_name_bad_request_no_token(self):
         # `token` and `name` are mandatory parameters when calling
@@ -325,7 +313,7 @@ class TestAccountAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertThat(mock_create_audit_event, MockNotCalled())
+        mock_create_audit_event.assert_not_called()
 
     def test_list_tokens(self):
         token1_name = "Test Token 1"
@@ -354,7 +342,7 @@ class TestAccountAPI(APITestCase.ForUser):
                 self.assertEqual(
                     token_fields[2], parsed_creation_response["token_secret"]
                 )
-        self.assertThat(mock_create_audit_event, MockCalledOnce())
+        mock_create_audit_event.assert_called_once()
 
     def test_list_tokens_format(self):
         self.client.post(
@@ -533,9 +521,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertEqual(key_string, added_key.key)
         self.assertEqual(ks, str(added_key.keysource))
         self.assertEqual(http.client.OK, response.status_code, response)
-        self.assertThat(
-            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id)
-        )
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Imported SSH keys.")
@@ -560,9 +546,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         self.assertEqual(str(keysource), str(added_key.keysource))
         self.assertEqual(1, KeySource.objects.count())
         self.assertEqual(http.client.OK, response.status_code, response)
-        self.assertThat(
-            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id)
-        )
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
 
     def test_import_ssh_keys_crashes_for_ImportSSHKeysERROR(self):
         protocol = random.choice(
@@ -631,14 +615,14 @@ class TestMAASAPIVersioning(APITestCase.ForAnonymousAndUserAndAdmin):
 
     def test_get_api_version(self):
         response = self.client.get(reverse("api_version"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(http.client.OK, response.status_code)
         self.assertIn("text/plain", response["Content-Type"])
         self.assertEqual(b"2.0", response.content)
 
     def test_old_api_request(self):
         old_api_url = reverse("api_v1_error") + "maas/" + factory.make_string()
         response = self.client.get(old_api_url)
-        self.assertThat(response, HasStatusCode(http.client.GONE))
+        self.assertEqual(http.client.GONE, response.status_code)
         self.assertIn("text/plain", response["Content-Type"])
         self.assertEqual(
             b"The 1.0 API is no longer available. Please use API version 2.0.",

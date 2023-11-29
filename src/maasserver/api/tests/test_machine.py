@@ -6,19 +6,13 @@ from datetime import datetime
 import http.client
 import logging
 from random import choice
-from unittest.mock import ANY, call
+from unittest.mock import ANY
 
 from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 from django.utils.http import urlencode
 from netaddr import IPAddress, IPNetwork
-from testtools.matchers import (
-    ContainsDict,
-    MatchesListwise,
-    MatchesStructure,
-    StartsWith,
-)
 from twisted.internet import defer
 import yaml
 
@@ -58,20 +52,12 @@ from maasserver.testing.api import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.orm import reload_objects
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit, reload_object
-from maastesting.matchers import (
-    Equals,
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
@@ -88,7 +74,7 @@ class TestMachineAnonAPI(MAASServerTestCase):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = MAASSensibleOAuthClient(get_node_init_user(), token)
         response = client.get(reverse("machines_handler"))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
 
 class TestMachinesAPILoggedIn(APITestCase.ForUserAndAdmin):
@@ -971,18 +957,15 @@ class TestMachineAPI(APITestCase.ForUser):
                 "comment": comment,
             },
         )
-        self.assertThat(
-            machine_start,
-            MockCalledOnceWith(
-                self.user,
-                user_data=ANY,
-                comment=comment,
-                install_kvm=ANY,
-                register_vmhost=ANY,
-                bridge_type=ANY,
-                bridge_stp=ANY,
-                bridge_fd=ANY,
-            ),
+        machine_start.assert_called_once_with(
+            self.user,
+            user_data=ANY,
+            comment=comment,
+            install_kvm=ANY,
+            register_vmhost=ANY,
+            bridge_type=ANY,
+            bridge_stp=ANY,
+            bridge_fd=ANY,
         )
 
     def test_POST_deploy_handles_missing_comment(self):
@@ -1002,18 +985,15 @@ class TestMachineAPI(APITestCase.ForUser):
             self.get_machine_uri(machine),
             {"op": "deploy", "distro_series": distro_series},
         )
-        self.assertThat(
-            machine_start,
-            MockCalledOnceWith(
-                self.user,
-                user_data=ANY,
-                comment=None,
-                install_kvm=ANY,
-                register_vmhost=ANY,
-                bridge_type=ANY,
-                bridge_stp=ANY,
-                bridge_fd=ANY,
-            ),
+        machine_start.assert_called_once_with(
+            self.user,
+            user_data=ANY,
+            comment=None,
+            install_kvm=ANY,
+            register_vmhost=ANY,
+            bridge_type=ANY,
+            bridge_stp=ANY,
+            bridge_fd=ANY,
         )
 
     def test_POST_deploy_doesnt_reset_power_options_bug_1569102(self):
@@ -1116,17 +1096,14 @@ class TestMachineAPI(APITestCase.ForUser):
             "comment": factory.make_name(),
         }
         self.client.post(self.get_machine_uri(machine), request)
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(
-                ANY,
-                agent_name=ANY,
-                bridge_all=False,
-                bridge_type=BRIDGE_TYPE.STANDARD,
-                bridge_fd=0,
-                bridge_stp=False,
-                comment=request["comment"],
-            ),
+        machine_method.assert_called_once_with(
+            ANY,
+            agent_name=ANY,
+            bridge_all=False,
+            bridge_type=BRIDGE_TYPE.STANDARD,
+            bridge_fd=0,
+            bridge_stp=False,
+            comment=request["comment"],
         )
 
     def test_POST_deploy_passes_bridge_settings(self):
@@ -1151,17 +1128,14 @@ class TestMachineAPI(APITestCase.ForUser):
             "bridge_fd": 7,
         }
         self.client.post(self.get_machine_uri(machine), request)
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(
-                ANY,
-                agent_name=ANY,
-                bridge_all=True,
-                bridge_type=BRIDGE_TYPE.OVS,
-                bridge_fd=7,
-                bridge_stp=True,
-                comment=None,
-            ),
+        machine_method.assert_called_once_with(
+            ANY,
+            agent_name=ANY,
+            bridge_all=True,
+            bridge_type=BRIDGE_TYPE.OVS,
+            bridge_fd=7,
+            bridge_stp=True,
+            comment=None,
         )
 
     def test_POST_deploy_stores_vcenter_registration_by_default(self):
@@ -1518,8 +1492,8 @@ class TestMachineAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         owned_machine = Machine.objects.get(id=owned_machine.id)
-        self.expectThat(owned_machine.status, Equals(NODE_STATUS.RELEASING))
-        self.expectThat(owned_machine.owner, Equals(self.user))
+        self.assertEqual(owned_machine.status, NODE_STATUS.RELEASING)
+        self.assertEqual(owned_machine.owner, self.user)
 
     def test_POST_release_does_nothing_for_ready_machine(self):
         machine = factory.make_Node_with_Interface_on_Subnet(
@@ -1655,17 +1629,14 @@ class TestMachineAPI(APITestCase.ForUser):
         self.client.post(
             reverse("machines_handler"), {"op": "allocate", "comment": comment}
         )
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(
-                ANY,
-                agent_name=ANY,
-                bridge_all=False,
-                bridge_type=BRIDGE_TYPE.STANDARD,
-                bridge_fd=False,
-                bridge_stp=False,
-                comment=comment,
-            ),
+        machine_method.assert_called_once_with(
+            ANY,
+            agent_name=ANY,
+            bridge_all=False,
+            bridge_type=BRIDGE_TYPE.STANDARD,
+            bridge_fd=False,
+            bridge_stp=False,
+            comment=comment,
         )
 
     def test_POST_allocate_handles_missing_comment(self):
@@ -1677,17 +1648,14 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         machine_method = self.patch(node_module.Machine, "acquire")
         self.client.post(reverse("machines_handler"), {"op": "allocate"})
-        self.assertThat(
-            machine_method,
-            MockCalledOnceWith(
-                ANY,
-                agent_name=ANY,
-                bridge_all=False,
-                bridge_type=BRIDGE_TYPE.STANDARD,
-                bridge_fd=0,
-                bridge_stp=False,
-                comment=None,
-            ),
+        machine_method.assert_called_once_with(
+            ANY,
+            agent_name=ANY,
+            bridge_all=False,
+            bridge_type=BRIDGE_TYPE.STANDARD,
+            bridge_fd=0,
+            bridge_stp=False,
+            comment=None,
         )
 
     def test_POST_release_frees_hwe_kernel(self):
@@ -1930,9 +1898,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.client.post(
             self.get_machine_uri(machine), {"op": "lock", "comment": comment}
         )
-        self.assertThat(
-            node_lock, MockCalledOnceWith(self.user, comment=comment)
-        )
+        node_lock.assert_called_once_with(self.user, comment=comment)
 
     def test_POST_lock_not_deployed(self):
         machine = factory.make_Node(status=NODE_STATUS.READY, owner=self.user)
@@ -1968,9 +1934,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.client.post(
             self.get_machine_uri(machine), {"op": "unlock", "comment": comment}
         )
-        self.assertThat(
-            node_unlock, MockCalledOnceWith(self.user, comment=comment)
-        )
+        node_unlock.assert_called_once_with(self.user, comment=comment)
 
     def test_POST_unlock_unlocked(self):
         machine = factory.make_Node(owner=self.user)
@@ -2685,7 +2649,7 @@ class TestMachineAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        self.assertThat(mock_async_delete, MockCallsMatch(call()))
+        mock_async_delete.assert_called_once_with()
 
     def test_pod_DELETE_delete_without_force(self):
         self.become_admin()
@@ -2703,7 +2667,7 @@ class TestMachineAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.BAD_REQUEST, response),
         )
-        self.assertThat(mock_async_delete, MockNotCalled())
+        mock_async_delete.assert_not_called()
 
 
 class TestMachineAPITransactional(APITransactionTestCase.ForUser):
@@ -2889,9 +2853,8 @@ class TestSetStorageLayout(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            mock_set_storage_layout,
-            MockCalledOnceWith("flat", params=ANY, allow_fallback=False),
+        mock_set_storage_layout.assert_called_once_with(
+            "flat", params=ANY, allow_fallback=False
         )
 
 
@@ -2932,16 +2895,12 @@ class TestMountSpecial(APITestCase.ForUser):
                 },
             )
             self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-            self.expectThat(
-                json_load_bytes(response.content),
-                ContainsDict(
-                    {
-                        "fstype": MatchesListwise(
-                            [StartsWith("Select a valid choice.")]
-                        )
-                    }
-                ),
-                "using fstype " + fstype,
+            error = json_load_bytes(response.content)
+            self.assertEqual(
+                error.get("fstype"),
+                [
+                    f"Select a valid choice. {fstype} is not one of the available choices."
+                ],
             )
 
     def test_mount_point_must_be_absolute(self):
@@ -2957,14 +2916,10 @@ class TestMountSpecial(APITestCase.ForUser):
             },
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
-                {
-                    # XXX: Wow, what a lame error from AbsolutePathField!
-                    "mount_point": Equals(["Enter a valid value."])
-                }
-            ),
+        self.assertEqual(
+            json_load_bytes(response.content).get("mount_point"),
+            # XXX: Wow, what a lame error from AbsolutePathField!
+            ["Enter a valid value."],
         )
 
 
@@ -2992,29 +2947,18 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
+        machine_response = json_load_bytes(response.content)
+        self.assertEqual(
+            machine_response.get("special_filesystems"),
+            [
                 {
-                    "special_filesystems": MatchesListwise(
-                        [
-                            ContainsDict(
-                                {
-                                    "fstype": Equals(filesystem.fstype),
-                                    "label": Equals(filesystem.label),
-                                    "mount_options": Equals(
-                                        filesystem.mount_options
-                                    ),
-                                    "mount_point": Equals(
-                                        filesystem.mount_point
-                                    ),
-                                    "uuid": Equals(filesystem.uuid),
-                                }
-                            )
-                        ]
-                    )
+                    "fstype": filesystem.fstype,
+                    "label": filesystem.label,
+                    "mount_options": filesystem.mount_options,
+                    "mount_point": filesystem.mount_point,
+                    "uuid": filesystem.uuid,
                 }
-            ),
+            ],
         )
 
     def test_only_acquired_special_filesystems(self):
@@ -3035,29 +2979,18 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
+        machine_response = json_load_bytes(response.content)
+        self.assertEqual(
+            machine_response.get("special_filesystems"),
+            [
                 {
-                    "special_filesystems": MatchesListwise(
-                        [
-                            ContainsDict(
-                                {
-                                    "fstype": Equals(filesystem.fstype),
-                                    "label": Equals(filesystem.label),
-                                    "mount_options": Equals(
-                                        filesystem.mount_options
-                                    ),
-                                    "mount_point": Equals(
-                                        filesystem.mount_point
-                                    ),
-                                    "uuid": Equals(filesystem.uuid),
-                                }
-                            )
-                        ]
-                    )
+                    "fstype": filesystem.fstype,
+                    "label": filesystem.label,
+                    "mount_options": filesystem.mount_options,
+                    "mount_point": filesystem.mount_point,
+                    "uuid": filesystem.uuid,
                 }
-            ),
+            ],
         )
 
     def test_only_not_acquired_special_filesystems(self):
@@ -3078,29 +3011,18 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
+        machine_response = json_load_bytes(response.content)
+        self.assertEqual(
+            machine_response.get("special_filesystems"),
+            [
                 {
-                    "special_filesystems": MatchesListwise(
-                        [
-                            ContainsDict(
-                                {
-                                    "fstype": Equals(filesystem.fstype),
-                                    "label": Equals(filesystem.label),
-                                    "mount_options": Equals(
-                                        filesystem.mount_options
-                                    ),
-                                    "mount_point": Equals(
-                                        filesystem.mount_point
-                                    ),
-                                    "uuid": Equals(filesystem.uuid),
-                                }
-                            )
-                        ]
-                    )
+                    "fstype": filesystem.fstype,
+                    "label": filesystem.label,
+                    "mount_options": filesystem.mount_options,
+                    "mount_point": filesystem.mount_point,
+                    "uuid": filesystem.uuid,
                 }
-            ),
+            ],
         )
 
     def assertCanMountFilesystem(self, machine):
@@ -3118,19 +3040,13 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(
-            list(machine.current_config.special_filesystems),
-            MatchesListwise(
-                [
-                    MatchesStructure.byEquality(
-                        fstype=self.fstype,
-                        mount_point=mount_point,
-                        mount_options=mount_options,
-                        node_config=machine.current_config,
-                    )
-                ]
-            ),
-        )
+        special_fss = machine.current_config.special_filesystems
+        self.assertEqual(len(special_fss), 1)
+        special_fs = special_fss[0]
+        self.assertEqual(special_fs.fstype, self.fstype)
+        self.assertEqual(special_fs.mount_point, mount_point)
+        self.assertEqual(special_fs.mount_options, mount_options)
+        self.assertEqual(special_fs.node_config, machine.current_config)
 
     def test_user_mounts_non_storage_filesystem_on_allocated_machine(self):
         self.assertCanMountFilesystem(
@@ -3151,9 +3067,9 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
                     "mount_options": factory.make_name("options"),
                 },
             )
-            self.expectThat(
+            self.assertEqual(
                 response.status_code,
-                Equals(http.client.CONFLICT),
+                http.client.CONFLICT,
                 "using status %d" % status,
             )
 
@@ -3184,9 +3100,9 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
                     "mount_options": factory.make_name("options"),
                 },
             )
-            self.expectThat(
+            self.assertEqual(
                 response.status_code,
-                Equals(http.client.CONFLICT),
+                http.client.CONFLICT,
                 "using status %d" % status,
             )
 
@@ -3223,15 +3139,8 @@ class TestUnmountSpecial(APITestCase.ForUser):
             },
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict(
-                {
-                    # XXX: Wow, what a lame error from AbsolutePathField!
-                    "mount_point": Equals(["Enter a valid value."])
-                }
-            ),
-        )
+        machine = json_load_bytes(response.content)
+        self.assertEqual(machine.get("mount_point"), ["Enter a valid value."])
 
 
 class TestUnmountSpecialScenarios(APITestCase.ForUser):
@@ -3284,9 +3193,9 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
                     "mount_point": filesystem.mount_point,
                 },
             )
-            self.expectThat(
+            self.assertEqual(
                 response.status_code,
-                Equals(http.client.CONFLICT),
+                http.client.CONFLICT,
                 "using status %d" % status,
             )
 
@@ -3320,9 +3229,9 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
                     "mount_point": filesystem.mount_point,
                 },
             )
-            self.expectThat(
+            self.assertEqual(
                 response.status_code,
-                Equals(http.client.CONFLICT),
+                http.client.CONFLICT,
                 "using status %d" % status,
             )
 
@@ -3563,9 +3472,7 @@ class TestGetCurtinConfig(APITestCase.ForUser):
             yaml.safe_dump(fake_config, default_flow_style=False),
             response.content.decode(settings.DEFAULT_CHARSET),
         )
-        self.assertThat(
-            mock_get_curtin_merged_config, MockCalledOnceWith(ANY, machine)
-        )
+        mock_get_curtin_merged_config.assert_called_once_with(ANY, machine)
 
 
 class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
@@ -3595,8 +3502,8 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
         )
-        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
-        self.assertThat(mock_restore_network_interfaces, MockCalledOnce())
+        mock_set_initial_networking_config.assert_called_once()
+        mock_restore_network_interfaces.assert_called_once()
 
     def test_restore_networking_configuration_no_gateway_link_ipv4_conflict(
         self,
@@ -3682,7 +3589,7 @@ class TestRestoreNetworkingConfiguration(APITestCase.ForUser):
             {"op": "restore_networking_configuration"},
         )
         self.assertEqual(http.client.CONFLICT, response.status_code)
-        self.assertThat(mock_set_initial_networking_config, MockNotCalled())
+        mock_set_initial_networking_config.assert_not_called()
 
 
 class TestRestoreStorageConfiguration(APITestCase.ForUser):
@@ -3709,7 +3616,7 @@ class TestRestoreStorageConfiguration(APITestCase.ForUser):
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
         )
-        self.assertThat(mock_set_default_storage_layout, MockCalledOnce())
+        mock_set_default_storage_layout.assert_called_once()
 
     def test_restore_storage_configuration_requires_admin(self):
         machine = factory.make_Machine()
@@ -3737,7 +3644,7 @@ class TestRestoreStorageConfiguration(APITestCase.ForUser):
             {"op": "restore_storage_configuration"},
         )
         self.assertEqual(http.client.CONFLICT, response.status_code)
-        self.assertThat(mock_set_default_storage_layout, MockNotCalled())
+        mock_set_default_storage_layout.assert_not_called()
 
 
 class TestRestoreDefaultConfiguration(APITestCase.ForUser):
@@ -3770,9 +3677,9 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
         )
-        self.assertThat(mock_set_default_storage_layout, MockCalledOnce())
-        self.assertThat(mock_restore_network_interfaces, MockCalledOnce())
-        self.assertThat(mock_set_initial_networking_config, MockCalledOnce())
+        mock_set_default_storage_layout.assert_called_once()
+        mock_restore_network_interfaces.assert_called_once()
+        mock_set_initial_networking_config.assert_called_once()
 
     def test_restore_default_configuration_requires_admin(self):
         machine = factory.make_Machine()
@@ -3800,7 +3707,7 @@ class TestRestoreDefaultConfiguration(APITestCase.ForUser):
             {"op": "restore_default_configuration"},
         )
         self.assertEqual(http.client.CONFLICT, response.status_code)
-        self.assertThat(mock_restore_default_configuration, MockNotCalled())
+        mock_restore_default_configuration.assert_not_called()
 
 
 class TestMarkBroken(APITestCase.ForUser):
@@ -3861,9 +3768,7 @@ class TestMarkBroken(APITestCase.ForUser):
         self.client.post(
             self.get_node_uri(node), {"op": "mark_broken", "comment": comment}
         )
-        self.assertThat(
-            node_mark_broken, MockCalledOnceWith(self.user, comment)
-        )
+        node_mark_broken.assert_called_once_with(self.user, comment)
 
     def test_mark_broken_handles_missing_comment(self):
         node = factory.make_Node(
@@ -3871,7 +3776,7 @@ class TestMarkBroken(APITestCase.ForUser):
         )
         node_mark_broken = self.patch(node_module.Machine, "mark_broken")
         self.client.post(self.get_node_uri(node), {"op": "mark_broken"})
-        self.assertThat(node_mark_broken, MockCalledOnceWith(self.user, None))
+        node_mark_broken.assert_called_once_with(self.user, None)
 
     def test_mark_broken_requires_ownership(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -3890,11 +3795,9 @@ class TestMarkBroken(APITestCase.ForUser):
             response = self.client.post(
                 self.get_node_uri(node), {"op": "mark_broken"}
             )
-            self.expectThat(
-                response.status_code, Equals(http.client.OK), response
-            )
+            self.assertEqual(response.status_code, http.client.OK, response)
             node = reload_object(node)
-            self.expectThat(node.status, Equals(NODE_STATUS.BROKEN))
+            self.assertEqual(node.status, NODE_STATUS.BROKEN)
 
 
 class TestMarkFixed(APITestCase.ForUser):
@@ -3926,16 +3829,14 @@ class TestMarkFixed(APITestCase.ForUser):
         self.client.post(
             self.get_node_uri(node), {"op": "mark_fixed", "comment": comment}
         )
-        self.assertThat(
-            node_mark_fixed, MockCalledOnceWith(self.user, comment)
-        )
+        node_mark_fixed.assert_called_once_with(self.user, comment)
 
     def test_mark_fixed_handles_missing_comment(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
         node_mark_fixed = self.patch(node_module.Machine, "mark_fixed")
         self.client.post(self.get_node_uri(node), {"op": "mark_fixed"})
-        self.assertThat(node_mark_fixed, MockCalledOnceWith(self.user, None))
+        node_mark_fixed.assert_called_once_with(self.user, None)
 
 
 class TestRescueMode(APITransactionTestCase.ForUser):

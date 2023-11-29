@@ -11,7 +11,6 @@ from urllib import parse
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models.iprange import IPRange
 from maasserver.testing.api import APITestCase
@@ -195,19 +194,12 @@ class TestIPRangeAPI(APITestCase.ForUser):
         parsed_ipranges = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_ipranges,
-            ContainsDict(
-                {
-                    "id": Equals(iprange.id),
-                    "start_ip": Equals(iprange.start_ip),
-                    "end_ip": Equals(iprange.end_ip),
-                    "comment": Equals(iprange.comment),
-                    "type": Equals(iprange.type),
-                    "user": Equals(iprange.user),
-                }
-            ),
-        )
+        self.assertEqual(parsed_ipranges.get("id"), iprange.id)
+        self.assertEqual(parsed_ipranges.get("start_ip"), iprange.start_ip)
+        self.assertEqual(parsed_ipranges.get("end_ip"), iprange.end_ip)
+        self.assertEqual(parsed_ipranges.get("comment"), iprange.comment)
+        self.assertEqual(parsed_ipranges.get("type"), iprange.type)
+        self.assertEqual(parsed_ipranges.get("user"), iprange.user)
 
     def test_read_404_when_bad_id(self):
         uri = reverse("iprange_handler", args=[random.randint(10000, 20000)])

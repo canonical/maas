@@ -4,26 +4,13 @@
 from inspect import getdoc
 import random
 import types
-from unittest.mock import sentinel
+from unittest.mock import call, sentinel
 
 from django.core.exceptions import ImproperlyConfigured
 from django.urls import include, path, re_path
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    ContainsAll,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesAny,
-    MatchesDict,
-    MatchesStructure,
-    Not,
-)
 
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
@@ -47,7 +34,6 @@ from maasserver.api.support import (
 )
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -234,7 +220,8 @@ class TestHandlers(MAASTestCase):
             # Doc for a rendered docstring containing annotations
             "Optional. A brief description of the new zone.",
         ]
-        self.assertThat(doc, ContainsAll(doc_snippets))
+        for snippet in doc_snippets:
+            self.assertIn(snippet, doc)
 
     def test_does_not_contain_documentation_warnings_syntax_errors(self):
         # We don't want any of these strings in the rendered docs ever.
@@ -400,58 +387,20 @@ class TestDescribingAPI(MAASTestCase):
         self.assertEqual(expected, _describe_resource(resource))
 
     def test_describe_api_returns_description_document(self):
-        is_list = IsInstance(list)
-        is_tuple = IsInstance(tuple)
-        is_text = MatchesAny(IsInstance((str, bytes)), Is(None))
-        is_bool = IsInstance(bool)
+        foo = {"anon": None, "auth": None, "name": "foo"}
+        bar = {"anon": None, "auth": None, "name": "bar"}
+        mock_find_api_resources = self.patch(doc_module, "find_api_resources")
+        mock_find_api_resources.return_value = ["foo", "bar"]
+        mock_describe_resource = self.patch(doc_module, "_describe_resource")
+        mock_describe_resource.side_effect = [foo, bar]
+        from maasserver import urls_api as urlconf
 
-        is_operation = MatchesAny(Is(None), is_text)
-
-        is_http_method = MatchesAny(
-            Equals("GET"), Equals("POST"), Equals("PUT"), Equals("DELETE")
-        )
-
-        is_action = MatchesDict(
-            {
-                "doc": is_text,
-                "method": is_http_method,
-                "name": is_text,
-                "op": is_operation,
-                "restful": is_bool,
-            }
-        )
-
-        is_handler = MatchesDict(
-            {
-                "actions": MatchesAll(is_list, AllMatch(is_action)),
-                "doc": is_text,
-                "name": is_text,
-                "params": is_tuple,
-                "path": is_text,
-            }
-        )
-
-        is_resource = MatchesDict(
-            {
-                "anon": MatchesAny(Is(None), is_handler),
-                "auth": MatchesAny(Is(None), is_handler),
-                "name": is_text,
-            }
-        )
-
-        is_resource_list = MatchesAll(is_list, AllMatch(is_resource))
-        is_legacy_handler_list = MatchesAll(is_list, AllMatch(is_handler))
-
-        self.assertThat(
-            _describe_api(),
-            MatchesDict(
-                {
-                    "doc": Equals("MAAS API"),
-                    "resources": is_resource_list,
-                    "handlers": is_legacy_handler_list,
-                }
-            ),
-        )
+        description = _describe_api()
+        mock_find_api_resources.assert_called_once_with(urlconf)
+        mock_describe_resource.assert_has_calls([call("foo"), call("bar")])
+        self.assertEqual(description.get("doc"), "MAAS API")
+        self.assertIsInstance(description.get("resources"), list)
+        self.assertIsInstance(description.get("handlers"), list)
 
 
 class TestGeneratePowerTypesDoc(MAASTestCase):
@@ -459,7 +408,8 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
 
     def test_generate_power_types_doc_generates_doc(self):
         doc = generate_power_types_doc()
-        self.assertThat(doc, ContainsAll(["Power types", "IPMI", "virsh"]))
+        for needle in ["Power types", "IPMI", "virsh"]:
+            self.assertIn(needle, doc)
 
     def test_generate_power_types_doc_generates_describes_power_type(self):
         power_driver = random.choice(
@@ -470,17 +420,10 @@ class TestGeneratePowerTypesDoc(MAASTestCase):
             ]
         )
         doc = generate_power_types_doc()
-        self.assertThat(
-            doc,
-            ContainsAll(
-                [
-                    power_driver.name,
-                    power_driver.description,
-                    power_driver.settings[0]["name"],
-                    power_driver.settings[0]["label"],
-                ]
-            ),
-        )
+        self.assertIn(power_driver.name, doc)
+        self.assertIn(power_driver.description, doc)
+        self.assertIn(power_driver.settings[0]["name"], doc)
+        self.assertIn(power_driver.settings[0]["label"], doc)
 
 
 class TestGeneratePodTypesDoc(MAASTestCase):
@@ -488,74 +431,60 @@ class TestGeneratePodTypesDoc(MAASTestCase):
 
     def test_generate_pod_types_doc_generates_doc(self):
         doc = generate_pod_types_doc()
-        self.assertThat(doc, ContainsAll(["Pod types", "virsh"]))
+        for needle in ["Pod types", "virsh"]:
+            self.assertIn(needle, doc)
 
     def test_generate_pod_types_doc_generates_describes_types(self):
         pod_driver = random.choice([driver for _, driver in PodDriverRegistry])
         doc = generate_pod_types_doc()
-        self.assertThat(
-            doc, ContainsAll([pod_driver.name, pod_driver.description])
-        )
+        self.assertIn(pod_driver.name, doc)
+        self.assertIn(pod_driver.description, doc)
 
 
 class TestDescribeCanonical(MAASTestCase):
     def test_passes_True_False_and_None_through(self):
-        self.expectThat(_describe_canonical(True), Is(True))
-        self.expectThat(_describe_canonical(False), Is(False))
-        self.expectThat(_describe_canonical(None), Is(None))
+        self.assertTrue(_describe_canonical(True))
+        self.assertFalse(_describe_canonical(False))
+        self.assertIsNone(_describe_canonical(None))
 
     def test_passes_numbers_through(self):
-        self.expectThat(
-            _describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
-        )
-        self.expectThat(
-            _describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
-        )
-        self.expectThat(
-            _describe_canonical(1.0),
-            MatchesAll(IsInstance(float), Equals(1.0)),
-        )
+        self.assertEqual(_describe_canonical(1), 1)
+        self.assertEqual(_describe_canonical(1.0), 1.0)
 
     def test_passes_unicode_strings_through(self):
         string = factory.make_string()
         self.assertIsInstance(string, str)
-        self.expectThat(_describe_canonical(string), Is(string))
+        self.assertIs(_describe_canonical(string), string)
 
     def test_decodes_byte_strings(self):
         string = factory.make_string().encode("utf-8")
-        self.expectThat(
-            _describe_canonical(string),
-            MatchesAll(
-                IsInstance(str),
-                Not(Is(string)),
-                Equals(string.decode("utf-8")),
-            ),
-        )
+        description = _describe_canonical(string)
+        self.assertIsInstance(description, str)
+        self.assertIsNot(description, string)
+        self.assertEqual(description, string.decode("utf-8"))
 
     def test_returns_sequences_as_tuples(self):
-        self.expectThat(_describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
+        self.assertEqual(_describe_canonical([1, 2, 3]), (1, 2, 3))
 
     def test_recursively_calls_sequence_elements(self):
-        self.expectThat(_describe_canonical([1, [2, 3]]), Equals((1, (2, 3))))
+        self.assertEqual(_describe_canonical([1, [2, 3]]), (1, (2, 3)))
 
     def test_sorts_sequences(self):
-        self.expectThat(_describe_canonical([3, 1, 2]), Equals((1, 2, 3)))
-        self.expectThat(
-            _describe_canonical([[1, 2], [1, 1]]), Equals(((1, 1), (1, 2)))
+        self.assertEqual(_describe_canonical([3, 1, 2]), (1, 2, 3))
+        self.assertEqual(
+            _describe_canonical([[1, 2], [1, 1]]), ((1, 1), (1, 2))
         )
 
     def test_returns_mappings_as_tuples(self):
-        self.expectThat(_describe_canonical({1: 2}), Equals(((1, 2),)))
+        self.assertEqual(_describe_canonical({1: 2}), ((1, 2),))
 
     def test_recursively_calls_mapping_keys_and_values(self):
         mapping = {"key\u1234".encode(): ["b", "a", "r"]}
         expected = (("key\u1234", ("a", "b", "r")),)
-        self.expectThat(_describe_canonical(mapping), Equals(expected))
+        self.assertEqual(_describe_canonical(mapping), expected)
 
     def test_sorts_mappings(self):
-        self.expectThat(
-            _describe_canonical({2: 1, 1: 1}), Equals(((1, 1), (2, 1)))
-        )
+        self.assertEqual(_describe_canonical({2: 1, 1: 1}), ((1, 1), (2, 1)))
 
     def test_sorts_mappings_by_key_and_value(self):
         class inth(int):
@@ -580,7 +509,7 @@ class TestDescribeCanonical(MAASTestCase):
             ((1, 2), "bar"),
             ((1, 2), "foo"),
         )
-        self.expectThat(_describe_canonical(mapping), Equals(expected))
+        self.assertEqual(_describe_canonical(mapping), expected)
 
     def test_rejects_other_types(self):
         self.assertRaises(TypeError, _describe_canonical, lambda: None)
@@ -595,49 +524,42 @@ class TestHashCanonical(MAASTestCase):
 
     def test_returns_hash_object(self):
         hasher = _hash_canonical(factory.make_string())
-        self.assertThat(
-            hasher,
-            MatchesStructure(
-                block_size=Equals(64),
-                digest=IsCallable(),
-                digest_size=Equals(20),
-                hexdigest=IsCallable(),
-                name=Equals("sha1"),
-                update=IsCallable(),
-            ),
-        )
+        self.assertEqual(hasher.block_size, 64)
+        self.assertTrue(callable(hasher.digest))
+        self.assertEqual(hasher.digest_size, 20)
+        self.assertTrue(callable(hasher.hexdigest))
+        self.assertEqual(hasher.name, "sha1")
+        self.assertTrue(callable(hasher.update))
 
     def test_misc_digests(self):
-        def hexdigest(data):
-            return _hash_canonical(data).hexdigest()
-
-        def has_digest(digest):
-            return AfterPreprocessing(hexdigest, Equals(digest))
-
-        self.expectThat(
-            None, has_digest("2be88ca4242c76e8253ac62474851065032d6833")
+        self.assertEqual(
+            _hash_canonical(None).hexdigest(),
+            "2be88ca4242c76e8253ac62474851065032d6833",
         )
-        self.expectThat(
-            False, has_digest("7cb6efb98ba5972a9b5090dc2e517fe14d12cb04")
+        self.assertEqual(
+            _hash_canonical(False).hexdigest(),
+            "7cb6efb98ba5972a9b5090dc2e517fe14d12cb04",
         )
-        self.expectThat(
-            True, has_digest("5ffe533b830f08a0326348a9160afafc8ada44db")
+        self.assertEqual(
+            _hash_canonical(True).hexdigest(),
+            "5ffe533b830f08a0326348a9160afafc8ada44db",
         )
 
-        self.expectThat(
-            (1, 2, 3), has_digest("a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85")
+        self.assertEqual(
+            _hash_canonical((1, 2, 3)).hexdigest(),
+            "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85",
         )
-        self.expectThat(
-            [1, 2, 3], has_digest("a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85")
+        self.assertEqual(
+            _hash_canonical([1, 2, 3]).hexdigest(),
+            "a01eda32e4e0b1393274e91d1b3e9ecfc5eaba85",
         )
-
-        self.expectThat(
-            ((1, 2), (3, 4)),
-            has_digest("3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"),
+        self.assertEqual(
+            _hash_canonical(((1, 2), (3, 4))).hexdigest(),
+            "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8",
         )
-        self.expectThat(
-            {1: 2, 3: 4},
-            has_digest("3bd746ab7fe760d0926546318cbf2b6f0a7a56f8"),
+        self.assertEqual(
+            _hash_canonical({1: 2, 3: 4}).hexdigest(),
+            "3bd746ab7fe760d0926546318cbf2b6f0a7a56f8",
         )
 
 

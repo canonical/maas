@@ -11,7 +11,6 @@ import random
 from typing import Iterable
 
 from django.urls import reverse
-from testtools.matchers import ContainsAll
 
 from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
@@ -35,7 +34,6 @@ from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from provisioningserver.utils.env import MAAS_ID
 
@@ -433,9 +431,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
-        self.assertThat(
-            boot_images.RackControllersImporter.schedule, MockCalledOnceWith()
-        )
+        boot_images.RackControllersImporter.schedule.assert_called_once_with()
         mock_filestore.assert_called_once()
 
     def test_import_requires_admin(self):
@@ -457,7 +453,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             reverse("boot_resources_handler"), {"op": "stop_import"}
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertThat(mock_stop, MockCalledOnceWith())
+        mock_stop.assert_called_once_with()
 
     def test_is_importing_returns_import_status(self):
         mock_running = self.patch(
@@ -490,9 +486,8 @@ class TestBootResourceAPI(APITestCase.ForUser):
             reverse("boot_resource_handler", args=[resource.id]),
             returned_resource["resource_uri"],
         )
-        self.assertThat(
-            returned_resource,
-            ContainsAll(["id", "type", "name", "architecture"]),
+        self.assertGreaterEqual(
+            returned_resource.keys(), {"id", "type", "name", "architecture"}
         )
 
     def test_DELETE_deletes_boot_resource(self):

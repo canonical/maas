@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import http.client
-from unittest.mock import call
 
 from django.urls import reverse
 from django.utils.http import urlencode
@@ -13,7 +12,6 @@ from maasserver.testing.api import APITestCase, explain_unexpected_response
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCallsMatch, MockNotCalled
 
 
 class TestRegionControllerAPI(APITestCase.ForUser):
@@ -70,7 +68,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        self.assertThat(mock_async_delete, MockCallsMatch(call()))
+        mock_async_delete.assert_called_once_with()
 
     def test_DELETE_force_not_required_for_pod_region_rack(self):
         self.become_admin()
@@ -91,7 +89,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        self.assertThat(mock_async_delete, MockNotCalled())
+        mock_async_delete.assert_not_called()
 
     def test_pod_DELETE_delete_without_force(self):
         self.become_admin()
@@ -111,7 +109,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.BAD_REQUEST, response),
         )
-        self.assertThat(mock_async_delete, MockNotCalled())
+        mock_async_delete.assert_not_called()
 
 
 class TestRegionControllersAPI(APITestCase.ForUser):

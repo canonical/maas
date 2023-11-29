@@ -11,7 +11,6 @@ from maasserver.models.vmcluster import VMCluster
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
-from maastesting.matchers import MockCalledOnceWith
 
 
 class VMClusterTestMixin:
@@ -129,7 +128,7 @@ class TestVMClusterAdmin(APITestCase.ForAdmin, VMClusterTestMixin):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
         )
-        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60))
+        mock_eventual.wait.assert_called_once_with(60)
 
     def test_UPDATE_calls_async_update(self):
         cluster = factory.make_VMCluster()

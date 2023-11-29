@@ -17,7 +17,6 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachine,
@@ -586,7 +585,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
         )
-        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60))
+        mock_eventual.wait.assert_called_once_with(60)
 
     def test_DELETE_calls_async_delete_decompose(self):
         pod = factory.make_Pod()
@@ -601,7 +600,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
         )
-        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 4))
+        mock_eventual.wait.assert_called_once_with(60 * 4)
 
     def test_add_tag_to_pod(self):
         pod = factory.make_Pod()

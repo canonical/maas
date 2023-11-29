@@ -8,7 +8,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import Equals
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -683,7 +682,7 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertThat(result, Equals([]), str(subnet.get_ipranges_in_use()))
+        self.assertEqual(result, [], str(subnet.get_ipranges_in_use()))
 
     def test_returns_empty_list_for_full_ipv4_subnet(self):
         network = factory.make_ipv4_network()
@@ -751,23 +750,21 @@ class TestSubnetUnreservedIPRangesAPI(APITestCase.ForUser):
             explain_unexpected_response(http.client.OK, response),
         )
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
+        self.assertEqual(
             result,
-            Equals(
-                [
-                    {
-                        "start": expected_first_address,
-                        "end": first_range_end,
-                        "num_addresses": first_range_size,
-                    },
-                    {
-                        "start": second_range_start,
-                        "end": expected_last_address,
-                        "num_addresses": second_range_size,
-                    },
-                ]
-            ),
-            "Reserved ranges: %s" % (subnet.get_ipranges_in_use()),
+            [
+                {
+                    "start": expected_first_address,
+                    "end": first_range_end,
+                    "num_addresses": first_range_size,
+                },
+                {
+                    "start": second_range_start,
+                    "end": expected_last_address,
+                    "num_addresses": second_range_size,
+                },
+            ],
+            "Reserved ranges: %s" % subnet.get_ipranges_in_use(),
         )
 
 

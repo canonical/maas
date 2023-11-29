@@ -3,7 +3,6 @@
 
 
 import http.client
-from unittest.mock import call
 
 from django.urls import reverse
 from django.utils.http import urlencode
@@ -18,12 +17,6 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 
 
 class TestRackControllerAPI(APITransactionTestCase.ForUser):
@@ -73,9 +66,8 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertThat(
-            boot_images.RackControllersImporter.schedule,
-            MockCalledOnceWith(rack.system_id),
+        boot_images.RackControllersImporter.schedule.assert_called_once_with(
+            rack.system_id
         )
 
     def test_POST_import_boot_images_denied_if_not_admin(self):
@@ -152,7 +144,7 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        self.assertThat(mock_async_delete, MockCallsMatch(call()))
+        mock_async_delete.assert_called_once_with()
 
     def test_pod_DELETE_delete_without_force(self):
         self.become_admin()
@@ -173,7 +165,7 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.BAD_REQUEST, response),
         )
-        self.assertThat(mock_async_delete, MockNotCalled())
+        mock_async_delete.assert_not_called()
 
     def test_DELETE_force_not_required_for_pod_region_rack(self):
         self.become_admin()
@@ -194,7 +186,7 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.NO_CONTENT, response),
         )
-        self.assertThat(mock_async_delete, MockNotCalled())
+        mock_async_delete.assert_not_called()
 
 
 class TestRackControllersAPI(APITestCase.ForUser):
@@ -282,9 +274,7 @@ class TestRackControllersAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertThat(
-            boot_images.RackControllersImporter.schedule, MockCalledOnce()
-        )
+        boot_images.RackControllersImporter.schedule.assert_called_once_with()
 
     def test_POST_import_boot_images_denied_if_not_admin(self):
         factory.make_RackController(owner=factory.make_User())
@@ -310,7 +300,7 @@ class TestRackControllersAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertThat(get_all_power_types, MockCalledOnce())
+        get_all_power_types.assert_called_once_with()
 
     def test_GET_describe_power_types_denied_if_not_admin(self):
         get_all_power_types = self.patch(
@@ -324,4 +314,4 @@ class TestRackControllersAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.FORBIDDEN, response),
         )
-        self.assertThat(get_all_power_types, MockNotCalled())
+        get_all_power_types.assert_not_called()

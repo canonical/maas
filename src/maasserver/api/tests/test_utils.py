@@ -8,7 +8,6 @@ from collections import namedtuple
 
 from django.forms import CharField
 from django.http import QueryDict
-from testtools.matchers import Equals, IsInstance, MatchesDict
 
 from maasserver.api.utils import (
     extract_bool,
@@ -104,14 +103,10 @@ class TestGetOverridedQueryDict(MAASTestCase):
         }
         data = {field_name: DictCharField(fields)}
         results = get_overridden_query_dict(defaults, data, fields)
-        expected = {key: Equals(value) for key, value in defaults.items()}
-        expected.update(
-            {
-                name: IsInstance(value.__class__)
-                for name, value in fields.items()
-            }
-        )
-        self.assertThat(results, MatchesDict(expected))
+        for key, value in defaults.items():
+            self.assertEqual(results.get(key), value)
+        for name, value in fields.items():
+            self.assertIsInstance(results.get(name), value.__class__)
 
 
 def make_fake_request(auth_header):

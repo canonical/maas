@@ -19,7 +19,6 @@ from maasserver.api.scriptresults import fmt_time
 from maasserver.preseed import CURTIN_ERROR_TARFILE
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
@@ -58,7 +57,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
             factory.make_ScriptSet()
 
         response = self.client.get(self.get_script_results_uri(node))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -88,7 +87,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_results_uri(node), {"type": result_type}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -117,7 +116,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
             self.get_script_results_uri(script_set.node),
             {"hardware_type": hardware_type},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -144,7 +143,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_results_uri(node), {"include_output": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -188,7 +187,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
                 )
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -268,7 +267,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             script_results[script_result.name] = script_result
 
         response = self.client.get(self.get_script_result_uri(script_set))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
 
@@ -336,7 +335,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         )
 
         response = self.client.get(self.get_script_result_uri(script_set))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
 
         for result in parsed_result["results"]:
@@ -373,7 +372,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_result_uri(script_set), {"include_output": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
 
@@ -452,7 +451,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 )
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
 
@@ -522,7 +521,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"hardware_type": hardware_type},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
         self.assertCountEqual(
@@ -538,19 +537,19 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.become_admin()
         script_set = self.make_scriptset()
         response = self.client.delete(self.get_script_result_uri(script_set))
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(script_set))
 
     def test_DELETE_admin_only(self):
         script_set = self.make_scriptset()
         response = self.client.delete(self.get_script_result_uri(script_set))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
         self.assertIsNotNone(reload_object(script_set))
 
     def test_PUT_admin_only(self):
         script_set = self.make_scriptset()
         response = self.client.put(self.get_script_result_uri(script_set))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
         self.assertIsNotNone(reload_object(script_set))
 
     def test_PUT_include_output(self):
@@ -564,7 +563,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.put(
             self.get_script_result_uri(script_set), {"include_output": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
 
@@ -644,7 +643,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 )
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
 
@@ -711,7 +710,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.put(
             self.get_script_result_uri(script_set), {"suppressed": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
         for script_result in script_set:
@@ -719,7 +718,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.put(
             self.get_script_result_uri(script_set), {"suppressed": False}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
         for script_result in script_set:
@@ -733,7 +732,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.put(
             self.get_script_result_uri(script_set), {"suppressed": "testing"}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_PUT_suppressed_and_filters_by_script_result_id(self):
         self.become_admin()
@@ -757,7 +756,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"suppressed": True, "filters": script_result.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
         self.assertEqual(script_set.id, script_result.script_set.id)
@@ -789,7 +788,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"suppressed": True, "filters": script_result.script_name},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
         self.assertEqual(script_set.id, script_result.script_set.id)
@@ -826,7 +825,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"suppressed": True, "hardware_type": hardware_type},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script_set = reload_object(script_set)
         self.assertIsNotNone(script_set)
         self.assertEqual(script_set.id, script_result.script_set.id)
@@ -846,7 +845,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_result_uri(script_set), {"op": "download"}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
 
         binary = BytesIO()
         for script_result in sorted(
@@ -868,7 +867,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filter": script_result.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.output, response.content)
 
     def test_download_filetype_txt(self):
@@ -879,7 +878,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filetype": "txt", "filters": script_result.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.output, response.content)
 
     def test_download_filetype_tar_xz(self):
@@ -892,7 +891,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filetype": "tar.xz"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
 
         root_dir = "{}-{}-{}".format(
             script_set.node.hostname,
@@ -920,7 +919,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filetype": factory.make_name("filetype")},
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_download_output_combined(self):
         script_set = self.make_scriptset()
@@ -934,7 +933,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 "output": "combined",
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.output, response.content)
 
     def test_download_output_stdout(self):
@@ -945,7 +944,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filter": script_result.id, "output": "stdout"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.stdout, response.content)
 
     def test_download_output_stderr(self):
@@ -956,7 +955,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filter": script_result.id, "output": "stderr"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.stderr, response.content)
 
     def test_download_output_result(self):
@@ -967,7 +966,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filter": script_result.id, "output": "result"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.result, response.content)
 
     def test_download_output_all(self):
@@ -978,7 +977,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "filter": script_result.id, "output": "all"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
 
         binary = BytesIO()
         dashes = "-" * int((80.0 - (2 + len(script_result.name))) / 2)
@@ -1033,7 +1032,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 ),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
 
         root_dir = "{}-{}-{}".format(
             script_set.node.hostname,
@@ -1076,7 +1075,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
                 "hardware_type": hardware_type,
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script_result.output, response.content)
 
     def test_download_shows_results_from_all_disks(self):
@@ -1158,7 +1157,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set),
             {"op": "download", "output": "all"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         binary = BytesIO()
         dashes = "-" * int((80.0 - (2 + len(curtin_error_tarfile.name))) / 2)
         binary.write(

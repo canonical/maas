@@ -10,7 +10,6 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.models import VLAN
 from maasserver.models.space import Space
@@ -175,13 +174,9 @@ class TestSpaceAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_space = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertThat(
-            parsed_space,
-            ContainsDict({"id": Equals(-1), "name": Equals(Space.UNDEFINED)}),
-        )
+        parsed_space = response.json()
+        self.assertEqual(parsed_space.get("id"), -1)
+        self.assertEqual(parsed_space.get("name"), Space.UNDEFINED)
         parsed_vlans = [vlan["id"] for vlan in parsed_space["vlans"]]
         self.assertCountEqual(vlan_ids, parsed_vlans)
 
@@ -193,20 +188,11 @@ class TestSpaceAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_space = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
+        parsed_space = response.json()
         parsed_vlan = parsed_space["vlans"][0]
-        self.assertThat(
-            parsed_vlan,
-            ContainsDict(
-                {
-                    "id": Equals(vlan.id),
-                    "vid": Equals(vlan.vid),
-                    "fabric_id": Equals(vlan.fabric_id),
-                }
-            ),
-        )
+        self.assertEqual(parsed_vlan.get("id"), vlan.id)
+        self.assertEqual(parsed_vlan.get("vid"), vlan.vid)
+        self.assertEqual(parsed_vlan.get("fabric_id"), vlan.fabric.id)
 
     def test_includes_legacy_subnet_objects(self):
         space = factory.make_Space()
@@ -216,25 +202,14 @@ class TestSpaceAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        parsed_space = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
+        parsed_space = response.json()
         parsed_subnet = parsed_space["subnets"][0]
-        self.assertThat(
-            parsed_subnet,
-            ContainsDict(
-                {"id": Equals(subnet.id), "cidr": Equals(str(subnet.cidr))}
-            ),
-        )
-        self.assertThat(
-            parsed_subnet["vlan"],
-            ContainsDict(
-                {
-                    "id": Equals(subnet.vlan.id),
-                    "vid": Equals(subnet.vlan.vid),
-                    "fabric_id": Equals(subnet.vlan.fabric_id),
-                }
-            ),
+        self.assertEqual(parsed_subnet.get("id"), subnet.id)
+        self.assertEqual(parsed_subnet.get("cidr"), str(subnet.cidr))
+        self.assertEqual(parsed_subnet["vlan"].get("id"), subnet.vlan.id)
+        self.assertEqual(parsed_subnet["vlan"].get("vid"), subnet.vlan.vid)
+        self.assertEqual(
+            parsed_subnet["vlan"].get("fabric_id"), subnet.vlan.fabric_id
         )
 
     def test_read_404_when_bad_id(self):

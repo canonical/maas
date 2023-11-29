@@ -11,12 +11,10 @@ import json
 import random
 
 from django.urls import reverse
-from testtools.matchers import ContainsAll
 
 from maasserver.models import Event, Script, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import reload_object
 from metadataserver.enum import (
@@ -72,18 +70,18 @@ class TestScriptsAPI(APITestCase.ForUser):
                 "comment": comment,
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_result = response.json()
         script = Script.objects.get(id=int(parsed_result["id"]))
 
         self.assertEqual(name, script.name)
         self.assertEqual(title, script.title)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        self.assertGreater(set(script.tags), set(tags))
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
-        self.assertDictEqual(packages, script.packages)
+        self.assertEqual(packages, script.packages)
         self.assertEqual(timeout, script.timeout.seconds)
         self.assertEqual(destructive, script.destructive)
         self.assertEqual(script_content, script.script.data)
@@ -120,18 +118,18 @@ class TestScriptsAPI(APITestCase.ForUser):
                 name: factory.make_file_upload(name, script_content.encode()),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         script = Script.objects.get(id=int(parsed_result["id"]))
 
         self.assertEqual(name, script.name)
         self.assertEqual(title, script.title)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        self.assertGreater(set(script.tags), set(tags))
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
-        self.assertDictEqual(packages, script.packages)
+        self.assertEqual(packages, script.packages)
         self.assertEqual(timeout, script.timeout.seconds)
         self.assertEqual(destructive, script.destructive)
         self.assertEqual(script_content, script.script.data)
@@ -139,13 +137,13 @@ class TestScriptsAPI(APITestCase.ForUser):
 
     def test_POST_requires_admin(self):
         response = self.client.post(self.get_scripts_uri())
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_GET(self):
         scripts = [factory.make_Script() for _ in range(3)]
         response = self.client.get(self.get_scripts_uri())
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_results = response.json()
 
         self.assertEqual(
             [script.id for script in scripts],
@@ -164,7 +162,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_scripts_uri(), {"type": script.script_type}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertEqual(
@@ -183,7 +181,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_scripts_uri(), {"hardware_type": script.hardware_type}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertEqual(
@@ -202,7 +200,7 @@ class TestScriptsAPI(APITestCase.ForUser):
             self.get_scripts_uri(),
             {"filters": f"{random.choice(tags)},{name_script.name}"},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
@@ -219,8 +217,8 @@ class TestScriptsAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_scripts_uri(), {"include_script": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
+        self.assertEqual(response.status_code, http.client.OK)
+        parsed_results = response.json()
 
         for result in parsed_results:
             self.assertEqual(
@@ -259,7 +257,7 @@ class TestScriptAPI(APITestCase.ForUser):
         )
         script.save()
         response = self.client.get(self.get_script_uri(script))
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         history = parsed_result.pop("history")
 
@@ -315,7 +313,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_uri(script), {"include_script": True}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         parsed_result = json_load_bytes(response.content)
         history = parsed_result.pop("history")
 
@@ -367,7 +365,7 @@ class TestScriptAPI(APITestCase.ForUser):
         self.become_admin()
         script = factory.make_Script()
         response = self.client.delete(self.get_script_uri(script))
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertIsNone(reload_object(script))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -378,14 +376,14 @@ class TestScriptAPI(APITestCase.ForUser):
     def test_DELETE_admin_only(self):
         script = factory.make_Script()
         response = self.client.delete(self.get_script_uri(script))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
         self.assertIsNotNone(reload_object(script))
 
     def test_DELETE_prevents_deleting_default(self):
         self.become_admin()
         script = factory.make_Script(default=True)
         response = self.client.delete(self.get_script_uri(script))
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
         self.assertIsNotNone(reload_object(script))
 
     def test_PUT(self):
@@ -424,17 +422,17 @@ class TestScriptAPI(APITestCase.ForUser):
                 "comment": comment,
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script = reload_object(script)
 
         self.assertEqual(name, script.name)
         self.assertEqual(title, script.title)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        self.assertGreater(set(script.tags), set(tags))
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
-        self.assertDictEqual(packages, script.packages)
+        self.assertEqual(packages, script.packages)
         self.assertEqual(timeout, script.timeout.seconds)
         self.assertEqual(destructive, script.destructive)
         self.assertEqual(script_content, script.script.data)
@@ -473,12 +471,12 @@ class TestScriptAPI(APITestCase.ForUser):
                 name: factory.make_file_upload(name, script_content.encode()),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script = reload_object(script)
 
         self.assertEqual(name, script.name)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        self.assertGreater(set(script.tags), set(tags))
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
@@ -492,7 +490,7 @@ class TestScriptAPI(APITestCase.ForUser):
     def test_PUT_admin_only(self):
         script = factory.make_Script()
         response = self.client.put(self.get_script_uri(script))
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_download_gets_latest_version_by_default(self):
         script = factory.make_Script()
@@ -501,7 +499,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.get(
             self.get_script_uri(script), {"op": "download"}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(script.script.data, response.content.decode())
 
     def test_download_gets_previous_revision(self):
@@ -512,7 +510,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "download", "revision": script.script.previous_version.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             script.script.previous_version.data, response.content.decode()
         )
@@ -525,7 +523,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "download", "rev": script.script.previous_version.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             script.script.previous_version.data, response.content.decode()
         )
@@ -536,7 +534,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "download", "revision": random.randint(100, 1000)},
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_revert(self):
         self.become_admin()
@@ -552,7 +550,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "revert", "to": revert_to}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         script = reload_object(script)
         self.assertEqual(
             VersionedTextFile.objects.get(id=textfile_ids[revert_to - 1]).data,
@@ -579,7 +577,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "revert"}
         )
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_revert_requires_to(self):
         self.become_admin()
@@ -587,7 +585,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "revert"}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_revert_requires_to_to_be_an_int(self):
         self.become_admin()
@@ -596,7 +594,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "revert", "to": to}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_revert_errors_on_invalid_id(self):
         self.become_admin()
@@ -605,7 +603,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "revert", "to": textfile.id}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_revert_prevents_reverting_default(self):
         self.become_admin()
@@ -614,7 +612,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "revert", "to": script.script.id},
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_add_tag(self):
         self.become_admin()
@@ -623,7 +621,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "add_tag", "tag": new_tag}
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertIn(new_tag, reload_object(script).tags)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -642,7 +640,7 @@ class TestScriptAPI(APITestCase.ForUser):
         response = self.client.post(
             self.get_script_uri(script), {"op": "add_tag", "tag": new_tag}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
         self.assertNotIn(new_tag, reload_object(script).tags)
 
     def test_add_tag_admin_only(self):
@@ -651,7 +649,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "add_tag", "tag": factory.make_name("tag")},
         )
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)
 
     def test_remove_tag(self):
         self.become_admin()
@@ -663,7 +661,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "remove_tag", "tag": removed_tag},
         )
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertNotIn(removed_tag, reload_object(script).tags)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -678,4 +676,4 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script),
             {"op": "remove_tag", "tag": random.choice(script.tags)},
         )
-        self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
+        self.assertEqual(response.status_code, http.client.FORBIDDEN)

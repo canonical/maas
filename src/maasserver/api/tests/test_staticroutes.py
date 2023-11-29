@@ -8,7 +8,6 @@ import http.client
 import random
 
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals
 
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -105,22 +104,16 @@ class TestStaticRouteAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_route = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_route,
-            ContainsDict(
-                {
-                    "id": Equals(route.id),
-                    "source": ContainsDict(
-                        {"cidr": Equals(route.source.cidr)}
-                    ),
-                    "destination": ContainsDict(
-                        {"cidr": Equals(route.destination.cidr)}
-                    ),
-                    "gateway_ip": Equals(route.gateway_ip),
-                    "metric": Equals(route.metric),
-                }
-            ),
+        self.assertEqual(parsed_route.get("id"), route.id)
+        self.assertEqual(
+            parsed_route.get("source", {}).get("cidr"), route.source.cidr
         )
+        self.assertEqual(
+            parsed_route.get("destination", {}).get("cidr"),
+            route.destination.cidr,
+        )
+        self.assertEqual(parsed_route.get("gateway_ip"), route.gateway_ip)
+        self.assertEqual(parsed_route.get("metric"), route.metric)
 
     def test_read_404_when_bad_id(self):
         uri = reverse("staticroute_handler", args=[random.randint(100, 1000)])

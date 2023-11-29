@@ -110,7 +110,14 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         package_repository = reload_object(package_repository)
-        self.assertAttributes(package_repository, new_values)
+        self.assertEqual(package_repository.url, new_values["url"])
+        self.assertEqual(
+            package_repository.distributions, new_values["distributions"]
+        )
+        self.assertEqual(
+            package_repository.components, new_values["components"]
+        )
+        self.assertEqual(package_repository.arches, new_values["arches"])
 
     def test_update_custom_repository_fails_if_disabled_components(self):
         """Test that updating a custom repository fails if specifying
@@ -166,7 +173,18 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         package_repository = reload_object(package_repository)
-        self.assertAttributes(package_repository, new_values)
+        self.assertEqual(package_repository.url, new_values["url"])
+        self.assertEqual(
+            package_repository.distributions, new_values["distributions"]
+        )
+        self.assertEqual(
+            package_repository.disabled_pockets, new_values["disabled_pockets"]
+        )
+        self.assertEqual(
+            package_repository.disabled_components,
+            new_values["disabled_components"],
+        )
+        self.assertEqual(package_repository.arches, new_values["arches"])
 
     def test_update_ubuntu_mirror_fail_with_invalid_disabled_pockets(self):
         """Test that updating an Ubuntu mirror with invalid pockets fails"""
@@ -343,7 +361,9 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
         package_repository = PackageRepository.objects.get(
             id=parsed_result["id"]
         )
-        self.assertAttributes(package_repository, params)
+        self.assertEqual(package_repository.name, params["name"])
+        self.assertEqual(package_repository.url, params["url"])
+        self.assertEqual(package_repository.enabled, params["enabled"])
 
     def test_create_admin_only(self):
         response = self.client.post(

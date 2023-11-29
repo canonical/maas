@@ -11,7 +11,6 @@ from unittest.mock import ANY
 from django.conf import settings
 from django.urls import reverse
 from netaddr import IPNetwork
-from testtools.matchers import HasLength
 from twisted.python.failure import Failure
 
 from maasserver.api import discoveries as discoveries_module
@@ -26,15 +25,13 @@ from maasserver.clusterrpc.utils import RPCResults
 from maasserver.models import Subnet
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import cluster
 
 
 def timestamp_format(time):
-    """Convert the specified `time` to the string we expect Pison to output."""
+    """Convert the specified `time` to the string we expect Piston to output."""
     if time.microsecond == 0:
         return time.strftime("%Y-%m-%dT%H:%M:%S")
     else:
@@ -89,7 +86,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
     def get_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
         response = self.client.get(uri, *args, **kwargs)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         return results
 
@@ -98,9 +95,9 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         iface = rack.current_config.interface_set.first()
         discoveries = make_discoveries(interface=iface)
         results = self.get_api_results()
-        self.assertThat(results, HasLength(3))
         expected_ids = [discovery.discovery_id for discovery in discoveries]
         result_ids = [discovery["discovery_id"] for discovery in results]
+        self.assertEqual(len(results), 3)
         self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_sorts_by_last_seen(self):
@@ -173,7 +170,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
     def post_api_results(self, *args, **kwargs):
         uri = get_discoveries_uri()
         response = self.client.post(uri, *args, **kwargs)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         results = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         return results
 
@@ -192,50 +189,38 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 
     def test_scan__fails_scan_all_if_not_forced(self):
         response = self.post_api_response({"op": "scan"})
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_scan__threads_must_be_number(self):
         response = self.post_api_response({"op": "scan", "threads": "x"})
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_scan__calls_scan_all_networks_with_scan_all_if_forced(self):
         self.post_api_results({"op": "scan", "force": "true"})
-        self.assertThat(
-            self.scan_all_rack_networks_mock,
-            MockCalledOnceWith(
-                scan_all=True, ping=False, slow=False, threads=None
-            ),
+        self.scan_all_rack_networks_mock.assert_called_once_with(
+            scan_all=True, ping=False, slow=False, threads=None
         )
 
     def test_scan__passes_ping(self):
         self.post_api_results(
             {"op": "scan", "force": "true", "always_use_ping": "true"}
         )
-        self.assertThat(
-            self.scan_all_rack_networks_mock,
-            MockCalledOnceWith(
-                scan_all=True, ping=True, slow=False, threads=None
-            ),
+        self.scan_all_rack_networks_mock.assert_called_once_with(
+            scan_all=True, ping=True, slow=False, threads=None
         )
 
     def test_scan__passes_slow(self):
         self.post_api_results({"op": "scan", "force": "true", "slow": "true"})
-        self.assertThat(
-            self.scan_all_rack_networks_mock,
-            MockCalledOnceWith(
-                scan_all=True, ping=False, slow=True, threads=None
-            ),
+        self.scan_all_rack_networks_mock.assert_called_once_with(
+            scan_all=True, ping=False, slow=True, threads=None
         )
 
     def test_scan__passes_threads(self):
         self.post_api_results(
             {"op": "scan", "force": "true", "threads": "3.14"}
         )
-        self.assertThat(
-            self.scan_all_rack_networks_mock,
-            MockCalledOnceWith(
-                scan_all=True, ping=False, slow=False, threads=3
-            ),
+        self.scan_all_rack_networks_mock.assert_called_once_with(
+            scan_all=True, ping=False, slow=False, threads=3
         )
 
     def test_scan__calls_scan_all_networks_with_specified_cidrs(self):
@@ -246,28 +231,25 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
                 "cidr": ["192.168.0.0/24", "192.168.1.0/24"],
             }
         )
-        self.assertThat(
-            self.scan_all_rack_networks_mock,
-            MockCalledOnceWith(
-                cidrs=[
-                    IPNetwork("192.168.0.0/24"),
-                    IPNetwork("192.168.1.0/24"),
-                ],
-                ping=False,
-                slow=False,
-                threads=None,
-            ),
+        self.scan_all_rack_networks_mock.assert_called_once_with(
+            cidrs=[
+                IPNetwork("192.168.0.0/24"),
+                IPNetwork("192.168.1.0/24"),
+            ],
+            ping=False,
+            slow=False,
+            threads=None,
         )
 
     def test_scan__with_invalid_cidrs_fails(self):
         response = self.post_api_response(
             {"op": "scan", "cidr": ["x.x.x.x/y"]}
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_scan__with_no_cidrs_does_not_call_scan_all_networks(self):
         response = self.post_api_response({"op": "scan"})
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_clear_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
@@ -390,7 +372,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Spot check expected values in the results
         self.assertEqual(get_discovery_uri(discovery), result["resource_uri"])
@@ -411,14 +393,14 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         [discovery] = make_discoveries(interface=iface, count=1)
         uri = get_discovery_uri_by_specifiers("ip:" + str(discovery.ip))
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         self.assertEqual(discovery.ip, result["ip"])
 
     def test_read_404_when_bad_id(self):
         uri = reverse("discovery_handler", args=[random.randint(10000, 20000)])
         response = self.client.get(uri)
-        self.assertThat(response, HasStatusCode(http.client.NOT_FOUND))
+        self.assertEqual(response.status_code, http.client.NOT_FOUND)
 
     def test_update_not_allowed(self):
         rack = factory.make_RackController()
@@ -427,9 +409,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
         response = self.client.put(uri, {"ip": factory.make_ip_address()})
-        self.assertThat(
-            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED)
-        )
+        self.assertEqual(response.status_code, http.client.METHOD_NOT_ALLOWED)
 
     def test_delete_not_allowed_even_for_admin(self):
         self.become_admin()
@@ -439,9 +419,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
         response = self.client.delete(uri)
-        self.assertThat(
-            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED)
-        )
+        self.assertEqual(response.status_code, http.client.METHOD_NOT_ALLOWED)
 
 
 def make_RPCResults(
@@ -463,11 +441,10 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
     def test_no_racks_available(self):
         results = make_RPCResults(available=[], failed=[])
         result = get_scan_result_string_for_humans(results)
-        self.assertThat(
-            result,
-            DocTestMatches(
-                "Unable to initiate network scanning on any rack controller..."
-            ),
+        self.assertTrue(
+            result.startswith(
+                "Unable to initiate network scanning on any rack controller"
+            )
         )
 
     def test_scan_not_started_on_at_least_one_rack(self):
@@ -475,27 +452,24 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
             available=["x"], unavailable=["y", "z"], failed=[]
         )
         result = get_scan_result_string_for_humans(results)
-        self.assertThat(
-            result,
-            DocTestMatches("Scanning could not be started on 2 rack..."),
+        self.assertTrue(
+            result.startswith("Scanning could not be started on 2 rack")
         )
 
     def test_scan_in_progress(self):
         results = make_RPCResults(available=["x"], unavailable=[], failed=[])
         result = get_scan_result_string_for_humans(results)
-        self.assertThat(result, DocTestMatches("Scanning is in-progress..."))
+        self.assertTrue(result.startswith("Scanning is in-progress"))
 
     def test_scan_failed_on_at_least_one_rack(self):
         results = make_RPCResults(
             available=["x"], failed=["v", "w"], unavailable=["y", "z"]
         )
         result = get_scan_result_string_for_humans(results)
-        self.assertThat(
+        self.assertTrue(result.startswith("Scanning could not be started"))
+        self.assertIn(
+            "In addition, a scan was already in-progress on 2",
             result,
-            DocTestMatches(
-                "Scanning could not be started...In addition, a scan was already "
-                "in-progress on 2..."
-            ),
         )
 
     def test_failed_rack(self):
@@ -503,9 +477,8 @@ class TestInterpretsScanAllRackNetworksRPCResults(MAASTestCase):
             available=["w"], failed=["w"], unavailable=[]
         )
         result = get_scan_result_string_for_humans(results)
-        self.assertThat(
-            result,
-            DocTestMatches("A scan was already in-progress on 1 rack..."),
+        self.assertTrue(
+            result.startswith("A scan was already in-progress on 1 rack")
         )
 
 
@@ -566,22 +539,16 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
 
     def test_calls_racks_synchronously(self):
         scan_all_rack_networks()
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks, controllers=None, kwargs={}
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks, controllers=None, kwargs={}
         )
 
     def test_calls_racks_synchronously_with_scan_all(self):
         scan_all_rack_networks(scan_all=True)
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks,
-                controllers=None,
-                kwargs={"scan_all": True},
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks,
+            controllers=None,
+            kwargs={"scan_all": True},
         )
 
     def test_calls_racks_synchronously_with_cidrs(self):
@@ -593,11 +560,8 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
             for cidr in subnet_query.values_list("cidr", flat=True)
         ]
         scan_all_rack_networks(cidrs=cidrs)
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks, controllers=ANY, kwargs={"cidrs": cidrs}
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks, controllers=ANY, kwargs={"cidrs": cidrs}
         )
         # Check `controllers` separately because its order may vary.
         controllers = self.call_racks_sync_mock.call_args[1]["controllers"]
@@ -605,32 +569,23 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
 
     def test_calls_racks_synchronously_with_force_ping(self):
         scan_all_rack_networks(ping=True)
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks,
-                controllers=None,
-                kwargs={"force_ping": True},
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks,
+            controllers=None,
+            kwargs={"force_ping": True},
         )
 
     def test_calls_racks_synchronously_with_threads(self):
         threads = random.randint(1, 99)
         scan_all_rack_networks(threads=threads)
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks,
-                controllers=None,
-                kwargs={"threads": threads},
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks,
+            controllers=None,
+            kwargs={"threads": threads},
         )
 
     def test_calls_racks_synchronously_with_slow(self):
         scan_all_rack_networks(slow=True)
-        self.assertThat(
-            self.call_racks_sync_mock,
-            MockCalledOnceWith(
-                cluster.ScanNetworks, controllers=None, kwargs={"slow": True}
-            ),
+        self.call_racks_sync_mock.assert_called_once_with(
+            cluster.ScanNetworks, controllers=None, kwargs={"slow": True}
         )

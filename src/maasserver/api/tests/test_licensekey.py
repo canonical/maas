@@ -224,7 +224,9 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
         license_key = LicenseKey.objects.get(
             osystem=osystem, distro_series=release
         )
-        self.assertAttributes(license_key, params)
+        self.assertEqual(license_key.osystem, osystem)
+        self.assertEqual(license_key.distro_series, release)
+        self.assertEqual(license_key.license_key, params["license_key"])
 
     def test_POST_supports_combined_distro_series(self):
         # API allows specifying only distro_series containing both
@@ -241,12 +243,9 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
         license_key = LicenseKey.objects.get(
             osystem=osystem, distro_series=release
         )
-        expected_params = {
-            "osystem": osystem,
-            "distro_series": release,
-            "license_key": params["license_key"],
-        }
-        self.assertAttributes(license_key, expected_params)
+        self.assertEqual(license_key.osystem, osystem)
+        self.assertEqual(license_key.distro_series, release)
+        self.assertEqual(license_key.license_key, params["license_key"])
 
     def test_POST_requires_osystem(self):
         # If osystem is not specified and distro_series is not in the

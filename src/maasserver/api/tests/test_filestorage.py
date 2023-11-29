@@ -8,7 +8,6 @@ from base64 import b64decode
 import http.client
 
 from django.urls import reverse
-from testtools.matchers import Contains, Equals, MatchesListwise
 
 from maasserver.models import FileStorage
 from maasserver.testing.api import APITestCase
@@ -338,16 +337,8 @@ class TestFileStorageAPI(FileStorageAPITestMixin, APITestCase.ForUser):
         response = self.client.get(
             reverse("file_handler", args=[factory.make_name("file")])
         )
-        self.assertThat(
-            (response.status_code, list(response.items())),
-            MatchesListwise(
-                (
-                    Equals(http.client.NOT_FOUND),
-                    Contains(("Workaround", "bug1123986")),
-                )
-            ),
-            response,
-        )
+        self.assertEqual(response.status_code, http.client.NOT_FOUND)
+        self.assertEqual(response.get("Workaround"), "bug1123986")
 
     def test_delete_filters_by_owner(self):
         storage = factory.make_FileStorage(owner=factory.make_User())
