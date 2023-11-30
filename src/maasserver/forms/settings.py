@@ -755,6 +755,15 @@ CONFIG_ITEMS = {
             "min_value": 1,
         },
     },
+    "max_node_release_results": {
+        "default": 3,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "required": False,
+            "label": "The maximum number of release result runs which are stored",
+            "min_value": 1,
+        },
+    },
     "subnet_ip_exhaustion_threshold_count": {
         "default": 16,
         "form": forms.IntegerField,

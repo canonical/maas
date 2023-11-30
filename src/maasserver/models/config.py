@@ -111,6 +111,7 @@ def get_default_config():
         "max_node_commissioning_results": 10,
         "max_node_testing_results": 10,
         "max_node_installation_results": 3,
+        "max_node_release_results": 3,
         # Notifications.
         "subnet_ip_exhaustion_threshold_count": 16,
         "release_notifications": True,

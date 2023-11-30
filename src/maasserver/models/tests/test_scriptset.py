@@ -1044,6 +1044,45 @@ class TestScriptSetManager(MAASServerTestCase):
             ],
         )
 
+    def test_create_release_script_set(self):
+        # Avoid builtins muddying the test
+        Script.objects.all().delete()
+        script1 = factory.make_Script(
+            script_type=SCRIPT_TYPE.RELEASE,
+            default=True,
+            tags=["foo"],
+        )
+        script2 = factory.make_Script(
+            script_type=SCRIPT_TYPE.RELEASE,
+            default=False,
+            tags=["bar"],
+        )
+        # other scripts that are not matched
+        factory.make_Script(  # not for release
+            script_type=SCRIPT_TYPE.TESTING,
+            default=True,
+            tags=["foo"],
+        )
+        factory.make_Script(  # different tag
+            script_type=SCRIPT_TYPE.RELEASE,
+            default=False,
+            tags=["baz"],
+        )
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        script_set = ScriptSet.objects.create_release_script_set(
+            node, scripts=["foo", "bar"]
+        )
+        self.assertCountEqual(
+            [
+                (script_result.script, script_result.status)
+                for script_result in script_set.scriptresult_set.all()
+            ],
+            [
+                (script1, SCRIPT_STATUS.PENDING),
+                (script2, SCRIPT_STATUS.PENDING),
+            ],
+        )
+
 
 class TestScriptSet(MAASServerTestCase):
     """Test the ScriptSet model."""

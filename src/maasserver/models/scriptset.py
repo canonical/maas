@@ -245,6 +245,23 @@ class ScriptSetManager(Manager):
         self._clean_old(node, RESULT_TYPE.INSTALLATION, script_set)
         return script_set
 
+    def create_release_script_set(self, node, scripts=None, script_input=None):
+        """Create a new release ScriptSet with ScriptResults.
+
+        Optionally a list of user scripts and tags can be given to create
+        ScriptResults for. Script may also have parameters passed to them."""
+        scripts = [str(i) for i in scripts] if scripts else []
+        script_set = self.create(
+            node=node,
+            result_type=RESULT_TYPE.RELEASE,
+            power_state_before_transition=node.power_state,
+            tags=self._filter_tags(scripts),
+        )
+
+        self._add_user_selected_scripts(script_set, scripts, script_input)
+        self._clean_old(node, RESULT_TYPE.RELEASE, script_set)
+        return script_set
+
     def create_deployed_machine_script_set(self, machine):
         """Setup ScriptSet for a brown-field deployment.
 
@@ -300,10 +317,13 @@ class ScriptSetManager(Manager):
         ids = [
             int(id) for id in scripts if isinstance(id, int) or id.isdigit()
         ]
-        if script_set.result_type == RESULT_TYPE.COMMISSIONING:
-            script_type = SCRIPT_TYPE.COMMISSIONING
-        else:
-            script_type = SCRIPT_TYPE.TESTING
+        match script_set.result_type:
+            case RESULT_TYPE.COMMISSIONING:
+                script_type = SCRIPT_TYPE.COMMISSIONING
+            case RESULT_TYPE.RELEASE:
+                script_type = SCRIPT_TYPE.RELEASE
+            case _:
+                script_type = SCRIPT_TYPE.TESTING
         qs = Script.objects.filter(
             Q(name__in=scripts) | Q(tags__overlap=scripts) | Q(id__in=ids),
             script_type=script_type,
@@ -324,6 +344,7 @@ class ScriptSetManager(Manager):
             RESULT_TYPE.COMMISSIONING: "max_node_commissioning_results",
             RESULT_TYPE.TESTING: "max_node_testing_results",
             RESULT_TYPE.INSTALLATION: "max_node_installation_results",
+            RESULT_TYPE.RELEASE: "max_node_release_results",
         }
         limit = Config.objects.get_config(config_var[result_type])
 
