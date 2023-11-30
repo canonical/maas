@@ -175,6 +175,7 @@ class RegionControllerService(Service):
         )
         eventloop.restart()
 
+    @asynchronous(timeout=FOREVER)
     @inlineCallbacks
     def queueDynamicDNSUpdate(self, channel, message):
         """
