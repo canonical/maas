@@ -2455,6 +2455,61 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
+    def test_returns_release_scripts_when_releasing(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.RELEASING, with_empty_script_sets=True
+        )
+
+        script = factory.make_Script(script_type=SCRIPT_TYPE.RELEASE)
+        factory.make_ScriptResult(
+            script_set=node.current_release_script_set,
+            script=script,
+            status=SCRIPT_STATUS.PENDING,
+        )
+
+        response = make_node_client(node=node).get(
+            reverse("maas-scripts", args=["latest"])
+        )
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+        self.assertEqual("application/x-tar", response["Content-Type"])
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+        # The + 1 is for the index.json file.
+        self.assertEqual(
+            node.current_release_script_set.scriptresult_set.count() + 1,
+            len(tar.getmembers()),
+        )
+
+        release_meta_data = self.validate_scripts(
+            node.current_release_script_set,
+            "release",
+            tar,
+            start_time,
+            end_time,
+        )
+
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+
+        self.assertDictEqual(
+            {
+                "1.0": {
+                    "release_scripts": sorted(
+                        release_meta_data,
+                        key=itemgetter("name", "script_result_id"),
+                    )
+                }
+            },
+            meta_data,
+        )
+
 
 class TestMAASScriptsProperties(MAASServerTestCase):
     def setUp(self):

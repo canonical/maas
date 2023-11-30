@@ -567,6 +567,12 @@ class Factory(maastesting.factory.Factory):
             )
             node.current_installation_script_set = installation_script_set
 
+            release_script_set = ScriptSet.objects.create_release_script_set(
+                node
+            )
+            release_script_set.save()
+            node.current_release_script_set = release_script_set
+
             node.save()
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.

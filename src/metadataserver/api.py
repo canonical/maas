@@ -1450,19 +1450,32 @@ class MAASScriptsHandler(OperationsHandler):
                         meta_data, key=itemgetter("name", "script_result_id")
                     )
 
-            # Always send testing scripts.
-            if node.current_testing_script_set is not None:
-                # prefetch all the data we need
-                qs = node.current_testing_script_set.scriptresult_set.select_related(
-                    "script", "script__script"
-                )
+            if node.status == NODE_STATUS.RELEASING:
                 meta_data = self._add_script_set_to_tar(
-                    qs, tar, "testing", mtime
+                    node.current_release_script_set,
+                    tar,
+                    "release",
+                    mtime,
                 )
                 if meta_data:
-                    tar_meta_data["testing_scripts"] = sorted(
+                    tar_meta_data["release_scripts"] = sorted(
                         meta_data, key=itemgetter("name", "script_result_id")
                     )
+            else:
+                # Always send testing scripts.
+                if node.current_testing_script_set is not None:
+                    # prefetch all the data we need
+                    qs = node.current_testing_script_set.scriptresult_set.select_related(
+                        "script", "script__script"
+                    )
+                    meta_data = self._add_script_set_to_tar(
+                        qs, tar, "testing", mtime
+                    )
+                    if meta_data:
+                        tar_meta_data["testing_scripts"] = sorted(
+                            meta_data,
+                            key=itemgetter("name", "script_result_id"),
+                        )
 
             if not tar_meta_data:
                 return HttpResponse(status=int(http.client.NO_CONTENT))
