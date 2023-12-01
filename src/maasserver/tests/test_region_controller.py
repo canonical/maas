@@ -967,3 +967,135 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         yield service._checkSerial(update_result)
 
         query.assert_not_called()
+
+    def test_queueDynamicDNSUpdate_can_be_called_synchronously(self):
+        domain = factory.make_Domain()
+        update_result = (random.randint(0, 10), True, [domain.name])
+        record1 = factory.make_DNSResource(domain=domain)
+        record2 = factory.make_DNSResource(domain=domain)
+        service = RegionControllerService(sentinel.listener)
+
+        update_zones = self.patch(region_controller, "dns_update_all_zones")
+        update_zones.return_value = update_result
+        check_serial = self.patch(service, "_checkSerial")
+        check_serial.return_value = succeed(update_result)
+
+        for _ in range(3):
+            service.queueDynamicDNSUpdate(
+                factory.make_name(),
+                f"INSERT {domain.name} {record1.name} A 30 1.1.1.1",
+            )
+            service.queueDynamicDNSUpdate(
+                factory.make_name(),
+                f"INSERT {domain.name} {record2.name} A 30 2.2.2.2",
+            )
+            service.queueDynamicDNSUpdate(
+                factory.make_name(),
+                f"DELETE {domain.name} {record1.name} A 30 1.1.1.1",
+            )
+            service.queueDynamicDNSUpdate(
+                factory.make_name(),
+                f"DELETE {domain.name} {record2.name} A 30 2.2.2.2",
+            )
+
+        self.assertCountEqual(
+            service._dns_updates,
+            [
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="2.2.2.2",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="2.2.2.2",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="2.2.2.2",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="2.2.2.2",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="INSERT",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=30,
+                    answer="2.2.2.2",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record1.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="1.1.1.1",
+                ),
+                DynamicDNSUpdate(
+                    operation="DELETE",
+                    name=f"{record2.name}.{domain.name}",
+                    zone=domain.name,
+                    rectype="A",
+                    ttl=None,
+                    answer="2.2.2.2",
+                ),
+            ],
+        )
