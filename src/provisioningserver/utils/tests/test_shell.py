@@ -11,10 +11,8 @@ from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
 from fixtures import EnvironmentVariable
-from testtools.matchers import ContainsDict, Equals, Is, IsInstance, Not
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import provisioningserver.utils.shell as shell_module
 from provisioningserver.utils.shell import (
@@ -58,9 +56,7 @@ class TestCallAndCheck(MAASTestCase):
         process = self.patch_popen()
         timeout = random.randint(1, 10)
         call_and_check(command, timeout=timeout)
-        self.assertThat(
-            process.communicate, MockCalledOnceWith(timeout=timeout)
-        )
+        process.communicate.assert_called_once_with(timeout=timeout)
 
     def test_reports_stderr_on_failure(self):
         nonfile = os.path.join(self.make_dir(), factory.make_name("nonesuch"))
@@ -82,30 +78,30 @@ class TestExternalProcessError(MAASTestCase):
 
     def test_upgrade_upgrades_CalledProcessError(self):
         error = factory.make_CalledProcessError()
-        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        self.assertNotIsInstance(error, ExternalProcessError)
         ExternalProcessError.upgrade(error)
-        self.expectThat(error, IsInstance(ExternalProcessError))
+        self.assertIsInstance(error, ExternalProcessError)
 
     def test_upgrade_does_not_change_CalledProcessError_subclasses(self):
         error_type = factory.make_exception_type(bases=(CalledProcessError,))
         error = factory.make_CalledProcessError()
         error.__class__ = error_type  # Change the class.
-        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        self.assertNotIsInstance(error, ExternalProcessError)
         ExternalProcessError.upgrade(error)
-        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
-        self.expectThat(error.__class__, Is(error_type))
+        self.assertNotIsInstance(error, ExternalProcessError)
+        self.assertIs(error.__class__, error_type)
 
     def test_upgrade_does_not_change_other_errors(self):
         error_type = factory.make_exception_type()
         error = error_type()
-        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        self.assertNotIsInstance(error, ExternalProcessError)
         ExternalProcessError.upgrade(error)
-        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
-        self.expectThat(error.__class__, Is(error_type))
+        self.assertNotIsInstance(error, ExternalProcessError)
+        self.assertIs(error.__class__, error_type)
 
     def test_upgrade_returns_None(self):
-        self.expectThat(
-            ExternalProcessError.upgrade(factory.make_exception()), Is(None)
+        self.assertIsNone(
+            ExternalProcessError.upgrade(factory.make_exception())
         )
 
     def test_to_unicode_decodes_to_unicode(self):
@@ -215,37 +211,29 @@ class TestGetEnvWithLocale(MAASTestCase):
     """Tests for `get_env_with_locale`."""
 
     def test_sets_LANG_and_LC_ALL(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_locale({}),
-            Equals(
-                {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"}
-            ),
+            {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"},
         )
 
     def test_overwrites_LANG(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_locale({"LANG": factory.make_name("LANG")}),
-            Equals(
-                {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"}
-            ),
+            {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"},
         )
 
     def test_overwrites_LANGUAGE(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_locale({"LANGUAGE": factory.make_name("LANGUAGE")}),
-            Equals(
-                {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"}
-            ),
+            {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"},
         )
 
     def test_removes_other_LC_variables(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_locale(
                 {name: factory.make_name(name) for name in LC_VAR_NAMES}
             ),
-            Equals(
-                {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"}
-            ),
+            {"LANG": "C.UTF-8", "LANGUAGE": "C.UTF-8", "LC_ALL": "C.UTF-8"},
         )
 
     def test_passes_other_variables_through(self):
@@ -264,56 +252,48 @@ class TestGetEnvWithLocale(MAASTestCase):
         name = factory.make_name("name")
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
-            self.assertThat(
-                get_env_with_locale(), ContainsDict({name: Equals(value)})
-            )
+            self.assertEqual(get_env_with_locale().get(name), value)
 
 
 class TestGetEnvWithBytesLocale(MAASTestCase):
     """Tests for `get_env_with_bytes_locale`."""
 
     def test_sets_LANG_and_LC_ALL(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_bytes_locale({}),
-            Equals(
-                {
-                    b"LANG": b"C.UTF-8",
-                    b"LANGUAGE": b"C.UTF-8",
-                    b"LC_ALL": b"C.UTF-8",
-                }
-            ),
+            {
+                b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            },
         )
 
     def test_overwrites_LANG(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_bytes_locale(
                 {b"LANG": factory.make_name("LANG").encode("ascii")}
             ),
-            Equals(
-                {
-                    b"LANG": b"C.UTF-8",
-                    b"LANGUAGE": b"C.UTF-8",
-                    b"LC_ALL": b"C.UTF-8",
-                }
-            ),
+            {
+                b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            },
         )
 
     def test_overwrites_LANGUAGE(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_bytes_locale(
                 {b"LANGUAGE": factory.make_name("LANGUAGE").encode("ascii")}
             ),
-            Equals(
-                {
-                    b"LANG": b"C.UTF-8",
-                    b"LANGUAGE": b"C.UTF-8",
-                    b"LC_ALL": b"C.UTF-8",
-                }
-            ),
+            {
+                b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            },
         )
 
     def test_removes_other_LC_variables(self):
-        self.assertThat(
+        self.assertEqual(
             get_env_with_bytes_locale(
                 {
                     name.encode("ascii"): factory.make_name(name).encode(
@@ -322,13 +302,11 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
                     for name in LC_VAR_NAMES
                 }
             ),
-            Equals(
-                {
-                    b"LANG": b"C.UTF-8",
-                    b"LANGUAGE": b"C.UTF-8",
-                    b"LC_ALL": b"C.UTF-8",
-                }
-            ),
+            {
+                b"LANG": b"C.UTF-8",
+                b"LANGUAGE": b"C.UTF-8",
+                b"LC_ALL": b"C.UTF-8",
+            },
         )
 
     def test_passes_other_variables_through(self):
@@ -349,12 +327,10 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
         name = factory.make_name("name")
         value = factory.make_name("value")
         with EnvironmentVariable(name, value):
-            self.assertThat(
-                get_env_with_bytes_locale(),
-                ContainsDict(
-                    {name.encode("ascii"): Equals(value.encode("ascii"))}
-                ),
-            )
+            self.assertEqual(
+                get_env_with_bytes_locale().get(name.encode("ascii")),
+                value.encode("Ascii"),
+            ),
 
 
 class TestRunCommand(MAASTestCase):

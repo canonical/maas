@@ -12,17 +12,6 @@ from unittest.mock import Mock
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
 import netifaces
 from netifaces import AF_INET, AF_INET6, AF_LINK
-from testtools import ExpectedException
-from testtools.matchers import (
-    ContainsAll,
-    Equals,
-    HasLength,
-    Is,
-    MatchesDict,
-    MatchesSetwise,
-    Not,
-    StartsWith,
-)
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.names.dns import Record_AAAA
 from twisted.names.error import (
@@ -34,12 +23,6 @@ from twisted.names.error import (
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    IsNonEmptyString,
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 import provisioningserver.utils
@@ -219,7 +202,7 @@ class TestFindIPViaARP(MAASTestCase):
 
         call_and_check = self.patch_call(sample)
         ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92")
-        self.assertThat(call_and_check, MockCalledOnceWith(["arp", "-n"]))
+        call_and_check.assert_called_once_with(["arp", "-n"])
         self.assertEqual("192.168.0.1", ip_address_observed)
 
     def test_returns_consistent_output(self):
@@ -256,12 +239,16 @@ class TestGetMACOrganization(MAASTestCase):
 
     def test_get_mac_organization(self):
         mac_address = "48:51:b7:00:00:00"
-        self.assertThat(get_mac_organization(mac_address), IsNonEmptyString)
+        self.assertRegex(
+            get_mac_organization(mac_address),
+            r"[^\s]",
+        )
 
     def test_get_eui_organization(self):
         mac_address = "48:51:b7:00:00:00"
-        self.assertThat(
-            get_eui_organization(EUI(mac_address)), IsNonEmptyString
+        self.assertRegex(
+            get_eui_organization(EUI(mac_address)),
+            r"[^\s]",
         )
 
     def test_get_eui_organization_returns_None_for_UnicodeError(self):
@@ -313,9 +300,8 @@ class TestFindMACViaARP(MAASTestCase):
         call_and_check = self.patch_call("")
         find_mac_via_arp(factory.make_ipv4_address())
         env = get_env_with_locale(locale="C")
-        self.assertThat(
-            call_and_check,
-            MockCalledOnceWith(["ip", "--json", "neigh"], env=env),
+        call_and_check.assert_called_once_with(
+            ["ip", "--json", "neigh"], env=env
         )
 
     def test_works_with_real_call(self):
@@ -633,9 +619,8 @@ class TestResolveHostToAddrs(MAASTestCase):
         result = resolve_hostname(hostname, 4)
         self.assertIsInstance(result, set)
         self.assertEqual({IPAddress(ip)}, result)
-        self.assertThat(
-            fake,
-            MockCalledOnceWith(hostname, 0, family=AF_INET, proto=IPPROTO_TCP),
+        fake.assert_called_once_with(
+            hostname, 0, family=AF_INET, proto=IPPROTO_TCP
         )
 
     def test_resolves_IPv6_address(self):
@@ -645,11 +630,8 @@ class TestResolveHostToAddrs(MAASTestCase):
         result = resolve_hostname(hostname, 6)
         self.assertIsInstance(result, set)
         self.assertEqual({IPAddress(ip)}, result)
-        self.assertThat(
-            fake,
-            MockCalledOnceWith(
-                hostname, 0, family=AF_INET6, proto=IPPROTO_TCP
-            ),
+        fake.assert_called_once_with(
+            hostname, 0, family=AF_INET6, proto=IPPROTO_TCP
         )
 
     def test_returns_empty_if_address_does_not_resolve(self):
@@ -681,9 +663,8 @@ class TestResolveHostToAddrs(MAASTestCase):
         result = resolve_host_to_addrinfo(hostname, 4)
         self.assertIsInstance(result, list)
         self.assertEqual([(None, None, None, None, (ip, 0))], result)
-        self.assertThat(
-            fake,
-            MockCalledOnceWith(hostname, 0, family=AF_INET, proto=IPPROTO_TCP),
+        fake.assert_called_once_with(
+            hostname, 0, family=AF_INET, proto=IPPROTO_TCP
         )
 
 
@@ -694,12 +675,8 @@ class TestIntersectIPRange(MAASTestCase):
         range_1 = IPRange("10.0.0.1", "10.0.0.255")
         range_2 = IPRange("10.0.0.128", "10.0.0.200")
         intersect = intersect_iprange(range_1, range_2)
-        self.expectThat(
-            IPAddress(intersect.first), Equals(IPAddress("10.0.0.128"))
-        )
-        self.expectThat(
-            IPAddress(intersect.last), Equals(IPAddress("10.0.0.200"))
-        )
+        self.assertEqual(IPAddress(intersect.first), IPAddress("10.0.0.128"))
+        self.assertEqual(IPAddress(intersect.last), IPAddress("10.0.0.200"))
 
     def test_ignores_non_intersecting_ranges(self):
         range_1 = IPRange("10.0.0.1", "10.0.0.255")
@@ -710,12 +687,8 @@ class TestIntersectIPRange(MAASTestCase):
         range_1 = IPRange("10.0.0.1", "10.0.0.128")
         range_2 = IPRange("10.0.0.64", "10.0.0.200")
         intersect = intersect_iprange(range_1, range_2)
-        self.expectThat(
-            IPAddress(intersect.first), Equals(IPAddress("10.0.0.64"))
-        )
-        self.expectThat(
-            IPAddress(intersect.last), Equals(IPAddress("10.0.0.128"))
-        )
+        self.assertEqual(IPAddress(intersect.first), IPAddress("10.0.0.64"))
+        self.assertEqual(IPAddress(intersect.last), IPAddress("10.0.0.128"))
 
 
 class TestIPRangeWithinNetwork(MAASTestCase):
@@ -947,9 +920,8 @@ class TestMAASIPSet(MAASTestCase):
         s1 = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         s2 = MAASIPSet(["10.0.0.1", "10.0.0.3", "10.0.0.5", "10.0.0.7"])
         s1 |= s2
-        self.assertThat(
-            s1, ContainsAll({ip for ip in IPRange("10.0.0.1", "10.0.0.8")})
-        )
+        for ip in IPRange("10.0.0.1", "10.0.0.8"):
+            self.assertIn(ip, s1)
 
     def test_ior_coalesces_adjacent_ranges(self):
         s1 = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
@@ -958,7 +930,7 @@ class TestMAASIPSet(MAASTestCase):
         # Since all these IP addresses are adjacent (and have the same
         # purpose), we should present them as a single entity. That is,
         # it will appear to the user as "10.0.0.1 through 10.0.0.8".
-        self.assertThat(s1.ranges, HasLength(1))
+        self.assertEqual(len(s1.ranges), 1)
         self.assertEqual("10.0.0.1", str(IPAddress(s1.first)))
         self.assertEqual("10.0.0.8", str(IPAddress(s1.last)))
 
@@ -983,7 +955,7 @@ class TestMAASIPSet(MAASTestCase):
         # Expect the individual addresses to be preserved in unique ranges,
         # since adjacent addresses have different purposes and thus will not
         # be combined.
-        self.assertThat(s1.ranges, HasLength(8))
+        self.assertEqual(len(s1.ranges), 8)
         self.assertEqual("10.0.0.1", str(IPAddress(s1.first)))
         self.assertEqual("10.0.0.8", str(IPAddress(s1.last)))
 
@@ -1139,7 +1111,7 @@ class TestIPRangeStatistics(MAASTestCase):
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.1", stats.suggested_gateway)
-        self.assertThat(stats.suggested_dynamic_range, HasLength(64))
+        self.assertEqual(len(stats.suggested_dynamic_range), 64)
         self.assertIn("10.0.0.191", stats.suggested_dynamic_range)
         self.assertIn("10.0.0.254", stats.suggested_dynamic_range)
         self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
@@ -1151,7 +1123,7 @@ class TestIPRangeStatistics(MAASTestCase):
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.1", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
-        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertEqual(len(stats.suggested_dynamic_range), 25)
         self.assertIn("10.0.0.230", stats.suggested_dynamic_range)
         self.assertIn("10.0.0.254", stats.suggested_dynamic_range)
         self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
@@ -1163,7 +1135,7 @@ class TestIPRangeStatistics(MAASTestCase):
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.254", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
-        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertEqual(len(stats.suggested_dynamic_range), 25)
         self.assertIn("10.0.0.229", stats.suggested_dynamic_range)
         self.assertIn("10.0.0.253", stats.suggested_dynamic_range)
         self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
@@ -1175,7 +1147,7 @@ class TestIPRangeStatistics(MAASTestCase):
         stats = IPRangeStatistics(u)
         self.assertEqual("10.0.0.204", stats.suggested_gateway)
         self.assertEqual(50, stats.num_available)
-        self.assertThat(stats.suggested_dynamic_range, HasLength(25))
+        self.assertEqual(len(stats.suggested_dynamic_range), 25)
         self.assertIn("10.0.0.229", stats.suggested_dynamic_range)
         self.assertIn("10.0.0.253", stats.suggested_dynamic_range)
         self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
@@ -1225,7 +1197,7 @@ class TestIPRangeStatistics(MAASTestCase):
         stats = IPRangeStatistics(u)
         self.assertEqual("2001:db8::", stats.suggested_gateway)
         self.assertEqual(255, stats.num_available)
-        self.assertThat(stats.suggested_dynamic_range, HasLength(127))
+        self.assertEqual(len(stats.suggested_dynamic_range), 127)
         self.assertIn(
             "2001:db8::ffff:ffff:ffff:ff81",
             stats.suggested_dynamic_range,
@@ -1284,7 +1256,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         observed_result = get_all_interfaces_definition(
             annotate_with_monitored=False
         )
-        self.assertThat(observed_result, expected_results)
+        self.assertEqual(observed_result, expected_results)
 
     def test_ignores_loopback(self):
         ip_addr = {
@@ -1296,7 +1268,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "mac": [],
             }
         }
-        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, {})
 
     def test_ignores_ethernet(self):
         ip_addr = {
@@ -1308,7 +1280,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "parents": [],
             }
         }
-        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, {})
 
     def test_ignores_ipip(self):
         ip_addr = {
@@ -1318,7 +1290,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "mac": factory.make_mac_address(),
             }
         }
-        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, {})
 
     def test_ignores_tunnel(self):
         ip_addr = {
@@ -1328,7 +1300,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "mac": factory.make_mac_address(),
             }
         }
-        self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
+        self.assertInterfacesResult(ip_addr, {}, {}, {})
 
     def test_simple(self):
         ip_addr = {
@@ -1340,22 +1312,16 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "parents": [],
             }
         }
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
-                    {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals(
-                            [{"mode": "static", "address": "192.168.122.2/24"}]
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                )
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [{"mode": "static", "address": "192.168.122.2/24"}],
+                "source": "machine-resources",
             }
-        )
+        }
         self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
 
     def test_simple_with_default_gateway(self):
@@ -1369,28 +1335,22 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }
         }
         iproute_info = {"default": {"gateway": "192.168.122.1"}}
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [
                     {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals(
-                            [
-                                {
-                                    "mode": "static",
-                                    "address": "192.168.122.2/24",
-                                    "gateway": "192.168.122.1",
-                                }
-                            ]
-                        ),
-                        "source": Equals("machine-resources"),
+                        "mode": "static",
+                        "address": "192.168.122.2/24",
+                        "gateway": "192.168.122.1",
                     }
-                )
+                ],
+                "source": "machine-resources",
             }
-        )
+        }
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
     def test_doesnt_ignore_ethernet_in_container(self):
@@ -1403,22 +1363,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "parents": [],
             }
         }
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
-                    {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals(
-                            [{"mode": "static", "address": "192.168.122.2/24"}]
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                )
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [{"mode": "static", "address": "192.168.122.2/24"}],
+                "source": "machine-resources",
             }
-        )
+        }
+
         self.assertInterfacesResult(
             ip_addr, {}, {}, expected_result, in_container=True
         )
@@ -1434,33 +1389,19 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             }
         }
         dhclient_info = {"eth0": "192.168.122.2"}
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
-                    {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": MatchesSetwise(
-                            MatchesDict(
-                                {
-                                    "mode": Equals("dhcp"),
-                                    "address": Equals("192.168.122.2/24"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.122.200/24"),
-                                }
-                            ),
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                )
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [
+                    {"mode": "dhcp", "address": "192.168.122.2/24"},
+                    {"mode": "static", "address": "192.168.122.200/24"},
+                ],
+                "source": "machine-resources",
             }
-        )
+        }
         self.assertInterfacesResult(
             ip_addr, {}, dhclient_info, expected_result
         )
@@ -1481,55 +1422,22 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "parents": [],
             }
         }
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
-                    {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": MatchesSetwise(
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.122.2/24"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.122.3/24"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.123.3/32"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals(
-                                        "2001:db8:a0b:12f0::1/96"
-                                    ),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals(
-                                        "2001:db8:a0b:12f0::2/96"
-                                    ),
-                                }
-                            ),
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                )
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [
+                    {"mode": "static", "address": "192.168.122.2/24"},
+                    {"mode": "static", "address": "192.168.122.3/24"},
+                    {"mode": "static", "address": "192.168.123.3/32"},
+                    {"mode": "static", "address": "2001:db8:a0b:12f0::1/96"},
+                    {"mode": "static", "address": "2001:db8:a0b:12f0::2/96"},
+                ],
+                "source": "machine-resources",
             }
-        )
+        }
         self.assertInterfacesResult(ip_addr, {}, {}, expected_result)
 
     def test_complex(self):
@@ -1608,134 +1516,102 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "default": {"gateway": "192.168.122.1"},
             "192.168.124.0/24": {"gateway": "192.168.124.1"},
         }
-        expected_result = MatchesDict(
-            {
-                "eth0": MatchesDict(
+        expected_result = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": ip_addr["eth0"]["mac"],
+                "enabled": False,
+                "parents": [],
+                "links": [],
+                "source": "machine-resources",
+            },
+            "eth1": {
+                "type": "physical",
+                "mac_address": ip_addr["eth1"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [],
+                "source": "machine-resources",
+            },
+            "eth2": {
+                "type": "physical",
+                "mac_address": ip_addr["eth2"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [],
+                "source": "machine-resources",
+            },
+            "bond0": {
+                "type": "bond",
+                "mac_address": ip_addr["bond0"]["mac"],
+                "enabled": True,
+                "parents": ["eth1", "eth2"],
+                "links": [
                     {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth0"]["mac"]),
-                        "enabled": Is(False),
-                        "parents": Equals([]),
-                        "links": Equals([]),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "eth1": MatchesDict(
+                        "mode": "static",
+                        "address": "192.168.122.2/24",
+                        "gateway": "192.168.122.1",
+                    },
                     {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth1"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals([]),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "eth2": MatchesDict(
+                        "mode": "static",
+                        "address": "192.168.122.3/24",
+                        "gateway": "192.168.122.1",
+                    },
+                    {"mode": "static", "address": "2001:db8::3:2:2/96"},
+                ],
+                "source": "machine-resources",
+            },
+            "bond0.10": {
+                "type": "vlan",
+                "mac_address": ip_addr["bond0.10"]["mac"],
+                "enabled": True,
+                "vid": 10,
+                "parents": ["bond0"],
+                "links": [
                     {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["eth2"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals([]),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "bond0": MatchesDict(
+                        "mode": "static",
+                        "address": "192.168.123.2/24",
+                    },
                     {
-                        "type": Equals("bond"),
-                        "mac_address": Equals(ip_addr["bond0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals(["eth1", "eth2"]),
-                        "links": MatchesSetwise(
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.122.2/24"),
-                                    "gateway": Equals("192.168.122.1"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.122.3/24"),
-                                    "gateway": Equals("192.168.122.1"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("2001:db8::3:2:2/96"),
-                                }
-                            ),
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "bond0.10": MatchesDict(
+                        "mode": "static",
+                        "address": "192.168.123.3/24",
+                    },
+                ],
+                "source": "machine-resources",
+            },
+            "vlan20": {
+                "type": "vlan",
+                "mac_address": ip_addr["vlan20"]["mac"],
+                "enabled": True,
+                "vid": 20,
+                "parents": ["eth0"],
+                "links": [],
+                "source": "machine-resources",
+            },
+            "wlan0": {
+                "type": "physical",
+                "mac_address": ip_addr["wlan0"]["mac"],
+                "enabled": True,
+                "parents": [],
+                "links": [],
+                "source": "machine-resources",
+            },
+            "br0": {
+                "type": "bridge",
+                "mac_address": ip_addr["br0"]["mac"],
+                "enabled": True,
+                "parents": ["eth0"],
+                "links": [
                     {
-                        "type": Equals("vlan"),
-                        "enabled": Is(True),
-                        "parents": Equals(["bond0"]),
-                        "mac_address": Equals(ip_addr["bond0.10"]["mac"]),
-                        "vid": Equals(10),
-                        "links": MatchesSetwise(
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.123.2/24"),
-                                }
-                            ),
-                            MatchesDict(
-                                {
-                                    "mode": Equals("static"),
-                                    "address": Equals("192.168.123.3/24"),
-                                }
-                            ),
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "vlan20": MatchesDict(
-                    {
-                        "type": Equals("vlan"),
-                        "mac_address": Equals(ip_addr["vlan20"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals(["eth0"]),
-                        "links": Equals([]),
-                        "source": Equals("machine-resources"),
-                        "vid": Equals(20),
-                    }
-                ),
-                "wlan0": MatchesDict(
-                    {
-                        "type": Equals("physical"),
-                        "mac_address": Equals(ip_addr["wlan0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals([]),
-                        "links": Equals([]),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-                "br0": MatchesDict(
-                    {
-                        "type": Equals("bridge"),
-                        "mac_address": Equals(ip_addr["br0"]["mac"]),
-                        "enabled": Is(True),
-                        "parents": Equals(["eth0"]),
-                        "links": Equals(
-                            [
-                                {
-                                    "mode": "static",
-                                    "address": "192.168.124.2/24",
-                                    "gateway": "192.168.124.1",
-                                }
-                            ]
-                        ),
-                        "source": Equals("machine-resources"),
-                    }
-                ),
-            }
-        )
+                        "mode": "static",
+                        "address": "192.168.124.2/24",
+                        "gateway": "192.168.124.1",
+                    },
+                ],
+                "source": "machine-resources",
+            },
+        }
+        self.maxDiff = None
         self.assertInterfacesResult(ip_addr, iproute_info, {}, expected_result)
 
 
@@ -1876,12 +1752,12 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
 
     def test_raises_valueerror_if_no_route_to_host(self):
         self.get_source_address_mock.return_value = None
-        with ExpectedException(ValueError):
+        with TestCase.assertRaises(self, ValueError):
             get_ifname_ifdata_for_destination("2001:db8::2", self.interfaces)
 
     def test_raises_valueerror_if_source_ip_not_found(self):
         self.get_source_address_mock.return_value = "192.168.0.2"
-        with ExpectedException(ValueError):
+        with TestCase.assertRaises(self, ValueError):
             get_ifname_ifdata_for_destination("192.168.0.3", self.interfaces)
 
 
@@ -1933,11 +1809,9 @@ class TestGetInterfaceChildren(MAASTestCase):
             "bond0": {"parents": ["eth0", "eth1"]},
         }
         children_map = get_interface_children(interfaces)
-        self.assertThat(
+        self.assertEqual(
             children_map,
-            Equals(
-                {"eth0": {"eth0.100", "bond0"}, "eth1": {"eth1.100", "bond0"}}
-            ),
+            {"eth0": {"eth0.100", "bond0"}, "eth1": {"eth1.100", "bond0"}},
         )
 
 
@@ -2117,7 +1991,7 @@ class TestIsLoopbackAddress(MAASTestCase):
         )
         name = factory.make_name("name")
         self.assertFalse(is_loopback_address(name))
-        self.assertThat(gai, MockNotCalled())
+        gai.assert_not_called()
 
     def test_handles_localhost(self):
         gai = self.patch(socket, "getaddrinfo")
@@ -2131,7 +2005,7 @@ class TestIsLoopbackAddress(MAASTestCase):
             ),
         )
         self.assertTrue(is_loopback_address("localhost"))
-        self.assertThat(gai, MockNotCalled())
+        gai.assert_not_called()
 
 
 class TestResolvesToLoopbackAddress(MAASTestCase):
@@ -2148,7 +2022,7 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
         )
         name = factory.make_name("name")
         self.assertTrue(resolves_to_loopback_address(name))
-        self.assertThat(gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
+        gai.assert_called_once_with(name, None, proto=IPPROTO_TCP)
 
     def test_resolves_hostnames_non_loopback(self):
         gai = self.patch(network_module, "sync_safe_getaddrinfo")
@@ -2163,7 +2037,7 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
         )
         name = factory.make_name("name")
         self.assertFalse(resolves_to_loopback_address(name))
-        self.assertThat(gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
+        gai.assert_called_once_with(name, None, proto=IPPROTO_TCP)
 
 
 class TestPreferredHostnamesSortKey(MAASTestCase):
@@ -2183,16 +2057,14 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             "ubuntu.com",
             "ubuntu.sets.a.great.example.com",
         )
-        self.assertThat(
+        self.assertEqual(
             sorted(names, key=preferred_hostnames_sort_key),
-            Equals(
-                [
-                    "ubuntu.sets.a.great.example.com",
-                    "diediedie.archive.ubuntu.com",
-                    "wpps.org.za",
-                    "ubuntu.com",
-                ]
-            ),
+            [
+                "ubuntu.sets.a.great.example.com",
+                "diediedie.archive.ubuntu.com",
+                "wpps.org.za",
+                "ubuntu.com",
+            ],
         )
 
     def test_sorts_by_domains_then_hostnames_within_each_domain(self):
@@ -2206,20 +2078,18 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             "maas-xenial",
             "juju-xenial",
         )
-        self.assertThat(
+        self.assertEqual(
             sorted(names, key=preferred_hostnames_sort_key),
-            Equals(
-                [
-                    "uk.archive.ubuntu.com",
-                    "us.archive.ubuntu.com",
-                    "foo.maas.ubuntu.com",
-                    "archive.ubuntu.com",
-                    "maas.ubuntu.com",
-                    "www.ubuntu.com",
-                    "juju-xenial",
-                    "maas-xenial",
-                ]
-            ),
+            [
+                "uk.archive.ubuntu.com",
+                "us.archive.ubuntu.com",
+                "foo.maas.ubuntu.com",
+                "archive.ubuntu.com",
+                "maas.ubuntu.com",
+                "www.ubuntu.com",
+                "juju-xenial",
+                "maas-xenial",
+            ],
         )
 
     def test_sorts_by_tlds_first(self):
@@ -2231,18 +2101,16 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             "www.ubuntu.com",
             "www.ubuntu.za",
         )
-        self.assertThat(
+        self.assertEqual(
             sorted(names, key=preferred_hostnames_sort_key),
-            Equals(
-                [
-                    "www.ubuntu.com",
-                    "www.ubuntu.org",
-                    "www.ubuntu.za",
-                    "com.com",
-                    "com.org",
-                    "com.za",
-                ]
-            ),
+            [
+                "www.ubuntu.com",
+                "www.ubuntu.org",
+                "www.ubuntu.za",
+                "com.com",
+                "com.org",
+                "com.za",
+            ],
         )
 
     def test_ignores_trailing_periods(self):
@@ -2254,18 +2122,16 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
             "www.ubuntu.com.",
             "www.ubuntu.za",
         )
-        self.assertThat(
+        self.assertEqual(
             sorted(names, key=preferred_hostnames_sort_key),
-            Equals(
-                [
-                    "www.ubuntu.com.",
-                    "www.ubuntu.org",
-                    "www.ubuntu.za",
-                    "com.com",
-                    "com.org.",
-                    "com.za.",
-                ]
-            ),
+            [
+                "www.ubuntu.com.",
+                "www.ubuntu.org",
+                "www.ubuntu.za",
+                "com.com",
+                "com.org.",
+                "com.za.",
+            ],
         )
 
 
@@ -2317,7 +2183,7 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
     def test_uses_resolver_from_getResolver_by_default(self):
         self.set_fake_twisted_dns_reply([])
         yield reverseResolve(factory.make_ip_address())
-        self.assertThat(self.getResolver, MockCalledOnceWith())
+        self.getResolver.mock_called_once_with()
 
     @inlineCallbacks
     def test_uses_passed_in_IResolver_if_specified(self):
@@ -2326,26 +2192,23 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         yield reverseResolve(
             factory.make_ip_address(), resolver=some_other_resolver
         )
-        self.assertThat(self.getResolver, MockNotCalled())
-        self.assertThat(some_other_resolver.lookupPointer, MockCalledOnce())
+        self.getResolver.mock_not_called()
+        some_other_resolver.lookupPointer.mock_called_once()
 
     @inlineCallbacks
     def test_returns_single_domain(self):
         reverse_dns_reply = ["example.com"]
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Equals(reverse_dns_reply))
+        self.assertEqual(result, reverse_dns_reply)
 
     @inlineCallbacks
     def test_returns_multiple_sorted_domains(self):
         reverse_dns_reply = ["ubuntu.com", "example.com"]
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(
-            result,
-            Equals(
-                sorted(reverse_dns_reply, key=preferred_hostnames_sort_key)
-            ),
+        self.assertEqual(
+            result, sorted(reverse_dns_reply, key=preferred_hostnames_sort_key)
         )
 
     @inlineCallbacks
@@ -2353,36 +2216,36 @@ class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
         reverse_dns_reply = []
         self.set_fake_twisted_dns_reply(reverse_dns_reply)
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Equals(reverse_dns_reply))
+        self.assertEqual(result, reverse_dns_reply)
 
     @inlineCallbacks
     def test_returns_empty_list_for_domainerror(self):
         self.lookupPointer.side_effect = DomainError
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Equals([]))
+        self.assertEqual(result, [])
 
     @inlineCallbacks
     def test_returns_empty_list_for_authoritativedomainerror(self):
         self.lookupPointer.side_effect = AuthoritativeDomainError
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Equals([]))
+        self.assertEqual(result, [])
 
     @inlineCallbacks
     def test_returns_none_for_dnsquerytimeouterror(self):
         self.lookupPointer.side_effect = DNSQueryTimeoutError(None)
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Is(None))
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_returns_none_for_resolvererror(self):
         self.lookupPointer.side_effect = ResolverError
         result = yield reverseResolve(factory.make_ip_address())
-        self.expectThat(result, Is(None))
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_raises_for_unhandled_error(self):
         self.lookupPointer.side_effect = TypeError
-        with ExpectedException(TypeError):
+        with TestCase.assertRaises(self, TypeError):
             yield reverseResolve(factory.make_ip_address())
 
 
@@ -2473,14 +2336,14 @@ class TestGetSourceAddress(MAASTestCase):
         self.assertIsNotNone(get_source_address("8.8.8.8"))
 
 
-class TestGenerateMACAddress(MAASTestCase):
+class TestGenerateMACAddress(TestCase):
     def test_starts_with_virsh_prefix(self):
-        self.assertThat(generate_mac_address(), StartsWith("52:54:00:"))
+        self.assertRegex(generate_mac_address(), r"^52:54:00:")
 
     def test_never_the_same(self):
         random_macs = [generate_mac_address() for _ in range(10)]
         for mac1, mac2 in itertools.permutations(random_macs, 2):
-            self.expectThat(mac1, Not(Equals(mac2)))
+            self.assertNotEqual(mac1, mac2)
 
 
 class TestConvertHostToUriStr(MAASTestCase):

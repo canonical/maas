@@ -19,21 +19,6 @@ import tokenize
 import types
 from unittest.mock import ANY, call, create_autospec, Mock, sentinel
 
-from testtools.matchers import (
-    AllMatch,
-    DirContains,
-    DirExists,
-    EndsWith,
-    FileExists,
-    GreaterThan,
-    HasLength,
-    IsInstance,
-    MatchesRegex,
-    Not,
-    SamePath,
-    StartsWith,
-)
-from testtools.testcase import ExpectedException
 from twisted import internet
 from twisted.internet.task import Clock
 from twisted.python import lockfile
@@ -41,13 +26,6 @@ from twisted.python import lockfile
 from maastesting import dev_root
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
-from maastesting.matchers import (
-    DocTestMatches,
-    FileContains,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import provisioningserver.config
@@ -112,24 +90,29 @@ class TestFilesystemLock(MAASTestCase):
 class TestAtomicWrite(MAASTestCase):
     """Test `atomic_write`."""
 
+    def assert_file_contains(self, filename, content):
+        with open(filename, "rb") as fh:
+            file_content = fh.read()
+        self.assertEqual(file_content, content)
+
     def test_atomic_write_overwrites_dest_file(self):
         content = factory.make_bytes()
         filename = self.make_file(contents=factory.make_string())
         atomic_write(content, filename)
-        self.assertThat(filename, FileContains(content))
+        self.assert_file_contains(filename, content)
 
     def test_atomic_write_does_not_overwrite_file_if_overwrite_false(self):
         content = factory.make_bytes()
         random_content = factory.make_bytes()
         filename = self.make_file(contents=random_content)
         atomic_write(content, filename, overwrite=False)
-        self.assertThat(filename, FileContains(random_content))
+        self.assert_file_contains(filename, random_content)
 
     def test_atomic_write_writes_file_if_no_file_present(self):
         filename = os.path.join(self.make_dir(), factory.make_string())
         content = factory.make_bytes()
         atomic_write(content, filename, overwrite=False)
-        self.assertThat(filename, FileContains(content))
+        self.assert_file_contains(filename, content)
 
     def test_atomic_write_does_not_leak_temp_file_when_not_overwriting(self):
         # If the file is not written because it already exists and
@@ -146,8 +129,9 @@ class TestAtomicWrite(MAASTestCase):
         # temporary file.
         self.patch(fs_module, "rename", Mock(side_effect=OSError()))
         filename = self.make_file()
-        with ExpectedException(OSError):
-            atomic_write(factory.make_bytes(), filename)
+        self.assertRaises(
+            OSError, atomic_write, factory.make_bytes(), filename
+        )
         self.assertEqual(
             [os.path.basename(filename)], os.listdir(os.path.dirname(filename))
         )
@@ -157,8 +141,9 @@ class TestAtomicWrite(MAASTestCase):
         # was removed.
         self.patch(fs_module, "chown", Mock(side_effect=PermissionError()))
         filename = self.make_file()
-        with ExpectedException(PermissionError):
-            atomic_write(factory.make_bytes(), filename)
+        self.assertRaises(
+            PermissionError, atomic_write, factory.make_bytes(), filename
+        )
 
         pattern = os.path.join(
             os.path.dirname(filename), ".%s.*" % os.path.basename(filename)
@@ -205,10 +190,9 @@ class TestAtomicWrite(MAASTestCase):
 
         atomic_write(factory.make_bytes(), atomic_file)
 
-        self.assertThat(fs_module.stat, MockCalledOnceWith(atomic_file))
-        self.assertThat(
-            fs_module.chown,
-            MockCalledOnceWith(ANY, sentinel.uid, sentinel.gid),
+        fs_module.stat.assert_called_once_with(atomic_file)
+        fs_module.chown.assert_called_once_with(
+            ANY, sentinel.uid, sentinel.gid
         )
 
     def test_atomic_write_sets_OSError_filename_if_undefined(self):
@@ -244,12 +228,17 @@ class TestAtomicWrite(MAASTestCase):
 
 
 class TestAtomicCopy(MAASTestCase):
+    def assert_file_contains(self, filename, content):
+        with open(filename, "rb") as fh:
+            file_content = fh.read()
+        self.assertEqual(file_content, content)
+
     def test_integration(self):
         loader_contents = factory.make_bytes()
         loader = self.make_file(contents=loader_contents)
         destination = self.make_file()
         atomic_copy(loader, destination)
-        self.assertThat(destination, FileContains(loader_contents))
+        self.assert_file_contains(destination, loader_contents)
 
     def test_installs_new_bootloader(self):
         contents = factory.make_bytes()
@@ -257,14 +246,14 @@ class TestAtomicCopy(MAASTestCase):
         install_dir = self.make_dir()
         dest = os.path.join(install_dir, factory.make_name("loader"))
         atomic_copy(loader, dest)
-        self.assertThat(dest, FileContains(contents))
+        self.assert_file_contains(dest, contents)
 
     def test_replaces_file_if_changed(self):
         contents = factory.make_bytes()
         loader = self.make_file(contents=contents)
         dest = self.make_file(contents="Old contents")
         atomic_copy(loader, dest)
-        self.assertThat(dest, FileContains(contents))
+        self.assert_file_contains(dest, contents)
 
     def test_skips_if_unchanged(self):
         contents = factory.make_bytes()
@@ -273,7 +262,7 @@ class TestAtomicCopy(MAASTestCase):
         original_write_time = os.stat(dest).st_mtime
         loader = self.make_file(contents=contents)
         atomic_copy(loader, dest)
-        self.assertThat(dest, FileContains(contents))
+        self.assert_file_contains(dest, contents)
         self.assertEqual(original_write_time, os.stat(dest).st_mtime)
 
     def test_sweeps_aside_dot_new_if_any(self):
@@ -285,7 +274,7 @@ class TestAtomicCopy(MAASTestCase):
             os.path.dirname(temp_file), name=os.path.basename(temp_file)
         )
         atomic_copy(loader, dest)
-        self.assertThat(dest, FileContains(contents))
+        self.assert_file_contains(dest, contents)
 
 
 class TestAtomicDelete(MAASTestCase):
@@ -294,7 +283,7 @@ class TestAtomicDelete(MAASTestCase):
     def test_atomic_delete_deletes_file(self):
         filename = self.make_file()
         atomic_delete(filename)
-        self.assertThat(filename, Not(FileExists()))
+        self.assertFalse(os.path.exists(filename))
 
     def test_renames_file_before_deleting(self):
         # Intercept calls to os.remove.
@@ -307,18 +296,19 @@ class TestAtomicDelete(MAASTestCase):
         atomic_delete(filepath)
 
         listing = os.listdir(filedir)
-        self.assertThat(listing, HasLength(1))
+        self.assertEqual(len(listing), 1)
         [deletedname] = listing
-        self.assertThat(deletedname, MatchesRegex(r"^[.][^.]+[.]deleted$"))
+        self.assertRegex(deletedname, r"^[.][^.]+[.]deleted$")
         deletedpath = os.path.join(filedir, deletedname)
-        self.assertThat(os_remove, MockCalledOnceWith(deletedpath))
-        self.assertThat(deletedpath, FileContains(contents))
+        os_remove.assert_called_once_with(deletedpath)
+        with open(deletedpath, "rb") as fh:
+            self.assertEqual(fh.read(), contents)
 
     def test_leaves_nothing_behind_on_error(self):
         dirname = self.make_dir()
         filename = os.path.join(dirname, "does-not-exist")
         self.assertRaises(FileNotFoundError, atomic_delete, filename)
-        self.assertThat(dirname, DirContains([]))
+        self.assertEqual(os.listdir(dirname), [])
 
 
 class TestAtomicSymlink(MAASTestCase):
@@ -333,7 +323,10 @@ class TestAtomicSymlink(MAASTestCase):
         self.assertTrue(
             os.path.islink(target), "atomic_symlink didn't create a symlink"
         )
-        self.assertThat(target, SamePath(filename))
+        self.assertEqual(
+            os.path.abspath(os.path.realpath(target)),
+            os.path.abspath(os.path.realpath(filename)),
+        )
 
     def test_atomic_symlink_overwrites_dest_file(self):
         filename = self.make_file(contents=factory.make_string())
@@ -346,7 +339,10 @@ class TestAtomicSymlink(MAASTestCase):
         self.assertTrue(
             os.path.islink(target), "atomic_symlink didn't create a symlink"
         )
-        self.assertThat(target, SamePath(filename))
+        self.assertEqual(
+            os.path.abspath(os.path.realpath(target)),
+            os.path.abspath(os.path.realpath(filename)),
+        )
 
     def test_atomic_symlink_does_not_leak_temp_file_if_failure(self):
         # In the face of failure, no temp file is leaked.
@@ -355,8 +351,7 @@ class TestAtomicSymlink(MAASTestCase):
         target_dir = self.make_dir()
         link_name = factory.make_name("link")
         target = os.path.join(target_dir, link_name)
-        with ExpectedException(OSError):
-            atomic_symlink(filename, target)
+        self.assertRaises(OSError, atomic_symlink, filename, target)
         self.assertEqual([], os.listdir(target_dir))
 
     def test_atomic_symlink_uses_relative_path(self):
@@ -489,18 +484,15 @@ class TestSudoWriteFile(MAASTestCase):
         contents = factory.make_bytes()
         sudo_write_file(path, contents)
 
-        self.assertThat(
-            fs_module.Popen,
-            MockCalledOnceWith(
-                [
-                    "sudo",
-                    "-n",
-                    get_library_script_path("maas-write-file"),
-                    path,
-                    "0644",
-                ],
-                stdin=PIPE,
-            ),
+        fs_module.Popen.assert_called_once_with(
+            [
+                "sudo",
+                "-n",
+                get_library_script_path("maas-write-file"),
+                path,
+                "0644",
+            ],
+            stdin=PIPE,
         )
 
     def test_calls_atomic_write_dev_mode(self):
@@ -531,9 +523,10 @@ class TestSudoWriteFile(MAASTestCase):
     def test_can_write_file_in_development(self):
         filename = get_maas_data_path("dhcpd.conf")
         contents = factory.make_bytes()  # Binary safe.
-        mode = random.randint(0o000, 0o777) | 0o400  # Always u+r.
+        mode = random.randint(0o400, 0o1000)  # Always u+r.
         sudo_write_file(filename, contents, mode)
-        self.assertThat(filename, FileContains(contents))
+        with open(filename, "rb") as fh:
+            self.assertEqual(fh.read(), contents)
         self.assertEqual(mode, os.stat(filename).st_mode & 0o777)
 
 
@@ -548,16 +541,13 @@ class TestSudoDeleteFile(MAASTestCase):
         path = os.path.join(self.make_dir(), factory.make_name("file"))
         sudo_delete_file(path)
 
-        self.assertThat(
-            fs_module.Popen,
-            MockCalledOnceWith(
-                [
-                    "sudo",
-                    "-n",
-                    get_library_script_path("maas-delete-file"),
-                    path,
-                ]
-            ),
+        fs_module.Popen.assert_called_once_with(
+            [
+                "sudo",
+                "-n",
+                get_library_script_path("maas-delete-file"),
+                path,
+            ]
         )
 
     def test_calls_atomic_delete_dev_mode(self):
@@ -581,7 +571,7 @@ class TestSudoDeleteFile(MAASTestCase):
         with open(filename, "wb") as fd:
             fd.write(factory.make_bytes())
         sudo_delete_file(filename)
-        self.assertThat(filename, Not(FileExists()))
+        self.assertFalse(os.path.exists(filename))
 
 
 def load_script(filename):
@@ -607,8 +597,9 @@ class TestSudoWriteFileScript(MAASTestCase):
 
     def test_allowed_list_is_a_non_empty_set_of_file_names(self):
         self.assertIsInstance(self.script.WRITABLE_FILES, set)
-        self.assertThat(self.script.WRITABLE_FILES, Not(HasLength(0)))
-        self.assertThat(self.script.WRITABLE_FILES, AllMatch(IsInstance(str)))
+        self.assertGreater(len(self.script.WRITABLE_FILES), 0)
+        for filename in self.script.WRITABLE_FILES:
+            self.assertIsInstance(filename, str)
 
     def test_accepts_file_names_on_allowed_list(self):
         calls_expected = []
@@ -620,9 +611,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             calls_expected.append(
                 call(content, filename, overwrite=True, mode=mode)
             )
-        self.assertThat(
-            self.script.atomic_write, MockCallsMatch(*calls_expected)
-        )
+        self.script.atomic_write.assert_has_calls(calls_expected)
 
     def test_rejects_file_name_not_on_allowed_list(self):
         filename = factory.make_name("/some/where", sep="/")
@@ -632,15 +621,12 @@ class TestSudoWriteFileScript(MAASTestCase):
             error = self.assertRaises(
                 SystemExit, self.script.main, args, io.BytesIO()
             )
-        self.assertThat(error.code, GreaterThan(0))
-        self.assertThat(self.script.atomic_write, MockNotCalled())
+        self.assertGreater(error.code, 0)
+        self.script.atomic_write.assert_not_called()
         self.assertEqual("", stdio.getOutput())
-        self.assertThat(
+        self.assertRegex(
             stdio.getError(),
-            DocTestMatches(
-                "usage: ... Given filename ... is not in the "
-                "allowed list. Choose from: ..."
-            ),
+            r"(?s)^usage: .* Given filename .* is not in the allowed list\. Choose from: ",
         )
 
     def test_rejects_file_mode_with_high_bits_set(self):
@@ -651,15 +637,12 @@ class TestSudoWriteFileScript(MAASTestCase):
             error = self.assertRaises(
                 SystemExit, self.script.main, args, io.BytesIO()
             )
-        self.assertThat(error.code, GreaterThan(0))
-        self.assertThat(self.script.atomic_write, MockNotCalled())
+        self.assertGreater(error.code, 0)
+        self.script.atomic_write.assert_not_called()
         self.assertEqual("", stdio.getOutput())
-        self.assertThat(
+        self.assertRegex(
             stdio.getError(),
-            DocTestMatches(
-                "usage: ... Given file mode 0o... is not permitted; "
-                "only permission bits may be set."
-            ),
+            rf"(?s)^usage: .* Given file mode {oct(mode)} is not permitted; only permission bits may be set",
         )
 
 
@@ -676,8 +659,9 @@ class TestSudoDeleteFileScript(MAASTestCase):
 
     def test_allowed_list_is_a_non_empty_set_of_file_names(self):
         self.assertIsInstance(self.script.DELETABLE_FILES, set)
-        self.assertThat(self.script.DELETABLE_FILES, Not(HasLength(0)))
-        self.assertThat(self.script.DELETABLE_FILES, AllMatch(IsInstance(str)))
+        self.assertGreater(len(self.script.DELETABLE_FILES), 0)
+        for filename in self.script.DELETABLE_FILES:
+            self.assertIsInstance(filename, str)
 
     def test_accepts_file_names_on_allowed_list(self):
         calls_expected = []
@@ -685,33 +669,26 @@ class TestSudoDeleteFileScript(MAASTestCase):
             args = self.script.arg_parser.parse_args([filename])
             self.script.main(args)
             calls_expected.append(call(filename))
-        self.assertThat(
-            self.script.atomic_delete, MockCallsMatch(*calls_expected)
-        )
+        self.script.atomic_delete.assert_has_calls(calls_expected)
 
     def test_is_okay_when_the_file_does_not_exist(self):
         filename = random.choice(list(self.script.DELETABLE_FILES))
         args = self.script.arg_parser.parse_args([filename])
         self.script.atomic_delete.side_effect = FileNotFoundError
         self.script.main(args)
-        self.assertThat(
-            self.script.atomic_delete, MockCalledOnceWith(filename)
-        )
+        self.script.atomic_delete.assert_called_once_with(filename)
 
     def test_rejects_file_name_not_on_allowed_list(self):
         filename = factory.make_name("/some/where", sep="/")
         args = self.script.arg_parser.parse_args([filename])
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(SystemExit, self.script.main, args)
-        self.assertThat(error.code, GreaterThan(0))
-        self.assertThat(self.script.atomic_delete, MockNotCalled())
+        self.assertGreater(error.code, 0)
+        self.script.atomic_delete.assert_not_called()
         self.assertEqual("", stdio.getOutput())
-        self.assertThat(
+        self.assertRegex(
             stdio.getError(),
-            DocTestMatches(
-                "usage: ... Given filename ... is not in the "
-                "allowed list. Choose from: ..."
-            ),
+            rf"(?s)usage: .* Given filename {filename} is not in the allowed list. Choose from: .*",
         )
 
 
@@ -720,7 +697,7 @@ class TestTempDir(MAASTestCase):
         stored_text = factory.make_string()
         filename = factory.make_name("test-file")
         with tempdir() as directory:
-            self.assertThat(directory, DirExists())
+            self.assertTrue(os.path.isdir(directory))
             write_text_file(os.path.join(directory, filename), stored_text)
             retrieved_text = read_text_file(os.path.join(directory, filename))
             files = os.listdir(directory)
@@ -737,38 +714,40 @@ class TestTempDir(MAASTestCase):
         with tempdir() as directory:
             file_path = factory.make_file(directory)
 
-        self.assertThat(directory, Not(DirExists()))
-        self.assertThat(file_path, Not(FileExists()))
+        self.assertFalse(os.path.isdir(directory))
+        self.assertFalse(os.path.exists(file_path))
 
     def test_cleans_up_on_exception_exit(self):
         class DeliberateFailure(Exception):
             pass
 
-        with ExpectedException(DeliberateFailure):
+        with self.assertRaisesRegex(
+            DeliberateFailure, "Exiting context by exception"
+        ):
             with tempdir() as directory:
                 file_path = factory.make_file(directory)
                 raise DeliberateFailure("Exiting context by exception")
 
-        self.assertThat(directory, Not(DirExists()))
-        self.assertThat(file_path, Not(FileExists()))
+        self.assertFalse(os.path.isdir(directory))
+        self.assertFalse(os.path.exists(file_path))
 
     def test_tolerates_disappearing_dir(self):
         with tempdir() as directory:
             rmtree(directory)
 
-        self.assertThat(directory, Not(DirExists()))
+        self.assertFalse(os.path.isdir(directory))
 
     def test_uses_location(self):
         temp_location = self.make_dir()
         with tempdir(location=temp_location) as directory:
-            self.assertThat(directory, DirExists())
+            self.assertTrue(os.path.isdir(directory))
             location_listing = os.listdir(temp_location)
 
         self.assertNotEqual(temp_location, directory)
-        self.assertThat(directory, StartsWith(temp_location + os.path.sep))
+        self.assertTrue(directory.startswith(temp_location + os.path.sep))
         self.assertIn(os.path.basename(directory), location_listing)
-        self.assertThat(temp_location, DirExists())
-        self.assertThat(directory, Not(DirExists()))
+        self.assertTrue(os.path.isdir(temp_location))
+        self.assertFalse(os.path.isdir(directory))
 
     def test_yields_unicode(self):
         with tempdir() as directory:
@@ -792,14 +771,14 @@ class TestTempDir(MAASTestCase):
         with tempdir(prefix=prefix) as directory:
             pass
 
-        self.assertThat(os.path.basename(directory), StartsWith(prefix))
+        self.assertTrue(os.path.basename(directory).startswith(prefix))
 
     def test_uses_suffix(self):
         suffix = factory.make_string(3)
         with tempdir(suffix=suffix) as directory:
             pass
 
-        self.assertThat(os.path.basename(directory), EndsWith(suffix))
+        self.assertTrue(os.path.basename(directory).endswith(suffix))
 
     def test_restricts_access(self):
         with tempdir() as directory:
@@ -838,13 +817,15 @@ class TestWriteTextFile(MAASTestCase):
         path = os.path.join(self.make_dir(), factory.make_name("text"))
         text = factory.make_string()
         write_text_file(path, text)
-        self.assertThat(path, FileContains(text, encoding="ascii"))
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read().decode("ascii"), text)
 
     def test_overwrites_file(self):
         path = self.make_file(contents="original text")
         text = factory.make_string()
         write_text_file(path, text)
-        self.assertThat(path, FileContains(text, encoding="ascii"))
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read().decode("ascii"), text)
 
     def test_defaults_to_utf8(self):
         path = self.make_file()
@@ -898,8 +879,9 @@ class TestSystemLocks(MAASTestCase):
 
     def test_path_is_read_only(self):
         lock = self.make_lock()
-        with ExpectedException(AttributeError):
-            lock.path = factory.make_name()
+        self.assertRaises(
+            AttributeError, setattr, lock, "path", factory.make_name()
+        )
 
     def test_holds_file_system_lock(self):
         lock = self.make_lock()
@@ -919,10 +901,8 @@ class TestSystemLocks(MAASTestCase):
         lock = self.make_lock()
         PROCESS_LOCK = self.patch(self.locktype, "PROCESS_LOCK")
         self.assertFalse(lock.is_locked())
-        self.assertThat(PROCESS_LOCK.__enter__, MockCalledOnceWith())
-        self.assertThat(
-            PROCESS_LOCK.__exit__, MockCalledOnceWith(None, None, None)
-        )
+        PROCESS_LOCK.__enter__.assert_called_once_with()
+        PROCESS_LOCK.__exit__.assert_called_once_with(None, None, None)
 
     def test_cannot_be_acquired_twice(self):
         """
@@ -946,7 +926,7 @@ class TestSystemLocks(MAASTestCase):
         """
         lock = self.make_lock()
         with lock:
-            with ExpectedException(self.locktype.NotAvailable, lock.path):
+            with self.assertRaisesRegex(self.locktype.NotAvailable, lock.path):
                 with lock:
                     pass
 
@@ -957,8 +937,8 @@ class TestSystemLocks(MAASTestCase):
         with lock:
             self.assertFalse(self.locktype.PROCESS_LOCK.locked())
 
-        self.assertThat(lock._fslock.lock, MockCalledOnceWith())
-        self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
+        lock._fslock.lock.assert_called_once_with()
+        lock._fslock.unlock.assert_called_once_with()
 
     def test_wait_waits_until_lock_can_be_acquired(self):
         clock = self.patch(internet, "reactor", Clock())
@@ -972,11 +952,11 @@ class TestSystemLocks(MAASTestCase):
         do_lock.side_effect = [False, False, True]
 
         with lock.wait(10):
-            self.assertThat(do_lock, MockCallsMatch(call(), call(), call()))
-            self.assertThat(sleep, MockCallsMatch(call(1.0), call(1.0)))
-            self.assertThat(do_unlock, MockNotCalled())
+            do_lock.assert_has_calls([call(), call(), call()])
+            sleep.assert_has_calls([call(1.0), call(1.0)])
+            do_unlock.assert_not_called()
 
-        self.assertThat(do_unlock, MockCalledOnceWith())
+        do_unlock.assert_called_once_with()
 
     def test_wait_raises_exception_when_time_has_run_out(self):
         clock = self.patch(internet, "reactor", Clock())
@@ -989,13 +969,13 @@ class TestSystemLocks(MAASTestCase):
 
         do_lock.return_value = False
 
-        with ExpectedException(self.locktype.NotAvailable):
+        with self.assertRaisesRegex(self.locktype.NotAvailable, lock.path):
             with lock.wait(0.2):
                 pass
 
-        self.assertThat(do_lock, MockCallsMatch(call(), call(), call()))
-        self.assertThat(sleep, MockCallsMatch(call(0.1), call(0.1)))
-        self.assertThat(do_unlock, MockNotCalled())
+        do_lock.assert_has_calls([call(), call(), call()])
+        sleep.assert_has_calls([call(0.1), call(0.1)])
+        do_unlock.assert_not_called()
 
     def test_wait_locks_and_unlocks_while_holding_global_lock(self):
         lock = self.make_lock()
@@ -1004,8 +984,8 @@ class TestSystemLocks(MAASTestCase):
         with lock.wait(10):
             self.assertFalse(self.locktype.PROCESS_LOCK.locked())
 
-        self.assertThat(lock._fslock.lock, MockCalledOnceWith())
-        self.assertThat(lock._fslock.unlock, MockCalledOnceWith())
+        lock._fslock.lock.assert_called_once_with()
+        lock._fslock.unlock.assert_called_once_with()
 
     def test_context_is_implemented_using_acquire_and_release(self):
         # Thus implying that all the earlier tests are valid for both.
@@ -1013,21 +993,21 @@ class TestSystemLocks(MAASTestCase):
         acquire = self.patch(lock, "acquire")
         release = self.patch(lock, "release")
 
-        self.assertThat(acquire, MockNotCalled())
-        self.assertThat(release, MockNotCalled())
+        acquire.assert_not_called()
+        release.assert_not_called()
         # Not locked at first, naturally.
         self.assertFalse(lock.is_locked())
         lock.acquire()
         try:
-            self.assertThat(acquire, MockCalledOnceWith())
-            self.assertThat(release, MockNotCalled())
+            acquire.assert_called_once_with()
+            release.assert_not_called()
             # The lock is not locked because — ah ha! — we've patched out the
             # method that does the locking.
             self.assertFalse(lock.is_locked())
         finally:
             lock.release()
-        self.assertThat(acquire, MockCalledOnceWith())
-        self.assertThat(release, MockCalledOnceWith())
+        acquire.assert_called_once_with()
+        release.assert_called_once_with()
         # Still not locked, without surprise.
         self.assertFalse(lock.is_locked())
 

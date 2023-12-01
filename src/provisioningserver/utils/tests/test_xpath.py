@@ -4,23 +4,18 @@
 """Tests for XPath utilities."""
 
 
-import doctest
 from textwrap import dedent
 from unittest.mock import Mock
 
 from fixtures import FakeLogger
 from lxml import etree
 from testscenarios import multiply_scenarios
-from testtools.matchers import DocTestMatches
 
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.xpath import try_match_xpath
 
 
 class TestTryMatchXPathScenarios(MAASTestCase):
-    doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
-
     def scenario(name, xpath, doc, expected_result, expected_log=""):
         """Return a scenario (for `testscenarios`) to test `try_match_xpath`.
 
@@ -104,10 +99,7 @@ class TestTryMatchXPathScenarios(MAASTestCase):
         xpath = self.xpath_compile(self.xpath)
         doc = self.doc_compile(self.doc)
         self.assertIs(self.expected_result, try_match_xpath(xpath, doc))
-        self.assertThat(
-            self.logger.output,
-            DocTestMatches(self.expected_log, self.doctest_flags),
-        )
+        self.assertIn(self.expected_log, self.logger.output)
 
 
 class TestTryMatchXPath(MAASTestCase):
@@ -118,11 +110,8 @@ class TestTryMatchXPath(MAASTestCase):
         callers_logger = Mock()
         try_match_xpath(xpath, doc, callers_logger)
         self.assertEqual("", root_logger.output)
-        self.assertThat(
-            callers_logger.warning,
-            MockCalledOnceWith(
-                "Invalid expression '%s': %s",
-                "/foo:bar",
-                "Undefined namespace prefix",
-            ),
+        callers_logger.warning.assert_called_once_with(
+            "Invalid expression '%s': %s",
+            "/foo:bar",
+            "Undefined namespace prefix",
         )

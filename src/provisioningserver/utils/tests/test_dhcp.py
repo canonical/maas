@@ -5,7 +5,6 @@
 from netaddr import IPAddress
 
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.dhcp import DHCP
 
@@ -15,34 +14,27 @@ class TestDHCP(MAASTestCase):
         packet = factory.make_dhcp_packet(truncated=True)
         dhcp = DHCP(packet)
         self.assertFalse(dhcp.valid)
-        self.assertThat(
-            dhcp.invalid_reason, DocTestMatches("Truncated DHCP packet.")
-        )
+        self.assertEqual(dhcp.invalid_reason, "Truncated DHCP packet.")
 
     def test_valid_returns_false_for_invalid_cookie(self):
         packet = factory.make_dhcp_packet(bad_cookie=True)
         dhcp = DHCP(packet)
         self.assertFalse(dhcp.valid)
-        self.assertThat(
-            dhcp.invalid_reason, DocTestMatches("Invalid DHCP cookie.")
-        )
+        self.assertEqual(dhcp.invalid_reason, "Invalid DHCP cookie.")
 
     def test_valid_returns_false_for_truncated_option_length(self):
         packet = factory.make_dhcp_packet(truncated_option_length=True)
         dhcp = DHCP(packet)
         self.assertFalse(dhcp.valid)
-        self.assertThat(
-            dhcp.invalid_reason,
-            DocTestMatches("Truncated length field in DHCP option."),
+        self.assertEqual(
+            dhcp.invalid_reason, "Truncated length field in DHCP option."
         )
 
     def test_valid_returns_false_for_truncated_option_value(self):
         packet = factory.make_dhcp_packet(truncated_option_value=True)
         dhcp = DHCP(packet)
         self.assertFalse(dhcp.valid)
-        self.assertThat(
-            dhcp.invalid_reason, DocTestMatches("Truncated DHCP option value.")
-        )
+        self.assertEqual(dhcp.invalid_reason, "Truncated DHCP option value.")
 
     def test_valid_return_true_for_valid_packet(self):
         packet = factory.make_dhcp_packet()

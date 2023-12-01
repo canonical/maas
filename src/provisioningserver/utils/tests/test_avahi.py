@@ -12,11 +12,7 @@ import subprocess
 from tempfile import NamedTemporaryFile
 import time
 
-from testtools.matchers import Equals, HasLength, Not
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import avahi as avahi_module
 from provisioningserver.utils.avahi import (
@@ -171,7 +167,7 @@ class TestObserveMDNS(MAASTestCase):
         observe_mdns(verbose=True, input=[input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
-        self.assertThat(lines, HasLength(1))
+        self.assertEqual(len(lines), 1)
         self.assertEqual(expected_result, json.loads(lines[0]))
 
     def test_skips_unimportant_events_without_verbose_enabled(self):
@@ -184,7 +180,7 @@ class TestObserveMDNS(MAASTestCase):
         observe_mdns(verbose=False, input=[input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
-        self.assertThat(lines, HasLength(0))
+        self.assertEqual(len(lines), 0)
 
     def test_non_verbose_removes_redundant_events_and_outputs_summary(self):
         out = io.StringIO()
@@ -200,16 +196,14 @@ class TestObserveMDNS(MAASTestCase):
         observe_mdns(verbose=False, input=[input, input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
-        self.assertThat(lines, HasLength(1))
-        self.assertThat(
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(
             json.loads(lines[0]),
-            Equals(
-                {
-                    "interface": "eth0",
-                    "address": "192.168.0.222",
-                    "hostname": "printer",
-                }
-            ),
+            {
+                "interface": "eth0",
+                "address": "192.168.0.222",
+                "hostname": "printer",
+            },
         )
 
     def test_non_verbose_removes_waits_before_emitting_duplicate_entry(self):
@@ -229,26 +223,22 @@ class TestObserveMDNS(MAASTestCase):
         observe_mdns(verbose=False, input=[input, input, input], output=out)
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
-        self.assertThat(lines, HasLength(2))
-        self.assertThat(
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(
             json.loads(lines[0]),
-            Equals(
-                {
-                    "interface": "eth0",
-                    "address": "192.168.0.222",
-                    "hostname": "printer",
-                }
-            ),
+            {
+                "interface": "eth0",
+                "address": "192.168.0.222",
+                "hostname": "printer",
+            },
         )
-        self.assertThat(
+        self.assertEqual(
             json.loads(lines[1]),
-            Equals(
-                {
-                    "interface": "eth0",
-                    "address": "192.168.0.222",
-                    "hostname": "printer",
-                }
-            ),
+            {
+                "interface": "eth0",
+                "address": "192.168.0.222",
+                "hostname": "printer",
+            },
         )
 
 
@@ -277,20 +267,17 @@ class TestObserveMDNSCommand(MAASTestCase):
         popen.return_value.returncode = 0
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(
-            popen,
-            MockCalledOnceWith(
-                [
-                    "/usr/bin/avahi-browse",
-                    "--all",
-                    "--resolve",
-                    "--no-db-lookup",
-                    "--parsable",
-                    "--no-fail",
-                ],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-            ),
+        popen.assert_called_once_with(
+            [
+                "/usr/bin/avahi-browse",
+                "--all",
+                "--resolve",
+                "--no-db-lookup",
+                "--parsable",
+                "--no-fail",
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
         )
 
     def test_allows_pipe_input(self):
@@ -299,7 +286,7 @@ class TestObserveMDNSCommand(MAASTestCase):
         args = parser.parse_args(["--input-file", "-"])
         output = io.StringIO()
         run(args, output=output, stdin=[self.test_input_bytes])
-        self.assertThat(output.getvalue(), Not(HasLength(0)))
+        self.assertGreater(len(output.getvalue()), 0)
 
     def test_allows_file_input(self):
         with NamedTemporaryFile("wb") as f:
@@ -320,7 +307,7 @@ class TestObserveMDNSCommand(MAASTestCase):
         popen.return_value.returncode = 42
         popen.return_value.stdout = io.BytesIO(self.test_input_bytes)
         output = io.StringIO()
-        with ExpectedException(SystemExit, ".*42.*"):
+        with self.assertRaisesRegex(SystemExit, ".*42.*"):
             run(args, output=output)
 
     def test_sets_self_as_process_group_leader(self):
@@ -328,4 +315,4 @@ class TestObserveMDNSCommand(MAASTestCase):
         os = self.patch(avahi_module, "os")
         os.setpgrp.side_effect = exception_type
         self.assertRaises(exception_type, run, [])
-        self.assertThat(os.setpgrp, MockCalledOnceWith())
+        os.setpgrp.assert_called_once_with()

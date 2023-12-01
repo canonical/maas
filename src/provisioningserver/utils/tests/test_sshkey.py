@@ -6,10 +6,7 @@
 
 import re
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.sshkey import (
     normalise_openssh_public_key,
@@ -78,12 +75,10 @@ class TestNormaliseOpenSSHPublicKeyBasics(MAASTestCase):
         error = self.assertRaises(
             OpenSSHKeyError, normalise_openssh_public_key, example_key
         )
-        self.assertThat(
+        self.assertEqual(
             str(error),
-            Equals(
-                "Key should contain 2 or more space separated parts (key type, "
-                "base64-encoded key, optional comments), not 1: " + example_key
-            ),
+            "Key should contain 2 or more space separated parts (key type, "
+            "base64-encoded key, optional comments), not 1: " + example_key,
         )
 
 
@@ -103,12 +98,10 @@ class _TestNormaliseOpenSSHPublicKeyCommon:
         error = self.assertRaises(
             OpenSSHKeyError, normalise_openssh_public_key, example_key
         )
-        self.assertThat(
-            str(error),
-            DocTestMatches(
-                "Key type " + example_type + " not recognised; it should be "
-                "one of: ... ssh-dss ..."
-            ),
+        self.assertTrue(
+            str(error).startswith(
+                f"Key type {example_type} not recognised; it should be one of: "
+            )
         )
 
     def test_rejects_corrupt_keys(self):

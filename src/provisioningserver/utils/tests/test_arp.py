@@ -8,10 +8,7 @@ from argparse import ArgumentParser
 import io
 from unittest.mock import Mock
 
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import arp as arp_module
 from provisioningserver.utils.arp import add_arguments, run
@@ -25,8 +22,8 @@ class TestObserveARPCommand(MAASTestCase):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
-        with ExpectedException(
-            ActionScriptError, ".*Required argument: interface.*"
+        with self.assertRaisesRegex(
+            ActionScriptError, "Required argument: interface"
         ):
             run(args)
 
@@ -40,11 +37,8 @@ class TestObserveARPCommand(MAASTestCase):
         popen.return_value.stdout = io.StringIO("{}")
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(
-            popen,
-            MockCalledOnceWith(
-                ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
-            ),
+        popen.assert_called_once_with(
+            ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
         )
 
     def test_calls_subprocess_for_interface_sudo(self):
@@ -57,11 +51,8 @@ class TestObserveARPCommand(MAASTestCase):
         popen.return_value.stdout = io.StringIO("{}")
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(
-            popen,
-            MockCalledOnceWith(
-                ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
-            ),
+        popen.assert_called_once_with(
+            ["sudo", "-n", "/usr/sbin/maas-netmon", "eth0"], stdout=output
         )
 
     def test_raises_systemexit_poll_result(self):
@@ -77,7 +68,7 @@ class TestObserveARPCommand(MAASTestCase):
         observe_arp_packets.return_value = None
         popen.return_value.poll = Mock()
         popen.return_value.poll.return_value = 42
-        with ExpectedException(SystemExit, ".*42.*"):
+        with self.assertRaisesRegex(SystemExit, "42"):
             run(args, output=output)
 
     def test_sets_self_as_process_group_leader(self):
@@ -85,4 +76,4 @@ class TestObserveARPCommand(MAASTestCase):
         os = self.patch(arp_module, "os")
         os.setpgrp.side_effect = exception_type
         self.assertRaises(exception_type, run, [])
-        self.assertThat(os.setpgrp, MockCalledOnceWith())
+        os.setpgrp.assert_called_once_with()

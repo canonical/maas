@@ -17,11 +17,7 @@ import time
 from unittest.mock import Mock
 from uuid import UUID, uuid1
 
-from testtools.matchers import HasLength, LessThan
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.security import fernet_encrypt_psk, MissingSharedSecret
 from provisioningserver.tests.test_security import SharedSecretTestCase
@@ -52,7 +48,7 @@ class TestUUIDToTimestamp(MAASTestCase):
         difference = math.fabs(actual_timestamp - expected_timestamp)
         # Tolerate a difference of ~3 seconds. We'll age out packets on the
         # order of minutes, so that should be good enough.
-        self.assertThat(difference, LessThan(3.0))
+        self.assertLess(difference, 3.0)
 
 
 class TestBeaconToJSON(MAASTestCase):
@@ -71,7 +67,7 @@ class TestBeaconToJSON(MAASTestCase):
         self.assertEqual(test_type, beacon_json["type"])
         self.assertEqual(test_payload, beacon_json["payload"])
         self.assertNotIn("bytes", beacon_json)
-        self.assertThat(beacon_json, HasLength(3))
+        self.assertEqual(len(beacon_json), 3)
 
 
 class TestCreateBeaconPayload(SharedSecretTestCase):
@@ -81,7 +77,7 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
 
     def test_requires_maas_shared_secret_for_inner_data_payload(self):
         MAAS_SECRET.set(None)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             MissingSharedSecret, ".*shared secret not found.*"
         ):
             create_beacon_payload("solicitation", payload={})
@@ -139,28 +135,28 @@ class TestReadBeaconPayload(SharedSecretTestCase):
         MAAS_SECRET.set(factory.make_bytes())
 
     def test_raises_if_packet_too_small(self):
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*packet must be at least 4 bytes.*"
         ):
             read_beacon_payload(b"")
 
     def test_raises_if_payload_too_small(self):
         packet = _make_beacon_payload(payload=b"1234")[:6]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*expected 4 bytes, got 2 bytes.*"
         ):
             read_beacon_payload(packet)
 
     def test_raises_when_version_incorrect(self):
         packet = _make_beacon_payload(version=0xFE)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*Unknown beacon version.*"
         ):
             read_beacon_payload(packet)
 
     def test_raises_when_inner_payload_does_not_decrypt(self):
         packet = _make_beacon_payload(payload=b"\xfe")
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*Failed to decrypt.*"
         ):
             read_beacon_payload(packet)
@@ -169,7 +165,7 @@ class TestReadBeaconPayload(SharedSecretTestCase):
         packet = _make_beacon_payload(
             payload=fernet_encrypt_psk("\n\n", raw=True)
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*Failed to decompress.*"
         ):
             read_beacon_payload(packet)
@@ -177,7 +173,7 @@ class TestReadBeaconPayload(SharedSecretTestCase):
     def test_raises_when_inner_encapsulation_is_not_bson(self):
         payload = fernet_encrypt_psk(compress(b"\n\n"), raw=True)
         packet = _make_beacon_payload(payload=payload)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             InvalidBeaconingPacket, ".*beacon payload is not BSON.*"
         ):
             read_beacon_payload(packet)
@@ -210,7 +206,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         parser = ArgumentParser()
         add_arguments(parser)
         args = parser.parse_args([])
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ActionScriptError, ".*Required argument: interface.*"
         ):
             run(args)
@@ -225,13 +221,10 @@ class TestObserveBeaconsCommand(MAASTestCase):
         popen.return_value.stdout = io.BytesIO(BEACON_PCAP)
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(
-            popen,
-            MockCalledOnceWith(
-                ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-            ),
+        popen.assert_called_once_with(
+            ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
         )
 
     def test_calls_subprocess_for_interface_sudo(self):
@@ -244,13 +237,10 @@ class TestObserveBeaconsCommand(MAASTestCase):
         popen.return_value.stdout = io.BytesIO(BEACON_PCAP)
         output = io.StringIO()
         run(args, output=output)
-        self.assertThat(
-            popen,
-            MockCalledOnceWith(
-                ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-            ),
+        popen.assert_called_once_with(
+            ["sudo", "-n", "/usr/lib/maas/beacon-monitor", "eth0"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
         )
 
     def test_checks_for_pipe(self):
@@ -264,7 +254,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         fstat.return_value.st_mode = None
         stat = self.patch(beaconing_module.stat, "S_ISFIFO")
         stat.return_value = False
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ActionScriptError, "Expected stdin to be a pipe"
         ):
             run(args, output=output)
@@ -306,7 +296,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
             beaconing_module, "observe_beaconing_packets"
         )
         observe_beaconing_packets.return_value = 37
-        with ExpectedException(SystemExit, ".*37.*"):
+        with self.assertRaisesRegex(SystemExit, ".*37.*"):
             run(args, output=output)
 
     def test_raises_systemexit_poll_result(self):
@@ -324,7 +314,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         observe_beaconing_packets.return_value = None
         popen.return_value.poll = Mock()
         popen.return_value.poll.return_value = 42
-        with ExpectedException(SystemExit, ".*42.*"):
+        with self.assertRaisesRegex(SystemExit, ".*42.*"):
             run(args, output=output)
 
     def test_sets_self_as_process_group_leader(self):
@@ -332,7 +322,7 @@ class TestObserveBeaconsCommand(MAASTestCase):
         os = self.patch(beaconing_module, "os")
         os.setpgrp.side_effect = exception_type
         self.assertRaises(exception_type, run, [])
-        self.assertThat(os.setpgrp, MockCalledOnceWith())
+        os.setpgrp.assert_called_once_with()
 
 
 class TestAgeOutUUIDQueue(MAASTestCase):
@@ -342,9 +332,9 @@ class TestAgeOutUUIDQueue(MAASTestCase):
         uuid_now = str(uuid1())
         queue = OrderedDict()
         queue[uuid_now] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
 
     def test_keeps_entries_from_the_reasonable_past(self):
         uuid_from_the_past = factory.make_UUID_with_timestamp(
@@ -352,9 +342,9 @@ class TestAgeOutUUIDQueue(MAASTestCase):
         )
         queue = OrderedDict()
         queue[uuid_from_the_past] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
 
     def test_keeps_entries_from_the_reasonable_future(self):
         uuid_from_the_future = factory.make_UUID_with_timestamp(
@@ -362,9 +352,9 @@ class TestAgeOutUUIDQueue(MAASTestCase):
         )
         queue = OrderedDict()
         queue[uuid_from_the_future] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
 
     def test_removes_entries_from_the_past(self):
         uuid_from_the_past = factory.make_UUID_with_timestamp(
@@ -372,9 +362,9 @@ class TestAgeOutUUIDQueue(MAASTestCase):
         )
         queue = OrderedDict()
         queue[uuid_from_the_past] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(0))
+        self.assertEqual(queue, {})
 
     def test_removes_entries_from_the_future(self):
         uuid_from_the_future = factory.make_UUID_with_timestamp(
@@ -382,22 +372,22 @@ class TestAgeOutUUIDQueue(MAASTestCase):
         )
         queue = OrderedDict()
         queue[uuid_from_the_future] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(0))
+        self.assertEqual(queue, {})
 
     def test_removes_entries_from_the_distant_past(self):
         uuid_from_the_past = "00000000-0000-1000-aaaa-aaaaaaaaaaaa"
         queue = OrderedDict()
         queue[uuid_from_the_past] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(0))
+        self.assertEqual(queue, {})
 
     def test_removes_entries_from_the_far_future(self):
         uuid_from_the_future = "ffffffff-ffff-1fff-0000-000000000000"
         queue = OrderedDict()
         queue[uuid_from_the_future] = {}
-        self.assertThat(queue, HasLength(1))
+        self.assertEqual(len(queue), 1)
         age_out_uuid_queue(queue)
-        self.assertThat(queue, HasLength(0))
+        self.assertEqual(queue, {})

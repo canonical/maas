@@ -10,7 +10,6 @@ import os
 from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import DirExists
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -39,8 +38,9 @@ class TestLocateConfig(MAASTestCase):
     """Tests for `locate_config`."""
 
     def test_returns_branch_etc_maas(self):
-        self.assertEqual(get_run_path("etc/maas"), locate_config())
-        self.assertThat(locate_config(), DirExists())
+        config_path = locate_config()
+        self.assertEqual(get_run_path("etc/maas"), config_path)
+        self.assertTrue(os.path.isdir(config_path))
 
     def test_defaults_to_global_etc_maas_if_variable_is_unset(self):
         self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", None))

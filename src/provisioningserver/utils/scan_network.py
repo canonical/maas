@@ -105,10 +105,11 @@ def yield_ipv4_networks_on_link(ifname: str, interfaces: dict):
     :param ifname: the name of the interface whose CIDRs to yield.
     :param interfaces: the output of `get_all_interfaces_definition()`.
     """
-    return filter(
-        lambda link: IPNetwork(link).version == 4,
-        (link["address"] for link in interfaces[ifname]["links"]),
-    )
+    return [
+        link["address"]
+        for link in interfaces[ifname]["links"]
+        if IPNetwork(link["address"]).version == 4
+    ]
 
 
 def yield_cidrs_on_interface(cidr_set: IPSet, ifname: str, interfaces: dict):
@@ -145,8 +146,8 @@ def get_interface_cidrs_to_scan(
             # (interface, cidr) pairs with matching CIDRs, and/or CIDRs which
             # are a superset of the specified CIDRs.
             to_scan = {
-                ifname: yield_cidrs_on_interface(
-                    IPSet(cidrs), ifname, interfaces
+                ifname: list(
+                    yield_cidrs_on_interface(IPSet(cidrs), ifname, interfaces)
                 )
                 for ifname in interfaces
             }

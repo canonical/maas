@@ -4,8 +4,7 @@
 """Tests for constraints helpers."""
 
 
-from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength
+from unittest import TestCase
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.constraints import (
@@ -27,8 +26,8 @@ class TestValidateLabelName(MAASTestCase):
 
     def test_rejects_bad_names(self):
         for name in self.EXPECTED_BAD_NAMES:
-            with ExpectedException(
-                ConstraintTestException, msg="name=%s" % name
+            with TestCase.assertRaises(
+                self, ConstraintTestException, msg=f"name={name}"
             ):
                 validate_constraint_label_name(
                     name, exception_type=ConstraintTestException
@@ -40,26 +39,28 @@ class TestValidateLabelName(MAASTestCase):
 
 
 class TestGetLabeledConstraintsMap(MAASTestCase):
+    assertRaises = TestCase.assertRaises
+
     def test_missing_key_value_pair_raises(self):
-        with ExpectedException(ConstraintTestException):
+        with self.assertRaises(ConstraintTestException):
             parse_labeled_constraint_map(
                 "a:bc", exception_type=ConstraintTestException
             )
 
     def test_duplicate_label_raises(self):
-        with ExpectedException(ConstraintTestException):
+        with self.assertRaises(ConstraintTestException):
             parse_labeled_constraint_map(
                 "a:b=c;a:d=e", exception_type=ConstraintTestException
             )
 
     def test_invalid_label_raises(self):
-        with ExpectedException(ConstraintTestException):
+        with self.assertRaises(ConstraintTestException):
             parse_labeled_constraint_map(
                 "*:b=c", exception_type=ConstraintTestException
             )
 
     def test_label_with_no_constraints_raises(self):
-        with ExpectedException(ConstraintTestException):
+        with self.assertRaises(ConstraintTestException):
             parse_labeled_constraint_map(
                 "a:", exception_type=ConstraintTestException
             )
@@ -90,26 +91,24 @@ class TestGetLabeledConstraintsMap(MAASTestCase):
 
     def test_multiple_value_map_multiple_label_map(self):
         result = parse_labeled_constraint_map("foo:a=b,c=d;bar:e=f,g=h")
-        self.assertThat(
+        self.assertEqual(
             result,
-            Equals(
-                {
-                    "foo": {"a": ["b"], "c": ["d"]},
-                    "bar": {"e": ["f"], "g": ["h"]},
-                }
-            ),
+            {
+                "foo": {"a": ["b"], "c": ["d"]},
+                "bar": {"e": ["f"], "g": ["h"]},
+            },
         )
 
 
 class TestLabeledConstraintMap(MAASTestCase):
     def test_len__for_null_map(self):
         lcm = LabeledConstraintMap(None)
-        self.assertThat(lcm, HasLength(0))
+        self.assertEqual(len(lcm), 0)
 
     def test_len__for_empty_map(self):
         lcm = LabeledConstraintMap("")
-        self.assertThat(lcm, HasLength(0))
+        self.assertEqual(len(lcm), 0)
 
     def test_len__for_populated_map(self):
         lcm = LabeledConstraintMap("eth0:space=1;eth1:space=2")
-        self.assertThat(lcm, HasLength(2))
+        self.assertEqual(len(lcm), 2)

@@ -87,10 +87,7 @@ class IPv4:
         self.invalid_reason = None
         if len(pkt_bytes) < IPV4_HEADER_MIN_LENGTH:
             self.valid = False
-            self.invalid_reason = (
-                "Truncated IPv4 header; need at least %d bytes."
-                % (IPV4_HEADER_MIN_LENGTH)
-            )
+            self.invalid_reason = f"Truncated IPv4 header; need at least {IPV4_HEADER_MIN_LENGTH} bytes."
             return
         packet = IPv4Packet._make(
             struct.unpack(IPV4_PACKET, pkt_bytes[0:IPV4_HEADER_MIN_LENGTH])
@@ -104,22 +101,18 @@ class IPv4:
         if self.version != 4:
             self.valid = False
             self.invalid_reason = (
-                "Invalid version field; expected IPv4, got IPv%d."
-                % (self.version)
+                f"Invalid version field; expected IPv4, got IPv{self.version}."
             )
             return
         if self.ihl < 20:
-            self.invalid_reason = (
-                "Invalid IPv4 IHL field; expected at least 20 bytes; got %d "
-                "bytes." % self.ihl
-            )
+            self.invalid_reason = f"Invalid IPv4 IHL field; expected at least 20 bytes; got {self.ihl} bytes."
             self.valid = False
             return
         if len(pkt_bytes) < self.ihl:
             self.valid = False
             self.invalid_reason = (
-                "Truncated IPv4 header; IHL indicates to read %d bytes; got "
-                "%d bytes." % (self.ihl, len(pkt_bytes))
+                f"Truncated IPv4 header; IHL indicates to read {self.ihl} bytes; "
+                f"got {len(pkt_bytes)} bytes."
             )
             return
         self.protocol = packet.protocol
@@ -176,10 +169,7 @@ class IPv6:
         self.protocol = None
         if len(pkt_bytes) < IPV6_HEADER_MIN_LENGTH:
             self.valid = False
-            self.invalid_reason = (
-                "Truncated IPv6 header; need at least %d bytes."
-                % (IPV6_HEADER_MIN_LENGTH)
-            )
+            self.invalid_reason = f"Truncated IPv6 header; need at least {IPV6_HEADER_MIN_LENGTH} bytes."
             return
         packet = IPv6Packet._make(
             struct.unpack(IPV6_PACKET, pkt_bytes[0:IPV6_HEADER_MIN_LENGTH])
@@ -193,8 +183,7 @@ class IPv6:
         if self.version != 6:
             self.valid = False
             self.invalid_reason = (
-                "Invalid version field; expected IPv6, got IPv%d."
-                % (self.version)
+                f"Invalid version field; expected IPv6, got IPv{self.version}."
             )
             return
         # XXX mpontillo 2017-08-15: should process next headers.
@@ -242,10 +231,7 @@ class UDP:
         self.invalid_reason = None
         if len(pkt_bytes) < UDP_HEADER_LENGTH:
             self.valid = False
-            self.invalid_reason = (
-                "Truncated UDP header; need at least %d bytes."
-                % (UDP_HEADER_LENGTH)
-            )
+            self.invalid_reason = f"Truncated UDP header; need at least {UDP_HEADER_LENGTH} bytes."
             return
         packet = UDPPacket._make(
             struct.unpack(UDP_PACKET, pkt_bytes[0:UDP_HEADER_LENGTH])
@@ -254,8 +240,8 @@ class UDP:
         if packet.length < UDP_HEADER_LENGTH:
             self.valid = False
             self.invalid_reason = (
-                "Invalid UDP packet; got length of %d bytes; expected at "
-                "least %d bytes. " % (packet.length, UDP_HEADER_LENGTH)
+                f"Invalid UDP packet; got length of {packet.length} bytes; expected at "
+                f"least {UDP_HEADER_LENGTH} bytes."
             )
             return
         # UDP length includes UDP header, so subtract it to get payload length.
@@ -268,8 +254,8 @@ class UDP:
         if len(self.payload) != payload_length:
             self.valid = False
             self.invalid_reason = (
-                "UDP packet truncated; expected %d bytes; got %d bytes."
-                % (payload_length, len(self.payload))
+                f"UDP packet truncated; expected {payload_length} bytes; "
+                f"got {len(self.payload)} bytes."
             )
 
     def is_valid(self):
@@ -288,8 +274,7 @@ def decode_ethernet_udp_packet(packet, pcap_header=None):
     supported_ethertypes = (ETHERTYPE.IPV4, ETHERTYPE.IPV6)
     if ethertype not in supported_ethertypes:
         raise PacketProcessingError(
-            "Invalid ethertype; expected one of %r, got %r."
-            % (supported_ethertypes, ethertype)
+            f"Invalid ethertype; expected one of {supported_ethertypes!r}, got {ethertype!r}."
         )
     # Interpret Layer 3
     if ethertype == ETHERTYPE.IPV4:
@@ -300,8 +285,7 @@ def decode_ethernet_udp_packet(packet, pcap_header=None):
         raise PacketProcessingError(ip.invalid_reason)
     if ip.protocol != PROTOCOL.UDP:
         raise PacketProcessingError(
-            "Invalid protocol; expected %d (UDP), got %d."
-            % (PROTOCOL.UDP, ip.protocol)
+            f"Invalid protocol; expected {PROTOCOL.UDP} (UDP), got {ip.protocol}."
         )
     # Interpret Layer 4
     udp = UDP(ip.payload)

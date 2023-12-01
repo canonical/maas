@@ -6,9 +6,6 @@
 
 import io
 
-from testtools import ExpectedException
-from testtools.matchers import Equals
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.pcap import PCAP, PCAPError
 
@@ -44,19 +41,19 @@ TESTDATA_INVALID_PACKET = (
 class TestPCAP(MAASTestCase):
     def test_raises_EOFError_for_empty_PCAP_stream(self):
         stream = io.BytesIO(b"")
-        with ExpectedException(EOFError, "No PCAP output found."):
+        with self.assertRaisesRegex(EOFError, "No PCAP output found."):
             PCAP(stream)
 
     def test_raises_PCAPError_for_invalid_PCAP_stream(self):
         stream = io.BytesIO(b"\0" * 24)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PCAPError, "Stream is not in native PCAP format."
         ):
             PCAP(stream)
 
     def test_raises_PCAPError_for_invalid_PCAP_header(self):
         stream = io.BytesIO(b"\0" * 5)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PCAPError, "Unexpected end of PCAP stream: invalid header."
         ):
             PCAP(stream)
@@ -68,25 +65,21 @@ class TestPCAP(MAASTestCase):
         self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
         pkt1 = pcap.read()
         self.assertEqual((1467058714, 931534, 60, 60), pkt1[0])
-        self.assertThat(
+        self.assertEqual(
             pkt1[1],
-            Equals(
-                b"\xff\xff\xff\xff\xff\xff\x00$\xa5\xaf$\x85\x08\x06\x00\x01\x08"
-                b"\x00\x06\x04\x00\x01\x00$\xa5\xaf$\x85\xac\x10*\x01\x00\x00\x00"
-                b"\x00\x00\x00\xac\x10*\xa7\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                b"\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            ),
+            b"\xff\xff\xff\xff\xff\xff\x00$\xa5\xaf$\x85\x08\x06\x00\x01\x08"
+            b"\x00\x06\x04\x00\x01\x00$\xa5\xaf$\x85\xac\x10*\x01\x00\x00\x00"
+            b"\x00\x00\x00\xac\x10*\xa7\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00\x00\x00\x00",
         )
         pkt2 = pcap.read()
         self.assertEqual((1467058715, 380619, 60, 60), pkt2[0])
-        self.assertThat(
+        self.assertEqual(
             pkt2[1],
-            Equals(
-                b"\x80\xfa[\x0cFN\x00$\xa5\xaf$\x85\x08\x06\x00\x01\x08\x00\x06"
-                b"\x04\x00\x01\x00$\xa5\xaf$\x85\xac\x10*\x01\x00\x00\x00\x00\x00"
-                b"\x00\xac\x10*m\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                b"\x00\x00\x00\x00\x00\x00"
-            ),
+            b"\x80\xfa[\x0cFN\x00$\xa5\xaf$\x85\x08\x06\x00\x01\x08\x00\x06"
+            b"\x04\x00\x01\x00$\xa5\xaf$\x85\xac\x10*\x01\x00\x00\x00\x00\x00"
+            b"\x00\xac\x10*m\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00\x00\x00",
         )
 
     def test_raises_EOFError_for_end_of_stream(self):
@@ -94,7 +87,7 @@ class TestPCAP(MAASTestCase):
         pcap = PCAP(stream)
         pcap.read()
         pcap.read()
-        with ExpectedException(EOFError, "End of PCAP stream."):
+        with self.assertRaisesRegex(EOFError, "End of PCAP stream."):
             pcap.read()
 
     def test_iterator(self):
@@ -111,7 +104,7 @@ class TestPCAP(MAASTestCase):
         pcap = PCAP(stream)
         header = pcap.global_header
         self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PCAPError, "Unexpected end of PCAP stream: invalid packet header."
         ):
             pcap.read()
@@ -121,7 +114,7 @@ class TestPCAP(MAASTestCase):
         pcap = PCAP(stream)
         header = pcap.global_header
         self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PCAPError, "Unexpected end of PCAP stream: invalid packet."
         ):
             pcap.read()
