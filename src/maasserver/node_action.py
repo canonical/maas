@@ -716,12 +716,25 @@ class Release(NodeAction):
 
     def _execute(self, erase=False, secure_erase=False, quick_erase=False):
         """See `NodeAction.execute`."""
+        from maasserver.forms.ephemeral import ReleaseForm
+
+        form = ReleaseForm(
+            instance=self.node,
+            user=self.user,
+            data={
+                "erase": erase,
+                "secure_erase": secure_erase,
+                "quick_erase": quick_erase,
+            },
+        )
+        if not form.is_valid():
+            raise NodeActionError(form.errors)
         try:
             self.node.release_or_erase(
                 self.user,
-                erase=erase,
-                secure_erase=secure_erase,
-                quick_erase=quick_erase,
+                erase=form.cleaned_data["erase"],
+                secure_erase=form.cleaned_data["secure_erase"],
+                quick_erase=form.cleaned_data["quick_erase"],
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
