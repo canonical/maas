@@ -11,7 +11,6 @@ import socket
 import time
 from unittest.mock import MagicMock, sentinel
 
-from testtools.matchers import Not, PathExists
 from twisted.application.service import Service
 from twisted.internet import defer, reactor
 from twisted.internet.protocol import DatagramProtocol
@@ -86,7 +85,7 @@ class TestLeaseSocketService(MAASTestCase):
         service = LeaseSocketService(sentinel.service, reactor)
         service.startService()
         self.addCleanup(service.stopService)
-        self.assertThat(socket_path, PathExists())
+        self.assertTrue(os.path.exists(socket_path))
 
     @defer.inlineCallbacks
     def test_stopService_deletes_socket(self):
@@ -94,7 +93,7 @@ class TestLeaseSocketService(MAASTestCase):
         service = LeaseSocketService(sentinel.service, reactor)
         service.startService()
         yield service.stopService()
-        self.assertThat(socket_path, Not(PathExists()))
+        self.assertFalse(os.path.exists(socket_path))
 
     @defer.inlineCallbacks
     def test_notification_gets_added_to_notifications(self):

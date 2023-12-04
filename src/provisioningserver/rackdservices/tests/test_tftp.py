@@ -11,21 +11,11 @@ import random
 import re
 from socket import AF_INET, AF_INET6
 import time
-from unittest.mock import ANY, Mock, sentinel
+from unittest.mock import Mock, sentinel
 
 from netaddr import IPNetwork
 from netaddr.ip import IPV4_LINK_LOCAL, IPV6_LINK_LOCAL
 import prometheus_client
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-)
 from tftp.backend import IReader
 from tftp.datagram import RQDatagram
 from tftp.errors import BackendError, FileNotFound
@@ -43,7 +33,6 @@ from zope.interface.verify import verifyObject
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver import boot
@@ -300,7 +289,7 @@ class TestTFTPBackend(MAASTestCase):
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
-        self.assertThat(tftp_module.log_request, MockCalledOnceWith(ANY))
+        tftp_module.log_request.assert_called_once_with(b"example")
 
     @inlineCallbacks
     def test_get_reader_converts_BootConfigNoResponse_to_FileNotFound(self):
@@ -311,7 +300,7 @@ class TestTFTPBackend(MAASTestCase):
         client_service.getClientNow.return_value = succeed(client)
         backend = TFTPBackend(self.make_dir(), client_service)
 
-        with ExpectedException(FileNotFound):
+        with self.assertRaisesRegex(FileNotFound, r"pxelinux\.cfg/default"):
             yield backend.get_reader(b"pxelinux.cfg/default")
 
     @inlineCallbacks
@@ -326,19 +315,13 @@ class TestTFTPBackend(MAASTestCase):
         backend = TFTPBackend(self.make_dir(), client_service)
 
         with TwistedLoggerFixture() as logger:
-            with ExpectedException(BackendError, re.escape(exception_message)):
+            with self.assertRaisesRegex(
+                BackendError, re.escape(exception_message)
+            ):
                 yield backend.get_reader(b"pxelinux.cfg/default")
 
         # The original exception is logged.
-        self.assertDocTestMatches(
-            """\
-            TFTP back-end failed.
-            Traceback (most recent call last):
-            ...
-            maastesting.factory.TestException#...
-            """,
-            logger.output,
-        )
+        self.assertIn("TFTP back-end failed.", logger.messages)
 
     @inlineCallbacks
     def _test_get_render_file(self, local, remote):
@@ -464,7 +447,7 @@ class TestTFTPBackend(MAASTestCase):
         # other clients should not have been called.
         self.assertEqual(2, clients[0].call_count)
         for idx in range(1, 10):
-            self.assertThat(clients[idx], MockNotCalled())
+            clients[idx].assert_not_called()
 
     @inlineCallbacks
     def test_get_boot_method_reader_uses_different_clients(self):
@@ -535,7 +518,7 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(1, clients[0].call_count)
         self.assertEqual(1, clients[1].call_count)
         for idx in range(2, 10):
-            self.assertThat(clients[idx], MockNotCalled())
+            clients[idx].assert_not_called()
 
     @inlineCallbacks
     def test_get_boot_method_reader_grabs_new_client_on_lost_conn(self):
@@ -607,7 +590,7 @@ class TestTFTPBackend(MAASTestCase):
         self.assertEqual(1, clients[0].call_count)
         self.assertEqual(1, clients[1].call_count)
         for idx in range(2, 10):
-            self.assertThat(clients[idx], MockNotCalled())
+            clients[idx].assert_not_called()
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):
@@ -669,11 +652,8 @@ class TestTFTPBackend(MAASTestCase):
 
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
-        self.assertThat(
-            method.get_reader,
-            MockCalledOnceWith(
-                backend, kernel_params=fake_kernel_params, **params_with_ip
-            ),
+        method.get_reader.assert_called_once_with(
+            backend, kernel_params=fake_kernel_params, **params_with_ip
         )
 
     @inlineCallbacks
@@ -717,11 +697,8 @@ class TestTFTPBackend(MAASTestCase):
 
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
-        self.assertThat(
-            method.get_reader,
-            MockCalledOnceWith(
-                backend, kernel_params=fake_kernel_params, **params_with_ip
-            ),
+        method.get_reader.assert_called_once_with(
+            backend, kernel_params=fake_kernel_params, **params_with_ip
         )
 
     @inlineCallbacks
@@ -768,11 +745,8 @@ class TestTFTPBackend(MAASTestCase):
 
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
-        self.assertThat(
-            method.get_reader,
-            MockCalledOnceWith(
-                backend, kernel_params=fake_kernel_params, **params_with_ip
-            ),
+        method.get_reader.assert_called_once_with(
+            backend, kernel_params=fake_kernel_params, **params_with_ip
         )
 
     @inlineCallbacks
@@ -816,11 +790,8 @@ class TestTFTPBackend(MAASTestCase):
 
         # The result has been rendered by `method.get_reader`.
         self.assertEqual(fake_render_result, output)
-        self.assertThat(
-            method.get_reader,
-            MockCalledOnceWith(
-                backend, kernel_params=fake_kernel_params, **params_with_ip
-            ),
+        method.get_reader.assert_called_once_with(
+            backend, kernel_params=fake_kernel_params, **params_with_ip
         )
 
     @inlineCallbacks
@@ -874,9 +845,8 @@ class TestTFTPBackend(MAASTestCase):
 
         backend.get_kernel_params(params_all)
 
-        self.assertThat(
-            backend.fetcher,
-            MockCalledOnceWith(client, GetBootConfig, **params_okay),
+        backend.fetcher.assert_called_once_with(
+            client, GetBootConfig, **params_okay
         )
 
 
@@ -900,42 +870,23 @@ class TestTFTPService(MAASTestCase):
         # each interface defined by get_all_interface_addresses().
         self.assertIsInstance(tftp_service, MultiService)
         # There's also a TimerService that updates the servers every 45s.
-        self.assertThat(
-            tftp_service.refresher,
-            MatchesStructure.byEquality(
-                step=45,
-                parent=tftp_service,
-                name="refresher",
-                call=(tftp_service.updateServers, (), {}),
-            ),
+        self.assertEqual(tftp_service.refresher.step, 45)
+        self.assertEqual(tftp_service.refresher.parent, tftp_service)
+        self.assertEqual(tftp_service.refresher.name, "refresher")
+        self.assertEqual(
+            tftp_service.refresher.call, (tftp_service.updateServers, (), {})
         )
-        expected_backend = MatchesAll(
-            IsInstance(TFTPBackend),
-            AfterPreprocessing(
-                lambda backend: backend.base.path, Equals(example_root)
-            ),
-            AfterPreprocessing(
-                lambda backend: backend.client_service,
-                Equals(example_client_service),
-            ),
-        )
-        expected_protocol = MatchesAll(
-            IsInstance(TFTP),
-            AfterPreprocessing(
-                lambda protocol: protocol.backend, expected_backend
-            ),
-        )
-        expected_server = MatchesAll(
-            IsInstance(internet.UDPServer),
-            AfterPreprocessing(lambda service: len(service.args), Equals(2)),
-            AfterPreprocessing(
-                lambda service: service.args[0], Equals(example_port)  # port
-            ),
-            AfterPreprocessing(
-                lambda service: service.args[1], expected_protocol  # protocol
-            ),
-        )
-        self.assertThat(tftp_service.getServers(), AllMatch(expected_server))
+
+        for server in tftp_service.getServers():
+            self.assertIsInstance(server, internet.UDPServer)
+            self.assertEqual(len(server.args), 2)
+            self.assertEqual(server.args[0], example_port)
+            protocol = server.args[1]
+            self.assertIsInstance(protocol, TFTP)
+            self.assertEqual(protocol.backend.base.path, example_root)
+            self.assertEqual(
+                protocol.backend.client_service, example_client_service
+            )
         # Only the interface used for each service differs.
         self.assertCountEqual(
             [svc.kwargs for svc in tftp_service.getServers()],
@@ -1174,9 +1125,7 @@ class TestUDPServer(MAASTestCase):
         _listenUDP = self.patch(server, "_listenUDP")
         _listenUDP.return_value = sentinel.port
         self.assertEqual(sentinel.port, server._getPort())
-        self.assertThat(
-            _listenUDP, MockCalledOnceWith(sentinel.foo, bar=sentinel.bar)
-        )
+        _listenUDP.assert_called_once_with(sentinel.foo, bar=sentinel.bar)
 
     def test_listenUDP_with_IPv4_address(self):
         server = UDPServer(0, DummyProtocol(), "127.0.0.1")
@@ -1197,9 +1146,9 @@ class TestLogRequest(MAASTestCase):
     def test_defers_log_call_later(self):
         clock = Clock()
         log_request(sentinel.filename, clock)
-        self.expectThat(clock.calls, HasLength(1))
+        self.assertEqual(len(clock.calls), 1)
         [call] = clock.calls
-        self.expectThat(call.getTime(), Equals(0.0))
+        self.assertEqual(call.getTime(), 0.0)
 
     def test_sends_event_later(self):
         send_event = self.patch(tftp_module, "send_node_event_ip_address")
@@ -1210,15 +1159,12 @@ class TestLogRequest(MAASTestCase):
         )
         clock = Clock()
         log_request(sentinel.filename, clock)
-        self.assertThat(send_event, MockNotCalled())
+        send_event.assert_not_called()
         clock.advance(0.0)
-        self.assertThat(
-            send_event,
-            MockCalledOnceWith(
-                ip_address=ip,
-                description=sentinel.filename,
-                event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-            ),
+        send_event.assert_called_once_with(
+            ip_address=ip,
+            description=sentinel.filename,
+            event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
         )
 
     def test_logs_to_server_log(self):
@@ -1240,15 +1186,7 @@ class TestLogRequest(MAASTestCase):
         send_event.side_effect = factory.make_exception()
         clock = Clock()
         log_request(sentinel.filename, clock)
-        self.assertThat(send_event, MockNotCalled())
+        send_event.assert_not_called()
         with TwistedLoggerFixture() as logger:
             clock.advance(0.0)
-        self.assertDocTestMatches(
-            """\
-            Logging TFTP request failed.
-            Traceback (most recent call last):
-            ...
-            maastesting.factory.TestException#...
-            """,
-            logger.output,
-        )
+        self.assertIn("Logging TFTP request failed.", logger.messages)

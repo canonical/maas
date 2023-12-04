@@ -8,13 +8,11 @@
 import random
 from unittest.mock import Mock, sentinel
 
-from testtools.matchers import MatchesStructure
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rackdservices import service_monitor_service as sms
@@ -56,15 +54,14 @@ class TestServiceMonitorService(MAASTestCase):
         monitor_service = sms.ServiceMonitorService(
             sentinel.client_service, sentinel.clock
         )
-        self.assertThat(
-            monitor_service,
-            MatchesStructure.byEquality(
-                call=(monitor_service.monitorServices, (), {}),
-                step=30,
-                client_service=sentinel.client_service,
-                clock=sentinel.clock,
-            ),
+        self.assertEqual(
+            monitor_service.call, (monitor_service.monitorServices, (), {})
         )
+        self.assertEqual(monitor_service.step, 30)
+        self.assertEqual(
+            monitor_service.client_service, sentinel.client_service
+        )
+        self.assertEqual(monitor_service.clock, sentinel.clock)
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):
         # Belt-n-braces make sure we're in a development environment.
@@ -76,11 +73,10 @@ class TestServiceMonitorService(MAASTestCase):
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
-        self.assertThat(mock_ensureServices, MockNotCalled())
-        self.assertDocTestMatches(
-            "Skipping check of services; they're not running under the "
-            "supervision of systemd.",
-            logger.output,
+        mock_ensureServices.assert_not_called()
+        self.assertIn(
+            "Skipping check of services; they're not running under the supervision of systemd.",
+            logger.messages,
         )
 
     def test_monitorServices_calls_ensureServices(self):
@@ -96,7 +92,7 @@ class TestServiceMonitorService(MAASTestCase):
         )
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         monitor_service.monitorServices()
-        self.assertThat(mock_ensureServices, MockCalledOnceWith())
+        mock_ensureServices.assert_called_once_with()
 
     def test_monitorServices_handles_failure(self):
         # Pretend we're in a production environment.
@@ -109,12 +105,8 @@ class TestServiceMonitorService(MAASTestCase):
         mock_ensureServices.return_value = fail(factory.make_exception())
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
-        self.assertDocTestMatches(
-            """\
-            Failed to monitor services and update region.
-            Traceback (most recent call last):
-            ...""",
-            logger.output,
+        self.assertIn(
+            "Failed to monitor services and update region.", logger.messages
         )
 
     @inlineCallbacks
@@ -150,13 +142,10 @@ class TestServiceMonitorService(MAASTestCase):
         expected_services.append(
             {"name": service.name, "status": "running", "status_info": ""}
         )
-        self.assertThat(
-            protocol.UpdateServices,
-            MockCalledOnceWith(
-                protocol,
-                system_id=client.localIdent,
-                services=expected_services,
-            ),
+        protocol.UpdateServices.assert_called_once_with(
+            protocol,
+            system_id=client.localIdent,
+            services=expected_services,
         )
 
     @inlineCallbacks
@@ -193,13 +182,10 @@ class TestServiceMonitorService(MAASTestCase):
         expected_services.append(
             {"name": service.name, "status": "running", "status_info": ""}
         )
-        self.assertThat(
-            protocol.UpdateServices,
-            MockCalledOnceWith(
-                protocol,
-                system_id=client.localIdent,
-                services=expected_services,
-            ),
+        protocol.UpdateServices.assert_called_once_with(
+            protocol,
+            system_id=client.localIdent,
+            services=expected_services,
         )
 
     @inlineCallbacks

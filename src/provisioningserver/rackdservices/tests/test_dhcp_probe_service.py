@@ -12,14 +12,6 @@ from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    DocTestMatches,
-    get_mock_calls,
-    HasLength,
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rackdservices import dhcp_probe_service
@@ -57,23 +49,23 @@ class TestDHCPProbeService(MAASTestCase):
 
         # Until the service has started, periodicprobe_dhcp() won't
         # be called.
-        self.assertThat(probe_dhcp, MockNotCalled())
+        probe_dhcp.assert_not_called()
 
         # The first call is issued at startup.
         service.startService()
-        self.assertThat(probe_dhcp, MockCalledOnceWith())
+        probe_dhcp.assert_called_once_with()
 
         # Wind clock forward one second less than the desired interval.
         clock.advance(service.check_interval - 1)
 
         # No more periodic calls made.
-        self.assertEqual(1, len(get_mock_calls(probe_dhcp)))
+        self.assertEqual(1, probe_dhcp.call_count)
 
         # Wind clock forward one second, past the interval.
         clock.advance(1)
 
         # Now there were two calls.
-        self.assertThat(get_mock_calls(probe_dhcp), HasLength(2))
+        self.assertEqual(2, probe_dhcp.call_count)
 
     @inlineCallbacks
     def test_exits_gracefully_if_cant_report_foreign_dhcp_server(self):
@@ -106,13 +98,10 @@ class TestDHCPProbeService(MAASTestCase):
         yield service.startService()
         yield service.stopService()
 
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "Unable to inform region of DHCP server: the region "
-                "does not yet support the ReportForeignDHCPServer RPC "
-                "method."
-            ),
+        maaslog.error.assert_called_once_with(
+            "Unable to inform region of DHCP server: the region "
+            "does not yet support the ReportForeignDHCPServer RPC "
+            "method."
         )
 
     def test_logs_errors(self):
@@ -137,20 +126,11 @@ class TestDHCPProbeService(MAASTestCase):
         )
         with TwistedLoggerFixture() as logger:
             service.startService()
-            self.assertThat(
-                maaslog.error,
-                MockCalledOnceWith(
-                    "Unable to probe for DHCP servers: %s", error_message
-                ),
-            )
-            self.assertThat(
-                logger.output,
-                DocTestMatches(
-                    "Running periodic DHCP probe.\n..."
-                    "Unable to probe for DHCP servers.\n..."
-                    "Traceback... "
-                ),
-            )
+        maaslog.error.assert_called_once_with(
+            "Unable to probe for DHCP servers: %s", error_message
+        )
+        self.assertIn("Running periodic DHCP probe.", logger.messages)
+        self.assertIn("Unable to probe for DHCP servers.", logger.messages)
 
     @inlineCallbacks
     def test_skips_disabled_interfaces(self):
@@ -172,7 +152,7 @@ class TestDHCPProbeService(MAASTestCase):
         probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
-        self.assertThat(probe_interface, MockNotCalled())
+        probe_interface.assert_not_called()
 
     @inlineCallbacks
     def test_probes_ipv4_interfaces(self):
@@ -194,7 +174,7 @@ class TestDHCPProbeService(MAASTestCase):
         probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
-        self.assertThat(probe_interface, MockCalledOnce())
+        probe_interface.assert_called_once()
 
     @inlineCallbacks
     def test_skips_ipv6_interfaces(self):
@@ -216,7 +196,7 @@ class TestDHCPProbeService(MAASTestCase):
         probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
-        self.assertThat(probe_interface, MockNotCalled())
+        probe_interface.assert_not_called()
 
     @inlineCallbacks
     def test_skips_unconfigured_interfaces(self):
@@ -233,7 +213,7 @@ class TestDHCPProbeService(MAASTestCase):
         probe_interface = self.patch(dhcp_probe_service, "probe_interface")
         yield service.startService()
         yield service.stopService()
-        self.assertThat(probe_interface, MockNotCalled())
+        probe_interface.assert_not_called()
 
     @inlineCallbacks
     def test_reports_foreign_dhcp_servers_to_region(self):
@@ -262,14 +242,11 @@ class TestDHCPProbeService(MAASTestCase):
         yield service.startService()
         yield service.stopService()
 
-        self.assertThat(
-            protocol.ReportForeignDHCPServer,
-            MockCalledOnceWith(
-                protocol,
-                system_id=client.localIdent,
-                interface_name=interface_name,
-                dhcp_ip=foreign_dhcp_ip,
-            ),
+        protocol.ReportForeignDHCPServer.assert_called_once_with(
+            protocol,
+            system_id=client.localIdent,
+            interface_name=interface_name,
+            dhcp_ip=foreign_dhcp_ip,
         )
 
     @inlineCallbacks
@@ -298,12 +275,9 @@ class TestDHCPProbeService(MAASTestCase):
         yield service.startService()
         yield service.stopService()
 
-        self.assertThat(
-            protocol.ReportForeignDHCPServer,
-            MockCalledOnceWith(
-                protocol,
-                system_id=client.localIdent,
-                interface_name=interface_name,
-                dhcp_ip=None,
-            ),
+        protocol.ReportForeignDHCPServer.assert_called_once_with(
+            protocol,
+            system_id=client.localIdent,
+            interface_name=interface_name,
+            dhcp_ip=None,
         )

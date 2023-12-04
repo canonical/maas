@@ -14,7 +14,6 @@ from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import services
 from provisioningserver.rackdservices.networks_monitoring_service import (
@@ -173,16 +172,15 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         # The service should have sent out beacons, waited three seconds,
         # solicited for more beacons, then waited another three seconds before
         # deciding that beaconing is complete.
-        self.assertThat(pause_mock, MockCallsMatch(call(3.0), call(3.0)))
-        self.assertThat(
-            queue_mcast_mock,
-            MockCallsMatch(
+        pause_mock.assert_has_calls([call(3.0), call(3.0)])
+        queue_mcast_mock.assert_has_calls(
+            [
                 # Called when the service starts.
                 call(solicitation=True),
                 # Called three seconds later.
                 call(solicitation=True),
                 # Not called again when the service shuts down.
-            ),
+            ],
         )
 
     @inlineCallbacks
@@ -199,13 +197,10 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         )
         neighbours = [{"ip": factory.make_ip_address()}]
         yield service.reportNeighbours(neighbours)
-        self.assertThat(
-            protocol.ReportNeighbours,
-            MockCalledOnceWith(
-                protocol,
-                system_id=rpc_service.getClient().localIdent,
-                neighbours=neighbours,
-            ),
+        protocol.ReportNeighbours.assert_called_once_with(
+            protocol,
+            system_id=rpc_service.getClient().localIdent,
+            neighbours=neighbours,
         )
 
     @inlineCallbacks
@@ -228,13 +223,10 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             }
         ]
         yield service.reportMDNSEntries(mdns)
-        self.assertThat(
-            protocol.ReportMDNSEntries,
-            MockCalledOnceWith(
-                protocol,
-                system_id=rpc_service.getClient().localIdent,
-                mdns=mdns,
-            ),
+        protocol.ReportMDNSEntries.assert_called_once_with(
+            protocol,
+            system_id=rpc_service.getClient().localIdent,
+            mdns=mdns,
         )
 
     @inlineCallbacks
@@ -258,11 +250,8 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         yield service.startService()
         yield maybeDeferred(service.getDiscoveryState)
         yield service.stopService()
-        self.assertThat(
-            protocol.GetDiscoveryState,
-            MockCalledOnceWith(
-                protocol, system_id=rpc_service.getClient().localIdent
-            ),
+        protocol.GetDiscoveryState.assert_called_once_with(
+            protocol, system_id=rpc_service.getClient().localIdent
         )
 
     @inlineCallbacks
@@ -284,7 +273,6 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         service._recorded = {}
         service.startService()
         yield service.stopService()
-        self.assertThat(
-            service.beaconing_protocol.queueMulticastBeaconing,
-            MockCallsMatch(call(solicitation=True)),
+        service.beaconing_protocol.queueMulticastBeaconing.assert_has_calls(
+            [call(solicitation=True)]
         )

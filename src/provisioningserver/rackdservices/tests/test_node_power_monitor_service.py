@@ -8,14 +8,12 @@
 from unittest.mock import ANY, Mock, sentinel
 
 from fixtures import FakeLogger
-from testtools.matchers import MatchesStructure
 from twisted.internet.defer import fail, succeed
 from twisted.internet.error import ConnectionDone
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.rackdservices import node_power_monitor_service as npms
@@ -41,14 +39,9 @@ class TestNodePowerMonitorService(MAASTestCase):
 
     def test_init_sets_up_timer_correctly(self):
         service = npms.NodePowerMonitorService()
-        self.assertThat(
-            service,
-            MatchesStructure.byEquality(
-                call=(service.try_query_nodes, tuple(), {}),
-                step=15,
-                clock=None,
-            ),
-        )
+        self.assertEqual(service.call, (service.try_query_nodes, tuple(), {}))
+        self.assertEqual(service.step, 15)
+        self.assertIsNone(service.clock)
 
     def make_monitor_service(self):
         service = npms.NodePowerMonitorService(Clock())
@@ -70,9 +63,8 @@ class TestNodePowerMonitorService(MAASTestCase):
         io.flush()
 
         self.assertIsNone(extract_result(d))
-        self.assertThat(
-            proto_region.ListNodePowerParameters,
-            MockCalledOnceWith(ANY, uuid=client.localIdent),
+        proto_region.ListNodePowerParameters.assert_called_once_with(
+            ANY, uuid=client.localIdent
         )
 
     def test_query_nodes_calls_query_all_nodes(self):
@@ -102,13 +94,10 @@ class TestNodePowerMonitorService(MAASTestCase):
         io.flush()
 
         self.assertIsNone(extract_result(d))
-        self.assertThat(
-            query_all_nodes,
-            MockCalledOnceWith(
-                [example_power_parameters],
-                max_concurrency=sentinel.max_nodes_at_once,
-                clock=service.clock,
-            ),
+        query_all_nodes.assert_called_once_with(
+            [example_power_parameters],
+            max_concurrency=sentinel.max_nodes_at_once,
+            clock=service.clock,
         )
 
     def test_query_nodes_copes_with_NoSuchCluster(self):
@@ -129,9 +118,7 @@ class TestNodePowerMonitorService(MAASTestCase):
             io.flush()
 
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            "Rack controller '...' is not recognised.", maaslog.output
-        )
+        self.assertIn("Rack controller '' is not recognised.", maaslog.output)
 
     def test_query_nodes_copes_with_losing_connection_to_region(self):
         service = self.make_monitor_service()
@@ -145,9 +132,7 @@ class TestNodePowerMonitorService(MAASTestCase):
             d.addErrback(service.query_nodes_failed, sentinel.ident)
 
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            "Lost connection to region controller.", maaslog.output
-        )
+        self.assertIn("Lost connection to region controller.", maaslog.output)
 
     def test_try_query_nodes_logs_other_errors(self):
         service = self.make_monitor_service()
@@ -163,8 +148,7 @@ class TestNodePowerMonitorService(MAASTestCase):
             d = service.try_query_nodes()
 
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            "Failed to query nodes' power status: "
-            "Such a shame I can't divide by zero",
+        self.assertIn(
+            "Failed to query nodes' power status: Such a shame I can't divide by zero",
             maaslog.output,
         )

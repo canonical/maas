@@ -8,7 +8,6 @@ import random
 from unittest.mock import ANY, Mock
 
 import attr
-from testtools.matchers import Contains, FileContains, MatchesStructure
 from tftp.errors import AccessViolation, FileNotFound
 from twisted.application.service import Service
 from twisted.internet import reactor
@@ -20,7 +19,6 @@ from twisted.web.test.test_web import DummyChannel, DummyRequest
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver import services
@@ -135,9 +133,7 @@ class TestRackHTTPService(MAASTestCase):
         observed = yield service._getConfiguration()
 
         self.assertIsInstance(observed, http._Configuration)
-        self.assertThat(
-            observed, MatchesStructure.byEquality(upstream_http=region_ips)
-        )
+        self.assertEqual(observed.upstream_http, region_ips)
 
     @inlineCallbacks
     def test_tryUpdate_writes_nginx_config_reloads_nginx(self):
@@ -159,27 +155,19 @@ class TestRackHTTPService(MAASTestCase):
 
         # Verify the contents of the written config.
         target_path = http.compose_http_config_path("rackd.nginx.conf")
-        self.assertThat(
-            target_path,
-            FileContains(matcher=Contains("alias %s;" % resource_root)),
-        )
+        with open(target_path, "r") as fh:
+            contents = fh.read()
+        self.assertIn(f"alias {resource_root}", contents)
         for region_ip in region_ips:
-            self.assertThat(
-                target_path,
-                FileContains(matcher=Contains("server %s:5240;" % region_ip)),
-            )
-        self.assertThat(
-            target_path,
-            FileContains(
-                matcher=Contains("proxy_pass http://maas-regions/MAAS/;")
-            ),
-        )
-        self.assertThat(mock_reloadService, MockCalledOnceWith("http"))
+            self.assertIn(f"server {region_ip}:5240;", contents)
+
+        self.assertIn("proxy_pass http://maas-regions/MAAS/;", contents)
+        mock_reloadService.assert_called_once_with("http")
 
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `_configure`.
         yield service._orig_tryUpdate()
-        self.assertThat(mock_reloadService, MockCalledOnceWith("http"))
+        mock_reloadService.assert_called_once_with("http")
 
     @inlineCallbacks
     def test_getConfiguration_updates_interval_to_high(self):
@@ -297,17 +285,7 @@ class TestRackHTTPService_Errors(MAASTestCase):
             self.addCleanup((yield service.stopService))
             yield service._orig_tryUpdate()
 
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
-                """
-                Failed to update HTTP configuration.
-                Traceback (most recent call last):
-                ...
-                maastesting.factory.TestException#...
-                """
-            ),
-        )
+        self.assertIn("Failed to update HTTP configuration.", logger.messages)
 
 
 class TestHTTPLogResource(MAASTestCase):
@@ -326,22 +304,16 @@ class TestHTTPLogResource(MAASTestCase):
         resource = http.HTTPLogResource()
         resource.render_GET(request)
 
-        self.assertThat(
-            log_info,
-            MockCalledOnceWith(
-                "{path} requested by {remote_host}", path=path, remote_host=ip
-            ),
+        log_info.assert_called_once_with(
+            "{path} requested by {remote_host}", path=path, remote_host=ip
         )
-        self.assertThat(
-            mock_deferLater,
-            MockCalledOnceWith(
-                ANY,
-                0,
-                http.send_node_event_ip_address,
-                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip,
-                description=path,
-            ),
+        mock_deferLater.assert_called_once_with(
+            ANY,
+            0,
+            http.send_node_event_ip_address,
+            event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+            ip_address=ip,
+            description=path,
         )
 
     def test_render_GET_logs_node_event_status_message(self):
@@ -361,22 +333,16 @@ class TestHTTPLogResource(MAASTestCase):
         resource = http.HTTPLogResource()
         resource.render_GET(request)
 
-        self.assertThat(
-            mock_deferLater,
-            MockCalledOnceWith(
-                ANY,
-                0,
-                http.send_node_event_ip_address,
-                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip,
-                description=path,
-            ),
+        mock_deferLater.assert_called_once_with(
+            ANY,
+            0,
+            http.send_node_event_ip_address,
+            event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+            ip_address=ip,
+            description=path,
         )
-        self.assertThat(
-            mock_send_node_event_ip_address,
-            MockCalledOnceWith(
-                event_type=EVENT_TYPES.LOADING_EPHEMERAL, ip_address=ip
-            ),
+        mock_send_node_event_ip_address.assert_called_once_with(
+            event_type=EVENT_TYPES.LOADING_EPHEMERAL, ip_address=ip
         )
 
 
@@ -620,20 +586,14 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertThat(
-            log_info,
-            MockCalledOnceWith(
-                "{path} requested by {remoteHost}", path=path, remoteHost=ip
-            ),
+        log_info.assert_called_once_with(
+            "{path} requested by {remoteHost}", path=path, remoteHost=ip
         )
-        self.assertThat(
-            mock_deferLater,
-            MockCalledOnceWith(
-                ANY,
-                0,
-                http.send_node_event_ip_address,
-                event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
-                ip_address=ip,
-                description=path,
-            ),
+        mock_deferLater.assert_called_once_with(
+            ANY,
+            0,
+            http.send_node_event_ip_address,
+            event_type=EVENT_TYPES.NODE_HTTP_REQUEST,
+            ip_address=ip,
+            description=path,
         )

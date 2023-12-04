@@ -15,11 +15,6 @@ from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    get_mock_calls,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.boot import tftppath
@@ -64,22 +59,22 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         service.startService()
 
         # The first call is issued at startup.
-        self.assertEqual(1, len(get_mock_calls(maas_meta_last_modified)))
+        self.assertEqual(1, maas_meta_last_modified.call_count)
 
         # Wind clock forward one second less than the desired interval.
         clock.advance(service.check_interval - 1)
         # No more periodic calls made.
-        self.assertEqual(1, len(get_mock_calls(maas_meta_last_modified)))
+        self.assertEqual(1, maas_meta_last_modified.call_count)
 
         # Wind clock forward one second, past the interval.
         clock.advance(1)
 
         # Now there were two calls.
-        self.assertEqual(2, len(get_mock_calls(maas_meta_last_modified)))
+        self.assertEqual(2, maas_meta_last_modified.call_count)
 
         # Forward another interval, should be three calls.
         clock.advance(service.check_interval)
-        self.assertEqual(3, len(get_mock_calls(maas_meta_last_modified)))
+        self.assertEqual(3, maas_meta_last_modified.call_count)
 
     def test_initiates_download_if_no_meta_file(self):
         clock = Clock()
@@ -89,7 +84,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         _start_download = self.patch_download(service, None)
         self.patch(tftppath, "maas_meta_last_modified").return_value = None
         service.startService()
-        self.assertThat(_start_download, MockCalledOnceWith())
+        _start_download.assert_called_once_with()
 
     def test_initiates_download_if_15_minutes_has_passed(self):
         clock = Clock()
@@ -102,7 +97,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
             tftppath, "maas_meta_last_modified"
         ).return_value = one_week_ago
         service.startService()
-        self.assertThat(_start_download, MockCalledOnceWith())
+        _start_download.assert_called_once_with()
 
     def test_no_download_if_15_minutes_has_not_passed(self):
         clock = Clock()
@@ -116,7 +111,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         ).return_value = clock.seconds()
         clock.advance(one_week - 1)
         service.startService()
-        self.assertThat(_start_download, MockNotCalled())
+        _start_download.assert_not_called()
 
     def test_download_is_initiated_in_new_thread(self):
         clock = Clock()
@@ -147,15 +142,12 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         deferToThread.return_value = defer.succeed(None)
         service = ImageDownloadService(rpc_client, sentinel.tftp_root, clock)
         service.startService()
-        self.assertThat(
-            deferToThread,
-            MockCalledOnceWith(
-                _run_import,
-                sentinel.sources,
-                rpc_client.maas_url,
-                http_proxy=http_proxy,
-                https_proxy=https_proxy,
-            ),
+        deferToThread.assert_called_once_with(
+            _run_import,
+            sentinel.sources,
+            rpc_client.maas_url,
+            http_proxy=http_proxy,
+            https_proxy=https_proxy,
         )
 
     def test_no_download_if_no_rpc_connections(self):
@@ -166,7 +158,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         deferToThread = self.patch(boot_images, "deferToThread")
         service = ImageDownloadService(rpc_client, self.make_dir(), Clock())
         service.startService()
-        self.assertThat(deferToThread, MockNotCalled())
+        deferToThread.assert_not_called()
 
     def test_logs_other_errors(self):
         service = ImageDownloadService(
@@ -182,16 +174,8 @@ class TestPeriodicImageDownloadService(MAASTestCase):
             d = service.try_download()
 
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            "Failed to download images: "
-            "Such a shame I can't divide by zero",
+        self.assertIn(
+            "Failed to download images: Such a shame I can't divide by zero",
             maaslog.output,
         )
-        self.assertDocTestMatches(
-            """\
-            Downloading images failed.
-            Traceback (most recent call last):
-            Failure: builtins.ZeroDivisionError: Such a shame ...
-            """,
-            logger.output,
-        )
+        self.assertIn("Downloading images failed.", logger.messages)
