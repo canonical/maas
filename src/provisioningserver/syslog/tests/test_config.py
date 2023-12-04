@@ -8,15 +8,11 @@ import os
 from pathlib import Path
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import Contains, FileContains, MatchesAll, Not
 
-from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.syslog import config
 from provisioningserver.utils import snap
-
-wait_for_reactor = wait_for()
 
 
 class TestGetConfigDir(MAASTestCase):
@@ -60,83 +56,73 @@ class TestWriteConfig(MAASTestCase):
 
     def test_packaging_maas_user_group_with_drop(self):
         config.write_config(False)
-        matchers = [
-            Contains("$FileOwner maas"),
-            Contains("$FileGroup maas"),
-            Contains("$PrivDropToUser maas"),
-            Contains("$PrivDropToGroup maas"),
+        needles = [
+            "$FileOwner maas",
+            "$FileGroup maas",
+            "$PrivDropToUser maas",
+            "$PrivDropToGroup maas",
         ]
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=MatchesAll(*matchers)),
-        )
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_snap_root_user_group_no_drop(self):
         self.patch(snap, "running_in_snap").return_value = True
         config.write_config(False)
-        matchers = [Contains("$FileOwner root"), Contains("$FileGroup root")]
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=MatchesAll(*matchers)),
-        )
+        needles = ["$FileOwner root", "$FileGroup root"]
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_udp_and_tcp(self):
         config.write_config(False)
-        matcher_one = Contains('input(type="imtcp" port="5247")')
-        matcher_two = Contains('input(type="imudp" port="5247")')
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
-        )
+        needles = [
+            'input(type="imtcp" port="5247")',
+            'input(type="imudp" port="5247")',
+        ]
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_udp_and_tcp_both_use_different_port(self):
         port = factory.pick_port()
         config.write_config(False, port=port)
-        matcher_one = Contains('input(type="imtcp" port="%d")' % port)
-        matcher_two = Contains('input(type="imudp" port="%d")' % port)
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
-        )
+        needles = [
+            f'input(type="imtcp" port="{port}")',
+            f'input(type="imudp" port="{port}")',
+        ]
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_adds_tcp_stop(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])
-        matcher = Contains(':inputname, isequal, "imtcp" stop')
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=matcher),
-        )
+        needle = ':inputname, isequal, "imtcp" stop'
+        contents = self.syslog_path.read_text()
+        self.assertIn(needle, contents)
 
     def test_write_local(self):
         config.write_config(True)
-        matcher_one = Contains(
-            'set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";'
-        )
-        matcher_two = Contains(
-            'set $!remote!SYSLOG_IDENTIFIER = "maas-machine";'
-        )
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
-        )
+        needles = [
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";',
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-machine";',
+        ]
+        contents = self.syslog_path.read_text()
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_no_write_local(self):
         config.write_config(False)
-        matcher_one = Not(
-            Contains('set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";')
-        )
-        matcher_two = Not(
-            Contains('set $!remote!SYSLOG_IDENTIFIER = "maas-machine";')
-        )
+        expected_misses = [
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-enlist";',
+            'set $!remote!SYSLOG_IDENTIFIER = "maas-machine";',
+        ]
+        contents = self.syslog_path.read_text()
+        for miss in expected_misses:
+            self.assertNotIn(miss, contents)
         # maas.log is still local when no write local.
-        matcher_three = Contains('if $syslogtag contains "maas" then')
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
-            FileContains(
-                matcher=MatchesAll(matcher_one, matcher_two, matcher_three)
-            ),
-        )
+        self.assertIn('if $syslogtag contains "maas" then', contents)
 
     def test_forwarders(self):
         forwarders = [

@@ -11,14 +11,6 @@ from subprocess import Popen
 
 import crochet
 from fixtures import EnvironmentVariable
-from testtools.matchers import (
-    AfterPreprocessing,
-    Equals,
-    IsInstance,
-    KeysEqual,
-    MatchesAll,
-    MatchesStructure,
-)
 from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
 from twisted.internet.task import Clock
@@ -26,7 +18,6 @@ from twisted.internet.task import Clock
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import provisioningserver
 from provisioningserver import logger
@@ -164,7 +155,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(service_maker, "_loadSettings")
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             "dhcp_probe",
             "networks_monitor",
             "image_download",
@@ -178,20 +169,17 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "tftp",
             "service_monitor",
             "version_update_check",
-        ]
-        self.assertThat(service.namedServices, KeysEqual(*expected_services))
+        }
+        self.assertEqual(service.namedServices.keys(), expected_services)
         self.assertEqual(
             len(service.namedServices),
             len(service.services),
             "Not all services are named.",
         )
         self.assertEqual(service, provisioningserver.services)
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
-        self.assertThat(
-            logger.configure,
-            MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD
-            ),
+        crochet.no_setup.assert_called_once_with()
+        logger.configure.assert_called_once_with(
+            options["verbosity"], logger.LoggingMode.TWISTD
         )
 
     def test_makeService_in_debug(self):
@@ -204,7 +192,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.patch(service_maker, "_loadSettings")
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             "dhcp_probe",
             "networks_monitor",
             "image_download",
@@ -218,25 +206,23 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "tftp",
             "service_monitor",
             "version_update_check",
-        ]
-        self.assertThat(service.namedServices, KeysEqual(*expected_services))
+        }
+        self.assertEqual(service.namedServices.keys(), expected_services)
         self.assertEqual(
             len(service.namedServices),
             len(service.services),
             "Not all services are named.",
         )
         self.assertEqual(service, provisioningserver.services)
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
-        self.assertThat(
-            logger.configure, MockCalledOnceWith(3, logger.LoggingMode.TWISTD)
-        )
+        crochet.no_setup.assert_called_once_with()
+        logger.configure.assert_called_once_with(3, logger.LoggingMode.TWISTD)
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = self.patch(plugin_module, "add_patches_to_txtftp")
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service_maker.makeService(options, clock=None)
-        self.assertThat(mock_tftp_patch, MockCalledOnceWith())
+        mock_tftp_patch.assert_called_once_with()
 
     def test_makeService_cleanup_prometheus_dir(self):
         tmpdir = Path(self.useFixture(TempDirectory()).path)
@@ -318,7 +304,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(http_service, StreamServerEndpointService)
 
     def test_tftp_service(self):
-        # A TFTP service is configured and added to the top-level service.
+        """A TFTP service is configured and added to the top-level service."""
         options = Options()
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
@@ -329,17 +315,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
 
-        expected_backend = MatchesAll(
-            IsInstance(TFTPBackend),
-            AfterPreprocessing(
-                lambda backend: backend.base.path, Equals(tftp_root)
-            ),
-        )
-
-        self.assertThat(
-            tftp_service,
-            MatchesStructure(backend=expected_backend, port=Equals(tftp_port)),
-        )
+        self.assertEqual(tftp_service.port, tftp_port)
+        self.assertIsInstance(tftp_service.backend, TFTPBackend)
+        self.assertEqual(tftp_service.backend.base.path, tftp_root)
 
     def test_lease_socket_service(self):
         options = Options()

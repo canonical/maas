@@ -10,11 +10,7 @@ from itertools import combinations
 import pprint
 from unittest.mock import call, Mock
 
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver import register_command
 from provisioningserver.config import ClusterConfiguration
@@ -82,7 +78,7 @@ class TestAddArguments(MAASTestCase):
         )
         pp = pprint.PrettyPrinter(depth=3, stream=error_message)
         pp.pprint(failures)
-        self.assertDictEqual({}, failures, error_message.getvalue())
+        self.assertEqual({}, failures, error_message.getvalue())
 
 
 class TestRegisterMAASRack(MAASTestCase):
@@ -115,17 +111,15 @@ class TestRegisterMAASRack(MAASTestCase):
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = True
 
-        input = self.patch(register_command, "input")
-        input.return_value = expected_url
+        input_ = self.patch(register_command, "input")
+        input_.return_value = expected_url
 
         register_command.run(self.make_args(url=None, secret=to_hex(secret)))
         with ClusterConfiguration.open() as config:
             observed = config.maas_url
 
-        self.expectThat(
-            input, MockCalledOnceWith("MAAS region controller URL: ")
-        )
-        self.expectThat([expected_url], Equals(observed))
+        input_.assert_called_once_with("MAAS region controller URL: ")
+        self.assertEqual([expected_url], observed)
 
     def test_sets_secret(self):
         url = factory.make_simple_http_url()
@@ -155,29 +149,28 @@ class TestRegisterMAASRack(MAASTestCase):
         args = self.make_args(url=None)
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = True
-        input = self.patch(register_command, "input")
-        input.side_effect = EOFError
+        input_ = self.patch(register_command, "input")
+        input_.side_effect = EOFError
         self.assertRaises(SystemExit, register_command.run, args)
 
     def test_crashes_on_keyboardinterrupt(self):
         args = self.make_args(url=None)
         stdin = self.patch(register_command, "stdin")
         stdin.isatty.return_value = True
-        input = self.patch(register_command, "input")
-        input.side_effect = KeyboardInterrupt
+        input_ = self.patch(register_command, "input")
+        input_.side_effect = KeyboardInterrupt
         self.assertRaises(KeyboardInterrupt, register_command.run, args)
 
     def test_restarts_maas_rackd_service(self):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
-        self.assertThat(
-            self.mock_call_and_check,
-            MockCallsMatch(
+        self.mock_call_and_check.assert_has_calls(
+            [
                 call(["systemctl", "stop", "maas-rackd"]),
                 call(["systemctl", "enable", "maas-rackd"]),
                 call(["systemctl", "start", "maas-rackd"]),
-            ),
+            ],
         )
 
     def test_deletes_maas_id_file(self):
@@ -198,18 +191,18 @@ class TestRegisterMAASRack(MAASTestCase):
             call(),
         ]
         mock_stderr = self.patch(register_command.stderr, "write")
-        with ExpectedException(SystemExit):
-            register_command.run(
-                self.make_args(url=url, secret=to_hex(secret))
-            )
-        self.assertThat(
-            mock_stderr,
-            MockCallsMatch(
+        self.assertRaises(
+            SystemExit,
+            register_command.run,
+            self.make_args(url=url, secret=to_hex(secret)),
+        )
+        mock_stderr.assert_has_calls(
+            [
                 call("Unable to stop maas-rackd service."),
                 call("\n"),
                 call("Failed with error: mock error."),
                 call("\n"),
-            ),
+            ],
         )
 
     def test_show_service_enable_error(self):
@@ -223,18 +216,18 @@ class TestRegisterMAASRack(MAASTestCase):
             call(),
         ]
         mock_stderr = self.patch(register_command.stderr, "write")
-        with ExpectedException(SystemExit):
-            register_command.run(
-                self.make_args(url=url, secret=to_hex(secret))
-            )
-        self.assertThat(
-            mock_stderr,
-            MockCallsMatch(
+        self.assertRaises(
+            SystemExit,
+            register_command.run,
+            self.make_args(url=url, secret=to_hex(secret)),
+        )
+        mock_stderr.assert_has_calls(
+            [
                 call("Unable to enable and start the maas-rackd service."),
                 call("\n"),
                 call("Failed with error: mock error."),
                 call("\n"),
-            ),
+            ]
         )
 
     def test_show_service_start_error(self):
@@ -248,16 +241,16 @@ class TestRegisterMAASRack(MAASTestCase):
             ExternalProcessError(1, "systemctl start", "mock error"),
         ]
         mock_stderr = self.patch(register_command.stderr, "write")
-        with ExpectedException(SystemExit):
-            register_command.run(
-                self.make_args(url=url, secret=to_hex(secret))
-            )
-        self.assertThat(
-            mock_stderr,
-            MockCallsMatch(
+        self.assertRaises(
+            SystemExit,
+            register_command.run,
+            self.make_args(url=url, secret=to_hex(secret)),
+        )
+        mock_stderr.assert_has_calls(
+            [
                 call("Unable to enable and start the maas-rackd service."),
                 call("\n"),
                 call("Failed with error: mock error."),
                 call("\n"),
-            ),
+            ]
         )

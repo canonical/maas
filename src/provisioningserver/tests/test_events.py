@@ -5,19 +5,12 @@
 
 
 import random
-from unittest.mock import ANY, sentinel
+from unittest.mock import sentinel
 
-from testtools import ExpectedException
-from testtools.matchers import AllMatch, HasLength, IsInstance
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -43,9 +36,8 @@ class TestEvents(MAASTestCase):
     def test_every_event_has_details(self):
         all_events = map_enum(EVENT_TYPES)
         self.assertEqual(set(all_events.values()), EVENT_DETAILS.keys())
-        self.assertThat(
-            EVENT_DETAILS.values(), AllMatch(IsInstance(EventDetail))
-        )
+        for detail in EVENT_DETAILS.values():
+            self.assertIsInstance(detail, EventDetail)
 
 
 class TestSendEventNode(MAASTestCase):
@@ -60,11 +52,8 @@ class TestSendEventNode(MAASTestCase):
             sentinel.description,
         )
         self.assertIs(result, sentinel.d)
-        self.assertThat(
-            nodeEventHub.logByID,
-            MockCalledOnceWith(
-                sentinel.event_type, sentinel.system_id, sentinel.description
-            ),
+        nodeEventHub.logByID.assert_called_once_with(
+            sentinel.event_type, sentinel.system_id, sentinel.description
         )
 
 
@@ -77,11 +66,8 @@ class TestSendEventNodeMACAddress(MAASTestCase):
             sentinel.event_type, sentinel.mac_address, sentinel.description
         )
         self.assertIs(result, sentinel.d)
-        self.assertThat(
-            nodeEventHub.logByMAC,
-            MockCalledOnceWith(
-                sentinel.event_type, sentinel.mac_address, sentinel.description
-            ),
+        nodeEventHub.logByMAC.assert_called_once_with(
+            sentinel.event_type, sentinel.mac_address, sentinel.description
         )
 
 
@@ -94,11 +80,8 @@ class TestSendEventNodeIPAddress(MAASTestCase):
             sentinel.event_type, sentinel.ip_address, sentinel.description
         )
         self.assertIs(result, sentinel.d)
-        self.assertThat(
-            nodeEventHub.logByIP,
-            MockCalledOnceWith(
-                sentinel.event_type, sentinel.ip_address, sentinel.description
-            ),
+        nodeEventHub.logByIP.assert_called_once_with(
+            sentinel.event_type, sentinel.ip_address, sentinel.description
         )
 
 
@@ -111,11 +94,8 @@ class TestSendRackEvent(MAASTestCase):
         self.useFixture(MAASIDFixture(rack_system_id))
         result = send_rack_event(sentinel.event_type, sentinel.description)
         self.assertIs(result, sentinel.d)
-        self.assertThat(
-            nodeEventHub.logByID,
-            MockCalledOnceWith(
-                sentinel.event_type, rack_system_id, sentinel.description
-            ),
+        nodeEventHub.logByID.assert_called_once_with(
+            sentinel.event_type, rack_system_id, sentinel.description
         )
 
 
@@ -149,14 +129,11 @@ class TestNodeEventHubLogByID(MAASTestCase):
 
         yield NodeEventHub().logByID(event_name, system_id, description)
 
-        self.assertThat(
-            protocol.SendEvent,
-            MockCalledOnceWith(
-                ANY,
-                type_name=event_name,
-                system_id=system_id,
-                description=description,
-            ),
+        protocol.SendEvent.assert_called_once_with(
+            protocol,
+            type_name=event_name,
+            system_id=system_id,
+            description=description,
         )
 
     @inlineCallbacks
@@ -175,16 +152,13 @@ class TestNodeEventHubLogByID(MAASTestCase):
         # On the first call, the event type is registered before the log is
         # sent to the region.
         yield event_hub.logByID(event_name, system_id, description)
-        self.assertThat(
-            protocol.RegisterEventType,
-            MockCalledOnceWith(
-                ANY,
-                name=event_name,
-                description=event_detail.description,
-                level=event_detail.level,
-            ),
+        protocol.RegisterEventType.assert_called_once_with(
+            protocol,
+            name=event_name,
+            description=event_detail.description,
+            level=event_detail.level,
         )
-        self.assertThat(protocol.SendEvent, MockCalledOnce())
+        protocol.SendEvent.assert_called_once()
 
         # Reset RPC call handlers.
         protocol.RegisterEventType.reset_mock()
@@ -193,13 +167,13 @@ class TestNodeEventHubLogByID(MAASTestCase):
         # On the second call, the event type is known to be registered, so the
         # log is sent to the region immediately.
         yield event_hub.logByID(event_name, system_id, description)
-        self.assertThat(protocol.RegisterEventType, MockNotCalled())
-        self.assertThat(protocol.SendEvent, MockCalledOnce())
+        protocol.RegisterEventType.assert_not_called()
+        protocol.SendEvent.assert_called_once()
 
     @inlineCallbacks
     def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())]
+            side_effect=[succeed({}), fail(NoSuchEventType.from_name("foo"))]
         )
         self.addCleanup((yield connecting))
 
@@ -213,10 +187,12 @@ class TestNodeEventHubLogByID(MAASTestCase):
         # The cache has been populated with the event name.
         self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
-        with ExpectedException(NoSuchEventType):
+        with self.assertRaisesRegex(
+            NoSuchEventType, r"Event type with name=foo could not be found\."
+        ):
             yield event_hub.logByID(event_name, system_id, description)
         # The event has been removed from the cache.
-        self.assertThat(event_hub._types_registered, HasLength(0))
+        self.assertEqual(event_hub._types_registered, set())
 
 
 class TestSendEventMACAddress(MAASTestCase):
@@ -249,14 +225,11 @@ class TestSendEventMACAddress(MAASTestCase):
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
-        self.assertThat(
-            protocol.SendEventMACAddress,
-            MockCalledOnceWith(
-                ANY,
-                type_name=event_name,
-                mac_address=mac_address,
-                description=description,
-            ),
+        protocol.SendEventMACAddress.assert_called_once_with(
+            protocol,
+            type_name=event_name,
+            mac_address=mac_address,
+            description=description,
         )
 
     @inlineCallbacks
@@ -272,14 +245,11 @@ class TestSendEventMACAddress(MAASTestCase):
 
         yield NodeEventHub().logByMAC(event_name, mac_address, description)
 
-        self.assertThat(
-            protocol.SendEventMACAddress,
-            MockCalledOnceWith(
-                ANY,
-                type_name=event_name,
-                mac_address=mac_address,
-                description=description,
-            ),
+        protocol.SendEventMACAddress.assert_called_once_with(
+            protocol,
+            type_name=event_name,
+            mac_address=mac_address,
+            description=description,
         )
 
     @inlineCallbacks
@@ -296,16 +266,13 @@ class TestSendEventMACAddress(MAASTestCase):
         # On the first call, the event type is registered before the log is
         # sent to the region.
         yield event_hub.logByMAC(event_name, mac_address, description)
-        self.assertThat(
-            protocol.RegisterEventType,
-            MockCalledOnceWith(
-                ANY,
-                name=event_name,
-                description=event_detail.description,
-                level=event_detail.level,
-            ),
+        protocol.RegisterEventType.assert_called_once_with(
+            protocol,
+            name=event_name,
+            description=event_detail.description,
+            level=event_detail.level,
         )
-        self.assertThat(protocol.SendEventMACAddress, MockCalledOnce())
+        protocol.SendEventMACAddress.assert_called_once()
 
         # Reset RPC call handlers.
         protocol.RegisterEventType.reset_mock()
@@ -314,13 +281,13 @@ class TestSendEventMACAddress(MAASTestCase):
         # On the second call, the event type is known to be registered, so the
         # log is sent to the region immediately.
         yield event_hub.logByMAC(event_name, mac_address, description)
-        self.assertThat(protocol.RegisterEventType, MockNotCalled())
-        self.assertThat(protocol.SendEventMACAddress, MockCalledOnce())
+        protocol.RegisterEventType.assert_not_called()
+        protocol.SendEventMACAddress.assert_called_once()
 
     @inlineCallbacks
     def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())]
+            side_effect=[succeed({}), fail(NoSuchEventType.from_name("foo"))]
         )
         self.addCleanup((yield connecting))
 
@@ -334,10 +301,12 @@ class TestSendEventMACAddress(MAASTestCase):
         # The cache has been populated with the event name.
         self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
-        with ExpectedException(NoSuchEventType):
+        with self.assertRaisesRegex(
+            NoSuchEventType, r"Event type with name=foo could not be found\."
+        ):
             yield event_hub.logByMAC(event_name, mac_address, description)
         # The event has been removed from the cache.
-        self.assertThat(event_hub._types_registered, HasLength(0))
+        self.assertEqual(event_hub._types_registered, set())
 
 
 class TestSendEventIPAddress(MAASTestCase):
@@ -370,14 +339,11 @@ class TestSendEventIPAddress(MAASTestCase):
 
         yield NodeEventHub().logByIP(event_name, ip_address, description)
 
-        self.assertThat(
-            protocol.SendEventIPAddress,
-            MockCalledOnceWith(
-                ANY,
-                type_name=event_name,
-                ip_address=ip_address,
-                description=description,
-            ),
+        protocol.SendEventIPAddress.assert_called_once_with(
+            protocol,
+            type_name=event_name,
+            ip_address=ip_address,
+            description=description,
         )
 
     @inlineCallbacks
@@ -393,14 +359,11 @@ class TestSendEventIPAddress(MAASTestCase):
 
         yield NodeEventHub().logByIP(event_name, ip_address, description)
 
-        self.assertThat(
-            protocol.SendEventIPAddress,
-            MockCalledOnceWith(
-                ANY,
-                type_name=event_name,
-                ip_address=ip_address,
-                description=description,
-            ),
+        protocol.SendEventIPAddress.assert_called_once_with(
+            protocol,
+            type_name=event_name,
+            ip_address=ip_address,
+            description=description,
         )
 
     @inlineCallbacks
@@ -417,16 +380,18 @@ class TestSendEventIPAddress(MAASTestCase):
         # On the first call, the event type is registered before the log is
         # sent to the region.
         yield event_hub.logByIP(event_name, ip_address, description)
-        self.assertThat(
-            protocol.RegisterEventType,
-            MockCalledOnceWith(
-                ANY,
-                name=event_name,
-                description=event_detail.description,
-                level=event_detail.level,
-            ),
+        protocol.RegisterEventType.assert_called_once_with(
+            protocol,
+            name=event_name,
+            description=event_detail.description,
+            level=event_detail.level,
         )
-        self.assertThat(protocol.SendEventIPAddress, MockCalledOnce())
+        protocol.SendEventIPAddress.assert_called_once_with(
+            protocol,
+            ip_address=ip_address,
+            type_name=event_name,
+            description=description,
+        )
 
         # Reset RPC call handlers.
         protocol.RegisterEventType.reset_mock()
@@ -435,13 +400,13 @@ class TestSendEventIPAddress(MAASTestCase):
         # On the second call, the event type is known to be registered, so the
         # log is sent to the region immediately.
         yield event_hub.logByIP(event_name, ip_address, description)
-        self.assertThat(protocol.RegisterEventType, MockNotCalled())
-        self.assertThat(protocol.SendEventIPAddress, MockCalledOnce())
+        protocol.RegisterEventType.assert_not_called()
+        protocol.SendEventIPAddress.assert_called_once()
 
     @inlineCallbacks
     def test_updates_cache_if_event_type_not_found(self):
         protocol, connecting = self.patch_rpc_methods(
-            side_effect=[succeed({}), fail(NoSuchEventType())]
+            side_effect=[succeed({}), fail(NoSuchEventType.from_name("foo"))]
         )
         self.addCleanup((yield connecting))
 
@@ -455,7 +420,9 @@ class TestSendEventIPAddress(MAASTestCase):
         # The cache has been populated with the event name.
         self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
-        with ExpectedException(NoSuchEventType):
+        with self.assertRaisesRegex(
+            NoSuchEventType, r"Event type with name=foo could not be found\."
+        ):
             yield event_hub.logByIP(event_name, ip_address, description)
         # The event has been removed from the cache.
-        self.assertThat(event_hub._types_registered, HasLength(0))
+        self.assertEqual(event_hub._types_registered, set())

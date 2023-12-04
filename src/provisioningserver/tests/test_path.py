@@ -8,7 +8,6 @@ from os import getcwd
 import os.path
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import DirExists, Not, StartsWith
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -94,7 +93,7 @@ class TestGetPathFunctions(MAASTestCase):
     def test_returns_absolute_path(self):
         self.set_root(".")
         self.patch(provisioningserver.path, "makedirs")
-        self.assertThat(self.get_path_function(), StartsWith("/"))
+        self.assertEqual(self.get_path_function()[0], "/")
         self.assertEqual(getcwd(), self.get_path_function())
 
     def test_concatenates_despite_leading_slash(self):
@@ -117,10 +116,11 @@ class TestGetPathFunctions(MAASTestCase):
     def test_maybe_creates_dirpath_if_not_exists(self):
         root_path = self.make_dir()
         self.set_root(root_path)
-        self.assertThat(
-            os.path.dirname(self.get_path_function("/foo/bar")),
-            DirExists() if self.ensures_directory else Not(DirExists()),
-        )
+        dir_name = os.path.dirname(self.get_path_function("/foo/bar"))
+        if self.ensures_directory:
+            self.assertTrue(os.path.isdir(dir_name), dir_name)
+        else:
+            self.assertFalse(os.path.isdir(dir_name), dir_name)
 
 
 class TestGetMAASDataPath(MAASTestCase):

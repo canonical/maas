@@ -4,7 +4,7 @@
 """Tests for tag updating."""
 
 
-import doctest
+from functools import partial
 import http.client
 from itertools import chain
 import json
@@ -17,11 +17,9 @@ import urllib.request
 import bson
 from fixtures import FakeLogger
 from lxml import etree
-from testtools.matchers import DocTestMatches, Equals, MatchesStructure
 
 from apiclient.maas_client import MAASClient
 from maastesting.factory import factory
-from maastesting.matchers import IsCallable, MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver import tags
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -63,30 +61,11 @@ class TestProcessResponse(MAASTestCase):
         error = self.assertRaises(
             urllib.error.HTTPError, tags.process_response, response
         )
-        self.assertThat(
-            error,
-            MatchesStructure.byEquality(
-                url=response.url,
-                code=response.code,
-                msg="Not Found, expected 200 OK",
-                headers=response.headers,
-                fp=response.fp,
-            ),
-        )
-
-
-class EqualsXML(Equals):
-    @staticmethod
-    def normalise(xml):
-        if isinstance(xml, (bytes, str)):
-            xml = etree.fromstring(dedent(xml))
-        return etree.tostring(xml, pretty_print=True)
-
-    def __init__(self, tree):
-        super().__init__(self.normalise(tree))
-
-    def match(self, other):
-        return super().match(self.normalise(other))
+        self.assertEqual(error.url, response.url)
+        self.assertEqual(error.code, response.code)
+        self.assertEqual(error.msg, "Not Found, expected 200 OK")
+        self.assertEqual(error.headers, response.headers)
+        self.assertEqual(error.fp, response.fp)
 
 
 class TestMergeDetailsCleanly(MAASTestCase):
@@ -96,9 +75,15 @@ class TestMergeDetailsCleanly(MAASTestCase):
         super().setUp()
         self.logger = self.useFixture(FakeLogger("maas"))
 
+    def assertXMLEqual(self, actual: etree.ElementTree, expected: str):
+        normalise = partial(etree.tostring, pretty_print=True)
+        n_actual = normalise(actual)
+        n_expected = normalise(etree.fromstring(dedent(expected)))
+        return self.assertEqual(n_actual, n_expected)
+
     def test_merge_with_no_details(self):
         xml = self.do_merge_details({})
-        self.assertThat(xml, EqualsXML("<list/>"))
+        self.assertXMLEqual(xml, "<list/>")
 
     def test_merge_with_only_lshw_details(self):
         xml = self.do_merge_details({"lshw": b"<list><foo>Hello</foo></list>"})
@@ -109,7 +94,7 @@ class TestMergeDetailsCleanly(MAASTestCase):
               </lshw:list>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
 
     def test_merge_with_only_lldp_details(self):
         xml = self.do_merge_details({"lldp": b"<node><foo>Hello</foo></node>"})
@@ -120,7 +105,7 @@ class TestMergeDetailsCleanly(MAASTestCase):
               </lldp:node>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
 
     def test_merge_with_multiple_details(self):
         xml = self.do_merge_details(
@@ -141,7 +126,7 @@ class TestMergeDetailsCleanly(MAASTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
 
     def test_merges_into_new_tree(self):
         xml = self.do_merge_details(
@@ -152,34 +137,18 @@ class TestMergeDetailsCleanly(MAASTestCase):
         )
         # The presence of a getroot() method indicates that this is a
         # tree object, not an element.
-        self.assertThat(xml, MatchesStructure(getroot=IsCallable()))
+        self.assertTrue(callable(xml.getroot))
         # The list tag can be obtained using an XPath expression
         # starting from the root of the tree.
-        self.assertSequenceEqual(
-            ["list"], [elem.tag for elem in xml.xpath("/list")]
-        )
-
-    def assertDocTestMatches(self, expected, observed):
-        return self.assertThat(
-            observed,
-            DocTestMatches(
-                dedent(expected),
-                doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE,
-            ),
-        )
+        self.assertEqual(["list"], [elem.tag for elem in xml.xpath("/list")])
 
     def test_merge_with_invalid_lshw_details(self):
         # The lshw details cannot be parsed, but merge_details_cleanly() still
         # returns a usable tree, albeit without any lshw details.
         xml = self.do_merge_details({"lshw": b"<not>well</formed>"})
-        self.assertThat(xml, EqualsXML('<list xmlns:lshw="lshw"/>'))
+        self.assertXMLEqual(xml, '<list xmlns:lshw="lshw"/>')
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid lshw details: ...
-            """,
-            self.logger.output,
-        )
+        self.assertIn("Invalid lshw details: ", self.logger.output)
 
     def test_merge_with_invalid_lshw_details_and_others_valid(self):
         # The lshw details cannot be parsed, but merge_details_cleanly() still
@@ -199,14 +168,9 @@ class TestMergeDetailsCleanly(MAASTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid lshw details: ...
-            """,
-            self.logger.output,
-        )
+        self.assertIn("Invalid lshw details: ", self.logger.output)
 
     def test_merge_with_invalid_other_details(self):
         xml = self.do_merge_details(
@@ -226,14 +190,9 @@ class TestMergeDetailsCleanly(MAASTestCase):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid foom details: ...
-            """,
-            self.logger.output,
-        )
+        self.assertIn("Invalid foom details: ", self.logger.output)
 
     def test_merge_with_all_invalid_details(self):
         xml = self.do_merge_details(
@@ -248,16 +207,10 @@ class TestMergeDetailsCleanly(MAASTestCase):
             <list xmlns:foom="foom" xmlns:lshw="lshw"
                   xmlns:oops="oops" xmlns:zoom="zoom"/>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid foom details: ...
-            Invalid lshw details: ...
-            Invalid zoom details: ...
-            """,
-            self.logger.output,
-        )
+        for key in ["foom", "lshw", "zoom"]:
+            self.assertIn(f"Invalid {key} details: ", self.logger.output)
 
 
 class TestMergeDetails(TestMergeDetailsCleanly):
@@ -282,7 +235,7 @@ class TestMergeDetails(TestMergeDetailsCleanly):
               </lshw:list>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
 
     def test_merge_with_multiple_details(self):
         # merge_details() differs from merge_details_cleanly() in that
@@ -308,7 +261,7 @@ class TestMergeDetails(TestMergeDetailsCleanly):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
 
     def test_merge_with_invalid_other_details(self):
         # merge_details() differs from merge_details_cleanly() in that
@@ -333,14 +286,9 @@ class TestMergeDetails(TestMergeDetailsCleanly):
               <zoom:zoom>zoom</zoom:zoom>
             </list>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid foom details: ...
-            """,
-            self.logger.output,
-        )
+        self.assertIn("Invalid foom details: ", self.logger.output)
 
     def test_merge_with_all_invalid_details(self):
         # merge_details() differs from merge_details_cleanly() in that
@@ -359,16 +307,10 @@ class TestMergeDetails(TestMergeDetailsCleanly):
             <list xmlns:foom="foom" xmlns:lshw="lshw"
                   xmlns:oops="oops" xmlns:zoom="zoom"/>
         """
-        self.assertThat(xml, EqualsXML(expected))
+        self.assertXMLEqual(xml, expected)
         # The error is logged however.
-        self.assertDocTestMatches(
-            """\
-            Invalid lshw details: ...
-            Invalid foom details: ...
-            Invalid zoom details: ...
-            """,
-            self.logger.output,
-        )
+        for key in ["lshw", "foom", "zoom"]:
+            self.assertIn(f"Invalid {key} details: ", self.logger.output)
 
 
 class TestGenBatchSlices(MAASTestCase):
@@ -527,12 +469,11 @@ class TestTagUpdating(MAASTestCase):
         get.side_effect = [response1, response2]
         result = tags.get_details_for_nodes(client, ["system-1", "system-2"])
         self.assertEqual(data, result)
-        self.assertThat(
-            get,
-            MockCallsMatch(
+        get.assert_has_calls(
+            [
                 call("/MAAS/api/2.0/nodes/system-1/", op="details"),
                 call("/MAAS/api/2.0/nodes/system-2/", op="details"),
-            ),
+            ]
         )
 
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
@@ -654,15 +595,12 @@ class TestTagUpdating(MAASTestCase):
             self.fake_client(),
         )
         tag_url = f"/MAAS/api/2.0/tags/{tag_name}/"
-        self.assertThat(
-            mock_post,
-            MockCalledOnceWith(
-                tag_url,
-                as_json=True,
-                op="update_nodes",
-                rack_controller=rack_id,
-                definition=tag_definition,
-                add=["system-id1"],
-                remove=["system-id2"],
-            ),
+        mock_post.assert_called_once_with(
+            tag_url,
+            as_json=True,
+            op="update_nodes",
+            rack_controller=rack_id,
+            definition=tag_definition,
+            add=["system-id1"],
+            remove=["system-id2"],
         )
