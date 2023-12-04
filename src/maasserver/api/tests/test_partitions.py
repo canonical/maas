@@ -375,7 +375,9 @@ class TestPartitions(APITestCase.ForUser):
 
     def test_format_missing_partition(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
         device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,
@@ -491,7 +493,9 @@ class TestPartitions(APITestCase.ForUser):
 
     def test_unformat_missing_partition(self):
         self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
         device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE,

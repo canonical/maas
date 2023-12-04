@@ -8,15 +8,7 @@ import os
 import random
 import re
 
-from testtools.matchers import (
-    ContainsAll,
-    MatchesAll,
-    MatchesRegex,
-    StartsWith,
-)
-
 from maastesting.factory import factory
-from maastesting.matchers import FileContains, MockAnyCall, MockCalledOnce
 from maastesting.testcase import MAASTestCase
 from provisioningserver import boot
 from provisioningserver.boot import BytesReader
@@ -77,8 +69,8 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # correctly rendered.
         method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(arch="amd64", purpose="xinstall")
-        fs_host = "(http,%s:5248)/images" % (
-            convert_host_to_uri_str(params.fs_host)
+        fs_host = re.escape(
+            "(http,%s:5248)/images" % (convert_host_to_uri_str(params.fs_host))
         )
         output = method.get_reader(
             backend=None, kernel_params=params, protocol="tftp"
@@ -88,44 +80,24 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith('set default="0"'))
+        self.assertTrue(output.startswith('set default="0"'))
         # The UEFI parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
+        image_dir = re.escape(
+            compose_image_path(
+                osystem=params.kernel_osystem,
+                arch=params.arch,
+                subarch=params.subarch,
+                release=params.kernel_release,
+                label=params.kernel_label,
+            )
         )
 
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*\s+lin.*cc:\\{\'datasource_list\':"
-                    r" \[\'MAAS\'\]\\}end_cc.*",
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+linux  %s/%s/%s .+?$"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.kernel,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+initrd %s/%s/%s$"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.initrd,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-            ),
-        )
+        for regex in [
+            r"(?ms).*\s+lin.*cc:\\{\'datasource_list\': \[\'MAAS\'\]\\}end_cc.*",
+            rf"(?ms).*^\s+linux  {fs_host}/{image_dir}/{params.kernel} .+?$",
+            rf"(?ms).*^\s+initrd {fs_host}/{image_dir}/{params.initrd}$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_http(self):
         # Given the right configuration options, the UEFI configuration is
@@ -140,7 +112,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith('set default="0"'))
+        self.assertTrue(output.startswith('set default="0"'))
         # The UEFI parameters are all set according to the options.
         image_dir = compose_image_path(
             osystem=params.kernel_osystem,
@@ -150,32 +122,12 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             label=params.kernel_label,
         )
 
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*\s+lin.*cc:\\{\'datasource_list\':"
-                    r" \[\'MAAS\'\]\\}end_cc.*",
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+linux  /images/%s/%s .+?$"
-                    % (
-                        re.escape(image_dir),
-                        params.kernel,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+initrd /images/%s/%s$"
-                    % (
-                        re.escape(image_dir),
-                        params.initrd,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-            ),
-        )
+        for regex in [
+            r"(?ms).*\s+lin.*cc:\\{\'datasource_list\': \[\'MAAS\'\]\\}end_cc.*",
+            rf"(?ms).*^\s+linux  /images/{image_dir}/{params.kernel} .+?$",
+            rf"(?ms).*^\s+initrd /images/{image_dir}/{params.initrd}$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
@@ -225,16 +177,12 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             "protocol": random.choice(["tftp", "http"]),
         }
         output = method.get_reader(**options).read(10000).decode("utf-8")
-        self.assertThat(
-            output,
-            ContainsAll(
-                [
-                    "menuentry 'Ephemeral'",
-                    f"{params.osystem}/{params.arch}/{params.subarch}",
-                    params.kernel,
-                ]
-            ),
-        )
+        for needle in [
+            "menuentry 'Ephemeral'",
+            f"{params.osystem}/{params.arch}/{params.subarch}",
+            params.kernel,
+        ]:
+            self.assertIn(needle, output)
 
     def test_get_reader_with_commissioning_purpose(self):
         # If purpose is "commissioning", the config.commissioning.template
@@ -247,16 +195,12 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             "protocol": random.choice(["tftp", "http"]),
         }
         output = method.get_reader(**options).read(10000).decode("utf-8")
-        self.assertThat(
-            output,
-            ContainsAll(
-                [
-                    "menuentry 'Ephemeral'",
-                    f"{params.osystem}/{params.arch}/{params.subarch}",
-                    params.kernel,
-                ]
-            ),
-        )
+        for needle in [
+            "menuentry 'Ephemeral'",
+            f"{params.osystem}/{params.arch}/{params.subarch}",
+            params.kernel,
+        ]:
+            self.assertIn(needle, output)
 
 
 class TestUEFIAMD64BootMethodRegex(MAASTestCase):
@@ -459,7 +403,9 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
                 bootloader_file_path = os.path.join(tmp, bootloader_file)
                 self.assertTrue(os.path.islink(bootloader_file_path))
             grub_file_path = os.path.join(tmp, "grub", "grub.cfg")
-            self.assertTrue(grub_file_path, FileContains(CONFIG_FILE))
+            with open(grub_file_path, "r") as fh:
+                contents = fh.read()
+        self.assertIn(CONFIG_FILE, contents)
 
     def test_link_bootloader_copies_previous_downloaded_files(self):
         method = UEFIAMD64BootMethod()
@@ -501,19 +447,13 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
 
         method._find_and_copy_bootloaders(bootloader_dir)
 
-        self.assertThat(
-            mock_atomic_symlink,
-            MockAnyCall(
-                "/usr/lib/shim/shim.efi.signed",
-                os.path.join(bootloader_dir, "bootx64.efi"),
-            ),
+        mock_atomic_symlink.assert_any_call(
+            "/usr/lib/shim/shim.efi.signed",
+            os.path.join(bootloader_dir, "bootx64.efi"),
         )
-        self.assertThat(
-            mock_atomic_symlink,
-            MockAnyCall(
-                "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
-                os.path.join(bootloader_dir, "grubx64.efi"),
-            ),
+        mock_atomic_symlink.assert_any_call(
+            "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
+            os.path.join(bootloader_dir, "grubx64.efi"),
         )
 
     def test_link_bootloader_logs_missing_bootloader_files(self):
@@ -524,4 +464,4 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
             "snapshot"
         )
         method._find_and_copy_bootloaders(bootloader_dir)
-        self.assertThat(mock_maaslog, MockCalledOnce())
+        mock_maaslog.assert_called_once()

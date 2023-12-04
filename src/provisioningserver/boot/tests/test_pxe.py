@@ -8,17 +8,9 @@ from collections import OrderedDict
 import os
 import re
 
-from testtools.matchers import (
-    ContainsAll,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
-from maastesting.matchers import MockAnyCall, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
 from provisioningserver.boot import BytesReader
@@ -86,9 +78,8 @@ class TestPXEBootMethod(MAASTestCase):
     def test_compose_config_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root().asBytesMode()
         mac = factory.make_mac_address("-")
-        self.assertThat(
-            compose_config_path(mac), Not(StartsWith(tftproot.path))
-        )
+        config_path = compose_config_path(mac)
+        self.assertFalse(config_path.startswith(tftproot.path))
 
     def test_bootloader_path(self):
         method = PXEBootMethod()
@@ -97,7 +88,7 @@ class TestPXEBootMethod(MAASTestCase):
     def test_bootloader_path_does_not_include_tftp_root(self):
         tftproot = self.make_tftp_root()
         method = PXEBootMethod()
-        self.assertThat(method.bootloader_path, Not(StartsWith(tftproot.path)))
+        self.assertFalse(method.bootloader_path.startswith(tftproot.path))
 
     def test_name(self):
         method = PXEBootMethod()
@@ -198,23 +189,17 @@ class TestPXEBootMethod(MAASTestCase):
 
         method.link_bootloader(bootloader_dir)
 
-        self.assertThat(mock_atomic_copy, MockNotCalled())
-        self.assertThat(mock_shutil_copy, MockNotCalled())
+        mock_atomic_copy.assert_not_called()
+        mock_shutil_copy.assert_not_called()
         for bootloader_file in method.bootloader_files:
             bootloader_src = os.path.join(
                 "/usr/lib/syslinux/modules/bios", bootloader_file
             )
             bootloader_dst = os.path.join(bootloader_dir, bootloader_file)
-            self.assertThat(
-                mock_atomic_symlink,
-                MockAnyCall(bootloader_src, bootloader_dst),
-            )
-        self.assertThat(
-            mock_atomic_symlink,
-            MockAnyCall(
-                "/usr/lib/syslinux/modules/bios",
-                os.path.join(bootloader_dir, "syslinux"),
-            ),
+            mock_atomic_symlink.assert_any_call(bootloader_src, bootloader_dst)
+        mock_atomic_symlink.assert_any_call(
+            "/usr/lib/syslinux/modules/bios",
+            os.path.join(bootloader_dir, "syslinux"),
         )
 
     def test_link_bootloader_logs_missing_files(self):
@@ -281,8 +266,8 @@ class TestPXEBootMethodRender(MAASTestCase):
         # correctly rendered.
         method = PXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
-        fs_host = "http://%s:5248/images" % (
-            convert_host_to_uri_str(params.fs_host)
+        fs_host = re.escape(
+            "http://%s:5248/images" % (convert_host_to_uri_str(params.fs_host))
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
@@ -290,39 +275,24 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith("DEFAULT "))
+        self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
+        image_dir = re.escape(
+            compose_image_path(
+                osystem=params.kernel_osystem,
+                arch=params.arch,
+                subarch=params.subarch,
+                release=params.kernel_release,
+                label=params.kernel_label,
+            )
         )
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+KERNEL %s/%s/%s$"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.kernel,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+INITRD %s/%s/%s$"
-                    % (
-                        re.escape(fs_host),
-                        re.escape(image_dir),
-                        params.initrd,
-                    ),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
-            ),
-        )
+
+        for regex in [
+            rf"(?ms).*^\s+KERNEL {fs_host}/{image_dir}/{params.kernel}$",
+            rf"(?ms).*^\s+INITRD {fs_host}/{image_dir}/{params.initrd}$",
+            r"(?ms).*^\s+APPEND .+?$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_install_mustang_dtb(self):
         # Architecture specific test.
@@ -342,7 +312,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith("DEFAULT "))
+        self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
             osystem=params.kernel_osystem,
@@ -351,27 +321,13 @@ class TestPXEBootMethodRender(MAASTestCase):
             release=params.kernel_release,
             label=params.kernel_label,
         )
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+KERNEL %s/%s$"
-                    % (re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+INITRD %s/%s$"
-                    % (re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+FDT %s/%s$"
-                    % (re.escape(image_dir), params.boot_dtb),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
-            ),
-        )
+        for regex in [
+            rf"(?ms).*^\s+KERNEL {image_dir}/{params.kernel}$",
+            rf"(?ms).*^\s+INITRD {image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+FDT {image_dir}/{params.boot_dtb}$",
+            r"(?ms).*^\s+APPEND .+?$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_xinstall_mustang_dtb(self):
         # Architecture specific test.
@@ -391,7 +347,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
-        self.assertThat(output, StartsWith("DEFAULT "))
+        self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
         image_dir = compose_image_path(
             osystem=params.kernel_osystem,
@@ -400,27 +356,13 @@ class TestPXEBootMethodRender(MAASTestCase):
             release=params.kernel_release,
             label=params.kernel_label,
         )
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+KERNEL %s/%s$"
-                    % (re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+INITRD %s/%s$"
-                    % (re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+FDT %s/%s$"
-                    % (re.escape(image_dir), params.boot_dtb),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*^\s+APPEND .+?$", re.MULTILINE | re.DOTALL),
-            ),
-        )
+        for regex in [
+            rf"(?ms).*^\s+KERNEL {image_dir}/{params.kernel}$",
+            rf"(?ms).*^\s+INITRD {image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+FDT {image_dir}/{params.boot_dtb}$",
+            r"(?ms).*^\s+APPEND .+?$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
@@ -517,11 +459,16 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         self.assertIn(default_section_label, config)
         default_section = dict(config[default_section_label])
 
-        contains_arch_path = StartsWith(
-            f"{fs_host}/{osystem}/{arch}/{subarch}"
+        self.assertTrue(
+            default_section["KERNEL"].startswith(
+                f"{fs_host}/{osystem}/{arch}/{subarch}"
+            )
         )
-        self.assertThat(default_section["KERNEL"], contains_arch_path)
-        self.assertThat(default_section["INITRD"], contains_arch_path)
+        self.assertTrue(
+            default_section["INITRD"].startswith(
+                f"{fs_host}/{osystem}/{arch}/{subarch}"
+            )
+        )
         self.assertEqual("2", default_section["IPAPPEND"])
 
 
@@ -565,20 +512,27 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
             ["amd64", "--", "i386"], default_section["APPEND"].split()
         )
         # Both "i386" and "amd64" sections exist.
-        self.assertThat(config, ContainsAll(("i386", "amd64")))
+        self.assertIn("i386", config)
+        self.assertIn("amd64", config)
+
         # Each section defines KERNEL, INITRD, and APPEND settings.  The
         # KERNEL and INITRD ones contain paths referring to their
         # architectures.
         for section_label in ("i386", "amd64"):
             section = config[section_label]
-            self.assertThat(
-                section, ContainsAll(("KERNEL", "INITRD", "APPEND"))
+            self.assertGreaterEqual(
+                section.keys(), {"KERNEL", "INITRD", "APPEND"}
             )
-            contains_arch_path = StartsWith(
-                f"{fs_host}/{osystem}/{section_label}/"
+            self.assertTrue(
+                section["KERNEL"].startswith(
+                    f"{fs_host}/{osystem}/{section_label}"
+                )
             )
-            self.assertThat(section["KERNEL"], contains_arch_path)
-            self.assertThat(section["INITRD"], contains_arch_path)
+            self.assertTrue(
+                section["INITRD"].startswith(
+                    f"{fs_host}/{osystem}/{section_label}"
+                )
+            )
             self.assertIn("APPEND", section)
 
 

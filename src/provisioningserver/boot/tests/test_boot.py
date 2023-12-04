@@ -15,7 +15,6 @@ from twisted.python import context
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import boot
 from provisioningserver.boot import (
@@ -71,7 +70,7 @@ class TestBootMethod(MAASTestCase):
 
         mock_find = self.patch(boot, "find_mac_via_arp")
         yield context.call(call_context, get_remote_mac)
-        self.assertThat(mock_find, MockCalledOnceWith(remote_host))
+        mock_find.assert_called_once_with(remote_host)
 
     def test_gen_template_filenames(self):
         purpose = factory.make_name("purpose")
@@ -132,7 +131,7 @@ class TestBootMethod(MAASTestCase):
             method.get_template,
             *factory.make_names("purpose", "arch", "subarch"),
         )
-        self.assertThat(mock_try_send_rack_event, MockCalledOnce())
+        mock_try_send_rack_event.assert_called_once()
 
     def test_get_templates_only_suppresses_ENOENT(self):
         # The IOError arising from trying to load a template that doesn't
@@ -183,8 +182,8 @@ class TestBootMethod(MAASTestCase):
 
             method.link_bootloader(tmp)
 
-            self.assertThat(mock_maaslog, MockCalledOnce())
-            self.assertThat(mock_try_send_rack_event, MockCalledOnce())
+            mock_maaslog.assert_called_once()
+            mock_try_send_rack_event.assert_called_once()
 
     def test_link_bootloader_copies_previous_downloaded_files(self):
         method = FakeBootMethod()
@@ -237,8 +236,8 @@ class TestBootMethod(MAASTestCase):
 
             method.link_bootloader(new_dir)
 
-            self.assertThat(mock_maaslog, MockCalledOnce())
-            self.assertThat(mock_try_send_rack_event, MockCalledOnce())
+            mock_maaslog.assert_called_once()
+            mock_try_send_rack_event.assert_called_once()
 
     def test_compose_template_namespace(self):
         kernel_params = make_kernel_parameters()

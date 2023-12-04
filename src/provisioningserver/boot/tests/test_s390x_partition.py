@@ -7,8 +7,6 @@
 import random
 import re
 
-from testtools.matchers import MatchesAll, MatchesRegex
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import s390x_partition as s390x_partition_module
@@ -69,33 +67,22 @@ class TestS390XPartitionBootMethod(MAASTestCase):
 
         output = s390x_partition.get_reader(None, params, mac)
         output = output.read(output.size).decode()
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
+        image_dir = re.escape(
+            compose_image_path(
+                osystem=params.kernel_osystem,
+                arch=params.arch,
+                subarch=params.subarch,
+                release=params.kernel_release,
+                label=params.kernel_label,
+            )
         )
 
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+kernel=%s/%s$"
-                    % (re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+initrd=%s/%s$"
-                    % (re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+append=.*BOOTIF=%s$" % format_bootif(mac),
-                    re.MULTILINE | re.DOTALL,
-                ),
-            ),
-        )
+        for regex in [
+            rf"(?ms).*^\s+kernel={image_dir}/{params.kernel}$",
+            rf"(?ms).*^\s+initrd={image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+append=.*BOOTIF={format_bootif(mac)}+?$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_ephemeral_no_mac(self):
         s390x_partition = S390XPartitionBootMethod()
@@ -109,30 +96,21 @@ class TestS390XPartitionBootMethod(MAASTestCase):
 
         output = s390x_partition.get_reader(None, params)
         output = output.read(output.size).decode()
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
+        image_dir = re.escape(
+            compose_image_path(
+                osystem=params.kernel_osystem,
+                arch=params.arch,
+                subarch=params.subarch,
+                release=params.kernel_release,
+                label=params.kernel_label,
+            )
         )
-
-        self.assertThat(
-            output,
-            MatchesAll(
-                MatchesRegex(
-                    r".*^\s+kernel=%s/%s$"
-                    % (re.escape(image_dir), params.kernel),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(
-                    r".*^\s+initrd=%s/%s$"
-                    % (re.escape(image_dir), params.initrd),
-                    re.MULTILINE | re.DOTALL,
-                ),
-                MatchesRegex(r".*^\s+append=.*$", re.MULTILINE | re.DOTALL),
-            ),
-        )
+        for regex in [
+            rf"(?ms).*^\s+kernel={image_dir}/{params.kernel}$",
+            rf"(?ms).*^\s+initrd={image_dir}/{params.initrd}$",
+            r"(?ms).*^\s+append=.*$",
+        ]:
+            self.assertRegex(output, regex)
 
     def test_get_reader_poweroff(self):
         s390x_partition = S390XPartitionBootMethod()

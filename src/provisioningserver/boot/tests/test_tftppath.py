@@ -8,9 +8,6 @@ import errno
 import os.path
 from unittest.mock import Mock
 
-from testtools.matchers import Not, StartsWith
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import tftppath
@@ -116,10 +113,8 @@ class TestTFTPPath(MAASTestCase):
         subarch = factory.make_name("subarch")
         release = factory.make_name("release")
         label = factory.make_name("label")
-        self.assertThat(
-            compose_image_path(osystem, arch, subarch, release, label),
-            Not(StartsWith(self.tftproot)),
-        )
+        image_path = compose_image_path(osystem, arch, subarch, release, label)
+        self.assertFalse(image_path.startswith(self.tftproot))
 
     def test_list_boot_images_copes_with_missing_directory(self):
         self.assertEqual([], list_boot_images(factory.make_string()))
@@ -129,7 +124,9 @@ class TestTFTPPath(MAASTestCase):
         # PermissionError. It's a subclass of OSError.
         error = OSError(errno.EACCES, "Deliberate error for testing.")
         self.patch(tftppath, "list_subdirs", Mock(side_effect=error))
-        with ExpectedException(PermissionError):
+        with self.assertRaisesRegex(
+            PermissionError, "Deliberate error for testing."
+        ):
             list_boot_images(factory.make_string())
 
     def test_list_boot_images_copes_with_empty_directory(self):

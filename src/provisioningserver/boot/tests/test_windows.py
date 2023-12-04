@@ -17,7 +17,6 @@ from twisted.internet.defer import inlineCallbacks
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import (
     always_fail_with,
@@ -76,10 +75,9 @@ class TestBcd(MAASTestCase):
         bcd.hive.value_multiple_strings.return_value = [mock_string]
 
         response = bcd._get_loader(bootmgr_elems)
-        self.assertThat(bcd.hive.node_values, MockCalledOnceWith(mock_elem))
-        self.assertThat(
-            bcd.hive.value_multiple_strings,
-            MockCalledOnceWith(mock_node_value),
+        bcd.hive.node_values.assert_called_once_with(mock_elem)
+        bcd.hive.value_multiple_strings.assert_called_once_with(
+            mock_node_value
         )
         self.assertEqual(mock_string, response)
 
@@ -94,8 +92,8 @@ class TestBcd(MAASTestCase):
         bcd.hive.node_name.return_value = mock_name
 
         response = bcd._get_loader_elems()
-        self.assertThat(bcd.hive.node_children, MockCalledOnceWith(mock_uid_1))
-        self.assertThat(bcd.hive.node_name, MockCalledOnceWith(mock_child))
+        bcd.hive.node_children.assert_called_once_with(mock_uid_1)
+        bcd.hive.node_name.assert_called_once_with(mock_child)
         self.assertEqual(response, {mock_name: mock_child})
 
     def test_get_load_options_key(self):
@@ -109,10 +107,8 @@ class TestBcd(MAASTestCase):
         mock_get_loader_elems.return_value = mock_load_elem
 
         response = bcd._get_load_options_key()
-        self.assertThat(mock_get_loader_elems, MockCalledOnceWith())
-        self.assertThat(
-            mock_load_elem.get, MockCalledOnceWith(bcd.LOAD_OPTIONS, None)
-        )
+        mock_get_loader_elems.assert_called_once_with()
+        mock_load_elem.get.assert_called_once_with(bcd.LOAD_OPTIONS, None)
         self.assertEqual(response, fake_load_elem)
 
     def test_set_load_options(self):
@@ -133,15 +129,12 @@ class TestBcd(MAASTestCase):
             "key": "Element",
             "value": fake_value.decode("utf-8").encode("utf-16le"),
         }
-        self.assertThat(mock_get_load_options_key, MockCalledOnceWith())
-        self.assertThat(
-            bcd.hive.node_add_child,
-            MockCalledOnceWith(mock_uid_1, bcd.LOAD_OPTIONS),
+        mock_get_load_options_key.assert_called_once_with()
+        bcd.hive.node_add_child.assert_called_once_with(
+            mock_uid_1, bcd.LOAD_OPTIONS
         )
-        self.assertThat(
-            bcd.hive.node_set_value, MockCalledOnceWith(fake_child, compare)
-        )
-        self.assertThat(bcd.hive.commit, MockCalledOnceWith(None))
+        bcd.hive.node_set_value.assert_called_once_with(fake_child, compare)
+        bcd.hive.commit.assert_called_once_with(None)
 
 
 class TestRequestNodeInfoByMACAddress(MAASTestCase):
@@ -163,11 +156,8 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
         client.side_effect = always_succeed_with(sentinel.node_info)
         d = windows_module.request_node_info_by_mac_address(sentinel.mac)
         self.assertIs(extract_result(d), sentinel.node_info)
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                RequestNodeInfoByMACAddress, mac_address=sentinel.mac
-            ),
+        client.assert_called_once_with(
+            RequestNodeInfoByMACAddress, mac_address=sentinel.mac
         )
 
 
@@ -200,7 +190,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             windows_module, "request_node_info_by_mac_address"
         )
         method.get_node_info()
-        self.assertThat(mock_request_node_info, MockCalledOnceWith(mac))
+        mock_request_node_info.assert_called_once_with(mac)
 
     @inlineCallbacks
     def test_match_path_pxelinux(self):
@@ -377,9 +367,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         method.get_reader(
             None, kernel_params, path="bcd", local_host=local_host
         )
-        self.assertThat(
-            mock_compose_bcd, MockCalledOnceWith(kernel_params, local_host)
-        )
+        mock_compose_bcd.assert_called_once_with(kernel_params, local_host)
 
     def test_get_reader_static_file(self):
         method = WindowsPXEBootMethod()
@@ -388,9 +376,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         kernel_params = make_kernel_parameters(osystem="windows")
 
         method.get_reader(None, kernel_params, path=mock_path)
-        self.assertThat(
-            mock_output_static, MockCalledOnceWith(kernel_params, mock_path)
-        )
+        mock_output_static.assert_called_once_with(kernel_params, mock_path)
 
     def test_compose_preseed_url(self):
         url = "http://localhost/MAAS"
@@ -414,7 +400,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         self.patch(windows_module, "open")
         windows_module.open.return_value = io.BytesIO(fake_output)
         output = method.compose_bcd(kernel_params, local_host)
-        self.assertThat(windows_module.open, MockCalledOnceWith(ANY, "rb"))
+        windows_module.open.assert_called_once_with(ANY, "rb")
 
         self.assertIsInstance(output, BytesReader)
         self.assertEqual(fake_output, output.read(-1))
