@@ -9,7 +9,6 @@ import random
 from unittest.mock import sentinel
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
@@ -163,9 +162,8 @@ class TestValidateLicenseKey(MAASTestCase):
             osystem, "validate_license_key"
         )
         osystems.validate_license_key(osystem.name, release, sentinel.key)
-        self.assertThat(
-            os_specific_validate_license_key,
-            MockCalledOnceWith(release, sentinel.key),
+        os_specific_validate_license_key.assert_called_once_with(
+            release, sentinel.key
         )
 
 
@@ -209,16 +207,13 @@ class TestGetPreseedData(MAASTestCase):
             sentinel.token_secret,
             metadata_url,
         )
-        self.assertThat(
-            os_specific_compose_preseed,
-            MockCalledOnceWith(
-                sentinel.preseed_type,
-                (sentinel.node_system_id, sentinel.node_hostname),
-                (
-                    sentinel.consumer_key,
-                    sentinel.token_key,
-                    sentinel.token_secret,
-                ),
-                metadata_url.geturl(),
+        os_specific_compose_preseed.assert_called_once_with(
+            sentinel.preseed_type,
+            (sentinel.node_system_id, sentinel.node_hostname),
+            (
+                sentinel.consumer_key,
+                sentinel.token_key,
+                sentinel.token_secret,
             ),
+            metadata_url.geturl(),
         )

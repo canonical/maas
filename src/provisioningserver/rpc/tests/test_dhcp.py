@@ -6,20 +6,14 @@
 
 import copy
 from operator import itemgetter
+from unittest import TestCase
 from unittest.mock import ANY, call, Mock, sentinel
 
 from fixtures import FakeLogger
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 from twisted.internet.defer import inlineCallbacks
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.dhcp.omapi import OmapiError
 from provisioningserver.dhcp.testing.config import (
@@ -78,22 +72,24 @@ class TestDHCPState(MAASTestCase):
             interfaces,
             global_dhcp_snippets,
         )
-        self.assertThat(
-            state,
-            MatchesStructure.byEquality(
-                omapi_key=omapi_key,
-                failover_peers=sorted(failover_peers, key=itemgetter("name")),
-                shared_networks=sorted(
-                    shared_networks, key=itemgetter("name")
-                ),
-                hosts={host["mac"]: host for host in hosts},
-                interfaces=sorted(
-                    interface["name"] for interface in interfaces
-                ),
-                global_dhcp_snippets=sorted(
-                    global_dhcp_snippets, key=itemgetter("name")
-                ),
-            ),
+        self.assertEqual(state.omapi_key, omapi_key)
+        self.assertEqual(
+            state.failover_peers,
+            sorted(failover_peers, key=itemgetter("name")),
+        )
+        self.assertEqual(
+            state.shared_networks,
+            sorted(shared_networks, key=itemgetter("name")),
+        )
+        self.assertEqual(state.hosts, {host["mac"]: host for host in hosts})
+
+        self.assertEqual(
+            state.interfaces,
+            sorted(interface["name"] for interface in interfaces),
+        )
+        self.assertEqual(
+            state.global_dhcp_snippets,
+            sorted(global_dhcp_snippets, key=itemgetter("name")),
         )
 
     def test_requires_restart_returns_True_when_omapi_key_different(self):
@@ -515,18 +511,15 @@ class TestDHCPState(MAASTestCase):
             (sentinel.config, " ".join(state.interfaces)),
             state.get_config(server),
         )
-        self.assertThat(
-            mock_get_config,
-            MockCalledOnceWith(
-                server.template_basename,
-                omapi_key=omapi_key,
-                ipv6=ANY,
-                failover_peers=state.failover_peers,
-                shared_networks=state.shared_networks,
-                hosts=sorted(state.hosts.values(), key=itemgetter("host")),
-                global_dhcp_snippets=sorted(
-                    global_dhcp_snippets, key=itemgetter("name")
-                ),
+        mock_get_config.assert_called_once_with(
+            server.template_basename,
+            omapi_key=omapi_key,
+            ipv6=ANY,
+            failover_peers=state.failover_peers,
+            shared_networks=state.shared_networks,
+            hosts=sorted(state.hosts.values(), key=itemgetter("host")),
+            global_dhcp_snippets=sorted(
+                global_dhcp_snippets, key=itemgetter("name")
             ),
         )
 
@@ -611,6 +604,8 @@ class TestConfigureDHCP(MAASTestCase):
         ("DHCPv6", {"server": dhcp.DHCPv6Server}),
     )
 
+    assertRaises = TestCase.assertRaises
+
     def setUp(self):
         super().setUp()
         # The service monitor is an application global and so are the services
@@ -678,9 +673,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_restartService()
         self.patch_ensureService()
         yield self.configure(factory.make_name("key"), [], [], [], [], [])
-        self.assertThat(
-            mock_sudo_delete, MockCalledOnceWith(self.server.config_filename)
-        )
+        mock_sudo_delete.assert_called_once_with(self.server.config_filename)
 
     @inlineCallbacks
     def test_stops_dhcp_server_if_no_subnets_defined(self):
@@ -693,11 +686,9 @@ class TestConfigureDHCP(MAASTestCase):
         restart_service = self.patch_restartService()
         ensure_service = self.patch_ensureService()
         yield self.configure(factory.make_name("key"), [], [], [], [], [])
-        self.assertThat(off, MockCalledOnceWith())
-        self.assertThat(
-            ensure_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
-        self.assertThat(restart_service, MockNotCalled())
+        off.assert_called_once_with()
+        ensure_service.assert_called_once_with(self.server.dhcp_service)
+        restart_service.assert_not_called()
 
     @inlineCallbacks
     def test_stops_dhcp_server_clears_state(self):
@@ -744,9 +735,8 @@ class TestConfigureDHCP(MAASTestCase):
             global_dhcp_snippets,
         )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -757,12 +747,10 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ],
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(
-            restart_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
+        on.assert_called_once_with()
+        restart_service.assert_called_once_with(self.server.dhcp_service)
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
@@ -816,9 +804,8 @@ class TestConfigureDHCP(MAASTestCase):
             global_dhcp_snippets,
         )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -829,12 +816,10 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ]
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(
-            restart_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
+        on.assert_called_once_with()
+        restart_service.assert_called_once_with(self.server.dhcp_service)
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
@@ -889,9 +874,8 @@ class TestConfigureDHCP(MAASTestCase):
             dhcp_snippets,
         )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -902,13 +886,11 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ]
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(restart_service, MockNotCalled())
-        self.assertThat(
-            ensure_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
+        on.assert_called_once_with()
+        restart_service.assert_not_called()
+        ensure_service.assert_called_once_with(self.server.dhcp_service)
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
@@ -969,9 +951,8 @@ class TestConfigureDHCP(MAASTestCase):
             global_dhcp_snippets,
         )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -982,18 +963,15 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ]
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(
-            get_service_state,
-            MockCalledOnceWith(self.server.dhcp_service, now=True),
+        on.assert_called_once_with()
+        get_service_state.assert_called_once_with(
+            self.server.dhcp_service, now=True
         )
-        self.assertThat(restart_service, MockNotCalled())
-        self.assertThat(
-            ensure_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
-        self.assertThat(update_hosts, MockNotCalled())
+        restart_service.assert_not_called()
+        ensure_service.assert_called_once_with(self.server.dhcp_service)
+        update_hosts.assert_not_called()
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
@@ -1062,9 +1040,8 @@ class TestConfigureDHCP(MAASTestCase):
             global_dhcp_snippets,
         )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -1075,22 +1052,16 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ]
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(
-            get_service_state,
-            MockCalledOnceWith(self.server.dhcp_service, now=True),
+        on.assert_called_once_with()
+        get_service_state.assert_called_once_with(
+            self.server.dhcp_service, now=True
         )
-        self.assertThat(restart_service, MockNotCalled())
-        self.assertThat(
-            ensure_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
-        self.assertThat(
-            update_hosts,
-            MockCalledOnceWith(
-                ANY, [removed_host], [added_host], [modified_host]
-            ),
+        restart_service.assert_not_called()
+        ensure_service.assert_called_once_with(self.server.dhcp_service)
+        update_hosts.assert_called_once_with(
+            ANY, [removed_host], [added_host], [modified_host]
         )
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
@@ -1162,9 +1133,8 @@ class TestConfigureDHCP(MAASTestCase):
                 global_dhcp_snippets,
             )
 
-        self.assertThat(
-            write_file,
-            MockCallsMatch(
+        write_file.assert_has_calls(
+            [
                 call(
                     self.server.config_filename,
                     expected_config.encode("utf-8"),
@@ -1175,24 +1145,16 @@ class TestConfigureDHCP(MAASTestCase):
                     interface["name"].encode("utf-8"),
                     mode=0o640,
                 ),
-            ),
+            ]
         )
-        self.assertThat(on, MockCalledOnceWith())
-        self.assertThat(
-            get_service_state,
-            MockCalledOnceWith(self.server.dhcp_service, now=True),
+        on.assert_called_once_with()
+        get_service_state.assert_called_once_with(
+            self.server.dhcp_service, now=True
         )
-        self.assertThat(
-            restart_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
-        self.assertThat(
-            ensure_service, MockCalledOnceWith(self.server.dhcp_service)
-        )
-        self.assertThat(
-            update_hosts,
-            MockCalledOnceWith(
-                ANY, [removed_host], [added_host], [modified_host]
-            ),
+        restart_service.assert_called_once_with(self.server.dhcp_service)
+        ensure_service.assert_called_once_with(self.server.dhcp_service)
+        update_hosts.assert_called_once_with(
+            ANY, [removed_host], [added_host], [modified_host]
         )
         self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
@@ -1205,9 +1167,11 @@ class TestConfigureDHCP(MAASTestCase):
                 global_dhcp_snippets,
             ),
         )
-        self.assertDocTestMatches(
-            "Failed to update all host maps. Restarting DHCPv... "
-            "service to ensure host maps are in-sync.",
+        self.assertIn(
+            (
+                f"Failed to update all host maps. Restarting {self.server.descriptive_name} service "
+                "to ensure host maps are in-sync."
+            ),
             logger.output,
         )
 
@@ -1222,7 +1186,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_networks = fix_shared_networks_failover(
             [make_shared_network()], failover_peers
         )
-        with ExpectedException(exceptions.CannotConfigureDHCP):
+        with self.assertRaises(exceptions.CannotConfigureDHCP):
             yield self.configure(
                 factory.make_name("key"),
                 failover_peers,
@@ -1241,7 +1205,7 @@ class TestConfigureDHCP(MAASTestCase):
         shared_networks = fix_shared_networks_failover(
             [make_shared_network()], failover_peers
         )
-        with ExpectedException(exceptions.CannotConfigureDHCP):
+        with self.assertRaises(exceptions.CannotConfigureDHCP):
             yield self.configure(
                 factory.make_name("key"),
                 failover_peers,
@@ -1256,7 +1220,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_sudo_write_file()
         self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
-        with ExpectedException(exceptions.CannotConfigureDHCP):
+        with self.assertRaises(exceptions.CannotConfigureDHCP):
             yield self.configure(factory.make_name("key"), [], [], [], [], [])
 
     @inlineCallbacks
@@ -1265,11 +1229,11 @@ class TestConfigureDHCP(MAASTestCase):
         self.patch_sudo_delete_file()
         self.patch_ensureService().side_effect = ServiceActionError()
         with FakeLogger("maas") as logger:
-            with ExpectedException(exceptions.CannotConfigureDHCP):
+            with self.assertRaises(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name("key"), [], [], [], [], []
                 )
-        self.assertDocTestMatches("", logger.output)
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_does_log_other_exceptions(self):
@@ -1279,13 +1243,13 @@ class TestConfigureDHCP(MAASTestCase):
             "DHCP is on strike today"
         )
         with FakeLogger("maas") as logger:
-            with ExpectedException(exceptions.CannotConfigureDHCP):
+            with self.assertRaises(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name("key"), [], [], [], [], []
                 )
-        self.assertDocTestMatches(
-            "DHCPv... server failed to stop: DHCP is on strike today",
+        self.assertRegex(
             logger.output,
+            r"DHCPv[46] server failed to stop: DHCP is on strike today",
         )
 
     @inlineCallbacks
@@ -1297,7 +1261,7 @@ class TestConfigureDHCP(MAASTestCase):
             [make_shared_network()], failover_peers
         )
         with FakeLogger("maas") as logger:
-            with ExpectedException(exceptions.CannotConfigureDHCP):
+            with self.assertRaises(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name("key"),
                     failover_peers,
@@ -1306,7 +1270,7 @@ class TestConfigureDHCP(MAASTestCase):
                     [make_interface()],
                     make_global_dhcp_snippets(),
                 )
-        self.assertDocTestMatches("", logger.output)
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_does_log_other_exceptions_when_restarting(self):
@@ -1319,7 +1283,7 @@ class TestConfigureDHCP(MAASTestCase):
             [make_shared_network()], failover_peers
         )
         with FakeLogger("maas") as logger:
-            with ExpectedException(exceptions.CannotConfigureDHCP):
+            with self.assertRaises(exceptions.CannotConfigureDHCP):
                 yield self.configure(
                     factory.make_name("key"),
                     failover_peers,
@@ -1328,9 +1292,9 @@ class TestConfigureDHCP(MAASTestCase):
                     [make_interface()],
                     make_global_dhcp_snippets(),
                 )
-        self.assertDocTestMatches(
-            "DHCPv... server failed to restart: " "DHCP is on strike today",
+        self.assertRegex(
             logger.output,
+            r"DHCPv[46] server failed to restart: DHCP is on strike today",
         )
 
 
@@ -1366,11 +1330,8 @@ class TestValidateDHCP(MAASTestCase):
             dhcp_snippets,
         )
         # Regression test for LP:1585814
-        self.assertThat(
-            self.mock_call_and_check,
-            MockCalledOnceWith(
-                ["dhcpd", "-t", "-cf", "-6" if self.server.ipv6 else "-4", ANY]
-            ),
+        self.mock_call_and_check.assert_called_once_with(
+            ["dhcpd", "-t", "-cf", "-6" if self.server.ipv6 else "-4", ANY]
         )
         return ret
 

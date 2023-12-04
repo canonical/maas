@@ -8,7 +8,6 @@ from unittest.mock import ANY, sentinel
 
 from apiclient.maas_client import MAASClient, MAASDispatcher, MAASOAuth
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import tags
 
@@ -31,16 +30,13 @@ class TestEvaluateTag(MAASTestCase):
             credentials,
             self.mock_url,
         )
-        self.assertThat(
-            process_node_tags,
-            MockCalledOnceWith(
-                nodes=[],
-                rack_id=rack_id,
-                tag_name=sentinel.tag_name,
-                tag_definition=sentinel.tag_definition,
-                tag_nsmap=sentinel.tag_nsmap,
-                client=ANY,
-            ),
+        process_node_tags.assert_called_once_with(
+            nodes=[],
+            rack_id=rack_id,
+            tag_name=sentinel.tag_name,
+            tag_definition=sentinel.tag_definition,
+            tag_nsmap=sentinel.tag_nsmap,
+            client=ANY,
         )
 
     def test_constructs_client_with_credentials(self):
@@ -68,9 +64,8 @@ class TestEvaluateTag(MAASTestCase):
         self.assertEqual(self.mock_url, client.url)
         self.assertIsInstance(client.dispatcher, MAASDispatcher)
         self.assertIsInstance(client.auth, MAASOAuth)
-        self.assertThat(
-            tags.MAASOAuth,
-            MockCalledOnceWith(consumer_key, resource_token, resource_secret),
+        tags.MAASOAuth.assert_called_once_with(
+            consumer_key, resource_token, resource_secret
         )
 
     def test_constructs_client_with_no_proxies(self):

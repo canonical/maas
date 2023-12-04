@@ -7,15 +7,14 @@
 import json
 import random
 import re
+from unittest import TestCase
 from unittest.mock import call, MagicMock
 from urllib.parse import urlparse
 
-from testtools import ExpectedException
 from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
@@ -40,10 +39,12 @@ TIMEOUT = get_testing_timeout()
 class TestDiscoverPodProjects(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
+    assertRaises = TestCase.assertRaises
+
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
         unknown_type = factory.make_name("unknown")
-        with ExpectedException(exceptions.UnknownPodType):
+        with self.assertRaises(exceptions.UnknownPodType):
             yield pods.discover_pod_projects(unknown_type, {})
 
     @inlineCallbacks
@@ -52,7 +53,7 @@ class TestDiscoverPodProjects(MAASTestCase):
         fake_driver.name = factory.make_name("pod")
         fake_driver.discover_projects.return_value = fail(Exception("fail!"))
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(exceptions.PodActionFail):
+        with self.assertRaises(exceptions.PodActionFail):
             yield pods.discover_pod_projects(fake_driver.name, {})
 
     @inlineCallbacks
@@ -80,10 +81,12 @@ class TestDiscoverPodProjects(MAASTestCase):
 class TestDiscoverPod(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
+    assertRaises = TestCase.assertRaises
+
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
         unknown_type = factory.make_name("unknown")
-        with ExpectedException(exceptions.UnknownPodType):
+        with self.assertRaises(exceptions.UnknownPodType):
             yield pods.discover_pod(unknown_type, {})
 
     @inlineCallbacks
@@ -92,11 +95,11 @@ class TestDiscoverPod(MAASTestCase):
         fake_driver.name = factory.make_name("pod")
         fake_driver.discover.return_value = None
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
-                "bad pod driver '%s'; 'discover' did not "
-                "return Deferred." % fake_driver.name
+                f"bad pod driver '{fake_driver.name}'; 'discover' did not "
+                "return Deferred."
             ),
         ):
             yield pods.discover_pod(fake_driver.name, {})
@@ -107,7 +110,7 @@ class TestDiscoverPod(MAASTestCase):
         fake_driver.name = factory.make_name("pod")
         fake_driver.discover.return_value = succeed(None)
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape("unable to discover pod information."),
         ):
@@ -119,7 +122,7 @@ class TestDiscoverPod(MAASTestCase):
         fake_driver.name = factory.make_name("pod")
         fake_driver.discover.return_value = succeed({})
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'discover' returned "
@@ -155,9 +158,9 @@ class TestDiscoverPod(MAASTestCase):
     def test_handles_driver_raising_NotImplementedError(self):
         fake_driver = MagicMock()
         fake_driver.name = factory.make_name("pod")
-        fake_driver.discover.return_value = fail(NotImplementedError())
+        fake_driver.discover.return_value = fail(NotImplementedError("foo"))
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(NotImplementedError):
+        with self.assertRaisesRegex(NotImplementedError, "foo"):
             yield pods.discover_pod(fake_driver.name, {})
 
     @inlineCallbacks
@@ -169,7 +172,7 @@ class TestDiscoverPod(MAASTestCase):
         fake_exception = fake_exception_type(fake_exception_msg)
         fake_driver.discover.return_value = fail(fake_exception)
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape("Failed talking to pod: " + fake_exception_msg),
         ):
@@ -218,7 +221,7 @@ class TestComposeMachine(MAASTestCase):
         fake_request = self.make_requested_machine()
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
-        with ExpectedException(exceptions.UnknownPodType):
+        with self.assertRaisesRegex(exceptions.UnknownPodType, unknown_type):
             yield pods.compose_machine(
                 unknown_type, {}, fake_request, pod_id=pod_id, name=pod_name
             )
@@ -232,7 +235,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'compose' did not "
@@ -256,7 +259,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(exceptions.PodInvalidResources):
+        with self.assertRaisesRegex(exceptions.PodInvalidResources, ""):
             yield pods.compose_machine(
                 fake_driver.name,
                 {},
@@ -274,7 +277,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'compose' returned "
@@ -298,7 +301,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'compose' returned "
@@ -351,7 +354,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(NotImplementedError):
+        with self.assertRaisesRegex(NotImplementedError, ""):
             yield pods.compose_machine(
                 fake_driver.name,
                 {},
@@ -372,7 +375,7 @@ class TestComposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape("Failed talking to pod: " + fake_exception_msg),
         ):
@@ -388,11 +391,14 @@ class TestComposeMachine(MAASTestCase):
 class TestSendPodCommissioningResults(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
+    assertRaises = TestCase.assertRaises
+
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
-        with ExpectedException(exceptions.UnknownPodType):
+        pod_type = factory.make_name("type")
+        with self.assertRaisesRegex(exceptions.UnknownPodType, pod_type):
             yield pods.send_pod_commissioning_results(
-                pod_type=factory.make_name("type"),
+                pod_type=pod_type,
                 context={},
                 pod_id=random.randint(1, 10),
                 name=factory.make_name("name"),
@@ -409,7 +415,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
         fake_driver = MagicMock()
         fake_driver.get_commissioning_data.return_value = None
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not "
@@ -455,10 +461,9 @@ class TestSendPodCommissioningResults(MAASTestCase):
             token_secret=token_secret,
             metadata_url=urlparse(metadata_url),
         )
-        self.assertDictEqual({}, ret)
-        self.assertThat(
-            mock_signal,
-            MockCallsMatch(
+        self.assertEqual({}, ret)
+        mock_signal.assert_has_calls(
+            [
                 call(
                     url=metadata_url,
                     credentials=Credentials(
@@ -497,7 +502,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
                     exit_status=0,
                     error=f"Finished {filename2}: 0",
                 ),
-            ),
+            ]
         )
 
     @inlineCallbacks
@@ -512,7 +517,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
             {factory.make_name("filename"): factory.make_name("data")}
         )
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 f"Unable to send Pod commissioning information for {name}({system_id}): {err_msg}"
@@ -537,7 +542,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
             NotImplementedError()
         )
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(NotImplementedError):
+        with self.assertRaises(NotImplementedError):
             yield pods.send_pod_commissioning_results(
                 pod_type=factory.make_name("type"),
                 context={},
@@ -558,7 +563,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
         fake_exception = fake_exception_type(fake_exception_msg)
         fake_driver.get_commissioning_data.return_value = fail(fake_exception)
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape("Failed talking to pod: " + fake_exception_msg),
         ):
@@ -578,12 +583,14 @@ class TestSendPodCommissioningResults(MAASTestCase):
 class TestDecomposeMachine(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
+    assertRaises = TestCase.assertRaises
+
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
         unknown_type = factory.make_name("unknown")
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
-        with ExpectedException(exceptions.UnknownPodType):
+        with self.assertRaises(exceptions.UnknownPodType):
             yield pods.decompose_machine(
                 unknown_type, {}, pod_id=pod_id, name=pod_name
             )
@@ -596,7 +603,7 @@ class TestDecomposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'decompose' did not "
@@ -615,7 +622,7 @@ class TestDecomposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'decompose' "
@@ -634,7 +641,7 @@ class TestDecomposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape(
                 "bad pod driver '%s'; 'decompose' "
@@ -672,7 +679,7 @@ class TestDecomposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(NotImplementedError):
+        with self.assertRaises(NotImplementedError):
             yield pods.decompose_machine(
                 fake_driver.name, {}, pod_id=pod_id, name=pod_name
             )
@@ -688,7 +695,7 @@ class TestDecomposeMachine(MAASTestCase):
         pod_id = random.randint(1, 10)
         pod_name = factory.make_name("pod")
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
-        with ExpectedException(
+        with self.assertRaisesRegex(
             exceptions.PodActionFail,
             re.escape("Failed talking to pod: " + fake_exception_msg),
         ):

@@ -290,7 +290,6 @@ class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
       result = client(region.Identify)
       io.flush()  # Call this in the reactor thread.
 
-      self.assertThat(result, ...)
 
     """
 
@@ -337,7 +336,6 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
       client = getRegionClient()
       result = yield client(region.Identify)
-      self.assertThat(result, ...)
 
     """
 

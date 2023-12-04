@@ -6,8 +6,6 @@ import random
 import re
 from unittest.mock import ANY, sentinel
 
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.internet.testing import StringTransport
@@ -15,11 +13,6 @@ from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    IsFiredDeferred,
-    IsUnfiredDeferred,
-    MockCalledOnceWith,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
@@ -64,7 +57,7 @@ class TestClient(MAASTestCase):
     def test_localIdent_for_IConnection(self):
         conn = FakeConnection()
         client = common.Client(conn)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             NotImplementedError, ".* only available in the rack\\b"
         ):
             client.localIdent
@@ -77,7 +70,7 @@ class TestClient(MAASTestCase):
     def test_address_for_IConnection(self):
         conn = FakeConnection()
         client = common.Client(conn)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             NotImplementedError, ".* only available in the rack\\b"
         ):
             client.address
@@ -90,11 +83,8 @@ class TestClient(MAASTestCase):
             sentinel.command, _timeout=None, foo=sentinel.foo, bar=sentinel.bar
         )
         self.assertIs(response, sentinel.response)
-        self.assertThat(
-            conn.callRemote,
-            MockCalledOnceWith(
-                sentinel.command, foo=sentinel.foo, bar=sentinel.bar
-            ),
+        conn.callRemote.assert_called_once_with(
+            sentinel.command, foo=sentinel.foo, bar=sentinel.bar
         )
 
     def test_call_zero_timeout(self):
@@ -105,11 +95,8 @@ class TestClient(MAASTestCase):
             sentinel.command, _timeout=0, foo=sentinel.foo, bar=sentinel.bar
         )
         self.assertIs(response, sentinel.response)
-        self.assertThat(
-            conn.callRemote,
-            MockCalledOnceWith(
-                sentinel.command, foo=sentinel.foo, bar=sentinel.bar
-            ),
+        conn.callRemote.assert_called_once_with(
+            sentinel.command, foo=sentinel.foo, bar=sentinel.bar
         )
 
     def test_call_default_timeout(self):
@@ -118,15 +105,12 @@ class TestClient(MAASTestCase):
         common.deferWithTimeout.return_value = sentinel.response
         response = client(sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
         self.assertIs(response, sentinel.response)
-        self.assertThat(
-            common.deferWithTimeout,
-            MockCalledOnceWith(
-                120,
-                conn.callRemote,
-                sentinel.command,
-                foo=sentinel.foo,
-                bar=sentinel.bar,
-            ),
+        common.deferWithTimeout.assert_called_once_with(
+            120,
+            conn.callRemote,
+            sentinel.command,
+            foo=sentinel.foo,
+            bar=sentinel.bar,
         )
 
     def test_call_custom_timeout(self):
@@ -141,15 +125,12 @@ class TestClient(MAASTestCase):
             bar=sentinel.bar,
         )
         self.assertIs(response, sentinel.response)
-        self.assertThat(
-            common.deferWithTimeout,
-            MockCalledOnceWith(
-                timeout,
-                conn.callRemote,
-                sentinel.command,
-                foo=sentinel.foo,
-                bar=sentinel.bar,
-            ),
+        common.deferWithTimeout.assert_called_once_with(
+            timeout,
+            conn.callRemote,
+            sentinel.command,
+            foo=sentinel.foo,
+            bar=sentinel.bar,
         )
 
     def test_call_with_keyword_arguments_raises_useful_error(self):
@@ -160,7 +141,7 @@ class TestClient(MAASTestCase):
             "arguments, (1, 2, 3), but positional arguments are not "
             "supported. Usage: client(command, arg1=value1, ...)"
         )
-        with ExpectedException(TypeError, expected_message):
+        with self.assertRaisesRegex(TypeError, expected_message):
             client(sentinel.command, 1, 2, 3)
 
     def test_call_records_latency_metric(self):
@@ -181,16 +162,12 @@ class TestClient(MAASTestCase):
     def test_getHostCertificate(self):
         conn, client = self.make_connection_and_client()
         conn.hostCertificate = sentinel.hostCertificate
-        self.assertThat(
-            client.getHostCertificate(), Is(sentinel.hostCertificate)
-        )
+        self.assertIs(client.getHostCertificate(), sentinel.hostCertificate)
 
     def test_getPeerCertificate(self):
         conn, client = self.make_connection_and_client()
         conn.peerCertificate = sentinel.peerCertificate
-        self.assertThat(
-            client.getPeerCertificate(), Is(sentinel.peerCertificate)
-        )
+        self.assertIs(client.getPeerCertificate(), sentinel.peerCertificate)
 
     def test_isSecure(self):
         conn, client = self.make_connection_and_client()
@@ -219,20 +196,24 @@ class TestClient(MAASTestCase):
 class TestRPCProtocol(MAASTestCase):
     def test_init(self):
         protocol = common.RPCProtocol()
-        self.assertThat(protocol.onConnectionMade, IsUnfiredDeferred())
-        self.assertThat(protocol.onConnectionLost, IsUnfiredDeferred())
+        self.assertIsInstance(protocol.onConnectionMade, Deferred)
+        self.assertFalse(protocol.onConnectionMade.called)
+        self.assertIsInstance(protocol.onConnectionLost, Deferred)
+        self.assertFalse(protocol.onConnectionLost.called)
         self.assertIsInstance(protocol, amp.AMP)
 
     def test_onConnectionMade_fires_when_connection_is_made(self):
         protocol = common.RPCProtocol()
         protocol.connectionMade()
-        self.assertThat(protocol.onConnectionMade, IsFiredDeferred())
+        self.assertIsInstance(protocol.onConnectionMade, Deferred)
+        self.assertTrue(protocol.onConnectionMade.called)
 
     def test_onConnectionLost_fires_when_connection_is_lost(self):
         protocol = common.RPCProtocol()
         protocol.makeConnection(StringTransport())
         protocol.connectionLost(connectionDone)
-        self.assertThat(protocol.onConnectionLost, IsFiredDeferred())
+        self.assertIsInstance(protocol.onConnectionLost, Deferred)
+        self.assertTrue(protocol.onConnectionLost.called)
 
     def test_unhandled_error_handler_closed(self):
         """
@@ -298,13 +279,12 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
         # The transport is still connected.
         self.assertFalse(protocol.transport.disconnecting)
         # The error has been logged.
-        self.assertDocTestMatches(
-            """\
-            Unhandled failure during AMP request. This is probably a bug.
-            Please ensure that this error is handled within application code.
-            Traceback (most recent call last):
-            ...
-            """,
+        self.assertIn(
+            (
+                "Unhandled failure during AMP request. This is probably a bug. "
+                "Please ensure that this error is handled within application code.\n"
+                "Traceback (most recent call last):"
+            ),
             logger.output,
         )
 
@@ -324,21 +304,18 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             protocol.ampBoxReceived(box)
         # The transport is still connected.
-        self.expectThat(protocol.transport.disconnecting, Is(False))
+        self.assertFalse(protocol.transport.disconnecting)
         # The error has been logged on the originating side of the AMP
         # session, along with an explanatory message. The message includes a
         # command reference.
         cmd_ref = common.make_command_ref(box)
-        self.assertDocTestMatches(
-            """\
-            Unhandled failure dispatching AMP command. This is probably a bug.
-            Please ensure that this error is handled within application code
-            or declared in the signature of the %s command. [%s]
-            Traceback (most recent call last):
-            ...
-
-            """
-            % (cmd, cmd_ref),
+        self.assertIn(
+            (
+                "Unhandled failure dispatching AMP command. This is probably a bug. "
+                "Please ensure that this error is handled within application code or "
+                f"declared in the signature of the {cmd} command. [{cmd_ref}]\n"
+                "Traceback (most recent call last):"
+            ),
             logger.output,
         )
         # A simpler error message has been transmitted over the wire. It
@@ -370,12 +347,10 @@ class TestMakeCommandRef(MAASTestCase):
         self.patch(common, "gethostname").return_value = host
         self.patch(common, "getpid").return_value = pid
 
-        self.assertThat(
+        self.assertEqual(
             common.make_command_ref(box),
-            Equals(
-                "%s:pid=%s:cmd=%s:ask=%s"
-                % (host, pid, cmd.decode("ascii"), ask.decode("ascii"))
-            ),
+            "%s:pid=%s:cmd=%s:ask=%s"
+            % (host, pid, cmd.decode("ascii"), ask.decode("ascii")),
         )
 
     def test_replaces_missing_ask_with_none(self):
@@ -385,6 +360,5 @@ class TestMakeCommandRef(MAASTestCase):
         self.patch(common, "getpid").return_value = 1234
 
         self.assertEqual(
-            "host:pid=1234:cmd=command:ask=none",
-            common.make_command_ref(box),
+            "host:pid=1234:cmd=command:ask=none", common.make_command_ref(box)
         )

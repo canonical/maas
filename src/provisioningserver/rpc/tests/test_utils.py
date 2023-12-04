@@ -11,7 +11,6 @@ from twisted.internet import defer
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.exceptions import (
@@ -70,17 +69,14 @@ class TestCreateNode(MAASTestCase):
             domain=domain,
             hostname=hostname,
         )
-        self.assertThat(
-            protocol.CreateNode,
-            MockCalledOnceWith(
-                protocol,
-                architecture=arch,
-                power_type=power_type,
-                power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs,
-                domain=domain,
-                hostname=hostname,
-            ),
+        protocol.CreateNode.assert_called_once_with(
+            protocol,
+            architecture=arch,
+            power_type=power_type,
+            power_parameters=json.dumps(power_parameters),
+            mac_addresses=macs,
+            domain=domain,
+            hostname=hostname,
         )
 
     @defer.inlineCallbacks
@@ -135,17 +131,14 @@ class TestCreateNode(MAASTestCase):
         yield create_node(
             macs_with_duplicate, arch, power_type, power_parameters
         )
-        self.assertThat(
-            protocol.CreateNode,
-            MockCalledOnceWith(
-                protocol,
-                architecture=arch,
-                power_type=power_type,
-                power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs,
-                domain=None,
-                hostname=None,
-            ),
+        protocol.CreateNode.assert_called_once_with(
+            protocol,
+            architecture=arch,
+            power_type=power_type,
+            power_parameters=json.dumps(power_parameters),
+            mac_addresses=macs,
+            domain=None,
+            hostname=None,
         )
 
     @defer.inlineCallbacks
@@ -174,13 +167,9 @@ class TestCreateNode(MAASTestCase):
 
         yield create_node(macs, arch, power_type, power_parameters)
         yield create_node(macs, arch, power_type, power_parameters)
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "A node with one of the mac addresses in %s already "
-                "exists.",
-                macs,
-            ),
+        maaslog.error.assert_called_once_with(
+            "A node with one of the mac addresses in %s already " "exists.",
+            macs,
         )
 
 
@@ -207,9 +196,8 @@ class TestCommissionNode(MAASTestCase):
         user = factory.make_name("user")
 
         yield commission_node(system_id, user)
-        self.assertThat(
-            protocol.CommissionNode,
-            MockCalledOnceWith(protocol, system_id=system_id, user=user),
+        protocol.CommissionNode.assert_called_once_with(
+            protocol, system_id=system_id, user=user
         )
 
     @defer.inlineCallbacks
@@ -224,11 +212,8 @@ class TestCommissionNode(MAASTestCase):
         protocol.CommissionNode.return_value = defer.fail(error)
 
         yield commission_node(system_id, user)
-        self.assertThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "Could not commission with system_id %s because %s.",
-                system_id,
-                error.args[0],
-            ),
+        maaslog.error.assert_called_once_with(
+            "Could not commission with system_id %s because %s.",
+            system_id,
+            error.args[0],
         )

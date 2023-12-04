@@ -11,9 +11,7 @@ MAAS codebase.
 
 from inspect import getdoc
 from itertools import chain
-import re
 
-from testtools.matchers import Annotate, Contains, MatchesAll, MatchesRegex
 from twisted.protocols import amp
 
 from maastesting.testcase import MAASTestCase
@@ -52,17 +50,10 @@ class TestDocs(MAASTestCase):
     )
 
     def test_since_clause(self):
-        contains_since_clause = Annotate(
-            self.since_clause_missing_message, Contains(":since:")
-        )
-        since_clause_contains_version = Annotate(
+        doc = getdoc(self.command)
+        self.assertIn(":since", doc, self.since_clause_missing_message)
+        self.assertRegex(
+            doc,
+            "(?sm).*^:since: *[1-9][.][0-9]+([.][0-9]+)?$",
             self.since_clause_version_not_recognised,
-            MatchesRegex(
-                ".*^:since: *[1-9][.][0-9]+([.][0-9]+)?$",
-                re.DOTALL | re.MULTILINE,
-            ),
-        )
-        self.assertThat(
-            getdoc(self.command),
-            MatchesAll(contains_since_clause, since_clause_contains_version),
         )

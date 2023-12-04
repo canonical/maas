@@ -9,8 +9,6 @@ import zlib
 
 import attr
 import netaddr
-from testtools import ExpectedException
-from testtools.matchers import HasLength, LessThan
 from twisted.protocols import amp
 
 from maastesting.factory import factory
@@ -28,7 +26,7 @@ class TestBytes(MAASTestCase):
         self.assertEqual(example, decoded)
 
     def test_error_when_input_is_not_a_byte_string(self):
-        with ExpectedException(TypeError, "^Not a byte string: <.*"):
+        with self.assertRaisesRegex(TypeError, "^Not a byte string: <.*"):
             arguments.Bytes().toString(object())
 
 
@@ -45,15 +43,17 @@ class TestChoice(MAASTestCase):
         self.assertEqual(choice, decoded)
 
     def test_error_when_input_is_not_in_choices(self):
-        with ExpectedException(KeyError, "^<object .*"):
+        with self.assertRaisesRegex(KeyError, "^<object .*"):
             arguments.Choice({}).toString(object())
 
     def test_error_when_choices_is_not_mapping(self):
-        with ExpectedException(TypeError, r"^Not a mapping: \[\]"):
+        with self.assertRaisesRegex(TypeError, r"^Not a mapping: \[\]"):
             arguments.Choice([])
 
     def test_error_when_choices_values_are_not_byte_strings(self):
-        with ExpectedException(TypeError, "^Not byte strings: 'foo', 12345"):
+        with self.assertRaisesRegex(
+            TypeError, "^Not byte strings: 'foo', 12345"
+        ):
             arguments.Choice({object(): 12345, object(): "foo"})
 
 
@@ -102,7 +102,7 @@ class TestParsedURL(MAASTestCase):
         self.assertEqual(example.geturl(), decoded.geturl())
 
     def test_error_when_input_is_not_a_url_object(self):
-        with ExpectedException(TypeError, "^Not a URL-like object: <.*"):
+        with self.assertRaisesRegex(TypeError, "^Not a URL-like object: <.*"):
             arguments.ParsedURL().toString(object())
 
     def test_netloc_containing_non_ascii_characters_is_encoded_to_idna(self):
@@ -155,10 +155,8 @@ class TestCompressedAmpList(MAASTestCase):
         encoded_uncompressed = zlib.decompress(encoded_compressed)
         # The encoded leases compress to less than half the size of the
         # uncompressed leases, and under the AMP message limit of 64k.
-        self.expectThat(
-            len(encoded_compressed), LessThan(len(encoded_uncompressed) / 2)
-        )
-        self.expectThat(len(encoded_compressed), LessThan(2**16))
+        self.assertLess(len(encoded_compressed), len(encoded_uncompressed) / 2)
+        self.assertLess(len(encoded_compressed), 2**16)
 
 
 class TestIPAddress(MAASTestCase):
@@ -168,7 +166,7 @@ class TestIPAddress(MAASTestCase):
         address = netaddr.IPAddress("192.168.34.87")
         encoded = self.argument.toString(address)
         self.assertIsInstance(encoded, bytes)
-        self.assertThat(encoded, HasLength(4))
+        self.assertEqual(len(encoded), 4, encoded)
         decoded = self.argument.fromString(encoded)
         self.assertEqual(address, decoded)
 
@@ -176,7 +174,7 @@ class TestIPAddress(MAASTestCase):
         address = netaddr.IPAddress("fd28:8d1a:6c8e::345")
         encoded = self.argument.toString(address)
         self.assertIsInstance(encoded, bytes)
-        self.assertThat(encoded, HasLength(16))
+        self.assertEqual(len(encoded), 16, encoded)
         decoded = self.argument.fromString(encoded)
         self.assertEqual(address, decoded)
 
@@ -184,7 +182,7 @@ class TestIPAddress(MAASTestCase):
         address = netaddr.IPAddress("::ffff:10.78.45.9")
         encoded = self.argument.toString(address)
         self.assertIsInstance(encoded, bytes)
-        self.assertThat(encoded, HasLength(16))
+        self.assertEqual(len(encoded), 16, encoded)
         decoded = self.argument.fromString(encoded)
         self.assertEqual(address, decoded)
 
@@ -196,7 +194,7 @@ class TestIPNetwork(MAASTestCase):
         network = factory.make_ipv4_network()
         encoded = self.argument.toString(network)
         self.assertIsInstance(encoded, bytes)
-        self.assertThat(encoded, HasLength(5))
+        self.assertEqual(len(encoded), 5, encoded)
         decoded = self.argument.fromString(encoded)
         self.assertEqual(network, decoded)
 
@@ -204,6 +202,6 @@ class TestIPNetwork(MAASTestCase):
         network = factory.make_ipv6_network()
         encoded = self.argument.toString(network)
         self.assertIsInstance(encoded, bytes)
-        self.assertThat(encoded, HasLength(17))
+        self.assertEqual(len(encoded), 17, encoded)
         decoded = self.argument.fromString(encoded)
         self.assertEqual(network, decoded)
