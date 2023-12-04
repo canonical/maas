@@ -9,6 +9,7 @@ import shlex
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import Q
+from netaddr import IPAddress
 
 from maasserver.compose_preseed import RSYSLOG_PORT
 from maasserver.dns.config import get_resource_name_for_subnet
@@ -346,7 +347,11 @@ def get_base_url_for_local_ip(
         # Either no subnet, the subnet has DNS servers defined, or the VLAN
         # that the subnet belongs to doesn't have DHCP enabled. In
         # that case fallback to using IP address only.
-        return "http://%s:5248/" % local_ip
+        return (
+            "http://[%s]:5248/" % local_ip
+            if IPAddress(local_ip).version == 6
+            else "http://%s:5248/" % local_ip
+        )
 
 
 def get_final_boot_purpose(machine, arch, purpose):

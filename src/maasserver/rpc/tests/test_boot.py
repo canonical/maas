@@ -5,7 +5,7 @@ from datetime import timedelta
 import random
 from unittest.mock import ANY, DEFAULT
 
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 from testtools.matchers import ContainsAll, StartsWith
 
 from maasserver import server_address
@@ -607,10 +607,10 @@ class TestGetConfig(MAASServerTestCase):
         self.assertEqual(host, observed_config.get("hostname"))
         self.assertEqual(domainname, observed_config.get("domain"))
 
-    def test_has_enlistment_preseed_url_with_local_ip_no_subnet(self):
+    def test_has_enlistment_preseed_url_with_local_ip_no_subnet_ipv4(self):
         rack_controller = factory.make_RackController()
-        local_ip = factory.make_ip_address()
-        remote_ip = factory.make_ip_address()
+        local_ip = factory.make_ip_address(ipv6=False)
+        remote_ip = factory.make_ip_address(ipv6=False)
         factory.make_default_ubuntu_release_bootable()
         self.patch_autospec(boot_module, "event_log_pxe_request")
         observed_config = get_config(
@@ -623,6 +623,22 @@ class TestGetConfig(MAASServerTestCase):
             observed_config["preseed_url"],
         )
 
+    def test_has_enlistment_preseed_url_with_local_ip_no_subnet_ipv6(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address(ipv6=True)
+        remote_ip = factory.make_ip_address(ipv6=True)
+        factory.make_default_ubuntu_release_bootable()
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip
+        )
+        assert (
+            compose_enlistment_preseed_url(
+                base_url="http://[%s]:5248/" % local_ip
+            )
+            == observed_config["preseed_url"]
+        )
+
     def test_has_enlistment_preseed_url_with_local_ip_subnet_with_dns(self):
         rack_controller = factory.make_RackController()
         subnet = factory.make_Subnet()
@@ -633,11 +649,14 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip
         )
-        self.assertEqual(
-            compose_enlistment_preseed_url(
-                base_url="http://%s:5248/" % local_ip
-            ),
-            observed_config["preseed_url"],
+        base_url = (
+            "http://[%s]:5248/" % local_ip
+            if IPAddress(local_ip).version == 6
+            else "http://%s:5248/" % local_ip
+        )
+        assert (
+            compose_enlistment_preseed_url(base_url=base_url)
+            == observed_config["preseed_url"]
         )
 
     def test_has_enlistment_preseed_url_internal_domain(self):
@@ -732,10 +751,12 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertThat(
-            observed_config["preseed_url"],
-            StartsWith("http://%s:5248" % local_ip),
+        base_url = (
+            "http://[%s]:5248/" % local_ip
+            if IPAddress(local_ip).version == 6
+            else "http://%s:5248/" % local_ip
         )
+        assert observed_config["preseed_url"].startswith(base_url)
 
     def test_preseed_url_for_known_node_local_ip_subnet_with_dns(self):
         rack_url = "http://%s" % factory.make_name("host")
@@ -752,10 +773,12 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertThat(
-            observed_config["preseed_url"],
-            StartsWith("http://%s:5248" % local_ip),
+        base_url = (
+            "http://[%s]:5248/" % local_ip
+            if IPAddress(local_ip).version == 6
+            else "http://%s:5248/" % local_ip
         )
+        assert observed_config["preseed_url"].startswith(base_url)
 
     def test_preseed_url_for_known_node_internal_domain(self):
         rack_url = "http://%s" % factory.make_name("host")
