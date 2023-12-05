@@ -10,7 +10,6 @@ import socket
 from unittest import mock
 from unittest.mock import call
 
-from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -21,7 +20,6 @@ from twisted.internet.task import Clock, deferLater
 from twisted.python.failure import Failure
 
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches, HasLength, MockCallsMatch
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
@@ -119,7 +117,7 @@ class TestGetInterfaceMAC(MAASTestCase):
 
     def test_invalid_interface_raises_interfacenotfound(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        with ExpectedException(InterfaceNotFound):
+        with self.assertRaisesRegex(InterfaceNotFound, "not found"):
             get_interface_mac(sock, factory.make_unicode_string(size=15))
 
     def test_no_mac_raises_macaddressnotavailable(self):
@@ -128,7 +126,7 @@ class TestGetInterfaceMAC(MAASTestCase):
         self.patch(detect_module.fcntl, "ioctl").side_effect = mock_ioerror
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # Drive-by test for the strerror() call.
-        with ExpectedException(MACAddressNotAvailable, ".*not supported.*"):
+        with self.assertRaisesRegex(MACAddressNotAvailable, "not supported"):
             get_interface_mac(sock, "lo")
 
 
@@ -141,7 +139,9 @@ class TestGetInterfaceIP(MAASTestCase):
 
     def test_invalid_interface_raises_interfacenotfound(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        with ExpectedException(detect_module.InterfaceNotFound):
+        with self.assertRaisesRegex(
+            detect_module.InterfaceNotFound, "not found"
+        ):
             get_interface_ip(sock, factory.make_unicode_string(size=15))
 
     def test_no_ip_raises_ipaddressnotavailable(self):
@@ -149,7 +149,7 @@ class TestGetInterfaceIP(MAASTestCase):
         mock_ioerror.errno = errno.EADDRNOTAVAIL
         self.patch(detect_module.fcntl, "ioctl").side_effect = mock_ioerror
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        with ExpectedException(IPAddressNotAvailable, ".*No IP address.*"):
+        with self.assertRaisesRegex(IPAddressNotAvailable, "No IP address"):
             get_interface_ip(sock, "lo")
 
     def test_unknown_errno_ip_raises_ipaddressnotavailable(self):
@@ -158,7 +158,7 @@ class TestGetInterfaceIP(MAASTestCase):
         self.patch(detect_module.fcntl, "ioctl").side_effect = mock_ioerror
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # Drive-by test for the strerror() call.
-        with ExpectedException(
+        with self.assertRaisesRegex(
             IPAddressNotAvailable, "Failed.*Permission denied."
         ):
             get_interface_ip(sock, "lo")
@@ -213,15 +213,11 @@ class TestSendDHCPRequestPacket(MAASTestCase):
         ).return_value = "00:00:00:00:00:00"
         request = DHCPDiscoverPacket()
         send_dhcp_request_packet(request, "lo")
-        self.assertThat(
-            mock_socket.bind,
-            MockCallsMatch(call(("127.0.0.1", BOOTP_CLIENT_PORT))),
+        mock_socket.bind.assert_called_once_with(
+            ("127.0.0.1", BOOTP_CLIENT_PORT)
         )
-        self.assertThat(
-            mock_socket.sendto,
-            MockCallsMatch(
-                call(request.packet, ("<broadcast>", BOOTP_SERVER_PORT))
-            ),
+        mock_socket.sendto.assert_called_once_with(
+            request.packet, ("<broadcast>", BOOTP_SERVER_PORT)
         )
 
 
@@ -289,33 +285,27 @@ class TestDHCPRequestMonitor(MAASTestCase):
         logger = self.useFixture(TwistedLoggerFixture())
         monitor = DHCPRequestMonitor("lo", Clock())
         result = monitor.send_requests_and_await_replies()
-        self.assertThat(
-            mock_socket.setsockopt,
-            MockCallsMatch(
+        mock_socket.setsockopt.assert_has_calls(
+            [
                 call(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1),
                 call(socket.SOL_SOCKET, socket.SO_BROADCAST, 1),
-            ),
+            ]
         )
-        self.assertThat(mock_socket.bind, MockCallsMatch(call(("", 68))))
-        self.assertThat(
-            mock_socket.settimeout,
-            MockCallsMatch(call(detect_module.SOCKET_TIMEOUT)),
+        mock_socket.bind.assert_called_once_with(("", 68))
+        mock_socket.settimeout.assert_called_once_with(
+            detect_module.SOCKET_TIMEOUT
         )
-        self.assertThat(
-            mock_socket.recvfrom,
-            MockCallsMatch(
-                call(2048), call(2048), call(2048), call(2048), call(2048)
-            ),
+        mock_socket.recvfrom.assert_has_calls(
+            [call(2048), call(2048), call(2048), call(2048), call(2048)]
         )
         # One of the response packets was truncated.
-        self.assertThat(
-            logger.output,
-            DocTestMatches("Invalid DHCP response...Truncated..."),
+        self.assertIn(
+            "Invalid DHCP response received from 127.0.0.1 on 'lo': Truncated DHCP packet.",
+            logger.messages,
         )
-        self.assertThat(result, HasLength(1))
         # Ensure we record the fact that the reply packet came from a different
         # IP address than the server claimed to be.
-        self.assertIn(DHCPServer("127.1.1.1", "127.0.0.3"), result)
+        self.assertEqual({DHCPServer("127.1.1.1", "127.0.0.3")}, result)
 
     @inlineCallbacks
     def test_cancelAll(self):
@@ -355,7 +345,7 @@ class TestDHCPRequestMonitor(MAASTestCase):
         yield deferredList
         # Still have one call left in the reactor, since we mocked cancelAll().
         b.cancel()
-        self.assertThat(mock_cancelAll, MockCallsMatch(call([a, b])))
+        mock_cancelAll.assert_called_once_with(([a, b]))
 
     def test_deferredDHCPRequestErrback_logs_known_exceptions(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -364,70 +354,58 @@ class TestDHCPRequestMonitor(MAASTestCase):
         monitor.deferredDHCPRequestErrback(
             make_Failure(DHCPProbeException, error)
         )
-        self.assertThat(
-            logger.output, DocTestMatches("DHCP probe failed. %s" % error)
-        )
+        self.assertEqual([f"DHCP probe failed. {error}"], logger.messages)
 
     def test_deferredDHCPRequestErrback_logs_unknown_exceptions(self):
         logger = self.useFixture(TwistedLoggerFixture())
         monitor = DHCPRequestMonitor("lo")
         error = factory.make_string()
         monitor.deferredDHCPRequestErrback(make_Failure(IOError, error))
-        self.assertThat(
-            logger.output,
-            DocTestMatches("...unknown error...Traceback...%s" % error),
+        self.assertEqual(
+            ["DHCP probe on 'lo' failed with an unknown error."],
+            logger.messages,
         )
+        self.assertRegex(logger.output, rf"(?ms)Traceback.*{error}")
 
     def test_deferredDHCPRequestErrback_ignores_cancelled(self):
         logger = self.useFixture(TwistedLoggerFixture())
         monitor = DHCPRequestMonitor("lo")
         error = factory.make_string()
         monitor.deferredDHCPRequestErrback(make_Failure(CancelledError, error))
-        self.assertThat(logger.output, DocTestMatches(""))
+        self.assertEqual([], logger.messages)
 
     def test_deferDHCPRequests(self):
         clock = Clock()
         monitor = DHCPRequestMonitor("lo", clock)
-        mock_addErrback = mock.MagicMock()
-        mock_deferredListResult = mock.MagicMock()
         mock_deferLater = self.patch(detect_module, "deferLater")
-        mock_deferLater.return_value = mock.MagicMock()
-        mock_deferLater.return_value.addErrback = mock_addErrback
         mock_DeferredList = self.patch(detect_module, "DeferredList")
-        mock_DeferredList.return_value = mock_deferredListResult
-        mock_deferredListResult.addErrback = mock_addErrback
-        expected_calls = [
-            call(
-                clock,
-                seconds + 0.1,
-                send_dhcp_request_packet,
-                DHCPDiscoverPacket(
-                    transaction_id=monitor.transaction_id, seconds=seconds
-                ),
-                "lo",
-            )
-            for seconds in DHCP_REQUEST_TIMING
-        ]
-        monitor.deferDHCPRequests()
-        self.assertThat(mock_deferLater, MockCallsMatch(*expected_calls))
-        self.assertThat(
-            mock_DeferredList,
-            MockCallsMatch(
-                call(
-                    monitor.deferredDHCPRequests,
-                    fireOnOneErrback=True,
-                    consumeErrors=True,
+
+        def _generate_expected_calls():
+            for seconds in DHCP_REQUEST_TIMING:
+                yield call(
+                    clock,
+                    seconds + 0.1,
+                    send_dhcp_request_packet,
+                    DHCPDiscoverPacket(
+                        transaction_id=monitor.transaction_id, seconds=seconds
+                    ),
+                    "lo",
                 )
-            ),
+                # each call should have an errback
+                yield call().addErrback(monitor.deferredDHCPRequestErrback)
+
+        expected_calls = list(_generate_expected_calls())
+        monitor.deferDHCPRequests()
+        mock_deferLater.assert_has_calls(expected_calls)
+        mock_DeferredList.assert_called_once_with(
+            monitor.deferredDHCPRequests,
+            fireOnOneErrback=True,
+            consumeErrors=True,
         )
         # Expect addErrback to be called both on each individual Deferred, plus
         # one more time on the DeferredList.
-        expected_errback_calls = [
-            call(monitor.deferredDHCPRequestErrback)
-            for _ in range(len(DHCP_REQUEST_TIMING) + 1)
-        ]
-        self.assertThat(
-            mock_addErrback, MockCallsMatch(*expected_errback_calls)
+        mock_DeferredList.return_value.addErrback.assert_called_once_with(
+            monitor.deferredDHCPRequestErrback
         )
 
     @inlineCallbacks
@@ -442,13 +420,10 @@ class TestDHCPRequestMonitor(MAASTestCase):
             DHCPServer("127.1.1.1", "127.2.2.2"),
         }
         yield monitor.run()
-        self.assertThat(mock_send_and_await, MockCallsMatch(call()))
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
-                "External DHCP server(s) discovered on interface 'lo': 127.0.0.1, "
-                "127.1.1.1 (via 127.2.2.2)"
-            ),
+        mock_send_and_await.assert_called_once_with()
+        self.assertIn(
+            "External DHCP server(s) discovered on interface 'lo': 127.0.0.1, 127.1.1.1 (via 127.2.2.2)",
+            logger.messages,
         )
         self.assertEqual({"127.0.0.1", "127.1.1.1"}, monitor.dhcp_servers)
         self.assertEqual({"127.0.0.1", "127.2.2.2"}, monitor.dhcp_addresses)
@@ -462,8 +437,8 @@ class TestDHCPRequestMonitor(MAASTestCase):
         )
         mock_send_and_await.return_value = {}
         yield monitor.run()
-        self.assertThat(mock_send_and_await, MockCallsMatch(call()))
-        self.assertThat(logger.output, DocTestMatches(""))
+        mock_send_and_await.assert_called_once_with()
+        self.assertEqual(logger.messages, [])
 
     @inlineCallbacks
     def test_run_via_probe_interface_returns_servers(self):
@@ -475,5 +450,5 @@ class TestDHCPRequestMonitor(MAASTestCase):
             DHCPServer("127.1.1.1", "127.2.2.2"),
         }
         result = yield probe_interface("lo")
-        self.assertThat(mock_send_and_await, MockCallsMatch(call()))
+        mock_send_and_await.assert_called_once_with()
         self.assertEqual({"127.0.0.1", "127.1.1.1"}, result)

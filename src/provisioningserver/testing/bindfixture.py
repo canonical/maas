@@ -7,7 +7,6 @@
 import argparse
 import os
 from shutil import copy
-import signal
 import socket
 import subprocess
 from textwrap import dedent
@@ -28,12 +27,6 @@ GENERATED_HEADER = """
 # so it's safe to edit this file if you need to but be aware that
 # these changes won't be persisted.
 """
-
-
-def preexec_fn():
-    # Revert Python's handling of SIGPIPE. See
-    # http://bugs.python.org/issue1652 for more info.
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
 def get_port(socket):
@@ -137,6 +130,8 @@ class BINDServerResources(fixtures.Fixture):
         zonedir=None,
         log_file=None,
         include_in_options=None,
+        timeout_deadline=15,
+        timeout_interval=0.3,
     ):
         super().__init__()
         self._defaults = dict(
@@ -146,6 +141,8 @@ class BINDServerResources(fixtures.Fixture):
             zonedir=zonedir,
             log_file=log_file,
             include_in_options=include_in_options,
+            timeout_deadline=timeout_deadline,
+            timeout_interval=timeout_interval,
         )
 
     def setUp(self, overwrite_config=False):
@@ -268,7 +265,6 @@ class BINDServerRunner(fixtures.Fixture):
                     close_fds=True,
                     cwd=self.config.homedir,
                     env=env,
-                    preexec_fn=preexec_fn,
                 )
         self.addCleanup(self._stop)
         # Keep the log_file open for reading so that we can still get the log
@@ -287,7 +283,6 @@ class BINDServerRunner(fixtures.Fixture):
             (self.RNDC_PATH, "-c", self.config.rndcconf_file) + command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            preexec_fn=preexec_fn,
         )
         outstr, errstr = ctl.communicate()
         return outstr, errstr
@@ -302,11 +297,12 @@ class BINDServerRunner(fixtures.Fixture):
         self._spawn()
         # Wait for the server to come up: stop when the process is dead, or
         # the timeout expires, or the server responds.
-        timeout = time.time() + 15
+        timeout = time.time() + self.config.timeout_deadline
         while time.time() < timeout and self.is_running():
             if self.is_server_running():
                 break
-            time.sleep(0.3)
+            print(".")
+            time.sleep(self.config.timeout_interval)
         else:
             raise Exception(
                 "Timeout waiting for BIND server to start: log in %r."

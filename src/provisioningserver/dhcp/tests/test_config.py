@@ -12,21 +12,13 @@ import re
 import socket
 import subprocess
 import tempfile
-from textwrap import dedent
 import traceback
 
 from fixtures import FakeLogger
 import netaddr
 from testtools.content import Content, text_content, UTF8_TEXT
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    ContainsAll,
-    Equals,
-)
 
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches, GreaterThanOrEqual
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import running_in_docker
 from provisioningserver.boot import BootMethodRegistry
@@ -200,13 +192,11 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
         output, _ = process.communicate()
         # Record the output from `dhcpd -t` as a detail.
         test.addDetail(
-            "stdout/err from `%s`" % command,
+            f"stdout/err from `{command}`",
             text_content(output.decode("utf-8")),
         )
         # Check that it completed successfully.
-        test.assertThat(
-            process.returncode, Equals(0), "`%s` failed." % command
-        )
+        test.assertEqual(process.returncode, 0, f"`{command}` failed.")
 
 
 class TestGetConfig(MAASTestCase):
@@ -230,30 +220,23 @@ class TestGetConfig(MAASTestCase):
         params = make_sample_params(self, ipv6=self.ipv6)
         del params["hosts"][0]["mac"]
 
-        e = self.assertRaises(
-            config.DHCPConfigError, config.get_config, self.template, **params
-        )
+        with self.assertRaisesRegex(config.DHCPConfigError, "Failed") as cm:
+            config.get_config(self.template, **params)
 
-        tbe = traceback.TracebackException.from_exception(e)
-        self.assertDocTestMatches(
-            dedent(
-                """\
-            Traceback (most recent call last):
-            ...
-            KeyError: 'mac at line ... column ... in file ...'
-            <BLANKLINE>
-            ...
-            <BLANKLINE>
-            The above exception was the direct cause of the following
-            exception:
-            <BLANKLINE>
-            Traceback (most recent call last):
-            ...
-            provisioningserver.dhcp.config.DHCPConfigError: Failed to render
-            DHCP configuration.
-            """
-            ),
-            "".join(tbe.format()),
+        tblines = list(
+            traceback.TracebackException.from_exception(cm.exception).format()
+        )
+        self.assertEqual(tblines[0], "Traceback (most recent call last):\n")
+        self.assertEqual(
+            tblines[-1],
+            "provisioningserver.dhcp.config.DHCPConfigError: Failed to render DHCP configuration.\n",
+        )
+        above_exception = "\nThe above exception was the direct cause of the following exception:\n\n"
+        self.assertIn(above_exception, tblines)
+        idx = tblines.index(above_exception)
+        self.assertRegex(
+            tblines[idx - 1],
+            rf"KeyError\('mac at line \d+ column \d+ in file .*{self.template}'\)",
         )
 
     def test_includes_compose_conditional_bootloader(self):
@@ -401,37 +384,20 @@ class TestGetConfig(MAASTestCase):
 
     def test_renders_with_hosts(self):
         params = make_sample_params(self, ipv6=self.ipv6)
-        self.assertThat(
-            params["hosts"], AfterPreprocessing(len, GreaterThanOrEqual(1))
-        )
+        self.assertGreaterEqual(len(params["hosts"]), 1)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
-        self.assertThat(
-            config_output,
-            ContainsAll([host["host"] for host in params["hosts"]]),
-        )
-        self.assertThat(
-            config_output,
-            ContainsAll([host["mac"] for host in params["hosts"]]),
-        )
-        self.assertThat(
-            config_output,
-            ContainsAll([host["ip"] for host in params["hosts"]]),
-        )
+        for host in params["hosts"]:
+            self.assertIn(host["host"], config_output)
+            self.assertIn(host["mac"], config_output)
+            self.assertIn(host["ip"], config_output)
 
     def test_renders_global_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
-        self.assertThat(
-            config_output,
-            ContainsAll(
-                [
-                    dhcp_snippet["value"]
-                    for dhcp_snippet in params["global_dhcp_snippets"]
-                ]
-            ),
-        )
+        for dhcp_snippet in params["global_dhcp_snippets"]:
+            self.assertIn(dhcp_snippet["value"], config_output)
 
     def test_renders_subnet_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
@@ -439,30 +405,16 @@ class TestGetConfig(MAASTestCase):
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         for shared_network in params["shared_networks"]:
             for subnet in shared_network["subnets"]:
-                self.assertThat(
-                    config_output,
-                    ContainsAll(
-                        [
-                            dhcp_snippet["value"]
-                            for dhcp_snippet in subnet["dhcp_snippets"]
-                        ]
-                    ),
-                )
+                for dhcp_snippet in subnet["dhcp_snippets"]:
+                    self.assertIn(dhcp_snippet["value"], config_output)
 
     def test_renders_node_dhcp_snippets(self):
         params = make_sample_params(self, ipv6=self.ipv6)
         config_output = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, config_output, self.ipv6)
         for host in params["hosts"]:
-            self.assertThat(
-                config_output,
-                ContainsAll(
-                    [
-                        dhcp_snippet["value"]
-                        for dhcp_snippet in host["dhcp_snippets"]
-                    ]
-                ),
-            )
+            for dhcp_snippet in host["dhcp_snippets"]:
+                self.assertIn(dhcp_snippet["value"], config_output)
 
     def test_renders_subnet_cidr(self):
         params = make_sample_params(self, ipv6=self.ipv6)
@@ -618,7 +570,8 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 self.assertIn(method.bootloader_path, output)
             elif method.arch_octet is not None:
                 if isinstance(method.arch_octet, list):
-                    self.assertThat(output, ContainsAll(method.arch_octet))
+                    for arch in method.arch_octet:
+                        self.assertIn(arch, output)
                 else:
                     self.assertIn(method.arch_octet, output)
                 self.assertIn(method.bootloader_path, output)
@@ -663,7 +616,8 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 self.assertIn(method.bootloader_path, output)
             elif method.arch_octet is not None:
                 if isinstance(method.arch_octet, list):
-                    self.assertThat(output, ContainsAll(method.arch_octet))
+                    for arch in method.arch_octet:
+                        self.assertIn(arch, output)
                 else:
                     self.assertIn(method.arch_octet, output)
                 self.assertIn(method.bootloader_path, output)
@@ -672,33 +626,25 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
             if method.user_class == "iPXE":
-                self.assertThat(
+                self.assertIn(
+                    f'option dhcp6.user-class = "{method.user_class}" or',
                     output,
-                    Contains(
-                        f'option dhcp6.user-class = "{method.user_class}" or'
-                    ),
                 )
             elif method.user_class is not None:
-                self.assertThat(
+                self.assertIn(
+                    f'option dhcp6.user-class = "{method.user_class}" {{',
                     output,
-                    Contains(
-                        f'option dhcp6.user-class = "{method.user_class}" {{'
-                    ),
                 )
 
             if method.path_prefix_http or method.http_url:
                 self.assertIn("http://[%s]:5248/" % ip, output)
             if method.path_prefix_force:
-                self.assertThat(
-                    output,
-                    Contains(
-                        "option dhcp6.oro = concat(option dhcp6.oro,00d2);"
-                    ),
+                self.assertIn(
+                    "option dhcp6.oro = concat(option dhcp6.oro,00d2);", output
                 )
             if method.http_url:
                 self.assertIn(
-                    'option dhcp6.vendor-class 0 10 "HTTPClient";',
-                    output,
+                    'option dhcp6.vendor-class 0 10 "HTTPClient";', output
                 )
 
     def test_disabled_boot_architecture(self):
@@ -757,9 +703,7 @@ class TestGetAddresses(MAASTestCase):
         self.patch(config, "_gen_addresses").side_effect = exception
         with FakeLogger(config.__name__) as logger:
             config._get_addresses("no-way-this-exists.maas.io")
-        self.assertThat(
+        self.assertIn(
+            f"Could not resolve no-way-this-exists.maas.io: [Errno {exception.errno}] [Errno ...] ...",
             logger.output.strip(),
-            DocTestMatches(
-                "Could not resolve no-way-this-exists.maas.io: [Errno ...] ..."
-            ),
         )

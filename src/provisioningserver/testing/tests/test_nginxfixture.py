@@ -6,9 +6,6 @@
 
 import os
 
-from testtools.matchers import Contains, FileExists
-
-from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.nginxfixture import (
     NginxServer,
@@ -35,18 +32,13 @@ class TestNginxServerResources(MAASTestCase):
 
     def test_setUp_copies_executable(self):
         with NginxServerResources() as resources:
-            self.assertThat(resources.nginx_file, FileExists())
+            self.assertTrue(os.path.isfile(resources.nginx_file))
 
     def test_setUp_creates_config_files(self):
         with NginxServerResources() as resources:
-            self.assertThat(
-                resources.conf_file,
-                FileContains(
-                    matcher=Contains(
-                        b"pid %s;" % resources.pid_file.encode("ascii")
-                    )
-                ),
-            )
+            with open(resources.conf_file, "r") as fh:
+                contents = fh.read()
+        self.assertIn(f"pid {resources.pid_file};", contents)
 
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()

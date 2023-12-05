@@ -7,10 +7,8 @@
 import os
 from subprocess import check_output
 
-from testtools.matchers import Contains, FileExists, Not
 from testtools.testcase import gather_details
 
-from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.bindfixture import (
     BINDServer,
@@ -47,7 +45,10 @@ def dig_call(port=53, server="localhost", commands=None):
 class TestBINDFixture(MAASTestCase):
     def test_start_check_shutdown(self):
         # The fixture correctly starts and stops BIND.
-        with BINDServer() as fixture:
+        config = BINDServerResources(
+            timeout_deadline=0.5, timeout_interval=0.02
+        )
+        with BINDServer(config) as fixture:
             try:
                 result = dig_call(fixture.config.port)
                 self.assertIn("Got answer", result)
@@ -61,7 +62,9 @@ class TestBINDFixture(MAASTestCase):
 
     def test_config(self):
         # The configuration can be passed in.
-        config = BINDServerResources()
+        config = BINDServerResources(
+            timeout_deadline=0.5, timeout_interval=0.02
+        )
         fixture = self.useFixture(BINDServer(config))
         self.assertIs(config, fixture.config)
 
@@ -77,45 +80,33 @@ class TestBINDServerResources(MAASTestCase):
             self.assertIsInstance(resources.named_file, str)
             self.assertIsInstance(resources.conf_file, str)
             self.assertIsInstance(resources.rndcconf_file, str)
+            self.assertEqual(resources.timeout_deadline, 15)
+            self.assertEqual(resources.timeout_interval, 0.3)
 
     def test_setUp_copies_executable(self):
         with BINDServerResources() as resources:
-            self.assertThat(resources.named_file, FileExists())
+            self.assertTrue(os.path.isfile(resources.named_file))
 
     def test_setUp_creates_config_files(self):
         with BINDServerResources() as resources:
-            self.assertThat(
-                resources.conf_file,
-                FileContains(
-                    matcher=Contains(b"listen-on port %d" % resources.port)
-                ),
-            )
-            self.assertThat(
-                resources.rndcconf_file,
-                FileContains(
-                    matcher=Contains(
-                        b"default-port %d" % (resources.rndc_port)
-                    )
-                ),
-            )
-            # This should ideally be in its own test but it's here to cut
-            # test run time. See test_setUp_honours_include_in_options()
-            # as its counterpart.
-            self.assertThat(
-                resources.conf_file,
-                Not(FileContains(matcher=Contains("forwarders"))),
-            )
+            with open(resources.conf_file, "r") as fh:
+                conf_contents = fh.read()
+            with open(resources.rndcconf_file, "r") as fh:
+                rndcconf_contents = fh.read()
+        self.assertIn(f"listen-on port {resources.port}", conf_contents)
+        self.assertIn(f"default-port {resources.rndc_port}", rndcconf_contents)
+        # This should ideally be in its own test but it's here to cut
+        # test run time. See test_setUp_honours_include_in_options()
+        # as its counterpart.
+        self.assertNotIn("forwarders", conf_contents)
 
     def test_setUp_honours_include_in_options(self):
         forwarders = "forwarders { 1.2.3.4; };"
         with BINDServerResources(include_in_options=forwarders) as resources:
-            expected_in_file = (resources.homedir + "/" + forwarders).encode(
-                "ascii"
-            )
-            self.assertThat(
-                resources.conf_file,
-                FileContains(matcher=Contains(expected_in_file)),
-            )
+            with open(resources.conf_file, "r") as fh:
+                conf_contents = fh.read()
+
+        self.assertIn(resources.homedir + "/" + forwarders, conf_contents)
 
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()
