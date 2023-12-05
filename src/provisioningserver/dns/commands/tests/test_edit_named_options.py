@@ -10,8 +10,6 @@ import os
 import shutil
 import textwrap
 
-from testtools.matchers import FileContains
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns.commands.edit_named_options import (
@@ -99,7 +97,9 @@ class TestGetNamedConfCommand(MAASTestCase):
         options_file = self.make_file(contents=content)
         self.assertFailsWithMessage(options_file, message)
         # The original file must be untouched.
-        self.assertThat(options_file, FileContains(content))
+        with open(options_file, "r") as fh:
+            contents = fh.read()
+        self.assertEqual(contents, content)
 
     def test_exits_when_no_file_to_edit(self):
         dir = self.make_dir()
@@ -163,4 +163,6 @@ class TestGetNamedConfCommand(MAASTestCase):
         files.remove(os.path.basename(options_file))
         [backup_file] = files
         backup_file = os.path.join(options_file_base, backup_file)
-        self.assertThat(backup_file, FileContains(OPTIONS_FILE))
+        with open(backup_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn(OPTIONS_FILE, contents)

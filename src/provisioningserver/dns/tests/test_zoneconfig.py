@@ -11,18 +11,9 @@ from tempfile import mktemp
 from unittest.mock import call
 
 from netaddr import IPAddress, IPNetwork, IPRange
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    Equals,
-    FileContains,
-    HasLength,
-    MatchesStructure,
-)
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
-from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import actions
 from provisioningserver.dns.config import (
@@ -115,15 +106,10 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=serial, default_ttl=default_ttl, mapping=mapping
         )
-        self.assertThat(
-            dns_zone_config,
-            MatchesStructure.byEquality(
-                domain=domain,
-                serial=serial,
-                _mapping=mapping,
-                default_ttl=default_ttl,
-            ),
-        )
+        self.assertEqual(dns_zone_config.domain, domain)
+        self.assertEqual(dns_zone_config.serial, serial)
+        self.assertEqual(dns_zone_config._mapping, mapping)
+        self.assertEqual(dns_zone_config.default_ttl, default_ttl)
 
     def test_computes_dns_config_file_paths(self):
         domain = factory.make_name("zone")
@@ -231,24 +217,20 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             dynamic_ranges=[dynamic_range],
         )
         dns_zone_config.write_config()
-        self.assertThat(
-            os.path.join(target_dir, "zone.%s" % domain),
-            FileContains(
-                matcher=ContainsAll(
-                    [
-                        "$TTL %d" % ttl,
-                        "%s %d IN A %s" % (ipv4_hostname, ttl, ipv4_ip),
-                        "%s %d IN AAAA %s" % (ipv6_hostname, ttl, ipv6_ip),
-                        "%s %d IN MX 10 bar" % (ipv4_hostname, ttl),
-                    ]
-                    + [
-                        "$GENERATE %s %s IN A %s"
-                        % (iterator_values, reverse_dns, hostname)
-                        for iterator_values, reverse_dns, hostname in expected_generate_directives
-                    ]
-                )
-            ),
-        )
+        with open(os.path.join(target_dir, f"zone.{domain}"), "r") as fh:
+            contents = fh.read()
+        needles = [
+            f"$TTL {ttl}",
+            f"{ipv4_hostname} {ttl} IN A {ipv4_ip}",
+            f"{ipv6_hostname} {ttl} IN AAAA {ipv6_ip}",
+            f"{ipv4_hostname} {ttl} IN MX 10 bar",
+        ] + [
+            f"$GENERATE {iterator_values} {reverse_dns} IN A {hostname}"
+            for iterator_values, reverse_dns, hostname in expected_generate_directives
+        ]
+
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_writes_dns_zone_config(self):
         target_dir = patch_zone_file_config_path(self)
@@ -278,24 +260,20 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             dynamic_ranges=[IPRange(network.first, network.last)],
         )
         dns_zone_config.write_config()
-        self.assertThat(
-            os.path.join(target_dir, "zone.%s" % domain),
-            FileContains(
-                matcher=ContainsAll(
-                    [
-                        "$TTL %d" % ttl,
-                        "%s %d IN A %s" % (ipv4_hostname, ttl, ipv4_ip),
-                        "%s %d IN AAAA %s" % (ipv6_hostname, ttl, ipv6_ip),
-                        "%s %d IN MX 10 bar" % (ipv4_hostname, ttl),
-                    ]
-                    + [
-                        "$GENERATE %s %s IN A %s"
-                        % (iterator_values, reverse_dns, hostname)
-                        for iterator_values, reverse_dns, hostname in expected_generate_directives
-                    ]
-                )
-            ),
-        )
+        with open(os.path.join(target_dir, f"zone.{domain}"), "r") as fh:
+            contents = fh.read()
+        needles = [
+            f"$TTL {ttl}",
+            f"{ipv4_hostname} {ttl} IN A {ipv4_ip}",
+            f"{ipv6_hostname} {ttl} IN AAAA {ipv6_ip}",
+            f"{ipv4_hostname} {ttl} IN MX 10 bar",
+        ] + [
+            f"$GENERATE {iterator_values} {reverse_dns} IN A {hostname}"
+            for iterator_values, reverse_dns, hostname in expected_generate_directives
+        ]
+
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_zone_file_config_path(self)
@@ -309,10 +287,11 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv6_ttl=addr_ttl,
         )
         dns_zone_config.write_config()
-        self.assertThat(
-            os.path.join(target_dir, "zone.%s" % dns_zone_config.domain),
-            FileContains(matcher=ContainsAll(["30 IN NS %s." % ns_host_name])),
-        )
+        with open(
+            os.path.join(target_dir, f"zone.{dns_zone_config.domain}"), "r"
+        ) as fh:
+            contents = fh.read()
+        self.assertIn(f"30 IN NS {ns_host_name}.", contents)
 
     def test_ignores_generate_directives_for_v6_dynamic_ranges(self):
         patch_zone_file_config_path(self)
@@ -340,7 +319,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             dns_zone_config, "get_GENERATE_directives"
         )
         dns_zone_config.write_config()
-        self.assertThat(get_generate_directives, MockNotCalled())
+        get_generate_directives.assert_not_called()
 
     def test_config_file_is_world_readable(self):
         patch_zone_file_config_path(self)
@@ -536,12 +515,9 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         dns_zone_config = DNSReverseZoneConfig(
             domain, serial=serial, network=network
         )
-        self.assertThat(
-            dns_zone_config,
-            MatchesStructure.byEquality(
-                domain=domain, serial=serial, _network=network
-            ),
-        )
+        self.assertEqual(dns_zone_config.domain, domain)
+        self.assertEqual(dns_zone_config.serial, serial)
+        self.assertEqual(dns_zone_config._network, network)
 
     def test_computes_zone_file_config_file_paths(self):
         domain = factory.make_name("zone")
@@ -834,10 +810,9 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         )
         dns_zone_config.write_config()
         for zone_name in [zi.zone_name for zi in dns_zone_config.zone_info]:
-            self.assertThat(
-                os.path.join(target_dir, "zone.%s" % zone_name),
-                FileContains(matcher=Contains("30 IN NS %s." % ns_host_name)),
-            )
+            with open(os.path.join(target_dir, "zone.%s" % zone_name)) as fh:
+                contents = fh.read()
+            self.assertIn(f"30 IN NS {ns_host_name}.", contents)
 
     def test_writes_reverse_dns_zone_config(self):
         target_dir = patch_zone_file_config_path(self)
@@ -856,27 +831,24 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         )
         dns_zone_config.write_config()
         for sub in range(4):
-            reverse_file_name = "zone.%d.168.192.in-addr.arpa" % sub
+            reverse_file_name = f"zone.{sub}.168.192.in-addr.arpa"
             expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
                 dynamic_network,
                 domain,
                 DomainInfo(
-                    IPNetwork("192.168.%d.0/24" % sub),
-                    "%d.168.192.in-addr.arpa" % sub,
+                    IPNetwork(f"192.168.{sub}.0/24"),
+                    f"{sub}.168.192.in-addr.arpa",
                 ),
             )
-            expected = ContainsAll(
-                ["30 IN NS %s." % ns_host_name]
-                + [
-                    "$GENERATE %s %s IN PTR %s"
-                    % (iterator_values, reverse_dns, hostname)
-                    for iterator_values, reverse_dns, hostname in expected_GEN_direct
-                ]
-            )
-            self.assertThat(
-                os.path.join(target_dir, reverse_file_name),
-                FileContains(matcher=expected),
-            )
+            with open(os.path.join(target_dir, reverse_file_name), "r") as fh:
+                contents = fh.read()
+            needles = [f"30 IN NS {ns_host_name}"] + [
+                f"$GENERATE {iterator_values} {reverse_dns} IN PTR {hostname}"
+                for iterator_values, reverse_dns, hostname in expected_GEN_direct
+            ]
+
+            for needle in needles:
+                self.assertIn(needle, contents)
 
     def test_writes_reverse_dns_zone_config_for_small_network(self):
         target_dir = patch_zone_file_config_path(self)
@@ -899,18 +871,15 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
             dynamic_network, domain, DomainInfo(network, reverse_zone_name)
         )
-        expected = ContainsAll(
-            ["30 IN NS %s." % ns_host_name]
-            + [
-                "$GENERATE %s %s IN PTR %s"
-                % (iterator_values, reverse_dns, hostname)
-                for iterator_values, reverse_dns, hostname in expected_GEN_direct
-            ]
-        )
-        self.assertThat(
-            os.path.join(target_dir, reverse_file_name),
-            FileContains(matcher=expected),
-        )
+        with open(os.path.join(target_dir, reverse_file_name), "r") as fh:
+            contents = fh.read()
+        needles = [f"30 IN NS {ns_host_name}"] + [
+            f"$GENERATE {iterator_values} {reverse_dns} IN PTR {hostname}"
+            for iterator_values, reverse_dns, hostname in expected_GEN_direct
+        ]
+
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_ignores_generate_directives_for_v6_dynamic_ranges(self):
         patch_zone_file_config_path(self)
@@ -929,7 +898,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             dns_zone_config, "get_GENERATE_directives"
         )
         dns_zone_config.write_config()
-        self.assertThat(get_generate_directives, MockNotCalled())
+        get_generate_directives.assert_not_called()
 
     def test_reverse_config_file_is_world_readable(self):
         patch_zone_file_config_path(self)
@@ -939,8 +908,9 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             network=factory.make_ipv4_network(),
         )
         dns_zone_config.write_config()
-        for tgt in [zi.target_path for zi in dns_zone_config.zone_info]:
-            filepath = FilePath(tgt)
+        for filepath in [
+            FilePath(zi.target_path) for zi in dns_zone_config.zone_info
+        ]:
             self.assertTrue(filepath.getPermissions().other.read)
 
     def test_dynamic_update_when_zone_file_exists(self):
@@ -1310,7 +1280,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
             network, domain, DomainInfo(network, reverse)
         )
-        self.expectThat(directives, HasLength(1))
+        self.assertEqual(len(directives), 1)
         self.assertCountEqual(expected_generate_directives, directives)
 
     def test_returns_single_entry_for_tiny_network(self):
@@ -1325,7 +1295,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
             network, domain, DomainInfo(network, reverse)
         )
-        self.expectThat(directives, HasLength(1))
+        self.assertEqual(len(directives), 1)
         self.assertCountEqual(expected_generate_directives, directives)
 
     def test_returns_single_entry_for_weird_small_range(self):
@@ -1336,7 +1306,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             domain,
             DomainInfo(IPNetwork("10.0.0.0/24"), "0.0.10.in-addr.arpa"),
         )
-        self.expectThat(directives, HasLength(1))
+        self.assertEqual(len(directives), 1)
 
     # generate 2 zones, rather than 1 zone with 2 GENERATEs.
     def test_returns_256_entries_for_slash_16_network(self):
@@ -1351,7 +1321,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         directives = DNSReverseZoneConfig.get_GENERATE_directives(
             network, domain, DomainInfo(network, reverse)
         )
-        self.expectThat(directives, HasLength(256))
+        self.assertEqual(len(directives), 256)
         self.assertCountEqual(expected_generate_directives, directives)
 
     def test_ignores_network_larger_than_slash_16(self):
@@ -1384,30 +1354,26 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_hostname = "10-0-%s-$." + domain + "."
         expected_rdns = "$.%s.0.10.in-addr.arpa."
 
-        directives = list(
-            DNSReverseZoneConfig.get_GENERATE_directives(
-                network,
-                domain,
-                DomainInfo(IPNetwork("10.0.0.0/24"), "0.0.10.in-addr.arpa"),
-            )
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            network,
+            domain,
+            DomainInfo(IPNetwork("10.0.0.0/24"), "0.0.10.in-addr.arpa"),
         )
-        self.expectThat(
+        self.assertEqual(
             directives[0],
-            Equals(("0-255", expected_rdns % "0", expected_hostname % "0")),
+            ("0-255", expected_rdns % "0", expected_hostname % "0"),
         )
 
         expected_hostname = "10-0-%s-$." + domain + "."
         expected_rdns = "$.%s.0.10.in-addr.arpa."
-        directives = list(
-            DNSReverseZoneConfig.get_GENERATE_directives(
-                network,
-                domain,
-                DomainInfo(IPNetwork("10.0.1.0/24"), "1.0.10.in-addr.arpa"),
-            )
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            network,
+            domain,
+            DomainInfo(IPNetwork("10.0.1.0/24"), "1.0.10.in-addr.arpa"),
         )
-        self.expectThat(
+        self.assertEqual(
             directives[0],
-            Equals(("0-255", expected_rdns % "1", expected_hostname % "1")),
+            ("0-255", expected_rdns % "1", expected_hostname % "1"),
         )
 
 
@@ -1466,7 +1432,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         network = IPNetwork("%s/24" % factory.make_ipv4_address())
         expected_directives = self.get_expected_generate_directives(network)
         directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
-        self.expectThat(directives, HasLength(1))
+        self.assertEqual(len(directives), 1)
         self.assertCountEqual(expected_directives, directives)
 
     def test_returns_single_entry_for_tiny_network(self):
@@ -1515,15 +1481,13 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_hostname = "10-0-%s-$"
         expected_address = "10.0.%s.$"
 
-        directives = list(
-            DNSForwardZoneConfig.get_GENERATE_directives(network)
-        )
-        self.expectThat(len(directives), Equals(2))
-        self.expectThat(
+        directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
+        self.assertEqual(len(directives), 2)
+        self.assertEqual(
             directives[0],
-            Equals(("0-255", expected_hostname % "0", expected_address % "0")),
+            ("0-255", expected_hostname % "0", expected_address % "0"),
         )
-        self.expectThat(
+        self.assertEqual(
             directives[1],
-            Equals(("0-255", expected_hostname % "1", expected_address % "1")),
+            ("0-255", expected_hostname % "1", expected_address % "1"),
         )

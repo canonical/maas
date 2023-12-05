@@ -8,30 +8,14 @@ import errno
 import os.path
 import random
 from textwrap import dedent
+from unittest import TestCase
 from unittest.mock import Mock, sentinel
 
 from fixtures import EnvironmentVariable
 from netaddr import IPAddress, IPNetwork
-from testtools.matchers import (
-    AllMatch,
-    Contains,
-    ContainsAll,
-    EndsWith,
-    Equals,
-    FileContains,
-    FileExists,
-    Is,
-    IsInstance,
-    MatchesAll,
-    Not,
-    SamePath,
-    StartsWith,
-)
-from testtools.testcase import ExpectedException
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
-from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import config
 from provisioningserver.dns.config import (
@@ -118,35 +102,29 @@ NAMED_CONF_OPTIONS_NO_ALLOW_CONTENTS = dedent(
 class TestHelpers(MAASTestCase):
     def test_get_dns_config_dir_defaults_to_etc_bind_maas(self):
         self.useFixture(EnvironmentVariable("MAAS_DNS_CONFIG_DIR"))
-        self.assertThat(
-            config.get_dns_config_dir(),
-            MatchesAll(
-                SamePath(locate_config("../bind/maas")), IsInstance(str)
-            ),
-        )
+        config_dir = config.get_dns_config_dir()
+        self.assertIsInstance(config_dir, str)
+        self.assertEqual(config_dir, locate_config("../bind/maas"))
 
     def test_get_dns_config_dir_checks_environ_first(self):
         directory = self.make_dir()
         self.useFixture(EnvironmentVariable("MAAS_DNS_CONFIG_DIR", directory))
-        self.assertThat(
-            config.get_dns_config_dir(),
-            MatchesAll(SamePath(directory), IsInstance(str)),
-        )
+        config_dir = config.get_dns_config_dir()
+        self.assertIsInstance(config_dir, str)
+        self.assertEqual(config_dir, directory)
 
     def test_get_bind_config_dir_defaults_to_etc_bind_maas(self):
         self.useFixture(EnvironmentVariable("MAAS_BIND_CONFIG_DIR"))
-        self.assertThat(
-            config.get_bind_config_dir(),
-            MatchesAll(SamePath(locate_config("../bind")), IsInstance(str)),
-        )
+        config_dir = config.get_bind_config_dir()
+        self.assertIsInstance(config_dir, str)
+        self.assertEqual(config_dir, locate_config("../bind"))
 
     def test_get_bind_config_dir_checks_environ_first(self):
         directory = self.make_dir()
         self.useFixture(EnvironmentVariable("MAAS_BIND_CONFIG_DIR", directory))
-        self.assertThat(
-            config.get_bind_config_dir(),
-            MatchesAll(SamePath(directory), IsInstance(str)),
-        )
+        config_dir = config.get_bind_config_dir()
+        self.assertIsInstance(config_dir, str)
+        self.assertEqual(config_dir, directory)
 
     def test_get_dns_root_port_defaults_to_954(self):
         self.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT"))
@@ -215,15 +193,11 @@ class TestRNDCUtilities(MAASTestCase):
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
-        self.assertThat(
-            target_file,
-            MatchesAll(
-                *(
-                    FileContains(matcher=Contains(address))
-                    for address in fake_dns
-                )
-            ),
-        )
+        with open(target_file, "r") as fh:
+            contents = fh.read()
+
+        for address in fake_dns:
+            self.assertIn(address, contents)
 
     def test_set_up_options_conf_write_config_assumes_no_overrides(self):
         dns_conf_dir = patch_dns_config_path(self)
@@ -232,14 +206,9 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         target = read_isc_file(target_file)
-        self.assertThat(
-            [
-                target["allow-query"]["any"],
-                target["allow-recursion"]["trusted"],
-                target["allow-query-cache"]["trusted"],
-            ],
-            AllMatch(Equals(True)),
-        )
+        self.assertTrue(target["allow-query"]["any"])
+        self.assertTrue(target["allow-recursion"]["trusted"])
+        self.assertTrue(target["allow-query-cache"]["trusted"])
 
     def test_set_up_options_conf_write_config_allows_overrides(self):
         dns_conf_dir = patch_dns_config_path(self)
@@ -253,14 +222,9 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         target = read_isc_file(target_file)
-        self.assertThat(
-            [
-                target.get("allow-query"),
-                target.get("allow-recursion"),
-                target.get("allow-query-cache"),
-            ],
-            AllMatch(Is(None)),
-        )
+        self.assertIsNone(target.get("allow-query"))
+        self.assertIsNone(target.get("allow-recursion"))
+        self.assertIsNone(target.get("allow-query-cache"))
 
     def test_set_up_options_conf_write_config_allows_zero_overrides(self):
         dns_conf_dir = patch_dns_config_path(self)
@@ -274,14 +238,9 @@ class TestRNDCUtilities(MAASTestCase):
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
         target = read_isc_file(target_file)
-        self.assertThat(
-            [
-                target["allow-query"]["any"],
-                target["allow-recursion"]["trusted"],
-                target["allow-query-cache"]["trusted"],
-            ],
-            AllMatch(Equals(True)),
-        )
+        self.assertTrue(target["allow-query"]["any"])
+        self.assertTrue(target["allow-recursion"]["trusted"])
+        self.assertTrue(target["allow-query-cache"]["trusted"])
 
     def test_set_up_options_conf_write_config_allows_single_override(self):
         dns_conf_dir = patch_dns_config_path(self)
@@ -303,7 +262,7 @@ class TestRNDCUtilities(MAASTestCase):
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
-        self.assertThat(target_file, FileExists())
+        self.assertTrue(os.path.exists(target_file))
 
     def test_clean_old_zone_files(self):
         zone_file_dir = patch_zone_file_config_path(self)
@@ -344,18 +303,18 @@ class TestRNDCUtilities(MAASTestCase):
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
         with open(rndc_file, encoding="ascii") as stream:
             conf_content = stream.read()
-            self.assertIn(DEFAULT_CONTROLS, conf_content)
+        self.assertIn(DEFAULT_CONTROLS, conf_content)
 
     def test_execute_rndc_command_executes_command(self):
-        recorder = FakeMethod()
         fake_dir = patch_dns_config_path(self)
-        self.patch(config, "call_and_check", recorder)
+        mock_call_and_check = self.patch(config, "call_and_check")
         command = factory.make_string()
         execute_rndc_command([command], timeout=sentinel.timeout)
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ["rndc", "-c", rndc_conf_path, command]
-        self.assertEqual((expected_command,), recorder.calls[0][0])
-        self.assertEqual({"timeout": sentinel.timeout}, recorder.calls[0][1])
+        mock_call_and_check.assert_called_once_with(
+            expected_command, timeout=sentinel.timeout
+        )
 
     def test_extract_suggested_named_conf_extracts_section(self):
         named_part = factory.make_string()
@@ -505,8 +464,10 @@ class TestRenderDNSTemplate(MAASTestCase):
 class TestReportMissingConfigDir(MAASTestCase):
     """Tests for the `report_missing_config_dir` context manager."""
 
+    assertRaises = TestCase.assertRaises
+
     def test_specially_reports_missing_config_dir(self):
-        with ExpectedException(DNSConfigDirectoryMissing):
+        with self.assertRaises(DNSConfigDirectoryMissing):
             with report_missing_config_dir():
                 open(os.path.join(self.make_dir(), "nonexistent-file.txt"))
 
@@ -514,10 +475,9 @@ class TestReportMissingConfigDir(MAASTestCase):
         with report_missing_config_dir():
             pass
         # The real test is that we get here without error.
-        pass
 
     def test_passes_on_other_similar_errors(self):
-        with ExpectedException(PermissionError):
+        with self.assertRaises(PermissionError):
             with report_missing_config_dir():
                 # OSError(EACCESS) is transmogrified, by Python itself, into
                 # PermissionError. It's a subclass of OSError.
@@ -527,7 +487,7 @@ class TestReportMissingConfigDir(MAASTestCase):
         class DeliberateError(Exception):
             """Deliberately induced error for testing."""
 
-        with ExpectedException(DeliberateError):
+        with self.assertRaises(DeliberateError):
             with report_missing_config_dir():
                 raise DeliberateError("This exception propagates unchanged.")
 
@@ -559,10 +519,10 @@ class TestDNSConfig(MAASTestCase):
         )
         dnsconfig = DNSConfig()
         dnsconfig.write_config(overwrite=False)
-        self.assertThat(
-            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
-            FileContains(random_content),
-        )
+        named_conf = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        with open(named_conf, "r") as fh:
+            contents = fh.read()
+        self.assertEqual(contents, random_content)
 
     def test_write_config_writes_config_if_no_existing_file(self):
         # If DNSConfig is created with overwrite=False, the config file
@@ -570,8 +530,8 @@ class TestDNSConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         dnsconfig = DNSConfig()
         dnsconfig.write_config(overwrite=False)
-        self.assertThat(
-            os.path.join(target_dir, MAAS_NAMED_CONF_NAME), FileExists()
+        self.assertTrue(
+            os.path.exists(os.path.join(target_dir, MAAS_NAMED_CONF_NAME))
         )
 
     def test_write_config_writes_config(self):
@@ -585,18 +545,14 @@ class TestDNSConfig(MAASTestCase):
         reverse_zone = DNSReverseZoneConfig(domain, network=network)
         dnsconfig = DNSConfig((forward_zone, reverse_zone))
         dnsconfig.write_config()
-        self.assertThat(
-            os.path.join(target_dir, MAAS_NAMED_CONF_NAME),
-            FileContains(
-                matcher=ContainsAll(
-                    [
-                        "zone.%s" % domain,
-                        "zone.0.168.192.in-addr.arpa",
-                        MAAS_NAMED_RNDC_CONF_NAME,
-                    ]
-                )
-            ),
-        )
+        with open(os.path.join(target_dir, MAAS_NAMED_CONF_NAME)) as fh:
+            contents = fh.read()
+        for needle in (
+            f"zone.{domain}",
+            "zone.0.168.192.in-addr.arpa",
+            MAAS_NAMED_RNDC_CONF_NAME,
+        ):
+            self.assertIn(needle, contents)
 
     def test_write_config_with_forwarded_zones(self):
         name = factory.make_name("domain")
@@ -629,17 +585,12 @@ class TestDNSConfig(MAASTestCase):
     def test_get_include_snippet_returns_snippet(self):
         target_dir = patch_dns_config_path(self)
         snippet = DNSConfig.get_include_snippet()
-        self.assertThat(
-            snippet,
-            MatchesAll(
-                Not(StartsWith("\n")),
-                EndsWith("\n"),
-                Contains(target_dir),
-                Contains(
-                    'include "%s/%s"'
-                    % (config.get_dns_config_dir(), DNSConfig.target_file_name)
-                ),
-            ),
+        config_dir = config.get_dns_config_dir()
+        self.assertFalse(snippet.startswith("\n"))
+        self.assertTrue(snippet.endswith("\n"))
+        self.assertIn(target_dir, snippet)
+        self.assertIn(
+            f'include "{config_dir}/{DNSConfig.target_file_name}"', snippet
         )
 
 

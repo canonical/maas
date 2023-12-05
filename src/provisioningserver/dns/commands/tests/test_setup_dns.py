@@ -8,8 +8,6 @@ from argparse import ArgumentParser
 import io
 import os
 
-from testtools.matchers import AllMatch, FileContains, FileExists
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns.commands.setup_dns import add_arguments, run
@@ -42,7 +40,8 @@ class TestSetupCommand(MAASTestCase):
         self.run_command()
         named_config = os.path.join(dns_conf_dir, MAAS_NAMED_CONF_NAME)
         rndc_conf_path = os.path.join(dns_conf_dir, MAAS_RNDC_CONF_NAME)
-        self.assertThat([rndc_conf_path, named_config], AllMatch(FileExists()))
+        self.assertTrue(os.path.exists(rndc_conf_path))
+        self.assertTrue(os.path.exists(named_config))
 
     def test_does_not_overwrite_config(self):
         dns_conf_dir = self.make_dir()
@@ -56,7 +55,7 @@ class TestSetupCommand(MAASTestCase):
             contents=random_content,
         )
         self.run_command("--no-clobber")
-        self.assertThat(
-            os.path.join(dns_conf_dir, MAAS_NAMED_CONF_NAME),
-            FileContains(random_content),
-        )
+        with open(os.path.join(dns_conf_dir, MAAS_NAMED_CONF_NAME), "r") as fh:
+            contents = fh.read()
+
+        self.assertIn(random_content, contents)

@@ -14,10 +14,8 @@ from unittest.mock import call, sentinel
 
 from fixtures import FakeLogger
 from netaddr import IPNetwork
-from testtools.matchers import AllMatch, Contains, FileContains, FileExists
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.dns import actions
 from provisioningserver.dns.actions import (
@@ -47,19 +45,16 @@ class TestReconfigure(MAASTestCase):
     def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         actions.bind_reconfigure()
-        self.assertThat(
-            actions.execute_rndc_command, MockCalledOnceWith(("reconfig",))
-        )
+        actions.execute_rndc_command.assert_called_once_with(("reconfig",))
 
     def test_logs_subprocess_error(self):
         erc = self.patch_autospec(actions, "execute_rndc_command")
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
             self.assertRaises(CalledProcessError, actions.bind_reconfigure)
-        self.assertDocTestMatches(
-            "Reloading BIND configuration failed: "
-            "Command ... returned non-zero exit status ...",
+        self.assertRegex(
             logger.output,
+            r"^Reloading BIND configuration failed: Command [^\s]+ returned non-zero exit status",
         )
 
     def test_upgrades_subprocess_error(self):
@@ -107,10 +102,9 @@ class TestReload(MAASTestCase):
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
             self.assertFalse(actions.bind_reload())
-        self.assertDocTestMatches(
-            "Reloading BIND failed (is it running?): "
-            "Command ... returned non-zero exit status ...",
+        self.assertRegex(
             logger.output,
+            r"^Reloading BIND failed \(is it running\?\): Command [^\s]+ returned non-zero exit status",
         )
 
     def test_false_on_subprocess_error(self):
@@ -129,7 +123,7 @@ class TestReloadWithRetries(MAASTestCase):
         attempts = randint(3, 13)
         actions.bind_reload_with_retries(attempts=attempts)
         expected_calls = [call(timeout=2)] * attempts
-        self.assertThat(actions.bind_reload, MockCallsMatch(*expected_calls))
+        actions.bind_reload.assert_has_calls(expected_calls)
 
     def test_returns_on_success(self):
         self.patch_autospec(actions, "sleep")  # Disable.
@@ -141,7 +135,7 @@ class TestReloadWithRetries(MAASTestCase):
 
         actions.bind_reload_with_retries(attempts=5)
         expected_calls = [call(timeout=2), call(timeout=2), call(timeout=2)]
-        self.assertThat(actions.bind_reload, MockCallsMatch(*expected_calls))
+        actions.bind_reload.assert_has_calls(expected_calls)
 
     def test_sleeps_interval_seconds_between_attempts(self):
         self.patch_autospec(actions, "sleep")  # Disable.
@@ -152,7 +146,7 @@ class TestReloadWithRetries(MAASTestCase):
             attempts=attempts, interval=sentinel.interval
         )
         expected_sleep_calls = [call(sentinel.interval)] * (attempts - 1)
-        self.assertThat(actions.sleep, MockCallsMatch(*expected_sleep_calls))
+        actions.sleep.assert_has_calls(expected_sleep_calls)
 
 
 class TestReloadZone(MAASTestCase):
@@ -161,9 +155,8 @@ class TestReloadZone(MAASTestCase):
     def test_executes_rndc_command(self):
         self.patch_autospec(actions, "execute_rndc_command")
         self.assertTrue(actions.bind_reload_zones(sentinel.zone))
-        self.assertThat(
-            actions.execute_rndc_command,
-            MockCalledOnceWith(("reload", sentinel.zone)),
+        actions.execute_rndc_command.assert_called_once_with(
+            ("reload", sentinel.zone)
         )
 
     def test_logs_subprocess_error(self):
@@ -171,10 +164,9 @@ class TestReloadZone(MAASTestCase):
         erc.side_effect = factory.make_CalledProcessError()
         with FakeLogger("maas") as logger:
             self.assertFalse(actions.bind_reload_zones(sentinel.zone))
-        self.assertDocTestMatches(
-            "Reloading BIND zone ... failed (is it running?): "
-            "Command ... returned non-zero exit status ...",
+        self.assertRegex(
             logger.output,
+            r"^Reloading BIND zone sentinel.zone failed \(is it running\?\): Command [^\s]+ returned non-zero exit status",
         )
 
     def test_false_on_subprocess_error(self):
@@ -209,8 +201,10 @@ class TestConfiguration(MAASTestCase):
             ),
         ]
         actions.bind_write_configuration(zones=zones, trusted_networks=[])
-        self.assertThat(
-            os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME), FileExists()
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME)
+            )
         )
 
     def test_bind_write_configuration_writes_file_with_acl(self):
@@ -222,7 +216,7 @@ class TestConfiguration(MAASTestCase):
             zones=[], trusted_networks=trusted_networks
         )
         expected_file = os.path.join(self.dns_conf_dir, MAAS_NAMED_CONF_NAME)
-        self.assertThat(expected_file, FileExists())
+        self.assertTrue(os.path.exists(expected_file))
         expected_content = dedent(
             """\
         acl "trusted" {
@@ -234,9 +228,9 @@ class TestConfiguration(MAASTestCase):
         """
         )
         expected_content %= tuple(trusted_networks)
-        self.assertThat(
-            expected_file, FileContains(matcher=Contains(expected_content))
-        )
+        with open(expected_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn(expected_content, contents)
 
     def test_bind_write_zones_writes_file(self):
         zone_file_dir = patch_zone_file_config_path(self)
@@ -260,11 +254,8 @@ class TestConfiguration(MAASTestCase):
 
         forward_file_name = "zone.%s" % domain
         reverse_file_name = "zone.0.168.192.in-addr.arpa"
-        expected_files = [
-            join(zone_file_dir, forward_file_name),
-            join(zone_file_dir, reverse_file_name),
-        ]
-        self.assertThat(expected_files, AllMatch(FileExists()))
+        self.assertTrue(os.path.exists(join(zone_file_dir, forward_file_name)))
+        self.assertTrue(os.path.exists(join(zone_file_dir, reverse_file_name)))
 
     def test_bind_write_options_sets_up_config(self):
         # bind_write_configuration_and_zones writes the config file, writes
@@ -281,7 +272,7 @@ class TestConfiguration(MAASTestCase):
         expected_options_file = join(
             self.dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME
         )
-        self.assertThat(expected_options_file, FileExists())
+        self.assertTrue(os.path.exists(expected_options_file))
         expected_options_content = dedent(
             """\
         forwarders {
@@ -299,9 +290,9 @@ class TestConfiguration(MAASTestCase):
         expected_options_content %= tuple(upstream_dns) + (
             expected_dnssec_validation,
         )
-        self.assertThat(
-            expected_options_file, FileContains(expected_options_content)
-        )
+        with open(expected_options_file, "r") as fh:
+            contents = fh.read()
+        self.assertIn(expected_options_content, contents)
 
 
 class TestNSUpdateCommand(MAASTestCase):
