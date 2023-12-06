@@ -4,10 +4,7 @@
 """Tests for `provisioningserver.drivers.power.vmware`."""
 
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.hardware.vmware import try_pyvmomi_import
 from provisioningserver.drivers.power import vmware as vmware_module
@@ -120,18 +117,15 @@ class TestVMwarePowerDriver(MAASTestCase):
         )
         vmware_power_driver.power_on(system_id, context)
 
-        self.assertThat(
-            power_control_vmware,
-            MockCalledOnceWith(
-                host,
-                username,
-                password,
-                vm_name,
-                uuid,
-                power_change,
-                port,
-                protocol,
-            ),
+        power_control_vmware.assert_called_once_with(
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            power_change,
+            port,
+            protocol,
         )
 
     def test_power_off_calls_power_control_vmware(self):
@@ -153,18 +147,15 @@ class TestVMwarePowerDriver(MAASTestCase):
         )
         vmware_power_driver.power_off(system_id, context)
 
-        self.assertThat(
-            power_control_vmware,
-            MockCalledOnceWith(
-                host,
-                username,
-                password,
-                vm_name,
-                uuid,
-                power_change,
-                port,
-                protocol,
-            ),
+        power_control_vmware.assert_called_once_with(
+            host,
+            username,
+            password,
+            vm_name,
+            uuid,
+            power_change,
+            port,
+            protocol,
         )
 
     def test_power_query_calls_power_query_vmware(self):
@@ -184,10 +175,7 @@ class TestVMwarePowerDriver(MAASTestCase):
         power_query_vmware.return_value = "off"
         expected_result = vmware_power_driver.power_query(system_id, context)
 
-        self.expectThat(
-            power_query_vmware,
-            MockCalledOnceWith(
-                host, username, password, vm_name, uuid, port, protocol
-            ),
+        power_query_vmware.assert_called_once_with(
+            host, username, password, vm_name, uuid, port, protocol
         )
-        self.expectThat(expected_result, Equals("off"))
+        self.assertEqual(expected_result, "off")

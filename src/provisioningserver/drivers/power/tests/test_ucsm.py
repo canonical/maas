@@ -4,10 +4,7 @@
 """Tests for `provisioningserver.drivers.power.ucsm`."""
 
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import ucsm as ucsm_module
 from provisioningserver.drivers.power.ucsm import (
@@ -65,11 +62,8 @@ class TestUCSMPowerDriver(MAASTestCase):
         power_control_ucsm = self.patch(ucsm_module, "power_control_ucsm")
         ucsm_power_driver.power_on(system_id, context)
 
-        self.assertThat(
-            power_control_ucsm,
-            MockCalledOnceWith(
-                url, username, password, uuid, maas_power_mode="on"
-            ),
+        power_control_ucsm.assert_called_once_with(
+            url, username, password, uuid, maas_power_mode="on"
         )
 
     def test_power_off_calls_power_control_ucsm(self):
@@ -85,11 +79,8 @@ class TestUCSMPowerDriver(MAASTestCase):
         power_control_ucsm = self.patch(ucsm_module, "power_control_ucsm")
         ucsm_power_driver.power_off(system_id, context)
 
-        self.assertThat(
-            power_control_ucsm,
-            MockCalledOnceWith(
-                url, username, password, uuid, maas_power_mode="off"
-            ),
+        power_control_ucsm.assert_called_once_with(
+            url, username, password, uuid, maas_power_mode="off"
         )
 
     def test_power_query_calls_power_state_ucsm(self):
@@ -106,7 +97,5 @@ class TestUCSMPowerDriver(MAASTestCase):
         power_state_ucsm.return_value = "off"
         expected_result = ucsm_power_driver.power_query(system_id, context)
 
-        self.expectThat(
-            power_state_ucsm, MockCalledOnceWith(url, username, password, uuid)
-        )
-        self.expectThat(expected_result, Equals("off"))
+        power_state_ucsm.assert_called_once_with(url, username, password, uuid)
+        self.assertEqual(expected_result, "off")

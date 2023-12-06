@@ -13,7 +13,6 @@ from os.path import join
 import random
 from unittest.mock import call, Mock
 
-from testtools import ExpectedException
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.client import FileBodyProducer, PartialDownloadError
@@ -21,11 +20,6 @@ from twisted.web.http_headers import Headers
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import PowerActionError
 import provisioningserver.drivers.power.redfish as redfish_module
@@ -387,12 +381,11 @@ class TestRedfishPowerDriver(MAASTestCase):
         response, return_headers = yield driver.redfish_request(
             b"GET", uri, headers
         )
-        self.assertThat(
-            mock_agent.return_value.request,
-            MockCallsMatch(
+        mock_agent.return_value.request.assert_has_calls(
+            [
                 call(b"GET", uri, headers, None),
                 call(b"GET", uri + b"/", headers, None),
-            ),
+            ]
         )
         self.assertEqual(expected_response, response)
         self.assertEqual(expected_headers.headers, return_headers)
@@ -414,7 +407,10 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_readBody = self.patch(redfish_module, "readBody")
         mock_readBody.return_value = succeed(b'{"invalid": "json"')
-        with ExpectedException(PowerActionError):
+        with self.assertRaisesRegex(
+            PowerActionError,
+            "^Redfish request failed from a JSON parse error: ",
+        ):
             yield driver.redfish_request(b"GET", uri, headers)
 
     @inlineCallbacks
@@ -466,9 +462,9 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_readBody.return_value = fail(error)
 
-        with ExpectedException(PartialDownloadError):
+        with self.assertRaisesRegex(PartialDownloadError, "^404 Not Found$"):
             yield driver.redfish_request(b"GET", uri, headers)
-        self.assertThat(mock_readBody, MockCalledOnceWith(expected_headers))
+        mock_readBody.assert_called_once_with(expected_headers)
 
     @inlineCallbacks
     def test_redfish_request_raises_error_on_response_code_above_400(self):
@@ -487,9 +483,12 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_readBody = self.patch(redfish_module, "readBody")
 
-        with ExpectedException(PowerActionError):
+        with self.assertRaisesRegex(
+            PowerActionError,
+            r"^Redfish request failed with response status code: HTTPStatus.BAD_REQUEST\.$",
+        ):
             yield driver.redfish_request(b"GET", uri, headers)
-        self.assertThat(mock_readBody, MockNotCalled())
+        mock_readBody.assert_not_called()
 
     @inlineCallbacks
     def test_power_issues_power_reset(self):
@@ -511,9 +510,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_redfish_request = self.patch(driver, "redfish_request")
         expected_uri = join(url, REDFISH_POWER_CONTROL_ENDPOINT % node_id)
         yield driver.power(power_change, url, node_id, headers)
-        self.assertThat(
-            mock_redfish_request,
-            MockCalledOnceWith(b"POST", expected_uri, headers, payload),
+        mock_redfish_request.assert_called_once_with(
+            b"POST", expected_uri, headers, payload
         )
 
     @inlineCallbacks
@@ -543,14 +541,11 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_get_etag = self.patch(driver, "get_etag")
         mock_get_etag.return_value = None
         yield driver.set_pxe_boot(url, node_id, headers)
-        self.assertThat(
-            mock_redfish_request,
-            MockCalledOnceWith(
-                b"PATCH",
-                join(url, b"redfish/v1/Systems/%s" % node_id),
-                headers,
-                payload,
-            ),
+        mock_redfish_request.assert_called_once_with(
+            b"PATCH",
+            join(url, b"redfish/v1/Systems/%s" % node_id),
+            headers,
+            payload,
         )
 
     @inlineCallbacks
@@ -581,14 +576,11 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_get_etag.return_value = b"1631210000"
         headers.addRawHeader(b"If-Match", mock_get_etag.return_value)
         yield driver.set_pxe_boot(url, node_id, headers)
-        self.assertThat(
-            mock_redfish_request,
-            MockCalledOnceWith(
-                b"PATCH",
-                join(url, b"redfish/v1/Systems/%s" % node_id),
-                headers,
-                payload,
-            ),
+        mock_redfish_request.assert_called_once_with(
+            b"PATCH",
+            join(url, b"redfish/v1/Systems/%s" % node_id),
+            headers,
+            payload,
         )
 
     @inlineCallbacks
@@ -606,16 +598,13 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_power = self.patch(driver, "power")
 
         yield driver.power_on(node_id, context)
-        self.assertThat(
-            mock_set_pxe_boot, MockCalledOnceWith(url, node_id, headers)
-        )
-        self.assertThat(mock_power_query, MockCalledOnceWith(node_id, context))
-        self.assertThat(
-            mock_power,
-            MockCallsMatch(
+        mock_set_pxe_boot.assert_called_once_with(url, node_id, headers)
+        mock_power_query.assert_called_once_with(node_id, context)
+        mock_power.assert_has_calls(
+            [
                 call("ForceOff", url, node_id, headers),
                 call("On", url, node_id, headers),
-            ),
+            ],
         )
 
     @inlineCallbacks
@@ -633,12 +622,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_power = self.patch(driver, "power")
 
         yield driver.power_off(node_id, context)
-        self.assertThat(
-            mock_set_pxe_boot, MockCalledOnceWith(url, node_id, headers)
-        )
-        self.assertThat(
-            mock_power, MockCalledOnceWith("ForceOff", url, node_id, headers)
-        )
+        mock_set_pxe_boot.assert_called_once_with(url, node_id, headers)
+        mock_power.assert_called_once_with("ForceOff", url, node_id, headers)
 
     @inlineCallbacks
     def test_power_off_already_off(self):
@@ -655,10 +640,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_power = self.patch(driver, "power")
 
         yield driver.power_off(node_id, context)
-        self.assertThat(
-            mock_set_pxe_boot, MockCalledOnceWith(url, node_id, headers)
-        )
-        self.assertThat(mock_power, MockNotCalled())
+        mock_set_pxe_boot.assert_called_once_with(url, node_id, headers)
+        mock_power.assert_not_called()
 
     @inlineCallbacks
     def test_power_query_queries_on(self):

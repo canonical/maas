@@ -6,10 +6,7 @@
 
 from random import choice
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import PowerActionError
 from provisioningserver.drivers.power import seamicro as seamicro_module
@@ -71,32 +68,29 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         )
         power_mode = 1 if power_change == "on" else 6
 
-        self.assertThat(
-            call_and_check_mock,
-            MockCalledOnceWith(
-                [
-                    "ipmitool",
-                    "-I",
-                    "lanplus",
-                    "-H",
-                    ip,
-                    "-U",
-                    username,
-                    "-P",
-                    password,
-                    "-L",
-                    "OPERATOR",
-                    "raw",
-                    "0x2E",
-                    "1",
-                    "0x00",
-                    "0x7d",
-                    "0xab",
-                    power_mode,
-                    "0",
-                    server_id,
-                ]
-            ),
+        call_and_check_mock.assert_called_once_with(
+            [
+                "ipmitool",
+                "-I",
+                "lanplus",
+                "-H",
+                ip,
+                "-U",
+                username,
+                "-P",
+                password,
+                "-L",
+                "OPERATOR",
+                "raw",
+                "0x2E",
+                "1",
+                "0x00",
+                "0x7d",
+                "0xab",
+                power_mode,
+                "0",
+                server_id,
+            ]
         )
 
     def test_power_control_seamicro15k_ipmi_raises_PowerFatalError(self):
@@ -128,11 +122,8 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         )
         seamicro_power_driver._power(power_change, context)
 
-        self.assertThat(
-            _power_control_seamicro15k_ipmi_mock,
-            MockCalledOnceWith(
-                ip, username, password, server_id, power_change=power_change
-            ),
+        _power_control_seamicro15k_ipmi_mock.assert_called_once_with(
+            ip, username, password, server_id, power_change=power_change
         )
 
     def test_power_calls_power_control_seamicro15k_v09(self):
@@ -145,11 +136,8 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         )
         seamicro_power_driver._power(power_change, context)
 
-        self.assertThat(
-            power_control_seamicro15k_v09_mock,
-            MockCalledOnceWith(
-                ip, username, password, server_id, power_change=power_change
-            ),
+        power_control_seamicro15k_v09_mock.assert_called_once_with(
+            ip, username, password, server_id, power_change=power_change
         )
 
     def test_power_calls_power_control_seamicro15k_v2(self):
@@ -162,11 +150,8 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         )
         seamicro_power_driver._power(power_change, context)
 
-        self.assertThat(
-            power_control_seamicro15k_v2_mock,
-            MockCalledOnceWith(
-                ip, username, password, server_id, power_change=power_change
-            ),
+        power_control_seamicro15k_v2_mock.assert_called_once_with(
+            ip, username, password, server_id, power_change=power_change
         )
 
     def test_power_on_calls_power(self):
@@ -176,7 +161,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         power_mock = self.patch(seamicro_power_driver, "_power")
         seamicro_power_driver.power_on(context["system_id"], context)
 
-        self.assertThat(power_mock, MockCalledOnceWith("on", context))
+        power_mock.assert_called_once_with("on", context)
 
     def test_power_off_calls_power(self):
         _, _, _, _, context = self.make_context()
@@ -185,7 +170,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         power_mock = self.patch(seamicro_power_driver, "_power")
         seamicro_power_driver.power_off(context["system_id"], context)
 
-        self.assertThat(power_mock, MockCalledOnceWith("off", context))
+        power_mock.assert_called_once_with("off", context)
 
     def test_power_query_calls_power_query_seamicro15k_v2(self):
         ip, username, password, server_id, context = self.make_context()
@@ -199,11 +184,13 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             context["system_id"], context
         )
 
-        self.expectThat(
-            power_query_seamicro15k_v2_mock,
-            MockCalledOnceWith(ip, username, password, server_id),
+        power_query_seamicro15k_v2_mock.assert_called_once_with(
+            ip,
+            username,
+            password,
+            server_id,
         )
-        self.expectThat(power_state, Equals("on"))
+        self.assertEqual(power_state, "on")
 
     def test_power_query_returns_unknown_if_not_restapi2(self):
         ip, username, password, server_id, context = self.make_context()

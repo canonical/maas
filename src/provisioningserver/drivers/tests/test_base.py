@@ -4,21 +4,11 @@
 """Tests for `provisioningserver.drivers`."""
 
 
-from operator import methodcaller
 import random
 import re
 from unittest.mock import sentinel
 
 from jsonschema import validate, ValidationError
-from testtools.matchers import (
-    AfterPreprocessing,
-    ContainsAll,
-    Equals,
-    Is,
-    MatchesAll,
-    MatchesDict,
-    Not,
-)
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -282,26 +272,12 @@ class TestIpExtractor(MAASTestCase):
         ),
     )
 
-    def get_expected_matcher(self):
-        if self.expected is None:
-            return Is(None)
-        else:
-            expected = {
-                key: Equals(value) for key, value in self.expected.items()
-            }
-            return MatchesAll(
-                Not(Is(None)),
-                AfterPreprocessing(
-                    methodcaller("groupdict"),
-                    MatchesDict(expected),
-                    annotate=False,
-                ),
-                first_only=True,
-            )
-
     def test_make_ip_extractor(self):
         actual = re.match(IP_EXTRACTOR_PATTERNS.URL, self.val)
-        self.assertThat(actual, self.get_expected_matcher())
+        if self.expected is None:
+            self.assertIsNone(actual)
+        else:
+            self.assertEqual(actual.groupdict(), self.expected)
 
 
 class TestMakeSettingField(MAASTestCase):
@@ -316,19 +292,17 @@ class TestMakeSettingField(MAASTestCase):
         setting = make_setting_field(
             factory.make_name("name"), factory.make_name("label")
         )
-        self.assertThat(
-            setting,
-            ContainsAll(
-                [
-                    "name",
-                    "label",
-                    "required",
-                    "field_type",
-                    "choices",
-                    "default",
-                    "scope",
-                ]
-            ),
+        self.assertLess(
+            {
+                "name",
+                "label",
+                "required",
+                "field_type",
+                "choices",
+                "default",
+                "scope",
+            },
+            setting.keys(),
         )
 
     def test_defaults_field_type_to_string(self):
@@ -430,6 +404,4 @@ class TestRegistries(MAASTestCase):
         arch2 = Architecture(name="arch2", description="arch2")
         ArchitectureRegistry.register_item("arch1", arch1)
         ArchitectureRegistry.register_item("arch2", arch2)
-        self.assertEqual(
-            None, ArchitectureRegistry.get_by_pxealias("stinkywinky")
-        )
+        self.assertIsNone(ArchitectureRegistry.get_by_pxealias("stinkywinky"))

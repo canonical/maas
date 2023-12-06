@@ -10,18 +10,11 @@ from textwrap import dedent
 from unittest.mock import call, Mock
 import urllib.parse
 
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import PowerConnError
 from provisioningserver.drivers.power import recs as recs_module
@@ -81,9 +74,8 @@ class TestRECSPowerDriver(MAASTestCase):
         )
         recs_power_driver.power_off(context["node_id"], context)
 
-        self.assertThat(
-            power_control_recs_mock,
-            MockCalledOnceWith(ip, port, username, password, node_id, "off"),
+        power_control_recs_mock.assert_called_once_with(
+            ip, port, username, password, node_id, "off"
         )
 
     def test_power_on_calls_power_control_recs(self):
@@ -97,16 +89,14 @@ class TestRECSPowerDriver(MAASTestCase):
         )
         recs_power_driver.power_on(context["node_id"], context)
 
-        self.assertThat(
-            power_control_recs_mock,
-            MockCalledOnceWith(ip, port, username, password, node_id, "on"),
+        power_control_recs_mock.assert_called_once_with(
+            ip, port, username, password, node_id, "on"
         )
-        self.assertThat(
-            set_boot_source_recs_mock,
-            MockCallsMatch(
+        set_boot_source_recs_mock.assert_has_calls(
+            [
                 call(ip, port, username, password, node_id, "HDD", True),
                 call(ip, port, username, password, node_id, "PXE", False),
-            ),
+            ]
         )
 
     def test_power_query_calls_power_state_recs(self):
@@ -117,9 +107,8 @@ class TestRECSPowerDriver(MAASTestCase):
         )
         recs_power_driver.power_query(context["node_id"], context)
 
-        self.assertThat(
-            power_state_recs_mock,
-            MockCalledOnceWith(ip, port, username, password, node_id),
+        power_state_recs_mock.assert_called_once_with(
+            ip, port, username, password, node_id
         )
 
     def test_extract_from_response_finds_element_content(self):
@@ -259,11 +248,8 @@ class TestRECSPowerDriver(MAASTestCase):
         params = {"source": boot_source, "persistent": boot_persistent}
         mock_put = self.patch(api, "put")
         api.set_boot_source(node_id, boot_source, boot_persistent)
-        self.assertThat(
-            mock_put,
-            MockCalledOnceWith(
-                "node/%s/manage/set_bootsource" % node_id, params=params
-            ),
+        mock_put.assert_called_once_with(
+            f"node/{node_id}/manage/set_bootsource", params=params
         )
 
     def test_set_boot_source_recs_calls_set_boot_source(self):
@@ -275,9 +261,8 @@ class TestRECSPowerDriver(MAASTestCase):
         recs_power_driver.set_boot_source_recs(
             ip, port, username, password, node_id, boot_source, boot_persistent
         )
-        self.assertThat(
-            mock_set_boot_source,
-            MockCalledOnceWith(node_id, boot_source, boot_persistent),
+        mock_set_boot_source.assert_called_once_with(
+            node_id, boot_source, boot_persistent
         )
 
     def test_get_nodes_gets_nodes(self):
@@ -330,26 +315,22 @@ class TestRECSPowerDriver(MAASTestCase):
         }
         output = api.get_nodes()
 
-        self.expectThat(output, Equals(expected))
-        self.expectThat(mock_get, MockCalledOnceWith("node"))
+        self.assertEqual(output, expected)
+        mock_get.assert_called_once_with("node")
 
     def test_power_on_powers_on_node(self):
         ip, port, username, password, node_id, context = self.make_context()
         api = RECSAPI(ip, port, username, password)
         mock_post = self.patch(api, "post")
         api.set_power_on_node(node_id)
-        self.assertThat(
-            mock_post, MockCalledOnceWith("node/%s/manage/power_on" % node_id)
-        )
+        mock_post.assert_called_once_with(f"node/{node_id}/manage/power_on")
 
     def test_power_off_powers_off_node(self):
         ip, port, username, password, node_id, context = self.make_context()
         api = RECSAPI(ip, port, username, password)
         mock_post = self.patch(api, "post")
         api.set_power_off_node(node_id)
-        self.assertThat(
-            mock_post, MockCalledOnceWith("node/%s/manage/power_off" % node_id)
-        )
+        mock_post.assert_called_once_with(f"node/{node_id}/manage/power_off")
 
     def test_power_state_recs_calls_get_node_power_state_on(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -360,7 +341,7 @@ class TestRECSPowerDriver(MAASTestCase):
         state = recs_power_driver.power_state_recs(
             ip, port, username, password, node_id
         )
-        self.assertThat(mock_get_node_power_state, MockCalledOnceWith(node_id))
+        mock_get_node_power_state.assert_called_once_with(node_id)
         self.assertEqual("on", state)
 
     def test_power_state_recs_calls_get_node_power_state_off(self):
@@ -372,7 +353,7 @@ class TestRECSPowerDriver(MAASTestCase):
         state = recs_power_driver.power_state_recs(
             ip, port, username, password, node_id
         )
-        self.assertThat(mock_get_node_power_state, MockCalledOnceWith(node_id))
+        mock_get_node_power_state.assert_called_once_with(node_id)
         self.assertEqual("off", state)
 
     def test_power_state_recs_crashes_on_http_error(self):
@@ -423,11 +404,8 @@ class TestRECSPowerDriver(MAASTestCase):
         recs_power_driver.power_control_recs(
             ip, port, username, password, node_id, "off"
         )
-        self.assertThat(
-            mock_set_power,
-            MockCallsMatch(
-                call(node_id, "power_on"), call(node_id, "power_off")
-            ),
+        mock_set_power.assert_has_calls(
+            [call(node_id, "power_on"), call(node_id, "power_off")]
         )
 
     def test_power_control_recs_crashes_on_invalid_action(self):
@@ -470,13 +448,10 @@ class TestRECSPowerDriver(MAASTestCase):
             domain,
         )
 
-        self.expectThat(
-            mock_create_node,
-            MockCalledOnceWith(macs, "amd64", "recs_box", context, domain),
-        )
-        self.expectThat(
-            mock_commission_node, MockCalledOnceWith(node_id, user)
-        )
+        mock_create_node.assert_called_once_with(
+            macs, "amd64", "recs_box", context, domain
+        ),
+        mock_commission_node.assert_called_once_with(node_id, user)
 
     @inlineCallbacks
     def test_probe_and_enlist_recs_probes_and_enlists_no_commission(self):
@@ -502,11 +477,10 @@ class TestRECSPowerDriver(MAASTestCase):
             domain,
         )
 
-        self.expectThat(
-            mock_create_node,
-            MockCalledOnceWith(macs, "armhf", "recs_box", context, domain),
-        )
-        self.expectThat(mock_commission_node, MockNotCalled())
+        mock_create_node.assert_called_once_with(
+            macs, "armhf", "recs_box", context, domain
+        ),
+        mock_commission_node.assert_not_called()
 
     @inlineCallbacks
     def test_probe_and_enlist_recs_get_nodes_failure_http_error(self):
@@ -518,7 +492,10 @@ class TestRECSPowerDriver(MAASTestCase):
             None, None, None, None, None
         )
 
-        with ExpectedException(RECSError):
+        with self.assertRaisesRegex(
+            RECSError,
+            r"^Failed to probe nodes for RECS_Master.*HTTP error code: None$",
+        ):
             yield deferToThread(
                 probe_and_enlist_recs,
                 user,
@@ -538,7 +515,10 @@ class TestRECSPowerDriver(MAASTestCase):
         mock_get_nodes = self.patch(RECSAPI, "get_nodes")
         mock_get_nodes.side_effect = urllib.error.URLError("URL Error")
 
-        with ExpectedException(RECSError):
+        with self.assertRaisesRegex(
+            RECSError,
+            r"^Failed to probe nodes for RECS_Master.*Server could not be reached: URL Error$",
+        ):
             yield deferToThread(
                 probe_and_enlist_recs,
                 user,

@@ -7,18 +7,12 @@ from http import HTTPStatus
 import random
 from unittest.mock import call, Mock
 
-from testtools import ExpectedException
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.client import PartialDownloadError
 from twisted.web.http_headers import Headers
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import PowerActionError
 import provisioningserver.drivers.power.webhook as webhook_module
@@ -138,14 +132,11 @@ class TestWebhookPowerDriver(MAASTestCase):
             b"https://10.0.0.42/",
         )
         self.assertEqual(expected_response, response.decode())
-        self.assertThat(
-            mock_agent.return_value.request,
-            MockCalledOnceWith(
-                method,
-                headers,
-                b"https://10.0.0.42/",
-                None,
-            ),
+        mock_agent.return_value.request.assert_called_once_with(
+            method,
+            headers,
+            b"https://10.0.0.42/",
+            None,
         )
 
     @inlineCallbacks
@@ -173,12 +164,11 @@ class TestWebhookPowerDriver(MAASTestCase):
         response = yield self.webhook._webhook_request(
             method, b"https://10.0.0.42", headers
         )
-        self.assertThat(
-            mock_agent.return_value.request,
-            MockCallsMatch(
+        mock_agent.return_value.request.assert_has_calls(
+            [
                 call(method, b"https://10.0.0.42", headers, None),
                 call(method, b"https://10.0.0.42/", headers, None),
-            ),
+            ]
         )
         self.assertEqual(expected_response, response.decode())
 
@@ -228,11 +218,11 @@ class TestWebhookPowerDriver(MAASTestCase):
         mock_readBody.return_value = fail(error)
         method = random.choice([b"POST", b"GET"])
 
-        with ExpectedException(PartialDownloadError):
+        with self.assertRaisesRegex(PartialDownloadError, "^404 Not Found$"):
             yield self.webhook._webhook_request(
                 method, b"https://10.0.0.42", {}
             )
-        self.assertThat(mock_readBody, MockCalledOnceWith(expected_headers))
+        mock_readBody.assert_called_once_with(expected_headers)
 
     @inlineCallbacks
     def test_webhook_request_raises_error_on_response_code_above_400(self):
@@ -247,11 +237,14 @@ class TestWebhookPowerDriver(MAASTestCase):
         mock_readBody = self.patch(webhook_module, "readBody")
         method = random.choice([b"POST", b"GET"])
 
-        with ExpectedException(PowerActionError):
+        with self.assertRaisesRegex(
+            PowerActionError,
+            "with response status code: HTTPStatus.BAD_REQUEST",
+        ):
             yield self.webhook._webhook_request(
                 method, b"https://10.0.0.42", {}
             )
-        self.assertThat(mock_readBody, MockNotCalled())
+        mock_readBody.assert_not_called()
 
     def test_missing_packages(self):
         self.assertEqual([], self.webhook.detect_missing_packages())
@@ -263,14 +256,11 @@ class TestWebhookPowerDriver(MAASTestCase):
 
         self.webhook.power_on(system_id, {"power_on_uri": power_on_uri})
 
-        self.assertThat(
-            mock_webhook_request,
-            MockCalledOnceWith(
-                b"POST",
-                power_on_uri.encode(),
-                self.webhook._make_auth_headers(system_id, {}),
-                False,
-            ),
+        mock_webhook_request.assert_called_once_with(
+            b"POST",
+            power_on_uri.encode(),
+            self.webhook._make_auth_headers(system_id, {}),
+            False,
         )
 
     def test_power_off(self):
@@ -280,14 +270,11 @@ class TestWebhookPowerDriver(MAASTestCase):
 
         self.webhook.power_off(system_id, {"power_off_uri": power_off_uri})
 
-        self.assertThat(
-            mock_webhook_request,
-            MockCalledOnceWith(
-                b"POST",
-                power_off_uri.encode(),
-                self.webhook._make_auth_headers(system_id, {}),
-                False,
-            ),
+        mock_webhook_request.assert_called_once_with(
+            b"POST",
+            power_off_uri.encode(),
+            self.webhook._make_auth_headers(system_id, {}),
+            False,
         )
 
     @inlineCallbacks
@@ -304,14 +291,11 @@ class TestWebhookPowerDriver(MAASTestCase):
         status = yield self.webhook.power_query(system_id, context)
 
         self.assertEqual("on", status)
-        self.assertThat(
-            mock_webhook_request,
-            MockCalledOnceWith(
-                b"GET",
-                power_query_uri.encode(),
-                self.webhook._make_auth_headers(system_id, context),
-                False,
-            ),
+        mock_webhook_request.assert_called_once_with(
+            b"GET",
+            power_query_uri.encode(),
+            self.webhook._make_auth_headers(system_id, context),
+            False,
         )
 
     @inlineCallbacks
@@ -328,14 +312,11 @@ class TestWebhookPowerDriver(MAASTestCase):
         status = yield self.webhook.power_query(system_id, context)
 
         self.assertEqual("off", status)
-        self.assertThat(
-            mock_webhook_request,
-            MockCalledOnceWith(
-                b"GET",
-                power_query_uri.encode(),
-                self.webhook._make_auth_headers(system_id, context),
-                False,
-            ),
+        mock_webhook_request.assert_called_once_with(
+            b"GET",
+            power_query_uri.encode(),
+            self.webhook._make_auth_headers(system_id, context),
+            False,
         )
 
     @inlineCallbacks
@@ -353,12 +334,9 @@ class TestWebhookPowerDriver(MAASTestCase):
         status = yield self.webhook.power_query(system_id, context)
 
         self.assertEqual("unknown", status)
-        self.assertThat(
-            mock_webhook_request,
-            MockCalledOnceWith(
-                b"GET",
-                power_query_uri.encode(),
-                self.webhook._make_auth_headers(system_id, context),
-                False,
-            ),
+        mock_webhook_request.assert_called_once_with(
+            b"GET",
+            power_query_uri.encode(),
+            self.webhook._make_auth_headers(system_id, context),
+            False,
         )
