@@ -1,10 +1,6 @@
 """Tests for `provisioningserver.drivers.power.eaton`."""
 
-
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import eaton as eaton_module
 from provisioningserver.drivers.power import PowerActionError
@@ -58,7 +54,7 @@ class TestEatonPowerDriver(MAASTestCase):
         )
         output = driver.run_process(*command)
         mock_run_command.assert_called_once_with(*command)
-        self.expectThat(output, Equals(eaton_module.EatonState.OFF))
+        self.assertEqual(output, eaton_module.EatonState.OFF)
 
     def test_run_process_crashes_on_external_process_error(self):
         driver = eaton_module.EatonPowerDriver()
@@ -85,12 +81,8 @@ class TestEatonPowerDriver(MAASTestCase):
         mock_run_process = self.patch(driver, "run_process")
         driver.power_on(system_id, context)
 
-        self.expectThat(
-            mock_power_query, MockCalledOnceWith(system_id, context)
-        )
-        self.expectThat(
-            mock_sleep, MockCalledOnceWith(float(context["power_on_delay"]))
-        )
+        mock_power_query.assert_called_once_with(system_id, context)
+        mock_sleep.assert_called_once_with(float(context["power_on_delay"]))
         command = (
             ["snmpset"]
             + COMMON_ARGS.format(
@@ -132,7 +124,7 @@ class TestEatonPowerDriver(MAASTestCase):
             context["node_outlet"],
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_power_query_returns_power_state_off(self):
         driver = eaton_module.EatonPowerDriver()
@@ -147,7 +139,7 @@ class TestEatonPowerDriver(MAASTestCase):
             context["node_outlet"],
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_power_query_crashes_for_uknown_power_state(self):
         driver = eaton_module.EatonPowerDriver()

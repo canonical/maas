@@ -5,10 +5,7 @@
 
 import random
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import apc as apc_module
 from provisioningserver.drivers.power import PowerActionError
@@ -68,7 +65,7 @@ class TestAPCPowerDriver(MAASTestCase):
         )
         output = driver.run_process(*command)
         mock_run_command.assert_called_once_with(*command)
-        self.expectThat(output, Equals(apc_module.APCState.ON))
+        self.assertEqual(output, apc_module.APCState.ON)
 
     def test_run_process_crashes_on_external_process_error(self):
         driver = apc_module.APCPowerDriver()
@@ -96,12 +93,8 @@ class TestAPCPowerDriver(MAASTestCase):
         mock_run_process = self.patch(driver, "run_process")
         driver.power_on(system_id, context)
 
-        self.expectThat(
-            mock_power_query, MockCalledOnceWith(system_id, context)
-        )
-        self.expectThat(
-            mock_sleep, MockCalledOnceWith(float(context["power_on_delay"]))
-        )
+        mock_power_query.assert_called_once_with(system_id, context)
+        mock_sleep.assert_called_once_with(float(context["power_on_delay"]))
         command = (
             ["snmpset"]
             + COMMON_ARGS.format(
@@ -139,7 +132,7 @@ class TestAPCPowerDriver(MAASTestCase):
             context["power_address"], context["node_outlet"]
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_power_query_returns_power_state_off(self):
         driver = apc_module.APCPowerDriver()
@@ -153,7 +146,7 @@ class TestAPCPowerDriver(MAASTestCase):
             context["power_address"], context["node_outlet"]
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_power_query_crashes_for_uknown_power_state(self):
         driver = apc_module.APCPowerDriver()

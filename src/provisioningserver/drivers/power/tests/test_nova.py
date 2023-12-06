@@ -4,10 +4,7 @@
 """Tests for `provisioningserver.drivers.power.nova`."""
 
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import nova as nova_module
 from provisioningserver.drivers.power.nova import NovaPowerDriver
@@ -61,9 +58,7 @@ class TestNovaPowerDriver(MAASTestCase):
         )
         nova_power_driver.power_on(system_id, context)
 
-        self.assertThat(
-            power_control_nova_mock, MockCalledOnceWith("on", **context)
-        )
+        power_control_nova_mock.assert_called_once_with("on", **context)
 
     def test_power_off_calls_power_control_nova(self):
         (
@@ -81,9 +76,7 @@ class TestNovaPowerDriver(MAASTestCase):
         )
         nova_power_driver.power_off(system_id, context)
 
-        self.assertThat(
-            power_control_nova_mock, MockCalledOnceWith("off", **context)
-        )
+        power_control_nova_mock.assert_called_once_with("off", **context)
 
     def test_power_query_calls_power_state_nova(self):
         (
@@ -102,7 +95,5 @@ class TestNovaPowerDriver(MAASTestCase):
         power_control_nova_mock.return_value = "off"
         expected_result = nova_power_driver.power_query(system_id, context)
 
-        self.expectThat(
-            power_control_nova_mock, MockCalledOnceWith("query", **context)
-        )
-        self.expectThat(expected_result, Equals("off"))
+        power_control_nova_mock.assert_called_once_with("query", **context)
+        self.assertEqual(expected_result, "off")

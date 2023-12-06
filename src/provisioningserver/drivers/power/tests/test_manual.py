@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.drivers.power.manual`."""
 
 
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import manual as manual_module
 
@@ -17,34 +16,25 @@ class TestManualPowerDriver(MAASTestCase):
 
     def test_power_on(self):
         driver = manual_module.ManualPowerDriver()
-        mock = self.patch(manual_module.maaslog, "info")
+        mock_log_info = self.patch(manual_module.maaslog, "info")
         driver.power_on("fake_id", {})
-        self.assertThat(
-            mock,
-            MockCalledOnceWith(
-                "You need to power on %s manually." % "fake_id"
-            ),
+        mock_log_info.assert_called_once_with(
+            "You need to power on fake_id manually."
         )
 
     def test_power_off(self):
         driver = manual_module.ManualPowerDriver()
-        mock = self.patch(manual_module.maaslog, "info")
+        mock_log_info = self.patch(manual_module.maaslog, "info")
         driver.power_off("fake_id", {})
-        self.assertThat(
-            mock,
-            MockCalledOnceWith(
-                "You need to power off %s manually." % "fake_id"
-            ),
+        mock_log_info.assert_called_once_with(
+            "You need to power off fake_id manually."
         )
 
     def test_power_query(self):
         driver = manual_module.ManualPowerDriver()
-        mock = self.patch(manual_module.maaslog, "info")
+        mock_log_info = self.patch(manual_module.maaslog, "info")
         power_state = driver.power_query("fake_id", {})
         self.assertEqual(power_state, "unknown")
-        self.assertThat(
-            mock,
-            MockCalledOnceWith(
-                "You need to check power state of %s manually." % "fake_id"
-            ),
+        mock_log_info.assert_called_once_with(
+            "You need to check power state of fake_id manually."
         )

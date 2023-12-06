@@ -7,10 +7,7 @@
 from random import choice
 from unittest.mock import call, sentinel
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import dli as dli_module
 from provisioningserver.drivers.power import PowerActionError, PowerError
@@ -73,12 +70,9 @@ class TestDLIPowerDriver(MAASTestCase):
             power_change, outlet_id, power_user, power_pass, power_address
         )
 
-        self.assertThat(
-            call_and_check_mock,
-            MockCalledOnceWith(
-                ["wget", "--auth-no-challenge", "-O", "/dev/null", url],
-                env=env,
-            ),
+        call_and_check_mock.assert_called_once_with(
+            ["wget", "--auth-no-challenge", "-O", "/dev/null", url],
+            env=env,
         )
 
     def test_set_outlet_state_crashes_when_wget_exits_nonzero(self):
@@ -116,13 +110,10 @@ class TestDLIPowerDriver(MAASTestCase):
             outlet_id, power_user, power_pass, power_address
         )
 
-        self.expectThat(
-            call_and_check_mock,
-            MockCalledOnceWith(
-                ["wget", "--auth-no-challenge", "-qO-", url], env=env
-            ),
+        call_and_check_mock.assert_called_once_with(
+            ["wget", "--auth-no-challenge", "-qO-", url], env=env
         )
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_query_outlet_state_queries_off(self):
         driver = dli_module.DLIPowerDriver()
@@ -143,13 +134,10 @@ class TestDLIPowerDriver(MAASTestCase):
             outlet_id, power_user, power_pass, power_address
         )
 
-        self.expectThat(
-            call_and_check_mock,
-            MockCalledOnceWith(
-                ["wget", "--auth-no-challenge", "-qO-", url], env=env
-            ),
+        call_and_check_mock.assert_called_once_with(
+            ["wget", "--auth-no-challenge", "-qO-", url], env=env
         )
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_query_outlet_state_crashes_when_state_not_found(self):
         driver = dli_module.DLIPowerDriver()
@@ -190,13 +178,11 @@ class TestDLIPowerDriver(MAASTestCase):
 
         driver.power_on(system_id, context)
 
-        self.expectThat(
-            _query_outlet_state_mock,
-            MockCallsMatch(call(**context), call(**context)),
+        _query_outlet_state_mock.assert_has_calls(
+            [call(**context), call(**context)]
         )
-        self.expectThat(
-            _set_outlet_state_mock,
-            MockCallsMatch(call("OFF", **context), call("ON", **context)),
+        _set_outlet_state_mock.assert_has_calls(
+            [call("OFF", **context), call("ON", **context)]
         )
 
     def test_power_on_raises_power_error(self):
@@ -209,13 +195,10 @@ class TestDLIPowerDriver(MAASTestCase):
         self.patch(dli_module, "sleep")
 
         self.assertRaises(PowerError, driver.power_on, system_id, context)
-        self.expectThat(
-            _query_outlet_state_mock,
-            MockCallsMatch(call(**context), call(**context)),
+        _query_outlet_state_mock.assert_has_calls(
+            [call(**context), call(**context)]
         )
-        self.expectThat(
-            _set_outlet_state_mock, MockCalledOnceWith("OFF", **context)
-        )
+        _set_outlet_state_mock.assert_called_once_with("OFF", **context)
 
     def test_power_off(self):
         driver = dli_module.DLIPowerDriver()
@@ -223,9 +206,7 @@ class TestDLIPowerDriver(MAASTestCase):
         context = {"context": factory.make_name("context")}
         _set_outlet_state_mock = self.patch(driver, "_set_outlet_state")
         driver.power_off(system_id, context)
-        self.assertThat(
-            _set_outlet_state_mock, MockCalledOnceWith("OFF", **context)
-        )
+        _set_outlet_state_mock.assert_called_once_with("OFF", **context)
 
     def test_power_query(self):
         driver = dli_module.DLIPowerDriver()
@@ -233,6 +214,4 @@ class TestDLIPowerDriver(MAASTestCase):
         context = {"context": factory.make_name("context")}
         _query_outlet_state_mock = self.patch(driver, "_query_outlet_state")
         driver.power_query(system_id, context)
-        self.assertThat(
-            _query_outlet_state_mock, MockCalledOnceWith(**context)
-        )
+        _query_outlet_state_mock.assert_called_once_with(**context)

@@ -12,14 +12,11 @@ import urllib.parse
 
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -126,9 +123,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         ]
         mock_get = self.patch(driver, "get")
         driver.set_next_boot_device(context, pxe=True)
-        self.assertThat(
-            mock_get, MockCalledOnceWith("SetNextBoot", context, params)
-        )
+        mock_get.assert_called_once_with("SetNextBoot", context, params)
 
     def test_get_blades_gets_blades(self):
         driver = MicrosoftOCSPowerDriver()
@@ -171,10 +166,8 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         expected = {"11": ["F4:52:14:D6:70:98"]}
         output = driver.get_blades(context)
 
-        self.expectThat(output, Equals(expected))
-        self.expectThat(
-            mock_get, MockCalledOnceWith("GetChassisInfo", context)
-        )
+        self.assertEqual(output, expected)
+        mock_get.assert_called_once_with("GetChassisInfo", context)
 
     def test_power_on_powers_on_blade(self):
         driver = MicrosoftOCSPowerDriver()
@@ -187,21 +180,13 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         mock_get = self.patch(driver, "get")
         driver.power_on(system_id, context)
 
-        self.expectThat(
-            mock_power_query, MockCalledOnceWith(system_id, context)
+        mock_power_query.assert_called_once_with(system_id, context)
+        mock_power_off.assert_called_once_with(system_id, context)
+        mock_set_next_boot_device.assert_has_calls(
+            [call(context, persistent=True), call(context, pxe=True)]
         )
-        self.expectThat(mock_power_off, MockCalledOnceWith(system_id, context))
-        self.expectThat(
-            mock_set_next_boot_device,
-            MockCallsMatch(
-                call(context, persistent=True), call(context, pxe=True)
-            ),
-        )
-        self.expectThat(
-            mock_get,
-            MockCalledOnceWith(
-                "SetBladeOn", context, ["bladeid=%s" % context["blade_id"]]
-            ),
+        mock_get.assert_called_once_with(
+            "SetBladeOn", context, ["bladeid=%s" % context["blade_id"]]
         )
 
     def test_power_on_crashes_for_connection_error(self):
@@ -222,11 +207,8 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         mock_get = self.patch(driver, "get")
         driver.power_off(system_id, context)
-        self.assertThat(
-            mock_get,
-            MockCalledOnceWith(
-                "SetBladeOff", context, ["bladeid=%s" % context["blade_id"]]
-            ),
+        mock_get.assert_called_once_with(
+            "SetBladeOff", context, ["bladeid=%s" % context["blade_id"]]
         )
 
     def test_power_off_crashes_for_connection_error(self):
@@ -320,13 +302,10 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
             domain,
         )
 
-        self.expectThat(
-            mock_create_node,
-            MockCalledOnceWith(macs, "amd64", "msftocs", context, domain),
-        )
-        self.expectThat(
-            mock_commission_node, MockCalledOnceWith(system_id, user)
-        )
+        mock_create_node.assert_called_once_with(
+            macs, "amd64", "msftocs", context, domain
+        ),
+        mock_commission_node.assert_called_once_with(system_id, user)
 
     @inlineCallbacks
     def test_probe_and_enlist_msftocs_get_blades_failure_server_error(self):
@@ -335,7 +314,10 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
         mock_get_blades = self.patch(MicrosoftOCSPowerDriver, "get_blades")
         mock_get_blades.side_effect = urllib.error.URLError("URL Error")
 
-        with ExpectedException(PowerFatalError):
+        with self.assertRaisesRegex(
+            PowerFatalError,
+            r"^Failed to probe nodes for Microsoft OCS with .* Server could not be reached: URL Error$",
+        ):
             yield deferToThread(
                 probe_and_enlist_msftocs,
                 user,
@@ -354,7 +336,10 @@ class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
             None, None, None, None, None
         )
 
-        with ExpectedException(PowerFatalError):
+        with self.assertRaisesRegex(
+            PowerFatalError,
+            r"^Failed to probe nodes for Microsoft OCS with .* HTTP error code: None$",
+        ):
             yield deferToThread(
                 probe_and_enlist_msftocs,
                 user,

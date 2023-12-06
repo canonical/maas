@@ -13,7 +13,6 @@ from twisted.web.client import FileBodyProducer
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCalledWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 import provisioningserver.drivers.power.openbmc as openbmc_module
 from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
@@ -63,8 +62,8 @@ class TestOpenBMCPowerDriver(MAASTestCase):
     def test_get_url_with_ip(self):
         driver = OpenBMCPowerDriver()
         context = make_context()
-        ip = context.get("power_address").encode("utf-8")
-        expected_url = b"https://%s" % ip
+        ip = context.get("power_address")
+        expected_url = f"https://{ip}".encode("utf-8")
         url = driver.get_uri(context)
         self.assertEqual(expected_url, url)
 
@@ -126,13 +125,9 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         mock_set_pxe_boot = self.patch(driver, "set_pxe_boot")
 
         yield driver.power_on(system_id, context)
-        self.assertThat(
-            mock_power_query, MockCalledOnceWith(system_id, context)
-        )
-        self.assertThat(mock_set_pxe_boot, MockCalledWith(context))
-        self.assertThat(
-            mock_command, MockCalledWith(context, b"PUT", url, dataon)
-        )
+        mock_power_query.assert_called_once_with(system_id, context)
+        mock_set_pxe_boot.assert_called_once_with(context)
+        mock_command.assert_called_with(context, b"PUT", url, dataon)
 
     @inlineCallbacks
     def test_power_off(self):
@@ -154,7 +149,5 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         mock_set_pxe_boot = self.patch(driver, "set_pxe_boot")
 
         yield driver.power_off(system_id, context)
-        self.assertThat(mock_set_pxe_boot, MockCalledOnceWith(context))
-        self.assertThat(
-            mock_command, MockCalledOnceWith(context, b"PUT", url, dataoff)
-        )
+        mock_set_pxe_boot.assert_called_once_with(context)
+        mock_command.assert_called_once_with(context, b"PUT", url, dataoff)

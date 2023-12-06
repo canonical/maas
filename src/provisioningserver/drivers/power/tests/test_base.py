@@ -8,18 +8,11 @@ import random
 from unittest.mock import call, sentinel
 
 from jsonschema import validate
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, succeed
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import make_setting_field, power
@@ -94,15 +87,12 @@ class TestFakePowerDriverBase(MAASTestCase):
         fake_settings = [
             make_setting_field(fake_setting, fake_setting.title())
         ]
-        attributes = {
-            "name": fake_name,
-            "description": fake_description,
-            "settings": fake_settings,
-        }
         fake_driver = FakePowerDriverBase(
             fake_name, fake_description, fake_settings
         )
-        self.assertAttributes(fake_driver, attributes)
+        self.assertEqual(fake_driver.name, fake_name)
+        self.assertEqual(fake_driver.description, fake_description)
+        self.assertEqual(fake_driver.settings, fake_settings)
 
     def test_make_power_driver_base(self):
         fake_name = factory.make_name("name")
@@ -111,17 +101,14 @@ class TestFakePowerDriverBase(MAASTestCase):
         fake_settings = [
             make_setting_field(fake_setting, fake_setting.title())
         ]
-        attributes = {
-            "name": fake_name,
-            "description": fake_description,
-            "settings": fake_settings,
-        }
         fake_driver = make_power_driver_base(
             name=fake_name,
             description=fake_description,
             settings=fake_settings,
         )
-        self.assertAttributes(fake_driver, attributes)
+        self.assertEqual(fake_driver.name, fake_name)
+        self.assertEqual(fake_driver.description, fake_description)
+        self.assertEqual(fake_driver.settings, fake_settings)
 
     def test_make_power_driver_base_makes_name_and_description(self):
         fake_driver = make_power_driver_base()
@@ -400,7 +387,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         self.assertIsNone(result)
         call_count = getattr(driver, "%s_called" % self.action_func)
         self.assertEqual(1, call_count)
-        self.assertThat(mock_deferToThread, MockNotCalled())
+        mock_deferToThread.assert_not_called()
 
     @inlineCallbacks
     def test_handles_fatal_error_on_first_call(self):
@@ -412,9 +399,9 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query = self.patch(driver, "power_query")
         mock_query.return_value = self.action
         method = getattr(driver, self.action)
-        with ExpectedException(PowerFatalError):
+        with self.assertRaisesRegex(PowerFatalError, "^$"):
             yield method(system_id, context)
-        self.expectThat(mock_query, MockNotCalled())
+        mock_query.assert_not_called()
 
     @inlineCallbacks
     def test_handles_non_fatal_error_on_first_call(self):
@@ -427,8 +414,8 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query.return_value = self.action
         method = getattr(driver, self.action)
         result = yield method(system_id, context)
-        self.expectThat(mock_query, MockCalledOnceWith(system_id, context))
-        self.expectThat(result, Equals(None))
+        mock_query.assert_called_once_with(system_id, context)
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_handles_non_fatal_error_and_holds_error(self):
@@ -440,9 +427,9 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query = self.patch(driver, "power_query")
         mock_query.side_effect = PowerError(error_msg)
         method = getattr(driver, self.action)
-        with ExpectedException(PowerError):
+        with self.assertRaisesRegex(PowerError, f"^{error_msg}$"):
             yield method(system_id, context)
-        self.expectThat(mock_query, MockCalledOnceWith(system_id, context))
+        mock_query.assert_called_once_with(system_id, context)
 
     @inlineCallbacks
     def test_handles_non_fatal_error(self):
@@ -450,9 +437,9 @@ class TestPowerDriverPowerAction(MAASTestCase):
         context = {"context": factory.make_name("context")}
         driver = make_power_driver(wait_time=[0])
         mock_on = self.patch(driver, self.action_func)
-        mock_on.side_effect = PowerError()
+        mock_on.side_effect = PowerError("foo")
         method = getattr(driver, self.action)
-        with ExpectedException(PowerError):
+        with self.assertRaisesRegex(PowerError, "foo"):
             yield method(system_id, context)
 
     @inlineCallbacks
@@ -464,7 +451,10 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query = self.patch(driver, "power_query")
         mock_query.return_value = self.bad_state
         method = getattr(driver, self.action)
-        with ExpectedException(PowerError):
+        with self.assertRaisesRegex(
+            PowerError,
+            f"Failed to power {system_id}. BMC never transitioned from {self.bad_state} to {self.action}",
+        ):
             yield method(system_id, context)
 
     @inlineCallbacks
@@ -477,7 +467,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         mock_query = self.patch(driver, "power_query")
         method = getattr(driver, self.action)
         yield method(system_id, context)
-        self.assertThat(mock_query, MockNotCalled())
+        mock_query.assert_not_called()
 
 
 class TestPowerDriverCycle(MAASTestCase):
@@ -491,12 +481,11 @@ class TestPowerDriverCycle(MAASTestCase):
         mock_perform_power = self.patch(driver, "perform_power")
         self.patch(driver, "power_query").return_value = "on"
         yield driver.cycle(system_id, context)
-        self.assertThat(
-            mock_perform_power,
-            MockCallsMatch(
+        mock_perform_power.assert_has_calls(
+            [
                 call(driver.power_off, "off", system_id, context),
                 call(driver.power_on, "on", system_id, context),
-            ),
+            ]
         )
 
     @inlineCallbacks
@@ -507,9 +496,8 @@ class TestPowerDriverCycle(MAASTestCase):
         mock_perform_power = self.patch(driver, "perform_power")
         self.patch(driver, "power_query").return_value = "off"
         yield driver.cycle(system_id, context)
-        self.assertThat(
-            mock_perform_power,
-            MockCalledOnceWith(driver.power_on, "on", system_id, context),
+        mock_perform_power.assert_called_once_with(
+            driver.power_on, "on", system_id, context
         )
 
 
@@ -549,7 +537,7 @@ class TestPowerDriverQuery(MAASTestCase):
             factory.make_exception_type((PowerError,)) for _ in wait_time
         )
         self.patch(driver, "power_query").side_effect = exception_types
-        with ExpectedException(exception_types[-1]):
+        with self.assertRaisesRegex(exception_types[-1], "^$"):
             yield driver.query(sentinel.system_id, sentinel.context)
 
     @inlineCallbacks
@@ -557,9 +545,8 @@ class TestPowerDriverQuery(MAASTestCase):
         wait_time = [random.randrange(1, 10) for _ in range(3)]
         driver = make_power_driver(wait_time=wait_time)
         self.patch(driver, "power_query").side_effect = PowerError
-        with ExpectedException(PowerError):
+        with self.assertRaisesRegex(PowerError, "^$"):
             yield driver.query(sentinel.system_id, sentinel.context)
-        self.assertThat(
-            power.pause,
-            MockCallsMatch(*(call(wait, reactor) for wait in wait_time)),
+        power.pause.assert_has_calls(
+            [call(wait, reactor) for wait in wait_time]
         )

@@ -4,10 +4,7 @@
 """Tests for `provisioningserver.drivers.power.raritan`."""
 
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import PowerActionError
 from provisioningserver.drivers.power import raritan as raritan_module
@@ -30,14 +27,14 @@ class TestRaritanPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = raritan_module.RaritanPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["snmp"], missing)
+        self.assertEqual(["snmp"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = raritan_module.RaritanPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def patch_run_command(self, stdout="", stderr="", returncode=0):
         mock_run_command = self.patch(raritan_module.shell, "run_command")
@@ -58,7 +55,7 @@ class TestRaritanPowerDriver(MAASTestCase):
         )
         output = driver.run_process(*command)
         mock_run_command.assert_called_once_with(*command)
-        self.expectThat(output, Equals(raritan_module.RaritanState.ON))
+        self.assertEqual(output, raritan_module.RaritanState.ON)
 
     def test_run_process_crashes_on_external_process_error(self):
         driver = raritan_module.RaritanPowerDriver()
@@ -85,12 +82,8 @@ class TestRaritanPowerDriver(MAASTestCase):
         mock_run_process = self.patch(driver, "run_process")
         driver.power_on(system_id, context)
 
-        self.expectThat(
-            mock_power_query, MockCalledOnceWith(system_id, context)
-        )
-        self.expectThat(
-            mock_sleep, MockCalledOnceWith(float(context["power_on_delay"]))
-        )
+        mock_power_query.assert_called_once_with(system_id, context)
+        mock_sleep.assert_called_once_with(float(context["power_on_delay"]))
         command = (
             ["snmpset"]
             + COMMON_ARGS.format(
@@ -126,7 +119,7 @@ class TestRaritanPowerDriver(MAASTestCase):
             context["power_address"], context["node_outlet"]
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_power_query_returns_power_state_off(self):
         driver = raritan_module.RaritanPowerDriver()
@@ -139,7 +132,7 @@ class TestRaritanPowerDriver(MAASTestCase):
             context["power_address"], context["node_outlet"]
         ).split()
         mock_run_process.assert_called_once_with(*command)
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_power_query_crashes_for_uknown_power_state(self):
         driver = raritan_module.RaritanPowerDriver()

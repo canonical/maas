@@ -6,17 +6,10 @@ import json
 import random
 from unittest.mock import ANY, call
 
-from testtools import ExpectedException
 from twisted.internet.defer import inlineCallbacks, succeed
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCalledWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import PowerActionError
 import provisioningserver.drivers.power.proxmox as proxmox_module
@@ -146,7 +139,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             },
             extra_headers,
         )
-        self.assertThat(self.mock_webhook_request, MockNotCalled())
+        self.mock_webhook_request.assert_not_called()
 
     @inlineCallbacks
     def test_login_uses_api_token_adds_username(self):
@@ -171,7 +164,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             },
             extra_headers,
         )
-        self.assertThat(self.mock_webhook_request, MockNotCalled())
+        self.mock_webhook_request.assert_not_called()
 
     @inlineCallbacks
     def test_find_vm(self):
@@ -222,7 +215,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             json.dumps({"data": []})
         )
 
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PowerActionError, "No VMs returned! Are permissions set correctly?"
         ):
             yield self.proxmox._find_vm(system_id, context, extra_headers)
@@ -257,7 +250,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
             json.dumps({"data": [vm]})
         )
 
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PowerActionError, "Unable to find virtual machine"
         ):
             yield self.proxmox._find_vm(system_id, context, extra_headers)
@@ -327,7 +320,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
         yield self.proxmox.power_on(system_id, context)
 
-        self.assertThat(self.mock_webhook_request, MockNotCalled())
+        self.mock_webhook_request.assert_not_called()
 
     @inlineCallbacks
     def test_power_off(self):
@@ -385,7 +378,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
         yield self.proxmox.power_off(system_id, context)
 
-        self.assertThat(self.mock_webhook_request, MockNotCalled())
+        self.mock_webhook_request.assert_not_called()
 
     @inlineCallbacks
     def test_power_query_on(self):
@@ -550,9 +543,8 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
             None,
         )
 
-        self.assertThat(
-            self.mock_create_node,
-            MockCallsMatch(
+        self.mock_create_node.assert_has_calls(
+            [
                 call(
                     [mac11, mac12],
                     "amd64",
@@ -585,9 +577,9 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
                     domain,
                     hostname=f"vm-{vmid2}",
                 ),
-            ),
+            ]
         )
-        self.assertThat(self.mock_commission_node, MockNotCalled())
+        self.mock_commission_node.assert_not_called()
 
     @inlineCallbacks
     def test_probe_and_enlist_doesnt_find_any_vms(self):
@@ -603,7 +595,7 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
         )
         mock_webhook_request.return_value = succeed(json.dumps({"data": []}))
 
-        with ExpectedException(
+        with self.assertRaisesRegex(
             PowerActionError, "No VMs returned! Are permissions set correctly?"
         ):
             yield proxmox_module.probe_proxmox_and_enlist(
@@ -687,26 +679,24 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
             "vm 1",
         )
 
-        self.assertThat(
-            self.mock_create_node,
-            MockCalledOnceWith(
-                [mac11, mac12],
-                "amd64",
-                "proxmox",
-                {
-                    "power_vm_name": 100,
-                    "power_address": hostname,
-                    "power_user": username,
-                    "power_pass": password,
-                    "power_token_name": token_name,
-                    "power_token_secret": token_secret,
-                    "power_verify_ssl": SSL_INSECURE_NO,
-                },
-                domain,
-                hostname="vm-100",
-            ),
+        self.mock_create_node.assert_called_once_with(
+            [mac11, mac12],
+            "amd64",
+            "proxmox",
+            {
+                "power_vm_name": 100,
+                "power_address": hostname,
+                "power_user": username,
+                "power_pass": password,
+                "power_token_name": token_name,
+                "power_token_secret": token_secret,
+                "power_verify_ssl": SSL_INSECURE_NO,
+            },
+            domain,
+            hostname="vm-100",
         )
-        self.assertThat(self.mock_commission_node, MockNotCalled())
+
+        self.mock_commission_node.assert_not_called()
 
     @inlineCallbacks
     def test_probe_and_enlist_stops_and_commissions(self):
@@ -762,31 +752,24 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
             None,
         )
 
-        self.assertThat(
-            self.mock_create_node,
-            MockCalledOnceWith(
-                [mac11, mac12],
-                "amd64",
-                "proxmox",
-                {
-                    "power_vm_name": vmid1,
-                    "power_address": hostname,
-                    "power_user": username,
-                    "power_pass": password,
-                    "power_token_name": token_name,
-                    "power_token_secret": token_secret,
-                    "power_verify_ssl": SSL_INSECURE_NO,
-                },
-                domain,
-                hostname=f"vm-{vmid1}",
-            ),
+        self.mock_create_node.assert_called_once_with(
+            [mac11, mac12],
+            "amd64",
+            "proxmox",
+            {
+                "power_vm_name": vmid1,
+                "power_address": hostname,
+                "power_user": username,
+                "power_pass": password,
+                "power_token_name": token_name,
+                "power_token_secret": token_secret,
+                "power_verify_ssl": SSL_INSECURE_NO,
+            },
+            domain,
+            hostname=f"vm-{vmid1}",
         )
-        self.assertThat(
-            mock_webhook_request, MockCalledWith(b"POST", ANY, ANY, False)
-        )
-        self.assertThat(
-            self.mock_commission_node, MockCalledOnceWith(self.system_id, user)
-        )
+        mock_webhook_request.assert_called_with(b"POST", ANY, ANY, False)
+        self.mock_commission_node.assert_called_once_with(self.system_id, user)
 
     @inlineCallbacks
     def test_probe_and_enlist_ignores_create_node_error(self):
@@ -843,23 +826,20 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
             None,
         )
 
-        self.assertThat(
-            self.mock_create_node,
-            MockCalledOnceWith(
-                [mac11, mac12],
-                "amd64",
-                "proxmox",
-                {
-                    "power_vm_name": vmid1,
-                    "power_address": hostname,
-                    "power_user": username,
-                    "power_pass": password,
-                    "power_token_name": token_name,
-                    "power_token_secret": token_secret,
-                    "power_verify_ssl": SSL_INSECURE_NO,
-                },
-                domain,
-                hostname=f"vm-{vmid1}",
-            ),
+        self.mock_create_node.assert_called_once_with(
+            [mac11, mac12],
+            "amd64",
+            "proxmox",
+            {
+                "power_vm_name": vmid1,
+                "power_address": hostname,
+                "power_user": username,
+                "power_pass": password,
+                "power_token_name": token_name,
+                "power_token_secret": token_secret,
+                "power_verify_ssl": SSL_INSECURE_NO,
+            },
+            domain,
+            hostname=f"vm-{vmid1}",
         )
-        self.assertThat(self.mock_commission_node, MockNotCalled())
+        self.mock_commission_node.assert_not_called()

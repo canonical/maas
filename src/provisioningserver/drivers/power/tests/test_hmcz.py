@@ -16,11 +16,6 @@ from zhmcclient_mock import FakedSession
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import hmcz as hmcz_module
 from provisioningserver.drivers.power import PowerActionError, PowerError
@@ -102,7 +97,7 @@ class TestHMCZPowerDriver(MAASTestCase):
                 self.make_context(power_partition_name)
             ).get_property("name"),
         )
-        self.assertThat(mock_logger, MockCalledOnce())
+        mock_logger.assert_called_once()
 
     def test_get_partition_doesnt_find_partition(self):
         cpc = self.fake_session.hmc.cpcs.add(
@@ -124,13 +119,9 @@ class TestHMCZPowerDriver(MAASTestCase):
     def test_power_on(self):
         mock_get_partition = self.patch(self.hmcz, "_get_partition")
         yield self.hmcz.power_on(None, self.make_context())
-        self.assertThat(
-            mock_get_partition.return_value.stop,
-            MockNotCalled(),
-        )
-        self.assertThat(
-            mock_get_partition.return_value.start,
-            MockCalledOnceWith(wait_for_completion=False),
+        mock_get_partition.return_value.stop.assert_not_called()
+        mock_get_partition.return_value.start.assert_called_once_with(
+            wait_for_completion=False
         )
 
     @inlineCallbacks
@@ -138,13 +129,11 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition = self.patch(self.hmcz, "_get_partition")
         mock_get_partition.return_value.get_property.return_value = "paused"
         yield self.hmcz.power_on(None, self.make_context())
-        self.assertThat(
-            mock_get_partition.return_value.stop,
-            MockCalledOnceWith(wait_for_completion=True),
+        mock_get_partition.return_value.stop.assert_called_once_with(
+            wait_for_completion=True
         )
-        self.assertThat(
-            mock_get_partition.return_value.start,
-            MockCalledOnceWith(wait_for_completion=False),
+        mock_get_partition.return_value.start.assert_called_once_with(
+            wait_for_completion=False
         )
 
     @inlineCallbacks
@@ -154,13 +143,11 @@ class TestHMCZPowerDriver(MAASTestCase):
             "terminated"
         )
         yield self.hmcz.power_on(None, self.make_context())
-        self.assertThat(
-            mock_get_partition.return_value.stop,
-            MockCalledOnceWith(wait_for_completion=True),
+        mock_get_partition.return_value.stop.assert_called_once_with(
+            wait_for_completion=True
         )
-        self.assertThat(
-            mock_get_partition.return_value.start,
-            MockCalledOnceWith(wait_for_completion=False),
+        mock_get_partition.return_value.start.assert_called_once_with(
+            wait_for_completion=False
         )
 
     @inlineCallbacks
@@ -189,9 +176,8 @@ class TestHMCZPowerDriver(MAASTestCase):
     def test_power_off(self):
         mock_get_partition = self.patch(self.hmcz, "_get_partition")
         yield self.hmcz.power_off(None, self.make_context())
-        self.assertThat(
-            mock_get_partition.return_value.stop,
-            MockCalledOnceWith(wait_for_completion=False),
+        mock_get_partition.return_value.stop.assert_called_once_with(
+            wait_for_completion=False
         )
 
     @inlineCallbacks

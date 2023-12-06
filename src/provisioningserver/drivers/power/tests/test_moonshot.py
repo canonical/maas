@@ -6,10 +6,7 @@
 
 from unittest.mock import call
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import moonshot as moonshot_module
 from provisioningserver.drivers.power import PowerActionError
@@ -93,9 +90,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
 
         moonshot_driver._issue_ipmitool_command("pxe", **context)
 
-        self.assertThat(
-            call_and_check_mock, MockCalledOnceWith(pxe_command, env=env)
-        )
+        call_and_check_mock.assert_called_once_with(pxe_command, env=env)
 
     def test_issue_ipmitool_command_returns_stdout_if_no_match(self):
         context = make_context()
@@ -107,10 +102,8 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
 
         result = moonshot_driver._issue_ipmitool_command("status", **context)
 
-        self.expectThat(
-            call_and_check_mock, MockCalledOnceWith(ipmitool_command, env=env)
-        )
-        self.expectThat(result, Equals("other"))
+        call_and_check_mock.assert_called_once_with(ipmitool_command, env=env)
+        self.assertEqual(result, "other")
 
     def test_issue_ipmitool_raises_power_action_error(self):
         context = make_context()
@@ -136,9 +129,8 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         moonshot_driver.power_on(system_id, context)
 
-        self.assertThat(
-            _issue_ipmitool_command_mock,
-            MockCallsMatch(call("pxe", **context), call("on", **context)),
+        _issue_ipmitool_command_mock.assert_has_calls(
+            [call("pxe", **context), call("on", **context)]
         )
 
     def test_power_off_calls__issue_ipmitool_command(self):
@@ -150,9 +142,7 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         moonshot_driver.power_off(system_id, context)
 
-        self.assertThat(
-            _issue_ipmitool_command_mock, MockCalledOnceWith("off", **context)
-        )
+        _issue_ipmitool_command_mock.assert_called_once_with("off", **context)
 
     def test_power_query_calls__issue_ipmitool_command(self):
         context = make_context()
@@ -163,7 +153,6 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         moonshot_driver.power_query(system_id, context)
 
-        self.assertThat(
-            _issue_ipmitool_command_mock,
-            MockCalledOnceWith("status", **context),
+        _issue_ipmitool_command_mock.assert_called_once_with(
+            "status", **context
         )

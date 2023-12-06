@@ -14,14 +14,11 @@ from unittest.mock import call, Mock
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 from paramiko import SSHException
-from testtools.matchers import Equals
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -158,21 +155,17 @@ class TestMSCMPowerDriver(MAASTestCase):
         ssh_client.exec_command = Mock(return_value=streams)
         output = driver.run_mscm_command(command, **context)
 
-        self.expectThat(expected.decode("utf-8"), Equals(output))
-        self.expectThat(SSHClient, MockCalledOnceWith())
-        self.expectThat(
-            ssh_client.set_missing_host_key_policy,
-            MockCalledOnceWith(AutoAddPolicy.return_value),
+        self.assertEqual(expected.decode("utf-8"), output)
+        SSHClient.assert_called_once_with()
+        ssh_client.set_missing_host_key_policy.assert_called_once_with(
+            AutoAddPolicy.return_value
         )
-        self.expectThat(
-            ssh_client.connect,
-            MockCalledOnceWith(
-                context["power_address"],
-                username=context["power_user"],
-                password=context["power_pass"],
-            ),
+        ssh_client.connect.assert_called_once_with(
+            context["power_address"],
+            username=context["power_user"],
+            password=context["power_pass"],
         )
-        self.expectThat(ssh_client.exec_command, MockCalledOnceWith(command))
+        ssh_client.exec_command.assert_called_once_with(command)
 
     @settings(deadline=None)
     @given(sampled_from([SSHException, EOFError, SOCKETError]))
@@ -199,14 +192,11 @@ class TestMSCMPowerDriver(MAASTestCase):
         run_mscm_command = self.patch(driver, "run_mscm_command")
         driver.power_on(system_id, context)
 
-        self.assertThat(
-            run_mscm_command,
-            MockCallsMatch(
-                call(
-                    "set node bootonce pxe %s" % context["node_id"], **context
-                ),
-                call("set node power on %s" % context["node_id"], **context),
-            ),
+        run_mscm_command.assert_has_calls(
+            [
+                call(f"set node bootonce pxe {context['node_id']}", **context),
+                call(f"set node power on {context['node_id']}", **context),
+            ]
         )
 
     def test_power_on_crashes_for_connection_error(self):
@@ -229,11 +219,8 @@ class TestMSCMPowerDriver(MAASTestCase):
         run_mscm_command = self.patch(driver, "run_mscm_command")
         driver.power_off(system_id, context)
 
-        self.assertThat(
-            run_mscm_command,
-            MockCalledOnceWith(
-                "set node power off force %s" % context["node_id"], **context
-            ),
+        run_mscm_command.assert_called_once_with(
+            f"set node power off force {context['node_id']}", **context
         )
 
     def test_power_off_crashes_for_connection_error(self):
@@ -345,11 +332,10 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
             probe_and_enlist_mscm, user, host, username, password, True, domain
         )
 
-        self.expectThat(
-            create_node,
-            MockCalledOnceWith(macs, self.arch, "mscm", params, domain),
+        create_node.assert_called_once_with(
+            macs, self.arch, "mscm", params, domain
         )
-        self.expectThat(commission_node, MockCalledOnceWith(system_id, user))
+        commission_node.assert_called_once_with(system_id, user)
 
     @inlineCallbacks
     def test_probe_and_enlist_mscm_2(self):
@@ -391,11 +377,10 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
             probe_and_enlist_mscm, user, host, username, password, True, domain
         )
 
-        self.expectThat(
-            create_node,
-            MockCalledOnceWith(macs, self.arch, "mscm", params, domain),
+        create_node.assert_called_once_with(
+            macs, self.arch, "mscm", params, domain
         )
-        self.expectThat(commission_node, MockCalledOnceWith(system_id, user))
+        commission_node.assert_called_once_with(system_id, user)
 
 
 class TestMSCMProbeAndEnlistCrashesNoMatch(MAASTestCase):
@@ -418,7 +403,10 @@ class TestMSCMProbeAndEnlistCrashesNoMatch(MAASTestCase):
             "Error",
         )
 
-        with ExpectedException(PowerFatalError):
+        with self.assertRaisesRegex(
+            PowerFatalError,
+            "^MSCM Power Driver unable to extract node architecture from: Error$",
+        ):
             yield deferToThread(
                 probe_and_enlist_mscm, user, host, username, password
             )
@@ -440,7 +428,10 @@ class TestMSCMProbeAndEnlistCrashesNoMatch(MAASTestCase):
             "Error",
         )
 
-        with ExpectedException(PowerFatalError):
+        with self.assertRaisesRegex(
+            PowerFatalError,
+            "^MSCM Power Driver unable to extract node architecture from: Error$",
+        ):
             yield deferToThread(
                 probe_and_enlist_mscm, user, host, username, password
             )

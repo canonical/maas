@@ -12,10 +12,8 @@ from unittest.mock import Mock
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 from paramiko import SSHException
-from testtools.matchers import Equals
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -57,21 +55,17 @@ class TestHMCPowerDriver(MAASTestCase):
         ssh_client.exec_command = Mock(return_value=streams)
         output = driver.run_hmc_command(command, **context)
 
-        self.expectThat(expected.decode("utf-8"), Equals(output))
-        self.expectThat(SSHClient, MockCalledOnceWith())
-        self.expectThat(
-            ssh_client.set_missing_host_key_policy,
-            MockCalledOnceWith(AutoAddPolicy.return_value),
+        self.assertEqual(expected.decode("utf-8"), output)
+        SSHClient.assert_called_once_with()
+        ssh_client.set_missing_host_key_policy.assert_called_once_with(
+            AutoAddPolicy.return_value
         )
-        self.expectThat(
-            ssh_client.connect,
-            MockCalledOnceWith(
-                context["power_address"],
-                username=context["power_user"],
-                password=context["power_pass"],
-            ),
+        ssh_client.connect.assert_called_once_with(
+            context["power_address"],
+            username=context["power_user"],
+            password=context["power_pass"],
         )
-        self.expectThat(ssh_client.exec_command, MockCalledOnceWith(command))
+        ssh_client.exec_command.assert_called_once_with(command)
 
     @settings(deadline=None)
     @given(sampled_from([SSHException, EOFError, SOCKETError]))
@@ -96,13 +90,9 @@ class TestHMCPowerDriver(MAASTestCase):
         self.patch(driver, "power_off")
         run_hmc_command = self.patch(driver, "run_hmc_command")
         driver.power_on(system_id, context)
-        self.assertThat(
-            run_hmc_command,
-            MockCalledOnceWith(
-                "chsysstate -r lpar -m %s -o on -n %s --bootstring network-all"
-                % (context["server_name"], context["lpar"]),
-                **context
-            ),
+        run_hmc_command.assert_called_once_with(
+            f"chsysstate -r lpar -m {context['server_name']} -o on -n {context['lpar']} --bootstring network-all",
+            **context,
         )
 
     def test_power_on_crashes_for_connection_error(self):
@@ -123,13 +113,9 @@ class TestHMCPowerDriver(MAASTestCase):
         context = make_context()
         run_hmc_command = self.patch(driver, "run_hmc_command")
         driver.power_off(system_id, context)
-        self.assertThat(
-            run_hmc_command,
-            MockCalledOnceWith(
-                "chsysstate -r lpar -m %s -o shutdown -n %s --immed"
-                % (context["server_name"], context["lpar"]),
-                **context
-            ),
+        run_hmc_command.assert_called_once_with(
+            f"chsysstate -r lpar -m {context['server_name']} -o shutdown -n {context['lpar']} --immed",
+            **context,
         )
 
     def test_power_off_crashes_for_connection_error(self):

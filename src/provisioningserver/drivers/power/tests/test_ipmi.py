@@ -7,10 +7,7 @@
 import random
 from unittest.mock import ANY, call, sentinel
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import ipmi as ipmi_module
 from provisioningserver.drivers.power import PowerAuthError, PowerError
@@ -61,7 +58,7 @@ def make_ipmi_chassis_config_command(
     k_g=None,
     cipher_suite_id=None,
     privilege_level=None,
-    **extra
+    **extra,
 ):
     """Make and return a command for ipmi-chassis-config subprocess."""
     ret = (
@@ -102,7 +99,7 @@ def make_ipmipower_command(
     k_g=None,
     cipher_suite_id=None,
     privilege_level=None,
-    **extra
+    **extra,
 ):
     """Make and return a command for ipmipower subprocess."""
     ret = (
@@ -159,9 +156,8 @@ class TestIPMIPowerDriver(MAASTestCase):
         driver._issue_ipmi_command(power_change, **context)
 
         # The IP address is passed to _issue_ipmipower_command.
-        self.assertThat(
-            driver._issue_ipmipower_command,
-            MockCalledOnceWith(ANY, power_change, ip_address),
+        driver._issue_ipmipower_command.assert_called_once_with(
+            ANY, power_change, ip_address
         )
         # The IP address is also within the command passed to
         # _issue_ipmipower_command.
@@ -177,13 +173,11 @@ class TestIPMIPowerDriver(MAASTestCase):
             ["true"], sentinel.change, sentinel.addr
         )
 
-        self.assertThat(
-            NamedTemporaryFile, MockCalledOnceWith("w+", encoding="utf-8")
-        )
-        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
-        self.assertThat(tmpfile.write, MockCalledOnceWith(IPMI_CONFIG))
-        self.assertThat(tmpfile.flush, MockCalledOnceWith())
-        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        NamedTemporaryFile.assert_called_once_with("w+", encoding="utf-8")
+        tmpfile.__enter__.assert_called_once_with()
+        tmpfile.write.assert_called_once_with(IPMI_CONFIG)
+        tmpfile.flush.assert_called_once_with()
+        tmpfile.__exit__.assert_called_once_with(None, None, None)
 
     def test_power_command_uses_default_workaround(self):
         context = make_context()
@@ -298,12 +292,8 @@ class TestIPMIPowerDriver(MAASTestCase):
             factory.make_name("power_change"),
             power_address,
         )
-        self.assertThat(
-            maaslog.warning,
-            MockCalledOnceWith(
-                "Failed to change the boot order to PXE %s: %s"
-                % (power_address, stderr)
-            ),
+        maaslog.warning.assert_called_once_with(
+            f"Failed to change the boot order to PXE {power_address}: {stderr}"
         )
 
     def test_issue_ipmipower_command_raises_error(self):
@@ -337,13 +327,13 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock = self.patch(ipmi_module.shell, "run_command")
         # "cameron" contains the string "on", but the machine is off.
         run_command_mock.return_value = ProcessResult(stdout="cameron: off")
-        self.assertThat(
+        self.assertEqual(
             IPMIPowerDriver._issue_ipmipower_command(
                 factory.make_name("command"),
                 "query",
                 factory.make_name("address"),
             ),
-            Equals("off"),
+            "off",
         )
 
     def test_issue_ipmi_command_issues_power_on(self):
@@ -363,7 +353,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.assert_has_calls(
             [call(*ipmi_chassis_config_command), call(*ipmipower_command)]
         )
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_issue_ipmi_command_issues_power_off(self):
         context = make_context()
@@ -374,7 +364,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.return_value = ProcessResult(stdout="off")
         result = ipmi_power_driver._issue_ipmi_command("off", **context)
         run_command_mock.assert_called_once_with(*ipmipower_command)
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_issue_ipmi_command_issues_power_off_soft_mode(self):
         context = make_context()
@@ -386,7 +376,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.return_value = ProcessResult(stdout="off")
         result = ipmi_power_driver._issue_ipmi_command("off", **context)
         run_command_mock.assert_called_once_with(*ipmipower_command)
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_issue_ipmi_command_issues_power_query(self):
         context = make_context()
@@ -397,7 +387,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         run_command_mock.return_value = ProcessResult(stdout="other")
         result = ipmi_power_driver._issue_ipmi_command("query", **context)
         run_command_mock.assert_called_once_with(*ipmipower_command)
-        self.expectThat(result, Equals("other"))
+        self.assertEqual(result, "other")
 
     def test_power_on_calls__issue_ipmi_command(self):
         context = make_context()
@@ -408,9 +398,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         ipmi_power_driver.power_on(system_id, context)
 
-        self.assertThat(
-            _issue_ipmi_command_mock, MockCalledOnceWith("on", **context)
-        )
+        _issue_ipmi_command_mock.assert_called_once_with("on", **context)
 
     def test_power_on_retires_on_kg_error(self):
         context = make_context()
@@ -428,12 +416,11 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         ipmi_power_driver.power_on(system_id, {"k_g": k_g, **context})
 
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
+        mock_issue_ipmi_command.assert_has_calls(
+            [
                 call("on", **{"k_g": k_g, **context}),
                 call("on", **context),
-            ),
+            ]
         )
 
     def test_power_on_raises_error_after_retires_on_kg_error(self):
@@ -455,12 +442,11 @@ class TestIPMIPowerDriver(MAASTestCase):
             system_id,
             {"k_g": k_g, **context},
         )
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
+        mock_issue_ipmi_command.assert_has_calls(
+            [
                 call("on", **{"k_g": k_g, **context}),
                 call("on", **context),
-            ),
+            ]
         )
 
     def test_power_off_calls__issue_ipmi_command(self):
@@ -472,9 +458,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         ipmi_power_driver.power_off(system_id, context)
 
-        self.assertThat(
-            _issue_ipmi_command_mock, MockCalledOnceWith("off", **context)
-        )
+        _issue_ipmi_command_mock.assert_called_once_with("off", **context)
 
     def test_power_off_retires_on_kg_error(self):
         context = make_context()
@@ -492,12 +476,8 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         ipmi_power_driver.power_off(system_id, {"k_g": k_g, **context})
 
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
-                call("off", **{"k_g": k_g, **context}),
-                call("off", **context),
-            ),
+        mock_issue_ipmi_command.assert_has_calls(
+            [call("off", **{"k_g": k_g, **context}), call("off", **context)]
         )
 
     def test_power_off_raises_error_after_retires_on_kg_error(self):
@@ -519,12 +499,11 @@ class TestIPMIPowerDriver(MAASTestCase):
             system_id,
             {"k_g": k_g, **context},
         )
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
+        mock_issue_ipmi_command.assert_has_calls(
+            [
                 call("off", **{"k_g": k_g, **context}),
                 call("off", **context),
-            ),
+            ]
         )
 
     def test_power_query_calls__issue_ipmi_command(self):
@@ -536,9 +515,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         system_id = factory.make_name("system_id")
         ipmi_power_driver.power_query(system_id, context)
 
-        self.assertThat(
-            _issue_ipmi_command_mock, MockCalledOnceWith("query", **context)
-        )
+        _issue_ipmi_command_mock.assert_called_once_with("query", **context)
 
     def test_power_query_retires_on_kg_error(self):
         context = make_context()
@@ -556,12 +533,11 @@ class TestIPMIPowerDriver(MAASTestCase):
 
         ipmi_power_driver.power_query(system_id, {"k_g": k_g, **context})
 
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
+        mock_issue_ipmi_command.assert_has_calls(
+            [
                 call("query", **{"k_g": k_g, **context}),
                 call("query", **context),
-            ),
+            ]
         )
 
     def test_power_query_raises_error_after_retires_on_kg_error(self):
@@ -583,12 +559,11 @@ class TestIPMIPowerDriver(MAASTestCase):
             system_id,
             {"k_g": k_g, **context},
         )
-        self.assertThat(
-            mock_issue_ipmi_command,
-            MockCallsMatch(
+        mock_issue_ipmi_command.assert_has_calls(
+            [
                 call("query", **{"k_g": k_g, **context}),
                 call("query", **context),
-            ),
+            ]
         )
 
     def test_issue_ipmi_chassis_config_with_power_boot_type(self):
@@ -608,14 +583,11 @@ class TestIPMIPowerDriver(MAASTestCase):
         driver._issue_ipmi_command(power_change, **context)
 
         # The IP address is passed to _issue_ipmi_chassis_config_command.
-        self.assertThat(
-            driver._issue_ipmi_chassis_config_command,
-            MockCalledOnceWith(
-                ANY,
-                power_change,
-                ip_address,
-                power_boot_type=IPMI_BOOT_TYPE.EFI,
-            ),
+        driver._issue_ipmi_chassis_config_command.assert_called_once_with(
+            ANY,
+            power_change,
+            ip_address,
+            power_boot_type=IPMI_BOOT_TYPE.EFI,
         )
         # The IP address is also within the command passed to
         # _issue_ipmi_chassis_config_command.
@@ -624,9 +596,8 @@ class TestIPMIPowerDriver(MAASTestCase):
             driver._issue_ipmi_chassis_config_command.call_args[0],
         )
         # The IP address is passed to _issue_ipmipower_command.
-        self.assertThat(
-            driver._issue_ipmipower_command,
-            MockCalledOnceWith(ANY, power_change, ip_address),
+        driver._issue_ipmipower_command.assert_called_once_with(
+            ANY, power_change, ip_address
         )
 
     def test_chassis_config_written_to_temporary_file_with_boot_type(self):
@@ -644,16 +615,11 @@ class TestIPMIPowerDriver(MAASTestCase):
             power_boot_type=IPMI_BOOT_TYPE.EFI,
         )
 
-        self.assertThat(
-            NamedTemporaryFile, MockCalledOnceWith("w+", encoding="utf-8")
+        NamedTemporaryFile.assert_called_once_with("w+", encoding="utf-8")
+        tmpfile.__enter__.assert_called_once_with()
+        tmpfile.write.assert_called_once_with(
+            IPMI_CONFIG_WITH_BOOT_TYPE
+            % IPMI_BOOT_TYPE_MAPPING[IPMI_BOOT_TYPE.EFI]
         )
-        self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
-        self.assertThat(
-            tmpfile.write,
-            MockCalledOnceWith(
-                IPMI_CONFIG_WITH_BOOT_TYPE
-                % IPMI_BOOT_TYPE_MAPPING[IPMI_BOOT_TYPE.EFI]
-            ),
-        )
-        self.assertThat(tmpfile.flush, MockCalledOnceWith())
-        self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+        tmpfile.flush.assert_called_once_with()
+        tmpfile.__exit__.assert_called_once_with(None, None, None)

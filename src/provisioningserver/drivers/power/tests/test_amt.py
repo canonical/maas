@@ -9,10 +9,8 @@ from textwrap import dedent
 from unittest.mock import call, sentinel
 
 from lxml import etree
-from testtools.matchers import Equals
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.power import (
     PowerActionError,
@@ -172,7 +170,7 @@ class TestAMTPowerDriver(MAASTestCase):
             extra_environ={"AMT_PASSWORD": power_pass},
             decode=False
         )
-        self.expectThat(result, Equals(b"stdout"))
+        self.assertEqual(result, b"stdout")
 
     def test_run_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
@@ -236,12 +234,11 @@ class TestAMTPowerDriver(MAASTestCase):
                 command = ("wsman",) + wsman_opts + action
                 commands.append(command)
                 stdins.append(fd.read())
-        self.assertThat(
-            _run_mock,
-            MockCallsMatch(
+        _run_mock.assert_has_calls(
+            [
                 call(commands[0], power_pass, stdin=stdins[0]),
                 call(commands[1], power_pass, stdin=stdins[1]),
-            ),
+            ]
         )
 
     def test_issue_amttool_command_calls__run(self):
@@ -263,10 +260,8 @@ class TestAMTPowerDriver(MAASTestCase):
             stdin=stdin,
         )
 
-        self.expectThat(
-            _run_mock, MockCalledOnceWith(command, power_pass, stdin=stdin)
-        )
-        self.expectThat(result, Equals(b"output"))
+        _run_mock.assert_called_once_with(command, power_pass, stdin=stdin)
+        self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_power(self):
         amt_power_driver = AMTPowerDriver()
@@ -312,10 +307,8 @@ class TestAMTPowerDriver(MAASTestCase):
             power_change, ip_address, power_pass
         )
 
-        self.expectThat(
-            _run_mock, MockCalledOnceWith(command, power_pass, stdin=b"stdin")
-        )
-        self.expectThat(result, Equals(b"output"))
+        _run_mock.assert_called_once_with(command, power_pass, stdin=b"stdin")
+        self.assertEqual(result, b"output")
 
     def test_issue_wsman_command_calls__run_for_query(self):
         amt_power_driver = AMTPowerDriver()
@@ -347,9 +340,7 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver._issue_wsman_command("query", ip_address, power_pass)
 
-        self.assertThat(
-            _run_mock, MockCalledOnceWith(command, power_pass, stdin=None)
-        )
+        _run_mock.assert_called_once_with(command, power_pass, stdin=None)
 
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(
@@ -384,11 +375,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
-        self.expectThat(
-            _issue_amttool_command_mock,
-            MockCalledOnceWith("info", ip_address, power_pass),
+        _issue_amttool_command_mock.assert_called_once_with(
+            "info", ip_address, power_pass
         )
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_amttool_query_state_queries_off(self):
         amt_power_driver = AMTPowerDriver()
@@ -404,11 +394,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         result = amt_power_driver.amttool_query_state(ip_address, power_pass)
 
-        self.expectThat(
-            _issue_amttool_command_mock,
-            MockCalledOnceWith("info", ip_address, power_pass),
+        _issue_amttool_command_mock.assert_called_once_with(
+            "info", ip_address, power_pass
         )
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_amttool_query_state_queries_unknown(self):
         amt_power_driver = AMTPowerDriver()
@@ -429,9 +418,8 @@ class TestAMTPowerDriver(MAASTestCase):
             ip_address,
             power_pass,
         )
-        self.assertThat(
-            _issue_amttool_command_mock,
-            MockCalledOnceWith("info", ip_address, power_pass),
+        _issue_amttool_command_mock.assert_called_once_with(
+            "info", ip_address, power_pass
         )
 
     def test_amttool_query_state_runs_query_loop(self):
@@ -461,15 +449,12 @@ class TestAMTPowerDriver(MAASTestCase):
             ip_address, power_pass, amttool_boot_mode
         )
 
-        self.assertThat(
-            _issue_amttool_command_mock,
-            MockCalledOnceWith(
-                "power_cycle",
-                ip_address,
-                power_pass,
-                amttool_boot_mode=amttool_boot_mode,
-                stdin=b"yes",
-            ),
+        _issue_amttool_command_mock.assert_called_once_with(
+            "power_cycle",
+            ip_address,
+            power_pass,
+            amttool_boot_mode=amttool_boot_mode,
+            stdin=b"yes",
         )
 
     def test_amttool_power_on_powers_on(self):
@@ -489,19 +474,15 @@ class TestAMTPowerDriver(MAASTestCase):
             ip_address, power_pass, amttool_boot_mode
         )
 
-        self.expectThat(
-            _issue_amttool_command_mock,
-            MockCalledOnceWith(
-                "powerup",
-                ip_address,
-                power_pass,
-                amttool_boot_mode=amttool_boot_mode,
-                stdin=b"yes",
-            ),
+        _issue_amttool_command_mock.assert_called_once_with(
+            "powerup",
+            ip_address,
+            power_pass,
+            amttool_boot_mode=amttool_boot_mode,
+            stdin=b"yes",
         )
-        self.expectThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(ip_address, power_pass),
+        amttool_query_state_mock.assert_called_once_with(
+            ip_address, power_pass
         )
 
     def test_amttool_power_on_raises_power_action_error(self):
@@ -534,9 +515,8 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.amttool_power_off(ip_address, power_pass)
 
-        self.assertThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(ip_address, power_pass),
+        amttool_query_state_mock.assert_called_once_with(
+            ip_address, power_pass
         )
 
     def test_amttool_power_off_raises_power_action_error(self):
@@ -569,11 +549,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         result = amt_power_driver.wsman_query_state(ip_address, power_pass)
 
-        self.expectThat(
-            _issue_wsman_command_mock,
-            MockCalledOnceWith("query", ip_address, power_pass),
+        _issue_wsman_command_mock.assert_called_once_with(
+            "query", ip_address, power_pass
         )
-        self.expectThat(result, Equals("on"))
+        self.assertEqual(result, "on")
 
     def test_wsman_query_state_queries_off(self):
         amt_power_driver = AMTPowerDriver()
@@ -588,11 +567,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         result = amt_power_driver.wsman_query_state(ip_address, power_pass)
 
-        self.expectThat(
-            _issue_wsman_command_mock,
-            MockCalledOnceWith("query", ip_address, power_pass),
+        _issue_wsman_command_mock.assert_called_once_with(
+            "query", ip_address, power_pass
         )
-        self.expectThat(result, Equals("off"))
+        self.assertEqual(result, "off")
 
     def test_wsman_query_state_queries_unknown(self):
         amt_power_driver = AMTPowerDriver()
@@ -611,9 +589,8 @@ class TestAMTPowerDriver(MAASTestCase):
             ip_address,
             power_pass,
         )
-        self.assertThat(
-            _issue_wsman_command_mock,
-            MockCalledOnceWith("query", ip_address, power_pass),
+        _issue_wsman_command_mock.assert_called_once_with(
+            "query", ip_address, power_pass
         )
 
     def test_wsman_query_state_runs_query_loop(self):
@@ -665,16 +642,11 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.wsman_power_on(ip_address, power_pass, restart=True)
 
-        self.expectThat(
-            _set_pxe_boot_mock, MockCalledOnceWith(ip_address, power_pass)
+        _set_pxe_boot_mock.assert_called_once_with(ip_address, power_pass)
+        _issue_wsman_command_mock.assert_called_once_with(
+            "restart", ip_address, power_pass
         )
-        self.expectThat(
-            _issue_wsman_command_mock,
-            MockCalledOnceWith("restart", ip_address, power_pass),
-        )
-        self.expectThat(
-            wsman_query_state_mock, MockCalledOnceWith(ip_address, power_pass)
-        )
+        wsman_query_state_mock.assert_called_once_with(ip_address, power_pass)
 
     def test_wsman_power_on_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
@@ -708,13 +680,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.wsman_power_off(ip_address, power_pass)
 
-        self.expectThat(
-            _issue_wsman_command_mock,
-            MockCalledOnceWith("off", ip_address, power_pass),
+        _issue_wsman_command_mock.assert_called_once_with(
+            "off", ip_address, power_pass
         )
-        self.expectThat(
-            wsman_query_state_mock, MockCalledOnceWith(ip_address, power_pass)
-        )
+        wsman_query_state_mock.assert_called_once_with(ip_address, power_pass)
 
     def test_wsman_power_off_raises_power_action_error(self):
         amt_power_driver = AMTPowerDriver()
@@ -758,7 +727,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--password",
             power_pass,
         )
-        self.expectThat(result, Equals("amttool"))
+        self.assertEqual(result, "amttool")
 
     def test_get_amt_command_returns_wsman(self):
         amt_power_driver = AMTPowerDriver()
@@ -785,7 +754,7 @@ class TestAMTPowerDriver(MAASTestCase):
             "--password",
             power_pass,
         )
-        self.expectThat(result, Equals("wsman"))
+        self.assertEqual(result, "wsman")
 
     def test_get_amt_command_crashes_when_amttool_has_no_output(self):
         amt_power_driver = AMTPowerDriver()
@@ -863,21 +832,16 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_on(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        amttool_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_restart_mock,
-            MockCalledOnceWith(
-                context["ip_address"],
-                context["power_pass"],
-                context["boot_mode"],
-            ),
+        amttool_restart_mock.assert_called_once_with(
+            context["ip_address"],
+            context["power_pass"],
+            context["boot_mode"],
         )
 
     def test_power_on_powers_on_with_amttool_when_already_off(self):
@@ -897,21 +861,16 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_on(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        amttool_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_power_on_mock,
-            MockCalledOnceWith(
-                context["ip_address"],
-                context["power_pass"],
-                context["boot_mode"],
-            ),
+        amttool_power_on_mock.assert_called_once_with(
+            context["ip_address"],
+            context["power_pass"],
+            context["boot_mode"],
         )
 
     def test_power_on_powers_on_with_wsman_when_already_on(self):
@@ -929,19 +888,14 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_on(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_power_on_mock,
-            MockCalledOnceWith(
-                context["ip_address"], context["power_pass"], restart=True
-            ),
+        wsman_power_on_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"], restart=True
         )
 
     def test_power_on_powers_on_with_wsman_when_already_off(self):
@@ -959,17 +913,14 @@ class TestAMTPowerDriver(MAASTestCase):
 
         amt_power_driver.power_on(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_power_on_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_power_on_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
 
     def test_power_off_powers_off_with_amttool(self):
@@ -988,17 +939,14 @@ class TestAMTPowerDriver(MAASTestCase):
         )
 
         amt_power_driver.power_off(context["system_id"], context)
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        amttool_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_power_off_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        amttool_power_off_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
 
     def test_power_off_powers_off_with_wsman(self):
@@ -1015,17 +963,14 @@ class TestAMTPowerDriver(MAASTestCase):
         wsman_power_off_mock = self.patch(amt_power_driver, "wsman_power_off")
 
         amt_power_driver.power_off(context["system_id"], context)
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_power_off_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_power_off_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
 
     def test_power_query_queries_with_amttool(self):
@@ -1042,15 +987,13 @@ class TestAMTPowerDriver(MAASTestCase):
 
         state = amt_power_driver.power_query(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            amttool_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        amttool_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(state, Equals("off"))
+        self.assertEqual(state, "off")
 
     def test_power_query_queries_with_wsman(self):
         amt_power_driver = AMTPowerDriver()
@@ -1066,12 +1009,10 @@ class TestAMTPowerDriver(MAASTestCase):
 
         state = amt_power_driver.power_query(context["system_id"], context)
 
-        self.expectThat(
-            _get_amt_command_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        _get_amt_command_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(
-            wsman_query_state_mock,
-            MockCalledOnceWith(context["ip_address"], context["power_pass"]),
+        wsman_query_state_mock.assert_called_once_with(
+            context["ip_address"], context["power_pass"]
         )
-        self.expectThat(state, Equals("on"))
+        self.assertEqual(state, "on")
