@@ -785,6 +785,12 @@ class VersionIndexHandler(MetadataViewHandler):
         )
         return None
 
+    def _process_releasing(self, node, request, status):
+        self._store_results(
+            node, node.current_release_script_set, request, status
+        )
+        return None
+
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
         """Signal ephemeral environment status.
@@ -832,6 +838,7 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.DISK_ERASING: self._process_disk_erasing,
                 NODE_STATUS.ENTERING_RESCUE_MODE: self._process_entering_rescue_mode,
                 NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
+                NODE_STATUS.RELEASING: self._process_releasing,
             }
             if node.status in process_status_dict:
                 process = process_status_dict[node.status]

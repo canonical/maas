@@ -3626,8 +3626,10 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         scripts_dir,
         with_commissioning=True,
         with_testing=True,
+        with_release=False,
         commissioning_scripts=None,
         testing_scripts=None,
+        release_scripts=None,
     ):
         index_json = {}
         if with_commissioning:
@@ -3638,6 +3640,10 @@ class TestRunScriptsFromMetadata(MAASTestCase):
             if testing_scripts is None:
                 testing_scripts = make_scripts(with_config=False)
             index_json["testing_scripts"] = testing_scripts
+        if with_release:
+            if release_scripts is None:
+                release_scripts = make_scripts(with_config=False)
+            index_json["release_scripts"] = release_scripts
         with open(os.path.join(scripts_dir, "index.json"), "w") as f:
             f.write(json.dumps({"1.0": index_json}))
         return index_json
@@ -3656,7 +3662,7 @@ class TestRunScriptsFromMetadata(MAASTestCase):
     def test_run_scripts_from_metadata(self):
         scripts_dir = self.useFixture(TempDirectory()).path
         self.mock_run_scripts.return_value = 0
-        index_json = self.make_index_json(scripts_dir)
+        index_json = self.make_index_json(scripts_dir, with_release=True)
         mock_download_and_extract_tar = self.patch(
             maas_run_remote_scripts, "download_and_extract_tar"
         )
@@ -3673,38 +3679,35 @@ class TestRunScriptsFromMetadata(MAASTestCase):
 
         run_scripts_from_metadata(config, scripts_dir, None)
 
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["commissioning_scripts"],
-                True,
-                allow_bmc_detection=True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["commissioning_scripts"],
+            True,
+            allow_bmc_detection=True,
         )
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["testing_scripts"],
-                True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["testing_scripts"],
+            True,
         )
-        self.assertThat(
-            self.mock_signal,
-            MockAnyCall(config.metadata_url, config.credentials, "TESTING"),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["release_scripts"],
+            True,
         )
-        self.assertThat(
-            mock_download_and_extract_tar,
-            MockCalledOnceWith(
-                f"{config.metadata_url}maas-scripts",
-                config.credentials,
-                scripts_dir,
-            ),
+        self.mock_signal.assert_any_call(
+            config.metadata_url, config.credentials, "TESTING"
+        )
+        mock_download_and_extract_tar.assert_called_once_with(
+            f"{config.metadata_url}maas-scripts",
+            config.credentials,
+            scripts_dir,
         )
 
     def test_run_scripts_from_metadata_doesnt_run_tests_on_commiss_fail(self):

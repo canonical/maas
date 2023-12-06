@@ -1548,7 +1548,7 @@ def run_scripts_from_metadata(
         fail_count += run_scripts(
             config, scripts_dir, out_dir, testing_scripts, send_result
         )
-        if fail_count != 0:
+        if fail_count:
             output_and_send(
                 "%d test scripts failed to run" % fail_count,
                 send_result,
@@ -1556,8 +1556,29 @@ def run_scripts_from_metadata(
                 config.credentials,
                 "FAILED",
             )
+            return fail_count
 
-    return fail_count
+    release_scripts = scripts.get("release_scripts")
+    if release_scripts is not None:
+        if send_result:
+            signal_wrapper(
+                config.metadata_url, config.credentials, "RELEASING"
+            )
+
+        sys.stdout.write("Starting release scripts...\n")
+        sys.stdout.flush()
+        fail_count += run_scripts(
+            config, scripts_dir, out_dir, release_scripts, send_result
+        )
+        if fail_count:
+            output_and_send(
+                "%d release scripts failed to run" % fail_count,
+                send_result,
+                config.metadata_url,
+                config.credentials,
+                "FAILED",
+            )
+        return fail_count
 
 
 class HeartBeat(Thread):

@@ -3017,6 +3017,24 @@ class TestCommissioningAPI(MAASServerTestCase):
         for script_result in script_results.values():
             self.assertIsNotNone(script_result.stdout)
 
+    def test_signaling_stores_files_releasing(self):
+        self.useFixture(SignalsDisabled("power"))
+        script = factory.make_Script(script_type=SCRIPT_TYPE.RELEASE)
+        script_result = factory.make_ScriptResult(
+            script=script, status=SCRIPT_STATUS.RUNNING
+        )
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node.current_release_script_set = script_result.script_set
+        node.save()
+        client = make_node_client(node=node)
+        call_signal(
+            client,
+            status="OK",
+            script_result=0,
+            files={script_result.name: factory.make_bytes()},
+        )
+        self.assertIsNotNone(script_result.stdout)
+
     def test_signal_stores_file_contents(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True
