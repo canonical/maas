@@ -5,16 +5,8 @@
 
 
 import io
+import time
 
-from testtools.matchers import (
-    AfterPreprocessing,
-    ContainsDict,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-)
 from twisted import logger
 from twisted.python.failure import Failure
 
@@ -39,12 +31,6 @@ from provisioningserver.logger.testing import (
 )
 
 
-def ContainsDictByEquality(expected):
-    return ContainsDict(
-        {key: Equals(value) for key, value in expected.items()}
-    )
-
-
 def formatTimeStatic(when):
     """Just return <when>."""
     return "<when>"
@@ -61,22 +47,24 @@ class TestLegacyLogger(MAASTestCase):
             for _ in range(3)
         }
 
+        t0 = time.time()
         legacy_logger.msg(message, **keywords)
+        t1 = time.time()
 
         expected = {
-            "log_format": Equals("{_message_0}"),
-            "log_level": Equals(logger.LogLevel.info),
-            "log_logger": Is(legacy_logger),
-            "log_namespace": Equals(namespace),
-            "log_source": Is(self),
-            "log_time": IsInstance(float),
-            "_message_0": Equals(message),
+            "log_format": "{_message_0}",
+            "log_level": logger.LogLevel.info,
+            "log_logger": legacy_logger,
+            "log_namespace": namespace,
+            "log_source": self,
+            "_message_0": message,
         }
-        expected.update(
-            {key: Equals(value) for key, value in keywords.items()}
-        )
+        expected.update(keywords)
         self.assertEqual(1, len(events))
-        self.assertThat(events[0], MatchesDict(expected))
+        event = events[0]
+        for key, value in expected.items():
+            self.assertEqual(event.get(key), value)
+        self.assertAlmostEqual(event.get("log_time"), t1, delta=(t1 - t0))
         self.assertEqual(
             f"<when> [{namespace}#info] {message}\n",
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
@@ -100,7 +88,9 @@ class TestLegacyLogger(MAASTestCase):
             "log_format": "{_message_0} {_message_1} {_message_2}",
         }
         self.assertEqual(1, len(events))
-        self.assertThat(events[0], ContainsDictByEquality(expected))
+        event = events[0]
+        for key, value in expected.items():
+            self.assertEqual(event.get(key), value)
         self.assertEqual(
             "<when> [{}#info] {}\n".format(__name__, " ".join(messages)),
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
@@ -116,37 +106,39 @@ class TestLegacyLogger(MAASTestCase):
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
         }
-
+        exc_instance = exception_type()
         try:
-            raise exception_type()
+            raise exc_instance
         except exception_type:
+            t0 = time.time()
             legacy_logger.err(None, message, **keywords)
+            t1 = time.time()
 
+        def failures_are_equal(failureA, failureB, msg=None):
+            return self.assertEqual(failureA.value, failureB.value, msg)
+
+        self.addTypeEqualityFunc(Failure, failures_are_equal)
         expected = {
-            "log_failure": MatchesAll(
-                IsInstance(Failure),
-                AfterPreprocessing(
-                    (lambda failure: failure.value), IsInstance(exception_type)
-                ),
-            ),
-            "log_format": Equals("{_why}"),
-            "log_level": Equals(logger.LogLevel.critical),
-            "log_logger": Is(legacy_logger),
-            "log_namespace": Equals(namespace),
-            "log_source": Is(self),
-            "log_time": IsInstance(float),
-            "_why": Equals(message),
+            "log_failure": Failure(exc_instance),
+            "log_format": "{_why}",
+            "log_level": logger.LogLevel.critical,
+            "log_logger": legacy_logger,
+            "log_namespace": namespace,
+            "log_source": self,
+            "_why": message,
         }
-        expected.update(
-            {key: Equals(value) for key, value in keywords.items()}
-        )
+        expected.update(keywords)
         self.assertEqual(1, len(events))
-        self.assertThat(events[0], MatchesDict(expected))
+        event = events[0]
+        for key, value in expected.items():
+            self.assertEqual(event.get(key), value)
+        self.assertAlmostEqual(event.get("log_time"), t1, delta=(t1 - t0))
+
         # Twisted 16.6.0 (see issue #8858) now includes a traceback,
         # so we only match on the beginning of the string.
         self.assertTrue(
             logger.formatEventAsClassicLogText(
-                events[0], formatTimeStatic
+                event, formatTimeStatic
             ).startswith(f"<when> [{namespace}#critical] {message}\n")
         )
 

@@ -9,7 +9,6 @@ from pathlib import Path
 import random
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import Contains, FileContains
 
 from maastesting.crochet import wait_for
 from maastesting.factory import factory
@@ -56,11 +55,9 @@ class TestWriteConfig(MAASTestCase):
     def test_adds_cidr(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])
-        matcher = Contains("acl localnet src %s" % cidr)
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
-            FileContains(matcher=matcher),
-        )
+        with self.proxy_path.open() as fh:
+            contents = fh.read()
+        self.assertIn(f"acl localnet src {cidr}", contents)
 
     def test_peer_proxies(self):
         cidr = factory.make_ipv4_network()

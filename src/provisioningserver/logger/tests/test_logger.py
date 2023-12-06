@@ -11,7 +11,6 @@ import sys
 from testtools.content import text_content
 
 from maastesting.factory import factory
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LoggingMode
 from provisioningserver.logger.testing import find_log_lines
@@ -95,7 +94,7 @@ class TestLogging(MAASTestCase):
             ("stderr", "error", "Printing to stderr."),
             ("-", "warn", "UserWarning: This is a warning!"),
         ]
-        self.assertSequenceEqual(expected, observed)
+        self.assertEqual(expected, observed)
 
     def test_twistd_high_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(3)
@@ -127,7 +126,7 @@ class TestLogging(MAASTestCase):
             ("stderr", "error", "Printing to stderr."),
             ("-", "warn", "UserWarning: This is a warning!"),
         ]
-        self.assertSequenceEqual(expected, observed)
+        self.assertEqual(expected, observed)
 
     def test_twistd_low_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(1)
@@ -150,7 +149,7 @@ class TestLogging(MAASTestCase):
             ("stderr", "error", "Printing to stderr."),
             ("-", "warn", "UserWarning: This is a warning!"),
         ]
-        self.assertSequenceEqual(expected, observed)
+        self.assertEqual(expected, observed)
 
     def test_twistd_lowest_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(0)
@@ -169,7 +168,7 @@ class TestLogging(MAASTestCase):
             ("maas." + name, "error", "From `get_maas_logger`."),
             ("stderr", "error", "Printing to stderr."),
         ]
-        self.assertSequenceEqual(expected, observed)
+        self.assertEqual(expected, observed)
 
     def test_command_default_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(2)
@@ -195,18 +194,13 @@ class TestLogging(MAASTestCase):
             ("maas." + name, "warn", "From `get_maas_logger`."),
             ("maas." + name, "error", "From `get_maas_logger`."),
         ]
-        self.assertSequenceEqual(expected, observed)
-        self.assertThat(
-            logged,
-            DocTestMatches(
-                """\
-        ...
-        Printing to stdout.
-        Printing to stderr.
-        This is a warning!
-        """
-            ),
-        )
+        self.assertEqual(expected, observed)
+        for needle in [
+            "Printing to stdout.",
+            "Printing to stderr.",
+            "This is a warning",
+        ]:
+            self.assertIn(needle, logged)
 
     def test_command_high_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(3)
@@ -235,18 +229,13 @@ class TestLogging(MAASTestCase):
             ("maas." + name, "warn", "From `get_maas_logger`."),
             ("maas." + name, "error", "From `get_maas_logger`."),
         ]
-        self.assertSequenceEqual(expected, observed)
-        self.assertThat(
-            logged,
-            DocTestMatches(
-                """\
-        ...
-        Printing to stdout.
-        Printing to stderr.
-        This is a warning!
-        """
-            ),
-        )
+        self.assertEqual(expected, observed)
+        for needle in [
+            "Printing to stdout.",
+            "Printing to stderr.",
+            "This is a warning",
+        ]:
+            self.assertIn(needle, logged)
 
     def test_command_low_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(1)
@@ -267,18 +256,13 @@ class TestLogging(MAASTestCase):
             ("maas." + name, "warn", "From `get_maas_logger`."),
             ("maas." + name, "error", "From `get_maas_logger`."),
         ]
-        self.assertSequenceEqual(expected, observed)
-        self.assertThat(
-            logged,
-            DocTestMatches(
-                """\
-        ...
-        Printing to stdout.
-        Printing to stderr.
-        This is a warning!
-        """
-            ),
-        )
+        self.assertEqual(expected, observed)
+        for needle in [
+            "Printing to stdout.",
+            "Printing to stderr.",
+            "This is a warning",
+        ]:
+            self.assertIn(needle, logged)
 
     def test_command_lowest_verbosity(self):
         verbosity, set_verbosity = self._get_log_levels(0)
@@ -296,15 +280,10 @@ class TestLogging(MAASTestCase):
             (name, "error", "From `logging`."),
             ("maas." + name, "error", "From `get_maas_logger`."),
         ]
-        self.assertSequenceEqual(expected, observed)
-        self.assertThat(
-            logged,
-            DocTestMatches(
-                """\
-        ...
-        Printing to stdout.
-        Printing to stderr.
-        This is a warning!
-        """
-            ),
-        )
+        self.assertEqual(expected, observed)
+        for needle in [
+            "Printing to stdout.",
+            "Printing to stderr.",
+            "This is a warning",
+        ]:
+            self.assertIn(needle, logged)
