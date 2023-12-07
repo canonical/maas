@@ -12,7 +12,6 @@ from unittest.mock import MagicMock, Mock, sentinel
 
 from fixtures import FakeLogger
 from testscenarios import multiply_scenarios
-from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -355,7 +354,10 @@ class TestServiceMonitor(MAASTestCase):
     def test_restartService_raises_ServiceNotOnError(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
-        with ExpectedException(ServiceNotOnError):
+        with self.assertRaisesRegex(
+            ServiceNotOnError,
+            rf"Service '{fake_service.service_name}' is not expected to be on, unable to restart\.",
+        ):
             yield service_monitor.restartService(fake_service.name)
 
     @inlineCallbacks
@@ -390,14 +392,20 @@ class TestServiceMonitor(MAASTestCase):
         service_state = ServiceState(active_state, "dead")
         mock_getServiceState = self.patch(service_monitor, "getServiceState")
         mock_getServiceState.return_value = succeed(service_state)
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError,
+            rf"Service '{fake_service.service_name}' failed to restart",
+        ):
             yield service_monitor.restartService(fake_service.name)
 
     @inlineCallbacks
     def test_reloadService_raises_ServiceNotOnError(self):
         fake_service = make_fake_service(SERVICE_STATE.OFF)
         service_monitor = self.make_service_monitor([fake_service])
-        with ExpectedException(ServiceNotOnError):
+        with self.assertRaisesRegex(
+            ServiceNotOnError,
+            rf"Service '{fake_service.service_name}' is not expected to be on, unable to reload\.",
+        ):
             yield service_monitor.reloadService(fake_service.name)
 
     @inlineCallbacks
@@ -433,7 +441,10 @@ class TestServiceMonitor(MAASTestCase):
         mock_ensureService.return_value = succeed(
             ServiceState(SERVICE_STATE.OFF, "dead")
         )
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError,
+            rf"Service '{fake_service.service_name}' is not running and could not be started to perform the reload",
+        ):
             yield service_monitor.reloadService(fake_service.name)
 
     @inlineCallbacks
@@ -469,7 +480,10 @@ class TestServiceMonitor(MAASTestCase):
         mock_ensureService.return_value = succeed(
             ServiceState(SERVICE_STATE.OFF, "dead")
         )
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError,
+            rf"Service '{fake_service.service_name}' is not running and could not be started to perform the reload",
+        ):
             yield service_monitor.reloadService(fake_service.name, if_on=True)
 
     @inlineCallbacks
@@ -507,12 +521,14 @@ class TestServiceMonitor(MAASTestCase):
     @inlineCallbacks
     def test_execCmd_times_out(self):
         monitor = ServiceMonitor(make_fake_service())
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError, "^Service monitor timed out after"
+        ):
             yield monitor._execCmd(
-                ["sleep", "0.3"], {}, timeout=0.1, retries=1
+                ["sleep", "0.01"], {}, timeout=0.001, retries=1
             )
         # Pause long enough for the reactor to cleanup the process.
-        yield pause(0.5)
+        yield pause(0.03)
 
     @inlineCallbacks
     def test_execCmd_retries(self):
@@ -521,7 +537,9 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor_module, "deferWithTimeout"
         )
         mock_deferWithTimeout.side_effect = always_fail_with(CancelledError())
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError, "^Service monitor timed out after"
+        ):
             yield monitor._execCmd(["echo", "Hello"], {}, retries=3)
         self.assertEqual(3, mock_deferWithTimeout.call_count)
 
@@ -633,7 +651,9 @@ class TestServiceMonitor(MAASTestCase):
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError, f"^Unknown pebble action '{action}'$"
+        ):
             yield service_monitor._execPebbleServiceAction(
                 service_name, action
             )
@@ -694,7 +714,9 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request = self.patch(service_monitor, "_pebble_request")
 
         mock_pebble_request.return_value = succeed({})
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError, "^Multiple signal names provided$"
+        ):
             yield service_monitor._execPebbleServiceAction(
                 service_name,
                 "signal",
@@ -710,7 +732,10 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request = self.patch(service_monitor, "_pebble_request")
 
         mock_pebble_request.return_value = succeed({})
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"^Provide signal name in 'SIG\.\*' format in extra_opts$",
+        ):
             yield service_monitor._execPebbleServiceAction(
                 service_name, "signal"
             )
@@ -725,7 +750,10 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request = self.patch(service_monitor, "_pebble_request")
 
         mock_pebble_request.return_value = succeed({})
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"^Provide signal name in 'SIG\.\*' format in extra_opts$",
+        ):
             yield service_monitor._execPebbleServiceAction(
                 service_name, "signal", extra_opts=["AAAA", "BBBB"]
             )
@@ -864,8 +892,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_agent = MagicMock(Agent)
         service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
 
-        with ExpectedException(
-            ValueError, value_re="Pebble endpoint does not start with '/'"
+        with self.assertRaisesRegex(
+            ValueError, "Pebble endpoint does not start with '/'"
         ):
             yield service_monitor._pebble_request("GET", "endpoint")
         mock_agent.request.assert_not_called()
@@ -880,8 +908,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_agent.request.return_value = succeed(mock_response)
         service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
 
-        with ExpectedException(
-            ValueError, value_re="Unexpected pebble response code"
+        with self.assertRaisesRegex(
+            ValueError, "Unexpected pebble response code"
         ):
             yield service_monitor._pebble_request("GET", "/400")
 
@@ -908,7 +936,9 @@ class TestServiceMonitor(MAASTestCase):
         mock_read_body.return_value = succeed(b"OK!")
         service_monitor = self.make_service_monitor(pebble_agent=mock_agent)
 
-        with ExpectedException(JSONDecodeError):
+        with self.assertRaisesRegex(
+            JSONDecodeError, r"^Expecting value: line 1 column 1 \(char 0\)$"
+        ):
             yield service_monitor._pebble_request("GET", "/")
 
     def test_service_monitor_creates_agent_if_not_provided(self):
@@ -1014,9 +1044,9 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request.return_value = succeed(
             {"result": {"status": "Error", "ready": True, "err": error}}
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValueError,
-            value_re=f"Pebble change {change_id} failed with an error: {error}",
+            f"Pebble change {change_id} failed with an error: {error}",
         ):
             yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
@@ -1028,8 +1058,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request.return_value = succeed(
             {"result": {"status": "Hold", "ready": True}}
         )
-        with ExpectedException(
-            ValueError, value_re=f"Pebble change {change_id} is on hold"
+        with self.assertRaisesRegex(
+            ValueError, f"Pebble change {change_id} is on hold"
         ):
             yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
@@ -1041,8 +1071,8 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request.return_value = succeed(
             {"result": {"status": "Undone", "ready": True}}
         )
-        with ExpectedException(
-            ValueError, value_re=f"Pebble change {change_id} is undone"
+        with self.assertRaisesRegex(
+            ValueError, f"Pebble change {change_id} is undone"
         ):
             yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
@@ -1056,9 +1086,9 @@ class TestServiceMonitor(MAASTestCase):
         mock_pebble_request.return_value = succeed(
             {"result": {"status": status, "ready": True, "err": error}}
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValueError,
-            value_re=f"Pebble change {change_id} finished with unknown error status `{status}`: {error}",
+            f"Pebble change {change_id} finished with unknown error status `{status}`: {error}",
         ):
             yield service_monitor._pebble_wait_on_change(change_id, backoff=0)
 
@@ -1122,7 +1152,10 @@ class TestServiceMonitor(MAASTestCase):
         )
         mock_execSystemDServiceAction.return_value = (1, "", "")
         action = factory.make_name("action")
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError,
+            f"^Service '{service.name}' failed to {action}: $",
+        ):
             yield service_monitor._performServiceAction(service, action)
 
     @inlineCallbacks
@@ -1138,7 +1171,10 @@ class TestServiceMonitor(MAASTestCase):
         with FakeLogger(
             "maas.service_monitor", level=logging.ERROR
         ) as maaslog:
-            with ExpectedException(ServiceActionError):
+            with self.assertRaisesRegex(
+                ServiceActionError,
+                f"^Service '{service.name}' failed to {action}: {error_output}$",
+            ):
                 yield service_monitor._performServiceAction(service, action)
 
         self.assertDocTestMatches(
@@ -1211,7 +1247,10 @@ class TestServiceMonitor(MAASTestCase):
             systemd_status_output,
             "",
         )
-        with ExpectedException(ServiceUnknownError):
+        with self.assertRaisesRegex(
+            ServiceUnknownError,
+            rf"^'{service.service_name}' is unknown to systemd\.$",
+        ):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
@@ -1368,7 +1407,10 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
 
-        with ExpectedException(ServiceParsingError):
+        with self.assertRaisesRegex(
+            ServiceParsingError,
+            rf"^Unable to parse the active state from systemd for service '{service.service_name}', active state reported as 'unknown'\.$",
+        ):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
@@ -1384,7 +1426,10 @@ class TestServiceMonitor(MAASTestCase):
             "",
         )
 
-        with ExpectedException(ServiceParsingError):
+        with self.assertRaisesRegex(
+            ServiceParsingError,
+            rf"^Unable to parse the output from systemd for service '{service.service_name}'\.$",
+        ):
             yield service_monitor._loadSystemDServiceState(service)
 
     @inlineCallbacks
@@ -1415,7 +1460,10 @@ class TestServiceMonitor(MAASTestCase):
             "any_service active",
             "",
         )
-        with ExpectedException(ServiceParsingError):
+        with self.assertRaisesRegex(
+            ServiceParsingError,
+            f"Pebble returned status for 'any_service' instead of '{service.service_name}'$",
+        ):
             yield service_monitor._loadPebbleServiceState(service)
 
     @inlineCallbacks
@@ -1430,7 +1478,10 @@ class TestServiceMonitor(MAASTestCase):
             f"{service.snap_service_name} unknown_status_for_maas",
             "",
         )
-        with ExpectedException(ServiceParsingError):
+        with self.assertRaisesRegex(
+            ServiceParsingError,
+            "Pebble returned status as 'unknown_status_for_maas'",
+        ):
             yield service_monitor._loadPebbleServiceState(service)
 
     @inlineCallbacks
@@ -1672,22 +1723,20 @@ class TestServiceMonitor(MAASTestCase):
         )
         mock_performServiceAction.return_value = succeed(None)
 
-        with ExpectedException(ServiceActionError):
+        with self.assertRaisesRegex(
+            ServiceActionError,
+            rf"^Service '{service.service_name}' failed to start\.",
+        ):
             with FakeLogger(
                 "maas.service_monitor", level=logging.INFO
             ) as maaslog:
                 yield service_monitor._ensureService(service)
-        self.assertDocTestMatches(
-            """\
-            Service '%s' is not on, it will be started.
-            Service '%s' failed to start. Its current state is '%s' and '%s'.
-            """
-            % (
-                service.service_name,
-                service.service_name,
-                SERVICE_STATE.OFF.value,
-                "waiting",
-            ),
+        self.assertIn(
+            f"Service '{service.service_name}' is not on, it will be started.",
+            maaslog.output,
+        )
+        self.assertIn(
+            f"Service '{service.service_name}' failed to start. Its current state is 'off' and 'waiting'.",
             maaslog.output,
         )
 

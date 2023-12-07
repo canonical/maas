@@ -7,8 +7,6 @@
 from collections import OrderedDict
 from textwrap import dedent
 
-from testtools import ExpectedException
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.isc import (
     ISCParseException,
@@ -304,15 +302,17 @@ class TestParseISCString(MAASTestCase):
         )
 
     def test_parse_unmatched_brackets_throws_iscparseexception(self):
-        with ExpectedException(ISCParseException):
+        with self.assertRaisesRegex(
+            ISCParseException, r"^Invalid brackets\.$"
+        ):
             parse_isc_string("forwarders {")
 
     def test_parse_malformed_list_throws_iscparseexception(self):
-        with ExpectedException(ISCParseException):
+        with self.assertRaisesRegex(ISCParseException, "^Syntax error$"):
             parse_isc_string("forwarders {{}a;;b}")
 
     def test_parse_forgotten_semicolons_throw_iscparseexception(self):
-        with ExpectedException(ISCParseException):
+        with self.assertRaisesRegex(ISCParseException, r"^Invalid brackets\."):
             parse_isc_string("a { b; } { c; } d e;")
 
     def test_read_isc_file(self):

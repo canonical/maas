@@ -4,12 +4,9 @@
 """Tests for the `helpers` module."""
 
 
-from unittest import mock
-
 from simplestreams.util import SignatureMissingException
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import helpers
 
@@ -56,9 +53,8 @@ class TestGetSigningPolicy(MAASTestCase):
         self.patch(helpers, "policy_read_signed")
         policy = helpers.get_signing_policy(path, keyring)
         policy(content, path)
-        self.assertThat(
-            helpers.policy_read_signed,
-            MockCalledOnceWith(mock.ANY, mock.ANY, keyring=keyring),
+        helpers.policy_read_signed.assert_called_once_with(
+            content, path, keyring=keyring
         )
 
 

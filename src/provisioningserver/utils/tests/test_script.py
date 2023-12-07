@@ -9,8 +9,6 @@ from random import randint
 from subprocess import CalledProcessError
 import types
 
-from testtools.testcase import ExpectedException
-
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
@@ -142,7 +140,7 @@ class TestActionScript(MAASTestCase):
         handler.run = lambda args: raise_exception()
         script = self.factory("Description")
         script.register("smash", handler)
-        with ExpectedException(SystemExit, ".*42.*"):
+        with self.assertRaisesRegex(SystemExit, "42"):
             # This needs to be a no-op.
             self.patch(script_module.ActionScript, "setup")
             script(["smash"])

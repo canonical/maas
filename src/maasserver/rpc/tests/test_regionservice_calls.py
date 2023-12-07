@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 from hashlib import sha256
 from hmac import HMAC
@@ -15,7 +16,17 @@ from unittest import skip
 from urllib.parse import urlparse
 
 from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import ContainsAll, Equals, HasLength, MatchesStructure
+from testtools.matchers import (
+    AllMatch,
+    ContainsAll,
+    Equals,
+    HasLength,
+    IsInstance,
+    MatchesAll,
+    MatchesDict,
+    MatchesStructure,
+)
+from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.protocols import amp
 from twisted.python.failure import Failure
@@ -79,13 +90,20 @@ from provisioningserver.rpc.region import (
     UpdateNodePowerState,
     UpdateServices,
 )
-from provisioningserver.rpc.testing import (
-    are_valid_tls_parameters,
-    call_responder,
-)
+from provisioningserver.rpc.testing import call_responder
 from provisioningserver.testing.config import ClusterConfigurationFixture
 
 wait_for_reactor = wait_for()
+
+
+are_valid_tls_parameters = MatchesDict(
+    {
+        "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
+        "tls_verifyAuthorities": MatchesAll(
+            IsInstance(Sequence), AllMatch(IsInstance(ssl.Certificate))
+        ),
+    }
+)
 
 
 @transactional

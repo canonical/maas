@@ -421,7 +421,7 @@ class ServiceMonitor:
         if state.active_state != SERVICE_STATE.ON:
             error_msg = (
                 "Service '%s' is not running and could not be started to "
-                "perfom the reload. Its current state is '%s' and '%s'."
+                "perform the reload. Its current state is '%s' and '%s'."
                 % (
                     service.service_name,
                     state.active_state,

@@ -8,7 +8,6 @@ import os
 from unittest import mock
 
 from maastesting.factory import factory
-from maastesting.matchers import FileContains, MockCalledWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import keyrings
 
@@ -21,17 +20,17 @@ class TestWriteKeyring(MAASTestCase):
         keyring_path = os.path.join(self.make_dir(), "a-keyring-file")
         keyrings.write_keyring(keyring_path, keyring_data.encode("utf-8"))
         self.assertTrue(os.path.exists(keyring_path))
-        self.assertThat(
-            keyring_path, FileContains(keyring_data, encoding="ascii")
-        )
+        with open(keyring_path, "rb") as fh:
+            contents = fh.read()
+        self.assertEqual(contents, keyring_data.encode("utf-8"))
 
 
 class TestCalculateKeyringName(MAASTestCase):
     """Tests for `calculate_keyring_name()`."""
 
     def test_creates_name_from_url(self):
-        parts = [self.getUniqueString() for _ in range(1, 5)]
-        source_url = "http://example.com/%s/" % "/".join(parts)
+        path = "/".join(self.getUniqueString() for _ in range(1, 5))
+        source_url = f"http://example.com/{path}"
         expected_keyring_name = hashlib.md5(
             source_url.encode("utf8")
         ).hexdigest()
@@ -48,7 +47,7 @@ class TestWriteAllKeyrings(MAASTestCase):
 
         sources = [
             {
-                "url": "http://%s" % self.getUniqueString(),
+                "url": f"http://{self.getUniqueString()}",
                 "keyring_data": factory.make_bytes(),
             }
             for _ in range(5)
@@ -68,13 +67,13 @@ class TestWriteAllKeyrings(MAASTestCase):
             )
             for source in sources
         )
-        self.assertThat(fake_write_keyring, MockCallsMatch(*expected_calls))
+        fake_write_keyring.assert_has_calls(expected_calls)
 
     def test_returns_sources(self):
         self.patch(keyrings, "write_keyring")
         sources = [
             {
-                "url": "http://%s" % self.getUniqueString(),
+                "url": f"http://{self.getUniqueString()}",
                 "keyring_data": factory.make_bytes(),
             }
             for _ in range(5)
@@ -109,10 +108,6 @@ class TestWriteAllKeyrings(MAASTestCase):
             keyring_path, keyrings.calculate_keyring_name(source["url"])
         )
         self.assertEqual(expected_keyring, returned_source.get("keyring"))
-        self.assertThat(
-            fake_maaslog.warning,
-            MockCalledWith(
-                "Both a keyring file and keyring data were specified; "
-                "ignoring the keyring file."
-            ),
+        fake_maaslog.warning.assert_called_with(
+            "Both a keyring file and keyring data were specified; ignoring the keyring file."
         )

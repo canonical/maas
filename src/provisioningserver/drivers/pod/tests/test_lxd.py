@@ -13,7 +13,6 @@ from unittest.mock import ANY, MagicMock, Mock, PropertyMock, sentinel
 from fixtures import EnvironmentVariable, TempDir
 from pylxd.exceptions import ClientConnectionFailed, LXDAPIException, NotFound
 from requests import Session
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 
 from maastesting.factory import factory
@@ -491,7 +490,7 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_context(with_cert=False, with_password=False)
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: No certificates available"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, context):
                 self.fail("should not get here")
 
@@ -511,7 +510,7 @@ class TestLXDPodDriver(MAASTestCase):
         )
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: Invalid PEM material"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, context):
                 self.fail("should not get here")
 
@@ -539,7 +538,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd.add_client_behavior(trusted=False)
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: Certificate is not trusted and no password was given"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, context) as client:
                 self.assertFalse(client.trusted)
                 # provided certs are used, not builtin ones
@@ -566,7 +565,7 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_context(with_password=False)
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: Certificate is not trusted and no password was given"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, context):
                 self.fail("should not get here")
 
@@ -574,7 +573,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd.add_client_behavior(fail_connect=True)
         pod_id = factory.make_name("pod_id")
         error_msg = f"Pod {pod_id}: Failed to connect to the LXD REST API."
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, self.make_context()):
                 self.fail("should not get here")
 
@@ -584,7 +583,7 @@ class TestLXDPodDriver(MAASTestCase):
         error_msg = (
             f"VM Host {pod_id}: Password authentication failed: auth failed"
         )
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_client(pod_id, self.make_context()):
                 self.fail("should not get here")
 
@@ -599,7 +598,7 @@ class TestLXDPodDriver(MAASTestCase):
         instance_name = context.get("instance_name")
         pod_id = factory.make_name("pod_id")
         error_msg = f"Pod {pod_id}: LXD VM {instance_name} not found."
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             with self.driver._get_machine(pod_id, context):
                 self.fail("should not get here")
 
@@ -656,7 +655,7 @@ class TestLXDPodDriver(MAASTestCase):
         machine.status_code = 106
         pod_id = factory.make_name("pod_id")
         error_msg = f"Pod {pod_id}: Unknown power status code: 106"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.power_query(pod_id, self.make_context())
 
     @inlineCallbacks
@@ -666,7 +665,7 @@ class TestLXDPodDriver(MAASTestCase):
             "Please upgrade your LXD host to 4.16 or higher "
             "to support the following extensions: projects"
         )
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.discover(None, self.make_context())
 
     @inlineCallbacks
@@ -742,7 +741,7 @@ class TestLXDPodDriver(MAASTestCase):
             "Please upgrade your LXD host to 4.16 or higher "
             "to support the following extensions: virtual-machines"
         )
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.discover_projects(None, self.make_context())
 
     @inlineCallbacks
@@ -750,7 +749,7 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_context(with_password=False)
         self.fake_lxd.add_client_behavior(trusted=False)
         error_msg = "VM Host None: Certificate is not trusted and no password was given"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.discover(None, context)
 
     @inlineCallbacks
@@ -759,7 +758,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd.add_client_behavior(trusted=False)
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: Certificate is not trusted and no password was given"
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.discover(pod_id, context)
 
     @inlineCallbacks
@@ -1538,7 +1537,7 @@ class TestLXDPodDriver(MAASTestCase):
         usable_pool = Mock()
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
-        with ExpectedException(
+        with self.assertRaisesRegex(
             lxd_module.LXDPodError,
             "No host network to attach VM interfaces to",
         ):
@@ -1558,7 +1557,7 @@ class TestLXDPodDriver(MAASTestCase):
         usable_pool = Mock()
         usable_pool.name = factory.make_name("pool")
         mock_get_usable_storage_pool.return_value = usable_pool
-        with ExpectedException(
+        with self.assertRaisesRegex(
             lxd_module.LXDPodError,
             "No host network to attach VM interfaces to",
         ):
@@ -1571,7 +1570,7 @@ class TestLXDPodDriver(MAASTestCase):
             "Please upgrade your LXD host to 4.16 or higher "
             "to support the following extensions: projects"
         )
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
+        with self.assertRaisesRegex(lxd_module.LXDPodError, error_msg):
             yield self.driver.compose(
                 None, self.make_context(), make_requested_machine()
             )

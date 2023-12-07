@@ -12,7 +12,6 @@ import threading
 from unittest.mock import ANY, call, Mock
 from uuid import uuid1
 
-from testtools import ExpectedException
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -692,7 +691,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
     def test_propagates_exit_errors(self):
         proto = JSONPerLineProtocol(callback=lambda json: None)
         reactor.spawnProcess(proto, b"false", (b"false",))
-        with ExpectedException(ProcessTerminated, ".* exit code 1"):
+        with self.assertRaisesRegex(ProcessTerminated, " exit code 1"):
             yield proto.done
 
     def test_parses_only_full_lines(self):
@@ -768,7 +767,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.connectionMade()
         reason = Failure(ProcessTerminated(1))
         proto.processEnded(reason)
-        with ExpectedException(ProcessTerminated):
+        with self.assertRaisesRegex(ProcessTerminated, r"exit code 1\.$"):
             yield proto.done
 
 
@@ -851,8 +850,7 @@ class TestProcessProtocolService(MAASTestCase):
         )
 
     def test_base_class_cannot_be_used(self):
-        with ExpectedException(TypeError):
-            ProcessProtocolService()
+        self.assertRaises(TypeError, ProcessProtocolService)
 
     @inlineCallbacks
     def test_starts_and_stops_process(self):
@@ -871,8 +869,9 @@ class TestProcessProtocolService(MAASTestCase):
             logger.messages[-1],
             "ForeverProcessProtocolService was terminated.",
         )
-        with ExpectedException(ProcessExitedAlready):
-            service._process.signalProcess("INT")
+        self.assertRaises(
+            ProcessExitedAlready, service._process.signalProcess, "INT"
+        )
 
     @inlineCallbacks
     def test_handles_normal_process_exit(self):

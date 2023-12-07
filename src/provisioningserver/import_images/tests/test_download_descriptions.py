@@ -11,7 +11,6 @@ from unittest.mock import ANY, call, Mock, sentinel
 from fixtures import FakeLogger
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
@@ -738,9 +737,7 @@ class TestRepoDumper(MAASTestCase):
             self.assertRaises(
                 io_error, dumper.sync, sentinel.reader, sentinel.path
             )
-            self.assertDocTestMatches(
-                "...error...syncing boot images...", maaslog.output
-            )
+        self.assertIn("I/O error while syncing boot images.", maaslog.output)
 
 
 class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
@@ -753,9 +750,7 @@ class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
         self.patch(download_descriptions.RepoDumper, "sync")
         path = factory.make_url()
         download_descriptions.download_image_descriptions(path)
-        self.assertThat(
-            mock_UrlMirrorReader, MockCalledOnceWith(ANY, policy=ANY)
-        )
+        mock_UrlMirrorReader.assert_called_once_with(path, policy=ANY)
 
     def test_passes_user_agent(self):
         mock_UrlMirrorReader = self.patch(
@@ -767,9 +762,8 @@ class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
         download_descriptions.download_image_descriptions(
             path, user_agent=user_agent
         )
-        self.assertThat(
-            mock_UrlMirrorReader,
-            MockCalledOnceWith(ANY, policy=ANY, user_agent=user_agent),
+        mock_UrlMirrorReader.assert_called_once_with(
+            path, policy=ANY, user_agent=user_agent
         )
 
     def test_doesnt_pass_user_agenton_fallback(self):
@@ -783,10 +777,9 @@ class TestDownloadImageDescriptionsUserAgent(MAASTestCase):
         download_descriptions.download_image_descriptions(
             path, user_agent=user_agent
         )
-        self.assertThat(
-            mock_UrlMirrorReader,
-            MockCallsMatch(
-                call(ANY, policy=ANY, user_agent=user_agent),
-                call(ANY, policy=ANY),
-            ),
+        mock_UrlMirrorReader.assert_has_calls(
+            [
+                call(path, policy=ANY, user_agent=user_agent),
+                call(path, policy=ANY),
+            ]
         )

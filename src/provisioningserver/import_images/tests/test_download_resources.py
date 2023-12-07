@@ -15,11 +15,6 @@ from simplestreams.contentsource import ChecksummingContentSource
 from simplestreams.objectstores import FileStore
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCalledWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import download_resources
@@ -72,15 +67,12 @@ class TestDownloadAllBootResources(MAASTestCase):
             product_mapping=product_mapping,
             store=file_store,
         )
-        self.assertThat(
-            fake,
-            MockCalledWith(
-                source["url"],
-                file_store,
-                snapshot_path,
-                product_mapping,
-                keyring_file=source["keyring"],
-            ),
+        fake.assert_called_once_with(
+            source["url"],
+            file_store,
+            snapshot_path,
+            product_mapping,
+            keyring_file=source["keyring"],
         )
 
 
@@ -198,7 +190,7 @@ class TestExtractArchiveTar(MAASTestCase):
                     size,
                     content_source,
                 )
-                self.assertThat(mocked_tar, MockNotCalled())
+                mocked_tar.assert_not_called()
                 for f, info in files.items():
                     cached_file = os.path.join(cache_dir, f"{f}-{sha256}")
                     expected_cached_file = (cached_file, f)
@@ -245,30 +237,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_extract_archive_tar,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_extract_archive_tar.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={subarch},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={subarch},
+            bootloader_type=None,
         )
 
     def test_inserts_file(self):
@@ -290,30 +276,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={subarch},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={subarch},
+            bootloader_type=None,
         )
 
     def test_inserts_rolling_links(self):
@@ -334,30 +314,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={"hwe-16.04", "hwe-rolling"},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={"hwe-16.04", "hwe-rolling"},
+            bootloader_type=None,
         )
 
     def test_only_creates_links_for_its_own_subarch(self):
@@ -396,30 +370,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={"ga-16.04"},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={"ga-16.04"},
+            bootloader_type=None,
         )
 
     def test_inserts_generic_link_for_generic_ga_kflavor(self):
@@ -440,30 +408,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
-        )
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
+        ),
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={"ga-16.04", "generic"},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={"ga-16.04", "generic"},
+            bootloader_type=None,
         )
 
     def test_inserts_no_generic_link_for_generic_non_ga_kflavor(self):
@@ -485,30 +447,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={"hwe-16.04"},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={"hwe-16.04"},
+            bootloader_type=None,
         )
 
     def test_inserts_generic_link_for_generic_kflavor_old_hwe_style_ga(self):
@@ -532,30 +488,24 @@ class TestRepoWriter(MAASTestCase):
         repo_writer.insert_item(product, None, None, None, None)
         # None is used for the store and the content source as we're not
         # writing anything to disk.
-        self.assertThat(
-            mock_insert_file,
-            MockCalledOnceWith(
-                None,
-                os.path.basename(product["path"]),
-                product["sha256"],
-                {"sha256": product["sha256"]},
-                product["size"],
-                None,
-            ),
+        mock_insert_file.assert_called_once_with(
+            None,
+            os.path.basename(product["path"]),
+            product["sha256"],
+            {"sha256": product["sha256"]},
+            product["size"],
+            None,
         )
         # links are mocked out by the mock_insert_file above.
-        self.assertThat(
-            mock_link_resources,
-            MockCalledOnceWith(
-                snapshot_path=None,
-                links=mock.ANY,
-                osystem=product["os"],
-                arch=product["arch"],
-                release=product["release"],
-                label=product["label"],
-                subarches={"hwe-p", "generic"},
-                bootloader_type=None,
-            ),
+        mock_link_resources.assert_called_once_with(
+            snapshot_path=None,
+            links=mock.ANY,
+            osystem=product["os"],
+            arch=product["arch"],
+            release=product["release"],
+            label=product["label"],
+            subarches={"hwe-p", "generic"},
+            bootloader_type=None,
         )
 
 

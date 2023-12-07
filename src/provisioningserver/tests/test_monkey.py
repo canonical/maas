@@ -4,8 +4,7 @@
 """Test monkey patches."""
 
 
-from testtools.deferredruntest import assert_fails_with
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
@@ -28,11 +27,17 @@ class TestAugmentDeferToThreadPool(MAASTestCase):
         super().setUp()
         augment_twisted_deferToThreadPool()
 
+    @inlineCallbacks
     def test_functions_returning_Deferreds_from_threads_crash(self):
-        return assert_fails_with(deferToThread(Deferred), TypeError)
+        with self.assertRaisesRegex(
+            TypeError, "Synchronous call returned a Deferred:"
+        ):
+            yield deferToThread(Deferred)
 
+    @inlineCallbacks
     def test_functions_returning_other_from_threads_are_okay(self):
-        return deferToThread(round, 12.34).addCallback(self.assertEqual, 12)
+        res = yield deferToThread(round, 12.34)
+        self.assertEqual(res, 12)
 
 
 class TestPatchedURI(MAASTestCase):

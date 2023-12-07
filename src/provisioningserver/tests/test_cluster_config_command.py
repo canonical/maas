@@ -11,8 +11,6 @@ import pprint
 from unittest.mock import Mock, patch
 import uuid
 
-from testtools import ExpectedException
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import cluster_config_command
@@ -61,8 +59,9 @@ class TestAddArguments(MAASTestCase):
                 # a nice ArgumentError exception, which unfortunately,
                 # gets caught and sent to exit.
                 if "--init" in test_arg_names and "--uuid" in test_arg_names:
-                    expected_exception = ExpectedException(SystemExit, "2")
-                    with expected_exception, patch("sys.stderr"):
+                    with self.assertRaisesRegex(SystemExit, "2"), patch(
+                        "sys.stderr"
+                    ):
                         parser.parse_known_args(args_under_test)
 
                 else:

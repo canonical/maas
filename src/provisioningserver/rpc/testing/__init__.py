@@ -4,14 +4,12 @@
 """Testing helpers for RPC implementations."""
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence
 import itertools
 from os import path
 from unittest.mock import Mock
 
 import fixtures
-from testtools.matchers import AllMatch, IsInstance, MatchesAll, MatchesDict
-from twisted.internet import defer, endpoints, reactor, ssl
+from twisted.internet import defer, endpoints, reactor
 from twisted.internet.defer import inlineCallbacks, returnValue
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
@@ -71,16 +69,6 @@ def call_responder(protocol, command, arguments):
     d.addErrback(eb_massage_error)
 
     return d
-
-
-are_valid_tls_parameters = MatchesDict(
-    {
-        "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
-        "tls_verifyAuthorities": MatchesAll(
-            IsInstance(Sequence), AllMatch(IsInstance(ssl.Certificate))
-        ),
-    }
-)
 
 
 class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):

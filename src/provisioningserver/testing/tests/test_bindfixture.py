@@ -7,8 +7,6 @@
 import os
 from subprocess import check_output
 
-from testtools.testcase import gather_details
-
 from maastesting.testcase import MAASTestCase
 from provisioningserver.testing.bindfixture import (
     BINDServer,
@@ -49,15 +47,8 @@ class TestBINDFixture(MAASTestCase):
             timeout_deadline=0.5, timeout_interval=0.02
         )
         with BINDServer(config) as fixture:
-            try:
-                result = dig_call(fixture.config.port)
-                self.assertIn("Got answer", result)
-            except Exception:
-                # self.useFixture() is not being used because we want to
-                # handle the fixture's lifecycle, so we must also be
-                # responsible for propagating fixture details.
-                gather_details(fixture.getDetails(), self.getDetails())
-                raise
+            result = dig_call(fixture.config.port)
+            self.assertIn("Got answer", result)
         self.assertFalse(fixture.runner.is_running())
 
     def test_config(self):

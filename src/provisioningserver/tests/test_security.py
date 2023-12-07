@@ -11,7 +11,6 @@ import time
 from unittest.mock import sentinel
 
 from cryptography.fernet import InvalidToken
-from testtools import ExpectedException
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -214,9 +213,13 @@ class TestFernetEncryption(SharedSecretTestCase):
     def test_raises_when_no_secret_exists(self):
         MAAS_SECRET.set(None)
         testdata = factory.make_bytes()
-        with ExpectedException(MissingSharedSecret):
+        with self.assertRaisesRegex(
+            MissingSharedSecret, "MAAS shared secret not found"
+        ):
             fernet_encrypt_psk(testdata)
-        with ExpectedException(MissingSharedSecret):
+        with self.assertRaisesRegex(
+            MissingSharedSecret, "MAAS shared secret not found"
+        ):
             fernet_decrypt_psk(b"")
 
     def test_assures_data_integrity(self):
@@ -235,7 +238,7 @@ class TestFernetEncryption(SharedSecretTestCase):
             byte_to_flip,
             bit_to_flip,
         )
-        with ExpectedException(InvalidToken, msg=test_description):
+        with self.assertRaisesRegex(InvalidToken, "^$", msg=test_description):
             fernet_decrypt_psk(bad_token)
 
     def test_messages_from_up_to_a_minute_in_the_future_accepted(self):
@@ -250,13 +253,11 @@ class TestFernetEncryption(SharedSecretTestCase):
         now = time.time()
         self.patch(time, "time").side_effect = [now - 2, now]
         token = fernet_encrypt_psk(testdata)
-        with ExpectedException(InvalidToken):
-            fernet_decrypt_psk(token, ttl=1)
+        self.assertRaises(InvalidToken, fernet_decrypt_psk, token, ttl=1)
 
     def test_messages_from_future_exceeding_clock_skew_limit_rejected(self):
         testdata = factory.make_bytes()
         now = time.time()
         self.patch(time, "time").side_effect = [now + 61, now]
         token = fernet_encrypt_psk(testdata)
-        with ExpectedException(InvalidToken):
-            fernet_decrypt_psk(token, ttl=1)
+        self.assertRaises(InvalidToken, fernet_decrypt_psk, token, ttl=1)

@@ -13,16 +13,9 @@ from random import randint
 from unittest import mock
 from unittest.mock import call, MagicMock
 
-from testtools.matchers import DirExists, FileExists, Not
 import yaml
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockAnyCall,
-    MockCalledOnce,
-    MockCalledWith,
-    MockCallsMatch,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 from provisioningserver.boot import BootMethodRegistry
@@ -87,9 +80,8 @@ class TestUpdateCurrentSymlink(MAASTestCase):
         storage_dir, target_dir = self.make_test_dirs()
         base_target_dir = os.path.basename(target_dir)
         self.assertLinkIsUpdated(storage_dir, target_dir)
-        self.assertThat(
-            symlink,
-            MockCallsMatch(
+        symlink.assert_has_calls(
+            [
                 call(
                     base_target_dir, os.path.join(storage_dir, ".temp.000001")
                 ),
@@ -99,7 +91,7 @@ class TestUpdateCurrentSymlink(MAASTestCase):
                 call(
                     base_target_dir, os.path.join(storage_dir, ".temp.000003")
                 ),
-            ),
+            ]
         )
 
     def test_fails_when_creating_temp_link_exists_a_lot(self):
@@ -380,17 +372,18 @@ class TestMain(MAASTestCase):
         boot_resources.main(args)
 
         # Verify the results.
-        self.assertThat(os.path.join(self.storage, "cache"), DirExists())
+        self.assertTrue(os.path.isdir(os.path.join(self.storage, "cache")))
         current = os.path.join(self.storage, "current")
         self.assertTrue(os.path.islink(current))
-        self.assertThat(current, DirExists())
-        self.assertThat(os.path.join(current, "pxelinux.0"), FileExists())
-        self.assertThat(os.path.join(current, "maas.meta"), FileExists())
-        self.assertThat(
-            os.path.join(
-                current, osystem, arch, subarch, self.release, self.label
-            ),
-            DirExists(),
+        self.assertTrue(os.path.isdir(current))
+        self.assertTrue(os.path.isfile(os.path.join(current, "pxelinux.0")))
+        self.assertTrue(os.path.isfile(os.path.join(current, "maas.meta")))
+        self.assertTrue(
+            os.path.isdir(
+                os.path.join(
+                    current, osystem, arch, subarch, self.release, self.label
+                )
+            )
         )
 
         # Verify the contents of the "meta" file.
@@ -440,10 +433,8 @@ class TestMain(MAASTestCase):
         self.assertRaises(exception_type, boot_resources.main, args)
 
         # Verify the reuslts.
-        self.assertThat(os.path.join(self.storage, "cache"), Not(DirExists()))
-        self.assertThat(
-            os.path.join(self.storage, "current"), Not(DirExists())
-        )
+        self.assertFalse(os.path.isdir(os.path.join(self.storage, "cache")))
+        self.assertFalse(os.path.isdir(os.path.join(self.storage, "current")))
 
     def test_warns_if_no_sources_selected(self):
         self.patch_maaslog()
@@ -452,9 +443,8 @@ class TestMain(MAASTestCase):
 
         boot_resources.main(args)
 
-        self.assertThat(
-            boot_resources.maaslog.warning,
-            MockAnyCall("Can't import: region did not provide a source."),
+        boot_resources.maaslog.warning.assert_any_call(
+            "Can't import: region did not provide a source."
         )
 
     def test_warns_if_no_boot_resources_found(self):
@@ -484,12 +474,8 @@ class TestMain(MAASTestCase):
 
         boot_resources.main(args)
 
-        self.assertThat(
-            boot_resources.maaslog.warning,
-            MockAnyCall(
-                "Finished importing boot images, the region does not have "
-                "any boot images available."
-            ),
+        boot_resources.maaslog.warning.assert_any_call(
+            "Finished importing boot images, the region does not have any boot images available."
         )
 
     def test_raises_ioerror_when_no_sources_file_found(self):
@@ -626,9 +612,7 @@ class TestImportImages(MAASTestCase):
             ],
         )
         boot_resources.import_images(sources)
-        self.assertThat(
-            fake_write_all_keyrings, MockCalledWith(mock.ANY, sources)
-        )
+        fake_write_all_keyrings.assert_called_with(mock.ANY, sources)
 
     def test_returns_false_when_no_images(self):
         # Stop import_images() from actually doing anything.
@@ -730,7 +714,7 @@ class TestImportImages(MAASTestCase):
             ],
         )
         self.assertRaises(Exception, boot_resources.import_images, sources)
-        self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())
+        fake_cleanup_snapshots_and_cache.assert_called_once()
 
     def test_runs_import_and_returns_true(self):
         # Stop import_images() from actually doing anything.
@@ -776,7 +760,7 @@ class TestImportImages(MAASTestCase):
             ],
         )
         self.assertTrue(boot_resources.import_images(sources))
-        self.assertThat(fake_write_snapshot_metadata, MockCalledOnce())
-        self.assertThat(fake_link_bootloaders, MockCalledOnce())
-        self.assertThat(fake_update_current_symlink, MockCalledOnce())
-        self.assertThat(fake_cleanup_snapshots_and_cache, MockCalledOnce())
+        fake_write_snapshot_metadata.assert_called_once()
+        fake_link_bootloaders.assert_called_once()
+        fake_update_current_symlink.assert_called_once()
+        fake_cleanup_snapshots_and_cache.assert_called_once()
