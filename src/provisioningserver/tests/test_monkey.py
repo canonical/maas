@@ -5,7 +5,6 @@
 
 
 from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import Equals
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
@@ -38,58 +37,62 @@ class TestAugmentDeferToThreadPool(MAASTestCase):
 
 class TestPatchedURI(MAASTestCase):
     def test_parses_URL_with_hostname(self):
-        hostname = factory.make_name("host").encode("ascii")
-        path = factory.make_name("path").encode("ascii")
-        uri = get_patched_URI().fromBytes(b"http://%s/%s" % (hostname, path))
-        self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(80))
+        hostname = factory.make_name("host")
+        path = factory.make_name("path")
+        uri = get_patched_URI().fromBytes(
+            f"http://{hostname}/{path}".encode("utf-8")
+        )
+        self.assertEqual(uri.host, hostname.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, 80)
 
     def test_parses_URL_with_hostname_and_port(self):
-        hostname = factory.make_name("host").encode("ascii")
+        hostname = factory.make_name("host")
         port = factory.pick_port()
-        path = factory.make_name("path").encode("ascii")
+        path = factory.make_name("path")
         uri = get_patched_URI().fromBytes(
-            b"http://%s:%d/%s" % (hostname, port, path)
+            f"http://{hostname}:{port}/{path}".encode("utf-8")
         )
-        self.expectThat(uri.host, Equals(hostname))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(port))
+        self.assertEqual(uri.host, hostname.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, port)
 
     def test_parses_URL_with_IPv4_address(self):
-        ip = factory.make_ipv4_address().encode("ascii")
+        ip = factory.make_ipv4_address()
         path = factory.make_name("path").encode("ascii")
-        uri = get_patched_URI().fromBytes(b"http://%s/%s" % (ip, path))
-        self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(80))
+        uri = get_patched_URI().fromBytes(
+            f"http://{ip}/{path}".encode("utf-8")
+        )
+        self.assertEqual(uri.host, ip.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, 80)
 
     def test_parses_URL_with_IPv4_address_and_port(self):
-        ip = factory.make_ipv4_address().encode("ascii")
+        ip = factory.make_ipv4_address()
         port = factory.pick_port()
-        path = factory.make_name("path").encode("ascii")
+        path = factory.make_name("path")
         uri = get_patched_URI().fromBytes(
-            b"http://%s:%d/%s" % (ip, port, path)
+            f"http://{ip}:{port}/{path}".encode("utf-8")
         )
-        self.expectThat(uri.host, Equals(ip))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(port))
+        self.assertEqual(uri.host, ip.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, port)
 
     def test_parses_URL_with_IPv6_address(self):
-        ip = factory.make_ipv6_address().encode("ascii")
-        path = factory.make_name("path").encode("ascii")
-        uri = get_patched_URI().fromBytes(b"http://[%s]/%s" % (ip, path))
-        self.expectThat(uri.host, Equals(b"%s" % ip))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(80))
+        ip = factory.make_ipv6_address()
+        path = factory.make_name("path")
+        uri = get_patched_URI().fromBytes(f"http://[{ip}]/{path}".encode())
+        self.assertEqual(uri.host, ip.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, 80)
 
     def test_parses_URL_with_IPv6_address_and_port(self):
-        ip = factory.make_ipv6_address().encode("ascii")
+        ip = factory.make_ipv6_address()
         port = factory.pick_port()
-        path = factory.make_name("path").encode("ascii")
+        path = factory.make_name("path")
         uri = get_patched_URI().fromBytes(
-            b"http://[%s]:%d/%s" % (ip, port, path)
+            f"http://[{ip}]:{port}/{path}".encode()
         )
-        self.expectThat(uri.host, Equals(b"%s" % ip))
-        self.expectThat(uri.path, Equals(b"/%s" % path))
-        self.expectThat(uri.port, Equals(port))
+        self.assertEqual(uri.host, ip.encode("utf-8"))
+        self.assertEqual(uri.path, f"/{path}".encode("utf-8"))
+        self.assertEqual(uri.port, port)

@@ -14,11 +14,6 @@ from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCalledWith,
-    MockCallsMatch,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import seamicro
 from provisioningserver.drivers.hardware.seamicro import (
@@ -39,9 +34,9 @@ from provisioningserver.utils.twisted import asynchronous
 class FakeResponse:
     def __init__(self, response_code, response, is_json=False):
         self.response_code = response_code
-        self.response = response
         if is_json:
-            self.response = json.dumps(response)
+            response = json.dumps(response)
+        self.response = response
 
     def getcode(self):
         return self.response_code
@@ -163,7 +158,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
     def assert_put_power_called(self, mock, idx, new_status, *params):
         location = "servers/%d" % idx
         params = ["action=%s" % new_status] + list(params)
-        self.assertThat(mock, MockCalledOnceWith(location, params=params))
+        mock.assert_called_once_with(location, params=params)
 
     def test_put_server_power_on_using_pxe(self):
         token = factory.make_string()
@@ -251,12 +246,11 @@ class TestSeaMicro(MAASTestCase):
             password,
             "ipmi",
         )
-        self.assertThat(
-            mock,
-            MockCallsMatch(
+        mock.assert_has_calls(
+            [
                 call("v2.0", ip, username, password),
                 call("v0.9", ip, username, password),
-            ),
+            ]
         )
 
     def test_find_seamicro15k_servers_restapi(self):
@@ -269,9 +263,7 @@ class TestSeaMicro(MAASTestCase):
             password,
             "restapi",
         )
-        self.assertThat(
-            mock, MockCalledOnceWith("v0.9", ip, username, password)
-        )
+        mock.assert_called_once_with("v0.9", ip, username, password)
 
     def test_find_seamicro15k_servers_restapi2(self):
         mock, ip, username, password = self.configure_get_seamicro15k_api()
@@ -283,9 +275,7 @@ class TestSeaMicro(MAASTestCase):
             password,
             "restapi2",
         )
-        self.assertThat(
-            mock, MockCalledOnceWith("v2.0", ip, username, password)
-        )
+        mock.assert_called_once_with("v2.0", ip, username, password)
 
     def configure_api_v09_login(self, token=None):
         token = token or factory.make_string()
@@ -349,17 +339,14 @@ class TestSeaMicro(MAASTestCase):
             "power_pass": password,
             "power_user": username,
         }
-        self.expectThat(
-            mock_create_node,
-            MockCalledWith(
-                last["serverMacAddr"],
-                "amd64",
-                "sm15k",
-                power_params,
-                domain=domain,
-            ),
+        mock_create_node.assert_called_with(
+            last["serverMacAddr"],
+            "amd64",
+            "sm15k",
+            power_params,
+            domain=domain,
         )
-        self.expectThat(mock_commission_node, MockCalledWith(system_id, user))
+        mock_commission_node.assert_called_with(system_id, user)
 
     def test_power_control_seamicro15k_v09(self):
         self.configure_api_v09_login()
@@ -369,9 +356,7 @@ class TestSeaMicro(MAASTestCase):
         mock = self.patch(SeaMicroAPIV09, "power_server")
 
         power_control_seamicro15k_v09(ip, username, password, "25", "on")
-        self.assertThat(
-            mock, MockCalledOnceWith("25/0", POWER_STATUS.ON, do_pxe=True)
-        )
+        mock.assert_called_once_with("25/0", POWER_STATUS.ON, do_pxe=True)
 
     def test_power_control_seamicro15k_v09_retry_failure(self):
         self.configure_api_v09_login()
@@ -439,9 +424,8 @@ class TestSeaMicro(MAASTestCase):
         )
         self.assertEqual(2, mock_create_node.call_count)
 
-        self.expectThat(
-            mock_create_node,
-            MockCallsMatch(
+        mock_create_node.assert_has_calls(
+            [
                 call(
                     fake_server_0.get_fake_macs(),
                     "amd64",
@@ -468,9 +452,9 @@ class TestSeaMicro(MAASTestCase):
                     },
                     domain=None,
                 ),
-            ),
+            ]
         )
-        self.expectThat(mock_commission_node, MockCalledWith(system_id, user))
+        mock_commission_node.assert_called_with(system_id, user)
 
     def test_power_control_seamicro15k_v2(self):
         ip = factory.make_ipv4_address()
@@ -487,7 +471,7 @@ class TestSeaMicro(MAASTestCase):
         mock_get_api.return_value = fake_client
 
         power_control_seamicro15k_v2(ip, username, password, "0", "on")
-        self.assertThat(mock_power_on, MockCalledOnceWith(using_pxe=True))
+        mock_power_on.assert_called_once_with(using_pxe=True)
 
     def test_power_control_seamicro15k_v2_raises_error_when_api_None(self):
         ip = factory.make_ipv4_address()

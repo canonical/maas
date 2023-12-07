@@ -6,8 +6,6 @@
 
 from unittest.mock import MagicMock, sentinel
 
-from testtools.matchers import IsInstance
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.events import Event, EventGroup
@@ -64,4 +62,4 @@ class TestEventGroup(MAASTestCase):
         events = [factory.make_name("event") for _ in range(3)]
         group = EventGroup(*events)
         for event in events:
-            self.expectThat(getattr(group, event), IsInstance(Event))
+            self.assertIsInstance(getattr(group, event), Event)

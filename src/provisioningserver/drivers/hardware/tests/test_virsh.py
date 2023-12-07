@@ -11,13 +11,11 @@ from unittest.mock import call
 
 from lxml import etree
 import pexpect
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import virsh
 from provisioningserver.utils.arch import KERNEL_TO_DEBIAN_ARCHITECTURES
@@ -130,7 +128,7 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_sendline = self.patch(conn, "sendline")
         conn.login(poweraddr=None)
-        self.assertThat(mock_sendline, MockCalledOnceWith("yes"))
+        mock_sendline.assert_called_once_with("yes")
 
     def test_login_with_password(self):
         virsh_outputs = [
@@ -140,7 +138,7 @@ class TestVirshSSH(MAASTestCase):
         fake_password = factory.make_name("password")
         mock_sendline = self.patch(conn, "sendline")
         conn.login(poweraddr=None, password=fake_password)
-        self.assertThat(mock_sendline, MockCalledOnceWith(fake_password))
+        mock_sendline.assert_called_once_with(fake_password)
 
     def test_login_missing_password(self):
         virsh_outputs = [
@@ -149,22 +147,22 @@ class TestVirshSSH(MAASTestCase):
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, "close")
         self.assertFalse(conn.login(poweraddr=None, password=None))
-        self.assertThat(mock_close, MockCalledOnceWith())
+        mock_close.assert_called_once_with()
 
     def test_login_invalid(self):
         virsh_outputs = [factory.make_string()]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, "close")
         self.assertFalse(conn.login(poweraddr=None))
-        self.assertThat(mock_close, MockCalledOnceWith())
+        mock_close.assert_called_once_with()
 
     def test_logout(self):
         conn = self.configure_virshssh_pexpect()
         mock_sendline = self.patch(conn, "sendline")
         mock_close = self.patch(conn, "close")
         conn.logout()
-        self.assertThat(mock_sendline, MockCalledOnceWith("quit"))
-        self.assertThat(mock_close, MockCalledOnceWith())
+        mock_sendline.assert_called_once_with("quit")
+        mock_close.assert_called_once_with()
 
     def test_prompt(self):
         virsh_outputs = ["virsh # "]
@@ -185,8 +183,8 @@ class TestVirshSSH(MAASTestCase):
         mock_sendline = self.patch(conn, "sendline")
         mock_prompt = self.patch(conn, "prompt")
         output = conn.run(cmd)
-        self.assertThat(mock_sendline, MockCalledOnceWith(expected))
-        self.assertThat(mock_prompt, MockCalledOnceWith())
+        mock_sendline.assert_called_once_with(expected)
+        mock_prompt.assert_called_once_with()
         self.assertEqual("\n".join(names), output)
 
     def test_list(self):
@@ -242,11 +240,8 @@ class TestVirshSSH(MAASTestCase):
         c_utf8_environment = get_env_with_locale()
         mock_spawn = self.patch(pexpect.spawn, "__init__")
         self.configure_virshssh("")
-        self.assertThat(
-            mock_spawn,
-            MockCalledOnceWith(
-                None, timeout=30, maxread=2000, env=c_utf8_environment
-            ),
+        mock_spawn.assert_called_once_with(
+            None, timeout=30, maxread=2000, env=c_utf8_environment
         )
 
 
@@ -359,15 +354,12 @@ class TestVirsh(MAASTestCase):
 
         # Check that login was called with the provided poweraddr and
         # password.
-        self.expectThat(
-            mock_login, MockCalledOnceWith(poweraddr, fake_password)
-        )
+        mock_login.assert_called_once_with(poweraddr, fake_password)
 
         # Check that the create command had the correct parameters for
         # each machine.
-        self.expectThat(
-            mock_create_node,
-            MockCallsMatch(
+        mock_create_node.assert_has_calls(
+            [
                 call(
                     fake_macs[0],
                     fake_arch,
@@ -408,24 +400,25 @@ class TestVirsh(MAASTestCase):
                     domain,
                     machines[4],
                 ),
-            ),
+            ]
         )
 
         # The first and last machine should have poweroff called on it, as it
         # was initial in the on state.
-        self.expectThat(
-            mock_poweroff, MockCallsMatch(call(machines[0]), call(machines[3]))
-        )
+        mock_poweroff.assert_has_calls([call(machines[0]), call(machines[3])])
 
-        self.assertThat(mock_logout, MockCalledOnceWith())
-        self.expectThat(
-            mock_commission_node,
-            MockCallsMatch(
+        mock_logout.assert_called_once_with()
+        mock_commission_node.assert_has_calls(
+            [
                 call(system_id, user),
+                call().wait(30),
                 call(system_id, user),
+                call().wait(30),
                 call(system_id, user),
+                call().wait(30),
                 call(system_id, user),
-            ),
+                call().wait(30),
+            ]
         )
 
     @inlineCallbacks
@@ -434,7 +427,9 @@ class TestVirsh(MAASTestCase):
         poweraddr = factory.make_name("poweraddr")
         mock_login = self.patch(virsh.VirshSSH, "login")
         mock_login.return_value = False
-        with ExpectedException(virsh.VirshError):
+        with self.assertRaisesRegex(
+            virsh.VirshError, r"^Failed to login to virsh console\.$"
+        ):
             yield deferToThread(
                 virsh.probe_virsh_and_enlist,
                 user,
@@ -469,9 +464,9 @@ class TestVirshPowerControl(MAASTestCase):
         machine = factory.make_name("machine")
         virsh.power_control_virsh(poweraddr, machine, "on")
 
-        self.assertThat(mock_login, MockCalledOnceWith(poweraddr, None))
-        self.assertThat(mock_state, MockCalledOnceWith(machine))
-        self.assertThat(mock_poweron, MockCalledOnceWith(machine))
+        mock_login.assert_called_once_with(poweraddr, None)
+        mock_state.assert_called_once_with(machine)
+        mock_poweron.assert_called_once_with(machine)
 
     def test_power_control_off(self):
         mock_login = self.patch(virsh.VirshSSH, "login")
@@ -484,9 +479,9 @@ class TestVirshPowerControl(MAASTestCase):
         machine = factory.make_name("machine")
         virsh.power_control_virsh(poweraddr, machine, "off")
 
-        self.assertThat(mock_login, MockCalledOnceWith(poweraddr, None))
-        self.assertThat(mock_state, MockCalledOnceWith(machine))
-        self.assertThat(mock_poweroff, MockCalledOnceWith(machine))
+        mock_login.assert_called_once_with(poweraddr, None)
+        mock_state.assert_called_once_with(machine)
+        mock_poweroff.assert_called_once_with(machine)
 
     def test_power_control_bad_domain(self):
         mock_login = self.patch(virsh.VirshSSH, "login")

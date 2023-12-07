@@ -8,7 +8,6 @@ from itertools import repeat
 import string
 
 import hypothesis.strategies
-from testtools.matchers import Equals
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -111,9 +110,9 @@ class TestNormalizeToCommaListScenarios(MAASTestCase):
 
     def test_scenarios(self):
         unquoted = normalise_to_comma_list(self.test_input)
-        self.expectThat(unquoted, Equals(self.unquoted))
+        self.assertEqual(unquoted, self.unquoted)
         quoted = normalise_to_comma_list(self.test_input, quoted=True)
-        self.expectThat(quoted, Equals(self.quoted))
+        self.assertEqual(quoted, self.quoted)
 
 
 class TestSplitStringList(MAASTestCase):

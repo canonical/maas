@@ -7,8 +7,6 @@
 
 import random
 
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
@@ -16,10 +14,6 @@ from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import vmware
-from provisioningserver.drivers.hardware.vmware import (
-    VMwarePyvmomiAPI,
-    VMwareVMNotFound,
-)
 from provisioningserver.utils.twisted import asynchronous
 
 
@@ -53,8 +47,7 @@ class FakeVmomiVMRuntime:
 
 
 class FakeVmomiVMConfigHardwareDevice:
-    def __init__(self):
-        pass
+    pass
 
 
 class FakeVmomiNic(FakeVmomiVMConfigHardwareDevice):
@@ -246,35 +239,36 @@ class TestVMwarePyvmomi(MAASTestCase):
 
     def test_api_connection(self):
         mock_vmomi_api = self.configure_vmomi_api(servers=0)
-        api = VMwarePyvmomiAPI(
+        api = vmware.VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username(),
         )
         api.connect()
-        self.expectThat(
-            api.service_instance, IsInstance(FakeVmomiServiceInstance)
-        )
-        self.expectThat(api.is_connected(), Equals(True))
+        self.assertIsInstance(api.service_instance, FakeVmomiServiceInstance)
+        self.assertTrue(api.is_connected())
         api.disconnect()
-        self.expectThat(mock_vmomi_api.SmartConnect.called, Equals(True))
-        self.expectThat(mock_vmomi_api.Disconnect.called, Equals(True))
+        self.assertTrue(mock_vmomi_api.SmartConnect.called)
+        self.assertTrue(mock_vmomi_api.Disconnect.called)
 
     def test_api_failed_connection(self):
         mock_vmomi_api = self.patch(vmware, "vmomi_api")
         mock_vmomi_api.SmartConnect.return_value = None
-        api = VMwarePyvmomiAPI(
+        api = vmware.VMwarePyvmomiAPI(
             factory.make_hostname(),
             factory.make_username(),
             factory.make_username(),
         )
-        with ExpectedException(vmware.VMwareAPIConnectionFailed):
+        with self.assertRaisesRegex(
+            vmware.VMwareAPIConnectionFailed,
+            "^Could not connect to VMware service API$",
+        ):
             api.connect()
-        self.expectThat(api.service_instance, Is(None))
-        self.expectThat(api.is_connected(), Equals(False))
+        self.assertIsNone(api.service_instance)
+        self.assertFalse(api.is_connected())
         api.disconnect()
-        self.expectThat(mock_vmomi_api.SmartConnect.called, Equals(True))
-        self.expectThat(mock_vmomi_api.Disconnect.called, Equals(True))
+        self.assertTrue(mock_vmomi_api.SmartConnect.called)
+        self.assertTrue(mock_vmomi_api.Disconnect.called)
 
     def test_get_vmware_servers_empty(self):
         self.configure_vmomi_api(servers=0)
@@ -285,7 +279,7 @@ class TestVMwarePyvmomi(MAASTestCase):
             port=8443,
             protocol="https",
         )
-        self.expectThat(servers, Equals({}))
+        self.assertEqual(servers, {})
 
     def test_get_vmware_servers(self):
         self.configure_vmomi_api(servers=10)
@@ -294,7 +288,7 @@ class TestVMwarePyvmomi(MAASTestCase):
             factory.make_username(),
             factory.make_username(),
         )
-        self.expectThat(servers, Not(Equals({})))
+        self.assertNotEqual(servers, {})
 
     def test_get_server_by_instance_uuid(self):
         mock_vmomi_api = self.configure_vmomi_api(
@@ -336,7 +330,10 @@ class TestVMwarePyvmomi(MAASTestCase):
         mock_vmomi_api = self.configure_vmomi_api(
             servers=1, has_instance_uuid=True, has_uuid=True
         )
-        with ExpectedException(VMwareVMNotFound):
+        with self.assertRaisesRegex(
+            vmware.VMwareVMNotFound,
+            "^Failed to find VM; need a UUID or a VM name for power control$",
+        ):
             vmware._find_vm_by_uuid_or_name(mock_vmomi_api, None, None)
 
     def test_power_control_missing_server_raises_VMwareVMNotFound(self):
@@ -346,7 +343,10 @@ class TestVMwarePyvmomi(MAASTestCase):
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
-        with ExpectedException(VMwareVMNotFound):
+        with self.assertRaisesRegex(
+            vmware.VMwareVMNotFound,
+            "^Failed to find VM; need a UUID or a VM name for power control$",
+        ):
             vmware.power_control_vmware(
                 host, username, password, None, None, "on"
             )
@@ -358,7 +358,10 @@ class TestVMwarePyvmomi(MAASTestCase):
         host = factory.make_hostname()
         username = factory.make_username()
         password = factory.make_username()
-        with ExpectedException(VMwareVMNotFound):
+        with self.assertRaisesRegex(
+            vmware.VMwareVMNotFound,
+            "^Failed to find VM; need a UUID or a VM name for power control$",
+        ):
             vmware.power_query_vmware(host, username, password, None, None)
 
     def test_power_control(self):
@@ -399,7 +402,7 @@ class TestVMwarePyvmomi(MAASTestCase):
             state = vmware.power_query_vmware(
                 host, username, password, vm_name, uuid
             )
-            self.expectThat(state, Equals("on"))
+            self.assertEqual(state, "on")
 
         # turn off a set of VMs, then verify they are off
         for uuid in instance_uuids:
@@ -410,9 +413,9 @@ class TestVMwarePyvmomi(MAASTestCase):
             state = vmware.power_query_vmware(
                 host, username, password, vm_name, uuid
             )
-            self.expectThat(state, Equals("off"))
+            self.assertEqual(state, "off")
 
-        self.expectThat(servers, Not(Equals({})))
+        self.assertNotEqual(servers, {})
 
     @inlineCallbacks
     def test_probe_and_enlist(self):

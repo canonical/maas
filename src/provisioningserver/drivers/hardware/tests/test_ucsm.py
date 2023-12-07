@@ -10,17 +10,11 @@ import urllib.parse
 import urllib.request
 
 from lxml.etree import Element, SubElement, XML
-from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import ucsm
 from provisioningserver.drivers.hardware.ucsm import (
@@ -142,7 +136,7 @@ class TestLogin(MAASTestCase):
         api, mock = make_api_patch_call(self, user=user, password=password)
         api.login()
         fields = {"inName": user, "inPassword": password}
-        self.assertThat(mock, MockCalledOnceWith("aaaLogin", fields))
+        mock.assert_called_once_with("aaaLogin", fields)
 
 
 class TestLogout(MAASTestCase):
@@ -157,7 +151,7 @@ class TestLogout(MAASTestCase):
         cookie = api.cookie
         api.logout()
         fields = {"inCookie": cookie}
-        self.assertThat(mock, MockCalledOnceWith("aaaLogout", fields))
+        mock.assert_called_once_with("aaaLogout", fields)
 
 
 class TestConfigResolveClass(MAASTestCase):
@@ -166,9 +160,7 @@ class TestConfigResolveClass(MAASTestCase):
         api, mock = make_api_patch_call(self)
         api.config_resolve_class(class_id)
         fields = {"cookie": api.cookie, "classId": class_id}
-        self.assertThat(
-            mock, MockCalledOnceWith("configResolveClass", fields, ANY)
-        )
+        mock.assert_called_once_with("configResolveClass", fields, ANY)
 
     def test_with_filters(self):
         class_id = make_class()
@@ -192,18 +184,14 @@ class TestConfigResolveChildren(MAASTestCase):
         api, mock = make_api_patch_call(self)
         api.config_resolve_children(dn, class_id)
         fields = {"inDn": dn, "classId": class_id, "cookie": api.cookie}
-        self.assertThat(
-            mock, MockCalledOnceWith("configResolveChildren", fields)
-        )
+        mock.assert_called_once_with("configResolveChildren", fields)
 
     def test_no_class_id(self):
         dn = make_dn()
         api, mock = make_api_patch_call(self)
         api.config_resolve_children(dn)
         fields = {"inDn": dn, "cookie": api.cookie}
-        self.assertThat(
-            mock, MockCalledOnceWith("configResolveChildren", fields)
-        )
+        mock.assert_called_once_with("configResolveChildren", fields)
 
     def test_return_response(self):
         api, mock = make_api_patch_call(self)
@@ -219,7 +207,7 @@ class TestConfigConfMo(MAASTestCase):
         api, mock = make_api_patch_call(self)
         api.config_conf_mo(dn, config_items)
         fields = {"dn": dn, "cookie": api.cookie}
-        self.assertThat(mock, MockCalledOnceWith("configConfMo", fields, ANY))
+        mock.assert_called_once_with("configConfMo", fields, ANY)
         in_configs = mock.call_args[0][2]
         self.assertEqual(config_items, in_configs[0][:])
 
@@ -240,10 +228,8 @@ class TestCall(MAASTestCase):
         mock_send_request.return_value = response
 
         api._call(name, fields, children)
-        self.assertThat(
-            mock_make_request_data, MockCalledOnceWith(name, fields, children)
-        )
-        self.assertThat(mock_send_request, MockCalledOnceWith(request))
+        mock_make_request_data.assert_called_once_with(name, fields, children)
+        mock_send_request.assert_called_once_with(request)
 
 
 class TestSendRequest(MAASTestCase):
@@ -266,7 +252,7 @@ class TestConfigResolveDn(MAASTestCase):
         test_dn = make_dn()
         fields = {"cookie": api.cookie, "dn": test_dn}
         api.config_resolve_dn(test_dn)
-        self.assertThat(mock, MockCalledOnceWith("configResolveDn", fields))
+        mock.assert_called_once_with("configResolveDn", fields)
 
 
 class TestGetServers(MAASTestCase):
@@ -292,7 +278,7 @@ class TestGetServers(MAASTestCase):
         api = make_api()
         mock = self.patch(api, "config_resolve_class")
         get_servers(api, uuid)
-        self.assertThat(mock, MockCalledOnceWith("computeItem", ANY))
+        mock.assert_called_once_with("computeItem", ANY)
 
 
 class TestProbeLanBootOptions(MAASTestCase):
@@ -309,16 +295,11 @@ class TestProbeLanBootOptions(MAASTestCase):
         )
         mock_config_resolve_children.return_value = fake_result
         self.assertEqual(1, len(probe_lan_boot_options(api, server)))
-        self.assertThat(
-            mock_config_resolve_children,
-            MockCalledOnceWith(sentinel.profile_get),
+        mock_config_resolve_children.assert_called_once_with(
+            sentinel.profile_get
         )
-        self.assertThat(
-            mock_service_profile.get, MockCalledOnceWith("operBootPolicyName")
-        )
-        self.assertThat(
-            mock_get_service_profile, MockCalledOnceWith(api, server)
-        )
+        mock_service_profile.get.assert_called_once_with("operBootPolicyName")
+        mock_get_service_profile.assert_called_once_with(api, server)
 
 
 class TestGetChildren(MAASTestCase):
@@ -340,7 +321,7 @@ class TestGetChildren(MAASTestCase):
         in_element = Element("test", {"dn": parent_dn})
         class_id = search_class
         get_children(api, in_element, class_id)
-        self.assertThat(mock, MockCalledOnceWith(parent_dn, search_class))
+        mock.assert_called_once_with(parent_dn, search_class)
 
 
 class TestGetMacs(MAASTestCase):
@@ -359,12 +340,11 @@ class TestGetMacs(MAASTestCase):
 
         mock.side_effect = fake_get_children
         macs = get_macs(api, server)
-        self.assertThat(
-            mock,
-            MockCallsMatch(
+        mock.assert_has_calls(
+            [
                 call(api, server, "adaptorUnit"),
                 call(api, adaptor, "adaptorHostEthIf"),
-            ),
+            ]
         )
         self.assertEqual([mac], macs)
 
@@ -374,7 +354,7 @@ class TestProbeServers(MAASTestCase):
         api = make_api()
         mock = self.patch(ucsm, "get_servers")
         probe_servers(api)
-        self.assertThat(mock, MockCalledOnceWith(api))
+        mock.assert_called_once_with(api)
 
     def test_returns_results(self):
         servers = [{"uuid": factory.make_UUID()}]
@@ -415,7 +395,7 @@ class TestGetServerPowerControl(MAASTestCase):
         dn = make_dn()
         server = Element("computeItem", {"assignedToDn": dn})
         power_control = get_server_power_control(api, server)
-        self.assertThat(mock, MockCalledOnceWith(dn, "lsPower"))
+        mock.assert_called_once_with(dn, "lsPower")
         self.assertEqual("lsPower", power_control.tag)
 
 
@@ -427,7 +407,7 @@ class TestSetServerPowerControl(MAASTestCase):
         config_conf_mo_mock = self.patch(api, "config_conf_mo")
         state = "state"
         set_server_power_control(api, power_control, state)
-        self.assertThat(config_conf_mo_mock, MockCalledOnceWith(power_dn, ANY))
+        config_conf_mo_mock.assert_called_once_with(power_dn, ANY)
         power_change = config_conf_mo_mock.call_args[0][1][0]
         self.assertEqual(power_change.tag, "lsPower")
         self.assertEqual({"state": state, "dn": power_dn}, power_change.attrib)
@@ -443,9 +423,9 @@ class TestLoggedIn(MAASTestCase):
 
         with logged_in(url, username, password) as api:
             self.assertEqual(mock.return_value, api)
-            self.assertThat(api.login, MockCalledOnceWith())
+            api.login()
 
-        self.assertThat(mock.return_value.logout, MockCalledOnceWith())
+        mock.return_value.logout.assert_called_once_with()
 
 
 class TestValidGetPowerCommand(MAASTestCase):
@@ -498,10 +478,9 @@ class TestPowerControlUCSM(MAASTestCase):
             ucsm, "set_server_power_control"
         )
         power_control_ucsm("url", "username", "password", uuid, "off")
-        self.assertThat(get_servers_mock, MockCalledOnceWith(api, uuid))
-        self.assertThat(
-            set_server_power_control_mock,
-            MockCalledOnceWith(api, power_control, state),
+        get_servers_mock.assert_called_once_with(api, uuid)
+        set_server_power_control_mock.assert_called_once_with(
+            api, power_control, state
         )
 
 
@@ -517,8 +496,8 @@ class TestUCSMPowerState(MAASTestCase):
         get_servers_mock.return_value = [make_server("off")]
 
         power_state = power_state_ucsm(url, username, password, uuid)
-        self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
-        self.expectThat(power_state, Equals("off"))
+        get_servers_mock.assert_called_once_with(api, uuid)
+        self.assertEqual(power_state, "off")
 
     def test_power_state_get_on(self):
         url = factory.make_name("url")
@@ -531,8 +510,8 @@ class TestUCSMPowerState(MAASTestCase):
         get_servers_mock.return_value = [make_server("on")]
 
         power_state = power_state_ucsm(url, username, password, uuid)
-        self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
-        self.expectThat(power_state, Equals("on"))
+        get_servers_mock.assert_called_once_with(api, uuid)
+        self.assertEqual(power_state, "on")
 
     def test_power_state_error_on_unknown_state(self):
         url = factory.make_name("url")
@@ -576,23 +555,18 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
         yield deferToThread(
             probe_and_enlist_ucsm, user, url, username, password, True, domain
         )
-        self.expectThat(
-            set_lan_boot_default_mock, MockCalledOnceWith(api, server_element)
-        )
-        self.expectThat(probe_servers_mock, MockCalledOnceWith(api))
+        set_lan_boot_default_mock.assert_called_once_with(api, server_element)
+        probe_servers_mock.assert_called_once_with(api)
         params = {
             "power_address": url,
             "power_user": username,
             "power_pass": password,
             "uuid": server[0]["uuid"],
         }
-        self.expectThat(
-            create_node_mock,
-            MockCalledOnceWith(server[1], "amd64", "ucsm", params, domain),
+        create_node_mock.assert_called_once_with(
+            server[1], "amd64", "ucsm", params, domain
         )
-        self.expectThat(
-            commission_node_mock, MockCalledOnceWith(system_id, user)
-        )
+        commission_node_mock.assert_called_once_with(system_id, user)
 
 
 class TestGetServiceProfile(MAASTestCase):
@@ -605,7 +579,7 @@ class TestGetServiceProfile(MAASTestCase):
             "configResolveDn", "lsServer", "outConfig"
         )
         service_profile = get_service_profile(api, server)
-        self.assertThat(mock, MockCalledOnceWith(test_dn))
+        mock.assert_called_once_with(test_dn)
         self.assertEqual(mock.return_value[0], service_profile)
 
 
@@ -646,7 +620,7 @@ class TestsForStripRoKeys(MAASTestCase):
         attributes = {key: "DC" for key in RO_KEYS}
 
         elements = [
-            Element("Element%d" % i, attributes)
+            Element(f"Element{i}", attributes)
             for i in range(random.randint(0, 10))
         ]
 
@@ -667,7 +641,7 @@ class TestMakePolicyChange(MAASTestCase):
         mock.return_value = boot_profile_response[0]
         change = make_policy_change(boot_profile_response)
         self.assertIsNone(change)
-        self.assertThat(mock, MockCalledOnceWith(boot_profile_response))
+        mock.assert_called_once_with(boot_profile_response)
 
     def test_change_lan_to_top_priority(self):
         boot_profile_response = Element("outConfigs")
@@ -694,7 +668,7 @@ class TestSetLanBootDefault(MAASTestCase):
         self.patch(ucsm, "make_policy_change").return_value = None
         config_conf_mo = self.patch(api, "config_conf_mo")
         set_lan_boot_default(api, server)
-        self.assertThat(config_conf_mo, MockNotCalled())
+        config_conf_mo.assert_not_called()
 
     def test_with_change(self):
         api = make_api()
@@ -707,6 +681,4 @@ class TestSetLanBootDefault(MAASTestCase):
         self.patch(ucsm, "make_policy_change").return_value = test_change
         config_conf_mo = self.patch(api, "config_conf_mo")
         set_lan_boot_default(api, server)
-        self.assertThat(
-            config_conf_mo, MockCalledOnceWith(test_dn, [test_change])
-        )
+        config_conf_mo.assert_called_once_with(test_dn, [test_change])

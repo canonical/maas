@@ -6,8 +6,6 @@
 
 from itertools import product
 
-from testtools.matchers import Equals
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.centos import (
@@ -53,4 +51,4 @@ class TestCentOS(MAASTestCase):
         }
         osystem = CentOS()
         for name, title in name_titles.items():
-            self.expectThat(osystem.get_release_title(name), Equals(title))
+            self.assertEqual(osystem.get_release_title(name), title)
