@@ -3,7 +3,6 @@
 
 """Tests for commission form."""
 
-
 import random
 
 from maasserver.enum import (
@@ -15,7 +14,6 @@ from maasserver.enum import (
 from maasserver.forms.ephemeral import CommissionForm, TestForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import SCRIPT_TYPE
 
 
@@ -52,9 +50,7 @@ class TestTestForm(MAASServerTestCase):
         form = TestForm(instance=node, user=user, data={})
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
-        self.assertThat(
-            mock_start_testing, MockCalledOnceWith(user, False, [], {})
-        )
+        mock_start_testing.assert_called_once_with(user, False, [], {})
 
     def test_calls_start_testing_with_options(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, interface=True)
@@ -76,9 +72,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(user, enable_ssh, testing_scripts, {}),
+        mock_start_testing.assert_called_once_with(
+            user, enable_ssh, testing_scripts, {}
         )
 
     def test_class_start_testing_with_storage_param(self):
@@ -110,11 +105,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"storage": input}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"storage": input}}
         )
 
     def test_class_start_testing_with_storage_param_errors(self):
@@ -163,11 +155,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"interface": input}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"interface": input}}
         )
 
     def test_class_start_testing_with_interface_param_errors(self):
@@ -205,11 +194,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"runtime": 604800}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"runtime": 604800}}
         )
 
     def test_class_start_testing_with_runtime_param_errors(self):
@@ -247,11 +233,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"url": input}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"url": input}}
         )
 
     def test_class_start_testing_with_string_param(self):
@@ -271,11 +254,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"string": input}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"string": input}}
         )
 
     def test_class_start_testing_with_password_param(self):
@@ -295,11 +275,8 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user, False, [script.name], {script.name: {"password": input}}
-            ),
+        mock_start_testing.assert_called_once_with(
+            user, False, [script.name], {script.name: {"password": input}}
         )
 
     def test_class_start_testing_with_choice_param(self):
@@ -319,14 +296,11 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user,
-                False,
-                [script.name],
-                {script.name: {"choice": str(input)}},
-            ),
+        mock_start_testing.assert_called_once_with(
+            user,
+            False,
+            [script.name],
+            {script.name: {"choice": str(input)}},
         )
 
     def test_class_start_testing_with_boolean_param(self):
@@ -389,17 +363,14 @@ class TestTestForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_testing,
-            MockCalledOnceWith(
-                user,
-                False,
-                [global_script.name, script.name],
-                {
-                    script.name: {"storage": "all"},
-                    global_script.name: {"storage": input},
-                },
-            ),
+        mock_start_testing.assert_called_once_with(
+            user,
+            False,
+            [global_script.name, script.name],
+            {
+                script.name: {"storage": "all"},
+                global_script.name: {"storage": input},
+            },
         )
 
     def test_validates_testing_scripts(self):
@@ -493,18 +464,15 @@ class TestCommissionForm(MAASServerTestCase):
         form = CommissionForm(instance=node, user=user, data={})
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                enable_ssh=False,
-                skip_bmc_config=False,
-                skip_networking=False,
-                skip_storage=False,
-                commissioning_scripts=[],
-                testing_scripts=[],
-                script_input={},
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            enable_ssh=False,
+            skip_bmc_config=False,
+            skip_networking=False,
+            skip_storage=False,
+            commissioning_scripts=[],
+            testing_scripts=[],
+            script_input={},
         )
 
     def test_calls_start_commissioning_with_options(self):
@@ -540,18 +508,15 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                enable_ssh=True,
-                skip_bmc_config=True,
-                skip_networking=True,
-                skip_storage=True,
-                commissioning_scripts=commissioning_scripts,
-                testing_scripts=testing_scripts,
-                script_input={},
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            enable_ssh=True,
+            skip_bmc_config=True,
+            skip_networking=True,
+            skip_storage=True,
+            commissioning_scripts=commissioning_scripts,
+            testing_scripts=testing_scripts,
+            script_input={},
         )
 
     def test_class_start_commissioning_with_storage_param(self):
@@ -607,23 +572,18 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                False,
-                False,
-                False,
-                False,
-                [commissioning_script.name],
-                [testing_script.name],
-                {
-                    commissioning_script.name: {
-                        "storage": commissioning_input
-                    },
-                    testing_script.name: {"storage": testing_input},
-                },
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            False,
+            False,
+            False,
+            False,
+            [commissioning_script.name],
+            [testing_script.name],
+            {
+                commissioning_script.name: {"storage": commissioning_input},
+                testing_script.name: {"storage": testing_input},
+            },
         )
 
     def test_class_start_commissioning_with_storage_param_errors(self):
@@ -708,23 +668,18 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                False,
-                False,
-                False,
-                False,
-                [commissioning_script.name],
-                [testing_script.name],
-                {
-                    commissioning_script.name: {
-                        "interface": commissioning_input
-                    },
-                    testing_script.name: {"interface": testing_input},
-                },
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            False,
+            False,
+            False,
+            False,
+            [commissioning_script.name],
+            [testing_script.name],
+            {
+                commissioning_script.name: {"interface": commissioning_input},
+                testing_script.name: {"interface": testing_input},
+            },
         )
 
     def test_class_start_commissioning_with_interface_param_errors(self):
@@ -781,21 +736,18 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                False,
-                False,
-                False,
-                False,
-                [commissioning_script.name],
-                [testing_script.name],
-                {
-                    commissioning_script.name: {"runtime": 604800},
-                    testing_script.name: {"runtime": 604800},
-                },
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            False,
+            False,
+            False,
+            False,
+            [commissioning_script.name],
+            [testing_script.name],
+            {
+                commissioning_script.name: {"runtime": 604800},
+                testing_script.name: {"runtime": 604800},
+            },
         )
 
     def test_class_start_commissioning_with_runtime_param_errors(self):
@@ -852,21 +804,18 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                False,
-                False,
-                False,
-                False,
-                [commissioning_script.name],
-                [testing_script.name],
-                {
-                    commissioning_script.name: {"url": commissioning_input},
-                    testing_script.name: {"url": testing_input},
-                },
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            False,
+            False,
+            False,
+            False,
+            [commissioning_script.name],
+            [testing_script.name],
+            {
+                commissioning_script.name: {"url": commissioning_input},
+                testing_script.name: {"url": testing_input},
+            },
         )
 
     def test_class_start_commissioning_can_override_global_param(self):
@@ -932,25 +881,20 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                False,
-                False,
-                False,
-                False,
-                [global_commissioning_script.name, commissioning_script.name],
-                [global_testing_script.name, testing_script.name],
-                {
-                    global_commissioning_script.name: {"storage": "all"},
-                    commissioning_script.name: {
-                        "storage": commissioning_input
-                    },
-                    global_testing_script.name: {"storage": "all"},
-                    testing_script.name: {"storage": testing_input},
-                },
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            False,
+            False,
+            False,
+            False,
+            [global_commissioning_script.name, commissioning_script.name],
+            [global_testing_script.name, testing_script.name],
+            {
+                global_commissioning_script.name: {"storage": "all"},
+                commissioning_script.name: {"storage": commissioning_input},
+                global_testing_script.name: {"storage": "all"},
+                testing_script.name: {"storage": testing_input},
+            },
         )
 
     def test_validates_commissioning_scripts(self):
@@ -995,16 +939,13 @@ class TestCommissionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         node = form.save()
         self.assertIsNotNone(node)
-        self.assertThat(
-            mock_start_commissioning,
-            MockCalledOnceWith(
-                user,
-                enable_ssh=False,
-                skip_bmc_config=False,
-                skip_networking=False,
-                skip_storage=False,
-                commissioning_scripts=[],
-                testing_scripts=["none"],
-                script_input={},
-            ),
+        mock_start_commissioning.assert_called_once_with(
+            user,
+            enable_ssh=False,
+            skip_bmc_config=False,
+            skip_networking=False,
+            skip_storage=False,
+            commissioning_scripts=[],
+            testing_scripts=["none"],
+            script_input={},
         )

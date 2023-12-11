@@ -7,8 +7,6 @@
 import random
 import uuid
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
     CreateLogicalVolumeForm,
@@ -541,9 +539,6 @@ class TestCreateLogicalVolumeForm(MAASServerTestCase):
         expected_size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False
         )
-        self.assertThat(
-            logical_volume,
-            MatchesStructure.byEquality(
-                name=name, uuid=vguuid, size=expected_size
-            ),
-        )
+        self.assertEqual(logical_volume.name, name)
+        self.assertEqual(logical_volume.uuid, vguuid)
+        self.assertEqual(logical_volume.size, expected_size)

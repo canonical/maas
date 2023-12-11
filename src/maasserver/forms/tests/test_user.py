@@ -5,7 +5,6 @@
 
 
 from django.contrib.auth.models import User
-from testtools.matchers import MatchesRegex
 
 from maasserver.forms import EditUserForm, NewUserCreationForm, ProfileForm
 from maasserver.secrets import SecretManager
@@ -19,11 +18,9 @@ class TestUniqueEmailForms(MAASServerTestCase):
         self.assertIn("email", form._errors)
         self.assertEqual(1, len(form._errors["email"]))
         # Cope with 'Email' and 'E-mail' in error message.
-        self.assertThat(
+        self.assertRegex(
             form._errors["email"][0],
-            MatchesRegex(
-                r"User with this E-{0,1}mail address already exists."
-            ),
+            r"User with this E-{0,1}mail address already exists.",
         )
 
     def test_ProfileForm_fails_validation_if_email_taken(self):

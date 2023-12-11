@@ -10,17 +10,6 @@ from uuid import uuid4
 import crochet
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    MatchesSetwise,
-    MatchesStructure,
-)
 from twisted.internet.defer import inlineCallbacks, succeed
 
 from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_STATUS
@@ -45,12 +34,6 @@ from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -575,68 +558,39 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request = MagicMock()
         pod = make_pod_with_hints()
         form = ComposeMachineForm(request=request, pod=pod)
-        self.assertThat(
-            form.fields["cores"],
-            MatchesStructure(
-                required=Equals(False),
-                validators=MatchesSetwise(
-                    MatchesAll(
-                        IsInstance(MaxValueValidator),
-                        MatchesStructure(limit_value=Equals(pod.hints.cores)),
-                    ),
-                    MatchesAll(
-                        IsInstance(MinValueValidator),
-                        MatchesStructure(limit_value=Equals(1)),
-                    ),
-                ),
-            ),
+
+        cores = form.fields["cores"]
+        self.assertFalse(cores.required)
+        max_core_validator, min_core_validator = cores.validators
+        self.assertIsInstance(max_core_validator, MaxValueValidator)
+        self.assertEqual(max_core_validator.limit_value, pod.hints.cores)
+        self.assertIsInstance(min_core_validator, MinValueValidator)
+        self.assertEqual(min_core_validator.limit_value, 1)
+
+        memory = form.fields["memory"]
+        self.assertFalse(memory.required)
+        max_mem_validator, min_mem_validator = memory.validators
+        self.assertIsInstance(max_mem_validator, MaxValueValidator)
+        self.assertEqual(max_mem_validator.limit_value, pod.hints.memory)
+        self.assertIsInstance(min_mem_validator, MinValueValidator)
+        self.assertEqual(min_mem_validator.limit_value, 1024)
+
+        architecture = form.fields["architecture"]
+        self.assertFalse(architecture.required)
+        self.assertEqual(
+            architecture.choices,
+            list(zip(pod.architectures, pod.architectures)),
         )
-        self.assertThat(
-            form.fields["memory"],
-            MatchesStructure(
-                required=Equals(False),
-                validators=MatchesSetwise(
-                    MatchesAll(
-                        IsInstance(MaxValueValidator),
-                        MatchesStructure(limit_value=Equals(pod.hints.memory)),
-                    ),
-                    MatchesAll(
-                        IsInstance(MinValueValidator),
-                        MatchesStructure(limit_value=Equals(1024)),
-                    ),
-                ),
-            ),
+
+        cpu_speed = form.fields["cpu_speed"]
+        self.assertFalse(cpu_speed.required)
+        max_cpu_speed_validator, min_cpu_speed_validator = cpu_speed.validators
+        self.assertIsInstance(max_cpu_speed_validator, MaxValueValidator)
+        self.assertEqual(
+            max_cpu_speed_validator.limit_value, pod.hints.cpu_speed
         )
-        self.assertThat(
-            form.fields["architecture"],
-            MatchesStructure(
-                required=Equals(False),
-                choices=MatchesSetwise(
-                    *[
-                        Equals((architecture, architecture))
-                        for architecture in pod.architectures
-                    ]
-                ),
-            ),
-        )
-        self.assertThat(
-            form.fields["cpu_speed"],
-            MatchesStructure(
-                required=Equals(False),
-                validators=MatchesSetwise(
-                    MatchesAll(
-                        IsInstance(MaxValueValidator),
-                        MatchesStructure(
-                            limit_value=Equals(pod.hints.cpu_speed)
-                        ),
-                    ),
-                    MatchesAll(
-                        IsInstance(MinValueValidator),
-                        MatchesStructure(limit_value=Equals(300)),
-                    ),
-                ),
-            ),
-        )
+        self.assertIsInstance(min_cpu_speed_validator, MinValueValidator)
+        self.assertEqual(min_cpu_speed_validator.limit_value, 300)
 
     def test_sets_up_fields_based_on_pod_no_architectures(self):
         request = MagicMock()
@@ -655,18 +609,12 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod.hints.cpu_speed = 0
         pod.save()
         form = ComposeMachineForm(request=request, pod=pod)
-        self.assertThat(
-            form.fields["cpu_speed"],
-            MatchesStructure(
-                required=Equals(False),
-                validators=MatchesSetwise(
-                    MatchesAll(
-                        IsInstance(MinValueValidator),
-                        MatchesStructure(limit_value=Equals(300)),
-                    )
-                ),
-            ),
-        )
+
+        cpu_speed = form.fields["cpu_speed"]
+        self.assertFalse(cpu_speed.required)
+        (min_cpu_speed_validator,) = cpu_speed.validators
+        self.assertIsInstance(min_cpu_speed_validator, MinValueValidator)
+        self.assertEqual(min_cpu_speed_validator.limit_value, 300)
 
     def test_sets_up_pool_default(self):
         request = MagicMock()
@@ -685,36 +633,22 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    architecture=Equals(pod.architectures[0]),
-                    cores=Equals(DEFAULT_COMPOSED_CORES),
-                    pinned_cores=Equals([]),
-                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
-                    hugepages_backed=Equals(False),
-                    cpu_speed=Is(None),
-                    block_devices=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(
-                                    size=Equals(
-                                        DEFAULT_COMPOSED_STORAGE * (1000**3)
-                                    )
-                                ),
-                            )
-                        ]
-                    ),
-                    interfaces=MatchesListwise(
-                        [IsInstance(RequestedMachineInterface)]
-                    ),
-                    known_host_interfaces=MatchesListwise([]),
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        self.assertEqual(request_machine.architecture, pod.architectures[0])
+        self.assertEqual(request_machine.cores, DEFAULT_COMPOSED_CORES)
+        self.assertEqual(request_machine.pinned_cores, [])
+        self.assertEqual(request_machine.memory, DEFAULT_COMPOSED_MEMORY)
+        self.assertFalse(request_machine.hugepages_backed)
+        self.assertIsNone(request_machine.cpu_speed)
+
+        for block_device in request_machine.block_devices:
+            self.assertIsInstance(block_device, RequestedMachineBlockDevice)
+            self.assertEqual(
+                block_device.size, DEFAULT_COMPOSED_STORAGE * (1000**3)
+            )
+        for interface in request_machine.interfaces:
+            self.assertIsInstance(interface, RequestedMachineInterface)
+        self.assertEqual(request_machine.known_host_interfaces, [])
 
     def test_get_machine_uses_passed_values(self):
         request = MagicMock()
@@ -750,41 +684,24 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    architecture=Equals(architecture),
-                    cores=Equals(cores),
-                    memory=Equals(memory),
-                    hugepages_backed=Equals(hugepages_backed),
-                    cpu_speed=Equals(cpu_speed),
-                    block_devices=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(
-                                    size=Equals(disk_1),
-                                    tags=Equals(disk_1_tags),
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(
-                                    size=Equals(disk_2),
-                                    tags=Equals(disk_2_tags),
-                                ),
-                            ),
-                        ]
-                    ),
-                    interfaces=MatchesListwise(
-                        [IsInstance(RequestedMachineInterface)]
-                    ),
-                    known_host_interfaces=MatchesListwise([]),
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        self.assertEqual(request_machine.architecture, architecture)
+        self.assertEqual(request_machine.cores, cores)
+        self.assertEqual(request_machine.memory, memory)
+        self.assertEqual(request_machine.hugepages_backed, hugepages_backed)
+        self.assertEqual(request_machine.cpu_speed, cpu_speed)
+
+        actual_disk_1, actual_disk_2 = request_machine.block_devices
+        self.assertIsInstance(actual_disk_1, RequestedMachineBlockDevice)
+        self.assertEqual(actual_disk_1.size, disk_1)
+        self.assertEqual(actual_disk_1.tags, disk_1_tags)
+        self.assertIsInstance(actual_disk_2, RequestedMachineBlockDevice)
+        self.assertEqual(actual_disk_2.size, disk_2)
+        self.assertEqual(actual_disk_2.tags, disk_2_tags)
+
+        for interface in request_machine.interfaces:
+            self.assertIsInstance(interface, RequestedMachineInterface)
+        self.assertEqual(request_machine.known_host_interfaces, [])
 
     def test_get_machine_pinned_cores(self):
         request = MagicMock()
@@ -828,30 +745,15 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    block_devices=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(
-                                    size=Equals(disk_1), tags=Equals([])
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineBlockDevice),
-                                MatchesStructure(
-                                    size=Equals(disk_2), tags=Equals([])
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+
+        actual_disk_1, actual_disk_2 = request_machine.block_devices
+        self.assertIsInstance(actual_disk_1, RequestedMachineBlockDevice)
+        self.assertEqual(actual_disk_1.size, disk_1)
+        self.assertEqual(actual_disk_1.tags, [])
+        self.assertIsInstance(actual_disk_2, RequestedMachineBlockDevice)
+        self.assertEqual(actual_disk_2.size, disk_2)
+        self.assertEqual(actual_disk_2.tags, [])
 
     def test_get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()
@@ -866,8 +768,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             data={"interfaces": interfaces}, request=request, pod=pod
         )
         self.assertTrue(form.is_valid(), form.errors)
-        with ExpectedException(
-            ValidationError, ".*DHCP must be enabled on at least one VLAN*"
+        with self.assertRaisesRegex(
+            ValidationError, "DHCP must be enabled on at least one VLAN"
         ):
             form.get_requested_machine(get_known_host_interfaces(pod))
 
@@ -881,8 +783,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             data={"interfaces": interfaces}, request=request, pod=pod
         )
         self.assertTrue(form.is_valid(), form.errors)
-        with ExpectedException(
-            ValidationError, ".*does not match the specified network.*"
+        with self.assertRaisesRegex(
+            ValidationError, "does not match the specified network"
         ):
             form.get_requested_machine(get_known_host_interfaces(pod))
 
@@ -904,33 +806,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    # Make sure the numeric label gets converted
-                                    # to a sane interface name.
-                                    ifname=Equals("eth0"),
-                                    attach_name=Equals(
-                                        pod_host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (eth0,) = request_machine.interfaces
+
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        # Make sure the numeric label gets converted to a sane
+        # interface name.
+        self.assertEqual(eth0.ifname, "eth0")
+        self.assertEqual(eth0.attach_name, pod_host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_with_empty_interfaces_input(self):
         request = MagicMock()
@@ -948,26 +833,12 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Is(None),
-                                    attach_type=Is(None),
-                                    attach_options=Is(None),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (iface,) = request_machine.interfaces
+        self.assertIsInstance(iface, RequestedMachineInterface)
+        self.assertIsNone(iface.attach_name)
+        self.assertIsNone(iface.attach_type)
+        self.assertIsNone(iface.attach_options)
 
     def test_get_machine_with_interfaces_with_unreserved_ip(self):
         # Mock the RPC client.
@@ -1011,32 +882,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    requested_ips=Equals(["%s" % expected_ip]),
-                                    ifname=Equals("eth0"),
-                                    attach_name=Equals(
-                                        host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (eth0,) = request_machine.interfaces
+
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        # Make sure the numeric label gets converted to a sane
+        # interface name.
+        self.assertEqual(eth0.ifname, "eth0")
+        self.assertEqual(eth0.requested_ips, [expected_ip])
+        self.assertEqual(eth0.attach_name, host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_subnet_with_default_mode(self):
         request = MagicMock()
@@ -1058,30 +914,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(
-                                        pod_host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(attach_mode),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (eth0,) = request_machine.interfaces
+
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        # Make sure the numeric label gets converted to a sane
+        # interface name.
+        self.assertEqual(eth0.ifname, "eth0")
+        self.assertEqual(eth0.attach_name, pod_host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, attach_mode)
 
     def test_get_machine_with_interfaces_by_subnet_with_empty_mode(self):
         request = MagicMock()
@@ -1105,30 +947,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(
-                                        pod_host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(attach_mode),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (eth0,) = request_machine.interfaces
+
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        # Make sure the numeric label gets converted to a sane
+        # interface name.
+        self.assertEqual(eth0.ifname, "eth0")
+        self.assertEqual(eth0.attach_name, pod_host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, attach_mode)
 
     def test_get_machine_with_interfaces_by_space(self):
         request = MagicMock()
@@ -1145,30 +973,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(
-                                        pod.host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            )
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        (eth0,) = request_machine.interfaces
+
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        # Make sure the numeric label gets converted to a sane
+        # interface name.
+        self.assertEqual(eth0.ifname, "eth0")
+        self.assertEqual(eth0.attach_name, pod_host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_spaces(self):
         request = MagicMock()
@@ -1189,40 +1003,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(
-                                        pod_host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(storage_if.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        eth0, eth1 = request_machine.interfaces
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        self.assertEqual(eth0.attach_name, pod_host.boot_interface.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, MACVLAN_MODE.BRIDGE)
+
+        self.assertIsInstance(eth1, RequestedMachineInterface)
+        self.assertEqual(eth1.attach_name, storage_if.name)
+        self.assertEqual(eth1.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth1.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_subnets_bridge(self):
         request = MagicMock()
@@ -1252,38 +1043,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(bridge.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.BRIDGE
-                                    ),
-                                    attach_options=Equals(None),
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(non_bridge.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        eth0, eth1 = request_machine.interfaces
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        self.assertEqual(eth0.attach_name, bridge.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.BRIDGE)
+        self.assertIsNone(eth0.attach_options)
+
+        self.assertIsInstance(eth1, RequestedMachineInterface)
+        self.assertEqual(eth1.attach_name, non_bridge.name)
+        self.assertEqual(eth1.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth1.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_subnets_bond(self):
         request = MagicMock()
@@ -1318,38 +1088,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(bond.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(non_bond.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        eth0, eth1 = request_machine.interfaces
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        self.assertEqual(eth0.attach_name, bond.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth0.attach_options, MACVLAN_MODE.BRIDGE)
+
+        self.assertIsInstance(eth1, RequestedMachineInterface)
+        self.assertEqual(eth1.attach_name, non_bond.name)
+        self.assertEqual(eth1.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth1.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_subnets_bond_inside_bridge(self):
         request = MagicMock()
@@ -1391,38 +1140,17 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(bridge.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.BRIDGE
-                                    ),
-                                    attach_options=Equals(None),
-                                ),
-                            ),
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(non_bond.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.MACVLAN
-                                    ),
-                                    attach_options=Equals(MACVLAN_MODE.BRIDGE),
-                                ),
-                            ),
-                        ]
-                    )
-                ),
-            ),
-        )
+        self.assertIsInstance(request_machine, RequestedMachine)
+        eth0, eth1 = request_machine.interfaces
+        self.assertIsInstance(eth0, RequestedMachineInterface)
+        self.assertEqual(eth0.attach_name, bridge.name)
+        self.assertEqual(eth0.attach_type, InterfaceAttachType.BRIDGE)
+        self.assertIsNone(eth0.attach_options)
+
+        self.assertIsInstance(eth1, RequestedMachineInterface)
+        self.assertEqual(eth1.attach_name, non_bond.name)
+        self.assertEqual(eth1.attach_type, InterfaceAttachType.MACVLAN)
+        self.assertEqual(eth1.attach_options, MACVLAN_MODE.BRIDGE)
 
     def test_get_machine_with_interfaces_by_subnets_sriov(self):
         request = MagicMock()
@@ -1547,29 +1275,16 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(RequestedMachineInterface),
-                                MatchesStructure(
-                                    attach_name=Equals(
-                                        "br-" + pod_host.boot_interface.name
-                                    ),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.BRIDGE
-                                    ),
-                                    attach_options=Is(None),
-                                ),
-                            )
-                        ]
-                    )
+        self.assertEqual(
+            [
+                RequestedMachineInterface(
+                    ifname="eth0",
+                    attach_name=f"br-{pod_host.boot_interface.name}",
+                    attach_type=InterfaceAttachType.BRIDGE,
+                    attach_options=None,
                 ),
-            ),
+            ],
+            request_machine.interfaces,
         )
 
     def test_get_machine_with_known_host_interfaces(self):
@@ -1585,34 +1300,22 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertThat(
-            request_machine,
-            MatchesAll(
-                IsInstance(RequestedMachine),
-                MatchesStructure(
-                    known_host_interfaces=MatchesListwise(
-                        [
-                            MatchesAll(
-                                IsInstance(KnownHostInterface),
-                                MatchesStructure(
-                                    ifname=Equals(interface.name),
-                                    attach_type=Equals(
-                                        InterfaceAttachType.BRIDGE
-                                        if interface.type
-                                        == INTERFACE_TYPE.BRIDGE
-                                        else InterfaceAttachType.MACVLAN
-                                    ),
-                                    dhcp_enabled=Equals(
-                                        interface.vlan.dhcp_on
-                                        or interface.vlan.relay_vlan.dhcp_on
-                                    ),
-                                ),
-                            )
-                            for interface in pod.host.current_config.interface_set.all()
-                        ]
-                    )
-                ),
-            ),
+        self.assertEqual(
+            [
+                KnownHostInterface(
+                    ifname=interface.name,
+                    attach_name=interface.name,
+                    attach_type=InterfaceAttachType.BRIDGE
+                    if interface.type == INTERFACE_TYPE.BRIDGE
+                    else InterfaceAttachType.MACVLAN,
+                    dhcp_enabled=(
+                        interface.vlan.dhcp_on
+                        or interface.vlan.relay_vlan.dhcp_on
+                    ),
+                )
+                for interface in pod.host.current_config.interface_set.all()
+            ],
+            request_machine.known_host_interfaces,
         )
 
     def test_compose_with_interfaces_with_reserved_ip_fails(self):
@@ -1656,8 +1359,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             data={"interfaces": interfaces}, request=request, pod=pod
         )
         self.assertTrue(form.is_valid(), form.errors)
-        with ExpectedException(StaticIPAddressUnavailable):
-            form.compose()
+        self.assertRaises(StaticIPAddressUnavailable, form.compose)
 
     def test_compose_with_interfaces_with_unreserved_ip(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1708,7 +1410,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertEqual(
             ip.get_interface().node_config, machine.current_config
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_with_commissioning(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1733,19 +1435,11 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid(), form.errors)
         created_machine = form.compose()
-        self.assertThat(
-            created_machine,
-            MatchesAll(
-                IsInstance(Machine),
-                MatchesStructure(
-                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
-                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
-                    cpu_speed=Equals(300),
-                ),
-            ),
-        )
-        self.assertThat(mock_commissioning, MockCalledOnce())
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        self.assertEqual(created_machine.cpu_count, DEFAULT_COMPOSED_CORES)
+        self.assertEqual(created_machine.memory, DEFAULT_COMPOSED_MEMORY)
+        self.assertEqual(created_machine.cpu_speed, 300)
+        mock_commissioning.assert_called_once()
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_sends_default_storage_pool_id(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1770,21 +1464,18 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         form.compose()
-        self.assertThat(
-            mock_compose_machine,
-            MockCalledOnceWith(
-                ANY,
-                pod.power_type,
-                {
-                    "power_address": ANY,
-                    "default_storage_pool_id": pod.default_storage_pool.pool_id,
-                },
-                form.get_requested_machine(get_known_host_interfaces(pod)),
-                pod_id=pod.id,
-                name=pod.name,
-            ),
+        mock_compose_machine.assert_called_once_with(
+            ANY,
+            pod.power_type,
+            {
+                "power_address": ANY,
+                "default_storage_pool_id": pod.default_storage_pool.pool_id,
+            },
+            form.get_requested_machine(get_known_host_interfaces(pod)),
+            pod_id=pod.id,
+            name=pod.name,
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_duplicated_hostname(self):
         factory.make_Node(hostname="test")
@@ -1843,19 +1534,12 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
-        self.assertThat(
-            created_machine,
-            MatchesAll(
-                IsInstance(Machine),
-                MatchesStructure(
-                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
-                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
-                    cpu_speed=Equals(300),
-                ),
-            ),
-        )
-        self.assertThat(mock_commissioning, MockNotCalled())
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        self.assertEqual(created_machine.cpu_count, DEFAULT_COMPOSED_CORES)
+        self.assertEqual(created_machine.memory, DEFAULT_COMPOSED_MEMORY)
+        self.assertEqual(created_machine.cpu_speed, 300)
+
+        mock_commissioning.assert_not_called()
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_with_skip_commissioning_passed(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1880,19 +1564,12 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         created_machine = form.compose(skip_commissioning=True)
-        self.assertThat(
-            created_machine,
-            MatchesAll(
-                IsInstance(Machine),
-                MatchesStructure(
-                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
-                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
-                    cpu_speed=Equals(300),
-                ),
-            ),
-        )
-        self.assertThat(mock_commissioning, MockNotCalled())
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        self.assertEqual(created_machine.cpu_count, DEFAULT_COMPOSED_CORES)
+        self.assertEqual(created_machine.memory, DEFAULT_COMPOSED_MEMORY)
+        self.assertEqual(created_machine.cpu_speed, 300)
+
+        mock_commissioning.assert_not_called()
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_sets_domain_and_zone(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1924,14 +1601,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
-        self.assertThat(
-            created_machine,
-            MatchesAll(
-                IsInstance(Machine),
-                MatchesStructure(domain=Equals(domain), zone=Equals(zone)),
-            ),
-        )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        self.assertEqual(created_machine.domain, domain)
+        self.assertEqual(created_machine.zone, zone)
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_sets_resource_pool(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1959,7 +1631,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
         self.assertEqual(pool, created_machine.pool)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_uses_pod_pool(self):
         mock_post_commit_do = self.patch(pods_module, "post_commit_do")
@@ -1986,7 +1658,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         created_machine = form.compose()
         self.assertEqual(pod.pool, created_machine.pool)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
+        mock_post_commit_do.assert_called_once()
 
     def test_compose_check_over_commit_ratios_raises_error_for_cores(self):
         request = MagicMock()
@@ -2003,10 +1675,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
-            "Unable to compose KVM instance in '%s'. "
-            "CPU overcommit ratio is %s and there are %s "
-            "available resources; %s requested."
-            % (pod.name, pod.cpu_over_commit_ratio, pod.cores, 1),
+            f"Unable to compose KVM instance in '{pod.name}'. "
+            f"CPU overcommit ratio is {pod.cpu_over_commit_ratio} and there are {pod.cores} "
+            "available resources; 1 requested.",
             str(error),
         )
 
@@ -2025,15 +1696,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
-            "Unable to compose KVM instance in '%s'. "
-            "Memory overcommit ratio is %s and there are %s "
-            "available resources; %s requested."
-            % (
-                pod.name,
-                pod.memory_over_commit_ratio,
-                pod.memory,
-                DEFAULT_COMPOSED_MEMORY,
-            ),
+            f"Unable to compose KVM instance in '{pod.name}'. "
+            f"Memory overcommit ratio is {pod.memory_over_commit_ratio} and there are {pod.memory} "
+            f"available resources; {DEFAULT_COMPOSED_MEMORY} requested.",
             str(error),
         )
 
@@ -2051,8 +1716,8 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
         self.assertEqual(
-            "Unable to compose a machine because '%s' driver timed out "
-            "after 120 seconds." % pod.power_type,
+            f"Unable to compose a machine because '{pod.power_type}' driver timed out "
+            "after 120 seconds.",
             str(error),
         )
 
@@ -2102,19 +1767,13 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         is_valid = yield deferToDatabase(form.is_valid)
         self.assertTrue(is_valid)
         created_machine = yield form.compose()
-        self.assertThat(
-            created_machine,
-            MatchesAll(
-                IsInstance(Machine),
-                MatchesStructure(
-                    cpu_count=Equals(DEFAULT_COMPOSED_CORES),
-                    memory=Equals(DEFAULT_COMPOSED_MEMORY),
-                    cpu_speed=Equals(300),
-                ),
-            ),
-        )
-        self.assertThat(mock_commissioning, MockCalledOnce())
-        self.assertThat(mock_request_commissioning_results, MockCalledOnce())
+
+        self.assertEqual(created_machine.cpu_count, DEFAULT_COMPOSED_CORES)
+        self.assertEqual(created_machine.memory, DEFAULT_COMPOSED_MEMORY)
+        self.assertEqual(created_machine.cpu_speed, 300)
+
+        mock_commissioning.assert_called_once()
+        mock_request_commissioning_results.assert_called_once()
 
     def test_save_raises_AttributeError(self):
         request = MagicMock()
@@ -2161,22 +1820,10 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
         data = self.make_data(pods)
         form = ComposeMachineForPodsForm(request=request, data=data, pods=pods)
         self.assertTrue(form.is_valid())
-        self.assertThat(
-            form.pod_forms,
-            MatchesListwise(
-                [
-                    MatchesAll(
-                        IsInstance(ComposeMachineForm),
-                        MatchesStructure(
-                            request=Equals(request),
-                            data=Equals(data),
-                            pod=Equals(pod),
-                        ),
-                    )
-                    for pod in pods
-                ]
-            ),
-        )
+        for pod_form, expected_pod in zip(form.pod_forms, pods, strict=True):
+            self.assertEqual(pod_form.request, request)
+            self.assertEqual(pod_form.data, data)
+            self.assertEqual(pod_form.pod, expected_pod)
 
     def test_save_raises_AttributeError(self):
         request = MagicMock()
@@ -2199,9 +1846,8 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
         form.compose()
-        self.assertThat(
-            mock_form_compose,
-            MockCallsMatch(
+        mock_form_compose.assert_has_calls(
+            [
                 call(
                     skip_commissioning=True,
                     dynamic=True,
@@ -2210,7 +1856,7 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
                     skip_commissioning=True,
                     dynamic=True,
                 ),
-            ),
+            ]
         )
 
     def test_compose_uses_commit_forms_second(self):
@@ -2232,9 +1878,8 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
         form.compose()
-        self.assertThat(
-            mock_form_compose,
-            MockCallsMatch(
+        mock_form_compose.assert_has_calls(
+            [
                 call(
                     skip_commissioning=True,
                     dynamic=True,
@@ -2247,7 +1892,7 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
                     skip_commissioning=True,
                     dynamic=True,
                 ),
-            ),
+            ],
         )
 
     def test_clean_adds_error_for_no_matching_constraints(self):
@@ -2272,7 +1917,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         node = factory.make_Machine_with_Interface_on_Subnet()
         node.current_config.interface_set.all().delete()
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertThat(interfaces, HasLength(0))
+        self.assertEqual(interfaces, [])
 
     def test_bridge_attach_type(self):
         node = factory.make_Machine_with_Interface_on_Subnet()

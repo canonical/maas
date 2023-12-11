@@ -6,8 +6,6 @@
 
 import random
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models.fabric import Fabric
 from maasserver.testing.factory import factory
@@ -107,17 +105,12 @@ class TestSubnetForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=subnet_name,
-                description=subnet_description,
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=gateway_ip,
-                dns_servers=dns_servers,
-            ),
-        )
+        self.assertEqual(subnet.name, subnet_name)
+        self.assertEqual(subnet.description, subnet_description)
+        self.assertEqual(subnet.vlan, vlan)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertEqual(subnet.gateway_ip, gateway_ip)
+        self.assertEqual(subnet.dns_servers, dns_servers)
 
     def test_removes_host_bits_and_whitespace(self):
         form = SubnetForm({"cidr": " 10.0.0.1/24 "})
@@ -132,10 +125,9 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"vlan": vlan.id, "cidr": cidr})
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(name=cidr, vlan=vlan, cidr=cidr),
-        )
+        self.assertEqual(subnet.name, cidr)
+        self.assertEqual(subnet.vlan, vlan)
+        self.assertEqual(subnet.cidr, cidr)
 
     def test_creates_subnet_in_default_fabric_and_vlan(self):
         network = factory.make_ip4_or_6_network()
@@ -143,13 +135,10 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": cidr})
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=cidr,
-                cidr=cidr,
-                vlan=Fabric.objects.get_default_fabric().get_default_vlan(),
-            ),
+        self.assertEqual(subnet.name, cidr)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertEqual(
+            subnet.vlan, Fabric.objects.get_default_fabric().get_default_vlan()
         )
 
     def test_creates_subnet_in_default_vlan_in_fabric(self):
@@ -159,12 +148,9 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": cidr, "fabric": fabric.id, "vlan": None})
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=cidr, cidr=cidr, vlan=fabric.get_default_vlan()
-            ),
-        )
+        self.assertEqual(subnet.name, cidr)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertEqual(subnet.vlan, fabric.get_default_vlan())
 
     def test_creates_subnet_in_default_fabric_with_vid(self):
         vlan = factory.make_VLAN(fabric=Fabric.objects.get_default_fabric())
@@ -173,10 +159,9 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": cidr, "vid": vlan.vid, "vlan": None})
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(name=cidr, cidr=cidr, vlan=vlan),
-        )
+        self.assertEqual(subnet.name, cidr)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertEqual(subnet.vlan, vlan)
 
     def test_creates_subnet_in_fabric_with_vid(self):
         fabric = factory.make_Fabric()
@@ -188,10 +173,9 @@ class TestSubnetForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(name=cidr, cidr=cidr, vlan=vlan),
-        )
+        self.assertEqual(subnet.name, cidr)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertEqual(subnet.vlan, vlan)
 
     def test_error_for_unknown_vid_in_default_fabric(self):
         fabric = factory.make_Fabric()
@@ -263,17 +247,12 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=new_name,
-                description=new_description,
-                vlan=new_vlan,
-                cidr=new_cidr,
-                gateway_ip=new_gateway_ip,
-                dns_servers=new_dns_servers,
-            ),
-        )
+        self.assertEqual(subnet.name, new_name)
+        self.assertEqual(subnet.description, new_description)
+        self.assertEqual(subnet.vlan, new_vlan)
+        self.assertEqual(subnet.cidr, new_cidr)
+        self.assertEqual(subnet.gateway_ip, new_gateway_ip)
+        self.assertEqual(subnet.dns_servers, new_dns_servers)
 
     def test_updates_subnet_name_to_cidr(self):
         subnet = factory.make_Subnet()
@@ -289,12 +268,9 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=new_cidr, cidr=new_cidr, gateway_ip=new_gateway_ip
-            ),
-        )
+        self.assertEqual(subnet.name, new_cidr)
+        self.assertEqual(subnet.cidr, new_cidr)
+        self.assertEqual(subnet.gateway_ip, new_gateway_ip)
 
     def test_updates_subnet_name_doesnt_remove_dns_server(self):
         # Regression test for lp:1521833
@@ -312,21 +288,16 @@ class TestSubnetForm(MAASServerTestCase):
 
     def test_doesnt_overwrite_other_fields(self):
         new_name = factory.make_name("subnet")
-        subnet = factory.make_Subnet()
-        form = SubnetForm(instance=subnet, data={"name": new_name})
+        original_subnet = factory.make_Subnet()
+        form = SubnetForm(instance=original_subnet, data={"name": new_name})
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
-        subnet = reload_object(subnet)
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=new_name,
-                vlan=subnet.vlan,
-                cidr=subnet.cidr,
-                gateway_ip=subnet.gateway_ip,
-                dns_servers=subnet.dns_servers,
-            ),
-        )
+        subnet = reload_object(original_subnet)
+        self.assertEqual(subnet.name, new_name)
+        self.assertEqual(subnet.vlan, original_subnet.vlan)
+        self.assertEqual(subnet.cidr, original_subnet.cidr)
+        self.assertEqual(subnet.gateway_ip, original_subnet.gateway_ip)
+        self.assertEqual(subnet.dns_servers, original_subnet.dns_servers)
 
     def test_clears_gateway_and_dns_ervers(self):
         subnet = factory.make_Subnet()
@@ -336,10 +307,8 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(gateway_ip=None, dns_servers=[]),
-        )
+        self.assertIsNone(subnet.gateway_ip)
+        self.assertEqual(subnet.dns_servers, [])
 
     def test_clean_dns_servers_accepts_comma_separated_list(self):
         subnet = factory.make_Subnet()

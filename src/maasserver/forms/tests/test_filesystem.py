@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from testtools.matchers import Equals, MatchesStructure
-
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES,
     FILESYSTEM_GROUP_TYPE,
@@ -195,14 +193,12 @@ class TestMountNonStorageFilesystemForm(MAASServerTestCase):
         node = factory.make_Node()
         form = MountNonStorageFilesystemForm(node, data={})
         self.assertFalse(form.is_valid())
-        self.assertThat(
+        self.assertEqual(
             form.errors,
-            Equals(
-                {
-                    "fstype": ["This field is required."],
-                    "mount_point": ["This field is required."],
-                }
-            ),
+            {
+                "fstype": ["This field is required."],
+                "mount_point": ["This field is required."],
+            },
         )
 
 
@@ -232,17 +228,12 @@ class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         filesystem = form.save()
-        self.assertThat(
-            filesystem,
-            MatchesStructure.byEquality(
-                node_config=node.current_config,
-                fstype=self.fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-                is_mounted=True,
-                acquired=self.acquired,
-            ),
-        )
+        self.assertEqual(filesystem.node_config, node.current_config)
+        self.assertEqual(filesystem.fstype, self.fstype)
+        self.assertEqual(filesystem.mount_point, mount_point)
+        self.assertEqual(filesystem.mount_options, mount_options)
+        self.assertTrue(filesystem.is_mounted)
+        self.assertEqual(filesystem.acquired, self.acquired)
 
 
 class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
@@ -264,15 +255,13 @@ class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
             node, data={"mount_point": filesystem.mount_point}
         )
         self.assertFalse(form.is_valid())
-        self.assertThat(
+        self.assertEqual(
             form.errors,
-            Equals(
-                {
-                    "mount_point": [
-                        "No special filesystem is mounted at this path."
-                    ]
-                }
-            ),
+            {
+                "mount_point": [
+                    "No special filesystem is mounted at this path."
+                ]
+            },
         )
 
     def test_will_not_unmount_filesystem_on_block_device(self):
@@ -285,15 +274,13 @@ class TestUnmountNonStorageFilesystemForm(MAASServerTestCase):
             node, data={"mount_point": filesystem.mount_point}
         )
         self.assertFalse(form.is_valid())
-        self.assertThat(
+        self.assertEqual(
             form.errors,
-            Equals(
-                {
-                    "mount_point": [
-                        "No special filesystem is mounted at this path."
-                    ]
-                }
-            ),
+            {
+                "mount_point": [
+                    "No special filesystem is mounted at this path."
+                ]
+            },
         )
 
 

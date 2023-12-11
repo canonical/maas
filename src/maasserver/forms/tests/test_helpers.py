@@ -5,7 +5,6 @@
 
 
 from django.forms import CharField
-from testtools.matchers import Equals
 
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.forms import (
@@ -202,6 +201,6 @@ class TestMAASModelForm(MAASLegacyTransactionServerTestCase):
 
         form = TestForm(ui_submission=True, data={})
         self.assertTrue(form.is_valid(), form._errors)
-        self.expectThat(form.while_early_field, Equals(True))
-        self.expectThat(form.while_field, Equals(True))
-        self.expectThat(form.while_extra_field, Equals(True))
+        self.assertTrue(form.while_early_field)
+        self.assertTrue(form.while_field)
+        self.assertTrue(form.while_extra_field)

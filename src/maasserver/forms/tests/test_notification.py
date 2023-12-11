@@ -7,8 +7,6 @@
 import json
 import random
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.forms.notification import NotificationForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -22,18 +20,13 @@ class TestNotificationForm(MAASServerTestCase):
         form = NotificationForm({"message": notification_message})
         self.assertTrue(form.is_valid(), form.errors)
         notification = form.save()
-        self.assertThat(
-            notification,
-            MatchesStructure.byEquality(
-                ident=None,
-                message=notification_message,
-                user=None,
-                users=False,
-                admins=False,
-                category="info",
-                context={},
-            ),
-        )
+        self.assertIsNone(notification.ident)
+        self.assertEqual(notification.message, notification_message)
+        self.assertIsNone(notification.user)
+        self.assertFalse(notification.users)
+        self.assertFalse(notification.admins)
+        self.assertEqual(notification.category, "info")
+        self.assertEqual(notification.context, {})
 
     def test_notification_can_be_created_with_empty_fields(self):
         notification_message = factory.make_name("message")
@@ -50,19 +43,14 @@ class TestNotificationForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         notification = form.save()
-        self.assertThat(
-            notification,
-            MatchesStructure.byEquality(
-                ident=None,
-                message=notification_message,
-                user=None,
-                users=False,
-                admins=False,
-                category="info",
-                context={},
-                dismissable=True,
-            ),
-        )
+        self.assertIsNone(notification.ident)
+        self.assertEqual(notification.message, notification_message)
+        self.assertIsNone(notification.user)
+        self.assertFalse(notification.users)
+        self.assertFalse(notification.admins)
+        self.assertEqual(notification.category, "info")
+        self.assertEqual(notification.context, {})
+        self.assertTrue(notification.dismissable)
 
     def test_notification_can_be_created_with_all_fields(self):
         user = factory.make_User()
@@ -81,15 +69,23 @@ class TestNotificationForm(MAASServerTestCase):
         form = NotificationForm(data)
         self.assertTrue(form.is_valid(), form.errors)
         notification = form.save()
-        expected = dict(
-            data,
-            user=user,
-            users=(data["users"] == "true"),
-            admins=(data["admins"] == "true"),
-            context=json.loads(data["context"]),
-            dismissable=(data["dismissable"] == "true"),
-        )
-        self.assertThat(notification, MatchesStructure.byEquality(**expected))
+        self.assertEqual(notification.ident, data["ident"])
+        self.assertEqual(notification.message, data["message"])
+        self.assertEqual(notification.user, user)
+        if data["users"] == "true":
+            self.assertTrue(notification.users)
+        else:
+            self.assertFalse(notification.users)
+        if data["admins"] == "true":
+            self.assertTrue(notification.admins)
+        else:
+            self.assertFalse(notification.admins)
+        self.assertEqual(notification.context, json.loads(data["context"]))
+        if data["dismissable"] == "true":
+            self.assertTrue(notification.dismissable)
+        else:
+            self.assertFalse(notification.dismissable)
+        self.assertEqual(notification.category, data["category"])
 
     def test_notification_can_be_updated(self):
         notification = factory.make_Notification()
@@ -111,13 +107,18 @@ class TestNotificationForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         notification_saved = form.save()
         self.assertEqual(notification, notification_saved)
-        expected = dict(
-            data,
-            user=user,
-            users=(data["users"] == "true"),
-            admins=(data["admins"] == "true"),
-            context=json.loads(data["context"]),
+        self.assertEqual(notification_saved.ident, data["ident"])
+        self.assertEqual(notification_saved.message, data["message"])
+        self.assertEqual(notification_saved.user, user)
+        if data["users"] == "true":
+            self.assertTrue(notification_saved.users)
+        else:
+            self.assertFalse(notification_saved.users)
+        if data["admins"] == "true":
+            self.assertTrue(notification_saved.admins)
+        else:
+            self.assertFalse(notification_saved.admins)
+        self.assertEqual(
+            notification_saved.context, json.loads(data["context"])
         )
-        self.assertThat(
-            notification_saved, MatchesStructure.byEquality(**expected)
-        )
+        self.assertEqual(notification_saved.category, data["category"])

@@ -5,7 +5,6 @@ import random
 import uuid
 
 from django.core.exceptions import ValidationError
-from testtools.matchers import MatchesStructure
 
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.forms import (
@@ -188,17 +187,12 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name,
-                model=model,
-                serial=serial,
-                size=size,
-                block_size=block_size,
-                numa_node=node.default_numanode,
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.model, model)
+        self.assertEqual(block_device.serial, serial)
+        self.assertEqual(block_device.size, size)
+        self.assertEqual(block_device.block_size, block_size)
+        self.assertEqual(block_device.numa_node, node.default_numanode)
 
     def test_creates_physical_block_device_with_id_path(self):
         node = factory.make_Node()
@@ -219,16 +213,11 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name,
-                id_path=id_path,
-                size=size,
-                block_size=block_size,
-                numa_node=node.default_numanode,
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.id_path, id_path)
+        self.assertEqual(block_device.size, size)
+        self.assertEqual(block_device.block_size, block_size)
+        self.assertEqual(block_device.numa_node, node.default_numanode)
 
     def test_creates_physical_block_device_with_numa_node(self):
         node = factory.make_Node()
@@ -251,16 +240,11 @@ class TestCreatePhysicalBlockDeviceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name,
-                id_path=id_path,
-                size=size,
-                block_size=block_size,
-                numa_node=numa_node,
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.id_path, id_path)
+        self.assertEqual(block_device.size, size)
+        self.assertEqual(block_device.block_size, block_size)
+        self.assertEqual(block_device.numa_node, numa_node)
 
     def test_creates_physical_block_device_invalid_numa_node(self):
         node = factory.make_Node()
@@ -317,18 +301,13 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name,
-                model=model,
-                serial=serial,
-                id_path=id_path,
-                size=size,
-                block_size=block_size,
-                numa_node=numa_node,
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.model, model)
+        self.assertEqual(block_device.serial, serial)
+        self.assertEqual(block_device.id_path, id_path)
+        self.assertEqual(block_device.size, size)
+        self.assertEqual(block_device.block_size, block_size)
+        self.assertEqual(block_device.numa_node, numa_node)
 
     def test_update_invalid_numa_node(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -404,17 +383,12 @@ class TestUpdateDeployedPhysicalBlockDeviceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         block_device = form.save()
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name,
-                model=model,
-                serial=serial,
-                id_path=id_path,
-                size=block_device.size,
-                block_size=block_device.block_size,
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.model, model)
+        self.assertEqual(block_device.serial, serial)
+        self.assertEqual(block_device.id_path, id_path)
+        self.assertEqual(block_device.size, block_device.size)
+        self.assertEqual(block_device.block_size, block_device.block_size)
 
 
 class TestUpdateVirtualBlockDeviceForm(MAASServerTestCase):
@@ -440,9 +414,6 @@ class TestUpdateVirtualBlockDeviceForm(MAASServerTestCase):
         expected_size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False
         )
-        self.assertThat(
-            block_device,
-            MatchesStructure.byEquality(
-                name=name, uuid=vguuid, size=expected_size
-            ),
-        )
+        self.assertEqual(block_device.name, name)
+        self.assertEqual(block_device.uuid, vguuid)
+        self.assertEqual(block_device.size, expected_size)

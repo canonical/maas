@@ -6,9 +6,6 @@
 
 import random
 
-from testtools import ExpectedException
-from testtools.matchers import Equals
-
 from maasserver.enum import SERVICE_STATUS
 from maasserver.forms.vlan import VLANForm
 from maasserver.models.fabric import Fabric
@@ -391,19 +388,16 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         form = VLANForm(instance=fabric1_untagged, data={"fabric": fabric0.id})
         is_valid = form.is_valid()
         self.assertFalse(is_valid)
-        self.assertThat(
+        self.assertEqual(
             dict(form.errors),
-            Equals(
-                {
-                    "__all__": [
-                        "A VLAN with the specified VID already "
-                        "exists in the destination fabric."
-                    ]
-                }
-            ),
+            {
+                "__all__": [
+                    "A VLAN with the specified VID already "
+                    "exists in the destination fabric."
+                ]
+            },
         )
-        with ExpectedException(ValueError):
-            form.save()
+        self.assertRaises(ValueError, form.save)
 
     def test_allows_moving_vlan_to_new_fabric_if_vid_is_unique(self):
         fabric0 = Fabric.objects.get_default_fabric()

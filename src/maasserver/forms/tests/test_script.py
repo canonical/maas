@@ -10,7 +10,6 @@ import random
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest
-from testtools.matchers import ContainsAll
 
 from maasserver.forms.script import (
     CommissioningScriptForm,
@@ -125,7 +124,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEqual(name, script.name)
         self.assertEqual(title, script.title)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        for tag in tags:
+            self.assertIn(tag, script.tags)
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
@@ -216,7 +216,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEqual(name, script.name)
         self.assertEqual(title, script.title)
         self.assertEqual(description, script.description)
-        self.assertThat(script.tags, ContainsAll(tags))
+        for tag in tags:
+            self.assertIn(tag, script.tags)
         self.assertEqual(script_type, script.script_type)
         self.assertEqual(hardware_type, script.hardware_type)
         self.assertEqual(parallel, script.parallel)
@@ -319,7 +320,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
 
-        self.assertThat(script.tags, ContainsAll(tags))
+        for tag in tags:
+            self.assertIn(tag, script.tags)
         self.assertEqual(timedelta(0, timeout), script.timeout)
 
     def test_update_requires_script_with_comment(self):
@@ -636,7 +638,8 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEqual(embedded_yaml["name"], script.name)
         self.assertEqual(embedded_yaml["title"], script.title)
         self.assertEqual(embedded_yaml["description"], script.description)
-        self.assertThat(script.tags, ContainsAll(embedded_yaml["tags"]))
+        for tag in embedded_yaml["tags"]:
+            self.assertIn(tag, script.tags)
         self.assertEqual(embedded_yaml["script_type"], script.script_type)
         self.assertEqual(embedded_yaml["hardware_type"], script.hardware_type)
         self.assertEqual(embedded_yaml["parallel"], script.parallel)
@@ -745,7 +748,8 @@ class TestScriptForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
-        self.assertThat(script.tags, ContainsAll(tags))
+        for tag in tags:
+            self.assertIn(tag, script.tags)
 
     def tests_yaml_tags_can_be_list_of_strings(self):
         tags = [factory.make_name("tag") for _ in range(3)]
@@ -758,7 +762,8 @@ class TestScriptForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         script = form.save()
-        self.assertThat(script.tags, ContainsAll(tags))
+        for tag in tags:
+            self.assertIn(tag, script.tags)
 
     def tests_yaml_tags_errors_on_non_list_or_string(self):
         form = ScriptForm(
