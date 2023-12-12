@@ -3,7 +3,6 @@
 
 from collections import OrderedDict
 import io
-from io import BytesIO
 import os
 import random
 import re
@@ -19,12 +18,6 @@ import yaml
 from maasserver.testing.commissioning import DeviceType, FakeCommissioningData
 from maasserver.testing.factory import factory
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.commissioning_scripts import bmc_config
 
@@ -38,17 +31,16 @@ class TestExitSkipped(MAASTestCase):
         mock_yaml_safe_dump = self.patch(bmc_config.yaml, "safe_dump")
 
         self.assertRaises(SystemExit, bmc_config.exit_skipped)
-        self.assertThat(mock_open, MockCalledOnceWith(result_path, "w"))
-        self.assertThat(
-            mock_yaml_safe_dump,
-            MockCalledOnceWith({"status": "skipped"}, mock_open.return_value),
+        mock_open.assert_called_once_with(result_path, "w")
+        mock_yaml_safe_dump.assert_called_once_with(
+            {"status": "skipped"}, mock_open.return_value
         )
 
     def test_result_path_not_defined(self):
         mock_open = self.patch(bmc_config, "open")
 
         self.assertRaises(SystemExit, bmc_config.exit_skipped)
-        self.assertThat(mock_open, MockNotCalled())
+        mock_open.assert_not_called()
 
 
 class TestIPMI(MAASTestCase):
@@ -163,16 +155,13 @@ EndSection
         value = factory.make_name("value")
         self.ipmi._bmc_set(section, key, value)
 
-        self.assertThat(
-            self.mock_check_call,
-            MockCalledOnceWith(
-                [
-                    "bmc-config",
-                    "--commit",
-                    f"--key-pair={section}:{key}={value}",
-                ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_call.assert_called_once_with(
+            [
+                "bmc-config",
+                "--commit",
+                f"--key-pair={section}:{key}={value}",
+            ],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
         self.assertEqual({section: {key: value}}, self.ipmi._bmc_config)
 
@@ -197,16 +186,13 @@ EndSection
         )
         # Only called once because there is only one value that exists
         # that needs to be updated.
-        self.assertThat(
-            self.mock_check_call,
-            MockCalledOnceWith(
-                [
-                    "bmc-config",
-                    "--commit",
-                    "--key-pair=User2:SOL_Payload_Access=Yes",
-                ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_call.assert_called_once_with(
+            [
+                "bmc-config",
+                "--commit",
+                "--key-pair=User2:SOL_Payload_Access=Yes",
+            ],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
         # Verify cache has been updated
         self.assertEqual(
@@ -228,7 +214,7 @@ EndSection
             [factory.make_name("key") for _ in range(3)],
             factory.make_name("value"),
         )
-        self.assertThat(self.mock_print, MockCalledOnce())
+        self.mock_print.assert_called_once()
 
     def test_bmc_set_keys_warns_on_setting_failure(self):
         self.mock_check_call.side_effect = None
@@ -238,7 +224,7 @@ EndSection
             [factory.make_name("key") for _ in range(3)],
             factory.make_name("value"),
         )
-        self.assertThat(self.mock_print, MockCalledOnce())
+        self.mock_print.assert_called_once()
 
     def test_detected_true(self):
         mock_get_ipmi_locate_output = self.patch(
@@ -365,25 +351,23 @@ EndSection
         self.assertEqual(self.username, self.ipmi.username)
         self.assertEqual(self.password, self.ipmi.password)
         # Verify bmc_set is only called for values that have changed
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
+
+        mock_bmc_set.assert_has_calls(
+            [
                 call("User2", "Username", self.username),
                 call("User2", "Password", self.password),
                 call("User2", "Lan_Privilege_Limit", "Operator"),
-            ),
+            ],
         )
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCalledOnceWith(
-                "User2",
-                [
-                    "Lan_Enable_Link_Auth",
-                    "SOL_Payload_Access",
-                    "Serial_Enable_Link_Auth",
-                ],
-                "Yes",
-            ),
+
+        mock_bmc_set_keys.assert_called_once_with(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
         )
 
     def test_add_bmc_user_rand_password(self):
@@ -416,25 +400,21 @@ EndSection
         self.assertEqual("maas", self.ipmi.username)
         self.assertEqual(password, self.ipmi.password)
         # Verify bmc_set is only called for values that have changed
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
+        mock_bmc_set.assert_has_calls(
+            [
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password),
                 call("User2", "Lan_Privilege_Limit", "Operator"),
-            ),
+            ]
         )
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCalledOnceWith(
-                "User2",
-                [
-                    "Lan_Enable_Link_Auth",
-                    "SOL_Payload_Access",
-                    "Serial_Enable_Link_Auth",
-                ],
-                "Yes",
-            ),
+        mock_bmc_set_keys.assert_called_once_with(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
         )
 
     def test_add_bmc_user_rand_password_with_special_chars(self):
@@ -476,9 +456,8 @@ EndSection
         self.assertEqual("maas", self.ipmi.username)
         self.assertEqual(password_w_spec_chars, self.ipmi.password)
         # Verify bmc_set is only called for values that have changed
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
+        mock_bmc_set.assert_has_calls(
+            [
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password),
                 call("User2", "Username", "maas"),
@@ -486,19 +465,16 @@ EndSection
                 call("User2", "Username", "maas"),
                 call("User2", "Password", password_w_spec_chars),
                 call("User2", "Lan_Privilege_Limit", "Operator"),
-            ),
+            ]
         )
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCalledOnceWith(
-                "User2",
-                [
-                    "Lan_Enable_Link_Auth",
-                    "SOL_Payload_Access",
-                    "Serial_Enable_Link_Auth",
-                ],
-                "Yes",
-            ),
+        mock_bmc_set_keys.assert_called_once_with(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
         )
 
     def test_add_bmc_user_fails(self):
@@ -584,9 +560,8 @@ EndSection
 
         self.ipmi._config_lan_conf_auth()
 
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCallsMatch(
+        mock_bmc_set_keys.assert_has_calls(
+            [
                 call(
                     "Lan_Channel_Auth",
                     [
@@ -606,7 +581,7 @@ EndSection
                     "No",
                 ),
                 call("Lan_Channel_Auth", ["SOL_Payload_Access"], "Yes"),
-            ),
+            ]
         )
 
     def test_config_lan_conf_auth_does_nothing_if_missing(self):
@@ -614,7 +589,7 @@ EndSection
 
         self.ipmi._config_lan_conf_auth()
 
-        self.assertThat(mock_bmc_set_keys, MockNotCalled())
+        mock_bmc_set_keys.assert_not_called()
 
     def test_config_kg_set(self):
         mock_bmc_set = self.patch(self.ipmi, "_bmc_set")
@@ -623,9 +598,8 @@ EndSection
 
         self.ipmi._config_kg()
 
-        self.assertThat(
-            mock_bmc_set,
-            MockCalledOnceWith("Lan_Conf_Security_Keys", "K_G", kg),
+        mock_bmc_set.assert_called_once_with(
+            "Lan_Conf_Security_Keys", "K_G", kg
         )
         self.assertEqual(kg, self.ipmi._kg)
 
@@ -637,7 +611,7 @@ EndSection
 
         self.ipmi._config_kg()
 
-        self.assertThat(mock_bmc_set, MockNotCalled())
+        mock_bmc_set.assert_not_called()
         self.assertEqual(kg, self.ipmi._kg)
 
     def test_config_kg_set_errors(self):
@@ -655,9 +629,8 @@ EndSection
 
         self.assertRaises(type(exception), self.ipmi._config_kg)
 
-        self.assertThat(
-            mock_bmc_set,
-            MockCalledOnceWith("Lan_Conf_Security_Keys", "K_G", kg),
+        mock_bmc_set.assert_called_once_with(
+            "Lan_Conf_Security_Keys", "K_G", kg
         )
         self.assertEqual("", self.ipmi._kg)
 
@@ -696,16 +669,14 @@ EndSection
 
         self.ipmi.configure()
 
-        self.assertThat(mock_bmc_get_config, MockCalledOnce())
-        self.assertThat(mock_check_ciphers_enabled, MockCalledOnce())
-        self.assertThat(
-            mock_config_ipmi_lan_channel_settings, MockCalledOnce()
-        )
-        self.assertThat(mock_config_lang_conf_auth, MockCalledOnce())
-        self.assertThat(mock_config_kg, MockCalledOnce())
-        self.assertThat(
-            mock_bmc_set_keys,
-            MockCallsMatch(
+        mock_bmc_get_config.assert_called_once()
+        mock_check_ciphers_enabled.assert_called_once()
+
+        mock_config_ipmi_lan_channel_settings.assert_called_once()
+        mock_config_lang_conf_auth.assert_called_once()
+        mock_config_kg.assert_called_once()
+        mock_bmc_set_keys.assert_has_calls(
+            [
                 call(
                     "Serial_Channel",
                     [
@@ -727,7 +698,7 @@ EndSection
                     ],
                     "Yes",
                 ),
-            ),
+            ]
         )
 
     def test_get_bmc_ipv4(self):
@@ -792,8 +763,8 @@ EndSection
         mock_get_bmc_ip.return_value = None, ip, mac_address
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
-        self.assertThat(mock_bmc_set, MockNotCalled())
-        self.assertThat(mock_get_bmc_ip, MockCalledOnceWith())
+        mock_bmc_set.assert_not_called()
+        mock_get_bmc_ip.assert_called_once_with()
 
     def test_get_bmc_ip_enables_static(self):
         ip = factory.make_ip_address()
@@ -807,13 +778,10 @@ EndSection
         )
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
-        self.assertThat(
-            mock_bmc_set,
-            MockCalledOnceWith("Lan_Conf", "IP_Address_Source", "Static"),
+        mock_bmc_set.assert_called_once_with(
+            "Lan_Conf", "IP_Address_Source", "Static"
         )
-        self.assertThat(
-            mock_get_bmc_ip, MockCallsMatch(call(), call(True), call(True))
-        )
+        mock_get_bmc_ip.assert_has_calls([call(), call(True), call(True)])
 
     def test_get_bmc_ip_enables_dynamic(self):
         ip = factory.make_ip_address()
@@ -826,17 +794,15 @@ EndSection
         )
 
         self.assertEqual((ip, mac_address), self.ipmi.get_bmc_ip())
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
+        mock_bmc_set.assert_has_calls(
+            [
                 call("Lan_Conf", "IP_Address_Source", "Static"),
                 call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
-            ),
+            ]
         )
 
-        self.assertThat(
-            mock_get_bmc_ip,
-            MockCallsMatch(call(), *[call(True) for _ in range(8)]),
+        mock_get_bmc_ip.assert_has_calls(
+            [call(), *[call(True) for _ in range(8)]]
         )
 
     def test_get_bmc_ip_fails(self):
@@ -845,16 +811,14 @@ EndSection
         mock_get_bmc_ip.return_value = ("Lan_Conf", None, None)
 
         self.assertRaises(SystemExit, self.ipmi.get_bmc_ip)
-        self.assertThat(
-            mock_bmc_set,
-            MockCallsMatch(
+        mock_bmc_set.assert_has_calls(
+            [
                 call("Lan_Conf", "IP_Address_Source", "Static"),
                 call("Lan_Conf", "IP_Address_Source", "Use_DHCP"),
-            ),
+            ]
         )
-        self.assertThat(
-            mock_get_bmc_ip,
-            MockCallsMatch(call(), *[call(True) for _ in range(12)]),
+        mock_get_bmc_ip.assert_has_calls(
+            [call(), *[call(True) for _ in range(12)]],
         )
 
     def test_get_credentials_lan_new(self):
@@ -997,13 +961,10 @@ class TestHPMoonshot(MAASTestCase):
             ["14"] + self.make_hex_array(10)
         ).encode()
         self.assertTrue(self.hp_moonshot.detected())
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["ipmitool", "raw", "06", "01"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-                stderr=DEVNULL,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["ipmitool", "raw", "06", "01"],
+            timeout=bmc_config.COMMAND_TIMEOUT,
+            stderr=DEVNULL,
         )
 
     def test_add_bmc_user(self):
@@ -1017,12 +978,9 @@ class TestHPMoonshot(MAASTestCase):
         self.assertEqual(
             f"0x{hex_array[2]}", self.hp_moonshot._get_local_address()
         )
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["ipmitool", "raw", "0x2c", "1", "0"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["ipmitool", "raw", "0x2c", "1", "0"],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
 
     def test_get_bmc_ip(self):
@@ -1031,27 +989,24 @@ class TestHPMoonshot(MAASTestCase):
         local_address = factory.make_name("local_address")
 
         self.assertEqual(ip, self.hp_moonshot.get_bmc_ip(local_address))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "ipmitool",
-                    "-B",
-                    "0",
-                    "-T",
-                    "0x20",
-                    "-b",
-                    "0",
-                    "-t",
-                    "0x20",
-                    "-m",
-                    local_address,
-                    "lan",
-                    "print",
-                    "2",
-                ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            [
+                "ipmitool",
+                "-B",
+                "0",
+                "-T",
+                "0x20",
+                "-b",
+                "0",
+                "-t",
+                "0x20",
+                "-m",
+                local_address,
+                "lan",
+                "print",
+                "2",
+            ],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
 
     def test_get_bmc_ip_none(self):
@@ -1059,27 +1014,24 @@ class TestHPMoonshot(MAASTestCase):
         local_address = factory.make_name("local_address")
 
         self.assertIsNone(self.hp_moonshot.get_bmc_ip(local_address))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "ipmitool",
-                    "-B",
-                    "0",
-                    "-T",
-                    "0x20",
-                    "-b",
-                    "0",
-                    "-t",
-                    "0x20",
-                    "-m",
-                    local_address,
-                    "lan",
-                    "print",
-                    "2",
-                ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            [
+                "ipmitool",
+                "-B",
+                "0",
+                "-T",
+                "0x20",
+                "-b",
+                "0",
+                "-t",
+                "0x20",
+                "-m",
+                local_address,
+                "lan",
+                "print",
+                "2",
+            ],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
 
     def test_get_credentials(self):
@@ -1127,41 +1079,33 @@ class TestHPMoonshot(MAASTestCase):
             },
             self.hp_moonshot.get_credentials(),
         )
-        self.assertThat(mock_get_local_address, MockCalledOnce())
-        self.assertThat(
-            mock_get_cartridge_address, MockCalledOnceWith(local_address)
+        mock_get_local_address.assert_called_once()
+        mock_get_cartridge_address.assert_called_once_with(local_address)
+        self.mock_check_output.assert_called_once_with(
+            [
+                "ipmitool",
+                "-b",
+                "0",
+                "-t",
+                "0x20",
+                "-m",
+                local_address,
+                "sdr",
+                "list",
+                "mcloc",
+                "-v",
+            ],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "ipmitool",
-                    "-b",
-                    "0",
-                    "-t",
-                    "0x20",
-                    "-m",
-                    local_address,
-                    "sdr",
-                    "list",
-                    "mcloc",
-                    "-v",
-                ],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
-        )
-        self.assertThat(
-            mock_get_channel_number,
-            MockCallsMatch(
-                call(local_address, output), call(node_address, output)
-            ),
+        mock_get_channel_number.assert_has_calls(
+            [call(local_address, output), call(node_address, output)]
         )
 
 
 class TestRedfish(MAASTestCase):
     class FakeSocket:
         def __init__(self, response_bytes):
-            self._file = BytesIO(response_bytes)
+            self._file = io.BytesIO(response_bytes)
 
         def makefile(self, *args, **kwargs):
             return self._file
@@ -1694,16 +1638,12 @@ class TestWedge(MAASTestCase):
         self.assertEqual("10.0.0.10", self.wedge.get_bmc_ip())
         # Call multiple times to verify caching
         self.assertEqual(self.wedge.get_bmc_ip(), self.wedge.get_bmc_ip())
-        self.assertThat(mock_ssh_client, MockCalledOnce())
-        self.assertThat(
-            mock_client.set_missing_host_key_policy,
-            MockCalledOnceWith(bmc_config.IgnoreHostKeyPolicy),
+        mock_ssh_client.assert_called_once()
+        mock_client.set_missing_host_key_policy.assert_called_once_with(
+            bmc_config.IgnoreHostKeyPolicy
         )
-        self.assertThat(
-            mock_client.connect,
-            MockCalledOnceWith(
-                "fe80::1%eth0", username="root", password="0penBmc"
-            ),
+        mock_client.connect.assert_called_once_with(
+            "fe80::1%eth0", username="root", password="0penBmc"
         )
 
     def test_get_bmc_ip_none(self):
@@ -1796,9 +1736,9 @@ class TestDetectAndConfigure(MAASTestCase):
         bmc_config.detect_and_configure(args, bmc_config_path)
 
         self.assertFalse(os.path.exists(bmc_config_path))
-        self.assertThat(bmc_config.HPMoonshot.detected, MockCalledOnce())
-        self.assertThat(bmc_config.IPMI.detected, MockCalledOnce())
-        self.assertThat(bmc_config.Wedge.detected, MockCalledOnce())
+        bmc_config.HPMoonshot.detected.assert_called_once()
+        bmc_config.IPMI.detected.assert_called_once()
+        bmc_config.Wedge.detected.assert_called_once()
 
 
 class TestMain(MAASTestCase):
@@ -1832,7 +1772,7 @@ class TestMain(MAASTestCase):
 
         bmc_config.main()
 
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_exit_skipped.assert_called_once()
 
     def test_runs_if_not_on_vm(self):
         self.patch(bmc_config.os.environ, "get")
@@ -1847,16 +1787,12 @@ class TestMain(MAASTestCase):
 
         bmc_config.main()
 
-        self.assertThat(
-            self.mock_check_call,
-            MockCalledOnceWith(
-                ["systemd-detect-virt", "-q"],
-                timeout=bmc_config.COMMAND_TIMEOUT,
-            ),
+        self.mock_check_call.assert_called_once_with(
+            ["systemd-detect-virt", "-q"],
+            timeout=bmc_config.COMMAND_TIMEOUT,
         )
-        self.assertThat(
-            mock_run,
-            MockCallsMatch(
+        mock_run.assert_has_calls(
+            [
                 call(
                     ["sudo", "-E", "modprobe", "ipmi_msghandler"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
@@ -1877,9 +1813,9 @@ class TestMain(MAASTestCase):
                     ["sudo", "-E", "udevadm", "settle"],
                     timeout=bmc_config.COMMAND_TIMEOUT,
                 ),
-            ),
+            ]
         )
-        self.assertThat(mock_detect_and_configure, MockCalledOnce())
+        mock_detect_and_configure.assert_called_once()
 
     def test_does_nothing_if_on_vm(self):
         self.patch(bmc_config.os.environ, "get")
@@ -1891,8 +1827,8 @@ class TestMain(MAASTestCase):
 
         bmc_config.main()
 
-        self.assertThat(mock_detect_and_configure, MockNotCalled())
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_detect_and_configure.assert_not_called()
+        mock_exit_skipped.assert_called_once()
 
     def test_get_network_interface_usb(self):
         data = FakeCommissioningData()

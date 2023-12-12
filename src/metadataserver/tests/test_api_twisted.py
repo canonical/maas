@@ -8,12 +8,11 @@ from datetime import datetime, timedelta
 from io import BytesIO
 import json
 import random
+from unittest import TestCase
 from unittest.mock import call, Mock, sentinel
 
 from django.db.utils import DatabaseError
 from netaddr import IPAddress
-from testtools import ExpectedException
-from testtools.matchers import Equals, MatchesListwise, MatchesSetwise
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
@@ -37,11 +36,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from metadataserver import api
 from metadataserver import api_twisted as api_twisted_module
@@ -156,12 +150,12 @@ class TestStatusHandlerResource(MAASTestCase):
         output = resource.render_POST(request)
         self.assertEqual(NOT_DONE_YET, output)
         self.assertEqual(204, request.responseCode)
-        self.assertThat(
-            status_worker.queueMessage, MockCalledOnceWith(token, message)
-        )
+        status_worker.queueMessage.assert_called_once_with(token, message)
 
 
 class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
+    assertRaises = TestCase.assertRaises
+
     @transactional
     def make_nodes_with_tokens(self):
         nodes = [factory.make_Node() for _ in range(3)]
@@ -198,31 +192,23 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             for node, _ in nodes_with_tokens
         }
         dbtasks = Mock()
-        dbtasks.addTask = Mock()
         worker = StatusWorkerService(dbtasks)
         for node, token in nodes_with_tokens:
             for message in node_messages[node]:
                 worker.queueMessage(token.key, message)
         yield worker._tryUpdateNodes()
-        call_args = [
-            (call_arg[0][1], call_arg[0][2])
-            for call_arg in dbtasks.addTask.call_args_list
-        ]
-        self.assertThat(
-            call_args,
-            MatchesSetwise(
-                *[
-                    MatchesListwise([Equals(node), Equals(messages)])
-                    for node, messages in node_messages.items()
-                ]
-            ),
+        dbtasks.addTask.assert_has_calls(
+            [
+                call(worker._processMessages, node, messages)
+                for node, messages in node_messages.items()
+            ]
         )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_processMessages_fails_when_in_transaction(self):
         worker = StatusWorkerService(sentinel.dbtasks)
-        with ExpectedException(TransactionManagementError):
+        with self.assertRaises(TransactionManagementError):
             yield deferToDatabase(
                 transactional(worker._processMessages),
                 sentinel.node,
@@ -233,7 +219,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_processMessageNow_fails_when_in_transaction(self):
         worker = StatusWorkerService(sentinel.dbtasks)
-        with ExpectedException(TransactionManagementError):
+        with self.assertRaises(TransactionManagementError):
             yield deferToDatabase(
                 transactional(worker._processMessageNow),
                 sentinel.node,
@@ -251,9 +237,8 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             sentinel.node,
             [sentinel.message1, sentinel.message2],
         )
-        self.assertThat(
-            mock_processMessage,
-            MockCalledOnceWith(sentinel.node, sentinel.message1),
+        mock_processMessage.assert_called_once_with(
+            sentinel.node, sentinel.message1
         )
 
     @wait_for_reactor
@@ -261,17 +246,17 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
     def test_processMessages_calls_processMessage(self):
         worker = StatusWorkerService(sentinel.dbtasks)
         mock_processMessage = self.patch(worker, "_processMessage")
+        mock_processMessage.return_value = True
         yield deferToDatabase(
             worker._processMessages,
             sentinel.node,
             [sentinel.message1, sentinel.message2],
         )
-        self.assertThat(
-            mock_processMessage,
-            MockCallsMatch(
+        mock_processMessage.assert_has_calls(
+            [
                 call(sentinel.node, sentinel.message1),
                 call(sentinel.node, sentinel.message2),
-            ),
+            ]
         )
 
     @wait_for_reactor
@@ -284,7 +269,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
         node, token = nodes_with_tokens[0]
         yield worker.queueMessage(token.key, message)
-        self.assertThat(mock_processMessage, MockCalledOnceWith(node, message))
+        mock_processMessage.assert_called_once_with(node, message)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -300,9 +285,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
             )
             node, token = nodes_with_tokens[0]
             yield worker.queueMessage(token.key, message)
-            self.assertThat(
-                mock_processMessage, MockCalledOnceWith(node, message)
-            )
+            mock_processMessage.assert_called_once_with(node, message)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -323,7 +306,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         nodes_with_tokens = yield deferToDatabase(self.make_nodes_with_tokens)
         node, token = nodes_with_tokens[0]
         yield worker.queueMessage(token.key, message)
-        self.assertThat(mock_processMessage, MockCalledOnceWith(node, message))
+        mock_processMessage.assert_called_once_with(node, message)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -345,7 +328,7 @@ class TestStatusWorkerServiceTransactional(MAASTransactionServerTestCase):
         node, token = nodes_with_tokens[0]
         yield deferToDatabase(token.delete)
         yield worker.queueMessage(token.key, message)
-        self.assertThat(mock_processMessage, MockNotCalled())
+        mock_processMessage.assert_not_called()
 
 
 def encode_as_base64(content):
@@ -620,7 +603,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             api_twisted_module, "_create_vmhost_for_deployment"
         )
         self.processMessage(node, payload)
-        self.assertThat(mock_create_vmhost, MockCalledOnceWith(node))
+        mock_create_vmhost.assert_called_once_with(node)
 
     def test_status_ok_for_modules_final_triggers_register_vmhost(self):
         node = factory.make_Node(
@@ -641,7 +624,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             api_twisted_module, "_create_vmhost_for_deployment"
         )
         self.processMessage(node, payload)
-        self.assertThat(mock_create_vmhost, MockCalledOnceWith(node))
+        mock_create_vmhost.assert_called_once_with(node)
 
     def test_status_installation_fail_leaves_node_failed(self):
         node = factory.make_Node(interface=True, status=NODE_STATUS.DEPLOYING)
@@ -766,7 +749,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status
         )
-        self.assertThat(populate_tags_for_single_node, MockNotCalled())
+        populate_tags_for_single_node.assert_not_called()
 
     def test_status_erasure_failure_leaves_node_failed(self):
         node = factory.make_Node(
@@ -809,7 +792,7 @@ class TestStatusWorkerService(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status
         )
-        self.assertThat(populate_tags_for_single_node, MockNotCalled())
+        populate_tags_for_single_node.assert_not_called()
 
     def test_status_erasure_failure_doesnt_clear_owner(self):
         user = factory.make_User()
@@ -852,8 +835,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 }
             ],
         }
-        with ExpectedException(ValueError):
-            self.processMessage(node, payload)
+        self.assertRaises(ValueError, self.processMessage, node, payload)
 
     def test_status_with_file_bad_compression_fails(self):
         node = factory.make_Node(
@@ -877,8 +859,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                 }
             ],
         }
-        with ExpectedException(ValueError):
-            self.processMessage(node, payload)
+        self.assertRaises(ValueError, self.processMessage, node, payload)
 
     def test_status_with_file_no_compression_succeeds(self):
         node = factory.make_Node(
@@ -947,8 +928,7 @@ class TestStatusWorkerService(MAASServerTestCase):
                     }
                 ],
             }
-            with ExpectedException(ValueError):
-                self.processMessage(node, payload)
+            self.assertRaises(ValueError, self.processMessage, node, payload)
 
     def test_status_with_file_succeeds(self):
         """Adding files should succeed for every status that's either

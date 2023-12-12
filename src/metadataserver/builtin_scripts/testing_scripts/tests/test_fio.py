@@ -9,17 +9,12 @@ from pathlib import Path
 import random
 from subprocess import CalledProcessError
 from textwrap import dedent
-from unittest.mock import ANY, call
+from unittest.mock import call
 
 import yaml
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.testing_scripts import fio
 
@@ -149,13 +144,9 @@ class TestFioTestRunCmd(MAASTestCase):
 
         results = fio.run_cmd(self.readwrite)
 
-        self.assertThat(
-            self.mock_print,
-            MockCallsMatch(
-                call(ANY), call(ANY), call("\n%s\n" % str("-" * 80))
-            ),
-        )
-        self.assertDictEqual({"bw": self.bw, "iops": self.iops}, results)
+        self.assertEqual(self.mock_print.call_count, 3)
+        self.mock_print.assert_called_with(f"\n{'-'*80}\n")
+        self.assertEqual({"bw": self.bw, "iops": self.iops}, results)
 
     def test_run_cmd_runs_cmd_and_exits_on_error(self):
         stdout = factory.make_string()
@@ -168,11 +159,10 @@ class TestFioTestRunCmd(MAASTestCase):
         )
 
         self.assertRaises(SystemExit, fio.run_cmd, self.readwrite)
-        self.assertThat(
-            self.mock_stderr_write,
-            MockCallsMatch(call("fio failed to run!\n"), call(stderr)),
+        self.mock_stderr_write.assert_has_calls(
+            [call("fio failed to run!\n"), call(stderr)]
         )
-        self.assertThat(self.mock_stdout_write, MockCalledOnceWith(stdout))
+        self.mock_stdout_write.assert_called_once_with(stdout)
 
 
 class TestFioTestRunFio(MAASTestCase):
@@ -238,16 +228,16 @@ class TestFioTestRunFio(MAASTestCase):
         with open(result_path) as results_file:
             results = yaml.safe_load(results_file)
 
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "results": {
-                    "random_read": "%s KB/s" % rand_read_bw,
+                    "random_read": f"{rand_read_bw} KB/s",
                     "random_read_iops": rand_read_iops,
-                    "sequential_read": "%s KB/s" % seq_read_bw,
+                    "sequential_read": f"{seq_read_bw} KB/s",
                     "sequential_read_iops": seq_read_iops,
-                    "random_write": "%s KB/s" % rand_write_bw,
+                    "random_write": f"{rand_write_bw} KB/s",
                     "random_write_iops": rand_write_iops,
-                    "sequential_write": "%s KB/s" % seq_write_bw,
+                    "sequential_write": f"{seq_write_bw} KB/s",
                     "sequential_write_iops": seq_write_iops,
                 }
             },
@@ -285,4 +275,4 @@ class TestFioTestRunFio(MAASTestCase):
 
         fio.run_fio(factory.make_name("blockdevice"))
 
-        self.assertThat(mock_open, MockNotCalled())
+        mock_open.assert_not_called()

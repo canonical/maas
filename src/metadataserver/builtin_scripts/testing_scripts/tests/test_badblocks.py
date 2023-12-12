@@ -14,7 +14,6 @@ from unittest.mock import ANY
 import yaml
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.testing_scripts import badblocks
 
@@ -103,13 +102,10 @@ class TestRunBadBlocks(MAASTestCase):
         }
 
         self.assertEqual(1, badblocks.run_badblocks(storage))
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=STDOUT)
-        )
-        self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
-        self.assertThat(
-            mock_yaml_safe_dump,
-            MockCalledOnceWith(results, mock_open.return_value),
+        mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=STDOUT)
+        mock_open.assert_called_once_with(ANY, "w")
+        mock_yaml_safe_dump.assert_called_once_with(
+            results, mock_open.return_value
         )
 
     def test_run_badblocks_destructive(self):
@@ -143,6 +139,4 @@ class TestRunBadBlocks(MAASTestCase):
         proc.returncode = 0
 
         self.assertEqual(1, badblocks.run_badblocks(storage, destructive=True))
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=STDOUT)
-        )
+        mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=STDOUT)

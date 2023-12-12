@@ -10,12 +10,6 @@ from subprocess import CalledProcessError, DEVNULL, STDOUT, TimeoutExpired
 from unittest.mock import call
 
 from maasserver.testing.factory import factory
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.testing_scripts import smartctl
 
@@ -34,14 +28,11 @@ class TestRunSmartCTL(MAASTestCase):
         self.assertEqual(
             self.output, smartctl.run_smartctl(self.blockdevice, self.args)
         )
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "smartctl"] + self.args + [self.blockdevice],
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "smartctl"] + self.args + [self.blockdevice],
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockNotCalled())
+        self.mock_print.assert_not_called()
 
     def test_device(self):
         device = factory.make_name("device")
@@ -49,30 +40,24 @@ class TestRunSmartCTL(MAASTestCase):
             self.output,
             smartctl.run_smartctl(self.blockdevice, self.args, device=device),
         )
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "smartctl", "-d", device]
-                + self.args
-                + [self.blockdevice],
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "smartctl", "-d", device]
+            + self.args
+            + [self.blockdevice],
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockNotCalled())
+        self.mock_print.assert_not_called()
 
     def test_output(self):
         self.assertEqual(
             self.output,
             smartctl.run_smartctl(self.blockdevice, self.args, output=True),
         )
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "smartctl"] + self.args + [self.blockdevice],
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "smartctl"] + self.args + [self.blockdevice],
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockCalledOnce())
+        self.mock_print.assert_called_once()
 
     def test_output_invalid_utf8_replaced(self):
         # invalid UTF-8 input
@@ -94,37 +79,28 @@ class TestRunStorCLI(MAASTestCase):
 
     def test_default(self):
         self.assertEqual(self.output, smartctl.run_storcli(self.args))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "storcli64"] + self.args,
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "storcli64"] + self.args,
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockNotCalled())
+        self.mock_print.assert_not_called()
 
     def test_using_alt_path(self):
         self.patch(smartctl.os.path, "exists").return_value = True
         self.assertEqual(self.output, smartctl.run_storcli(self.args))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "/opt/MegaRAID/storcli/storcli64"] + self.args,
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "/opt/MegaRAID/storcli/storcli64"] + self.args,
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockNotCalled())
+        self.mock_print.assert_not_called()
 
     def test_output(self):
         self.assertEqual(self.output, smartctl.run_storcli(self.args, True))
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["sudo", "-n", "storcli64"] + self.args,
-                timeout=smartctl.TIMEOUT,
-            ),
+        self.mock_check_output.assert_called_once_with(
+            ["sudo", "-n", "storcli64"] + self.args,
+            timeout=smartctl.TIMEOUT,
         )
-        self.assertThat(self.mock_print, MockCalledOnce())
+        self.mock_print.assert_called_once()
 
 
 class TestMakeDeviceName(MAASTestCase):
@@ -150,10 +126,9 @@ class TestExitSkipped(MAASTestCase):
         mock_yaml_safe_dump = self.patch(smartctl.yaml, "safe_dump")
 
         self.assertRaises(SystemExit, smartctl.exit_skipped)
-        self.assertThat(mock_open, MockCalledOnceWith(result_path, "w"))
-        self.assertThat(
-            mock_yaml_safe_dump,
-            MockCalledOnceWith({"status": "skipped"}, mock_open.return_value),
+        mock_open.assert_called_once_with(result_path, "w")
+        mock_yaml_safe_dump.assert_called_once_with(
+            {"status": "skipped"}, mock_open.return_value
         )
 
 
@@ -171,7 +146,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
             factory.make_name("blockdevice")
         )
 
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_exit_skipped.assert_called_once()
 
     def test_found(self):
         scsi_id = factory.make_name()
@@ -181,7 +156,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
             "Virtual Drives = 1",
             "SCSI NAA Id = %s" % factory.make_name("scsi_id"),
             "Virtual Drives = 1",
-            "SCSI NAA Id = %s" % scsi_id,
+            f"SCSI NAA Id = {scsi_id}",
         )
         self.patch(smartctl.glob, "glob").return_value = [
             factory.make_name("path")
@@ -208,7 +183,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
         smartctl.find_matching_megaraid_controller(
             factory.make_name("blockdevice")
         )
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_exit_skipped.assert_called_once()
 
 
 class TestDetectMegaRAIDConfig(MAASTestCase):
@@ -219,7 +194,7 @@ class TestDetectMegaRAIDConfig(MAASTestCase):
     def test_no_storcli(self):
         mock_exit_skipped = self.patch(smartctl, "exit_skipped")
         smartctl.detect_megaraid_config(factory.make_name("blockdevice"))
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_exit_skipped.assert_called_once()
 
     def test_returns_scsi_bus_nums(self):
         controller = random.randint(0, 3)
@@ -245,11 +220,8 @@ class TestDetectMegaRAIDConfig(MAASTestCase):
             scsi_bus_nums,
             smartctl.detect_megaraid_config(factory.make_name("blockdevice")),
         )
-        self.assertThat(
-            mock_run_storcli,
-            MockCalledOnceWith(
-                ["/c%d" % controller, "/eall", "/sall", "show"]
-            ),
+        mock_run_storcli.assert_called_once_with(
+            [f"/c{controller}", "/eall", "/sall", "show"]
         )
 
 
@@ -317,7 +289,7 @@ class TestCheckSMARTSupport(MAASTestCase):
         )
         mock_exit_skipped = self.patch(smartctl, "exit_skipped")
         smartctl.check_SMART_support(factory.make_name("blockdevice"))
-        self.assertThat(mock_exit_skipped, MockCalledOnce())
+        mock_exit_skipped.assert_called_once()
 
 
 class TestRunSmartCTLSelfTest(MAASTestCase):
@@ -327,11 +299,8 @@ class TestRunSmartCTLSelfTest(MAASTestCase):
         test = factory.make_name("test")
         device = factory.make_name("device")
         smartctl.run_smartctl_selftest(blockdevice, test, device)
-        self.assertThat(
-            mock_run_smartctl,
-            MockCalledOnceWith(
-                blockdevice, ["-t", test], device, output=True, stderr=DEVNULL
-            ),
+        mock_run_smartctl.assert_called_once_with(
+            blockdevice, ["-t", test], device, output=True, stderr=DEVNULL
         )
 
     def test_raises_timeoutexpired(self):
@@ -343,7 +312,7 @@ class TestRunSmartCTLSelfTest(MAASTestCase):
         self.assertRaises(
             TimeoutExpired, smartctl.run_smartctl_selftest, blockdevice, test
         )
-        self.assertThat(mock_print, MockCalledOnce())
+        mock_print.assert_called_once()
 
     def test_raises_calledprocesserror(self):
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
@@ -357,7 +326,7 @@ class TestRunSmartCTLSelfTest(MAASTestCase):
             blockdevice,
             test,
         )
-        self.assertThat(mock_print, MockCalledOnce())
+        mock_print.assert_called_once()
 
 
 class TestWaitSmartCTLSelfTest(MAASTestCase):
@@ -379,15 +348,14 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
 
         smartctl.wait_smartctl_selftest(blockdevice, test, device)
 
-        self.assertThat(
-            mock_run_smartctl,
-            MockCallsMatch(
+        mock_run_smartctl.assert_has_calls(
+            [
                 call(blockdevice, ["-c"], device),
                 call(blockdevice, ["-c"], device),
                 call(blockdevice, ["--all"], device),
-            ),
+            ]
         )
-        self.assertThat(mock_sleep, MockCalledOnceWith(30))
+        mock_sleep.assert_called_once_with(30)
 
     def test_waits_alt(self):
         blockdevice = factory.make_name("blockdevice")
@@ -396,22 +364,21 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
         mock_sleep = self.patch(smartctl, "sleep")
         mock_run_smartctl = self.patch(smartctl, "run_smartctl")
         mock_run_smartctl.side_effect = (
-            "Background %s Self test in progress" % test,
-            "Background %s Self test in progress" % test,
+            f"Background {test} Self test in progress",
+            f"Background {test} Self test in progress",
             "",
         )
 
         smartctl.wait_smartctl_selftest(blockdevice, test, device)
 
-        self.assertThat(
-            mock_run_smartctl,
-            MockCallsMatch(
+        mock_run_smartctl.assert_has_calls(
+            [
                 call(blockdevice, ["-c"], device),
                 call(blockdevice, ["--all"], device),
                 call(blockdevice, ["--all"], device),
-            ),
+            ]
         )
-        self.assertThat(mock_sleep, MockCalledOnceWith(30))
+        mock_sleep.assert_called_once_with(30)
 
     def test_raises_timeoutexpired(self):
         blockdevice = factory.make_name("blockdevice")
@@ -427,7 +394,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
             test,
             device,
         )
-        self.assertThat(mock_sleep, MockNotCalled())
+        mock_sleep.assert_not_called()
 
     def test_raises_calledprocesserror(self):
         blockdevice = factory.make_name("blockdevice")
@@ -443,7 +410,7 @@ class TestWaitSmartCTLSelfTest(MAASTestCase):
             test,
             device,
         )
-        self.assertThat(mock_sleep, MockNotCalled())
+        mock_sleep.assert_not_called()
 
 
 class TestCheckSmartCTL(MAASTestCase):
@@ -456,11 +423,8 @@ class TestCheckSmartCTL(MAASTestCase):
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
         smartctl.check_smartctl(blockdevice, device)
-        self.assertThat(
-            mock_run_smartctl,
-            MockCalledOnceWith(
-                blockdevice, ["--xall"], device, output=True, stderr=STDOUT
-            ),
+        mock_run_smartctl.assert_called_once_with(
+            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
         )
 
     def test_raises_timeoutexpired(self):
@@ -477,11 +441,8 @@ class TestCheckSmartCTL(MAASTestCase):
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
         smartctl.check_smartctl(blockdevice, device)
-        self.assertThat(
-            mock_run_smartctl,
-            MockCalledOnceWith(
-                blockdevice, ["--xall"], device, output=True, stderr=STDOUT
-            ),
+        mock_run_smartctl.assert_called_once_with(
+            blockdevice, ["--xall"], device, output=True, stderr=STDOUT
         )
 
     def test_raises_calledprocesserror(self):
@@ -520,9 +481,9 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(self.mock_run_smartctl_selftest, MockNotCalled())
-        self.assertThat(self.mock_wait_smartctl_selftest, MockNotCalled())
-        self.assertThat(self.mock_check_smartctl, MockNotCalled())
+        self.mock_run_smartctl_selftest.assert_not_called()
+        self.mock_wait_smartctl_selftest.assert_not_called()
+        self.mock_check_smartctl.assert_not_called()
 
     def test_returns_false_when_unable_to_check_device_support(self):
         device = factory.make_name("device")
@@ -535,24 +496,19 @@ class TestExecuteSmartCTL(MAASTestCase):
                 ]
             ),
         )
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(self.mock_run_smartctl_selftest, MockNotCalled())
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_run_smartctl_selftest.assert_not_called()
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
         )
 
     def test_returns_false_when_unable_to_start_device_test(self):
@@ -566,27 +522,22 @@ class TestExecuteSmartCTL(MAASTestCase):
                 ]
             ),
         )
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
         )
 
     def test_returns_false_when_unable_to_wait_start_device_test(self):
@@ -600,27 +551,22 @@ class TestExecuteSmartCTL(MAASTestCase):
                 ]
             ),
         )
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
         )
 
     def test_returns_false_when_unable_to_check_device(self):
@@ -634,109 +580,94 @@ class TestExecuteSmartCTL(MAASTestCase):
                 ]
             ),
         )
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
-        )
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
+        ),
 
     def test_returns_true_with_device(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertTrue(smartctl.execute_smartctl(self.blockdevice, self.test))
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test, device),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
+
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test, device
         )
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
+        ),
 
     def test_tests_all_scsi_bus_nums(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [1, 2, 3])
         self.assertTrue(smartctl.execute_smartctl(self.blockdevice, self.test))
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
+        self.mock_check_smart_support.assert_has_calls(
+            [
                 call(self.blockdevice),
-                call(self.blockdevice, "%s,1" % device),
-                call(self.blockdevice, "%s,2" % device),
-                call(self.blockdevice, "%s,3" % device),
-            ),
+                call(self.blockdevice, f"{device},1"),
+                call(self.blockdevice, f"{device},2"),
+                call(self.blockdevice, f"{device},3"),
+            ]
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCallsMatch(
-                call(self.blockdevice, self.test, "%s,1" % device),
-                call(self.blockdevice, self.test, "%s,2" % device),
-                call(self.blockdevice, self.test, "%s,3" % device),
-            ),
+        self.mock_run_smartctl_selftest.assert_has_calls(
+            [
+                call(self.blockdevice, self.test, f"{device},1"),
+                call(self.blockdevice, self.test, f"{device},2"),
+                call(self.blockdevice, self.test, f"{device},3"),
+            ]
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCallsMatch(
-                call(self.blockdevice, self.test, "%s,1" % device),
-                call(self.blockdevice, self.test, "%s,2" % device),
-                call(self.blockdevice, self.test, "%s,3" % device),
-            ),
+        self.mock_wait_smartctl_selftest.assert_has_calls(
+            [
+                call(self.blockdevice, self.test, f"{device},1"),
+                call(self.blockdevice, self.test, f"{device},2"),
+                call(self.blockdevice, self.test, f"{device},3"),
+            ]
         )
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCallsMatch(
-                call(self.blockdevice, "%s,1" % device),
-                call(self.blockdevice, "%s,2" % device),
-                call(self.blockdevice, "%s,3" % device),
-            ),
+        self.mock_check_smartctl.assert_has_calls(
+            [
+                call(self.blockdevice, f"{device},1"),
+                call(self.blockdevice, f"{device},2"),
+                call(self.blockdevice, f"{device},3"),
+            ]
         )
 
     def test_doesnt_run_testing_when_validating_device(self):
         device = factory.make_name("device")
         self.mock_check_smart_support.return_value = (device, [42])
-        device = "%s,42" % device
+        device = f"{device},42"
         self.assertTrue(
             smartctl.execute_smartctl(self.blockdevice, "validate")
         )
-        self.assertThat(
-            self.mock_check_smart_support,
-            MockCallsMatch(
-                call(self.blockdevice), call(self.blockdevice, device)
-            ),
+        self.mock_check_smart_support.assert_has_calls(
+            [call(self.blockdevice), call(self.blockdevice, device)]
         )
-        self.assertThat(self.mock_run_smartctl_selftest, MockNotCalled())
-        self.assertThat(self.mock_wait_smartctl_selftest, MockNotCalled())
-        self.assertThat(
-            self.mock_check_smartctl,
-            MockCalledOnceWith(self.blockdevice, device),
+        self.mock_run_smartctl_selftest.assert_not_called()
+        self.mock_wait_smartctl_selftest.assert_not_called()
+        self.mock_check_smartctl.assert_called_once_with(
+            self.blockdevice, device
         )
 
     def test_returns_false_when_starting_test_fails(self):
@@ -750,14 +681,11 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(self.mock_wait_smartctl_selftest, MockNotCalled())
-        self.assertThat(
-            self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
-        )
+        self.mock_wait_smartctl_selftest.assert_not_called()
+        self.mock_check_smartctl.assert_called_once_with(self.blockdevice)
 
     def test_returns_false_when_waiting_test_fails(self):
         self.mock_check_smart_support.return_value = (None, [])
@@ -770,17 +698,13 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
-        )
+        self.mock_check_smartctl.assert_called_once_with(self.blockdevice)
 
     def test_returns_false_when_check_fails(self):
         self.mock_check_smart_support.return_value = (None, [])
@@ -793,40 +717,30 @@ class TestExecuteSmartCTL(MAASTestCase):
         self.assertFalse(
             smartctl.execute_smartctl(self.blockdevice, self.test)
         )
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
-        )
+        self.mock_check_smartctl.assert_called_once_with(self.blockdevice)
 
     def test_returns_true(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.assertTrue(smartctl.execute_smartctl(self.blockdevice, self.test))
-        self.assertThat(
-            self.mock_run_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_run_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_wait_smartctl_selftest,
-            MockCalledOnceWith(self.blockdevice, self.test),
+        self.mock_wait_smartctl_selftest.assert_called_once_with(
+            self.blockdevice, self.test
         )
-        self.assertThat(
-            self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
-        )
+        self.mock_check_smartctl.assert_called_once_with(self.blockdevice)
 
     def test_doesnt_run_testing_when_validating(self):
         self.mock_check_smart_support.return_value = (None, [])
         self.assertTrue(
             smartctl.execute_smartctl(self.blockdevice, "validate")
         )
-        self.assertThat(self.mock_run_smartctl_selftest, MockNotCalled())
-        self.assertThat(self.mock_wait_smartctl_selftest, MockNotCalled())
-        self.assertThat(
-            self.mock_check_smartctl, MockCalledOnceWith(self.blockdevice)
-        )
+        self.mock_run_smartctl_selftest.assert_not_called()
+        self.mock_wait_smartctl_selftest.assert_not_called()
+        self.mock_check_smartctl.assert_called_once_with(self.blockdevice)

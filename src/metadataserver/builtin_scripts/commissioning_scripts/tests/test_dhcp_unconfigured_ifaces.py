@@ -3,7 +3,6 @@
 
 from unittest.mock import call
 
-from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.commissioning_scripts import (
     dhcp_unconfigured_ifaces,
@@ -137,6 +136,7 @@ class TestDHCPExplore(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.patch(dhcp_unconfigured_ifaces, "print")
+        self.patch(dhcp_unconfigured_ifaces, "sleep")
 
     def test_calls_dhclient_on_unconfigured_interfaces(self):
         check_output = self.patch(dhcp_unconfigured_ifaces, "check_output")
@@ -170,20 +170,18 @@ class TestDHCPExplore(MAASTestCase):
         mock_call = self.patch(dhcp_unconfigured_ifaces, "call")
         mock_popen = self.patch(dhcp_unconfigured_ifaces, "Popen")
         dhcp_unconfigured_ifaces.dhcp_explore()
-        self.assertThat(
-            mock_call,
-            MockCallsMatch(
+        mock_call.assert_has_calls(
+            [
                 call(["dhclient", "-nw", "-4", "eth1"]),
                 call(["dhclient", "-nw", "-4", "eth2"]),
                 call(["dhclient", "-nw", "-4", "eth6"]),
-            ),
+            ]
         )
-        self.assertThat(
-            mock_popen,
-            MockCallsMatch(
+        mock_popen.assert_has_calls(
+            [
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth0"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth1"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth2"]),
                 call(["sh", "-c", DHCP6_TEMPLATE % "eth5"]),
-            ),
+            ],
         )

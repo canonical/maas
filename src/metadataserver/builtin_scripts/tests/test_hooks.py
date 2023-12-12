@@ -10,7 +10,6 @@ from distro_info import UbuntuDistroInfo
 from django.db.models import Q
 from fixtures import FakeLogger
 from netaddr import IPNetwork
-from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import (
     FILESYSTEM_TYPE,
@@ -42,7 +41,6 @@ from maasserver.testing.commissioning import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
@@ -1442,9 +1440,9 @@ class TestDetectHardware(MAASServerTestCase):
         ]
         # Note: determine_hardware_matches() adds the matches as informational.
         for item in discovered:
-            self.expectThat(
+            self.assertEqual(
                 item["matches"],
-                Equals(filter_modaliases(self.modaliases, item["modaliases"])),
+                filter_modaliases(self.modaliases, item["modaliases"]),
             )
             # Delete this so we can compare the matches to what was expected.
             del item["matches"]
@@ -1876,7 +1874,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             node_module.Node, "set_initial_networking_configuration"
         )
         process_lxd_results(node, make_lxd_output_json(), 0)
-        self.assertThat(mock_set_initial_net_config, MockNotCalled())
+        mock_set_initial_net_config.assert_not_called()
         # Verify network device information was collected
         self.assertEqual(
             ["Intel Corporation", "Intel Corporation", "Intel Corporation"],
@@ -3323,18 +3321,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.assertThat(
-            node.physicalblockdevice_set.first(),
-            MatchesStructure.byEquality(
-                name=name,
-                id_path=id_path,
-                size=size,
-                block_size=block_size,
-                model=model,
-                serial=serial,
-                firmware_version=firmware_version,
-            ),
-        )
+        blockdevice = node.physicalblockdevice_set.first()
+        self.assertEqual(blockdevice.name, name)
+        self.assertEqual(blockdevice.id_path, id_path)
+        self.assertEqual(blockdevice.size, size)
+        self.assertEqual(blockdevice.block_size, block_size)
+        self.assertEqual(blockdevice.model, model)
+        self.assertEqual(blockdevice.serial, serial)
+        self.assertEqual(blockdevice.firmware_version, firmware_version)
 
     def test_creates_physical_block_device_with_default_block_size(self):
         SAMPLE_LXD_DEFAULT_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -3352,18 +3346,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_DEFAULT_BLOCK_SIZE, create_numa_nodes(node)
         )
-        self.assertThat(
-            node.physicalblockdevice_set.first(),
-            MatchesStructure.byEquality(
-                name=name,
-                id_path=id_path,
-                size=size,
-                block_size=block_size,
-                model=model,
-                serial=serial,
-                firmware_version=firmware_version,
-            ),
-        )
+        blockdevice = node.physicalblockdevice_set.first()
+        self.assertEqual(blockdevice.name, name)
+        self.assertEqual(blockdevice.id_path, id_path)
+        self.assertEqual(blockdevice.size, size)
+        self.assertEqual(blockdevice.block_size, block_size)
+        self.assertEqual(blockdevice.model, model)
+        self.assertEqual(blockdevice.serial, serial)
+        self.assertEqual(blockdevice.firmware_version, firmware_version)
 
     def test_creates_physical_block_device_with_path(self):
         NO_DEVICE_PATH = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -3379,18 +3369,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, NO_DEVICE_PATH, create_numa_nodes(node)
         )
-        self.assertThat(
-            node.physicalblockdevice_set.first(),
-            MatchesStructure.byEquality(
-                name=name,
-                id_path="/dev/%s" % name,
-                size=size,
-                block_size=block_size,
-                model=model,
-                serial=serial,
-                firmware_version=firmware_version,
-            ),
-        )
+        blockdevice = node.physicalblockdevice_set.first()
+        self.assertEqual(blockdevice.name, name)
+        self.assertEqual(blockdevice.id_path, f"/dev/{name}")
+        self.assertEqual(blockdevice.size, size)
+        self.assertEqual(blockdevice.block_size, block_size)
+        self.assertEqual(blockdevice.model, model)
+        self.assertEqual(blockdevice.serial, serial)
+        self.assertEqual(blockdevice.firmware_version, firmware_version)
 
     def test_creates_physical_block_device_with_path_for_missing_serial(self):
         NO_SERIAL = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -3400,21 +3386,19 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         size = device["size"]
         block_size = device["block_size"]
         model = device["model"]
+        firmware_version = device["firmware_version"]
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, NO_SERIAL, create_numa_nodes(node)
         )
-        self.assertThat(
-            node.physicalblockdevice_set.first(),
-            MatchesStructure.byEquality(
-                name=name,
-                id_path="/dev/%s" % name,
-                size=size,
-                block_size=block_size,
-                model=model,
-                serial="",
-            ),
-        )
+        blockdevice = node.physicalblockdevice_set.first()
+        self.assertEqual(blockdevice.name, name)
+        self.assertEqual(blockdevice.id_path, f"/dev/{name}")
+        self.assertEqual(blockdevice.size, size)
+        self.assertEqual(blockdevice.block_size, block_size)
+        self.assertEqual(blockdevice.model, model)
+        self.assertEqual(blockdevice.serial, "")
+        self.assertEqual(blockdevice.firmware_version, firmware_version)
 
     def test_creates_physical_block_device_only_for_node(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -3678,7 +3662,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
-        self.assertThat(mock_set_default_storage_layout, MockNotCalled())
+        mock_set_default_storage_layout.assert_not_called()
         _, layout = get_applied_storage_layout_for_node(node)
         self.assertEqual("blank", layout)
 
@@ -4417,12 +4401,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
         address = str(IPNetwork(cidr).ip)
         ipv4_ip = eth0.ip_addresses.get(ip=address)
-        self.assertThat(
-            ipv4_ip,
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet=subnet, ip=address
-            ),
-        )
+        self.assertEqual(ipv4_ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(ipv4_ip.subnet, subnet)
+        self.assertEqual(ipv4_ip.ip, address)
 
     def test_handles_disconnected_interfaces(self):
         node = factory.make_Node()

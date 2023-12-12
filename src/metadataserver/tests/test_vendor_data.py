@@ -6,7 +6,6 @@ from textwrap import dedent
 
 from netaddr import IPAddress
 import tempita
-from testtools.matchers import ContainsDict, Equals, KeysEqual, MatchesDict
 import yaml
 
 from maasserver.enum import BRIDGE_TYPE, INTERFACE_TYPE, NODE_STATUS
@@ -18,7 +17,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
-from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
@@ -77,15 +75,10 @@ class TestGetVendorData(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, default_user=owner)
         vendor_data = get_vendor_data(node, None)
-        self.assertThat(
-            vendor_data,
-            ContainsDict(
-                {
-                    "system_info": MatchesDict(
-                        {"default_user": KeysEqual("name", "gecos")}
-                    )
-                }
-            ),
+        system_info = vendor_data.get("system_info")
+        self.assertEqual(
+            system_info.get("default_user"),
+            {"name": owner.username, "gecos": ",,,,"},
         )
 
     def test_includes_ntp_server_information(self):
@@ -93,12 +86,8 @@ class TestGetVendorData(MAASServerTestCase):
         Config.objects.set_config("ntp_servers", "foo bar")
         node = factory.make_Node()
         vendor_data = get_vendor_data(node, None)
-        self.assertThat(
-            vendor_data,
-            ContainsDict(
-                {"ntp": Equals({"servers": [], "pools": ["bar", "foo"]})}
-            ),
-        )
+        ntp = vendor_data.get("ntp")
+        self.assertEqual(ntp, {"servers": [], "pools": ["bar", "foo"]})
 
 
 class TestGenerateSystemInfo(MAASServerTestCase):
@@ -124,18 +113,16 @@ class TestGenerateSystemInfo(MAASServerTestCase):
         owner.save()
         node = factory.make_Node(owner=owner, default_user=owner)
         configuration = generate_system_info(node)
-        self.assertThat(
+        self.assertEqual(
             dict(configuration),
-            Equals(
-                {
-                    "system_info": {
-                        "default_user": {
-                            "name": owner.username,
-                            "gecos": "First Last,,,,",
-                        }
+            {
+                "system_info": {
+                    "default_user": {
+                        "name": owner.username,
+                        "gecos": "First Last,,,,",
                     }
                 }
-            ),
+            },
         )
 
 
@@ -179,16 +166,14 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         ntp_servers = ntp_hosts + ntp_addrs
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
         configuration = generate_ntp_configuration(node=factory.make_Node())
-        self.assertThat(
+        self.assertEqual(
             dict(configuration),
-            Equals(
-                {
-                    "ntp": {
-                        "servers": sorted(ntp_addrs, key=IPAddress),
-                        "pools": sorted(ntp_hosts),
-                    }
+            {
+                "ntp": {
+                    "servers": sorted(ntp_addrs, key=IPAddress),
+                    "pools": sorted(ntp_hosts),
                 }
-            ),
+            },
         )
 
     def test_yields_nothing_when_machine_has_no_boot_cluster_address(self):
@@ -226,22 +211,20 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         vlan.save()
 
         configuration = generate_ntp_configuration(machine)
-        self.assertThat(
+        self.assertEqual(
             dict(configuration),
-            Equals(
-                {
-                    "ntp": {
-                        "servers": sorted(
-                            (
-                                rack_primary_address.ip,
-                                rack_secondary_address.ip,
-                            ),
-                            key=IPAddress,
+            {
+                "ntp": {
+                    "servers": sorted(
+                        (
+                            rack_primary_address.ip,
+                            rack_secondary_address.ip,
                         ),
-                        "pools": [],
-                    }
+                        key=IPAddress,
+                    ),
+                    "pools": [],
                 }
-            ),
+            },
         )
 
 
@@ -627,7 +610,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, owner=factory.make_admin()
         )
         config = get_vendor_data(node, None)
-        self.assertThat(mock_get_configs, MockNotCalled())
+        mock_get_configs.assert_not_called()
         self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_no_values_set(self):

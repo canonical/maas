@@ -15,7 +15,6 @@ from unittest.mock import ANY
 import yaml
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts.testing_scripts import seven_z
 
@@ -70,13 +69,10 @@ class TestSevenZTest(MAASTestCase):
         }
         returncode = seven_z.run_7z()
 
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
-        )
-        self.assertThat(mock_open, MockCalledOnceWith(ANY, "w"))
-        self.assertThat(
-            mock_yaml_safe_dump,
-            MockCalledOnceWith(results, mock_open.return_value),
+        mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=PIPE)
+        mock_open.assert_called_once_with(ANY, "w")
+        mock_yaml_safe_dump.assert_called_once_with(
+            results, mock_open.return_value
         )
         self.assertEqual(returncode, 0)
 
@@ -89,10 +85,8 @@ class TestSevenZTest(MAASTestCase):
         proc.returncode = 1
 
         self.assertRaises(SystemExit, seven_z.run_7z)
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
-        )
-        self.assertThat(mock_stderr.write, MockCalledOnceWith("Error"))
+        mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=PIPE)
+        mock_stderr.write.assert_called_once_with("Error")
 
     def test_run_7z_exits_if_no_regex_match_found(self):
         self.patch(os, "environ", {"RESULT_PATH": factory.make_name()})
@@ -111,11 +105,8 @@ class TestSevenZTest(MAASTestCase):
         mock_sys_stderr = self.patch(sys, "stderr")
 
         self.assertRaises(SystemExit, seven_z.run_7z)
-        self.assertThat(
-            mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=PIPE)
+        mock_popen.assert_called_once_with(cmd, stdout=PIPE, stderr=PIPE)
+        mock_re_search.assert_called_once_with(
+            seven_z.REGEX, SEVEN_Z_OUTPUT.encode("utf-8")
         )
-        self.assertThat(
-            mock_re_search,
-            MockCalledOnceWith(seven_z.REGEX, SEVEN_Z_OUTPUT.encode("utf-8")),
-        )
-        self.assertThat(mock_sys_stderr.write, MockCalledOnceWith(stderr))
+        mock_sys_stderr.write.assert_called_once_with(stderr)

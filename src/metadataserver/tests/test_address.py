@@ -8,8 +8,6 @@ import random
 from socket import gethostname
 from unittest import skip
 
-from testtools.matchers import MatchesRegex
-
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from metadataserver import address
@@ -152,9 +150,9 @@ class TestAddress(MAASTestCase):
         self.assertIsNone(address.get_ip_address(b"ethturboveyronsuper9"))
 
     def test_guess_server_host_finds_IP_address(self):
-        self.assertThat(
+        self.assertRegex(
             address.guess_server_host(),
-            MatchesRegex(r"^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"),
+            r"^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$",
         )
 
     def test_guess_server_host_returns_hostname_as_last_ditch_guess(self):
