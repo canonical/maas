@@ -6,9 +6,6 @@
 
 import base64
 import email
-import re
-
-from testtools.matchers import ContainsAll
 
 from maasserver.enum import NODE_STATUS
 from maasserver.testing.factory import factory
@@ -45,16 +42,13 @@ class TestGenerateUserData(MAASServerTestCase):
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
-        self.assertThat(
-            base64.b64decode(user_data_script.get_payload()),
-            ContainsAll(
-                {
-                    b"find_creds_cfg()",
-                    b"main()",
-                    b"# maas-run-remote-scripts -",
-                }
-            ),
-        )
+        decoded = base64.b64decode(user_data_script.get_payload())
+        for needle in (
+            b"find_creds_cfg()",
+            b"main()",
+            b"# maas-run-remote-scripts -",
+        ):
+            self.assertIn(needle, decoded)
 
     def test_generate_user_data_produces_commissioning_script(self):
         # generate_user_data produces a commissioning script which contains
@@ -78,16 +72,13 @@ class TestGenerateUserData(MAASServerTestCase):
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
-        self.assertThat(
-            base64.b64decode(user_data_script.get_payload()),
-            ContainsAll(
-                {
-                    b"find_creds_cfg()",
-                    b"main()",
-                    b"# maas-run-remote-scripts -",
-                }
-            ),
-        )
+        decoded = base64.b64decode(user_data_script.get_payload())
+        for needle in (
+            b"find_creds_cfg()",
+            b"main()",
+            b"# maas-run-remote-scripts -",
+        ):
+            self.assertIn(needle, decoded)
 
     def test_generate_user_data_produces_testing_script(self):
         node = factory.make_Node()
@@ -109,17 +100,14 @@ class TestGenerateUserData(MAASServerTestCase):
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
-        self.assertThat(
-            base64.b64decode(user_data_script.get_payload()),
-            ContainsAll(
-                {
-                    b"export DEBIAN_FRONTEND=noninteractive",
-                    b"maas-run-remote-scripts",
-                    b"def signal",
-                    b"def download_and_extract_tar",
-                }
-            ),
-        )
+        decoded = base64.b64decode(user_data_script.get_payload())
+        for needle in (
+            b"export DEBIAN_FRONTEND=noninteractive",
+            b"maas-run-remote-scripts",
+            b"def signal",
+            b"def download_and_extract_tar",
+        ):
+            self.assertIn(needle, decoded)
 
     def test_generate_user_data_produces_rescue_mode_script(self):
         node = factory.make_Node()
@@ -141,17 +129,14 @@ class TestGenerateUserData(MAASServerTestCase):
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
-        self.assertThat(
-            base64.b64decode(user_data_script.get_payload()),
-            ContainsAll(
-                {
-                    b"export DEBIAN_FRONTEND=noninteractive",
-                    b"maas-run-remote-scripts",
-                    b"def signal",
-                    b"def download_and_extract_tar",
-                }
-            ),
-        )
+        decoded = base64.b64decode(user_data_script.get_payload())
+        for needle in (
+            b"export DEBIAN_FRONTEND=noninteractive",
+            b"maas-run-remote-scripts",
+            b"def signal",
+            b"def download_and_extract_tar",
+        ):
+            self.assertIn(needle, decoded)
 
     def test_generate_user_data_produces_poweroff_script(self):
         node = factory.make_Node()
@@ -171,10 +156,8 @@ class TestGenerateUserData(MAASServerTestCase):
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
-        self.assertThat(
-            base64.b64decode(user_data_script.get_payload()),
-            ContainsAll({b"Powering node off."}),
-        )
+        decoded = base64.b64decode(user_data_script.get_payload())
+        self.assertIn(b"Powering node off.", decoded)
 
 
 class TestDiskErasingUserData(MAASServerTestCase):
@@ -183,28 +166,28 @@ class TestDiskErasingUserData(MAASServerTestCase):
             "secure_and_quick",
             {
                 "extra_content": {"secure_erase": True, "quick_erase": True},
-                "maas_wipe": rb"^\s*maas-wipe\s--secure-erase\s--quick-erase$\s*signal\sOK",
+                "maas_wipe": rb"(?ms)^\s*maas-wipe\s--secure-erase\s--quick-erase$\s*signal\sOK",
             },
         ),
         (
             "secure_not_quick",
             {
                 "extra_content": {"secure_erase": True, "quick_erase": False},
-                "maas_wipe": rb"^\s*maas-wipe\s--secure-erase\s$\s*signal\sOK",
+                "maas_wipe": rb"(?ms)^\s*maas-wipe\s--secure-erase\s$\s*signal\sOK",
             },
         ),
         (
             "quick_not_secure",
             {
                 "extra_content": {"secure_erase": False, "quick_erase": True},
-                "maas_wipe": rb"^\s*maas-wipe\s\s--quick-erase$\s*signal\sOK",
+                "maas_wipe": rb"(?ms)^\s*maas-wipe\s\s--quick-erase$\s*signal\sOK",
             },
         ),
         (
             "not_quick_not_secure",
             {
                 "extra_content": {"secure_erase": False, "quick_erase": False},
-                "maas_wipe": rb"^\s*maas-wipe\s\s$\s*signal\sOK",
+                "maas_wipe": rb"(?ms)^\s*maas-wipe\s\s$\s*signal\sOK",
             },
         ),
     )
@@ -232,18 +215,12 @@ class TestDiskErasingUserData(MAASServerTestCase):
             user_data_script["Content-Disposition"],
         )
         payload = base64.b64decode(user_data_script.get_payload())
-        self.assertThat(
-            payload,
-            ContainsAll(
-                {
-                    b"export DEBIAN_FRONTEND=noninteractive",
-                    b"maas-wipe",
-                    b"def signal",
-                    b"VALID_STATUS =",
-                    b"class WipeError",
-                }
-            ),
-        )
-        self.assertIsNotNone(
-            re.search(self.maas_wipe, payload, re.MULTILINE | re.DOTALL)
-        )
+        for needle in (
+            b"export DEBIAN_FRONTEND=noninteractive",
+            b"maas-wipe",
+            b"def signal",
+            b"VALID_STATUS =",
+            b"class WipeError",
+        ):
+            self.assertIn(needle, payload)
+        self.assertRegex(payload, self.maas_wipe)

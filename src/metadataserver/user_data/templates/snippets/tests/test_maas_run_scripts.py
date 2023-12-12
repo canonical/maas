@@ -254,6 +254,10 @@ class TestGetConfig(MAASTestCase):
 
 
 class TestMain(MAASTestCase):
+    def setUp(self):
+        self.patch(maas_run_scripts, "print")
+        super().setUp()
+
     def test_run_report_results(self):
         conf = {
             "reporting": {

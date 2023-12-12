@@ -22,13 +22,6 @@ import yaml
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import (
-    MockAnyCall,
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from snippets import maas_run_remote_scripts
 from snippets.maas_api_helper import Config, Credentials, SignalException
@@ -244,24 +237,21 @@ class TestOutputAndSend(MAASTestCase):
         error = factory.make_string()
         output_and_send(error)
 
-        self.assertThat(self.stderr_write, MockCalledOnceWith("%s\n" % error))
-        self.assertThat(self.signal_wrapper, MockCalledOnceWith(error=error))
+        self.stderr_write.assert_called_once_with(f"{error}\n")
+        self.signal_wrapper.assert_called_once_with(error=error)
 
     def test_output_and_send_doesnt_send_when_false(self):
         error = factory.make_string()
         self.assertFalse(output_and_send(error, False))
-        self.assertThat(self.stderr_write, MockCalledOnceWith("%s\n" % error))
-        self.assertThat(self.signal_wrapper, MockNotCalled())
+        self.stderr_write.assert_called_once_with(f"{error}\n")
+        self.signal_wrapper.assert_not_called()
 
     def test_output_and_send_scripts(self):
         scripts = make_scripts()
         error = "{msg_name} %s" % factory.make_string()
         output_and_send_scripts(error, scripts)
-        self.assertThat(
-            self.stderr_write,
-            MockCallsMatch(
-                *[call("%s\n" % error.format(**script)) for script in scripts]
-            ),
+        self.stderr_write.assert_has_calls(
+            [call("%s\n" % error.format(**script)) for script in scripts]
         )
 
     def test_output_and_send_scripts_sets_error_as_stderr(self):
@@ -270,25 +260,22 @@ class TestOutputAndSend(MAASTestCase):
         error = "{msg_name} %s" % factory.make_string()
         output_and_send_scripts(error, scripts, error_is_stderr=True)
 
-        self.assertThat(
-            self.signal_wrapper,
-            MockCallsMatch(
-                *[
-                    call(
-                        error=error.format(**script),
-                        **script["args"],
-                        files={
-                            script["combined_name"]: (
-                                b"%s\n" % error.format(**script).encode()
-                            ),
-                            script["stderr_name"]: (
-                                b"%s\n" % error.format(**script).encode()
-                            ),
-                        },
-                    )
-                    for script in scripts
-                ]
-            ),
+        self.signal_wrapper.assert_has_calls(
+            [
+                call(
+                    error=error.format(**script),
+                    **script["args"],
+                    files={
+                        script["combined_name"]: (
+                            b"%s\n" % error.format(**script).encode()
+                        ),
+                        script["stderr_name"]: (
+                            b"%s\n" % error.format(**script).encode()
+                        ),
+                    },
+                )
+                for script in scripts
+            ]
         )
         for script in scripts:
             script_error = "%s\n" % error.format(**script)
@@ -358,25 +345,18 @@ class TestInstallDependencies(MAASTestCase):
             script["combined"], open(script["combined_path"]).read()
         )
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send,
-                MockAnyCall(
-                    "Failed installing package(s) for %s" % script["msg_name"],
-                    exit_status=1,
-                    status=status,
-                    **script["args"],
-                    files={
-                        scripts[0]["combined_name"]: scripts[0][
-                            "combined"
-                        ].encode(),
-                        scripts[0]["stdout_name"]: scripts[0][
-                            "stdout"
-                        ].encode(),
-                        scripts[0]["stderr_name"]: scripts[0][
-                            "stderr"
-                        ].encode(),
-                    },
-                ),
+            self.mock_output_and_send.assert_any_call(
+                "Failed installing package(s) for %s" % script["msg_name"],
+                exit_status=1,
+                status=status,
+                **script["args"],
+                files={
+                    scripts[0]["combined_name"]: scripts[0][
+                        "combined"
+                    ].encode(),
+                    scripts[0]["stdout_name"]: scripts[0]["stdout"].encode(),
+                    scripts[0]["stderr_name"]: scripts[0]["stderr"].encode(),
+                },
             )
             self.assertFalse(script["result_sent"])
 
@@ -413,11 +393,8 @@ class TestInstallDependencies(MAASTestCase):
             [cmd], MagicMock(), factory.make_name("status"), False, True
         )
 
-        self.assertThat(
-            mock_popen,
-            MockCalledOnceWith(
-                ["sudo", "-En", cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE
-            ),
+        mock_popen.assert_called_once_with(
+            ["sudo", "-En", cmd], stdin=DEVNULL, stdout=PIPE, stderr=PIPE
         )
 
     def test_run_and_check_calls_hook_on_failure(self):
@@ -440,15 +417,15 @@ class TestInstallDependencies(MAASTestCase):
                 failure_hook=mock_failure_hook,
             )
         )
-        self.assertThat(mock_failure_hook, MockCalledOnceWith())
+        mock_failure_hook.assert_called_once_with()
 
     def test_install_dependencies_does_nothing_when_empty(self):
         self.assertTrue(install_dependencies([]))
-        self.assertThat(self.mock_output_and_send, MockNotCalled())
+        self.mock_output_and_send.assert_not_called()
 
     def test_install_dependencies_does_nothing_when_no_packages(self):
         self.assertTrue(install_dependencies(make_scripts()))
-        self.assertThat(self.mock_output_and_send, MockNotCalled())
+        self.mock_output_and_send.assert_not_called()
 
     def test_install_dependencies_apt(self):
         mock_run_and_check = self.patch(
@@ -463,25 +440,19 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing apt packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing apt packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
-            self.assertThat(
-                mock_run_and_check,
-                MockCalledOnceWith(
-                    ["apt-get", "-qy", "--no-install-recommends", "install"]
-                    + packages,
-                    scripts,
-                    "INSTALLING",
-                    True,
-                    True,
-                ),
+            mock_run_and_check.assert_called_once_with(
+                ["apt-get", "-qy", "--no-install-recommends", "install"]
+                + packages,
+                scripts,
+                "INSTALLING",
+                True,
+                True,
             )
             # Verify cleanup
             self.assertFalse(os.path.exists(script["combined_path"]))
@@ -500,32 +471,23 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"apt": packages}
 
         self.assertTrue(install_dependencies(scripts))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["apt-get", "-qy", "update"], scripts, "INSTALLING", True, True
-            ),
+        mock_run_and_check.assert_any_call(
+            ["apt-get", "-qy", "update"], scripts, "INSTALLING", True, True
         )
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing apt packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing apt packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
-            self.assertThat(
-                mock_run_and_check,
-                MockAnyCall(
-                    ["apt-get", "-qy", "--no-install-recommends", "install"]
-                    + packages,
-                    scripts,
-                    "INSTALLING",
-                    True,
-                    True,
-                ),
+            mock_run_and_check.assert_any_call(
+                ["apt-get", "-qy", "--no-install-recommends", "install"]
+                + packages,
+                scripts,
+                "INSTALLING",
+                True,
+                True,
             )
             # Verify cleanup
             self.assertFalse(os.path.exists(script["combined_path"]))
@@ -546,25 +508,19 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing apt packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing apt packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
-            self.assertThat(
-                mock_run_and_check,
-                MockCalledOnceWith(
-                    ["apt-get", "-qy", "--no-install-recommends", "install"]
-                    + packages,
-                    scripts,
-                    "INSTALLING",
-                    True,
-                    True,
-                ),
+            mock_run_and_check.assert_called_once_with(
+                ["apt-get", "-qy", "--no-install-recommends", "install"]
+                + packages,
+                scripts,
+                "INSTALLING",
+                True,
+                True,
             )
 
     def test_install_dependencies_snap_str_list(self):
@@ -579,14 +535,11 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing snap packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing snap packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
             # Verify cleanup
             self.assertFalse(os.path.exists(script["combined_path"]))
@@ -594,15 +547,12 @@ class TestInstallDependencies(MAASTestCase):
             self.assertFalse(os.path.exists(script["stderr_path"]))
 
         for package in packages:
-            self.assertThat(
-                mock_run_and_check,
-                MockAnyCall(
-                    ["snap", "install", package],
-                    scripts,
-                    "INSTALLING",
-                    True,
-                    True,
-                ),
+            mock_run_and_check.assert_any_call(
+                ["snap", "install", package],
+                scripts,
+                "INSTALLING",
+                True,
+                True,
             )
 
     def test_install_dependencies_snap_str_dict(self):
@@ -639,75 +589,60 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing snap packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing snap packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
             # Verify cleanup
             self.assertFalse(os.path.exists(script["combined_path"]))
             self.assertFalse(os.path.exists(script["stdout_path"]))
             self.assertFalse(os.path.exists(script["stderr_path"]))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["snap", "install", packages[0]["name"]],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            ["snap", "install", packages[0]["name"]],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                [
-                    "snap",
-                    "install",
-                    packages[1]["name"],
-                    "--%s" % packages[1]["channel"],
-                ],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            [
+                "snap",
+                "install",
+                packages[1]["name"],
+                "--%s" % packages[1]["channel"],
+            ],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                [
-                    "snap",
-                    "install",
-                    packages[2]["name"],
-                    "--%s" % packages[2]["channel"],
-                    "--%smode" % packages[2]["mode"],
-                ],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            [
+                "snap",
+                "install",
+                packages[2]["name"],
+                "--%s" % packages[2]["channel"],
+                "--%smode" % packages[2]["mode"],
+            ],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                [
-                    "snap",
-                    "install",
-                    packages[3]["name"],
-                    "--%s" % packages[3]["channel"],
-                    "--%smode" % packages[3]["mode"],
-                ],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            [
+                "snap",
+                "install",
+                packages[3]["name"],
+                "--%s" % packages[3]["channel"],
+                "--%smode" % packages[3]["mode"],
+            ],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
 
     def test_install_dependencies_snap_errors(self):
@@ -723,25 +658,19 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Installing snap packages for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Installing snap packages for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
 
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["snap", "install", packages[0]],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            ["snap", "install", packages[0]],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
 
     def test_install_dependencies_url(self):
@@ -756,24 +685,18 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertTrue(install_dependencies(scripts))
         for package in packages:
-            self.assertThat(
-                mock_run_and_check,
-                MockAnyCall(
-                    ["wget", package, "-P", scripts[0]["download_path"]],
-                    scripts,
-                    "INSTALLING",
-                    True,
-                ),
+            mock_run_and_check.assert_any_call(
+                ["wget", package, "-P", scripts[0]["download_path"]],
+                scripts,
+                "INSTALLING",
+                True,
             )
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Downloading and extracting URLs for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Downloading and extracting URLs for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
         # Verify cleanup
         self.assertFalse(os.path.exists(scripts[0]["combined_path"]))
@@ -793,14 +716,11 @@ class TestInstallDependencies(MAASTestCase):
 
         self.assertFalse(install_dependencies(scripts))
         for script in scripts:
-            self.assertThat(
-                self.mock_output_and_send_scripts,
-                MockAnyCall(
-                    "Downloading and extracting URLs for {msg_name}",
-                    scripts,
-                    True,
-                    status="INSTALLING",
-                ),
+            self.mock_output_and_send_scripts.assert_any_call(
+                "Downloading and extracting URLs for {msg_name}",
+                scripts,
+                True,
+                status="INSTALLING",
             )
 
     def test_install_dependencies_url_tar(self):
@@ -858,21 +778,15 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"url": [deb_file]}
 
         self.assertTrue(install_dependencies(scripts))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["dpkg", "-i", deb_file], scripts, "INSTALLING", False, True
-            ),
+        mock_run_and_check.assert_any_call(
+            ["dpkg", "-i", deb_file], scripts, "INSTALLING", False, True
         )
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["apt-get", "install", "-qyf", "--no-install-recommends"],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            ["apt-get", "install", "-qyf", "--no-install-recommends"],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
 
     def test_install_dependencies_url_deb_errors(self):
@@ -890,21 +804,15 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"url": [deb_file]}
 
         self.assertFalse(install_dependencies(scripts))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["dpkg", "-i", deb_file], scripts, "INSTALLING", False, True
-            ),
+        mock_run_and_check.assert_any_call(
+            ["dpkg", "-i", deb_file], scripts, "INSTALLING", False, True
         )
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["apt-get", "install", "-qyf", "--no-install-recommends"],
-                scripts,
-                "INSTALLING",
-                True,
-                True,
-            ),
+        mock_run_and_check.assert_any_call(
+            ["apt-get", "install", "-qyf", "--no-install-recommends"],
+            scripts,
+            "INSTALLING",
+            True,
+            True,
         )
 
     def test_install_dependencies_url_snap(self):
@@ -921,11 +829,8 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"url": [snap_file]}
 
         self.assertTrue(install_dependencies(scripts))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["snap", snap_file], scripts, "INSTALLING", True, True
-            ),
+        mock_run_and_check.assert_any_call(
+            ["snap", snap_file], scripts, "INSTALLING", True, True
         )
 
     def test_install_dependencies_url_snap_errors(self):
@@ -943,11 +848,8 @@ class TestInstallDependencies(MAASTestCase):
             script["packages"] = {"url": [snap_file]}
 
         self.assertFalse(install_dependencies(scripts))
-        self.assertThat(
-            mock_run_and_check,
-            MockAnyCall(
-                ["snap", snap_file], scripts, "INSTALLING", True, True
-            ),
+        mock_run_and_check.assert_any_call(
+            ["snap", snap_file], scripts, "INSTALLING", True, True
         )
 
 
@@ -1001,8 +903,8 @@ class TestCustomNetworking(MAASTestCase):
         )
         custom_networking.__enter__()
 
-        self.assertThat(self.mock_output_and_send_scripts, MockNotCalled())
-        self.assertThat(mock_bring_down_networking, MockNotCalled())
+        self.mock_output_and_send_scripts.assert_not_called()
+        mock_bring_down_networking.assert_not_called()
 
     def test_enter_raises_filenotfounderror_if_netplan_yaml_missing(self):
         scripts = make_scripts(apply_configured_networking=True)
@@ -1012,9 +914,8 @@ class TestCustomNetworking(MAASTestCase):
         )
 
         self.assertRaises(FileNotFoundError, custom_networking.__enter__)
-        self.assertThat(
-            self.mock_output_and_send_scripts,
-            MockCallsMatch(
+        self.mock_output_and_send_scripts.assert_has_calls(
+            [
                 call(ANY, scripts, True, status="APPLYING_NETCONF"),
                 call(
                     ANY,
@@ -1024,9 +925,9 @@ class TestCustomNetworking(MAASTestCase):
                     exit_status=1,
                     status="APPLYING_NETCONF",
                 ),
-            ),
+            ]
         )
-        self.assertThat(mock_bring_down_networking, MockNotCalled())
+        mock_bring_down_networking.assert_not_called()
 
     def test_enter_applies_custom_networking(self):
         netplan_yaml_content = factory.make_string()
@@ -1070,13 +971,12 @@ class TestCustomNetworking(MAASTestCase):
             # Disable applying ephemeral netplan
             custom_networking.apply_configured_networking = False
 
-        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
-        self.assertThat(self.mock_run_and_check, MockCalledOnce())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(self.mock_signal, MockCalledOnce())
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        self.mock_output_and_send_scripts.assert_called_once()
+        self.mock_run_and_check.assert_called_once()
+
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        self.mock_signal.assert_called_once()
+        mock_bring_down_networking.assert_called_once()
 
     def test_enter_applies_custom_networking_no_send(self):
         netplan_yaml_content = factory.make_string()
@@ -1120,13 +1020,12 @@ class TestCustomNetworking(MAASTestCase):
             # Disable applying ephemeral netplan
             custom_networking.apply_configured_networking = False
 
-        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
-        self.assertThat(self.mock_run_and_check, MockCalledOnce())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(self.mock_signal, MockNotCalled())
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        self.mock_output_and_send_scripts.assert_called_once()
+        self.mock_run_and_check.assert_called_once()
+
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        self.mock_signal.assert_not_called()
+        mock_bring_down_networking.assert_called_once()
 
     def test_enter_raises_oserror_when_netplan_apply_fails(self):
         factory.make_file(self.config_dir, "netplan.yaml")
@@ -1143,11 +1042,11 @@ class TestCustomNetworking(MAASTestCase):
         mock_clean_logs = self.patch(maas_run_remote_scripts, "_clean_logs")
 
         self.assertRaises(OSError, custom_networking.__enter__)
-        self.assertThat(self.mock_output_and_send_scripts, MockCalledOnce())
-        self.assertThat(self.mock_get_interfaces, MockNotCalled())
-        self.assertThat(self.mock_signal, MockNotCalled())
-        self.assertThat(mock_clean_logs, MockNotCalled())
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        self.mock_output_and_send_scripts.assert_called_once()
+        self.mock_get_interfaces.assert_not_called()
+        self.mock_signal.assert_not_called()
+        mock_clean_logs.assert_not_called()
+        mock_bring_down_networking.assert_called_once()
 
     def test_enter_raises_signalexception_when_signal_fails(self):
         factory.make_file(self.config_dir, "netplan.yaml")
@@ -1168,9 +1067,8 @@ class TestCustomNetworking(MAASTestCase):
         mock_clean_logs = self.patch(maas_run_remote_scripts, "_clean_logs")
 
         self.assertRaises(SignalException, custom_networking.__enter__)
-        self.assertThat(
-            self.mock_output_and_send_scripts,
-            MockCallsMatch(
+        self.mock_output_and_send_scripts.assert_has_calls(
+            [
                 call(ANY, scripts, True, status="APPLYING_NETCONF"),
                 call(
                     ANY,
@@ -1180,14 +1078,14 @@ class TestCustomNetworking(MAASTestCase):
                     exit_status=1,
                     status="APPLYING_NETCONF",
                 ),
-            ),
+            ]
         )
-        self.assertThat(self.mock_run_and_check, MockCalledOnce())
-        self.assertThat(self.mock_get_interfaces, MockCalledOnce())
-        self.assertThat(self.mock_signal, MockCalledOnce())
-        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
-        self.assertThat(mock_clean_logs, MockNotCalled())
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        self.mock_run_and_check.assert_called_once()
+        self.mock_get_interfaces.assert_called_once()
+        self.mock_signal.assert_called_once()
+        mock_apply_ephemeral_netplan.assert_called_once()
+        mock_clean_logs.assert_not_called()
+        mock_bring_down_networking.assert_called_once()
 
     def test_apply_ephemeral_netplan_does_nothing_if_not_backup_config(self):
         mock_check_call = self.patch(maas_run_remote_scripts, "check_call")
@@ -1204,10 +1102,10 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._apply_ephemeral_netplan()
 
-        self.assertThat(mock_check_call, MockNotCalled())
-        self.assertThat(mock_signal_wrapper, MockNotCalled())
-        self.assertThat(self.mock_get_interfaces, MockNotCalled())
-        self.assertThat(mock_bring_down_networking, MockNotCalled())
+        mock_check_call.assert_not_called()
+        mock_signal_wrapper.assert_not_called()
+        self.mock_get_interfaces.assert_not_called()
+        mock_bring_down_networking.assert_not_called()
 
     def test_apply_ephemeral_netplan(self):
         mock_check_call = self.patch(maas_run_remote_scripts, "check_call")
@@ -1239,12 +1137,10 @@ class TestCustomNetworking(MAASTestCase):
             ephemeral_config_content,
             open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
-        self.assertThat(mock_check_call, MockCalledOnce())
-        self.assertThat(mock_signal_wrapper, MockCalledOnce())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        mock_check_call.assert_called_once()
+        mock_signal_wrapper.assert_called_once()
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        mock_bring_down_networking.assert_called_once()
 
     def test_apply_ephemeral_netplan_no_send(self):
         mock_check_call = self.patch(maas_run_remote_scripts, "check_call")
@@ -1276,12 +1172,10 @@ class TestCustomNetworking(MAASTestCase):
             ephemeral_config_content,
             open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
-        self.assertThat(mock_check_call, MockCalledOnce())
-        self.assertThat(mock_signal_wrapper, MockNotCalled())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        mock_check_call.assert_called_once()
+        mock_signal_wrapper.assert_not_called()
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        mock_bring_down_networking.assert_called_once()
 
     def test_apply_ephemeral_netplan_ignores_timeout_expired(self):
         mock_check_call = self.patch(maas_run_remote_scripts, "check_call")
@@ -1316,12 +1210,10 @@ class TestCustomNetworking(MAASTestCase):
             ephemeral_config_content,
             open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
-        self.assertThat(mock_check_call, MockCalledOnce())
-        self.assertThat(mock_signal_wrapper, MockCalledOnce())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        mock_check_call.assert_called_once()
+        mock_signal_wrapper.assert_called_once()
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        mock_bring_down_networking.assert_called_once()
 
     def test_apply_ephemeral_netplan_ignores_calledprocesserror(self):
         mock_check_call = self.patch(maas_run_remote_scripts, "check_call")
@@ -1356,12 +1248,10 @@ class TestCustomNetworking(MAASTestCase):
             ephemeral_config_content,
             open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
-        self.assertThat(mock_check_call, MockCalledOnce())
-        self.assertThat(mock_signal_wrapper, MockCalledOnce())
-        self.assertThat(
-            self.mock_get_interfaces, MockCalledOnceWith(clear_cache=True)
-        )
-        self.assertThat(mock_bring_down_networking, MockCalledOnce())
+        mock_check_call.assert_called_once()
+        mock_signal_wrapper.assert_called_once()
+        self.mock_get_interfaces.assert_called_once_with(clear_cache=True)
+        mock_bring_down_networking.assert_called_once()
 
     def test_exit_does_nothing_not_applying_config(self):
         scripts = make_scripts(
@@ -1374,7 +1264,7 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking.__exit__(None, None, None)
 
-        self.assertThat(mock_apply_ephemeral_netplan, MockNotCalled())
+        mock_apply_ephemeral_netplan.assert_not_called()
 
     def test_exit_applies_ephemeral_netplan(self):
         scripts = make_scripts(
@@ -1387,7 +1277,7 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking.__exit__(None, None, None)
 
-        self.assertThat(mock_apply_ephemeral_netplan, MockCalledOnce())
+        mock_apply_ephemeral_netplan.assert_called_once()
 
     def test_bring_down_networking(self):
         virtual_devs = [factory.make_name("vdev") for _ in range(3)]
@@ -1407,18 +1297,15 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._bring_down_networking()
 
-        self.assertThat(
-            mock_check_call,
-            MockCallsMatch(
-                *[
-                    call(["ip", "link", "delete", dev], timeout=60)
-                    for dev in virtual_devs
-                ],
-                *[
-                    call(["ip", "link", "set", "down", dev], timeout=60)
-                    for dev in physical_devs
-                ],
-            ),
+        mock_check_call.assert_has_calls(
+            [
+                call(["ip", "link", "delete", dev], timeout=60)
+                for dev in virtual_devs
+            ]
+            + [
+                call(["ip", "link", "set", "down", dev], timeout=60)
+                for dev in physical_devs
+            ],
         )
 
     def test_bring_down_networking_ignores_non_interfaces(self):
@@ -1439,7 +1326,7 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._bring_down_networking()
 
-        self.assertThat(mock_check_call, MockNotCalled())
+        mock_check_call.assert_not_called()
 
     def test_bring_down_networking_ignores_errors(self):
         virtual_devs = [factory.make_name("vdev") for _ in range(3)]
@@ -1460,18 +1347,15 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._bring_down_networking()
 
-        self.assertThat(
-            mock_check_call,
-            MockCallsMatch(
-                *[
-                    call(["ip", "link", "delete", dev], timeout=60)
-                    for dev in virtual_devs
-                ],
-                *[
-                    call(["ip", "link", "set", "down", dev], timeout=60)
-                    for dev in physical_devs
-                ],
-            ),
+        mock_check_call.assert_has_calls(
+            [
+                call(["ip", "link", "delete", dev], timeout=60)
+                for dev in virtual_devs
+            ]
+            + [
+                call(["ip", "link", "set", "down", dev], timeout=60)
+                for dev in physical_devs
+            ],
         )
 
     def test_wait_for_networkd_makes_dbus_connection(self):
@@ -1487,7 +1371,7 @@ class TestCustomNetworking(MAASTestCase):
 
         # Returns False as mock prevents connection to dbus
         self.assertFalse(custom_networking._wait_for_networkd(1))
-        self.assertThat(self.mock_systembus, MockCalledOnce())
+        self.mock_systembus.assert_called_once()
         self.assertIsNotNone(maas_run_remote_scripts._dbus)
         self.assertIsNotNone(maas_run_remote_scripts._systemd_interface)
         self.assertIsNotNone(maas_run_remote_scripts._networkd_interface)
@@ -1507,7 +1391,7 @@ class TestCustomNetworking(MAASTestCase):
         )
         mock_networkd_properties_interface.Get.return_value = "active"
         self.assertTrue(custom_networking._wait_for_networkd(1))
-        self.assertThat(self.mock_systembus, MockNotCalled())
+        self.mock_systembus.assert_not_called()
 
     def test_wait_for_networkd_restarts_networkd(self):
         self.patch(maas_run_remote_scripts, "_dbus")
@@ -1530,13 +1414,10 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._wait_for_networkd(1)
 
-        self.assertThat(
-            mock_systemd_interface.ResetFailedUnit,
-            MockCalledOnceWith("systemd-networkd.service"),
+        mock_systemd_interface.ResetFailedUnit.assert_called_once_with(
+            "systemd-networkd.service"
         )
-        self.assertThat(
-            mock_networkd_interface.Restart, MockCalledOnceWith("fail")
-        )
+        mock_networkd_interface.Restart.assert_called_once_with("fail")
 
     def test_wait_for_networkd_waits_for_networkd(self):
         self.patch(maas_run_remote_scripts, "_dbus")
@@ -1559,10 +1440,8 @@ class TestCustomNetworking(MAASTestCase):
 
         custom_networking._wait_for_networkd(1)
 
-        self.assertThat(
-            mock_systemd_interface.ResetFailedUnit, MockNotCalled()
-        )
-        self.assertThat(mock_networkd_interface.Restart, MockNotCalled())
+        mock_systemd_interface.ResetFailedUnit.assert_not_called()
+        mock_networkd_interface.Restart.assert_not_called()
 
 
 class TestParseParameters(MAASTestCase):
@@ -1607,7 +1486,7 @@ class TestParseParameters(MAASTestCase):
         maas_run_remote_scripts._block_devices = KeyError()
 
         self.assertRaises(KeyError, get_block_devices)
-        self.assertThat(mock_check_output, MockNotCalled())
+        mock_check_output.assert_not_called()
 
     def test_get_block_devices_raises_timeout_keyerror(self):
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
@@ -1662,11 +1541,11 @@ class TestParseParameters(MAASTestCase):
         )
         model = factory.make_name("model")
         block_dev = {"maj:min": factory.make_name("maj:min"), "model": model}
-        self.assertDictEqual(
+        self.assertEqual(
             {"model_enc": model, **block_dev},
             get_storage_model_from_udev(block_dev),
         )
-        self.assertThat(mock_stderr_write, MockCalledOnce())
+        mock_stderr_write.assert_called_once()
 
     def test_get_interfaces(self):
         maas_run_remote_scripts._interfaces = None
@@ -1747,12 +1626,12 @@ class TestParseParameters(MAASTestCase):
         )
         mock_sleep = self.patch(maas_run_remote_scripts.time, "sleep")
 
-        self.assertDictEqual(
+        self.assertEqual(
             {br0_mac: "bridge0", eth2_mac: "eth2"}, get_interfaces()
         )
         # This should only be called once but sometimes unittest catches
         # sleeps from itself which cause the lander to fail.
-        self.assertThat(mock_sleep, MockAnyCall(0.1))
+        mock_sleep.assert_any_call(0.1)
 
     def test_get_interfaces_fallback(self):
         mock_listdir = self.patch(maas_run_remote_scripts.os, "listdir")
@@ -1780,8 +1659,8 @@ class TestParseParameters(MAASTestCase):
         maas_run_remote_scripts._interfaces = interfaces
         mock_listdir = self.patch(maas_run_remote_scripts.os, "listdir")
 
-        self.assertDictEqual(interfaces, get_interfaces())
-        self.assertThat(mock_listdir, MockNotCalled())
+        self.assertEqual(interfaces, get_interfaces())
+        mock_listdir.assert_not_called()
 
     def test_parse_parameters(self):
         mock_get_storage_model_from_udev = self.patch(
@@ -2046,7 +1925,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        self.assertThat(mock_join, MockNotCalled())
+        mock_join.assert_not_called()
 
     def test_only_runs_when_network_settings_applied(self):
         script = make_script(
@@ -2064,7 +1943,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        self.assertThat(mock_join, MockNotCalled())
+        mock_join.assert_not_called()
 
     def test_only_runs_with_interface_param(self):
         script = make_script(hardware_type=4, apply_configured_networking=True)
@@ -2072,7 +1951,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        self.assertThat(mock_join, MockNotCalled())
+        mock_join.assert_not_called()
 
     def test_does_nothing_when_interface_is_not_found(self):
         script = make_script(hardware_type=4, apply_configured_networking=True)
@@ -2090,7 +1969,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        self.assertThat(mock_join, MockNotCalled())
+        mock_join.assert_not_called()
 
     def test_does_nothing_when_link_is_up(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2116,7 +1995,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        self.assertThat(mock_exists, MockNotCalled())
+        mock_exists.assert_not_called()
 
     def test_check_link_connected_reports_link_down_on_failure(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2144,7 +2023,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
+            self.assertEqual(
                 {"link_connected": False}, yaml.safe_load(f.read())
             )
 
@@ -2234,7 +2113,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
+            self.assertEqual(
                 {"link_connected": False}, yaml.safe_load(f.read())
             )
 
@@ -2297,7 +2176,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
+            self.assertEqual(
                 {"link_connected": True}, yaml.safe_load(f.read())
             )
 
@@ -2329,9 +2208,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
-                {"status": "passed"}, yaml.safe_load(f.read())
-            )
+            self.assertEqual({"status": "passed"}, yaml.safe_load(f.read()))
 
     def test_check_link_connected_does_nothing_when_script_passed(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2358,7 +2235,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
+            self.assertEqual(
                 yaml.safe_load(script["result"]), yaml.safe_load(f.read())
             )
 
@@ -2387,7 +2264,7 @@ class TestCheckLinkConnected(MAASTestCase):
         _check_link_connected(script)
 
         with open(script["result_path"]) as f:
-            self.assertDictEqual(
+            self.assertEqual(
                 {"link_connected": False, **yaml.safe_load(script["result"])},
                 yaml.safe_load(f.read()),
             )
@@ -2424,9 +2301,8 @@ class TestRunScript(MAASTestCase):
 
         run_script(script, scripts_dir)
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2445,21 +2321,16 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["timeout_seconds"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["timeout_seconds"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_sets_env(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2495,9 +2366,8 @@ class TestRunScript(MAASTestCase):
 
         run_script(script, scripts_dir)
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2515,21 +2385,16 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["timeout_seconds"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["timeout_seconds"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_uses_timeout_from_parameter(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2540,9 +2405,8 @@ class TestRunScript(MAASTestCase):
 
         run_script(script, scripts_dir)
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2551,31 +2415,26 @@ class TestRunScript(MAASTestCase):
                 call(
                     "Finished %s: 0" % script["msg_name"],
                     exit_status=0,
-                    runtime=ANY,
                     files={
                         script["combined_name"]: script["combined"].encode(),
                         script["stdout_name"]: script["stdout"].encode(),
                         script["stderr_name"]: script["stderr"].encode(),
                         script["result_name"]: script["result"].encode(),
                     },
+                    runtime=ANY,
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["parameters"]["runtime"]["value"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["parameters"]["runtime"]["value"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_errors_with_bad_param(self):
         fake_block_devices = [
@@ -2633,9 +2492,9 @@ class TestRunScript(MAASTestCase):
             )
         )
         expected_output = expected_output.encode()
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2651,9 +2510,9 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(self.mock_check_link_connected, MockNotCalled())
+        self.mock_check_link_connected.assert_not_called()
 
     def test_run_script_errors_bad_params_on_unexecutable_script(self):
         # Regression test for LP:1669246
@@ -2665,9 +2524,8 @@ class TestRunScript(MAASTestCase):
 
         self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2687,11 +2545,9 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_errors_bad_params_on_unexecutable_script_no_errno(
         self,
@@ -2703,9 +2559,8 @@ class TestRunScript(MAASTestCase):
 
         self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2723,11 +2578,9 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_errors_bad_params_on_unexecutable_script_baderrno(
         self,
@@ -2741,9 +2594,8 @@ class TestRunScript(MAASTestCase):
 
         self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2763,11 +2615,9 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_timed_out_script(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2780,9 +2630,8 @@ class TestRunScript(MAASTestCase):
 
         self.assertFalse(run_script(script, scripts_dir))
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     status="WORKING",
@@ -2807,11 +2656,9 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_configs_bmc(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2824,9 +2671,8 @@ class TestRunScript(MAASTestCase):
 
         run_script(script, scripts_dir)
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2845,22 +2691,17 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["timeout_seconds"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["timeout_seconds"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
-        self.assertThat(mock_bmc_config, MockCalledOnceWith(script, True))
+        self.mock_check_link_connected.assert_called_once_with(script)
+        mock_bmc_config.assert_called_once_with(script, True)
 
     def test_run_script_does_not_config_bmc_if_failed(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2873,9 +2714,8 @@ class TestRunScript(MAASTestCase):
 
         run_script(script, scripts_dir)
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2894,22 +2734,17 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["timeout_seconds"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["timeout_seconds"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
-        self.assertThat(mock_bmc_config, MockNotCalled())
+        self.mock_check_link_connected.assert_called_once_with(script)
+        mock_bmc_config.assert_not_called()
 
     def test_run_script_records_bmc_config_error(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -2931,9 +2766,8 @@ class TestRunScript(MAASTestCase):
         script["combined"] += bmc_config_error
         script["stderr"] += bmc_config_error
 
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCallsMatch(
+        self.mock_output_and_send.assert_has_calls(
+            [
                 call(
                     "Starting %s" % script["msg_name"],
                     **script["args"],
@@ -2952,22 +2786,17 @@ class TestRunScript(MAASTestCase):
                     **script["args"],
                     **self.args,
                 ),
-            ),
+            ]
         )
-        self.assertThat(
-            self.mock_capture_script_output,
-            MockCalledOnceWith(
-                ANY,
-                script["combined_path"],
-                script["stdout_path"],
-                script["stderr_path"],
-                script["timeout_seconds"],
-            ),
+        self.mock_capture_script_output.assert_called_once_with(
+            ANY,
+            script["combined_path"],
+            script["stdout_path"],
+            script["stderr_path"],
+            script["timeout_seconds"],
         )
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
-        self.assertThat(mock_bmc_config, MockCalledOnceWith(script, True))
+        self.mock_check_link_connected.assert_called_once_with(script)
+        mock_bmc_config.assert_called_once_with(script, True)
 
 
 class TestBMCConfig(MAASTestCase):
@@ -3023,23 +2852,17 @@ class TestBMCConfig(MAASTestCase):
 
         enlist(config)
 
-        self.assertThat(
-            mock_get_maas_machines,
-            MockCalledOnceWith(
-                url,
-                post_data={
-                    "architecture": ANY,
-                    "mac_addresses": ",".join(mac_addresses),
-                    "commission": True,
-                },
-            ),
+        mock_get_maas_machines.assert_called_once_with(
+            url,
+            post_data={
+                "architecture": ANY,
+                "mac_addresses": ",".join(mac_addresses),
+                "commission": True,
+            },
         )
-        self.assertThat(
-            mock_geturl,
-            MockCalledOnceWith(
-                "http://%s/MAAS/metadata/latest/by-id/%s/?op=get_preseed"
-                % (netloc, system_id)
-            ),
+        mock_geturl.assert_called_once_with(
+            "http://%s/MAAS/metadata/latest/by-id/%s/?op=get_preseed"
+            % (netloc, system_id)
         )
         self.assertEqual(
             config.credentials.consumer_key, new_creds["consumer_key"]
@@ -3097,25 +2920,19 @@ class TestBMCConfig(MAASTestCase):
 
         enlist(config, power_type, power_parameters)
 
-        self.assertThat(
-            mock_get_maas_machines,
-            MockCalledOnceWith(
-                url,
-                post_data={
-                    "architecture": ANY,
-                    "mac_addresses": ",".join(mac_addresses),
-                    "commission": True,
-                    "power_type": power_type,
-                    "power_parameters": json.dumps(power_parameters),
-                },
-            ),
+        mock_get_maas_machines.assert_called_once_with(
+            url,
+            post_data={
+                "architecture": ANY,
+                "mac_addresses": ",".join(mac_addresses),
+                "commission": True,
+                "power_type": power_type,
+                "power_parameters": json.dumps(power_parameters),
+            },
         )
-        self.assertThat(
-            mock_geturl,
-            MockCalledOnceWith(
-                "http://%s/MAAS/metadata/latest/by-id/%s/?op=get_preseed"
-                % (netloc, system_id)
-            ),
+        mock_geturl.assert_called_once_with(
+            "http://%s/MAAS/metadata/latest/by-id/%s/?op=get_preseed"
+            % (netloc, system_id)
         )
         self.assertEqual(
             config.credentials.consumer_key, new_creds["consumer_key"]
@@ -3167,16 +2984,13 @@ class TestBMCConfig(MAASTestCase):
 
         bmc_config(script)
 
-        self.assertThat(
-            mock_output_and_send,
-            MockCalledOnceWith(
-                "BMC credentials reconfigured by %s" % script_name,
-                True,
-                power_type=power_type,
-                power_params=power_params,
-                status="WORKING",
-                **script["args"],
-            ),
+        mock_output_and_send.assert_called_once_with(
+            "BMC credentials reconfigured by %s" % script_name,
+            True,
+            power_type=power_type,
+            power_params=power_params,
+            status="WORKING",
+            **script["args"],
         )
         self.assertTrue(maas_run_remote_scripts._bmc_config_uploaded)
 
@@ -3222,21 +3036,15 @@ class TestBMCConfig(MAASTestCase):
 
         bmc_config(script)
 
-        self.assertThat(
-            mock_output_and_send,
-            MockCalledOnceWith(
-                "BMC credentials reconfigured by %s" % script_name,
-                True,
-                power_type=power_type,
-                power_params=power_params,
-                status="WORKING",
-                **script["args"],
-            ),
+        mock_output_and_send.assert_called_once_with(
+            "BMC credentials reconfigured by %s" % script_name,
+            True,
+            power_type=power_type,
+            power_params=power_params,
+            status="WORKING",
+            **script["args"],
         )
-        self.assertThat(
-            mock_enlist,
-            MockCalledOnceWith(config, power_type, power_params),
-        )
+        mock_enlist.assert_called_once_with(config, power_type, power_params)
         self.assertTrue(maas_run_remote_scripts._bmc_config_uploaded)
 
     def test_bmc_config_enlist_retry(self):
@@ -3283,23 +3091,19 @@ class TestBMCConfig(MAASTestCase):
 
         self.assertRaises(exception, bmc_config, script)
 
-        self.assertThat(
-            mock_output_and_send,
-            MockCalledOnceWith(
-                "BMC credentials reconfigured by %s" % script_name,
-                True,
-                power_type=power_type,
-                power_params=power_params,
-                status="WORKING",
-                **script["args"],
-            ),
+        mock_output_and_send.assert_called_once_with(
+            "BMC credentials reconfigured by %s" % script_name,
+            True,
+            power_type=power_type,
+            power_params=power_params,
+            status="WORKING",
+            **script["args"],
         )
-        self.assertThat(
-            mock_enlist,
-            MockCallsMatch(
+        mock_enlist.assert_has_calls(
+            [
                 call(config, power_type, power_params),
                 call(config),
-            ),
+            ]
         )
         self.assertTrue(maas_run_remote_scripts._bmc_config_uploaded)
 
@@ -3309,7 +3113,7 @@ class TestBMCConfig(MAASTestCase):
             maas_run_remote_scripts, "output_and_send"
         )
         bmc_config({})
-        self.assertThat(mock_output_and_send, MockNotCalled())
+        mock_output_and_send.assert_not_called()
 
     def test_bmc_config_does_nothing_if_send_result_false(self):
         maas_run_remote_scripts._bmc_config_uploaded = False
@@ -3317,10 +3121,15 @@ class TestBMCConfig(MAASTestCase):
             maas_run_remote_scripts, "output_and_send"
         )
         bmc_config({}, False)
-        self.assertThat(mock_output_and_send, MockNotCalled())
+        mock_output_and_send.assert_not_called()
 
 
 class TestRunScripts(MAASTestCase):
+    def setUp(self):
+        self.patch(maas_run_remote_scripts.sys.stdout, "write")
+        self.patch(maas_run_remote_scripts.sys.stderr, "write")
+        super().setUp()
+
     def test_run_scripts(self):
         mock_run_serial_scripts = self.patch(
             maas_run_remote_scripts, "run_serial_scripts"
@@ -3361,17 +3170,14 @@ class TestRunScripts(MAASTestCase):
             elif script["parallel"] == 2:
                 parallel_scripts.append(script)
 
-        self.assertThat(
-            mock_run_serial_scripts,
-            MockCalledOnceWith(serial_scripts, scripts_dir, ANY, True),
+        mock_run_serial_scripts.assert_called_once_with(
+            serial_scripts, scripts_dir, ANY, True
         )
-        self.assertThat(
-            mock_run_instance_scripts,
-            MockCalledOnceWith(instance_scripts, scripts_dir, ANY, True),
+        mock_run_instance_scripts.assert_called_once_with(
+            instance_scripts, scripts_dir, ANY, True
         )
-        self.assertThat(
-            mock_run_parallel_scripts,
-            MockCalledOnceWith(parallel_scripts, scripts_dir, ANY, True),
+        mock_run_parallel_scripts.assert_called_once_with(
+            parallel_scripts, scripts_dir, ANY, True
         )
 
     def test_run_scripts_adds_data(self):
@@ -3418,7 +3224,7 @@ class TestRunScripts(MAASTestCase):
         run_scripts(config, scripts_dir, out_dir, scripts)
         scripts[0].pop("thread", None)
         scripts[0].pop("resources_file")
-        self.assertDictEqual(script, scripts[0])
+        self.assertEqual(script, scripts[0])
 
     def test_run_scripts_sends_unsent_results_after_bmc_discovered(self):
         scripts_dir = self.useFixture(TempDirectory()).path
@@ -3449,9 +3255,8 @@ class TestRunScripts(MAASTestCase):
         # with the result. The first script is unable to be sent as the
         # machine doesn't exist yet. Once the second script runs it can be
         # uploaded. Since it finished already only one signal is sent.
-        self.assertThat(
-            mock_output_and_send,
-            MockCallsMatch(
+        mock_output_and_send.assert_has_calls(
+            [
                 call(
                     f"Starting {scripts[0]['msg_name']}",
                     url=scripts[0]["args"]["url"],
@@ -3571,7 +3376,7 @@ class TestRunScripts(MAASTestCase):
                     },
                     runtime=ANY,
                 ),
-            ),
+            ]
         )
 
     def test_run_scripts_enlists(self):
@@ -3604,7 +3409,7 @@ class TestRunScripts(MAASTestCase):
         # so all results must be sent after they finish running and enlistment
         # has occured.
         self.assertEqual(9, len(mock_output_and_send.call_args_list))
-        self.assertThat(mock_enlist, MockCalledOnce())
+        mock_enlist.assert_called_once()
 
 
 class TestRunScriptsFromMetadata(MAASTestCase):
@@ -3724,27 +3529,21 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         )
         run_scripts_from_metadata(config, scripts_dir, None)
 
-        self.assertThat(
-            self.mock_run_scripts,
-            MockCalledOnceWith(
-                config,
-                scripts_dir,
-                None,
-                index_json["commissioning_scripts"],
-                True,
-                allow_bmc_detection=True,
-            ),
+        self.mock_run_scripts.assert_called_once_with(
+            config,
+            scripts_dir,
+            None,
+            index_json["commissioning_scripts"],
+            True,
+            allow_bmc_detection=True,
         )
-        self.assertThat(self.mock_signal, MockNotCalled())
-        self.assertThat(
-            self.mock_output_and_send,
-            MockCalledOnceWith(
-                "%s commissioning scripts failed to run" % fail_count,
-                True,
-                config.metadata_url,
-                config.credentials,
-                "FAILED",
-            ),
+        self.mock_signal.assert_not_called()
+        self.mock_output_and_send.assert_called_once_with(
+            "%s commissioning scripts failed to run" % fail_count,
+            True,
+            config.metadata_url,
+            config.credentials,
+            "FAILED",
         )
 
     def test_run_scripts_from_metadata_redownloads_after_commiss(self):
@@ -3776,38 +3575,28 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         )
         run_scripts_from_metadata(config, scripts_dir, None)
 
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["commissioning_scripts"],
-                True,
-                allow_bmc_detection=True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["commissioning_scripts"],
+            True,
+            allow_bmc_detection=True,
         )
-        self.assertThat(
-            self.mock_signal,
-            MockAnyCall(config.metadata_url, config.credentials, "TESTING"),
+        self.mock_signal.assert_any_call(
+            config.metadata_url, config.credentials, "TESTING"
         )
-        self.assertThat(
-            mock_download_and_extract_tar,
-            MockCalledOnceWith(
-                f"{config.metadata_url}maas-scripts",
-                config.credentials,
-                scripts_dir,
-            ),
+        mock_download_and_extract_tar.assert_called_once_with(
+            f"{config.metadata_url}maas-scripts",
+            config.credentials,
+            scripts_dir,
         )
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["testing_scripts"],
-                True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["testing_scripts"],
+            True,
         )
 
     def test_run_scripts_from_metadata_signals_test_failure(self):
@@ -3831,48 +3620,35 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         )
         run_scripts_from_metadata(config, scripts_dir, None)
 
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["commissioning_scripts"],
-                True,
-                allow_bmc_detection=True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["commissioning_scripts"],
+            True,
+            allow_bmc_detection=True,
         )
-        self.assertThat(
-            self.mock_run_scripts,
-            MockAnyCall(
-                config,
-                scripts_dir,
-                None,
-                index_json["testing_scripts"],
-                True,
-            ),
+        self.mock_run_scripts.assert_any_call(
+            config,
+            scripts_dir,
+            None,
+            index_json["testing_scripts"],
+            True,
         )
-        self.assertThat(
-            self.mock_signal,
-            MockAnyCall(config.metadata_url, config.credentials, "TESTING"),
+        self.mock_signal.assert_any_call(
+            config.metadata_url, config.credentials, "TESTING"
         )
-        self.assertThat(
-            mock_download_and_extract_tar,
-            MockCalledOnceWith(
-                f"{config.metadata_url}maas-scripts",
-                config.credentials,
-                scripts_dir,
-            ),
+        mock_download_and_extract_tar.assert_called_once_with(
+            f"{config.metadata_url}maas-scripts",
+            config.credentials,
+            scripts_dir,
         )
-        self.assertThat(
-            self.mock_output_and_send,
-            MockAnyCall(
-                "%s test scripts failed to run" % fail_count,
-                True,
-                config.metadata_url,
-                config.credentials,
-                "FAILED",
-            ),
+        self.mock_output_and_send.assert_any_call(
+            "%s test scripts failed to run" % fail_count,
+            True,
+            config.metadata_url,
+            config.credentials,
+            "FAILED",
         )
 
 
@@ -3886,11 +3662,8 @@ class TestGetMaasMachines(MAASTestCase):
         netloc = factory.make_hostname()
         url = factory.make_url(scheme="http", netloc=netloc)
         self.assertTrue(get_maas_machines(url))
-        self.assertThat(
-            self.mock_geturl,
-            MockCalledOnceWith(
-                "http://%s/MAAS/api/2.0/machines/" % netloc, post_data=None
-            ),
+        self.mock_geturl.assert_called_once_with(
+            "http://%s/MAAS/api/2.0/machines/" % netloc, post_data=None
         )
 
     def test_get_maas_machines_query(self):
@@ -3901,13 +3674,10 @@ class TestGetMaasMachines(MAASTestCase):
             for _ in range(3)
         }
         self.assertTrue(get_maas_machines(url, query))
-        self.assertThat(
-            self.mock_geturl,
-            MockCalledOnceWith(
-                "http://%s/MAAS/api/2.0/machines/?%s"
-                % (netloc, "&".join("%s=%s" % i for i in query.items())),
-                post_data=None,
-            ),
+        self.mock_geturl.assert_called_once_with(
+            "http://%s/MAAS/api/2.0/machines/?%s"
+            % (netloc, "&".join("%s=%s" % i for i in query.items())),
+            post_data=None,
         )
 
     def test_get_maas_machines_post_data(self):
@@ -3918,12 +3688,9 @@ class TestGetMaasMachines(MAASTestCase):
             for _ in range(3)
         }
         self.assertTrue(get_maas_machines(url, post_data=post_data))
-        self.assertThat(
-            self.mock_geturl,
-            MockCalledOnceWith(
-                "http://%s/MAAS/api/2.0/machines/" % netloc,
-                post_data=post_data,
-            ),
+        self.mock_geturl.assert_called_once_with(
+            "http://%s/MAAS/api/2.0/machines/" % netloc,
+            post_data=post_data,
         )
 
 
@@ -3978,7 +3745,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         heart_beat.start()
         heart_beat.stop()
         self.assertLess(time.time() - start_time, 1)
-        self.assertThat(mock_signal, MockCalledOnceWith(url, creds, "WORKING"))
+        mock_signal.assert_called_once_with(url, creds, "WORKING")
 
     def test_heartbeat_with_long_sleep(self):
         mock_signal = self.patch_autospec(maas_run_remote_scripts, "signal")
@@ -3995,7 +3762,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         heart_beat.start()
         heart_beat.stop()
         self.assertLess(time.time() - start_time, 1)
-        self.assertThat(mock_signal, MockCalledOnceWith(url, creds, "WORKING"))
+        mock_signal.assert_called_once_with(url, creds, "WORKING")
 
     def test_main_checks_if_registered_during_enlistment(self):
         self.patch(
@@ -4018,7 +3785,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         mock_sleep = self.patch(maas_run_remote_scripts.time, "sleep")
 
         self.assertEqual(0, maas_run_remote_scripts.main())
-        self.assertThat(mock_sleep, MockAnyCall(10))
+        mock_sleep.assert_any_call(10)
 
     def test_main_signals_success(self):
         self.patch(
@@ -4040,9 +3807,6 @@ class TestMaasRunRemoteScripts(MAASTestCase):
 
         maas_run_remote_scripts.main()
 
-        self.assertThat(
-            mock_output_and_send,
-            MockCalledOnceWith(
-                "All scripts successfully ran", ANY, ANY, ANY, "OK"
-            ),
+        mock_output_and_send.assert_called_once_with(
+            "All scripts successfully ran", ANY, ANY, ANY, "OK"
         )

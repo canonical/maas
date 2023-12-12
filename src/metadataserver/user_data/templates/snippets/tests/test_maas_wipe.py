@@ -11,11 +11,6 @@ from textwrap import dedent
 from unittest.mock import call, MagicMock
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from snippets import maas_wipe
 from snippets.maas_wipe import (
@@ -64,9 +59,8 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = b""
         list_disks()
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(["lsblk", "-d", "-n", "-oKNAME,TYPE,RO"]),
+        mock_check_output.assert_called_once_with(
+            ["lsblk", "-d", "-n", "-oKNAME,TYPE,RO"]
         )
 
     def test_list_disks_returns_only_readwrite_disks(self):
@@ -88,10 +82,9 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = hdparm_output
         disk_name = factory.make_name("disk").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith([b"hdparm", b"-I", b"/dev/%s" % disk_name]),
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_called_once_with(
+            [b"hdparm", b"-I", b"/dev/%s" % disk_name]
         )
         self.assertEqual(
             {
@@ -100,7 +93,7 @@ class TestMAASWipe(MAASTestCase):
                 b"locked": False,
                 b"frozen": False,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_not_supported_hdparm(self):
@@ -112,10 +105,9 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = hdparm_output
         disk_name = factory.make_name("disk").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith([b"hdparm", b"-I", b"/dev/%s" % disk_name]),
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_called_once_with(
+            [b"hdparm", b"-I", b"/dev/%s" % disk_name]
         )
         self.assertEqual(
             {
@@ -124,7 +116,7 @@ class TestMAASWipe(MAASTestCase):
                 b"locked": False,
                 b"frozen": False,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_supported_not_enabled_hdparm(self):
@@ -136,10 +128,9 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = hdparm_output
         disk_name = factory.make_name("disk").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith([b"hdparm", b"-I", b"/dev/%s" % disk_name]),
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_called_once_with(
+            [b"hdparm", b"-I", b"/dev/%s" % disk_name]
         )
         self.assertEqual(
             {
@@ -148,7 +139,7 @@ class TestMAASWipe(MAASTestCase):
                 b"locked": False,
                 b"frozen": False,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_supported_enabled_hdparm(self):
@@ -160,10 +151,9 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = hdparm_output
         disk_name = factory.make_name("disk").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith([b"hdparm", b"-I", b"/dev/%s" % disk_name]),
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_called_once_with(
+            [b"hdparm", b"-I", b"/dev/%s" % disk_name]
         )
         self.assertEqual(
             {
@@ -172,7 +162,7 @@ class TestMAASWipe(MAASTestCase):
                 b"locked": False,
                 b"frozen": False,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_all_true_hdparm(self):
@@ -184,10 +174,9 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = hdparm_output
         disk_name = factory.make_name("disk").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith([b"hdparm", b"-I", b"/dev/%s" % disk_name]),
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_called_once_with(
+            [b"hdparm", b"-I", b"/dev/%s" % disk_name]
         )
         self.assertEqual(
             {
@@ -196,7 +185,7 @@ class TestMAASWipe(MAASTestCase):
                 b"locked": True,
                 b"frozen": True,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_info_hdparm(self):
@@ -232,13 +221,12 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = nvme_cli_output
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_has_calls(
+            [
                 call(["nvme", "id-ctrl", maas_wipe.DEV_PATH % disk_name]),
                 call(["nvme", "id-ns", maas_wipe.DEV_PATH % disk_name]),
-            ),
+            ],
         )
         self.assertEqual(
             {
@@ -249,7 +237,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_nocrypt_format_writez_nvme(self):
@@ -263,13 +251,12 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = nvme_cli_output
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_has_calls(
+            [
                 call(["nvme", "id-ctrl", maas_wipe.DEV_PATH % disk_name]),
                 call(["nvme", "id-ns", maas_wipe.DEV_PATH % disk_name]),
-            ),
+            ]
         )
         self.assertEqual(
             {
@@ -280,7 +267,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_crypt_format_nowritez_nvme(self):
@@ -294,13 +281,12 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = nvme_cli_output
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_has_calls(
+            [
                 call(["nvme", "id-ctrl", maas_wipe.DEV_PATH % disk_name]),
                 call(["nvme", "id-ns", maas_wipe.DEV_PATH % disk_name]),
-            ),
+            ]
         )
         self.assertEqual(
             {
@@ -311,7 +297,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_noformat_writez_nvme(self):
@@ -325,13 +311,12 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = nvme_cli_output
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_has_calls(
+            [
                 call(["nvme", "id-ctrl", maas_wipe.DEV_PATH % disk_name]),
                 call(["nvme", "id-ns", maas_wipe.DEV_PATH % disk_name]),
-            ),
+            ]
         )
         self.assertEqual(
             {
@@ -342,7 +327,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_noformat_nowritez_nvme(self):
@@ -356,13 +341,12 @@ class TestMAASWipe(MAASTestCase):
         mock_check_output = self.patch(subprocess, "check_output")
         mock_check_output.return_value = nvme_cli_output
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        observed = get_disk_security_info(disk_name)
+        mock_check_output.assert_has_calls(
+            [
                 call(["nvme", "id-ctrl", maas_wipe.DEV_PATH % disk_name]),
                 call(["nvme", "id-ns", maas_wipe.DEV_PATH % disk_name]),
-            ),
+            ]
         )
         self.assertEqual(
             {
@@ -373,7 +357,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_failed_cmd_nvme(self):
@@ -382,12 +366,9 @@ class TestMAASWipe(MAASTestCase):
             1, "nvme id-ctrl"
         )
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
+        observed = get_disk_security_info(disk_name)
 
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith("Error on nvme id-ctrl (%s)" % "1"),
-        )
+        self.print_flush.assert_called_once_with("Error on nvme id-ctrl (1)")
         self.assertEqual(
             {
                 "format_supported": False,
@@ -397,7 +378,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_security_info_failed_os_nvme(self):
@@ -406,13 +387,10 @@ class TestMAASWipe(MAASTestCase):
             -2, "No such file or directory"
         )
         disk_name = factory.make_name("nvme").encode("ascii")
-        observered = get_disk_security_info(disk_name)
+        observed = get_disk_security_info(disk_name)
 
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "OS error when running nvme-cli (No such file or directory)"
-            ),
+        self.print_flush.assert_called_once_with(
+            "OS error when running nvme-cli (No such file or directory)"
         )
         self.assertEqual(
             {
@@ -423,7 +401,7 @@ class TestMAASWipe(MAASTestCase):
                 "lbaf": 0,
                 "ms": 0,
             },
-            observered,
+            observed,
         )
 
     def test_get_disk_info_nvme(self):
@@ -459,12 +437,8 @@ class TestMAASWipe(MAASTestCase):
             b"frozen": False,
         }
         self.assertFalse(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: drive does not support secure erase."
-                % (disk_name.decode("ascii"))
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: drive does not support secure erase."
         )
 
     def test_try_secure_erase_frozen_hdparm(self):
@@ -476,12 +450,8 @@ class TestMAASWipe(MAASTestCase):
             b"frozen": True,
         }
         self.assertFalse(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: not using secure erase; drive is currently frozen."
-                % (disk_name.decode("ascii"))
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: not using secure erase; drive is currently frozen."
         )
 
     def test_try_secure_erase_locked_hdparm(self):
@@ -493,12 +463,8 @@ class TestMAASWipe(MAASTestCase):
             b"frozen": False,
         }
         self.assertFalse(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: not using secure erase; drive is currently locked."
-                % (disk_name.decode("ascii"))
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: not using secure erase; drive is currently locked."
         )
 
     def test_try_secure_erase_enabled_hdparm(self):
@@ -510,12 +476,8 @@ class TestMAASWipe(MAASTestCase):
             b"frozen": False,
         }
         self.assertFalse(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: not using secure erase; drive security "
-                "is already enabled." % (disk_name.decode("ascii"))
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: not using secure erase; drive security is already enabled."
         )
 
     def test_try_secure_erase_failed_erase_hdparm(self):
@@ -529,12 +491,8 @@ class TestMAASWipe(MAASTestCase):
         exception = factory.make_exception()
         self.patch(maas_wipe, "secure_erase_hdparm").side_effect = exception
         self.assertFalse(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: failed to be securely erased: %s"
-                % (disk_name.decode("ascii"), exception)
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: failed to be securely erased: {exception}"
         )
 
     def test_try_secure_erase_successful_erase_hdparm(self):
@@ -547,12 +505,8 @@ class TestMAASWipe(MAASTestCase):
         }
         self.patch(maas_wipe, "secure_erase_hdparm")
         self.assertTrue(try_secure_erase(disk_name, disk_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: successfully securely erased."
-                % (disk_name.decode("ascii"))
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: successfully securely erased."
         )
 
     def test_try_secure_erase_not_supported_nvme(self):
@@ -566,12 +520,8 @@ class TestMAASWipe(MAASTestCase):
             "ms": 0,
         }
         self.assertFalse(try_secure_erase(disk_name, sec_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "Device %s does not support formatting"
-                % disk_name.decode("ascii")
-            ),
+        self.print_flush.assert_called_once_with(
+            f"Device {disk_name.decode('ascii')} does not support formatting"
         )
 
     def test_try_secure_erase_successful_cryto_nvme(self):
@@ -586,28 +536,21 @@ class TestMAASWipe(MAASTestCase):
         }
         mock_check_output = self.patch(subprocess, "check_output")
         self.assertTrue(try_secure_erase(disk_name, sec_info))
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "nvme",
-                    "format",
-                    "-s",
-                    "2",
-                    "-l",
-                    "0",
-                    "-m",
-                    "0",
-                    maas_wipe.DEV_PATH % disk_name,
-                ]
-            ),
+        mock_check_output.assert_called_once_with(
+            [
+                "nvme",
+                "format",
+                "-s",
+                "2",
+                "-l",
+                "0",
+                "-m",
+                "0",
+                maas_wipe.DEV_PATH % disk_name,
+            ]
         )
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "Secure erase was successful on NVMe drive %s"
-                % disk_name.decode("ascii")
-            ),
+        self.print_flush.assert_called_once_with(
+            f"Secure erase was successful on NVMe drive {disk_name.decode('ascii')}"
         )
 
     def test_try_secure_erase_successful_nocryto_nvme(self):
@@ -622,28 +565,21 @@ class TestMAASWipe(MAASTestCase):
         }
         mock_check_output = self.patch(subprocess, "check_output")
         self.assertTrue(try_secure_erase(disk_name, sec_info))
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "nvme",
-                    "format",
-                    "-s",
-                    "1",
-                    "-l",
-                    "0",
-                    "-m",
-                    "0",
-                    maas_wipe.DEV_PATH % disk_name,
-                ]
-            ),
+        mock_check_output.assert_called_once_with(
+            [
+                "nvme",
+                "format",
+                "-s",
+                "1",
+                "-l",
+                "0",
+                "-m",
+                "0",
+                maas_wipe.DEV_PATH % disk_name,
+            ]
         )
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "Secure erase was successful on NVMe drive %s"
-                % disk_name.decode("ascii")
-            ),
+        self.print_flush.assert_called_once_with(
+            f"Secure erase was successful on NVMe drive {disk_name.decode('ascii')}"
         )
 
     def test_try_secure_erase_failed_nvme(self):
@@ -662,9 +598,8 @@ class TestMAASWipe(MAASTestCase):
         )
 
         self.assertFalse(try_secure_erase(disk_name, sec_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith("Error with format command (%s)" % "1"),
+        self.print_flush.assert_called_once_with(
+            "Error with format command (1)"
         )
 
     def test_try_write_zeroes_not_supported_nvme(self):
@@ -679,16 +614,11 @@ class TestMAASWipe(MAASTestCase):
         }
         mock_print = self.patch(builtins, "print")
         self.assertFalse(nvme_write_zeroes(disk_name, sec_info))
-        self.assertThat(
-            mock_print,
-            MockCalledOnceWith(
-                "NVMe drive %s does not support write-zeroes"
-                % disk_name.decode("ascii")
-            ),
+        mock_print.assert_called_once_with(
+            f"NVMe drive {disk_name.decode('ascii')} does not support write-zeroes"
         )
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith("Will fallback to regular drive zeroing."),
+        self.print_flush.assert_called_once_with(
+            "Will fallback to regular drive zeroing."
         )
 
     def test_try_write_zeroes_supported_invalid_nsze_nvme(self):
@@ -703,16 +633,11 @@ class TestMAASWipe(MAASTestCase):
         }
         mock_print = self.patch(builtins, "print")
         self.assertFalse(nvme_write_zeroes(disk_name, sec_info))
-        self.assertThat(
-            mock_print,
-            MockCalledOnceWith(
-                "Bad namespace information collected on NVMe drive %s"
-                % disk_name.decode("ascii")
-            ),
+        mock_print.assert_called_once_with(
+            f"Bad namespace information collected on NVMe drive {disk_name.decode('ascii')}"
         )
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith("Will fallback to regular drive zeroing."),
+        self.print_flush.assert_called_once_with(
+            "Will fallback to regular drive zeroing."
         )
 
     def test_try_write_zeroes_successful_nvme(self):
@@ -727,27 +652,20 @@ class TestMAASWipe(MAASTestCase):
         }
         mock_check_output = self.patch(subprocess, "check_output")
         self.assertTrue(nvme_write_zeroes(disk_name, sec_info))
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(
-                [
-                    "nvme",
-                    "write-zeroes",
-                    "-f",
-                    "-s",
-                    "0",
-                    "-c",
-                    "100a",
-                    maas_wipe.DEV_PATH % disk_name,
-                ]
-            ),
+        mock_check_output.assert_called_once_with(
+            [
+                "nvme",
+                "write-zeroes",
+                "-f",
+                "-s",
+                "0",
+                "-c",
+                "100a",
+                maas_wipe.DEV_PATH % disk_name,
+            ]
         )
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith(
-                "%s: successfully zeroed (using write-zeroes)."
-                % disk_name.decode("ascii")
-            ),
+        self.print_flush.assert_called_once_with(
+            f"{disk_name.decode('ascii')}: successfully zeroed (using write-zeroes)."
         )
 
     def test_try_write_zeroes_failed_nvme(self):
@@ -766,9 +684,8 @@ class TestMAASWipe(MAASTestCase):
         )
 
         self.assertFalse(nvme_write_zeroes(disk_name, sec_info))
-        self.assertThat(
-            self.print_flush,
-            MockCalledOnceWith("Error with write-zeroes command (%s)" % "1"),
+        self.print_flush.assert_called_once_with(
+            "Error with write-zeroes command (1)"
         )
 
     def test_secure_erase_writes_known_data_hdparm(self):
@@ -808,18 +725,15 @@ class TestMAASWipe(MAASTestCase):
         ).side_effect = exception_type()
 
         self.assertRaises(exception_type, secure_erase_hdparm, dev_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(
-                [
-                    b"hdparm",
-                    b"--user-master",
-                    b"u",
-                    b"--security-set-pass",
-                    b"maas",
-                    file_path,
-                ]
-            ),
+        mock_check_output.assert_called_once_with(
+            [
+                b"hdparm",
+                b"--user-master",
+                b"u",
+                b"--security-set-pass",
+                b"maas",
+                file_path,
+            ]
         )
 
     def test_secure_erase_fails_if_not_enabled_hdparm(self):
@@ -857,22 +771,18 @@ class TestMAASWipe(MAASTestCase):
         mock_check_call.side_effect = exception
 
         error = self.assertRaises(WipeError, secure_erase_hdparm, dev_name)
-        self.assertThat(
-            mock_check_call,
-            MockCalledOnceWith(
-                [
-                    b"hdparm",
-                    b"--user-master",
-                    b"u",
-                    b"--security-erase",
-                    b"maas",
-                    file_path,
-                ]
-            ),
+        mock_check_call.assert_called_once_with(
+            [
+                b"hdparm",
+                b"--user-master",
+                b"u",
+                b"--security-erase",
+                b"maas",
+                file_path,
+            ]
         )
-        self.assertThat(
-            mock_check_output,
-            MockCallsMatch(
+        mock_check_output.assert_has_calls(
+            [
                 call(
                     [
                         b"hdparm",
@@ -884,7 +794,7 @@ class TestMAASWipe(MAASTestCase):
                     ]
                 ),
                 call([b"hdparm", b"--security-disable", b"maas", file_path]),
-            ),
+            ],
         )
         self.assertEqual("Failed to securely erase.", str(error))
         self.assertEqual(exception, error.__cause__)
@@ -905,18 +815,15 @@ class TestMAASWipe(MAASTestCase):
         mock_check_call = self.patch(subprocess, "check_call")
 
         error = self.assertRaises(WipeError, secure_erase_hdparm, dev_name)
-        self.assertThat(
-            mock_check_call,
-            MockCalledOnceWith(
-                [
-                    b"hdparm",
-                    b"--user-master",
-                    b"u",
-                    b"--security-erase",
-                    b"maas",
-                    file_path,
-                ]
-            ),
+        mock_check_call.assert_called_once_with(
+            [
+                b"hdparm",
+                b"--user-master",
+                b"u",
+                b"--security-erase",
+                b"maas",
+                file_path,
+            ]
         )
         self.assertEqual(
             "Secure erase was performed, but failed to actually work.",
@@ -960,11 +867,8 @@ class TestMAASWipe(MAASTestCase):
 
         mock_check_output = self.patch(subprocess, "check_output")
         wipe_quickly(dev_name)
-        self.assertThat(
-            mock_check_output,
-            MockCalledOnceWith(
-                ["wipefs", "-f", "-a", maas_wipe.DEV_PATH % dev_name]
-            ),
+        mock_check_output.assert_called_once_with(
+            ["wipefs", "-f", "-a", maas_wipe.DEV_PATH % dev_name]
         )
 
         buf_size = 1024 * 1024
@@ -976,15 +880,13 @@ class TestMAASWipe(MAASTestCase):
         zero_buf = b"\0" * 1024 * 1024
         self.assertEqual(zero_buf, first_buf, "First 1 MiB was not wiped.")
         self.assertEqual(zero_buf, last_buf, "Last 1 MiB was not wiped.")
-        self.assertThat(
-            self.print_flush,
-            MockCallsMatch(
-                call("%s: starting quick wipe." % dev_name.decode("ascii")),
+        self.print_flush.assert_has_calls(
+            [
+                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
                 call(
-                    "%s: successfully quickly wiped."
-                    % dev_name.decode("ascii")
+                    f"{dev_name.decode('ascii')}: successfully quickly wiped."
                 ),
-            ),
+            ]
         )
 
     def test_wipe_quickly_successful_but_wipefs_failed(self):
@@ -1010,16 +912,14 @@ class TestMAASWipe(MAASTestCase):
         zero_buf = b"\0" * 1024 * 1024
         self.assertEqual(zero_buf, first_buf, "First 1 MiB was not wiped.")
         self.assertEqual(zero_buf, last_buf, "Last 1 MiB was not wiped.")
-        self.assertThat(
-            self.print_flush,
-            MockCallsMatch(
-                call("%s: starting quick wipe." % dev_name.decode("ascii")),
-                call("%s: wipefs failed (1)" % dev_name.decode("ascii")),
+        self.print_flush.assert_has_calls(
+            [
+                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
+                call(f"{dev_name.decode('ascii')}: wipefs failed (1)"),
                 call(
-                    "%s: successfully quickly wiped."
-                    % dev_name.decode("ascii")
+                    f"{dev_name.decode('ascii')}: successfully quickly wiped."
                 ),
-            ),
+            ]
         )
 
     def test_wipe_quickly_failed(self):
@@ -1035,20 +935,17 @@ class TestMAASWipe(MAASTestCase):
 
         wipe_quickly(dev_name)
 
-        self.assertThat(
-            self.print_flush,
-            MockCallsMatch(
-                call("%s: starting quick wipe." % dev_name.decode("ascii")),
-                call("%s: wipefs failed (1)" % dev_name.decode("ascii")),
+        self.print_flush.assert_has_calls(
+            [
+                call(f"{dev_name.decode('ascii')}: starting quick wipe."),
+                call(f"{dev_name.decode('ascii')}: wipefs failed (1)"),
                 call(
-                    "%s: OS error while wiping beginning/end of disk (No such file or directory)"
-                    % dev_name.decode("ascii")
+                    f"{dev_name.decode('ascii')}: OS error while wiping beginning/end of disk (No such file or directory)"
                 ),
                 call(
-                    "%s: failed to be quickly wiped."
-                    % dev_name.decode("ascii")
+                    f"{dev_name.decode('ascii')}: failed to be quickly wiped."
                 ),
-            ),
+            ]
         )
 
     def test_zero_disk_hdd(self):
@@ -1110,8 +1007,8 @@ class TestMAASWipe(MAASTestCase):
         maas_wipe.main()
 
         calls = [call(disk, info) for disk, info in disks.items()]
-        self.assertThat(mock_try, MockCallsMatch(*calls))
-        self.assertThat(mock_zero, MockNotCalled())
+        mock_try.assert_has_calls(calls)
+        mock_zero.assert_not_called()
 
     def test_main_calls_zero_disk_if_no_secure_erase_hdd(self):
         self.patch_args(True, False)
@@ -1126,8 +1023,8 @@ class TestMAASWipe(MAASTestCase):
         maas_wipe.main()
 
         try_calls = [call(disk, info) for disk, info in disks.items()]
-        self.assertThat(mock_try, MockCallsMatch(*try_calls))
-        self.assertThat(mock_zero, MockCallsMatch(*try_calls))
+        mock_try.assert_has_calls(try_calls)
+        mock_zero.assert_has_calls(try_calls)
 
     def test_main_calls_wipe_quickly_if_no_secure_erase_hdd(self):
         self.patch_args(True, True)
@@ -1143,8 +1040,8 @@ class TestMAASWipe(MAASTestCase):
 
         try_calls = [call(disk, info) for disk, info in disks.items()]
         wipe_calls = [call(disk) for disk in disks.keys()]
-        self.assertThat(mock_try, MockCallsMatch(*try_calls))
-        self.assertThat(wipe_quickly, MockCallsMatch(*wipe_calls))
+        mock_try.assert_has_calls(try_calls)
+        wipe_quickly.assert_has_calls(wipe_calls)
 
     def test_main_calls_wipe_quickly(self):
         self.patch_args(False, True)
@@ -1159,8 +1056,8 @@ class TestMAASWipe(MAASTestCase):
         maas_wipe.main()
 
         wipe_calls = [call(disk) for disk in disks.keys()]
-        self.assertThat(mock_try, MockNotCalled())
-        self.assertThat(wipe_quickly, MockCallsMatch(*wipe_calls))
+        mock_try.assert_not_called()
+        wipe_quickly.assert_has_calls(wipe_calls)
 
     def test_main_calls_zero_disk(self):
         self.patch_args(False, False)
@@ -1175,5 +1072,5 @@ class TestMAASWipe(MAASTestCase):
         maas_wipe.main()
 
         wipe_calls = [call(disk, info) for disk, info in disks.items()]
-        self.assertThat(mock_try, MockNotCalled())
-        self.assertThat(zero_disk, MockCallsMatch(*wipe_calls))
+        mock_try.assert_not_called()
+        zero_disk.assert_has_calls(wipe_calls)
