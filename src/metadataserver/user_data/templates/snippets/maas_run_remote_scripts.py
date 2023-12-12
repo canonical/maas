@@ -1580,6 +1580,8 @@ def run_scripts_from_metadata(
             )
         return fail_count
 
+    return fail_count
+
 
 class HeartBeat(Thread):
     """Creates a background thread which pings the MAAS metadata service every
