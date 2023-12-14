@@ -237,6 +237,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         expected_services = {
+            "database-tasks-master",
             "region-controller",
             "nonce-cleanup",
             "dns-publication-cleanup",
@@ -367,6 +368,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "web",
             "ipc-worker",
             # Master services.
+            "database-tasks-master",
             "region-controller",
             "nonce-cleanup",
             "dns-publication-cleanup",

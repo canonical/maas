@@ -67,10 +67,10 @@ def make_DatabaseTaskService():
     return dbtasks.DatabaseTasksService()
 
 
-def make_RegionControllerService(postgresListener):
+def make_RegionControllerService(postgresListener, dbtasks):
     from maasserver.region_controller import RegionControllerService
 
-    return RegionControllerService(postgresListener)
+    return RegionControllerService(postgresListener, dbtasks)
 
 
 def make_RegionService(ipcWorker):
@@ -299,10 +299,15 @@ class RegionEventLoop:
             "factory": make_DatabaseTaskService,
             "requires": [],
         },
+        "database-tasks-master": {
+            "only_on_master": True,
+            "factory": make_DatabaseTaskService,
+            "requires": [],
+        },
         "region-controller": {
             "only_on_master": True,
             "factory": make_RegionControllerService,
-            "requires": ["postgres-listener-master"],
+            "requires": ["postgres-listener-master", "database-tasks-master"],
         },
         "rpc": {
             "only_on_master": False,

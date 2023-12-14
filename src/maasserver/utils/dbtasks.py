@@ -26,14 +26,17 @@ class DatabaseTaskAlreadyRunning(Exception):
 class DatabaseTasksService(Service):
     """Run deferred database operations one at a time.
 
-    Once the service is started, `deferTask` and `addTask` can be used to
-    queue up execution of a database task.
+    Once the service is started, `deferTask`, `addTask` and
+    `deferTaskWithCallbacks` can be used to queue up execution of a database task.
 
-    The former — `deferTask` — will return a `Deferred` that fires with the
+    The former —`deferTaskWithCallbacks` — returns nothing, and can be used to add tasks with callbacks to the queue.
+    Errors arising from this task are simply logged.
+
+    `deferTask` — will return a `Deferred` that fires with the
     result of the database task. Errors arising from this task become the
     responsibility of the caller.
 
-    The latter — `addTask` — returns nothing, and will log errors arising from
+    `addTask` — returns nothing, and will log errors arising from
     the database task.
 
     Before this service has been started, and as soon as shutdown has
@@ -48,6 +51,24 @@ class DatabaseTasksService(Service):
         super().__init__()
         # Start with a queue that rejects puts.
         self.queue = DeferredQueue(size=0, backlog=1)
+
+    @asynchronous
+    def deferTaskWithCallbacks(self, func, callbacks, *args, **kwargs):
+        """Schedules `func` with callbacks to run later.
+
+        :raise QueueOverflow: If the queue of tasks is full.
+        :return: `None`
+        """
+
+        def task():
+            d = deferToDatabase(func, *args, **kwargs)
+            for callback in callbacks:
+                d.addCallback(callback)
+            d.addErrback(log.err, "Unhandled failure in database task.")
+            return d
+
+        self.queue.put(task)
+        return None
 
     @asynchronous
     def deferTask(self, func, *args, **kwargs):
