@@ -6,7 +6,7 @@ NODEJS_BIN := $(NODEJS_DIR)/bin
 
 export PATH := $(NODEJS_BIN):$(PATH)
 
-NODEJS_VERSION := 16.13.0
+NODEJS_VERSION := 20.9.0
 YARN_VERSION := 1.22.17
 
 UI_REVISION := $(shell git -C $(SRC_DIR) rev-parse HEAD)
