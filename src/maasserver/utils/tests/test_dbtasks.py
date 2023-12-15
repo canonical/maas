@@ -120,6 +120,27 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
+    def test_callbacks_are_called_from_deferredTask(self):
+        def simple_function(input):
+            return input + " world"
+
+        def callback(data):
+            sentinel.callback = data
+
+        service = DatabaseTasksService()
+        service.startService()
+        try:
+            service.deferTaskWithCallbacks(
+                simple_function, [callback], "Hello"
+            )
+            service.syncTask().wait(TIMEOUT)
+            self.assertEqual(
+                "Hello world",
+                sentinel.callback,
+            )
+        finally:
+            service.stopService()
+
     def test_tasks_are_all_run_before_shutdown_completes(self):
         service = DatabaseTasksService()
         service.startService()

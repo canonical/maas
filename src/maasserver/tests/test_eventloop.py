@@ -368,9 +368,21 @@ class TestFactories(MAASServerTestCase):
             eventloop.loop.factories["database-tasks"]["only_on_master"]
         )
 
+    def test_make_MasterDatabaseTaskService(self):
+        service = eventloop.make_DatabaseTaskService()
+        self.assertIsInstance(service, dbtasks.DatabaseTasksService)
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIs(
+            eventloop.make_DatabaseTaskService,
+            eventloop.loop.factories["database-tasks-master"]["factory"],
+        )
+        self.assertTrue(
+            eventloop.loop.factories["database-tasks-master"]["only_on_master"]
+        )
+
     def test_make_RegionControllerService(self):
         service = eventloop.make_RegionControllerService(
-            sentinel.postgresListener
+            sentinel.postgresListener, sentinel.dbtasks
         )
         self.assertIsInstance(
             service, region_controller.RegionControllerService
