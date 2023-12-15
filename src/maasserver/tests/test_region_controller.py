@@ -29,6 +29,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.dbtasks import DatabaseTasksService
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.matchers import (
@@ -43,12 +44,12 @@ wait_for_reactor = wait_for()
 
 
 class TestRegionControllerService(MAASServerTestCase):
-    def make_service(self, listener):
+    def make_service(self, listener=MagicMock(), dbtasks=MagicMock()):
         # Don't retry on failure or the tests will loop forever.
-        return RegionControllerService(listener, retryOnFailure=False)
+        return RegionControllerService(listener, dbtasks, retryOnFailure=False)
 
     def test_init_sets_properties(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         self.assertThat(
             service,
             MatchesStructure.byEquality(
@@ -56,6 +57,7 @@ class TestRegionControllerService(MAASServerTestCase):
                 processingDefer=None,
                 needsDNSUpdate=True,
                 postgresListener=sentinel.listener,
+                dbtasks=sentinel.dbtasks,
             ),
         )
 
@@ -107,31 +109,27 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_handles_canceling_processing(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
+        service = self.make_service()
         service.startProcessing()
         yield service.stopService()
         self.assertIsNone(service.processingDefer)
 
     def test_markDNSForUpdate_sets_needsDNSUpdate_and_starts_process(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
+        service = self.make_service()
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markDNSForUpdate(None, None)
         self.assertTrue(service.needsDNSUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_markProxyForUpdate_sets_needsProxyUpdate_and_starts_process(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
+        service = self.make_service()
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markProxyForUpdate(None, None)
         self.assertTrue(service.needsProxyUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_markRBACForUpdate_sets_needsRBACUpdate_and_starts_process(self):
-        listener = MagicMock()
-        service = self.make_service(listener)
+        service = self.make_service()
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markRBACForUpdate(None, None)
         self.assertTrue(service.needsRBACUpdate)
@@ -139,19 +137,19 @@ class TestRegionControllerService(MAASServerTestCase):
 
     def test_restart_region_restarts_eventloop(self):
         restart_mock = self.patch(eventloop, "restart")
-        service = self.make_service(MagicMock())
+        service = self.make_service()
         service.restartRegion("sys_vault_migration", "")
         restart_mock.assert_called_once()
 
     def test_startProcessing_doesnt_call_start_when_looping_call_running(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         mock_start = self.patch(service.processing, "start")
         service.processing.running = True
         service.startProcessing()
         self.assertThat(mock_start, MockNotCalled())
 
     def test_startProcessing_calls_start_when_looping_call_not_running(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         mock_start = self.patch(service.processing, "start")
         service.startProcessing()
         self.assertThat(mock_start, MockCalledOnceWith(0.1, now=False))
@@ -159,7 +157,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_reload_dns_on_start(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones"
         )
@@ -177,7 +175,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_doesnt_update_zones_when_nothing_to_process(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = False
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones"
@@ -189,7 +187,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_doesnt_proxy_update_config_when_nothing_to_process(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsProxyUpdate = False
         mock_proxy_update_config = self.patch(
             region_controller, "proxy_update_config"
@@ -201,7 +199,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_doesnt_call_rbacSync_when_nothing_to_process(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsRBACUpdate = False
         mock_rbacSync = self.patch(service, "_rbacSync")
         service.startProcessing()
@@ -211,7 +209,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_stops_processing(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = False
         service.startProcessing()
         yield service.processingDefer
@@ -220,7 +218,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_zones(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         dns_result = (
             random.randint(1, 1000),
@@ -248,7 +246,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_zones_kills_bind_on_failed_reload(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         service.retryOnFailure = True
         dns_result_0 = (
@@ -295,7 +293,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_proxy(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsProxyUpdate = True
         mock_proxy_update_config = self.patch(
             region_controller, "proxy_update_config"
@@ -314,7 +312,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_rbac(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsRBACUpdate = True
         mock_rbacSync = self.patch(service, "_rbacSync")
         mock_rbacSync.return_value = []
@@ -330,7 +328,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_zones_logs_failure(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         mock_dns_update_all_zones = self.patch(
             region_controller, "dns_update_all_zones"
@@ -349,7 +347,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_proxy_logs_failure(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsProxyUpdate = True
         mock_proxy_update_config = self.patch(
             region_controller, "proxy_update_config"
@@ -368,7 +366,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_rbac_logs_failure(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsRBACUpdate = True
         mock_rbacSync = self.patch(service, "_rbacSync")
         mock_rbacSync.side_effect = factory.make_exception()
@@ -383,7 +381,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_rbac_retries_with_delay(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsRBACUpdate = True
         service.retryOnFailure = True
         service.rbacRetryOnFailureDelay = random.randint(1, 10)
@@ -405,7 +403,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_process_updates_bind_proxy_and_rbac(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         service.needsProxyUpdate = True
         service.needsRBACUpdate = True
@@ -441,7 +439,7 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     def test_check_serial_doesnt_raise_error_on_successful_serial_match(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         result_serial = random.randint(1, 1000)
         formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
@@ -472,7 +470,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_check_serial_raise_error_after_30_tries(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         result_serial = random.randint(1, 1000)
         formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
@@ -487,7 +485,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_check_serial_handles_ValueError(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         result_serial = random.randint(1, 1000)
         formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
@@ -502,7 +500,7 @@ class TestRegionControllerService(MAASServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_check_serial_handles_TimeoutError(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         result_serial = random.randint(1, 1000)
         formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
@@ -515,7 +513,7 @@ class TestRegionControllerService(MAASServerTestCase):
             yield service._checkSerial((formatted_serial, True, dns_names))
 
     def test_getRBACClient_returns_None_when_no_url(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.rbacClient = sentinel.client
         SecretManager().delete_secret("external-auth")
         self.assertIsNone(service._getRBACClient())
@@ -526,7 +524,7 @@ class TestRegionControllerService(MAASServerTestCase):
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         client = service._getRBACClient()
         self.assertIsNotNone(client)
         self.assertIs(client, service.rbacClient)
@@ -537,7 +535,7 @@ class TestRegionControllerService(MAASServerTestCase):
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         client = service._getRBACClient()
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://other.example.com"}
@@ -552,7 +550,7 @@ class TestRegionControllerService(MAASServerTestCase):
         SecretManager().set_composite_secret(
             "external-auth", {"rbac-url": "http://rbac.example.com"}
         )
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         client = service._getRBACClient()
         mock_get_auth_info.return_value = MagicMock()
         new_client = service._getRBACClient()
@@ -561,7 +559,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertIs(new_client, service._getRBACClient())
 
     def test_rbacNeedsFull(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         changes = [
             RBACSync(action=RBAC_ACTION.ADD),
             RBACSync(action=RBAC_ACTION.UPDATE),
@@ -571,7 +569,7 @@ class TestRegionControllerService(MAASServerTestCase):
         self.assertTrue(service._rbacNeedsFull(changes))
 
     def test_rbacDifference(self):
-        service = self.make_service(sentinel.listener)
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
         changes = [
             RBACSync(
                 action=RBAC_ACTION.UPDATE, resource_id=1, resource_name="r-1"
@@ -636,7 +634,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             ]
 
         publications = yield deferToDatabase(_create_publications)
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         service.previousSerial = publications[0].serial
         dns_result = (
@@ -677,7 +675,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             ]
 
         publications = yield deferToDatabase(_create_publications)
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         service.needsDNSUpdate = True
         service.previousSerial = publications[0].serial
         dns_result = (
@@ -708,14 +706,14 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
     def test_rbacSync_returns_None_when_nothing_to_do(self):
         RBACSync.objects.clear("resource-pool")
 
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         service.rbacInit = True
         self.assertIsNone(service._rbacSync())
 
     def test_rbacSync_returns_None_and_clears_sync_when_no_client(self):
         RBACSync.objects.create(resource_type="resource-pool")
 
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.assertIsNone(service._rbacSync())
         self.assertFalse(RBACSync.objects.exists())
 
@@ -729,7 +727,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         rbac_client = MagicMock()
         rbac_client.update_resources.return_value = "x-y-z"
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.patch(service, "_getRBACClient").return_value = rbac_client
 
         self.assertEqual([], service._rbacSync())
@@ -748,7 +746,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         rbac_client = MagicMock()
         rbac_client.update_resources.return_value = "x-y-z"
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.patch(service, "_getRBACClient").return_value = rbac_client
 
         self.assertEqual([], service._rbacSync())
@@ -773,7 +771,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         rbac_client = MagicMock()
         rbac_client.update_resources.return_value = "x-y-z"
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.patch(service, "_getRBACClient").return_value = rbac_client
         service.rbacInit = True
 
@@ -807,7 +805,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
             SyncConflictError(),
             "x-y-z",
         ]
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.patch(service, "_getRBACClient").return_value = rbac_client
         service.rbacInit = True
 
@@ -838,7 +836,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         rbac_client = MagicMock()
         rbac_client.update_resources.return_value = "x-y-z"
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
         self.patch(service, "_getRBACClient").return_value = rbac_client
         service.rbacInit = True
 
@@ -856,7 +854,9 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         domain = yield deferToDatabase(factory.make_Domain)
         update_result = (random.randint(0, 10), True, [domain.name])
         record = yield deferToDatabase(factory.make_DNSResource, domain=domain)
-        service = RegionControllerService(sentinel.listener)
+        dbtasks = DatabaseTasksService()
+        dbtasks.startService()
+        service = RegionControllerService(sentinel.listener, dbtasks)
 
         update_zones = self.patch(region_controller, "dns_update_all_zones")
         update_zones.return_value = update_result
@@ -864,10 +864,14 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         check_serial.return_value = succeed(update_result)
 
         service._dns_update_in_progress = True
-        yield service.queueDynamicDNSUpdate(
+        service.queueDynamicDNSUpdate(
             factory.make_name(),
             f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
+
+        # Wait until all the dynamic updates are processed
+        yield dbtasks.syncTask()
+
         self.assertCountEqual(service._dns_updates, [])
         self.assertCountEqual(
             service._queued_updates,
@@ -902,10 +906,12 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_dns_is_set_to_update_when_queued_updates_are_present(self):
+        dbtasks = DatabaseTasksService()
+        dbtasks.startService()
         domain = yield deferToDatabase(factory.make_Domain)
         update_result = (random.randint(0, 10), True, [domain.name])
         record = yield deferToDatabase(factory.make_DNSResource, domain=domain)
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, dbtasks)
 
         update_zones = self.patch(region_controller, "dns_update_all_zones")
         update_zones.return_value = update_result
@@ -913,10 +919,14 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         check_serial.return_value = succeed(update_result)
 
         service._dns_update_in_progress = True
-        yield service.queueDynamicDNSUpdate(
+        service.queueDynamicDNSUpdate(
             factory.make_name(),
             f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
+
+        # Wait until all the dynamic updates are processed
+        yield dbtasks.syncTask()
+
         self.assertCountEqual(service._dns_updates, [])
         expected_updates = [
             DynamicDNSUpdate(
@@ -958,7 +968,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
     def test_check_serial_is_skipped_if_a_newer_serial_exists(self):
         domain = yield deferToDatabase(factory.make_Domain)
         update_result = (random.randint(0, 10), True, [domain.name])
-        service = RegionControllerService(sentinel.listener)
+        service = RegionControllerService(sentinel.listener, sentinel.dbtasks)
 
         query = self.patch(service.dnsResolver, "lookupAuthority")
 
@@ -968,12 +978,16 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
 
         query.assert_not_called()
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_queueDynamicDNSUpdate_can_be_called_synchronously(self):
-        domain = factory.make_Domain()
+        dbtasks = DatabaseTasksService()
+        dbtasks.startService()
+        domain = yield deferToDatabase(factory.make_Domain)
         update_result = (random.randint(0, 10), True, [domain.name])
-        record1 = factory.make_DNSResource(domain=domain)
-        record2 = factory.make_DNSResource(domain=domain)
-        service = RegionControllerService(sentinel.listener)
+        record1 = yield deferToDatabase(factory.make_DNSResource, domain)
+        record2 = yield deferToDatabase(factory.make_DNSResource, domain)
+        service = RegionControllerService(sentinel.listener, dbtasks)
 
         update_zones = self.patch(region_controller, "dns_update_all_zones")
         update_zones.return_value = update_result
@@ -997,6 +1011,9 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
                 factory.make_name(),
                 f"DELETE {domain.name} {record2.name} A 30 2.2.2.2",
             )
+
+        # Wait until all the dynamic updates are processed
+        yield dbtasks.syncTask()
 
         self.assertCountEqual(
             service._dns_updates,

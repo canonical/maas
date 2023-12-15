@@ -78,6 +78,7 @@ class RegionControllerService(Service):
     def __init__(
         self,
         postgresListener,
+        dbtasks,
         clock=reactor,
         retryOnFailure=True,
         rbacRetryOnFailureDelay=10,
@@ -103,6 +104,7 @@ class RegionControllerService(Service):
         self._dns_requires_full_reload = True
         self._dns_latest_serial = None
         self.postgresListener = postgresListener
+        self.dbtasks = dbtasks
         self.dnsResolver = Resolver(
             resolv=None,
             servers=[("127.0.0.1", 53)],
@@ -175,27 +177,33 @@ class RegionControllerService(Service):
         )
         eventloop.restart()
 
-    @asynchronous(timeout=FOREVER)
-    @inlineCallbacks
     def queueDynamicDNSUpdate(self, channel, message):
         """
         Called when the `sys_dns_update` message is received
-        and queues updates for existing domains
+        and queues updates for existing domains.
+        The updates are offloaded to the DatabaseTasksService in order to
+        process them in sequence and keep consuming the next postgres notifications.
         """
+
+        def updateCallback(data):
+            (new_updates, need_reload) = data
+            self._dns_requires_full_reload = (
+                self._dns_requires_full_reload or need_reload
+            )
+            if self._dns_update_in_progress:
+                self._queued_updates += new_updates
+            else:
+                self._dns_updates += new_updates
+
+        log.debug("Start processing dynamic DNS update '{}'".format(message))
         if message == "":
             return
 
-        (new_updates, need_reload) = yield deferToDatabase(
-            process_dns_update_notify, message
+        self.dbtasks.deferTaskWithCallbacks(
+            process_dns_update_notify,
+            [updateCallback],
+            message,
         )
-
-        self._dns_requires_full_reload = (
-            self._dns_requires_full_reload or need_reload
-        )
-        if self._dns_update_in_progress:
-            self._queued_updates += new_updates
-        else:
-            self._dns_updates += new_updates
 
     def startProcessing(self):
         """Start the process looping call."""
