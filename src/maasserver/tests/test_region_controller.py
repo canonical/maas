@@ -866,7 +866,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service._dns_update_in_progress = True
         service.queueDynamicDNSUpdate(
             factory.make_name(),
-            f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
+            f"b473ff04d60c0d2af08cb5c342d815f8 INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
 
         # Wait until all the dynamic updates are processed
@@ -921,7 +921,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service._dns_update_in_progress = True
         service.queueDynamicDNSUpdate(
             factory.make_name(),
-            f"INSERT {domain.name} {record.name} A 30 10.10.10.10",
+            f"3108394140029edf0bdbffa68bb29556 INSERT {domain.name} {record.name} A 30 10.10.10.10",
         )
 
         # Wait until all the dynamic updates are processed
@@ -997,19 +997,24 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         for _ in range(3):
             service.queueDynamicDNSUpdate(
                 factory.make_name(),
-                f"INSERT {domain.name} {record1.name} A 30 1.1.1.1",
+                f"3108394140029edf0bdbffa68bb29556 INSERT {domain.name} {record1.name} A 30 1.1.1.1",
             )
             service.queueDynamicDNSUpdate(
                 factory.make_name(),
-                f"INSERT {domain.name} {record2.name} A 30 2.2.2.2",
+                f"6fa241096ebabe34660c437fb0627b61 INSERT {domain.name} {record2.name} A 30 2.2.2.2",
+            )
+            # An invalid message that should be ignored
+            service.queueDynamicDNSUpdate(
+                factory.make_name(),
+                f"INSERT {domain.name} {record2.name} A 30 10.2.2.2",
             )
             service.queueDynamicDNSUpdate(
                 factory.make_name(),
-                f"DELETE {domain.name} {record1.name} A 30 1.1.1.1",
+                f"640f180ba9064411f30a3d5c587e86cc DELETE {domain.name} {record1.name} A 30 1.1.1.1",
             )
             service.queueDynamicDNSUpdate(
                 factory.make_name(),
-                f"DELETE {domain.name} {record2.name} A 30 2.2.2.2",
+                f"f53dcb0704c211e6f747b95b0ea3e128 DELETE {domain.name} {record2.name} A 30 2.2.2.2",
             )
 
         # Wait until all the dynamic updates are processed

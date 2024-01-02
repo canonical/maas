@@ -285,6 +285,211 @@ CORE_REGIONRACKRPCONNECTION_DELETE = dedent(
     """
 )
 
+CORE_GEN_RANDOM_PREFIX = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION gen_random_prefix() RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := md5(random()::text);
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_UPDATE_DATA_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION update_data_dns_notification(
+        id BIGINT
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' UPDATE-DATA ' || id;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_INSERT_DATA_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION insert_data_dns_notification(
+        id BIGINT
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' INSERT-DATA ' || id;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_DELETE_IP_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION delete_ip_dns_notification(
+        domain text,
+        rname text,
+        rtype text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' DELETE-IP ' || domain || ' ' || rname || ' ' || rtype;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_DELETE_IFACE_IP_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION delete_iface_ip_dns_notification(
+        domain text,
+        current_hostname text,
+        rtype text,
+        interface_id text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' ' || rtype || ' ' || interface_id;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_BOOT_INTERFACE_INSERT_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION insert_boot_interface_dns_notification(
+        domain text,
+        current_hostname text,
+        address_ttl INT,
+        ip_address text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_address;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_NON_BOOT_INTERFACE_INSERT_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION insert_non_boot_interface_dns_notification(
+        domain text,
+        iface_name text,
+        current_hostname text,
+        address_ttl INT,
+        ip_address text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_address;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_BOOT_INTERFACE_DELETE_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION delete_boot_interface_dns_notification(
+        domain text,
+        current_hostname text,
+        ip_address text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' DELETE ' || domain || ' ' || current_hostname || ' A';
+        IF ip_address IS NOT NULL AND ip_address != '' THEN
+            result := result || ' ' || ip_address;
+        END IF;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_DELETE_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION delete_dns_notification(
+        domain text,
+        current_hostname text,
+        rtype text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' DELETE ' || domain || ' ' || current_hostname || ' ' || rtype;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_NON_BOOT_INTERFACE_DELETE_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION delete_non_boot_interface_dns_notification(
+        domain text,
+        iface_name text,
+        current_hostname text,
+        ip_address text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A';
+        IF ip_address IS NOT NULL AND ip_address != '' THEN
+            result := result || ' ' || ip_address;
+        END IF;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_BOOT_INTERFACE_UPDATE_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION update_boot_interface_dns_notification(
+        domain text,
+        current_hostname text,
+        address_ttl INT,
+        ip_address text
+    ) RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' UPDATE ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_address;
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+CORE_RELOAD_DNS_NOTIFICATION_FORMAT = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION reload_dns_notification()
+    RETURNS TEXT AS $$
+    DECLARE
+        result text;
+    BEGIN
+        result := gen_random_prefix() || ' RELOAD';
+        RETURN result;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
 # Triggered when the VLAN is modified. When DHCP is turned off/on it will alert
 # the primary/secondary rack controller to update. If the primary rack or
 # secondary rack is changed it will alert the previous and new rack controller.
@@ -1922,19 +2127,19 @@ def render_dns_dynamic_update_dnsresource_ip_addresses_procedure(op):
             SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
             SELECT name, domain_id, COALESCE(address_ttl, 0) INTO rname, rdomain_id, ttl FROM maasserver_dnsresource WHERE id=NEW.dnsresource_id;
             SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
-            PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || rname || ' A ' || ttl || ' ' || ip_addr);
+            PERFORM pg_notify('sys_dns_updates', insert_boot_interface_dns_notification(domain, rname, ttl, ip_addr));
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEl = 'ROW') THEN
             IF EXISTS(SELECT id FROM maasserver_dnsresource WHERE id=OLD.dnsresource_id) THEN
               IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
                 SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
                 SELECT name, domain_id INTO rname, rdomain_id FROM maasserver_dnsresource WHERE id=OLD.dnsresource_id;
                 SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
-                PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || rname || ' A ' || ip_addr);
+                PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, rname, ip_addr));
               ELSE
                 SELECT name, domain_id INTO rname, rdomain_id FROM maasserver_dnsresource WHERE id=NEW.dnsresource_id;
                 SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
-                PERFORM pg_notify('sys_dns_updates', 'DELETE-IP ' || domain || ' ' || rname || ' A');
-                PERFORM pg_notify('sys_dns_updates', 'DELETE-IP ' || domain || ' ' || rname || ' AAAA');
+                PERFORM pg_notify('sys_dns_updates', delete_ip_dns_notification(domain, rname, 'A'));
+                PERFORM pg_notify('sys_dns_updates', delete_ip_dns_notification(domain, rname, 'AAAA'));
               END IF;
             END IF;
           END IF;
@@ -1969,10 +2174,10 @@ def render_dns_dynamic_update_dnsresource_procedure(op):
                     FOREACH ip_addr IN ARRAY ips
                     LOOP
                       IF OLD.name <> NEW.name THEN
-                        PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.name || ' A ' || ip_addr);
-                        PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || NEW.name || ' A ' || NEW.address_ttl || ' ' || ip_addr);
+                        PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, OLD.name, ip_addr));
+                        PERFORM pg_notify('sys_dns_updates', insert_boot_interface_dns_notification(domain, NEW.name, NEW.address_ttl, ip_addr));
                       ELSE
-                        PERFORM pg_notify('sys_dns_updates', 'UPDATE ' || domain || ' ' || NEW.name || ' A ' || NEW.address_ttl || ' ' || ip_addr);
+                        PERFORM pg_notify('sys_dns_updates', update_boot_interface_dns_notification(domain, NEW.name, NEW.address_ttl, ip_addr));
                       END IF;
                     END LOOP;
                 END IF;
@@ -1981,7 +2186,7 @@ def render_dns_dynamic_update_dnsresource_procedure(op):
             END IF;
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
             SELECT name INTO domain FROM maasserver_domain WHERE id=NEW.domain_id;
-            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.name || ' A');
+            PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, OLD.name, ''));
           END IF;
           RETURN NULL;
         END;
@@ -2005,16 +2210,16 @@ def render_dns_dynamic_update_dnsdata_procedure(op):
           ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
           IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
             IF NEW IS DISTINCT FROM OLD THEN
-                PERFORM pg_notify('sys_dns_updates', 'UPDATE-DATA ' || NEW.id);
+                PERFORM pg_notify('sys_dns_updates', update_data_dns_notification(NEW.id));
             ELSE
               RETURN NULL;
             END IF;
           ELSIF (TG_OP = 'INSERT' AND TG_LEVEL = 'ROW') THEN
-            PERFORM pg_notify('sys_dns_updates', 'INSERT-DATA ' || NEW.id);
+            PERFORM pg_notify('sys_dns_updates', insert_data_dns_notification(NEW.id));
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
             SELECT name, domain_id INTO rname, rdomain_id from maasserver_dnsresource WHERE id=OLD.dnsresource_id;
             SELECT name INTO domain FROM maasserver_domain WHERE id=rdomain_id;
-            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || rname || ' ' || OLD.rrtype);
+            PERFORM pg_notify('sys_dns_updates', delete_dns_notification(domain, rname, OLD.rrtype));
           END IF;
           RETURN NULL;
         END;
@@ -2031,7 +2236,7 @@ def render_dns_dynamic_update_domain_procedure(op):
         BEGIN
           ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
           ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
-          PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+          PERFORM pg_notify('sys_dns_updates', reload_dns_notification());
           RETURN NULL;
         END;
         $$ LANGUAGE plpgsql;
@@ -2047,7 +2252,7 @@ def render_dns_dynamic_update_subnet_procedure(op):
         BEGIN
           ASSERT TG_WHEN = 'AFTER', 'May only run as an AFTER trigger';
           ASSERT TG_LEVEL <> 'STATEMENT', 'Should not be used as a STATEMENT level trigger', TG_NAME;
-          PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+          PERFORM pg_notify('sys_dns_updates', reload_dns_notification());
           RETURN NULL;
         END;
         $$ LANGUAGE plpgsql;
@@ -2095,9 +2300,9 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
             SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=NEW.staticipaddress_id;
             IF (node_type={NODE_TYPE.MACHINE} OR node_type={NODE_TYPE.DEVICE}) THEN
                 IF (iface_id = boot_iface_id OR boot_iface_id is NULL) THEN
-                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                    PERFORM pg_notify('sys_dns_updates',  insert_boot_interface_dns_notification(domain, current_hostname, address_ttl, ip_addr));
                 ELSE
-                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || ip_addr);
+                    PERFORM pg_notify('sys_dns_updates', insert_non_boot_interface_dns_notification(domain, iface_name, current_hostname, address_ttl, ip_addr));
                 END IF;
             END IF;
           ELSIF (TG_OP = 'DELETE' AND TG_LEVEL = 'ROW') THEN
@@ -2126,13 +2331,13 @@ def render_dns_dynamic_update_interface_static_ip_address(op):
                     IF EXISTS(SELECT id FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id) THEN
                       SELECT host(ip) INTO ip_addr FROM maasserver_staticipaddress WHERE id=OLD.staticipaddress_id;
                       IF (iface_id = boot_iface_id) THEN
-                          PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || ip_addr);
+                        PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, current_hostname, ip_addr));
                       ELSE
-                          PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || ip_addr);
+                        PERFORM pg_notify('sys_dns_updates', delete_non_boot_interface_dns_notification(domain, iface_name, current_hostname, ip_addr));
                       END IF;
                     ELSE
-                      PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' A ' || OLD.interface_id);
-                      PERFORM pg_notify('sys_dns_updates', 'DELETE-IFACE-IP ' || domain || ' ' || current_hostname || ' AAAA ' || OLD.interface_id);
+                      PERFORM pg_notify('sys_dns_updates', delete_iface_ip_dns_notification(domain, current_hostname, 'A', OLD.interface_id));
+                      PERFORM pg_notify('sys_dns_updates', delete_iface_ip_dns_notification(domain, current_hostname, 'AAAA', OLD.interface_id));
                     END IF;
                 END IF;
             END IF;
@@ -2154,20 +2359,41 @@ dns_dynamic_update_static_ip_address_update = dedent(
       iface_name text;
       address_ttl int;
       current_interface_id bigint;
+      iface_id bigint;
+      boot_iface_id bigint;
     BEGIN
       IF NEW IS DISTINCT FROM OLD THEN
         IF EXISTS(SELECT id FROM maasserver_interface_ip_addresses WHERE staticipaddress_id=NEW.id) THEN
           SELECT interface_id INTO current_interface_id FROM maasserver_interface_ip_addresses WHERE staticipaddress_id=NEW.id;
-          SELECT iface.name, node.hostname, domain_tbl.name, COALESCE(domain_tbl.ttl, 0) INTO iface_name, current_hostname, domain, address_ttl
-            FROM maasserver_interface AS iface
+          SELECT
+            iface.name,
+            node.hostname,
+            domain_tbl.name,
+            COALESCE(domain_tbl.ttl, 0),
+            iface.id,
+            node.boot_interface_id
+          INTO
+            iface_name,
+            current_hostname,
+            domain,
+            address_ttl,
+            iface_id,
+            boot_iface_id
+          FROM maasserver_interface AS iface
             JOIN maasserver_node AS node ON iface.node_config_id = node.current_config_id
             JOIN maasserver_domain AS domain_tbl ON domain_tbl.id=node.domain_id WHERE iface.id=current_interface_id;
           IF OLD.ip IS NOT NULL THEN
-            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || current_hostname || ' A ' || host(OLD.ip));
-            PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || host(OLD.ip));
+            IF (iface_id = boot_iface_id OR boot_iface_id is NULL) THEN
+                PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, current_hostname, host(OLD.ip)));
+            ELSE
+                PERFORM pg_notify('sys_dns_updates', delete_non_boot_interface_dns_notification(domain, iface_name, current_hostname, host(OLD.ip)));
+            END IF;
           END IF;
-          PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || current_hostname || ' A ' || address_ttl || ' ' || host(NEW.ip));
-          PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || iface_name || '.' || current_hostname || ' A ' || address_ttl || ' ' || host(NEW.ip));
+          IF (iface_id = boot_iface_id OR boot_iface_id is NULL) THEN
+            PERFORM pg_notify('sys_dns_updates', insert_boot_interface_dns_notification(domain, current_hostname, address_ttl, host(NEW.ip)));
+          ELSE
+            PERFORM pg_notify('sys_dns_updates', insert_non_boot_interface_dns_notification(domain, iface_name, current_hostname, address_ttl, host(NEW.ip)));
+          END IF;
         END IF;
       END IF;
       RETURN NULL;
@@ -2191,7 +2417,7 @@ def render_dns_dynamic_update_node(op):
           new_ip text;
         BEGIN
           IF NEW.node_type <> {NODE_TYPE.DEVICE} AND NEW.node_type <> {NODE_TYPE.MACHINE} THEN
-            PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+            PERFORM pg_notify('sys_dns_updates', reload_dns_notification());
           ELSE
               IF (TG_OP = 'UPDATE' AND TG_LEVEL = 'ROW') THEN
                 SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=NEW.domain_id;
@@ -2201,21 +2427,21 @@ def render_dns_dynamic_update_node(op):
                       FROM maasserver_interface_ip_addresses AS link
                       JOIN maasserver_interface AS iface ON link.interface_id = iface.id
                       JOIN maasserver_staticipaddress AS ip_addr ON link.staticipaddress_id = ip_addr.id WHERE link.interface_id = OLD.boot_interface_id AND ip_addr.ip IS NOT NULL;
-                    PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A ' || old_ip);
-                    PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || old_iface_name || '.' || NEW.hostname || ' A ' || address_ttl || ' ' || old_ip);
+                    PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, OLD.hostname, old_ip));
+                    PERFORM pg_notify('sys_dns_updates', insert_non_boot_interface_dns_notification(domain, old_iface_name, NEW.hostname, address_ttl, old_ip));
                   END IF;
                   SELECT iface.name, host(ip_addr.ip) INTO iface_name, new_ip
                     FROM maasserver_interface_ip_addresses AS link
                     JOIN maasserver_interface AS iface ON link.interface_id = iface.id
                     JOIN maasserver_staticipaddress AS ip_addr on link.staticipaddress_id = ip_addr.id WHERE link.interface_id = NEW.boot_interface_id AND ip_addr.ip IS NOT NULL;
-                  PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || iface_name || '.' || OLD.hostname || ' A ' || new_ip);
-                  PERFORM pg_notify('sys_dns_updates', 'INSERT ' || domain || ' ' || NEW.hostname || ' A ' || address_ttl || ' ' || new_ip);
+                  PERFORM pg_notify('sys_dns_updates', delete_non_boot_interface_dns_notification(domain, iface_name, OLD.hostname, new_ip));
+                  PERFORM pg_notify('sys_dns_updates', insert_boot_interface_dns_notification(domain, NEW.hostname, address_ttl, new_ip));
                 ELSIF (OLD.hostname <> NEW.hostname) THEN
-                  PERFORM pg_notify('sys_dns_updates', 'RELOAD');
+                  PERFORM pg_notify('sys_dns_updates', reload_dns_notification());
                 END IF;
               ELSE
                 SELECT name, COALESCE(ttl, 0) INTO domain, address_ttl FROM maasserver_domain WHERE id=OLD.domain_id;
-                PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.hostname || ' A');
+                PERFORM pg_notify('sys_dns_updates', delete_boot_interface_dns_notification(domain, OLD.hostname, ''));
               END IF;
           END IF;
           RETURN NULL;
@@ -2239,7 +2465,7 @@ dns_dynamic_update_interface_delete = dedent(
         SELECT node_id INTO current_node_id FROM maasserver_nodeconfig WHERE id=OLD.node_config_id;
         SELECT hostname, domain_id INTO current_hostname, current_domain_id FROM maasserver_node WHERE id=current_node_id;
         SELECT name INTO domain FROM maasserver_domain WHERE id=current_domain_id;
-        PERFORM pg_notify('sys_dns_updates', 'DELETE ' || domain || ' ' || OLD.name || '.' || current_hostname || ' A');
+        PERFORM pg_notify('sys_dns_updates', delete_non_boot_interface_dns_notification(domain, OLD.name, current_hostname, ''));
       END IF;
       RETURN NULL;
     END;
@@ -2277,6 +2503,18 @@ def register_system_triggers():
     register_procedure(CORE_GET_NUMBER_OF_PROCESSES)
     register_procedure(CORE_PICK_NEW_REGION)
     register_procedure(CORE_SET_NEW_REGION)
+    register_procedure(CORE_GEN_RANDOM_PREFIX)
+    register_procedure(CORE_UPDATE_DATA_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_INSERT_DATA_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_DELETE_IP_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_DELETE_IFACE_IP_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_BOOT_INTERFACE_INSERT_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_NON_BOOT_INTERFACE_INSERT_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_BOOT_INTERFACE_DELETE_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_DELETE_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_NON_BOOT_INTERFACE_DELETE_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_BOOT_INTERFACE_UPDATE_DNS_NOTIFICATION_FORMAT)
+    register_procedure(CORE_RELOAD_DNS_NOTIFICATION_FORMAT)
 
     # RegionRackRPCConnection
     register_procedure(CORE_REGIONRACKRPCONNECTION_INSERT)
