@@ -53,6 +53,9 @@ from maasserver.proxyconfig import proxy_update_config
 from maasserver.rbac import RBACClient, Resource, SyncConflictError
 from maasserver.secrets import SecretManager
 from maasserver.service_monitor import service_monitor
+from maasserver.triggers.models.dns_notifications import (
+    DynamicDNSUpdateNotification,
+)
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
@@ -181,12 +184,24 @@ class RegionControllerService(Service):
         """
         Called when the `sys_dns_update` message is received
         and queues updates for existing domains.
+        Since an uncatched exception would stop the processing of the notifications, we catch and log
+        every exception at top level.
+        """
+        try:
+            return self._queueDynamicDNSUpdate(channel, message)
+        except Exception as e:
+            log.warn(
+                f"The message '{message}' might not have been processed correctly due to the exception: '{e}'"
+            )
+
+    def _queueDynamicDNSUpdate(self, channel, message):
+        """
         The updates are offloaded to the DatabaseTasksService in order to
         process them in sequence and keep consuming the next postgres notifications.
         """
 
-        def updateCallback(data):
-            (new_updates, need_reload) = data
+        def updateCallback(result):
+            (new_updates, need_reload) = result
             self._dns_requires_full_reload = (
                 self._dns_requires_full_reload or need_reload
             )
@@ -195,14 +210,19 @@ class RegionControllerService(Service):
             else:
                 self._dns_updates += new_updates
 
-        log.debug("Start processing dynamic DNS update '{}'".format(message))
-        if message == "":
+        log.debug(f"Start processing dynamic DNS update '{message}'")
+
+        notification = DynamicDNSUpdateNotification(message)
+        if not notification.is_valid():
+            log.warn(
+                f"The dynamic dns update notification '{message}' is not valid. It will be dropped."
+            )
             return
 
         self.dbtasks.deferTaskWithCallbacks(
             process_dns_update_notify,
             [updateCallback],
-            message,
+            notification.get_decoded_message(),
         )
 
     def startProcessing(self):

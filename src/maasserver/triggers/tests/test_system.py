@@ -15,6 +15,9 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.triggers.models.dns_notifications import (
+    DynamicDNSUpdateNotification,
+)
 from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.testing import (
     NotifyHelperMixin,
@@ -132,8 +135,11 @@ class TestSysDNSUpdates(
                 "sys_dns_updates"
             )  # ignore RELOAD from domain creation
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg,
+                decoded_msg,
                 f"INSERT {domain.name} {rec.name} A {domain.ttl if domain.ttl else 0} {static_ip.ip}",
             )
         finally:
@@ -162,8 +168,12 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(rec.delete)
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg, f"DELETE {domain.name} {rec.name} A {static_ip.ip}"
+                decoded_msg,
+                f"DELETE {domain.name} {rec.name} A {static_ip.ip}",
             )
         finally:
             self.stop_reading()
@@ -191,8 +201,12 @@ class TestSysDNSUpdates(
             rec.address_ttl = 30
             yield deferToDatabase(rec.save)
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg, f"UPDATE {domain.name} {rec.name} A 30 {static_ip.ip}"
+                decoded_msg,
+                f"UPDATE {domain.name} {rec.name} A 30 {static_ip.ip}",
             )
         finally:
             self.stop_reading()
@@ -219,8 +233,12 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(rec.delete)
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg, f"DELETE {domain.name} {rec.name} A {static_ip.ip}"
+                decoded_msg,
+                f"DELETE {domain.name} {rec.name} A {static_ip.ip}",
             )
         finally:
             self.stop_reading()
@@ -254,8 +272,11 @@ class TestSysDNSUpdates(
             dnsdata.rrdata = factory.make_name()
             yield deferToDatabase(dnsdata.save)
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg,
+                decoded_msg,
                 f"UPDATE-DATA {dnsdata.id}",
             )
         finally:
@@ -288,8 +309,11 @@ class TestSysDNSUpdates(
                 },
             )
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg,
+                decoded_msg,
                 f"INSERT-DATA {dnsdata.id}",
             )
         finally:
@@ -323,8 +347,12 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(dnsdata.delete)
             msg = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
             self.assertEqual(
-                msg, f"DELETE {domain.name} {rec.name} {dnsdata.rrtype}"
+                decoded_msg,
+                f"DELETE {domain.name} {rec.name} {dnsdata.rrtype}",
             )
         finally:
             self.stop_reading()
@@ -345,7 +373,10 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(self.create_domain)
             msg = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(msg, "RELOAD")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
+            self.assertEqual(decoded_msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
@@ -365,7 +396,10 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(self.create_subnet)
             msg = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(msg, "RELOAD")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
+            self.assertEqual(decoded_msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
@@ -415,8 +449,11 @@ class TestSysDNSUpdates(
                 )
             )
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1,
+                decoded_msg1,
                 f"INSERT {domain.name} {node.hostname} A 0 {expected_ip.ip}",
             )
         finally:
@@ -471,8 +508,11 @@ class TestSysDNSUpdates(
                 )
             )
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1,
+                decoded_msg1,
                 f"INSERT {domain.name} {node.hostname} A 0 {expected_ip.ip}",
             )
         finally:
@@ -516,8 +556,12 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(iface.unlink_ip_address, ip1)
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1, f"DELETE {domain.name} {node.hostname} A {ip1.ip}"
+                decoded_msg1,
+                f"DELETE {domain.name} {node.hostname} A {ip1.ip}",
             )
         finally:
             self.stop_reading()
@@ -590,14 +634,17 @@ class TestSysDNSUpdates(
             )
             for exp in expected_msgs:
                 msg = yield self.get_notify("sys_dns_updates")
-                self.assertEqual(msg, exp)
+                decoded_msg = DynamicDNSUpdateNotification(
+                    msg
+                ).get_decoded_message()
+                self.assertEqual(decoded_msg, exp)
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_dns_dynamc_update_ip_update(self):
+    def test_dns_dynamc_update_ip_boot_interface_update(self):
         listener = self.make_listener_without_delay()
         yield self.set_service(listener)
         yield deferToDatabase(
@@ -638,22 +685,87 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(_set_new_ip)
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1, f"DELETE {domain.name} {node.hostname} A {old_ip}"
+                decoded_msg1,
+                f"DELETE {domain.name} {node.hostname} A {old_ip}",
             )
             msg2 = yield self.get_notify("sys_dns_updates")
+            decoded_msg2 = DynamicDNSUpdateNotification(
+                msg2
+            ).get_decoded_message()
             self.assertEqual(
-                msg2,
-                f"DELETE {domain.name} {iface.name}.{node.hostname} A {old_ip}",
+                decoded_msg2,
+                f"INSERT {domain.name} {node.hostname} A 0 {ip.ip}",
             )
-            msg3 = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(
-                msg3, f"INSERT {domain.name} {node.hostname} A 0 {ip.ip}"
+        finally:
+            self.stop_reading()
+            yield self.postgres_listener_service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_dynamc_update_ip_non_boot_interface_update(self):
+        listener = self.make_listener_without_delay()
+        yield self.set_service(listener)
+        yield deferToDatabase(
+            self.register_trigger,
+            "maasserver_staticipaddress",
+            "sys_dns_updates",
+            ops=("update",),
+            trigger="sys_dns_updates_ip_update",
+        )
+        vlan = yield deferToDatabase(self.create_vlan)
+        subnet = yield deferToDatabase(
+            self.create_subnet, params={"vlan": vlan}
+        )
+        node = yield deferToDatabase(
+            self.create_node_with_interface,
+            params={"subnet": subnet, "status": NODE_STATUS.DEPLOYED},
+        )
+        domain = yield deferToDatabase(Domain.objects.get_default_domain)
+        # set boot interface
+        yield deferToDatabase(
+            lambda: node.current_config.interface_set.first()
+        )
+        iface2 = yield deferToDatabase(
+            self.create_interface, params={"node": node}
+        )
+        # Change ip of the non-boot interface
+        ip = yield deferToDatabase(
+            lambda: self.create_staticipaddress(
+                params={
+                    "ip": subnet.get_next_ip_for_allocation()[0],
+                    "interface": iface2,
+                    "subnet": subnet,
+                }
             )
-            msg4 = yield self.get_notify("sys_dns_updates")
+        )
+        old_ip = ip.ip
+
+        def _set_new_ip():
+            ip.ip = subnet.get_next_ip_for_allocation()[0]
+            ip.save()
+
+        self.start_reading()
+        try:
+            yield deferToDatabase(_set_new_ip)
+            msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg4,
-                f"INSERT {domain.name} {iface.name}.{node.hostname} A 0 {ip.ip}",
+                decoded_msg1,
+                f"DELETE {domain.name} {iface2.name}.{node.hostname} A {old_ip}",
+            )
+            msg2 = yield self.get_notify("sys_dns_updates")
+            decoded_msg2 = DynamicDNSUpdateNotification(
+                msg2
+            ).get_decoded_message()
+            self.assertEqual(
+                decoded_msg2,
+                f"INSERT {domain.name} {iface2.name}.{node.hostname} A 0 {ip.ip}",
             )
         finally:
             self.stop_reading()
@@ -674,7 +786,10 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(self.create_rack_controller)
             msg = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(msg, "RELOAD")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
+            self.assertEqual(decoded_msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
@@ -696,7 +811,10 @@ class TestSysDNSUpdates(
             controller.cpu_speed = 10
             yield deferToDatabase(controller.save)
             msg = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(msg, "RELOAD")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
+            self.assertEqual(decoded_msg, "RELOAD")
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
@@ -718,14 +836,19 @@ class TestSysDNSUpdates(
         try:
             yield deferToDatabase(node.delete)
             msg = yield self.get_notify("sys_dns_updates")
-            self.assertEqual(msg, f"DELETE {domain.name} {node.hostname} A")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg
+            ).get_decoded_message()
+            self.assertEqual(
+                decoded_msg, f"DELETE {domain.name} {node.hostname} A"
+            )
         finally:
             self.stop_reading()
             yield self.postgres_listener_service.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_dns_dynamic_update_interface_delete(self):
+    def test_dns_dynamic_update_boot_interface_delete(self):
         listener = self.make_listener_without_delay()
         yield self.set_service(listener)
         yield deferToDatabase(
@@ -745,9 +868,57 @@ class TestSysDNSUpdates(
         self.start_reading()
         try:
             yield deferToDatabase(iface.delete)
-            msg = yield self.get_notify("sys_dns_updates")
+            msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg, f"DELETE {domain.name} {iface.name}.{node.hostname} A"
+                decoded_msg, f"DELETE {domain.name} {node.hostname} A"
+            )
+            msg2 = yield self.get_notify("sys_dns_updates")
+            decoded_msg2 = DynamicDNSUpdateNotification(
+                msg2
+            ).get_decoded_message()
+            self.assertEqual(
+                decoded_msg2,
+                f"DELETE {domain.name} {iface.name}.{node.hostname} A",
+            )
+        finally:
+            self.stop_reading()
+            yield self.postgres_listener_service.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_dns_dynamic_update_non_boot_interface_delete(self):
+        listener = self.make_listener_without_delay()
+        yield self.set_service(listener)
+        yield deferToDatabase(
+            self.register_trigger,
+            "maasserver_node",
+            "sys_dns_updates",
+            ops=("delete",),
+        )
+        subnet = yield deferToDatabase(self.create_subnet)
+        node = yield deferToDatabase(
+            self.create_node_with_interface, params={"subnet": subnet}
+        )
+        domain = yield deferToDatabase(Domain.objects.get_default_domain)
+        yield deferToDatabase(
+            lambda: node.current_config.interface_set.first()
+        )
+        iface2 = yield deferToDatabase(
+            self.create_interface, params={"node": node}
+        )
+        self.start_reading()
+        try:
+            yield deferToDatabase(iface2.delete)
+            msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
+            self.assertEqual(
+                decoded_msg,
+                f"DELETE {domain.name} {iface2.name}.{node.hostname} A",
             )
         finally:
             self.stop_reading()
@@ -812,12 +983,19 @@ class TestSysDNSUpdates(
                 )
             )
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1, f"INSERT {domain.name} {node.hostname} A 0 {ip1.ip}"
+                decoded_msg1,
+                f"INSERT {domain.name} {node.hostname} A 0 {ip1.ip}",
             )
             msg2 = yield self.get_notify("sys_dns_updates")
+            decoded_msg2 = DynamicDNSUpdateNotification(
+                msg2
+            ).get_decoded_message()
             self.assertEqual(
-                msg2,
+                decoded_msg2,
                 f"INSERT {domain.name} {iface2.name}.{node.hostname} A 0 {ip2.ip}",
             )
         finally:
@@ -873,8 +1051,12 @@ class TestSysDNSUpdates(
                 )
             )
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1, f"INSERT {domain.name} {node.hostname} A 0 {ip1.ip}"
+                decoded_msg1,
+                f"INSERT {domain.name} {node.hostname} A 0 {ip1.ip}",
             )
         finally:
             self.stop_reading()
@@ -943,23 +1125,35 @@ class TestSysDNSUpdates(
             node.boot_interface = iface2
             yield deferToDatabase(node.save)
             msg1 = yield self.get_notify("sys_dns_updates")
+            decoded_msg1 = DynamicDNSUpdateNotification(
+                msg1
+            ).get_decoded_message()
             self.assertEqual(
-                msg1,
+                decoded_msg1,
                 f"DELETE {domain.name} {node.hostname} A {ip1.ip}",
             )
             msg2 = yield self.get_notify("sys_dns_updates")
+            decoded_msg2 = DynamicDNSUpdateNotification(
+                msg2
+            ).get_decoded_message()
             self.assertEqual(
-                msg2,
+                decoded_msg2,
                 f"INSERT {domain.name} {iface1.name}.{node.hostname} A 0 {ip1.ip}",
             )
             msg3 = yield self.get_notify("sys_dns_updates")
+            decoded_msg3 = DynamicDNSUpdateNotification(
+                msg3
+            ).get_decoded_message()
             self.assertEqual(
-                msg3,
+                decoded_msg3,
                 f"DELETE {domain.name} {iface2.name}.{node.hostname} A {ip2.ip}",
             )
             msg4 = yield self.get_notify("sys_dns_updates")
+            decoded_msg4 = DynamicDNSUpdateNotification(
+                msg4
+            ).get_decoded_message()
             self.assertEqual(
-                msg4,
+                decoded_msg4,
                 f"INSERT {domain.name} {node.hostname} A 0 {ip2.ip}",
             )
         finally:
