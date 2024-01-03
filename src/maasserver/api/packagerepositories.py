@@ -91,9 +91,6 @@ class PackageRepositoryHandler(OperationsHandler):
         components to disable. Only applicable to the default Ubuntu
         repositories.
 
-        @param (string) "disable_sources" [required=false] Disable deb-src
-        lines.
-
         @param (string) "components" [required=false] The list of components to
         enable. Only applicable to custom repositories.
 
@@ -102,6 +99,9 @@ class PackageRepositoryHandler(OperationsHandler):
 
         @param (string) "key" [required=false] The authentication key to use
         with the repository.
+
+        @param (boolean) "disable_sources" [required=false] Disable deb-src
+        lines.
 
         @param (boolean) "enabled" [required=false] Whether or not the
         repository is enabled.
@@ -207,6 +207,9 @@ class PackageRepositoriesHandler(OperationsHandler):
 
         @param (string) "key" [required=false] The authentication key to use
         with the repository.
+
+        @param (boolean) "disable_sources" [required=false] Disable deb-src
+        lines.
 
         @param (boolean) "enabled" [required=false] Whether or not the
         repository is enabled.
