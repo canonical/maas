@@ -474,7 +474,9 @@ class CleanTestToolsFailure(Plugin):
         ec, ev, tb = err
         if ec is not _StringException:
             return err
-        return Exception, Exception(*ev.args), tb
+        if hasattr(ev, "args"):
+            return Exception, Exception(*ev.args), tb
+        return Exception, Exception(ev), tb
 
     formatError = formatFailure
 

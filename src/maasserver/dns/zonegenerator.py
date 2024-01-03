@@ -18,7 +18,11 @@ from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
 from maasserver.models.dnsresource import separate_fqdn
 from maasserver.models.domain import Domain
-from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models.iprange import IPRange
+from maasserver.models.staticipaddress import (
+    HostnameIPMapping,
+    StaticIPAddress,
+)
 from maasserver.models.subnet import Subnet
 from maasserver.server_address import get_maas_facing_server_addresses
 from provisioningserver.dns.config import DynamicDNSUpdate
@@ -226,6 +230,7 @@ class ZoneGenerator:
         if self._dynamic_updates is None:
             self._dynamic_updates = []
         self.force_config_write = force_config_write  # some data changed that nsupdate cannot update if true
+        self._existing_subnet_cfgs = {}
 
     @staticmethod
     def _get_mappings():
@@ -357,18 +362,93 @@ class ZoneGenerator:
             )
 
     @staticmethod
-    def _gen_reverse_zones(
-        subnets,
-        serial,
-        ns_host_name,
-        mappings,
-        default_ttl,
-        dynamic_updates,
-        force_config_write,
-    ):
-        """Generator of reverse zones, sorted by network."""
+    def _split_large_subnet(network: IPNetwork) -> list[IPNetwork]:
+        # Generate the name of the reverse zone file:
+        # Use netaddr's reverse_dns() to get the reverse IP name
+        # of the first IP address in the network and then drop the first
+        # octets of that name (i.e. drop the octets that will be specified in
+        # the zone file).
+        # returns a list of (IPNetwork, zone_name, zonefile_path) tuples
+        new_networks = []
+        first = IPAddress(network.first)
+        last = IPAddress(network.last)
+        if first.version == 6:
+            # IPv6.
+            # 2001:89ab::/19 yields 8.1.0.0.2.ip6.arpa, and the full list
+            # is 8.1.0.0.2.ip6.arpa, 9.1.0.0.2.ip6.arpa
+            # The ipv6 reverse dns form is 32 elements of 1 hex digit each.
+            # How many elements of the reverse DNS name to we throw away?
+            # Prefixlen of 0-3 gives us 1, 4-7 gives us 2, etc.
+            # While this seems wrong, we always _add_ a base label back in,
+            # so it's correct.
+            rest_limit = (132 - network.prefixlen) // 4
+            # What is the prefix for each inner subnet (It will be the next
+            # smaller multiple of 4.)  If it's the smallest one, then RFC2317
+            # tells us that we're adding an extra blob to the front of the
+            # reverse zone name, and we want the entire prefixlen.
+            subnet_prefix = (network.prefixlen + 3) // 4 * 4
+            if subnet_prefix == 128:
+                subnet_prefix = network.prefixlen
+            # How big is the step between subnets?  Again, special case for
+            # extra small subnets.
+            step = 1 << ((128 - network.prefixlen) // 4 * 4)
+            if step < 16:
+                step = 16
+            # Grab the base (hex) and trailing labels for our reverse zone.
+            split_zone = first.reverse_dns.split(".")
+            base = int(split_zone[rest_limit - 1], 16)
+        else:
+            # IPv4.
+            # The logic here is the same as for IPv6, but with 8 instead of 4.
+            rest_limit = (40 - network.prefixlen) // 8
+            subnet_prefix = (network.prefixlen + 7) // 8 * 8
+            if subnet_prefix == 32:
+                subnet_prefix = network.prefixlen
+            step = 1 << ((32 - network.prefixlen) // 8 * 8)
+            if step < 256:
+                step = 256
+            # Grab the base (decimal) and trailing labels for our reverse
+            # zone.
+            split_zone = first.reverse_dns.split(".")
+            base = int(split_zone[rest_limit - 1])
 
-        subnets = set(subnets)
+        while first <= last:
+            if first > last:
+                # if the excluding subnet pushes the base IP beyond the bounds of the generating subnet, we've reached the end and return early
+                return new_networks
+
+            new_networks.append(IPNetwork(f"{first}/{subnet_prefix:d}"))
+            base += 1
+            try:
+                first += step
+            except IndexError:
+                # IndexError occurs when we go from 255.255.255.255 to
+                # 0.0.0.0.  If we hit that, we're all fine and done.
+                break
+        return new_networks
+
+    @staticmethod
+    def _filter_mapping_for_network(
+        network: IPNetwork, mappings: dict[str, HostnameIPMapping]
+    ):
+        net_mappings = {}
+        for k, v in mappings.items():
+            if ips_in_net := set(
+                ip for ip in v.ips if IPAddress(ip) in network
+            ):
+                net_mappings[k] = HostnameIPMapping(
+                    v.system_id,
+                    v.ttl,
+                    ips_in_net,
+                    v.node_type,
+                    v.dnsresource_id,
+                    v.user_id,
+                )
+
+        return net_mappings
+
+    @staticmethod
+    def _generate_glue_nets(subnets: list[Subnet]):
         # Generate the list of parent networks for rfc2317 glue.  Note that we
         # need to handle the case where we are controlling both the small net
         # and a bigger network containing the /24, not just a /24 network.
@@ -393,6 +473,82 @@ class ZoneGenerator:
                     )
                     rfc2317_glue.setdefault(basenet, set()).add(network)
 
+        return rfc2317_glue
+
+    @staticmethod
+    def _find_glue_nets(
+        network: IPNetwork, rfc2317_glue: defaultdict[str, set[IPNetwork]]
+    ):
+        # Use the default_domain as the name for the NS host in the reverse
+        # zones.  If this network is actually a parent rfc2317 glue
+        # network, then we need to generate the glue records.
+        # We need to detect the need for glue in our networks that are
+        # big.
+        if (
+            network.version == 6 and network.prefixlen < 124
+        ) or network.prefixlen < 24:
+            glue = set()
+            # This is the reason for needing the subnets sorted in
+            # increasing order of size.
+            for net in rfc2317_glue.copy().keys():
+                if net in network:
+                    glue.update(rfc2317_glue[net])
+                    del rfc2317_glue[net]
+        elif network in rfc2317_glue:
+            glue = rfc2317_glue[network]
+            del rfc2317_glue[network]
+        else:
+            glue = set()
+        return glue
+
+    @staticmethod
+    def _merge_into_existing_network(
+        network: IPNetwork,
+        existing: dict[IPNetwork, DNSReverseZoneConfig],
+        mapping: dict[str, HostnameIPMapping],
+        dynamic_ranges: list[IPRange] | None = [],
+        dynamic_updates: list[DynamicDNSUpdate] | None = [],
+        glue: set[IPNetwork] | None = set(),
+        is_glue_net: bool = False,
+    ):
+        # since all dynamic updates are passed and we then filter for those belonging
+        # in the network, the existing config already has all updates and we do not need
+        # to merge them, just add them if they haven't already
+        if not existing[network]._dynamic_updates:
+            existing[network]._dynamic_updates = dynamic_updates
+        existing[network]._rfc2317_ranges = existing[
+            network
+        ]._rfc2317_ranges.union(glue)
+        for k, v in mapping.items():
+            if k in existing[network]._mapping:
+                existing[network]._mapping[k].ips.union(v.ips)
+            else:
+                existing[network]._mapping[k] = v
+        existing[network]._dynamic_ranges += dynamic_ranges
+        for glue_net in glue.union(existing[network]._rfc2317_ranges):
+            for k, v in existing[network]._mapping.copy().items():
+                if ip_set := set(ip for ip in v.ips if ip not in glue_net):
+                    existing[network]._mapping[k].ips = ip_set
+                else:
+                    del existing[network]._mapping[k]
+
+    @staticmethod
+    def _gen_reverse_zones(
+        subnets,
+        serial,
+        ns_host_name,
+        mappings,
+        default_ttl,
+        dynamic_updates,
+        force_config_write,
+        existing_subnet_cfgs={},
+    ):
+        """Generator of reverse zones, sorted by network."""
+
+        subnets = set(subnets)
+
+        rfc2317_glue = ZoneGenerator._generate_glue_nets(subnets)
+
         # Since get_hostname_ip_mapping(Subnet) ignores Subnet.id, so we can
         # just do it once and be happy.  LP#1600259
         if len(subnets):
@@ -412,7 +568,7 @@ class ZoneGenerator:
             key=lambda subnet: IPNetwork(subnet.cidr).prefixlen,
             reverse=True,
         ):
-            network = IPNetwork(subnet.cidr)
+            base_network = IPNetwork(subnet.cidr)
             if subnet.rdns_mode == RDNS_MODE.DISABLED:
                 # If we are not doing reverse dns for this subnet, then just
                 # skip to the next subnet.
@@ -421,103 +577,109 @@ class ZoneGenerator:
                 )
                 continue
 
+            networks = ZoneGenerator._split_large_subnet(base_network)
+
             # 1. Figure out the dynamic ranges.
             dynamic_ranges = [
                 ip_range.netaddr_iprange
                 for ip_range in subnet.get_dynamic_ranges()
             ]
 
-            # 2. Start with the map of all of the nodes, including all
-            # DNSResource-associated addresses.  We will prune this to just
-            # entries for the subnet when we actually generate the zonefile.
-            # If we get here, then we have subnets, so we noticed that above
-            # and created mappings['reverse'].  LP#1600259
-            mapping = mappings["reverse"]
+            for network in networks:
+                # 2. Start with the map of all of the nodes, including all
+                # DNSResource-associated addresses.  We will prune this to just
+                # entries for the subnet when we actually generate the zonefile.
+                # If we get here, then we have subnets, so we noticed that above
+                # and created mappings['reverse'].  LP#1600259
+                mapping = ZoneGenerator._filter_mapping_for_network(
+                    network, mappings["reverse"]
+                )
 
-            # Use the default_domain as the name for the NS host in the reverse
-            # zones.  If this network is actually a parent rfc2317 glue
-            # network, then we need to generate the glue records.
-            # We need to detect the need for glue in our networks that are
-            # big.
-            if (
-                network.version == 6 and network.prefixlen < 124
-            ) or network.prefixlen < 24:
-                glue = set()
-                # This is the reason for needing the subnets sorted in
-                # increasing order of size.
-                for net in rfc2317_glue.copy().keys():
-                    if net in network:
-                        glue.update(rfc2317_glue[net])
-                        del rfc2317_glue[net]
-            elif network in rfc2317_glue:
-                glue = rfc2317_glue[network]
-                del rfc2317_glue[network]
-            else:
-                glue = set()
-
-            domain_updates = [
-                DynamicDNSUpdate.as_reverse_record_update(update, network)
-                for update in dynamic_updates
-                if update.answer
-                and update.answer_is_ip
-                and (update.answer_as_ip in network)
-            ]
-
-            yield DNSReverseZoneConfig(
-                ns_host_name,
-                serial=serial,
-                default_ttl=default_ttl,
-                ns_host_name=ns_host_name,
-                mapping=mapping,
-                network=network,
-                dynamic_ranges=dynamic_ranges,
-                rfc2317_ranges=glue,
-                exclude={
-                    IPNetwork(s.cidr) for s in subnets if s is not subnet
-                },
-                dynamic_updates=domain_updates,
-                force_config_write=force_config_write,
-            )
-        # Now provide any remaining rfc2317 glue networks.
-        for network, ranges in rfc2317_glue.items():
-            exclude_set = {
-                IPNetwork(s.cidr)
-                for s in subnets
-                if network in IPNetwork(s.cidr)
-            }
-            domain_updates = []
-            for update in dynamic_updates:
-                glue_update = True
-                for exclude_net in exclude_set:
-                    if (
-                        update.answer
-                        and update.answer_is_ip
-                        and update.answer_as_ip in exclude_net
-                    ):
-                        glue_update = False
-                        break
-                if (
-                    glue_update
-                    and update.answer
+                glue = ZoneGenerator._find_glue_nets(network, rfc2317_glue)
+                domain_updates = [
+                    DynamicDNSUpdate.as_reverse_record_update(update, network)
+                    for update in dynamic_updates
+                    if update.answer
                     and update.answer_is_ip
-                    and update.answer_as_ip in network
-                ):
-                    domain_updates.append(
-                        DynamicDNSUpdate.as_reverse_record_update(
-                            update, network
-                        )
+                    and (update.answer_as_ip in network)
+                ]
+
+                if network in existing_subnet_cfgs:
+                    ZoneGenerator._merge_into_existing_network(
+                        network,
+                        existing_subnet_cfgs,
+                        mapping,
+                        dynamic_ranges=dynamic_ranges,
+                        dynamic_updates=domain_updates,
+                        glue=glue,
                     )
-            yield DNSReverseZoneConfig(
-                ns_host_name,
-                serial=serial,
-                default_ttl=default_ttl,
-                network=network,
-                ns_host_name=ns_host_name,
-                rfc2317_ranges=ranges,
-                exclude=exclude_set,
-                dynamic_updates=domain_updates,
-                force_config_write=force_config_write,
-            )
+                else:
+                    existing_subnet_cfgs[network] = DNSReverseZoneConfig(
+                        ns_host_name,
+                        serial=serial,
+                        default_ttl=default_ttl,
+                        ns_host_name=ns_host_name,
+                        mapping=mapping,
+                        network=network,
+                        dynamic_ranges=dynamic_ranges,
+                        rfc2317_ranges=glue,
+                        dynamic_updates=domain_updates,
+                        force_config_write=force_config_write,
+                    )
+
+                    yield existing_subnet_cfgs[network]
+
+            # Now provide any remaining rfc2317 glue networks.
+            for network, ranges in rfc2317_glue.items():
+                exclude_set = {
+                    IPNetwork(s.cidr)
+                    for s in subnets
+                    if network in IPNetwork(s.cidr)
+                }
+                domain_updates = []
+                for update in dynamic_updates:
+                    glue_update = True
+                    for exclude_net in exclude_set:
+                        if (
+                            update.answer
+                            and update.answer_is_ip
+                            and update.answer_as_ip in exclude_net
+                        ):
+                            glue_update = False
+                            break
+                    if (
+                        glue_update
+                        and update.answer
+                        and update.answer_is_ip
+                        and update.answer_as_ip in network
+                    ):
+                        domain_updates.append(
+                            DynamicDNSUpdate.as_reverse_record_update(
+                                update, network
+                            )
+                        )
+
+                if network in existing_subnet_cfgs:
+                    ZoneGenerator._merge_into_existing_network(
+                        network,
+                        existing_subnet_cfgs,
+                        mapping,
+                        dynamic_updates=domain_updates,
+                        glue=ranges,
+                        is_glue_net=True,
+                    )
+                else:
+                    existing_subnet_cfgs[network] = DNSReverseZoneConfig(
+                        ns_host_name,
+                        serial=serial,
+                        default_ttl=default_ttl,
+                        network=network,
+                        ns_host_name=ns_host_name,
+                        rfc2317_ranges=ranges,
+                        dynamic_updates=domain_updates,
+                        force_config_write=force_config_write,
+                    )
+                    yield existing_subnet_cfgs[network]
 
     def __iter__(self):
         """Iterate over zone configs.
@@ -553,6 +715,7 @@ class ZoneGenerator:
                 default_ttl,
                 self._dynamic_updates,
                 self.force_config_write,
+                existing_subnet_cfgs=self._existing_subnet_cfgs,
             ),
         )
 
