@@ -16,7 +16,12 @@ class UbuntuCoreOS(OperatingSystem):
     name = "ubuntu-core"
     title = "Ubuntu Core"
 
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    @property
+    def default_fname(self) -> str:
+        """Default image filename"""
+        return "root-dd.xz"
+
+    def get_boot_image_purposes(self):
         """Gets the purpose of each boot image."""
         return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
@@ -31,8 +36,5 @@ class UbuntuCoreOS(OperatingSystem):
         # title of the image. The region will fix the title for the UI.
         return release
 
-    def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Returns the xinstall image name and type for given image."""
-        return self._find_image(
-            arch, subarch, release, label, dd=True, default_fname="root-dd.xz"
-        )
+    def get_image_filetypes(self) -> dict[str, str]:
+        return self._get_image_filetypes(dd=True)

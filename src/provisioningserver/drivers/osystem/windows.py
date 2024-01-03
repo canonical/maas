@@ -56,7 +56,7 @@ class WindowsOS(OperatingSystem):
     name = "windows"
     title = "Windows"
 
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    def get_boot_image_purposes(self):
         """Gets the purpose of each boot image. Windows only allows install."""
         return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
@@ -101,13 +101,5 @@ class WindowsOS(OperatingSystem):
         }
         return credentials
 
-    def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Return the xinstall image name and type for this operating system.
-
-        :param arch: Architecture of boot image.
-        :param subarch: Sub-architecture of boot image.
-        :param release: Release of boot image.
-        :param label: Label of boot image.
-        :return: tuple with name of root image and image type
-        """
-        return self._find_image(arch, subarch, release, label, dd=True)
+    def get_image_filetypes(self) -> dict[str, str]:
+        return self._get_image_filetypes(dd=True)

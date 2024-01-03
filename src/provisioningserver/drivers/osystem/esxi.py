@@ -18,7 +18,7 @@ class ESXi(OperatingSystem):
     name = "esxi"
     title = "VMware ESXi"
 
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    def get_boot_image_purposes(self):
         """Gets the purpose of each boot image."""
         return [BOOT_IMAGE_PURPOSE.XINSTALL]
 
@@ -47,6 +47,5 @@ class ESXi(OperatingSystem):
             ret = "{} {}".format(ret, m.group("title"))
         return ret
 
-    def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Returns the xinstall image name and type for given image."""
-        return self._find_image(arch, subarch, release, label, dd=True)
+    def get_image_filetypes(self) -> dict[str, str]:
+        return self._get_image_filetypes(dd=True)

@@ -148,9 +148,7 @@ def extract_image_params(path, maas_meta):
     if osystem_obj is None:
         return []
 
-    purposes = osystem_obj.get_boot_image_purposes(
-        arch, subarch, release, label
-    )
+    purposes = osystem_obj.get_boot_image_purposes()
 
     # Expand the path into a list of dicts, one for each boot purpose.
     params = []

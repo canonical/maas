@@ -294,6 +294,11 @@ class TestFindImage(MAASTestCase):
         if self.fname:
             factory.make_file(dir_path, self.fname)
         self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
+        filesystems = osystem._get_image_filetypes(
+            tgz=self.tgz,
+            dd=self.dd,
+            squashfs=self.squashfs,
+        )
         self.assertEqual(
             self.expected,
             osystem._find_image(
@@ -301,9 +306,7 @@ class TestFindImage(MAASTestCase):
                 subarch,
                 release,
                 label,
-                tgz=self.tgz,
-                dd=self.dd,
-                squashfs=self.squashfs,
+                filesystems,
             ),
         )
 

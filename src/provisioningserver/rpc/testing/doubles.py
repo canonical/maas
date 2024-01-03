@@ -121,7 +121,7 @@ class StubOS(OperatingSystem):
     def format_release_choices(self):
         raise NotImplementedError()
 
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    def get_boot_image_purposes(self):
         raise NotImplementedError()
 
     def requires_license_key(self, release):

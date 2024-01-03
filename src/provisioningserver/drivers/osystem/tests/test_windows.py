@@ -21,13 +21,9 @@ from provisioningserver.drivers.osystem.windows import (
 class TestWindowsOS(MAASTestCase):
     def test_get_boot_image_purposes_xinstall(self):
         osystem = WindowsOS()
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        release = factory.make_name("release")
-        label = factory.make_name("label")
         self.assertEqual(
             [BOOT_IMAGE_PURPOSE.XINSTALL],
-            osystem.get_boot_image_purposes(arch, subarch, release, label),
+            osystem.get_boot_image_purposes(),
         )
 
     def test_get_default_release(self):

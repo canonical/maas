@@ -31,7 +31,7 @@ class SUSEOS(OperatingSystem):
     name = "suse"
     title = "SUSE"
 
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    def get_boot_image_purposes(self):
         """Gets the purpose of each boot image."""
         return [BOOT_IMAGE_PURPOSE.XINSTALL]
 

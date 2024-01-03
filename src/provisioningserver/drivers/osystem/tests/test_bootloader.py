@@ -24,10 +24,5 @@ class TestCustomOS(MAASTestCase):
         osystem = BootLoaderOS()
         self.assertEqual(
             [BOOT_IMAGE_PURPOSE.BOOTLOADER],
-            osystem.get_boot_image_purposes(
-                factory.make_name("arch"),
-                factory.make_name("subarch"),
-                factory.make_name("release"),
-                factory.make_name("label"),
-            ),
+            osystem.get_boot_image_purposes(),
         )

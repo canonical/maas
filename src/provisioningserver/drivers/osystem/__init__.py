@@ -60,6 +60,11 @@ class OperatingSystem(metaclass=ABCMeta):
     def title(self):
         """Title of the operating system."""
 
+    @property
+    def default_fname(self) -> str | None:
+        """Default image filename"""
+        return None
+
     @abstractmethod
     def get_default_release(self):
         """Return the default release to use when none is specified.
@@ -76,13 +81,9 @@ class OperatingSystem(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_boot_image_purposes(self, arch, subarch, release, label):
+    def get_boot_image_purposes(self) -> list[str]:
         """Return a boot image's supported purposes.
 
-        :param arch: Architecture of boot image.
-        :param subarch: Sub-architecture of boot image.
-        :param release: Release of boot image.
-        :param label: Label of boot image.
         :return: list of supported purposes
         """
 
@@ -180,18 +181,14 @@ class OperatingSystem(metaclass=ABCMeta):
         """
         raise NotImplementedError()
 
-    def _find_image(
+    def _get_image_filetypes(
         self,
-        arch,
-        subarch,
-        release,
-        label,
         squashfs=False,
         tgz=False,
         dd=False,
-        default_fname=None,
-    ):
-        filetypes = {}
+    ) -> dict[str, str]:
+        assert squashfs or tgz or dd, "One type must be selected"
+        filetypes: dict[str, str] = {}
         if squashfs:
             filetypes.update({"squashfs": "squashfs"})
         if tgz:
@@ -219,7 +216,20 @@ class OperatingSystem(metaclass=ABCMeta):
                     "root-dd.tar.xz": "dd-txz",
                 }
             )
+        return filetypes
 
+    def get_image_filetypes(self) -> dict[str, str]:
+        return self._get_image_filetypes(tgz=True)
+
+    def _find_image(
+        self,
+        arch: str,
+        subarch: str,
+        release: str,
+        label: str,
+        filetypes: dict[str, str],
+        default_fname=None,
+    ) -> tuple[str, str] | None:
         with ClusterConfiguration.open() as config:
             base_path = os.path.join(
                 config.tftp_root, self.name, arch, subarch, release, label
@@ -232,11 +242,9 @@ class OperatingSystem(metaclass=ABCMeta):
         except FileNotFoundError:
             # In case the path does not exist
             pass
-
-        assert squashfs or tgz or dd, "One type must be selected"
-        # If none is found return the default for messaging.
-        if default_fname and default_fname in filetypes:
-            return default_fname, filetypes[default_fname]
+        if self.default_fname and self.default_fname in filetypes:
+            # If none is found return the default for messaging.
+            return self.default_fname, filetypes[self.default_fname]
         else:
             return list(filetypes.items())[0]
 
@@ -249,7 +257,8 @@ class OperatingSystem(metaclass=ABCMeta):
         :param label: Label of boot image.
         :return: tuple with name of root image and image type
         """
-        return self._find_image(arch, subarch, release, label, tgz=True)
+        filetypes = self.get_image_filetypes()
+        return self._find_image(arch, subarch, release, label, filetypes)
 
 
 class OperatingSystemRegistry(Registry):
