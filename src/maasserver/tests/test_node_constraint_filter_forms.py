@@ -1689,7 +1689,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([other], constraints)
 
     def test_substring_pod_filter(self):
-        pod = factory.make_Pod()
+        pod = factory.make_Pod(name=factory.make_name(prefix="pod"))
         node1 = factory.make_Node(bmc=pod.as_bmc())
         factory.make_Node()
         constraints = {"pod": pod.name[len("pod-") + 1 :]}
