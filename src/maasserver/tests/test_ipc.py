@@ -594,10 +594,10 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         rack_controller = yield deferToDatabase(factory.make_RackController)
 
-        for _ in range(2):
+        for i in range(2):
             master.registerWorkerRPCConnection(
                 pid,
-                random.randint(1, 512),
+                i,
                 rack_controller.system_id,
                 ip,
                 random.randint(1, 512),
@@ -608,7 +608,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
                 master.update(),
                 master.registerWorkerRPCConnection(
                     pid,
-                    random.randint(1, 512),
+                    3,
                     rack_controller.system_id,
                     ip,
                     random.randint(1, 512),
