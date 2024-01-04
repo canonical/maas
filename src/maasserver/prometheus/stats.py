@@ -10,7 +10,10 @@ from django.http import HttpResponse, HttpResponseNotFound
 import prometheus_client
 from twisted.application.internet import TimerService
 
+from maasserver.enum import SERVICE_STATUS
 from maasserver.models import Config
+from maasserver.models.node import RackController
+from maasserver.models.service import Service
 from maasserver.stats import (
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
@@ -69,6 +72,12 @@ STATS_DEFINITIONS = [
         "maas_net_subnet_ip_static",
         "Number of used IPs in a subnet",
         ["cidr"],
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_service_availability",
+        "Availability of the services running in a rack",
+        ["system_id", "service"],
     ),
     MetricDefinition(
         "Gauge",
@@ -195,6 +204,26 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
     for resource, value in stats["machine_stats"].items():
         metrics.update(f"maas_machines_{resource}", "set", value=value)
 
+    # Gather status of the services from all the rack controllers
+    service_status_to_int_mapping = {
+        SERVICE_STATUS.UNKNOWN: 0,
+        SERVICE_STATUS.RUNNING: 1,
+        SERVICE_STATUS.DEGRADED: 2,
+        SERVICE_STATUS.DEAD: 3,
+        SERVICE_STATUS.OFF: 4,
+    }
+    for rack_controller in RackController.objects.all():
+        for service in Service.objects.filter(node=rack_controller).all():
+            metrics.update(
+                "maas_service_availability",
+                "set",
+                value=service_status_to_int_mapping[service.status],
+                labels={
+                    "system_id": rack_controller.system_id,
+                    "service": service.name,
+                },
+            )
+
     # Gather all stats for vm_hosts
     metrics.update("maas_kvm_pods", "set", value=vm_hosts["vm_hosts"])
     metrics.update("maas_kvm_machines", "set", value=vm_hosts["vms"])
@@ -302,7 +331,7 @@ class PrometheusService(TimerService):
 
     This will run immediately when it's started, by default, it will run
     every 60 minutes, though the interval can be overridden (see
-    prometheus_push_internval global config).
+    prometheus_push_interval global config).
     """
 
     def __init__(self, interval=PROMETHEUS_SERVICE_PERIOD):

@@ -30,6 +30,7 @@ __all__ = [
 ]
 
 from collections import OrderedDict
+from typing import Callable, cast
 
 from provisioningserver.enum import enum_choices
 
@@ -408,7 +409,9 @@ class POWER_STATE:
     ERROR = "error"
 
 
-POWER_STATE_CHOICES = enum_choices(POWER_STATE, transform=str.capitalize)
+POWER_STATE_CHOICES = enum_choices(
+    POWER_STATE, transform=cast(Callable[[str], str], str.capitalize)
+)
 
 
 class POWER_WORKFLOW_ACTIONS:
@@ -437,7 +440,7 @@ class DEPLOYMENT_TARGET:
 
 
 DEPLOYMENT_TARGET_CHOICES = enum_choices(
-    DEPLOYMENT_TARGET, transform=str.capitalize
+    DEPLOYMENT_TARGET, transform=cast(Callable[[str], str], str.capitalize)
 )
 
 
@@ -730,7 +733,7 @@ class CACHE_MODE_TYPE:
 # Django choices for CACHE_MODE_TYPE: sequence of tuples (key, UI
 # representation).
 CACHE_MODE_TYPE_CHOICES = enum_choices(
-    CACHE_MODE_TYPE, transform=str.capitalize
+    CACHE_MODE_TYPE, transform=cast(Callable[[str], str], str.capitalize)
 )
 
 
@@ -858,7 +861,9 @@ class SERVICE_STATUS:
     OFF = "off"
 
 
-SERVICE_STATUS_CHOICES = enum_choices(SERVICE_STATUS, transform=str.capitalize)
+SERVICE_STATUS_CHOICES = enum_choices(
+    SERVICE_STATUS, transform=cast(Callable[[str], str], str.capitalize)
+)
 
 
 class KEYS_PROTOCOL_TYPE:

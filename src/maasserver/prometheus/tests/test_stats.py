@@ -63,6 +63,7 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_machines_total_mem",
             "maas_machines_total_cpu",
             "maas_machines_total_storage",
+            "maas_service_availability",
             "maas_kvm_pods",
             "maas_kvm_machines",
             "maas_kvm_cores",

@@ -2,12 +2,15 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the rack contoller (and possibly the region)."""
+from typing import Any, Callable
 
 
-def enum_choices(enum, transform=lambda value: value):
+def enum_choices(
+    enum: Any, transform: Callable[[str], str] = lambda value: value
+) -> tuple[[str, str], ...]:
     """Return sequence of tuples for Django's `choices` field from an enum-like class.
 
-    Enum classes have the following structure:
+    Enum-like classes have the following structure:
 
       class MyEnum:
           VAL1 = "value1"
@@ -20,9 +23,10 @@ def enum_choices(enum, transform=lambda value: value):
     If a `transform` callable is provided, it's called on the human-readable
     value to get a processed version.
 
-    XXX this should be dropped (and classes become subclasses of Enum) once we
-    move to Django 3.0 which has native support for Enum types.
-
+    TODO:
+      This should be dropped and classes become subclasses of django.db.models.TextChoices
+      once we move to Django 3.0 which has native support for Enum types.
+      The `choices` property of TextChoices replaces this function.
     """
 
     return tuple(
