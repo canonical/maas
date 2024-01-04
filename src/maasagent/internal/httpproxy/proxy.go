@@ -27,7 +27,7 @@ var (
 )
 
 // ProxyGroupOption is a type for options that apply to ProxyGroups
-type ProxyGroupOption func(ProxyGroup) error
+type ProxyGroupOption func(*ProxyGroup) error
 
 // ProxyOption is a type for options that apply to Proxies
 type ProxyOption func(Proxy) error
@@ -65,13 +65,15 @@ type Proxy interface {
 
 // ProxyGroup is a group of Proxies, this may consist of IPv4, IPv6 and
 // Unix socket proxies
-type ProxyGroup []Proxy
+type ProxyGroup struct {
+	proxies []Proxy
+}
 
 // Listen calls each Proxy's Listen() in an errgroup
-func (pg ProxyGroup) Listen(ctx context.Context) error {
+func (pg *ProxyGroup) Listen(ctx context.Context) error {
 	errGroup, ctx := errgroup.WithContext(ctx)
 
-	for _, p := range pg {
+	for _, p := range pg.proxies {
 		errGroup.Go(func(proxy Proxy) func() error {
 			return func() error {
 				return proxy.Listen(ctx)
@@ -83,10 +85,10 @@ func (pg ProxyGroup) Listen(ctx context.Context) error {
 }
 
 // Teardown tears down each Proxy in an errgroup
-func (pg ProxyGroup) Teardown(ctx context.Context) error {
+func (pg *ProxyGroup) Teardown(ctx context.Context) error {
 	errGroup, ctx := errgroup.WithContext(ctx)
 
-	for _, p := range pg {
+	for _, p := range pg.proxies {
 		errGroup.Go(func(proxy Proxy) func() error {
 			return func() error {
 				return proxy.Teardown(ctx)
@@ -170,14 +172,13 @@ func WithHandler(h http.Handler) ProxyOption {
 }
 
 func withProxy(newProxy proxyConstructor, opts ...ProxyOption) ProxyGroupOption {
-	return func(pg ProxyGroup) error {
+	return func(pg *ProxyGroup) error {
 		proxy, err := newProxy(opts...)
 		if err != nil {
 			return err
 		}
 
-		//nolint:staticcheck // SA4006 pg marked unused however it is being modified
-		pg = append(pg, proxy)
+		pg.proxies = append(pg.proxies, proxy)
 
 		return nil
 	}
@@ -199,8 +200,8 @@ func WithSocket(opts ...ProxyOption) ProxyGroupOption {
 }
 
 // NewProxyGroup creates a ProxyGroup with the given set of options
-func NewProxyGroup(opts ...ProxyGroupOption) (ProxyGroup, error) {
-	var pg ProxyGroup
+func NewProxyGroup(opts ...ProxyGroupOption) (*ProxyGroup, error) {
+	pg := &ProxyGroup{}
 
 	for _, opt := range opts {
 		err := opt(pg)

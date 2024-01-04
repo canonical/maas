@@ -50,13 +50,21 @@ func (p *ipv6) AddOriginURL(ctx context.Context, urlStr string) error {
 		return err
 	}
 
+	host, _, err := net.SplitHostPort(parsedURL.Host)
+	if err != nil {
+		return err
+	}
+
 	// Check if valid IP
-	if _, err := netip.ParseAddr(parsedURL.Host); err != nil {
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
 		// if IP is invalid, check if valid name
 		err := p.validateDNSName(ctx, parsedURL.Host)
 		if err != nil {
 			return err
 		}
+	} else if !addr.Is6() {
+		return nil
 	}
 
 	p.origins = append(p.origins, parsedURL)

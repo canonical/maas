@@ -177,6 +177,9 @@ class RackHTTPService(TimerService):
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
+                    "maas_agent_socket_path": str(
+                        root_prefix / "var/lib/maas/http_proxy.sock"
+                    ),
                 }
             )
         except NameError as error:

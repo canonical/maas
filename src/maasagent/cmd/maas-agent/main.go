@@ -19,6 +19,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
+	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
 	wf "maas.io/core/src/maasagent/internal/workflow"
@@ -90,6 +91,8 @@ func Run() int {
 		return 1
 	}
 
+	httpProxies := wf.NewHTTPProxyConfigurator()
+
 	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
 		worker.WithAllowedWorkflows(map[string]interface{}{
 			"check-ip":    wf.CheckIP,
@@ -103,6 +106,7 @@ func Run() int {
 		worker.WithControlPlaneTaskQueueName("region"),
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigureWorkerPoolWorkflowName("configure-agent"),
+		worker.WithHTTPProxyConfigurator(httpProxies),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
@@ -114,11 +118,28 @@ func Run() int {
 		return 1
 	}
 
-	err = workerPool.Configure(context.Background())
-	if err != nil {
-		log.Error().Err(err).Msg("Temporal worker pool configuration failure")
-		return 1
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errGroup, ctx := errgroup.WithContext(ctx)
+
+	errGroup.Go(func() error {
+		err := workerPool.Configure(ctx)
+		if err != nil {
+			log.Error().Err(err).Msg("Temporal worker pool configuration failure")
+			return err
+		}
+
+		return <-workerPool.Error()
+	})
+
+	errGroup.Go(func() error {
+		<-httpProxies.Ready()
+
+		log.Info().Msg("Starting HTTP proxy")
+
+		return httpProxies.Proxies.Listen(ctx)
+	})
 
 	log.Info().Msg("Service MAAS Agent started")
 
@@ -126,9 +147,15 @@ func Run() int {
 
 	signal.Notify(sigC, syscall.SIGTERM, syscall.SIGINT)
 
+	groupErrors := make(chan error)
+
+	go func() {
+		groupErrors <- errGroup.Wait()
+	}()
+
 	select {
-	case err := <-workerPool.Error():
-		log.Fatal().Err(err).Msg("Temporal worker pool failure")
+	case err := <-groupErrors:
+		log.Err(err).Msg("a service failed to execute")
 		return 1
 	case <-sigC:
 		return 0

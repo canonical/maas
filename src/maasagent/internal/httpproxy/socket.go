@@ -76,49 +76,6 @@ func (p *socket) SetPort(port int) error {
 	return fmt.Errorf("%w: WithPort", ErrUnsupportedProxyOption)
 }
 
-func (p *socket) setupUnixSocket() error {
-	_, err := os.Stat(p.addr)
-	if err != nil {
-		if os.IsNotExist(err) {
-			dir, _ := filepath.Split(p.addr)
-
-			err = os.MkdirAll(dir, 0750)
-			if err != nil {
-				return err
-			}
-
-			var f *os.File
-
-			f, err = os.OpenFile(p.addr, os.O_CREATE, 0600)
-			if err != nil {
-				return err
-			}
-
-			defer func() {
-				err = f.Close()
-			}()
-
-			return nil
-		}
-
-		return err
-	}
-
-	return nil
-}
-
-// Listen creates a socket and listens on it
-func (p *socket) Listen(ctx context.Context) error {
-	if p.server == nil {
-		err := p.setupUnixSocket()
-		if err != nil {
-			return err
-		}
-	}
-
-	return p.proxyCommon.Listen(ctx, p, "unix")
-}
-
 func (p *socket) cleanUnixSocket() error {
 	err := os.Remove(p.addr)
 	if os.IsNotExist(err) {
@@ -126,6 +83,14 @@ func (p *socket) cleanUnixSocket() error {
 	}
 
 	return err
+}
+
+func (p *socket) Listen(ctx context.Context) error {
+	if err := p.cleanUnixSocket(); err != nil {
+		return err
+	}
+
+	return p.proxyCommon.Listen(ctx, p, "unix")
 }
 
 // Teardown stops the proxy and removes the socket

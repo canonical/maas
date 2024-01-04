@@ -50,12 +50,20 @@ func (p *ipv4) AddOriginURL(ctx context.Context, urlStr string) error {
 		return err
 	}
 
+	host, _, err := net.SplitHostPort(parsedURL.Host)
+	if err != nil {
+		return err
+	}
+
 	// Check if valid IP
-	if _, err := netip.ParseAddr(parsedURL.Host); err != nil {
+	addr, err := netip.ParseAddr(host)
+	if err != nil {
 		// if IP is invalid, check if valid name
 		if err := p.validateDNSName(ctx, parsedURL.Host); err != nil {
 			return err
 		}
+	} else if !addr.Is4() {
+		return nil
 	}
 
 	p.origins = append(p.origins, parsedURL)

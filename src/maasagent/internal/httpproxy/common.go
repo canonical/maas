@@ -10,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -71,9 +73,14 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 	}
 
 	var handler http.Handler
+
 	if p.handlerOverride != nil {
+		log.Debug().Msg("Using custom HTTP handler")
+
 		handler = p.handlerOverride
 	} else {
+		log.Debug().Msg("Using default HTTP handler")
+
 		handler = DefaultHandler(proxy)
 	}
 
@@ -92,6 +99,10 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 		return err
 	}
 
+	if unixListener, ok := p.listener.(*net.UnixListener); ok {
+		unixListener.SetUnlinkOnClose(true)
+	}
+
 	if p.serverTLS != nil {
 		p.listener = tls.NewListener(p.listener, p.serverTLS)
 	}
@@ -107,6 +118,10 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 	if p.keepalive > 0 {
 		p.server.SetKeepAlivesEnabled(true)
 	}
+
+	log.Info().Msgf("Started %s HTTP proxy", network)
+
+	log.Debug().Msgf("Listening on %s", p.addr)
 
 	return p.server.Serve(p.listener)
 }

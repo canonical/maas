@@ -6,6 +6,10 @@ upstream maas-regions {
 }
 {{endif}}
 
+upstream maas-agent {
+    server unix:{{maas_agent_socket_path}};
+}
+
 server {
     listen [::]:5248;
     listen 5248;

@@ -137,6 +137,7 @@ class TemporalWorkerService(Service):
                 activities=[
                     # Configuration activities
                     configure_activity.get_rack_controller,
+                    configure_activity.get_region_controllers,
                     # Boot resources activities
                     boot_res_activity.download_bootresourcefile,
                     boot_res_activity.get_bootresourcefile_endpoints,

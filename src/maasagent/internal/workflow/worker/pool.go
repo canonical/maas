@@ -11,10 +11,12 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
+
+	wf "maas.io/core/src/maasagent/internal/workflow"
 )
 
 const (
-	defaultConfigureWorkerPoolWorkflowName = "configure-worker-pool"
+	defaultConfigureWorkerPoolWorkflowName = "configure-agent"
 	defaultConfigureWorkerPoolActivityName = "configure-worker-pool"
 	defaultControlPlaneTaskQueueName       = "control-plane"
 )
@@ -34,6 +36,7 @@ type WorkerPool struct {
 	main                            worker.Worker
 	workerConstructor               workerConstructor
 	workers                         map[string]worker.Worker
+	configurators                   map[string]wf.Configurator
 	allowedWorkflows                map[string]interface{}
 	allowedActivities               map[string]interface{}
 	systemID                        string
@@ -53,6 +56,7 @@ func NewWorkerPool(systemID string, client client.Client,
 		taskQueue:                       fmt.Sprintf("%s@main", systemID),
 		client:                          client,
 		workers:                         make(map[string]worker.Worker),
+		configurators:                   make(map[string]wf.Configurator),
 		configureWorkerPoolActivityName: defaultConfigureWorkerPoolActivityName,
 		configureWorkerPoolWorkflowName: defaultConfigureWorkerPoolWorkflowName,
 		controlPlaneTaskQueueName:       defaultControlPlaneTaskQueueName,
@@ -75,6 +79,15 @@ func NewWorkerPool(systemID string, client client.Client,
 			Name: pool.configureWorkerPoolActivityName,
 		},
 	)
+
+	for k, configurator := range pool.configurators {
+		pool.main.RegisterActivityWithOptions(
+			configurator.CreateConfigActivity(),
+			activity.RegisterOptions{
+				Name: fmt.Sprintf("configure-%s", k),
+			},
+		)
+	}
 
 	return pool
 }
@@ -144,6 +157,13 @@ func WithMainWorkerTaskQueueSuffix(s string) WorkerPoolOption {
 func WithWorkerConstructor(fn workerConstructor) WorkerPoolOption {
 	return func(p *WorkerPool) {
 		p.workerConstructor = fn
+	}
+}
+
+// WithHTTPProxyConfigurator sets the Configurator for HTTP proxies
+func WithHTTPProxyConfigurator(httpProxyConfigurator *wf.HTTPProxyConfigurator) WorkerPoolOption {
+	return func(p *WorkerPool) {
+		p.configurators["http-proxy"] = httpProxyConfigurator
 	}
 }
 
