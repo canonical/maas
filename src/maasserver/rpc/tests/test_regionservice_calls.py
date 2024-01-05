@@ -1321,7 +1321,8 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         # attribute.
         copy_response = dict(response)
         del copy_response["boot_type"]
-        self.assertAttributes(node, copy_response)
+        for key, value in copy_response.items():
+            self.assertEqual(getattr(node, key), value)
         self.assertEqual("fastpath", response["boot_type"])
 
     @wait_for_reactor

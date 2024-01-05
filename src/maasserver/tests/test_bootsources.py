@@ -106,27 +106,19 @@ class TestHelpers(MAASServerTestCase):
         sources = BootSource.objects.all()
         self.assertThat(sources, HasLength(1))
         [source] = sources
-        self.assertAttributes(
-            source,
-            {
-                "url": DEFAULT_IMAGES_URL,
-                "keyring_filename": (
-                    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-                ),
-            },
+        self.assertEqual(source.url, DEFAULT_IMAGES_URL)
+        self.assertEqual(
+            source.keyring_filename,
+            "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
         self.assertEqual({"focal"}, by_release.keys())
-        self.assertAttributes(
-            by_release["focal"],
-            {
-                "release": "focal",
-                "arches": [arch, "amd64"],
-                "subarches": ["*"],
-                "labels": ["*"],
-            },
-        )
+        focal = by_release["focal"]
+        self.assertEqual(focal.release, "focal")
+        self.assertEqual(focal.arches, [arch, "amd64"])
+        self.assertEqual(focal.subarches, ["*"])
+        self.assertEqual(focal.labels, ["*"])
 
     def test_ensure_boot_source_definition_updates_default_source_snap(self):
         BootSource.objects.all().delete()
@@ -163,27 +155,19 @@ class TestHelpers(MAASServerTestCase):
         sources = BootSource.objects.all()
         self.assertThat(sources, HasLength(1))
         [source] = sources
-        self.assertAttributes(
-            source,
-            {
-                "url": DEFAULT_IMAGES_URL,
-                "keyring_filename": (
-                    "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-                ),
-            },
+        self.assertEqual(source.url, DEFAULT_IMAGES_URL)
+        self.assertEqual(
+            source.keyring_filename,
+            "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg",
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
         self.assertEqual({"focal"}, by_release.keys())
-        self.assertAttributes(
-            by_release["focal"],
-            {
-                "release": "focal",
-                "arches": ["amd64"],
-                "subarches": ["*"],
-                "labels": ["*"],
-            },
-        )
+        focal = by_release["focal"]
+        self.assertEqual(focal.release, "focal")
+        self.assertEqual(focal.arches, ["amd64"])
+        self.assertEqual(focal.subarches, ["*"])
+        self.assertEqual(focal.labels, ["*"])
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
         sources = [factory.make_BootSource() for _ in range(3)]

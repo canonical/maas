@@ -7,13 +7,11 @@
 from contextlib import closing
 import gzip
 from io import BytesIO
-from os.path import relpath
+import os.path
 from socket import gethostbyname, gethostname
 from unittest import skip
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
-
-from testtools.matchers import FileExists
 
 from maastesting.fixtures import ProxiesDisabledFixture
 from maastesting.httpd import HTTPServerFixture, ThreadingHTTPServer
@@ -37,8 +35,8 @@ class TestHTTPServerFixture(MAASTestCase):
         self.assertEqual(expected_url, fixture.url)
 
     def test_use(self):
-        filename = relpath(__file__)
-        self.assertThat(filename, FileExists())
+        filename = os.path.relpath(__file__)
+        self.assertTrue(os.path.isfile(filename))
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, filename)
             with closing(urlopen(url)) as http_in:
@@ -56,7 +54,7 @@ class TestHTTPServerFixture(MAASTestCase):
         return gz.read()
 
     def test_supports_gzip(self):
-        filename = relpath(__file__)
+        filename = os.path.relpath(__file__)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, filename)
             headers = {"Accept-Encoding": "gzip, deflate"}

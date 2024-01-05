@@ -57,7 +57,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         package_repository = form.save(endpoint, request)
-        self.assertAttributes(package_repository, params)
+        for key, value in params.items():
+            self.assertEqual(getattr(package_repository, key), value)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
@@ -93,7 +94,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         package_repository = form.save(endpoint, request)
-        self.assertAttributes(package_repository, params)
+        for key, value in params.items():
+            self.assertEqual(getattr(package_repository, key), value)
         self.assertTrue(package_repository.enabled)
 
     def test_fail_validation_on_create_cleans_url(self):
@@ -186,7 +188,8 @@ class TestPackageRepositoryForm(MAASServerTestCase):
         request.user = factory.make_User()
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         package_repository = form.save(endpoint, request)
-        self.assertAttributes(package_repository, params)
+        for key, value in params.items():
+            self.assertEqual(getattr(package_repository, key), value)
         self.assertCountEqual(
             package_repository.arches, PackageRepository.MAIN_ARCHES
         )

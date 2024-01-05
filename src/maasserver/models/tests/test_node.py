@@ -3283,8 +3283,7 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        expected_attrs = {"status": NODE_STATUS.COMMISSIONING}
-        self.assertAttributes(node, expected_attrs)
+        self.assertEqual(node.status, NODE_STATUS.COMMISSIONING)
         self.assertThat(
             node_start,
             MockCalledOnceWith(
@@ -3319,12 +3318,9 @@ class TestNode(MAASServerTestCase):
         )
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        expected_attrs = {
-            "enable_ssh": enable_ssh,
-            "skip_networking": skip_networking,
-            "skip_storage": skip_storage,
-        }
-        self.assertAttributes(node, expected_attrs)
+        self.assertEqual(node.enable_ssh, enable_ssh)
+        self.assertEqual(node.skip_networking, skip_networking)
+        self.assertEqual(node.skip_storage, skip_storage)
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
@@ -3428,9 +3424,8 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        expected_attrs = {"status": NODE_STATUS.COMMISSIONING, "owner": admin}
-        self.assertAttributes(node, expected_attrs)
-        self.expectThat(node.owner, Equals(admin))
+        self.assertEqual(node.status, NODE_STATUS.COMMISSIONING)
+        self.assertEqual(node.owner, admin)
         self.assertThat(
             node_start,
             MockCalledOnceWith(
@@ -3912,9 +3907,8 @@ class TestNode(MAASServerTestCase):
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        expected_attrs = {"status": NODE_STATUS.COMMISSIONING, "owner": admin}
-        self.expectThat(node.owner, Equals(admin))
-        self.assertAttributes(node, expected_attrs)
+        self.assertEqual(node.status, NODE_STATUS.COMMISSIONING)
+        self.assertEqual(node.owner, admin)
 
     def test_start_commissioning_requires_commissioning_os(self):
         node = factory.make_Node(
@@ -5619,12 +5613,8 @@ class TestNode(MAASServerTestCase):
         node.start_rescue_mode(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        expected_attrs = {
-            "status": NODE_STATUS.ENTERING_RESCUE_MODE,
-            "owner": admin,
-        }
-        self.assertAttributes(node, expected_attrs)
-        self.expectThat(node.owner, Equals(admin))
+        self.assertEqual(node.status, NODE_STATUS.ENTERING_RESCUE_MODE)
+        self.assertEqual(node.owner, admin)
         self.expectThat(mock_node_power_cycle, MockCalledOnceWith())
 
     def test_start_rescue_mode_reverts_status_on_error(self):

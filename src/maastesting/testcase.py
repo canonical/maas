@@ -225,16 +225,6 @@ class MAASTestCase(
             )
         return super().assertSequenceEqual(seq1, seq2, msg, seq_type)
 
-    def assertAttributes(self, tested_object, attributes):
-        """Check multiple attributes of `tested_object` against a dict.
-
-        :param tested_object: Any object whose attributes should be checked.
-        :param attributes: A dict of attributes to test, and their expected
-            values.  Only these attributes will be checked.
-        """
-        matcher = testtools.matchers.MatchesStructure.byEquality(**attributes)
-        self.assertThat(tested_object, matcher)
-
     def assertDocTestMatches(
         self, expected, observed, flags=DocTestMatches.DEFAULT_FLAGS
     ):

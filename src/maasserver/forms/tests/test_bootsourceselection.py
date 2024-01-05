@@ -69,7 +69,8 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         boot_source_selection = reload_object(boot_source_selection)
-        self.assertAttributes(boot_source_selection, params)
+        for key, value in params.items():
+            self.assertEqual(getattr(boot_source_selection, key), value)
 
     def test_creates_boot_source_selection_object(self):
         boot_source = factory.make_BootSource()
@@ -77,7 +78,8 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
         form = BootSourceSelectionForm(boot_source=boot_source, data=params)
         self.assertTrue(form.is_valid(), form._errors)
         boot_source_selection = form.save()
-        self.assertAttributes(boot_source_selection, params)
+        for key, value in params.items():
+            self.assertEqual(getattr(boot_source_selection, key), value)
 
     def test_cannot_create_duplicate_entry(self):
         boot_source = factory.make_BootSource()

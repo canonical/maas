@@ -352,15 +352,12 @@ class TestFakePodDriverBase(MAASTestCase):
         fake_settings = [
             make_setting_field(fake_setting, fake_setting.title())
         ]
-        attributes = {
-            "name": fake_name,
-            "description": fake_description,
-            "settings": fake_settings,
-        }
         fake_driver = FakePodDriverBase(
             fake_name, fake_description, fake_settings
         )
-        self.assertAttributes(fake_driver, attributes)
+        self.assertEqual(fake_driver.name, fake_name)
+        self.assertEqual(fake_driver.description, fake_description)
+        self.assertEqual(fake_driver.settings, fake_settings)
 
     def test_make_pod_driver_base(self):
         fake_name = factory.make_name("name")
@@ -369,17 +366,14 @@ class TestFakePodDriverBase(MAASTestCase):
         fake_settings = [
             make_setting_field(fake_setting, fake_setting.title())
         ]
-        attributes = {
-            "name": fake_name,
-            "description": fake_description,
-            "settings": fake_settings,
-        }
         fake_driver = make_pod_driver_base(
             name=fake_name,
             description=fake_description,
             settings=fake_settings,
         )
-        self.assertAttributes(fake_driver, attributes)
+        self.assertEqual(fake_driver.name, fake_name)
+        self.assertEqual(fake_driver.description, fake_description)
+        self.assertEqual(fake_driver.settings, fake_settings)
 
     def test_make_pod_driver_base_makes_name_and_description(self):
         fake_driver = make_pod_driver_base()

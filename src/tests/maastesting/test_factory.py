@@ -13,19 +13,9 @@ from unittest.mock import sentinel
 
 from netaddr import IPAddress, IPNetwork
 import pytest
-from testtools.matchers import (
-    Contains,
-    EndsWith,
-    FileExists,
-    MatchesAll,
-    Not,
-    StartsWith,
-)
-from testtools.testcase import ExpectedException
 
 from maastesting import factory as factory_module
 from maastesting.factory import factory, TooManyRandomRetries
-from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 
 
@@ -221,21 +211,21 @@ class TestFactory(MAASTestCase):
         )
 
     def test_make_file_creates_file(self):
-        self.assertThat(factory.make_file(self.make_dir()), FileExists())
+        self.assertTrue(os.path.isfile(factory.make_file(self.make_dir())))
 
     def test_make_file_writes_binary_contents(self):
         contents = factory.make_string().encode("ascii")
-        self.assertThat(
-            factory.make_file(self.make_dir(), contents=contents),
-            FileContains(contents),
-        )
+        file_path = factory.make_file(self.make_dir(), contents=contents)
+        with open(file_path, "rb") as fh:
+            actual_contents = fh.read()
+        self.assertEqual(contents, actual_contents)
 
     def test_make_file_writes_textual_contents_as_utf8(self):
         contents = factory.make_string() + "\xa3\u20ac"
-        self.assertThat(
-            factory.make_file(self.make_dir(), contents=contents),
-            FileContains(contents, encoding="utf-8"),
-        )
+        file_path = factory.make_file(self.make_dir(), contents=contents)
+        with open(file_path, "rb") as fh:
+            actual_contents = fh.read()
+        self.assertEqual(contents, actual_contents.decode("utf-8"))
 
     def test_make_file_makes_up_contents_if_none_given(self):
         with open(factory.make_file(self.make_dir())) as temp_file:
@@ -261,7 +251,7 @@ class TestFactory(MAASTestCase):
         self.assertIsInstance(factory.make_name(), str)
 
     def test_make_name_includes_prefix_and_separator(self):
-        self.assertThat(factory.make_name("abc"), StartsWith("abc-"))
+        self.assertTrue(factory.make_name("abc").startswith("abc-"))
 
     def test_make_name_includes_random_text_of_requested_length(self):
         size = randint(1, 99)
@@ -278,25 +268,24 @@ class TestFactory(MAASTestCase):
     def test_make_name_uses_configurable_separator(self):
         sep = "SEPARATOR"
         prefix = factory.make_string(3)
-        self.assertThat(
-            factory.make_name(prefix, sep=sep), StartsWith(prefix + sep)
+        self.assertTrue(
+            factory.make_name(prefix, sep=sep).startswith(prefix + sep)
         )
 
     def test_make_name_does_not_require_prefix(self):
         size = randint(1, 99)
         unprefixed_name = factory.make_name(sep="-", size=size)
         self.assertEqual(size, len(unprefixed_name))
-        self.assertThat(unprefixed_name, Not(StartsWith("-")))
+        self.assertFalse(unprefixed_name.startswith("-"))
 
     def test_make_name_does_not_include_weird_characters(self):
-        self.assertThat(
-            factory.make_name(size=100),
-            MatchesAll(*[Not(Contains(char)) for char in "/ \t\n\r\\"]),
-        )
+        name = factory.make_name(size=100)
+        for char in "/ \t\n\r\\":
+            self.assertNotIn(char, name)
 
     def test_make_names_calls_make_name_with_each_prefix(self):
         self.patch(factory, "make_name", lambda prefix: prefix + "-xxx")
-        self.assertSequenceEqual(
+        self.assertEqual(
             ["abc-xxx", "def-xxx", "ghi-xxx"],
             list(factory.make_names("abc", "def", "ghi")),
         )
@@ -309,9 +298,9 @@ class TestFactory(MAASTestCase):
 
         dest = self.make_dir()
         subprocess.check_call(["tar", "-xzf", tarball, "-C", dest])
-        self.assertThat(
-            os.path.join(dest, filename), FileContains(contents[filename])
-        )
+        with open(os.path.join(dest, filename), "rb") as fh:
+            actual_contents = fh.read()
+        self.assertEqual(actual_contents, contents[filename])
 
     def test_make_tarball_makes_up_content_if_None(self):
         filename = factory.make_name()
@@ -319,7 +308,7 @@ class TestFactory(MAASTestCase):
 
         dest = self.make_dir()
         subprocess.check_call(["tar", "-xzf", tarball, "-C", dest])
-        self.assertThat(os.path.join(dest, filename), FileExists())
+        self.assertTrue(os.path.exists(os.path.join(dest, filename)))
         with open(os.path.join(dest, filename), "rb") as unpacked_file:
             contents = unpacked_file.read()
         self.assertGreater(len(contents), 0)
@@ -327,63 +316,62 @@ class TestFactory(MAASTestCase):
     def test_make_parsed_url_accepts_explicit_port(self):
         port = factory.pick_port()
         url = factory.make_parsed_url(port=port)
-        self.assertThat(
-            url.netloc,
-            EndsWith(":%d" % port),
+        self.assertTrue(
+            url.netloc.endswith(f":{port}"),
             "The generated URL does not contain"
-            "a port specification for port %d" % port,
+            f"a port specification for port {port}",
         )
 
     def test_make_parsed_url_can_omit_port(self):
         url = factory.make_parsed_url(port=False)
-        self.assertThat(
+        self.assertNotIn(
+            ":",
             url.netloc,
-            Not(Contains(":")),
-            "Generated url: %s contains a port number"
-            "in netloc segment" % url.geturl(),
+            f"Generated url: {url.geturl()} contains a port number in netloc segment",
         )
 
     def test_make_parsed_url_pics_random_port(self):
         url = factory.make_parsed_url()
-        self.assertThat(
+        self.assertIn(
+            ":",
             url.netloc,
-            Contains(":"),
-            "Generated url: %s does not contain "
-            "a port number in netloc segment" % url.geturl(),
+            f"Generated url: {url.geturl()} does not contain a port number in netloc segment",
         )
 
         self.assertTrue(
             url.netloc.split(":")[1].isdigit(),
-            "Generated url: %s does not contain a valid "
-            "port number in netloc segment" % url.geturl(),
+            f"Generated url: {url.geturl()} does not contain a valid port number in netloc segment",
         )
 
         url = factory.make_parsed_url(port=True)
 
-        self.assertThat(
+        self.assertIn(
+            ":",
             url.netloc,
-            Contains(":"),
-            (
-                "Generated url: %s does not contain "
-                "a port number in netloc segment"
-            )
-            % url.geturl(),
+            f"Generated url: {url.geturl()} does not contain a port number in netloc segment",
         )
 
         self.assertTrue(
             url.netloc.split(":")[1].isdigit(),
-            "Generated url: %s does not contain a valid "
-            "port number in netloc segment" % url.geturl(),
+            f"Generated url: {url.geturl()} does not contain a valid port number in netloc segment",
         )
 
     def test_make_parsed_url_asserts_with_conflicting_port_numbers(self):
-        with ExpectedException(AssertionError):
-            netloc = "%s:%d" % (factory.make_hostname(), factory.pick_port())
-            factory.make_parsed_url(netloc=netloc, port=factory.pick_port())
+        netloc = ":".join((factory.make_hostname(), str(factory.pick_port())))
+        self.assertRaises(
+            AssertionError,
+            factory.make_parsed_url,
+            netloc=netloc,
+            port=factory.pick_port(),
+        )
+        self.assertRaises(
+            AssertionError, factory.make_parsed_url, netloc=netloc, port=True
+        )
 
-        with ExpectedException(AssertionError):
-            netloc = "%s:%d" % (factory.make_hostname(), factory.pick_port())
-            factory.make_parsed_url(netloc=netloc, port=True)
+
+# We shouldn't mix pytest tests and nosetests in the same module -
+# these will only be executed by pytest, since the automatic fixture
+# injection isn't supported by unittest/nosetests.
 
 
 @pytest.mark.parametrize(

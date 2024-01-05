@@ -69,7 +69,9 @@ class TestLicenseKeyForm(MAASServerTestCase):
         license_key_obj = LicenseKey.objects.get(
             osystem=osystem["name"], distro_series=release["name"]
         )
-        self.assertAttributes(license_key_obj, definition)
+        self.assertEqual(license_key_obj.osystem, osystem["name"])
+        self.assertEqual(license_key_obj.distro_series, release["name"])
+        self.assertEqual(license_key_obj.license_key, key)
 
     def test_updates_license_key(self):
         osystem, release = self.make_os_with_license_key()

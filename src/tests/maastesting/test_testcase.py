@@ -10,14 +10,7 @@ from tempfile import mkdtemp
 from unittest import mock as mock_module
 from unittest.mock import call, MagicMock, sentinel
 
-from testtools.matchers import DirExists, FileExists
-
 from maastesting.factory import factory
-from maastesting.matchers import (
-    IsCallableMock,
-    MockCalledOnceWith,
-    MockCallsMatch,
-)
 from maastesting.testcase import MAASTestCase
 
 
@@ -25,7 +18,7 @@ class TestTestCase(MAASTestCase):
     """Tests the base `MAASTestCase` facilities."""
 
     def test_make_dir_creates_directory(self):
-        self.assertThat(self.make_dir(), DirExists())
+        self.assertTrue(os.path.isdir(self.make_dir()))
 
     def test_make_dir_creates_temporary_directory(self):
         other_temp_dir = mkdtemp()
@@ -39,7 +32,7 @@ class TestTestCase(MAASTestCase):
         self.assertNotEqual(self.make_dir(), self.make_dir())
 
     def test_make_file_creates_file(self):
-        self.assertThat(self.make_file(), FileExists())
+        self.assertTrue(os.path.isfile(self.make_file()))
 
     def test_make_file_uses_temporary_directory(self):
         directory = self.make_dir()
@@ -78,25 +71,19 @@ class TestTestCase(MAASTestCase):
 
         self.assertIs(sentinel.autospec, method_to_be_patched_autospec)
         self.assertIs(sentinel.autospec, self.method_to_be_patched)
-        self.assertThat(
-            create_autospec,
-            MockCalledOnceWith(
-                method_to_be_patched, sentinel.spec_set, sentinel.instance
-            ),
+        create_autospec.assert_called_once_with(
+            method_to_be_patched, sentinel.spec_set, sentinel.instance
         )
 
     def test_patch_autospec_really_leaves_an_autospec_behind(self):
         self.patch_autospec(self, "method_to_be_patched")
-        # The patched method is now a callable mock.
-        self.assertThat(self.method_to_be_patched, IsCallableMock())
         # The patched method can be called with positional or keyword
         # arguments.
         self.method_to_be_patched(1, 2)
         self.method_to_be_patched(3, b=4)
         self.method_to_be_patched(a=5, b=6)
-        self.assertThat(
-            self.method_to_be_patched,
-            MockCallsMatch(call(1, 2), call(3, b=4), call(a=5, b=6)),
+        self.method_to_be_patched.assert_has_calls(
+            [call(1, 2), call(3, b=4), call(a=5, b=6)]
         )
         # Calling the patched method with unrecognised arguments or not
         # enough arguments results in an exception.

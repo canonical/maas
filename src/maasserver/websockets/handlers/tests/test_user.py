@@ -50,14 +50,6 @@ def make_password_params(password):
     return {"password1": password, "password2": password}
 
 
-def subset_dict(input_dict, keys_subset):
-    """Return a subset of `input_dict` restricted to `keys_subset`.
-
-    All keys in `keys_subset` must be in `input_dict`.
-    """
-    return {key: input_dict[key] for key in keys_subset}
-
-
 class TestUserHandler(MAASServerTestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -224,7 +216,11 @@ class TestUserHandler(MAASServerTestCase):
         handler.create(params)
 
         user = User.objects.get(username=params["username"])
-        self.assertAttributes(user, subset_dict(params, user_attributes))
+        self.assertEqual(user.email, params["email"])
+        self.assertEqual(user.is_superuser, params["is_superuser"])
+        self.assertEqual(user.last_name, params["last_name"])
+        self.assertEqual(user.username, params["username"])
+
         self.assertTrue(user.check_password(password))
         self.assertTrue(user.userprofile.is_local)
 
@@ -309,9 +305,11 @@ class TestUserHandler(MAASServerTestCase):
         )
 
         handler.update(params)
-        self.assertAttributes(
-            reload_object(user), subset_dict(params, user_attributes)
-        )
+        user = reload_object(user)
+        self.assertEqual(user.email, params["email"])
+        self.assertEqual(user.is_superuser, params["is_superuser"])
+        self.assertEqual(user.last_name, params["last_name"])
+        self.assertEqual(user.username, params["username"])
 
     def test_update_other_as_admin(self):
         admin_user = factory.make_admin()
@@ -329,10 +327,11 @@ class TestUserHandler(MAASServerTestCase):
         )
 
         handler.update(params)
-
-        self.assertAttributes(
-            reload_object(user), subset_dict(params, user_attributes)
-        )
+        user = reload_object(user)
+        self.assertEqual(user.email, params["email"])
+        self.assertEqual(user.is_superuser, params["is_superuser"])
+        self.assertEqual(user.last_name, params["last_name"])
+        self.assertEqual(user.username, params["username"])
 
     def test_update_as_admin_event_log(self):
         admin_user = factory.make_admin()
