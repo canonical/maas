@@ -38,6 +38,7 @@ class DatabaseConfig:
 class Config:
     db: DatabaseConfig | None
     debug_queries: bool = False
+    debug: bool = False
 
 
 def api_service_socket_path() -> Path:
@@ -90,12 +91,13 @@ def _get_default_db_config(config: RegionConfiguration) -> DatabaseConfig:
     )
 
 
-def read_db_config() -> Config:
+def read_config() -> Config:
     try:
         with RegionConfiguration.open() as config:
             database_config = _get_default_db_config(config)
             debug_queries = config.debug_queries
-            # XXX: todo check for general debug and HTTP debug flags
+            debug = config.debug
+            # XXX: todo check for HTTP debug flags
 
     except (FileNotFoundError, KeyError, ValueError):
         # The regiond.conf will attempt to be loaded when the 'maas' command
@@ -104,4 +106,5 @@ def read_db_config() -> Config:
         # connection is defined.
         database_config = None
         debug_queries = False
-    return Config(db=database_config, debug_queries=debug_queries)
+        debug = False
+    return Config(db=database_config, debug_queries=debug_queries, debug=debug)

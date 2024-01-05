@@ -8,21 +8,30 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import ColumnOperators
 
-from maasapiserver.common.api.db import TransactionMiddleware
 from maasapiserver.common.db import Database
 from maasapiserver.common.db.tables import METADATA
-from maasapiserver.settings import DatabaseConfig
+from maasapiserver.common.middlewares.db import TransactionMiddleware
+from maasapiserver.settings import Config, DatabaseConfig
 from maastesting.pytest.database import cluster_stash
 
 
 @pytest.fixture
-async def db(
+def test_config(
     request: pytest.FixtureRequest, ensuremaasdb: str
+) -> Iterator[Config]:
+    """Set up the test config schema."""
+    yield Config(
+        db=DatabaseConfig(ensuremaasdb, host=abspath("db/")),
+        debug_queries=request.config.getoption("sqlalchemy_debug"),
+        debug=True,
+    )
+
+
+@pytest.fixture
+async def db(
+    request: pytest.FixtureRequest, test_config: Config
 ) -> Iterator[Database]:
-    """Set up the database schema."""
-    echo = request.config.getoption("sqlalchemy_debug")
-    db_config = DatabaseConfig(ensuremaasdb, host=abspath("db/"))
-    db = Database(db_config, echo=echo)
+    db = Database(test_config.db, echo=test_config.debug_queries)
     yield db
     await db.engine.dispose()
 

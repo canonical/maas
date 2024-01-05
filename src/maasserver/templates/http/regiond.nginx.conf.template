@@ -67,7 +67,7 @@ server {
 
     # block remote access to the machines endpoints for now since it doesn't
     # filter machines by user
-    location = /MAAS/a/v1/machines {
+    location = /MAAS/a/v2/machines {
         return 404;
     }
 

@@ -8,9 +8,8 @@ import pytest
 from requests.exceptions import ConnectionError
 
 from maasapiserver.client import APIServerClient
-from maasapiserver.common.db import Database
 from maasapiserver.main import run
-from maasapiserver.settings import DatabaseConfig
+from maasapiserver.settings import Config, DatabaseConfig
 from maasserver.djangosettings import development
 from maasserver.testing.resources import close_all_connections
 from maasserver.utils.orm import enable_all_database_connections
@@ -85,15 +84,15 @@ def maasapiserver(maasdb, tmpdir):
     dbname = development.DATABASES["default"]["NAME"]
     host = development.DATABASES["default"]["HOST"]
 
-    db_config = DatabaseConfig(dbname, host=host)
+    config = Config(
+        db=DatabaseConfig(dbname, host=host),
+    )
 
     os.environ["MAAS_APISERVER_HTTP_SOCKET_PATH"] = os.path.join(
         tmpdir, "maas-apiserver.socket"
     )
 
-    server_process = Process(
-        target=lambda: run(Database(db_config)), args=(), daemon=True
-    )
+    server_process = Process(target=lambda: run(config), args=(), daemon=True)
     server_process.start()
 
     timeout = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)

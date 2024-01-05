@@ -7,9 +7,12 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.api.db import DatabaseMetricsMiddleware
 from maasapiserver.common.db import Database
-from maasapiserver.prometheus import metrics, PrometheusMiddleware
+from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
+from maasapiserver.common.middlewares.prometheus import (
+    metrics,
+    PrometheusMiddleware,
+)
 
 
 @pytest.fixture

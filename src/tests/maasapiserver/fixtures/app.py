@@ -8,6 +8,7 @@ import pytest
 
 from maasapiserver.common.db import Database
 from maasapiserver.main import create_app
+from maasapiserver.settings import Config
 from maasapiserver.v2.models.entities.user import User
 
 from .db import Fixture
@@ -15,11 +16,13 @@ from .db import Fixture
 
 @pytest.fixture
 def api_app(
-    db: Database, transaction_middleware_class: type
+    test_config: Config, transaction_middleware_class: type, db: Database
 ) -> Iterator[FastAPI]:
     """The API application."""
     yield create_app(
-        db=db, transaction_middleware_class=transaction_middleware_class
+        config=test_config,
+        transaction_middleware_class=transaction_middleware_class,
+        db=db,
     )
 
 

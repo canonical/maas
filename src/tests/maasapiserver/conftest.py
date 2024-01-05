@@ -11,6 +11,7 @@ from .fixtures.db import (
     db,
     db_connection,
     fixture,
+    test_config,
     transaction_middleware_class,
 )
 
@@ -19,6 +20,7 @@ __all__ = [
     "api_client",
     "authenticated_api_client",
     "authenticated_user",
+    "test_config",
     "db",
     "db_connection",
     "fixture",
