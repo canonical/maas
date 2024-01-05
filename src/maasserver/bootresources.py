@@ -17,10 +17,8 @@ __all__ = [
 from datetime import timedelta
 from operator import itemgetter
 import os
-from pathlib import Path
 import shutil
 from subprocess import CalledProcessError, check_call
-import tarfile
 from textwrap import dedent
 import threading
 
@@ -62,10 +60,12 @@ from maasserver.exceptions import MAASAPINotFound
 from maasserver.models import (
     BootResource,
     BootResourceFile,
+    BootResourceFileSync,
     BootResourceSet,
     BootSourceSelection,
     Config,
     Event,
+    RegionController,
 )
 from maasserver.release_notifications import ReleaseNotifications
 from maasserver.rpc import getAllClients
@@ -641,7 +641,10 @@ class BootResourceStore(ObjectStore):
             rfile.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
             and resource.bootloader_type
         ):
-            extract_path = f"{BOOTLOADERS_DIR}/{resource.bootloader_type}/{resource.architecture}"
+            arch = resource.architecture.split("/")[0]
+            extract_path = (
+                f"{BOOTLOADERS_DIR}/{resource.bootloader_type}/{arch}"
+            )
 
         self.save_content_later(
             rfile,
@@ -1447,19 +1450,16 @@ class ImportResourcesProgressService(TimerService):
         return d.addCallback(has_boot_images)
 
 
-def export_images_from_db(target_dir: Path):
+def export_images_from_db(region: RegionController):
     from maasserver.models import LargeFile
 
-    log.info(f"Exporting image files to {target_dir}")
-    target_dir.mkdir(parents=True, exist_ok=True)
-    bootloaders_dir = target_dir / "bootloaders"
-    bootloaders_dir.mkdir(exist_ok=True)
+    log.info("Exporting image files to disk")
 
     largefile_ids_to_delete = set()
     oids_to_delete = set()
     with transaction.atomic():
         files = (
-            BootResourceFile.objects.all()
+            BootResourceFile.objects.filter(largefile__isnull=False)
             .select_related("largefile")
             .annotate(
                 architecture=F("resource_set__resource__architecture"),
@@ -1467,26 +1467,17 @@ def export_images_from_db(target_dir: Path):
             )
         )
 
-        expected_files = {bootloaders_dir}
         for file in files:
-            imagename = file.sha256
-            image = target_dir / imagename
+            lfile = file.local_file()
 
             def msg(message: str):
-                log.msg(f"{imagename}: {message}")
+                log.msg(f"{file.filename}: {message}")
 
-            def extract_bootloaders(file):
-                arch = file.architecture.split("/")[0]
-                bootloader_dir = bootloaders_dir / file.bootloader_type / arch
-                bootloader_dir.mkdir(parents=True, exist_ok=True)
-                with tarfile.open(image.absolute(), mode="r") as tar:
-                    for member in tar:
-                        tar.extract(member, path=bootloader_dir.absolute())
-
-            if file.largefile is None:
-                msg("content already migrated to disk")
-                expected_files.add(image)
-                continue
+            def set_sync_status():
+                file.bootresourcefilesync_set.update_or_create(
+                    defaults=dict(size=lfile.size),
+                    region=region,
+                )
 
             total_size = file.largefile.total_size
             if file.largefile.size != total_size:
@@ -1494,15 +1485,14 @@ def export_images_from_db(target_dir: Path):
                 oids_to_delete.add(file.largefile.content.oid)
                 continue
 
-            expected_files.add(image)
-
-            if image.exists() and image.lstat().st_size == total_size:
+            if lfile.valid:
                 msg("skipping, file already present")
             else:
+                lfile.unlink()
                 msg("writing")
                 with (
                     file.largefile.content.open("rb") as sfd,
-                    image.open("wb") as dfd,
+                    lfile.store() as dfd,
                 ):
                     shutil.copyfileobj(sfd, dfd)
                     oids_to_delete.add(file.largefile.content.oid)
@@ -1511,7 +1501,11 @@ def export_images_from_db(target_dir: Path):
                     file.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
                     and file.bootloader_type
                 ):
-                    extract_bootloaders(file)
+                    arch = file.architecture.split("/")[0]
+                    target = f"{BOOTLOADERS_DIR}/{file.bootloader_type}/{arch}"
+                    lfile.extract_file(target)
+
+            set_sync_status()
 
             largefile_ids_to_delete.add(file.largefile_id)
             # need to unset it because the post-delete signal will otherwise
@@ -1520,11 +1514,48 @@ def export_images_from_db(target_dir: Path):
             file.largefile = None
             file.save()
 
-        existing_files = set(target_dir.iterdir())
-        for file in existing_files - expected_files:
-            file.unlink()
-
         LargeFile.objects.filter(id__in=largefile_ids_to_delete).delete()
         with connection.cursor() as cursor:
             for oid in oids_to_delete:
                 cursor.execute("SELECT lo_unlink(%s)", [oid])
+
+
+def initialize_image_storage(region: RegionController):
+    """Initialize the image storage
+
+    MUST be called with the `startup` lock
+    """
+    target_dir = get_bootresource_store_path()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    bootloaders_dir = target_dir / BOOTLOADERS_DIR
+    bootloaders_dir.mkdir(exist_ok=True)
+
+    export_images_from_db(region)
+
+    expected_files = {bootloaders_dir}
+
+    resources = BootResourceFile.objects.filter(
+        bootresourcefilesync__region=region
+    )
+    missing = set()
+    for res in resources:
+        lfile = res.local_file()
+        if lfile.complete:
+            expected_files.add(lfile.path)
+        else:
+            missing.add(res)
+
+    if missing:
+        maaslog.warning(
+            f"{len(missing)} missing resources need to be downloaded again"
+        )
+        BootResourceFileSync.objects.filter(
+            file__in=missing, region=region
+        ).delete()
+
+    existing_files = set(target_dir.iterdir())
+    for file in existing_files - expected_files:
+        maaslog.warning(
+            f"removing unexpected {file} file from the image storage"
+        )
+        file.unlink()

@@ -1,11 +1,16 @@
 import hashlib
 from hashlib import sha256
+import os
 from pathlib import Path
+import shutil
 
 from django.db import connection
 import pytest
 
-from maasserver.bootresources import export_images_from_db
+from maasserver.bootresources import (
+    export_images_from_db,
+    initialize_image_storage,
+)
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
 from maasserver.models.bootresourcefile import BootResourceFile
@@ -15,8 +20,23 @@ from maasserver.utils.orm import reload_object
 
 
 @pytest.fixture
-def target_dir(tmpdir):
-    yield Path(tmpdir / "images-export")
+def controller(factory):
+    controller = factory.make_RegionRackController()
+    yield controller
+
+
+@pytest.fixture
+def maas_data_dir(mocker, tmpdir):
+    mocker.patch.dict(os.environ, {"MAAS_DATA": str(tmpdir)})
+    yield tmpdir
+
+
+@pytest.fixture
+def image_store_dir(mocker, maas_data_dir):
+    store = Path(maas_data_dir) / "boot-resources"
+    store.mkdir()
+    yield store
+    shutil.rmtree(store)
 
 
 def list_files(base_path):
@@ -67,11 +87,7 @@ class TestExportImagesFromDB:
             largefile=largefile,
         )
 
-    def test_empty(self, target_dir):
-        export_images_from_db(target_dir)
-        assert list_files(target_dir) == {"bootloaders"}
-
-    def test_create_files(self, target_dir, factory):
+    def test_create_files(self, controller, image_store_dir, factory):
         resource1 = factory.make_BootResource(
             name="ubuntu/jammy",
             architecture="s390x/generic",
@@ -105,26 +121,17 @@ class TestExportImagesFromDB:
             filename="boot-kernel",
             content=content2,
         )
-        export_images_from_db(target_dir)
-        assert list_files(target_dir) == {
-            "bootloaders",
+        export_images_from_db(controller)
+        assert list_files(image_store_dir) == {
             sha256(content1).hexdigest(),
             sha256(content2).hexdigest(),
         }
 
-    def test_remove_extra_files(self, target_dir, factory):
-        target_dir.mkdir()
-        extra_file = target_dir / "abcde"
-        extra_file.write_text("some content")
-
-        export_images_from_db(target_dir)
-        assert not extra_file.exists()
-
-    def test_export_overwrite_changed(self, target_dir, factory):
-        target_dir.mkdir()
-
+    def test_export_overwrite_changed(
+        self, controller, image_store_dir, factory
+    ):
         content = b"ubuntu-jammy"
-        image = target_dir / sha256(content).hexdigest()
+        image = image_store_dir / sha256(content).hexdigest()
         image.write_bytes(b"old")
 
         resource = factory.make_BootResource(
@@ -142,10 +149,10 @@ class TestExportImagesFromDB:
             filename="boot-initrd",
             content=content,
         )
-        export_images_from_db(target_dir)
+        export_images_from_db(controller)
         assert image.read_bytes() == content
 
-    def test_remove_largfile(self, target_dir, factory):
+    def test_remove_largfile(self, controller, image_store_dir, factory):
         resource = factory.make_BootResource(
             name="ubuntu/jammy",
             architecture="s390x/generic",
@@ -162,7 +169,7 @@ class TestExportImagesFromDB:
             content=b"some content",
         )
         largefile = resource_file.largefile
-        export_images_from_db(target_dir)
+        export_images_from_db(controller)
 
         assert reload_object(largefile) is None
         # largeobject also gets deleted
@@ -170,7 +177,7 @@ class TestExportImagesFromDB:
             cursor.execute("SELECT loid FROM pg_largeobject")
             assert cursor.fetchall() == []
 
-    def test_no_largefile_ignore(self, target_dir, factory):
+    def test_no_largefile_ignore(self, controller, image_store_dir, factory):
         resource = factory.make_BootResource(
             name="ubuntu/jammy",
             architecture="s390x/generic",
@@ -189,13 +196,14 @@ class TestExportImagesFromDB:
             size=100,
         )
 
-        target_dir.mkdir()
-        resource_file = target_dir / sha256
+        resource_file = image_store_dir / sha256
         resource_file.touch()
-        export_images_from_db(target_dir)
+        export_images_from_db(controller)
         assert resource_file.exists()
 
-    def test_booloaders_export(self, tmpdir, target_dir, factory):
+    def test_booloaders_export(
+        self, controller, tmpdir, image_store_dir, factory
+    ):
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name="grub-efi/uefi",
@@ -223,9 +231,37 @@ class TestExportImagesFromDB:
             filename="grub2-signed.tar.xz",
             content=tarball.read_bytes(),
         )
-        export_images_from_db(target_dir)
-        bootloader_dir = target_dir / "bootloaders/uefi/amd64"
+        export_images_from_db(controller)
+        bootloader_dir = image_store_dir / "bootloaders/uefi/amd64"
         assert list_files(bootloader_dir) == {
             "grubx64.efi",
             "bootx64.efi",
         }
+
+
+@pytest.mark.usefixtures("maasdb")
+class TestInitialiseImageStorate:
+    def test_empty(self, controller, image_store_dir):
+        initialize_image_storage(controller)
+        assert list_files(image_store_dir) == {"bootloaders"}
+
+    def test_remove_extra_files(self, controller, image_store_dir):
+        extra_file = image_store_dir / "abcde"
+        extra_file.write_text("some content")
+
+        initialize_image_storage(controller)
+        assert not extra_file.exists()
+
+    def test_missing_local_files(self, controller, image_store_dir, factory):
+        resource = factory.make_usable_boot_resource()
+        other = factory.make_usable_boot_resource()
+        rset = resource.sets.first()
+        for rfile in rset.files.all():
+            lfile = rfile.local_file()
+            lfile.unlink()
+
+        initialize_image_storage(controller)
+        reload_object(resource)
+        reload_object(other)
+        assert resource.get_latest_complete_set() is None
+        assert other.get_latest_complete_set() is not None

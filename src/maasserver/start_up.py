@@ -10,6 +10,7 @@ from django.db.utils import DatabaseError
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
+from maasserver.bootresources import initialize_image_storage
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasserver.deprecations import (
     log_deprecations,
@@ -234,3 +235,6 @@ def inner_start_up(master=False):
         # Log deprecations and Update related notifications if needed
         log_deprecations(logger=log)
         sync_deprecation_notifications()
+
+        # initialize the image storage
+        initialize_image_storage(node)
