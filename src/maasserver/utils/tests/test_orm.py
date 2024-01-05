@@ -23,7 +23,6 @@ from psycopg2.errorcodes import (
     UNIQUE_VIOLATION,
 )
 from testtools import ExpectedException
-from testtools.matchers import AllMatch, Is, MatchesPredicate, Not
 from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
@@ -70,14 +69,6 @@ from maasserver.utils.orm import (
 )
 from maastesting.doubles import StubContext
 from maastesting.factory import factory
-from maastesting.matchers import (
-    HasLength,
-    IsFiredDeferred,
-    LessThanOrEqual,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.utils.twisted import callOut, DeferredValue
@@ -529,7 +520,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(OperationalError, function_wrapped)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_retries_on_serialization_failure_until_successful(self):
         serialization_error = self.assertRaises(
@@ -539,7 +530,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function.side_effect = [serialization_error, sentinel.result]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
-        self.assertThat(function, MockCallsMatch(call(), call()))
+        function.assert_has_calls((call(), call()))
 
     def test_retries_on_deadlock_failure(self):
         function = self.make_mock_function()
@@ -547,14 +538,14 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(OperationalError, function_wrapped)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_retries_on_deadlock_failure_until_successful(self):
         function = self.make_mock_function()
         function.side_effect = [orm.make_deadlock_failure(), sentinel.result]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
-        self.assertThat(function, MockCallsMatch(call(), call()))
+        function.assert_has_calls((call(), call()))
 
     def test_retries_on_unique_violation(self):
         function = self.make_mock_function()
@@ -562,14 +553,14 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(IntegrityError, function_wrapped)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_retries_on_unique_violation_until_successful(self):
         function = self.make_mock_function()
         function.side_effect = [orm.make_unique_violation(), sentinel.result]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
-        self.assertThat(function, MockCallsMatch(call(), call()))
+        function.assert_has_calls((call(), call()))
 
     def test_retries_on_foreign_key_violation(self):
         function = self.make_mock_function()
@@ -577,7 +568,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(IntegrityError, function_wrapped)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_retries_on_foreign_key_violation_until_successful(self):
         function = self.make_mock_function()
@@ -587,7 +578,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         ]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
-        self.assertThat(function, MockCallsMatch(call(), call()))
+        function.assert_has_calls((call(), call()))
 
     def test_retries_on_retry_transaction(self):
         function = self.make_mock_function()
@@ -595,14 +586,14 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function)
         self.assertRaises(orm.TooManyRetries, function_wrapped)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_retries_on_retry_transaction_until_successful(self):
         function = self.make_mock_function()
         function.side_effect = [orm.RetryTransaction(), sentinel.result]
         function_wrapped = retry_on_retryable_failure(function)
         self.assertEqual(sentinel.result, function_wrapped())
-        self.assertThat(function, MockCallsMatch(call(), call()))
+        function.assert_has_calls((call(), call()))
 
     def test_passes_args_to_wrapped_function(self):
         function_wrapped = retry_on_retryable_failure(lambda a, b: (a, b))
@@ -618,10 +609,10 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function_wrapped = retry_on_retryable_failure(function, reset)
         self.assertRaises(OperationalError, function_wrapped)
         expected_function_calls = [call()] * 10
-        self.expectThat(function, MockCallsMatch(*expected_function_calls))
+        function.assert_has_calls(expected_function_calls)
         # There's one fewer reset than calls to the function.
         expected_reset_calls = expected_function_calls[:-1]
-        self.expectThat(reset, MockCallsMatch(*expected_reset_calls))
+        reset.assert_has_calls(expected_reset_calls)
 
     def test_does_not_call_reset_before_first_attempt(self):
         reset = Mock()
@@ -629,7 +620,7 @@ class TestRetryOnRetryableFailure(SerializationFailureTestCase, NoSleepMixin):
         function.return_value = sentinel.all_is_okay
         function_wrapped = retry_on_retryable_failure(function, reset)
         function_wrapped()
-        self.assertThat(reset, MockNotCalled())
+        reset.assert_not_called()
 
     def test_uses_retry_context(self):
         @retry_on_retryable_failure
@@ -676,11 +667,9 @@ class TestMakeSerializationFailure(MAASTestCase):
 
     def test_makes_a_serialization_failure(self):
         exception = orm.make_serialization_failure()
-        self.assertThat(
-            exception,
-            MatchesPredicate(
-                is_serialization_failure, "%r is not a serialization failure."
-            ),
+        self.assertTrue(
+            is_serialization_failure(exception),
+            f"{exception} is not a serialization failure.",
         )
 
 
@@ -689,11 +678,9 @@ class TestMakeDeadlockFailure(MAASTestCase):
 
     def test_makes_a_deadlock_failure(self):
         exception = orm.make_deadlock_failure()
-        self.assertThat(
-            exception,
-            MatchesPredicate(
-                is_deadlock_failure, "%r is not a deadlock failure."
-            ),
+        self.assertTrue(
+            is_deadlock_failure(exception),
+            f"{exception} is not a deadlock failure.",
         )
 
 
@@ -702,11 +689,9 @@ class TestMakeUniqueViolation(MAASTestCase):
 
     def test_makes_a_unique_violation(self):
         exception = orm.make_unique_violation()
-        self.assertThat(
-            exception,
-            MatchesPredicate(
-                is_unique_violation, "%r is not a unique violation."
-            ),
+        self.assertTrue(
+            is_unique_violation(exception),
+            f"{exception} is not a unique violation.",
         )
 
 
@@ -715,11 +700,9 @@ class TestMakeForeignKeyViolation(MAASTestCase):
 
     def test_makes_a_foreign_key_violation(self):
         exception = orm.make_foreign_key_violation()
-        self.assertThat(
-            exception,
-            MatchesPredicate(
-                is_foreign_key_violation, "%r is not a foreign key violation."
-            ),
+        self.assertTrue(
+            is_foreign_key_violation(exception),
+            f"{exception} is not a foreign key violation.",
         )
 
 
@@ -927,7 +910,8 @@ class TestGenRetryIntervals(MAASTestCase):
         maximum = randint(10, 100)
         intervals = list(orm.gen_retry_intervals(maximum=maximum))
         self.assertIs(intervals[-1], sentinel.end)
-        self.assertThat(intervals[:-1], AllMatch(LessThanOrEqual(maximum)))
+        for interval in intervals[:-1]:
+            self.assertLessEqual(interval, maximum)
 
 
 class TestPostCommitHooks(MAASTestCase):
@@ -941,9 +925,9 @@ class TestPostCommitHooks(MAASTestCase):
                 pass
         # The hook has been cancelled, but CancelledError is suppressed in
         # hooks, so we don't see it here.
-        self.assertThat(hook, IsFiredDeferred())
+        self.assertTrue(hook.called)
         # The hook list is cleared so that the exception is raised only once.
-        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+        self.assertEqual(list(post_commit_hooks.hooks), [])
 
     def test_fires_hooks_on_exit_if_no_exception(self):
         self.addCleanup(post_commit_hooks.reset)
@@ -951,7 +935,7 @@ class TestPostCommitHooks(MAASTestCase):
         with post_commit_hooks:
             post_commit_hooks.add(Deferred())
         # Hooks are fired.
-        self.assertThat(hooks_fire, MockCalledOnceWith())
+        hooks_fire.assert_called_once_with()
 
     def test_resets_hooks_on_exit_if_exception(self):
         self.addCleanup(post_commit_hooks.reset)
@@ -963,8 +947,8 @@ class TestPostCommitHooks(MAASTestCase):
                 post_commit_hooks.add(Deferred())
                 raise exception_type()
         # No hooks were fired; they were reset immediately.
-        self.assertThat(hooks_fire, MockNotCalled())
-        self.assertThat(hooks_reset, MockCalledOnceWith())
+        hooks_fire.assert_not_called()
+        hooks_reset.assert_called_once_with()
 
 
 class TestPostCommit(MAASTestCase):
@@ -990,7 +974,7 @@ class TestPostCommit(MAASTestCase):
             pass
 
         hook_added = post_commit(hook)
-        self.assertThat(post_commit_hooks.hooks, HasLength(1))
+        self.assertEqual(len(post_commit_hooks.hooks), 1)
         self.assertIsInstance(hook_added, Deferred)
 
     def test_fire_calls_back_with_None_to_Deferred_hook(self):
@@ -1027,13 +1011,13 @@ class TestPostCommit(MAASTestCase):
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.fire()
-        self.assertThat(hook, MockCalledOnceWith(None))
+        hook.assert_called_once_with(None)
 
     def test_reset_passes_Failure_to_callable_hook(self):
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.reset()
-        self.assertThat(hook, MockCalledOnceWith(ANY))
+        hook.assert_called_once_with(ANY)
         arg = hook.call_args[0][0]
         self.assertIsInstance(arg, Failure)
         self.assertIsInstance(arg.value, CancelledError)
@@ -1054,7 +1038,7 @@ class TestPostCommitDo(MAASTestCase):
             pass
 
         post_commit_do(hook)
-        self.assertThat(post_commit_hooks.hooks, HasLength(1))
+        self.assertEqual(len(post_commit_hooks.hooks), 1)
 
     def test_returns_actual_hook(self):
         hook = Mock()
@@ -1073,15 +1057,13 @@ class TestPostCommitDo(MAASTestCase):
         hook = Mock()
         post_commit_do(hook, sentinel.arg, foo=sentinel.bar)
         post_commit_hooks.fire()
-        self.assertThat(
-            hook, MockCalledOnceWith(sentinel.arg, foo=sentinel.bar)
-        )
+        hook.assert_called_once_with(sentinel.arg, foo=sentinel.bar)
 
     def test_reset_does_not_call_hook(self):
         hook = Mock()
         post_commit_do(hook)
         post_commit_hooks.reset()
-        self.assertThat(hook, MockNotCalled())
+        hook.assert_not_called()
 
     def test_rejects_other_hook_types(self):
         self.assertRaises(AssertionError, post_commit_do, sentinel.hook)
@@ -1120,9 +1102,7 @@ class TestConnected(MAASTransactionServerTestCase):
 
         self.assertIsNotNone(connection.connection)
         with orm.connected():
-            self.assertThat(
-                connection.connection, Not(Is(preexisting_connection))
-            )
+            self.assertIsNot(connection.connection, preexisting_connection)
             self.assertIsNotNone(connection.connection)
 
         self.assertIsNot(connection.connection, preexisting_connection)
@@ -1147,8 +1127,8 @@ class TestWithConnection(MAASTransactionServerTestCase):
             return sentinel.result
 
         self.assertTrue(context.unused)
-        self.assertThat(
-            function(sentinel.arg, kwarg=sentinel.kwarg), Is(sentinel.result)
+        self.assertIs(
+            function(sentinel.arg, kwarg=sentinel.kwarg), sentinel.result
         )
         self.assertTrue(context.used)
 
@@ -1165,13 +1145,13 @@ class TestTransactional(MAASTransactionServerTestCase):
         # No transaction has been entered (what Django calls an atomic block),
         # and the connection has not yet been established.
         self.assertFalse(connection.in_atomic_block)
-        self.expectThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
 
         def check_inner(*args, **kwargs):
             # In here, the transaction (`atomic`) has been started but is not
             # over, and the connection to the database is open.
             self.assertTrue(connection.in_atomic_block)
-            self.expectThat(connection.connection, Not(Is(None)))
+            self.assertIsNotNone(connection.connection)
 
         function = Mock()
         function.__name__ = self.getUniqueString()
@@ -1183,14 +1163,12 @@ class TestTransactional(MAASTransactionServerTestCase):
 
         # `function` was called -- and therefore `check_inner` too --
         # and the arguments passed correctly.
-        self.assertThat(
-            function, MockCalledOnceWith(sentinel.arg, kwarg=sentinel.kwarg)
-        )
+        function.assert_called_once_with(sentinel.arg, kwarg=sentinel.kwarg)
 
         # After the decorated function has returned the transaction has
         # been exited, and the connection has been closed.
         self.assertFalse(connection.in_atomic_block)
-        self.expectThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
 
     def test_leaves_preexisting_connections_open(self):
         # Ensure there's a database connection to begin with.
@@ -1199,7 +1177,7 @@ class TestTransactional(MAASTransactionServerTestCase):
         # No transaction has been entered (what Django calls an atomic block),
         # but the connection has been established.
         self.assertFalse(connection.in_atomic_block)
-        self.expectThat(connection.connection, Not(Is(None)))
+        self.assertIsNotNone(connection.connection)
 
         # Call a function via the `transactional` decorator.
         decorated_function = orm.transactional(lambda: None)
@@ -1208,29 +1186,29 @@ class TestTransactional(MAASTransactionServerTestCase):
         # After the decorated function has returned the transaction has
         # been exited, but the preexisting connection remains open.
         self.assertFalse(connection.in_atomic_block)
-        self.expectThat(connection.connection, Not(Is(None)))
+        self.assertIsNotNone(connection.connection)
 
     def test_closes_connections_only_when_leaving_atomic_block(self):
         # Close the database connection to begin with.
         connection.close()
-        self.expectThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
 
         @orm.transactional
         def inner():
             # We're inside a `transactional` context here.
-            self.expectThat(connection.connection, Not(Is(None)))
+            self.assertIsNotNone(connection.connection)
             return "inner"
 
         @orm.transactional
         def outer():
             # We're inside a `transactional` context here too.
-            self.expectThat(connection.connection, Not(Is(None)))
+            self.assertIsNotNone(connection.connection)
             # Call `inner`, thus nesting `transactional` contexts.
             return "outer > " + inner()
 
         self.assertEqual("outer > inner", outer())
         # The connection has been closed.
-        self.expectThat(connection.connection, Is(None))
+        self.assertIsNone(connection.connection)
 
     def test_fires_post_commit_hooks_when_done(self):
         fire = self.patch(orm.post_commit_hooks, "fire")
@@ -1240,14 +1218,14 @@ class TestTransactional(MAASTransactionServerTestCase):
 
         decorated_function = orm.transactional(function)
         self.assertIs(sentinel.something, decorated_function())
-        self.assertThat(fire, MockCalledOnceWith())
+        fire.assert_called_once_with()
 
     def test_crashes_if_hooks_exist_before_entering_transaction(self):
         post_commit(lambda failure: None)
         decorated_function = orm.transactional(lambda: None)
         self.assertRaises(TransactionManagementError, decorated_function)
         # The hook list is cleared so that the exception is raised only once.
-        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+        self.assertCountEqual(post_commit_hooks.hooks, [])
 
     def test_creates_post_commit_hook_savepoint_on_inner_block(self):
         hooks = post_commit_hooks.hooks
@@ -1276,7 +1254,7 @@ class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
 
         self.assertRaises(OperationalError, decorated_function)
         expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))
+        function.assert_has_calls(expected_calls)
 
     def test_resets_post_commit_hooks_when_retrying(self):
         reset = self.patch(orm.post_commit_hooks, "reset")
@@ -1290,7 +1268,7 @@ class TestTransactionalRetries(SerializationFailureTestCase, NoSleepMixin):
         # reset() is called 9 times by retry_on_serialization_failure() then
         # once more by transactional().
         expected_reset_calls = [call()] * 10
-        self.assertThat(reset, MockCallsMatch(*expected_reset_calls))
+        reset.assert_has_calls(expected_reset_calls)
 
 
 class TestSavepoint(MAASTransactionServerTestCase):
@@ -1304,13 +1282,13 @@ class TestSavepoint(MAASTransactionServerTestCase):
     def test_creates_savepoint_for_transaction_and_post_commit_hooks(self):
         hooks = post_commit_hooks.hooks
         with transaction.atomic():
-            self.expectThat(connection.savepoint_ids, HasLength(0))
+            self.assertEqual(len(connection.savepoint_ids), 0)
             with savepoint():
                 # We're one savepoint in.
-                self.assertThat(connection.savepoint_ids, HasLength(1))
+                self.assertEqual(len(connection.savepoint_ids), 1)
                 # Post-commit hooks have been saved.
                 self.assertIsNot(post_commit_hooks.hooks, hooks)
-            self.expectThat(connection.savepoint_ids, HasLength(0))
+            self.assertEqual(len(connection.savepoint_ids), 0)
 
 
 class TestInTransaction(MAASTransactionServerTestCase):
@@ -1489,12 +1467,8 @@ class TestCountQueries(MAASServerTestCase):
         query_time = sum(
             float(query.get("time", 0)) for query in connection.queries
         )
-        self.assertThat(
-            mock_print,
-            MockCalledOnceWith(
-                "[QUERIES] query_func executed 1 queries in %s seconds"
-                % query_time
-            ),
+        mock_print.assert_called_once_with(
+            f"[QUERIES] query_func executed 1 queries in {query_time} seconds"
         )
 
     def test_resets_queries_between_calls(self):
@@ -1517,16 +1491,13 @@ class TestCountQueries(MAASServerTestCase):
         )
 
         # Print called twice.
-        self.assertThat(
-            mock_print,
-            MockCallsMatch(
+        mock_print.assert_has_calls(
+            (
                 call(
-                    "[QUERIES] query_func executed 1 queries in %s seconds"
-                    % query_time_one
+                    f"[QUERIES] query_func executed 1 queries in {query_time_one} seconds"
                 ),
                 call(
-                    "[QUERIES] query_func executed 1 queries in %s seconds"
-                    % query_time_two
+                    f"[QUERIES] query_func executed 1 queries in {query_time_two} seconds"
                 ),
             ),
         )
@@ -1545,9 +1516,8 @@ class TestCountQueries(MAASServerTestCase):
         )
 
         # Print called twice.
-        self.assertThat(
-            mock_print,
-            MockCallsMatch(
+        mock_print.assert_has_calls(
+            [
                 call(
                     "[QUERIES] query_func executed 1 queries in %s seconds"
                     % query_time
@@ -1555,5 +1525,5 @@ class TestCountQueries(MAASServerTestCase):
                 call("[QUERIES] === Start SQL Log: query_func ==="),
                 call("[QUERIES] %s" % connection.queries[0]["sql"]),
                 call("[QUERIES] === End SQL Log: query_func ==="),
-            ),
+            ]
         )

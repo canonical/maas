@@ -203,26 +203,24 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
 
 class TestDatabaseLockVariations(MAASServerTestCase):
     def test_plain_variation(self):
-        lock = dblocks.DatabaseLock(get_objid())
-        self.assertDocTestMatches(
-            """\
-            SELECT pg_advisory_lock(...)
-            --
-            SELECT pg_advisory_unlock(...)
-            """,
+        objid = get_objid()
+        lock = dblocks.DatabaseLock(objid)
+        self.assertRegex(
             capture_queries_while_holding_lock(lock),
+            rf"(?m)SELECT pg_advisory_lock\(\d+, {objid}\)\n"
+            "--\n"
+            rf"SELECT pg_advisory_unlock\(\d+, {objid}\)",
         )
 
     def test_try_variation(self):
-        lock = dblocks.DatabaseLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseLock(objid)
         self.assertEqual(lock, lock.TRY)
-        self.assertDocTestMatches(
-            """\
-            SELECT pg_try_advisory_lock(...)
-            --
-            SELECT pg_advisory_unlock(...)
-            """,
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.TRY),
+            rf"(?m)SELECT pg_try_advisory_lock\(\d+, {objid}\)\n"
+            "--\n"
+            rf"SELECT pg_advisory_unlock\(\d+, {objid}\)",
         )
 
     def test_shared_variation(self):

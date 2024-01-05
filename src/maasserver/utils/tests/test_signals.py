@@ -5,12 +5,6 @@
 import random
 from unittest.mock import call, Mock, sentinel
 
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    HasLength,
-    MatchesAll,
-)
 from twisted.python.reflect import namedObject
 
 from maasserver.models import Config
@@ -25,13 +19,6 @@ from maasserver.utils.signals import (
     connect_to_field_change,
     Signal,
     SignalsManager,
-)
-from maastesting.matchers import (
-    IsCallable,
-    MatchesPartialCall,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
 )
 
 django_signal_names = [
@@ -77,8 +64,8 @@ class TestConnectToFieldChange(MAASLegacyTransactionServerTestCase):
     def test_connect_to_field_change_returns_two_functions(self):
         callback = Mock()
         connect, disconnect = self.connect(callback, ["name1"])
-        self.assertThat(connect, IsCallable())
-        self.assertThat(disconnect, IsCallable())
+        self.assertTrue(callable(connect))
+        self.assertTrue(callable(disconnect))
 
     def test_returned_function_connect_and_disconnect(self):
         callback = Mock()
@@ -91,14 +78,14 @@ class TestConnectToFieldChange(MAASLegacyTransactionServerTestCase):
         obj.save()
         expected_one = call(obj, ("",), deleted=False)
         # The callback has been called once, for name1="one".
-        self.assertThat(callback, MockCallsMatch(expected_one))
+        callback.assert_has_calls((expected_one,))
 
         # Disconnect and `callback` is not called any more.
         disconnect()
         obj.name1 = "two"
         obj.save()
         # The callback has still only been called once.
-        self.assertThat(callback, MockCallsMatch(expected_one))
+        callback.assert_has_calls((expected_one,))
 
         # Reconnect and `callback` is called again.
         connect()
@@ -108,7 +95,7 @@ class TestConnectToFieldChange(MAASLegacyTransactionServerTestCase):
         # The callback has been called twice, once for the change to "one" and
         # then for the change to "three". The delta is from "one" to "three"
         # because no snapshots were taken when disconnected.
-        self.assertThat(callback, MockCallsMatch(expected_one, expected_three))
+        callback.assert_has_calls((expected_one, expected_three))
 
     def test_connect_to_field_change_calls_callback_for_each_save(self):
         callback = Mock()
@@ -231,14 +218,11 @@ class TestSignalsManager(MAASServerTestCase):
             {Signal(sentinel.connect, sentinel.disconnect)},
             manager._signals,
         )
-        self.assertThat(
-            connect_to_field_change,
-            MockCalledOnceWith(
-                sentinel.callback,
-                sentinel.model,
-                sentinel.fields,
-                sentinel.delete,
-            ),
+        connect_to_field_change.assert_called_once_with(
+            sentinel.callback,
+            sentinel.model,
+            sentinel.fields,
+            sentinel.delete,
         )
 
     def test_can_watch_config(self):
@@ -250,20 +234,19 @@ class TestSignalsManager(MAASServerTestCase):
         manager = SignalsManager()
         manager.watch_config(callback, config_name)
 
-        self.assertThat(manager._signals, HasLength(1))
+        self.assertEqual(len(manager._signals), 1)
         [signal] = manager._signals
-        self.assertThat(
-            signal.connect,
-            MatchesPartialCall(
-                Config.objects.config_changed_connect, config_name, callback
-            ),
+        self.assertEqual(
+            signal.connect.func, Config.objects.config_changed_connect
         )
-        self.assertThat(
-            signal.disconnect,
-            MatchesPartialCall(
-                Config.objects.config_changed_disconnect, config_name, callback
-            ),
+        self.assertEqual(signal.connect.args, (config_name, callback))
+        self.assertEqual(signal.connect.keywords, {})
+
+        self.assertEqual(
+            signal.disconnect.func, Config.objects.config_changed_disconnect
         )
+        self.assertEqual(signal.disconnect.args, (config_name, callback))
+        self.assertEqual(signal.disconnect.keywords, {})
 
     def test_can_watch_any_signal(self):
         django_signal = pick_django_signal()
@@ -277,26 +260,26 @@ class TestSignalsManager(MAASServerTestCase):
             dispatch_uid=sentinel.dispatch_uid,
         )
 
-        self.assertThat(manager._signals, HasLength(1))
+        self.assertEqual(len(manager._signals), 1)
         [signal] = manager._signals
-        self.assertThat(
-            signal.connect,
-            MatchesPartialCall(
-                django_signal.connect,
-                sentinel.callback,
-                sender=sentinel.sender,
-                weak=sentinel.weak,
-                dispatch_uid=sentinel.dispatch_uid,
-            ),
+        self.assertEqual(signal.connect.func, django_signal.connect)
+        self.assertEqual(signal.connect.args, (sentinel.callback,))
+        self.assertEqual(
+            signal.connect.keywords,
+            {
+                "sender": sentinel.sender,
+                "weak": sentinel.weak,
+                "dispatch_uid": sentinel.dispatch_uid,
+            },
         )
-        self.assertThat(
-            signal.disconnect,
-            MatchesPartialCall(
-                django_signal.disconnect,
-                sentinel.callback,
-                sender=sentinel.sender,
-                dispatch_uid=sentinel.dispatch_uid,
-            ),
+        self.assertEqual(signal.disconnect.func, django_signal.disconnect)
+        self.assertEqual(signal.disconnect.args, (sentinel.callback,))
+        self.assertEqual(
+            signal.disconnect.keywords,
+            {
+                "sender": sentinel.sender,
+                "dispatch_uid": sentinel.dispatch_uid,
+            },
         )
 
     def make_Signal(self):
@@ -309,33 +292,35 @@ class TestSignalsManager(MAASServerTestCase):
         self.assertEqual({signal}, manager._signals)
         # The manager is in its "new" state, neither enabled nor disabled, so
         # the signal is not asked to connect or disconnect yet.
-        self.assertThat(signal.connect, MockNotCalled())
-        self.assertThat(signal.disconnect, MockNotCalled())
+        signal.connect.assert_not_called()
+        signal.disconnect.assert_not_called()
+        signal.connect.assert_not_called()
+        signal.disconnect.assert_not_called()
 
     def test_add_connects_signal_if_manager_is_enabled(self):
         manager = SignalsManager()
         manager.enable()
         signal = self.make_Signal()
         manager.add(signal)
-        self.assertThat(signal.connect, MockCalledOnceWith())
-        self.assertThat(signal.disconnect, MockNotCalled())
+        signal.connect.assert_called_once_with()
+        signal.disconnect.assert_not_called()
 
     def test_add_disconnects_signal_if_manager_is_disabled(self):
         manager = SignalsManager()
         manager.disable()
         signal = self.make_Signal()
         manager.add(signal)
-        self.assertThat(signal.connect, MockNotCalled())
-        self.assertThat(signal.disconnect, MockCalledOnceWith())
+        signal.connect.assert_not_called()
+        signal.disconnect.assert_called_once_with()
 
     def test_remove_removes_the_signal(self):
         manager = SignalsManager()
         signal = self.make_Signal()
         manager.add(signal)
         manager.remove(signal)
-        self.assertThat(manager._signals, HasLength(0))
-        self.assertThat(signal.connect, MockNotCalled())
-        self.assertThat(signal.disconnect, MockNotCalled())
+        self.assertEqual(len(manager._signals), 0)
+        signal.connect.assert_not_called()
+        signal.disconnect.assert_not_called()
 
     def test_enable_enables_all_signals(self):
         manager = SignalsManager()
@@ -343,19 +328,9 @@ class TestSignalsManager(MAASServerTestCase):
         for signal in signals:
             manager.add(signal)
         manager.enable()
-        self.assertThat(
-            signals,
-            AllMatch(
-                MatchesAll(
-                    AfterPreprocessing(
-                        (lambda signal: signal.connect), MockCalledOnceWith()
-                    ),
-                    AfterPreprocessing(
-                        (lambda signal: signal.disconnect), MockNotCalled()
-                    ),
-                )
-            ),
-        )
+        for signal in signals:
+            signal.connect.assert_called_once_with()
+            signal.disconnect.assert_not_called()
 
     def test_disable_disables_all_signals(self):
         manager = SignalsManager()
@@ -363,17 +338,6 @@ class TestSignalsManager(MAASServerTestCase):
         for signal in signals:
             manager.add(signal)
         manager.disable()
-        self.assertThat(
-            signals,
-            AllMatch(
-                MatchesAll(
-                    AfterPreprocessing(
-                        (lambda signal: signal.connect), MockNotCalled()
-                    ),
-                    AfterPreprocessing(
-                        (lambda signal: signal.disconnect),
-                        MockCalledOnceWith(),
-                    ),
-                )
-            ),
-        )
+        for signal in signals:
+            signal.connect.assert_not_called()
+            signal.disconnect.assert_called_once_with()

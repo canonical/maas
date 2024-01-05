@@ -3,9 +3,6 @@
 
 """Tests for forms helpers."""
 
-
-from testtools.matchers import ContainsAll
-
 from maasserver.testing.factory import factory
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.testcase import MAASTestCase
@@ -18,6 +15,5 @@ class TestComposeInvalidChoiceText(MAASTestCase):
             for _ in range(2)
         ]
         msg = compose_invalid_choice_text(factory.make_name(), choices)
-        self.assertThat(
-            msg, ContainsAll(["'%s'" % key for key, val in choices])
-        )
+        for key, _ in choices:
+            self.assertIn(f"'{key}'", msg)

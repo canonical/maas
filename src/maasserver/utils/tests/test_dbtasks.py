@@ -8,15 +8,6 @@ import random
 import threading
 from unittest.mock import sentinel
 
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesAny,
-    MatchesStructure,
-    Not,
-)
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -50,17 +41,9 @@ class TestDatabaseTaskService(MAASTestCase):
 
     def test_init(self):
         service = DatabaseTasksService()
-        self.assertThat(
-            service,
-            MatchesStructure(
-                # The queue does not permit anything to go in it.
-                queue=MatchesAll(
-                    IsInstance(DeferredQueue),
-                    MatchesStructure.byEquality(size=0, backlog=1),
-                    first_only=True,
-                )
-            ),
-        )
+        self.assertIsInstance(service.queue, DeferredQueue)
+        self.assertEqual(service.queue.size, 0)
+        self.assertEqual(service.queue.backlog, 1)
 
     def test_cannot_add_task_to_unstarted_service(self):
         service = DatabaseTasksService()
@@ -76,16 +59,8 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            self.assertThat(
-                service,
-                MatchesStructure(
-                    queue=MatchesAll(
-                        IsInstance(DeferredQueue),
-                        MatchesStructure.byEquality(backlog=1),
-                        first_only=True,
-                    )
-                ),
-            )
+            self.assertIsInstance(service.queue, DeferredQueue)
+            self.assertEqual(service.queue.backlog, 1)
         finally:
             service.stopService()
 
@@ -98,8 +73,8 @@ class TestDatabaseTaskService(MAASTestCase):
         try:
             ident_from_task = service.deferTask(get_thread_ident).wait(TIMEOUT)
             ident_from_here = get_thread_ident()
-            self.expectThat(ident_from_task, IsInstance(int, int))
-            self.expectThat(ident_from_task, Not(Equals(ident_from_here)))
+            self.assertIsInstance(ident_from_task, int)
+            self.assertNotEqual(ident_from_task, ident_from_here)
         finally:
             service.stopService()
 
@@ -152,17 +127,13 @@ class TestDatabaseTaskService(MAASTestCase):
                 service.addTask(event.wait)
             # The queue has `count` tasks (or `count - 1` tasks; the first may
             # have already been pulled off the queue) still pending.
-            self.assertThat(
-                queue.pending,
-                MatchesAny(HasLength(count), HasLength(count - 1)),
-            )
+            self.assertIn(len(queue.pending), (count, count - 1))
         finally:
             event.set()
             service.stopService()
         # The queue is empty and nothing is waiting.
-        self.assertThat(
-            queue, MatchesStructure.byEquality(waiting=[], pending=[])
-        )
+        self.assertEqual(queue.waiting, [])
+        self.assertEqual(queue.pending, [])
 
     @wait_for_reactor
     @inlineCallbacks
@@ -272,14 +243,9 @@ class TestDatabaseTaskService(MAASTestCase):
         finally:
             service.stopService()
 
-        self.assertDocTestMatches(
-            """\
-            ...Unhandled failure in database task.
-            Traceback (most recent call last):
-            ...
-            builtins.ZeroDivisionError: ...
-            """,
+        self.assertRegex(
             logger.output,
+            r"(?s)Unhandled failure in database task\..*Traceback \(most recent call last\):.*builtins.ZeroDivision.*",
         )
 
 

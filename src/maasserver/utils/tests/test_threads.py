@@ -8,7 +8,6 @@ import random
 from unittest.mock import sentinel
 
 from django.db import connection
-from testtools.matchers import Is
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredSemaphore, inlineCallbacks
 
@@ -27,9 +26,7 @@ class TestMakeFunctions(MAASTestCase):
     def test_make_default_pool_creates_disconnected_pool(self):
         pool = threads.make_default_pool()
         self.assertIsInstance(pool, ThreadPool)
-        self.assertThat(
-            pool.context.contextFactory, Is(orm.TotallyDisconnected)
-        )
+        self.assertIs(pool.context.contextFactory, orm.TotallyDisconnected)
         self.assertEqual(threads.max_threads_for_default_pool, pool.max)
         self.assertEqual(0, pool.min)
 
@@ -72,21 +69,19 @@ class TestInstallFunctions(MAASTestCase):
 
     def test_install_default_pool_will_not_work_now(self):
         error = self.assertRaises(AssertionError, threads.install_default_pool)
-        self.assertDocTestMatches("Too late; ...", str(error))
+        self.assertIn("Too late; ", str(error))
 
     def test_default_pool_is_disconnected_pool(self):
         pool = reactor.threadpool
         self.assertIsInstance(pool, ThreadPool)
-        self.assertThat(
-            pool.context.contextFactory, Is(orm.TotallyDisconnected)
-        )
+        self.assertIs(pool.context.contextFactory, orm.TotallyDisconnected)
         self.assertEqual(0, pool.min)
 
     def test_install_database_pool_will_not_work_now(self):
         error = self.assertRaises(
             AssertionError, threads.install_database_pool
         )
-        self.assertDocTestMatches("Too late; ...", str(error))
+        self.assertIn("Too late; ", str(error))
 
     def test_database_pool_is_connected_unpool(self):
         pool = reactor.threadpoolForDatabase

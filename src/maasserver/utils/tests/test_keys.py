@@ -9,7 +9,6 @@ import http
 from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 import requests as requests_module
-from testtools.matchers import Equals
 
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import Config
@@ -27,7 +26,6 @@ from maasserver.utils.keys import (
     get_proxies,
     ImportSSHKeysError,
 )
-from maastesting.matchers import MockCalledOnceWith
 
 
 class TestKeys(MAASServerTestCase):
@@ -58,7 +56,7 @@ class TestKeys(MAASServerTestCase):
         else:
             mock_get_keys = self.patch(keys_module, "get_github_ssh_keys")
         get_protocol_keys(protocol, auth_id)
-        self.assertThat(mock_get_keys, MockCalledOnceWith(auth_id))
+        mock_get_keys.assert_called_once_with(auth_id)
 
     @settings(deadline=None)
     @given(sampled_from([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
@@ -82,10 +80,8 @@ class TestKeys(MAASServerTestCase):
         mock_requests.return_value.text = key_string
         keys = get_launchpad_ssh_keys(auth_id)
         url = "https://launchpad.net/~%s/+sshkeys" % auth_id
-        self.expectThat(mock_requests, MockCalledOnceWith(url, proxies=None))
-        self.expectThat(
-            keys, Equals([key for key in key_string.splitlines() if key])
-        )
+        mock_requests.assert_called_once_with(url, proxies=None)
+        self.assertEqual(keys, [key for key in key_string.splitlines() if key])
 
     @settings(deadline=None)
     @given(sampled_from([http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE]))
@@ -102,9 +98,9 @@ class TestKeys(MAASServerTestCase):
         mock_requests.return_value.text = key_string
         keys = get_github_ssh_keys(auth_id)
         url = "https://api.github.com/users/%s/keys" % auth_id
-        self.expectThat(mock_requests, MockCalledOnceWith(url, proxies=None))
-        self.expectThat(
-            keys, Equals([data["key"] for data in key_string if "key" in data])
+        mock_requests.assert_called_once_with(url, proxies=None)
+        self.assertEqual(
+            keys, [data["key"] for data in key_string if "key" in data]
         )
 
     @settings(deadline=None)

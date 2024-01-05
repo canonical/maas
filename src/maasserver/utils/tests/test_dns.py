@@ -5,7 +5,6 @@ from math import pow
 
 from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
-from testtools.matchers import Equals, HasLength
 
 from maasserver.utils.dns import (
     get_iface_name_based_hostname,
@@ -117,7 +116,7 @@ class TestHostnameValidator(MAASTestCase):
         # to be built up from multiple labels.
         ten_chars = ("a" * 9) + "."
         hostname = ten_chars * 25 + ("b" * 5)
-        self.assertThat(hostname, HasLength(255))
+        self.assertEqual(len(hostname), 255)
         return hostname
 
     def assertAccepts(self, hostname):
@@ -221,20 +220,16 @@ class TestHostnameValidator(MAASTestCase):
 
 class TestIpBasedHostnameGenerator(MAASTestCase):
     def test_ipv4_numeric(self):
-        self.expectThat(get_ip_based_hostname(2130706433), Equals("127-0-0-1"))
-        self.expectThat(
+        self.assertEqual(get_ip_based_hostname(2130706433), "127-0-0-1")
+        self.assertEqual(
             get_ip_based_hostname(int(pow(2, 32) - 1)),
-            Equals("255-255-255-255"),
+            "255-255-255-255",
         )
 
     def test_ipv4_text(self):
         ipv4 = factory.make_ipv4_address()
-        self.expectThat(
-            get_ip_based_hostname(ipv4), Equals(ipv4.replace(".", "-"))
-        )
-        self.expectThat(
-            get_ip_based_hostname("172.16.0.1"), Equals("172-16-0-1")
-        )
+        self.assertEqual(get_ip_based_hostname(ipv4), ipv4.replace(".", "-"))
+        self.assertEqual(get_ip_based_hostname("172.16.0.1"), "172-16-0-1")
 
     def test_ipv6_text(self):
         self.assertEqual(

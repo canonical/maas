@@ -18,7 +18,6 @@ from django.urls import get_resolver
 from fixtures import FakeLogger
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
-from testtools.matchers import Contains, Equals, HasLength, Is, IsInstance, Not
 from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
 from twisted.web import wsgi
@@ -39,7 +38,6 @@ from maasserver.utils.orm import (
     validate_in_transaction,
 )
 from maasserver.utils.views import HttpResponseConflict
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 
@@ -181,28 +179,22 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
     def test_init_defaults(self):
         handler = views.WebApplicationHandler()
-        self.expectThat(
-            handler._WebApplicationHandler__retry_attempts, Equals(10)
-        )
-        self.expectThat(
-            handler._WebApplicationHandler__retry_timeout, Equals(90)
-        )
-        self.expectThat(
-            handler._WebApplicationHandler__retry, IsInstance(WeakSet)
-        )
-        self.expectThat(handler._WebApplicationHandler__retry, HasLength(0))
+        self.assertEqual(handler._WebApplicationHandler__retry_attempts, 10)
+        self.assertEqual(handler._WebApplicationHandler__retry_timeout, 90)
+        self.assertIsInstance(handler._WebApplicationHandler__retry, WeakSet)
+        self.assertEqual(len(handler._WebApplicationHandler__retry), 0)
 
     def test_init_attempts_can_be_set(self):
         attempts = randint(1, 100)
         handler = views.WebApplicationHandler(attempts)
-        self.expectThat(
-            handler._WebApplicationHandler__retry_attempts, Equals(attempts)
+        self.assertEqual(
+            handler._WebApplicationHandler__retry_attempts, attempts
         )
 
     def test_init_timeout_can_be_set(self):
         handler = views.WebApplicationHandler(timeout=sentinel.timeout)
-        self.expectThat(
-            handler._WebApplicationHandler__retry_timeout, Is(sentinel.timeout)
+        self.assertIs(
+            handler._WebApplicationHandler__retry_timeout, sentinel.timeout
         )
 
     def test_handle_uncaught_exception_notes_serialization_failure(self):
@@ -217,11 +209,9 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             reraise=False,
         )
         # HTTP 409 is returned...
-        self.expectThat(response.status_code, Equals(http.client.CONFLICT))
+        self.assertEqual(response.status_code, http.client.CONFLICT)
         # ... and the response is recorded as needing a retry.
-        self.expectThat(
-            handler._WebApplicationHandler__retry, Contains(response)
-        )
+        self.assertIn(response, handler._WebApplicationHandler__retry)
 
     def test_handle_uncaught_exception_does_not_note_other_failure(self):
         handler = views.WebApplicationHandler()
@@ -236,13 +226,11 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             reraise=False,
         )
         # HTTP 500 is returned...
-        self.expectThat(
-            response.status_code, Equals(http.client.INTERNAL_SERVER_ERROR)
+        self.assertEqual(
+            response.status_code, http.client.INTERNAL_SERVER_ERROR
         )
         # ... but the response is NOT recorded as needing a retry.
-        self.expectThat(
-            handler._WebApplicationHandler__retry, Not(Contains(response))
-        )
+        self.assertNotIn(response, handler._WebApplicationHandler__retry)
 
     def test_handle_uncaught_exception_raises_error_on_api_exception(self):
         handler = views.WebApplicationHandler()
@@ -278,7 +266,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
-        self.assertThat(get_response, MockCalledOnceWith(request))
+        get_response.assert_called_once_with(request)
         self.assertIsInstance(response, HttpResponseConflict)
 
     def test_get_response_catches_deadlock_failures(self):
@@ -290,7 +278,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
-        self.assertThat(get_response, MockCalledOnceWith(request))
+        get_response.assert_called_once_with(request)
         self.assertIsInstance(response, HttpResponseConflict)
 
     def test_get_response_sends_signal_on_serialization_failures(self):
@@ -308,11 +296,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.assertThat(
-            send_request_exception,
-            MockCalledOnceWith(
-                sender=views.WebApplicationHandler, request=request
-            ),
+        send_request_exception.assert_called_once_with(
+            sender=views.WebApplicationHandler, request=request
         )
 
     def test_get_response_sends_signal_on_deadlock_failures(self):
@@ -328,11 +313,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.assertThat(
-            send_request_exception,
-            MockCalledOnceWith(
-                sender=views.WebApplicationHandler, request=request
-            ),
+        send_request_exception.assert_called_once_with(
+            sender=views.WebApplicationHandler, request=request
         )
 
     def test_get_response_tries_only_once(self):
@@ -345,7 +327,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         observed_response = handler.get_response(request)
 
-        self.assertThat(get_response, MockCalledOnceWith(request))
+        get_response.assert_called_once_with(request)
         self.assertIs(observed_response, response)
 
     def test_get_response_tries_multiple_times(self):
@@ -377,16 +359,14 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
-        self.assertThat(
-            get_response,
-            MockCallsMatch(call(request), call(request), call(request)),
+        get_response.assert_has_calls(
+            (call(request), call(request), call(request))
         )
         self.assertIsInstance(response, HttpResponseConflict)
-        self.expectThat(response["Retry-After"], Equals("5"))
-        self.expectThat(response.status_code, Equals(http.client.CONFLICT))
-        self.expectThat(
-            response.reason_phrase,
-            Equals(http.client.responses[http.client.CONFLICT]),
+        self.assertEqual(response["Retry-After"], "5")
+        self.assertEqual(response.status_code, http.client.CONFLICT)
+        self.assertEqual(
+            response.reason_phrase, http.client.responses[http.client.CONFLICT]
         )
 
     def test_get_response_prepare_retry_context_before_each_try(self):
@@ -421,19 +401,17 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         handler = views.WebApplicationHandler(3)
         handler.get_response(request)
 
-        self.assertThat(
+        self.assertEqual(
             calls,
-            Equals(
-                [
-                    "get_response",  # 1st attempt.
-                    "context#1:enter",  # Retry requested, enter 1st new context.
-                    "get_response",  # 2nd attempt.
-                    "context#2:enter",  # Retry requested, enter 2nd new context.
-                    "get_response",  # 3rd attempt, and last.
-                    "context#2:exit",  # Exit 2nd context.
-                    "context#1:exit",  # Exit 1st context.
-                ]
-            ),
+            [
+                "get_response",  # 1st attempt.
+                "context#1:enter",  # Retry requested, enter 1st new context.
+                "get_response",  # 2nd attempt.
+                "context#2:enter",  # Retry requested, enter 2nd new context.
+                "get_response",  # 3rd attempt, and last.
+                "context#2:exit",  # Exit 2nd context.
+                "context#1:exit",  # Exit 1st context.
+            ],
         )
 
     def test_get_response_logs_retry_and_resets_request(self):
@@ -505,7 +483,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.assertThat(get_response, MockCalledOnceWith(request))
+        get_response.assert_called_once_with(request)
 
     def test_get_response_is_in_retry_context_in_transaction(self):
         handler = views.WebApplicationHandler(2)
@@ -522,7 +500,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.assertFalse(retry_context.active)
         handler.get_response(request)
         self.assertFalse(retry_context.active)
-        self.assertThat(get_response, MockCalledOnceWith(request))
+        get_response.assert_called_once_with(request)
 
     def test_get_response_restores_files_across_requests(self):
         handler = views.WebApplicationHandler(3)
@@ -611,8 +589,8 @@ class TestWebApplicationHandlerAtomicViews(MAASServerTestCase):
 
         def view(*args, **kwargs):
             # We're one more savepoint in.
-            self.assertThat(
-                connection.savepoint_ids, HasLength(savepoint_level + 1)
+            self.assertEqual(
+                len(connection.savepoint_ids), savepoint_level + 1
             )
             # Post-commit hooks have been saved.
             self.assertIsNot(post_commit_hooks.hooks, hooks)

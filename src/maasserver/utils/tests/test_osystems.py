@@ -45,7 +45,6 @@ from maasserver.utils.osystems import (
     validate_min_hwe_kernel,
     validate_osystem_and_distro_series,
 )
-from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 
 
@@ -968,10 +967,8 @@ class TestGetWorkingKernel(MAASServerTestCase):
             factory.make_name("osystem"),
             factory.make_name("distro"),
         )
-        self.assertThat(mock_get_config, MockAnyCall("commissioning_osystem"))
-        self.assertThat(
-            mock_get_config, MockAnyCall("commissioning_distro_series")
-        )
+        mock_get_config.assert_any_call("commissioning_osystem")
+        mock_get_config.assert_any_call("commissioning_distro_series")
         self.assertEqual("hwe-v", kernel)
 
     def test_get_working_kernel_sets_hwe_kern_to_min_hwe_kern_for_edge(self):

@@ -8,7 +8,6 @@ from urllib.parse import urlencode, urljoin
 from django.http import HttpRequest
 from django.test.client import RequestFactory
 from django.urls import reverse
-from testtools.matchers import Contains, Not
 
 from maasserver.models import Config
 from maasserver.testing.config import RegionConfigurationFixture
@@ -25,7 +24,6 @@ from maasserver.utils import (
     strip_domain,
     synchronised,
 )
-from maastesting.matchers import IsNonEmptyString
 from maastesting.testcase import MAASTestCase
 
 
@@ -248,8 +246,10 @@ class TestGetMAASUserAgent(MAASServerTestCase):
         user_agent = get_maas_user_agent()
         uuid = Config.objects.get_config("uuid")
         self.assertIsNone(uuid)
-        self.assertThat(user_agent, IsNonEmptyString)
-        self.assertThat(user_agent, Not(Contains(uuid)))
+
+        self.assertNotIn(str(uuid), user_agent)
+        self.assertFalse(user_agent.isspace())
+        self.assertGreater(len(user_agent), 1)
 
 
 class TestGetHostWithoutPort(MAASTestCase):
