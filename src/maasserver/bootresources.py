@@ -1497,13 +1497,13 @@ def export_images_from_db(region: RegionController):
                     shutil.copyfileobj(sfd, dfd)
                     oids_to_delete.add(file.largefile.content.oid)
 
-                if (
-                    file.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
-                    and file.bootloader_type
-                ):
-                    arch = file.architecture.split("/")[0]
-                    target = f"{BOOTLOADERS_DIR}/{file.bootloader_type}/{arch}"
-                    lfile.extract_file(target)
+            if (
+                file.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+                and file.bootloader_type
+            ):
+                arch = file.architecture.split("/")[0]
+                target = f"{BOOTLOADERS_DIR}/{file.bootloader_type}/{arch}"
+                lfile.extract_file(target)
 
             set_sync_status()
 
@@ -1558,4 +1558,7 @@ def initialize_image_storage(region: RegionController):
         maaslog.warning(
             f"removing unexpected {file} file from the image storage"
         )
-        file.unlink()
+        if file.is_file():
+            file.unlink()
+        elif file.is_dir():
+            shutil.rmtree(file)

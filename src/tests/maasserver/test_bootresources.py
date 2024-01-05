@@ -238,21 +238,66 @@ class TestExportImagesFromDB:
             "bootx64.efi",
         }
 
+    def test_booloaders_export_already_exist(
+        self, controller, tmpdir, image_store_dir, factory
+    ):
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name="grub-efi/uefi",
+            architecture="amd64/generic",
+            bootloader_type="uefi",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource=resource,
+            version="20230901",
+            label="stable",
+        )
+        tarball = Path(
+            factory.make_tarball(
+                tmpdir,
+                {
+                    "grubx64.efi": b"grub content",
+                    "bootx64.efi": b"boot content",
+                },
+            )
+        )
+        rfile = self.make_boot_resource_file_with_content_largefile(
+            factory,
+            resource_set=resource_set,
+            filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
+            filename="grub2-signed.tar.xz",
+            content=tarball.read_bytes(),
+        )
+        tarball.rename(rfile.local_file().path)
+        export_images_from_db(controller)
+        bootloader_dir = image_store_dir / "bootloaders/uefi/amd64"
+        assert list_files(bootloader_dir) == {
+            "grubx64.efi",
+            "bootx64.efi",
+        }
+
 
 @pytest.mark.usefixtures("maasdb")
 class TestInitialiseImageStorate:
-    def test_empty(self, controller, image_store_dir):
+    def test_empty(self, controller, image_store_dir: Path):
         initialize_image_storage(controller)
         assert list_files(image_store_dir) == {"bootloaders"}
 
-    def test_remove_extra_files(self, controller, image_store_dir):
+    def test_remove_extra_files(self, controller, image_store_dir: Path):
         extra_file = image_store_dir / "abcde"
         extra_file.write_text("some content")
+        extra_dir = image_store_dir / "somedir"
+        extra_dir.mkdir(parents=True)
+        extra_other_file = extra_dir / "somefile"
+        extra_other_file.write_text("some content")
 
         initialize_image_storage(controller)
         assert not extra_file.exists()
+        assert not extra_dir.exists()
 
-    def test_missing_local_files(self, controller, image_store_dir, factory):
+    def test_missing_local_files(
+        self, controller, image_store_dir: Path, factory
+    ):
         resource = factory.make_usable_boot_resource()
         other = factory.make_usable_boot_resource()
         rset = resource.sets.first()
