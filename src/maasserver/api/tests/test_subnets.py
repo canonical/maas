@@ -499,6 +499,63 @@ class TestSubnetAPI(APITestCase.ForUser):
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
+    def test_update_bool_type_using_integers(self):
+        self.become_admin()
+        subnet = factory.make_Subnet()
+        uri = get_subnet_uri(subnet)
+
+        response_content = json.loads(
+            self.client.get(uri).content.decode("utf-8")
+        )
+        initial_state_allow_dns = response_content["allow_dns"]
+        initial_state_allow_proxy = response_content["allow_proxy"]
+
+        allow_dns_str_0 = json.loads(
+            self.client.put(uri, {"allow_dns": "0"}).content.decode("utf-8")
+        )["allow_dns"]
+        self.assertEqual(allow_dns_str_0, False)
+        allow_dns_str_1 = json.loads(
+            self.client.put(uri, {"allow_dns": "1"}).content.decode("utf-8")
+        )["allow_dns"]
+        self.assertEqual(allow_dns_str_1, True)
+        allow_dns_int_0 = json.loads(
+            self.client.put(uri, {"allow_dns": 0}).content.decode("utf-8")
+        )["allow_dns"]
+        self.assertEqual(allow_dns_int_0, False)
+        allow_dns_int_1 = json.loads(
+            self.client.put(uri, {"allow_dns": 1}).content.decode("utf-8")
+        )["allow_dns"]
+        self.assertEqual(allow_dns_int_1, True)
+        final_state_allow_dns = json.loads(
+            self.client.put(
+                uri, {"allow_dns": initial_state_allow_dns}
+            ).content.decode("utf-8")
+        )["allow_dns"]
+        self.assertEqual(initial_state_allow_dns, final_state_allow_dns)
+
+        allow_proxy_str_0 = json.loads(
+            self.client.put(uri, {"allow_proxy": "0"}).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_str_0, False)
+        allow_proxy_str_1 = json.loads(
+            self.client.put(uri, {"allow_proxy": "1"}).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_str_1, True)
+        allow_proxy_int_0 = json.loads(
+            self.client.put(uri, {"allow_proxy": 0}).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_int_0, False)
+        allow_proxy_int_1 = json.loads(
+            self.client.put(uri, {"allow_proxy": 1}).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_int_1, True)
+        final_state_allow_proxy = json.loads(
+            self.client.put(
+                uri, {"allow_proxy": initial_state_allow_proxy}
+            ).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(initial_state_allow_proxy, final_state_allow_proxy)
+
     def test_delete_deletes_subnet(self):
         self.become_admin()
         subnet = factory.make_Subnet()

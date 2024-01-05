@@ -91,11 +91,11 @@ class SubnetsHandler(OperationsHandler):
         - ``0`` Disabled: No reverse zone is created.
         - ``1`` Enabled: Generate reverse zone.
         - ``2`` RFC2317: Extends '1' to create the necessary parent zone with
-          the appropriate CNAME resource records for the network, if the the
+          the appropriate CNAME resource records for the network, if the
           network is small enough to require the support described in RFC2317.
 
         @param (int) "allow_dns" [required=false] Configure MAAS DNS to allow
-        DNS resolution from this subnet. '0' == False,'1' == True.
+        DNS resolution from this subnet. '0' == False, '1' == True.
 
         @param (int) "allow_proxy" [required=false] Configure maas-proxy to
         allow requests from this subnet. '0' == False, '1' == True.
@@ -215,11 +215,11 @@ class SubnetHandler(OperationsHandler):
         - ``0`` Disabled: No reverse zone is created.
         - ``1`` Enabled: Generate reverse zone.
         - ``2`` RFC2317: Extends '1' to create the necessary parent zone with
-          the appropriate CNAME resource records for the network, if the the
+          the appropriate CNAME resource records for the network, if the
           network is small enough to require the support described in RFC2317.
 
         @param (int) "allow_dns" [required=false] Configure MAAS DNS to allow
-        DNS resolution from this subnet. '0' == False,'1' == True.
+        DNS resolution from this subnet. '0' == False, '1' == True.
 
         @param (int) "allow_proxy" [required=false] Configure maas-proxy to
         allow requests from this subnet. '0' == False, '1' == True.

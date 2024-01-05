@@ -61,7 +61,7 @@ class SubnetForm(MAASModelForm):
         super().__init__(*args, **kwargs)
         self.fields["name"].required = False
 
-    def clean(self):
+    def clean(self) -> dict:
         cleaned_data = super().clean()
         if "space" in self.data:
             set_form_error(
@@ -71,11 +71,9 @@ class SubnetForm(MAASModelForm):
                 "underlying VLAN.",
             )
         # The default value for 'allow_dns' is True.
-        if "allow_dns" not in self.data:
-            cleaned_data["allow_dns"] = True
+        cleaned_data["allow_dns"] = self.data.get("allow_dns", True)
         # The default value for 'allow_proxy' is True.
-        if "allow_proxy" not in self.data:
-            cleaned_data["allow_proxy"] = True
+        cleaned_data["allow_proxy"] = self.data.get("allow_proxy", True)
         # The default value for 'managed' is True.
         if "managed" not in self.data:
             cleaned_data["managed"] = True
@@ -102,7 +100,7 @@ class SubnetForm(MAASModelForm):
             raise ValidationError("Required format: <network>/<prefixlen>.")
         return data
 
-    def _clean_name(self, cleaned_data):
+    def _clean_name(self, cleaned_data: dict) -> dict:
         name = cleaned_data.get("name", None)
         instance_name_and_cidr_match = (
             self.instance.id is not None
@@ -117,7 +115,7 @@ class SubnetForm(MAASModelForm):
             cleaned_data["name"] = cleaned_data["cidr"]
         return cleaned_data
 
-    def _clean_vlan(self, cleaned_data):
+    def _clean_vlan(self, cleaned_data: dict) -> dict:
         fabric = cleaned_data.get("fabric", None)
         vlan = cleaned_data.get("vlan", None)
         vid = cleaned_data.get("vid", None)
@@ -163,7 +161,7 @@ class SubnetForm(MAASModelForm):
                 )
         return cleaned_data
 
-    def _clean_dns_servers(self, cleaned_data):
+    def _clean_dns_servers(self, cleaned_data: dict) -> dict:
         dns_servers = cleaned_data.get("dns_servers", None)
         if dns_servers is None:
             return cleaned_data
@@ -176,7 +174,7 @@ class SubnetForm(MAASModelForm):
         cleaned_data["dns_servers"] = clean_dns_servers
         return cleaned_data
 
-    def _clean_disabled_boot_architectures(self, cleaned_data):
+    def _clean_disabled_boot_architectures(self, cleaned_data: dict) -> dict:
         disabled_boot_architectures = cleaned_data.get(
             "disabled_boot_architectures"
         )
