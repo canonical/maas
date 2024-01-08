@@ -6141,6 +6141,11 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             {
                 "success_count": 2,
                 "failed_system_ids": [deployed_zone1_machine.system_id],
+                "failure_details": {
+                    "acquire action is not available for this node.": [
+                        deployed_zone1_machine.system_id
+                    ]
+                },
             },
         )
         self.assertIn(
