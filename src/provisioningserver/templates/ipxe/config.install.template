@@ -1,5 +1,5 @@
 #!ipxe
 kernel {{kernel_params | fs_host}}{{kernel_params | kernel_path}}
-imgargs {{kernel_params | kernel_name}} {{kernel_params | kernel_command}} BOOTIF=01-${net0/mac}
+imgargs {{kernel_params | kernel_name}} {{kernel_params | kernel_command}} BOOTIF=01-${mac}
 initrd {{kernel_params | fs_host}}{{kernel_params | initrd_path}}
 boot

@@ -19,7 +19,7 @@ CONFIG_FILE = dedent(
     # MAAS iPXE pre-loader configuration file
 
     # Load based on MAC address first.
-    chain http://${next-server}:5248/ipxe.cfg-${net0/mac} ||
+    chain http://${next-server}:5248/ipxe.cfg-${mac} ||
 
     # Failed to load based on MAC address.
     chain http://${next-server}:5248/ipxe.cfg-default-amd64
