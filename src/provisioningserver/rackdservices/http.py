@@ -25,7 +25,7 @@ from twisted.web.static import NoRangeStaticProducer
 from provisioningserver import services
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.path import get_tentative_data_path
+from provisioningserver.path import get_maas_data_path, get_tentative_data_path
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
@@ -171,15 +171,17 @@ class RackHTTPService(TimerService):
         """Update the HTTP configuration for the rack."""
         template = load_template("http", "rackd.nginx.conf.template")
         root_prefix = get_root_path()
+        http_proxy_socket_path = os.getenv(
+            "MAAS_AGENT_HTTP_PROXY_SOCKET_PATH",
+            get_maas_data_path("agent-http-proxy.sock"),
+        )
         try:
             rendered = template.substitute(
                 {
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
-                    "maas_agent_socket_path": str(
-                        root_prefix / "var/lib/maas/http_proxy.sock"
-                    ),
+                    "maas_agent_socket_path": http_proxy_socket_path,
                 }
             )
         except NameError as error:

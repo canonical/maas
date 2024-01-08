@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path"
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	nginxActive       = true
-	defaultSocketPath = "/var/lib/maas/http_proxy.sock"
+	nginxActive    = true
+	socketFileName = "agent-http-proxy.sock"
 )
 
 var (
@@ -113,12 +114,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		log.Debug("Creating Unix Socket HTTP Proxy")
 
 		socketOpts := []httpproxy.ProxyOption{
-			httpproxy.WithBindAddr(
-				path.Join(
-					os.Getenv("SNAP_DATA"),
-					defaultSocketPath,
-				),
-			),
+			httpproxy.WithBindAddr(getSocketFilePath()),
 		}
 		socketOpts = append(socketOpts, originOpts...)
 		groupOpts = append(
@@ -162,4 +158,15 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 // CreateConfigActivity provides Configurator behaviour for the HTTP proxy
 func (p *HTTPProxyConfigurator) CreateConfigActivity() interface{} {
 	return p.ConfigureHTTPProxy
+}
+
+func getSocketFilePath() string {
+	if os.Getenv("SNAP") == "" {
+		return fmt.Sprintf("/var/lib/maas/%s", socketFileName)
+	}
+
+	return path.Join(
+		os.Getenv("SNAP_DATA"),
+		socketFileName,
+	)
 }
