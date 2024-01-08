@@ -1458,14 +1458,9 @@ def export_images_from_db(region: RegionController):
     largefile_ids_to_delete = set()
     oids_to_delete = set()
     with transaction.atomic():
-        files = (
-            BootResourceFile.objects.filter(largefile__isnull=False)
-            .select_related("largefile")
-            .annotate(
-                architecture=F("resource_set__resource__architecture"),
-                bootloader_type=F("resource_set__resource__bootloader_type"),
-            )
-        )
+        files = BootResourceFile.objects.filter(
+            largefile__isnull=False
+        ).select_related("largefile")
 
         for file in files:
             lfile = file.local_file()
@@ -1497,14 +1492,6 @@ def export_images_from_db(region: RegionController):
                     shutil.copyfileobj(sfd, dfd)
                     oids_to_delete.add(file.largefile.content.oid)
 
-            if (
-                file.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
-                and file.bootloader_type
-            ):
-                arch = file.architecture.split("/")[0]
-                target = f"{BOOTLOADERS_DIR}/{file.bootloader_type}/{arch}"
-                lfile.extract_file(target)
-
             set_sync_status()
 
             largefile_ids_to_delete.add(file.largefile_id)
@@ -1528,7 +1515,10 @@ def initialize_image_storage(region: RegionController):
     target_dir = get_bootresource_store_path()
     target_dir.mkdir(parents=True, exist_ok=True)
     bootloaders_dir = target_dir / BOOTLOADERS_DIR
-    bootloaders_dir.mkdir(exist_ok=True)
+
+    if bootloaders_dir.exists():
+        shutil.rmtree(bootloaders_dir)
+    bootloaders_dir.mkdir()
 
     export_images_from_db(region)
 
@@ -1536,12 +1526,24 @@ def initialize_image_storage(region: RegionController):
 
     resources = BootResourceFile.objects.filter(
         bootresourcefilesync__region=region
+    ).annotate(
+        architecture=F("resource_set__resource__architecture"),
+        bootloader_type=F("resource_set__resource__bootloader_type"),
     )
+
     missing = set()
     for res in resources:
         lfile = res.local_file()
         if lfile.complete:
             expected_files.add(lfile.path)
+
+            if (
+                res.filetype == BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+                and res.bootloader_type
+            ):
+                arch = res.architecture.split("/")[0]
+                target = f"{BOOTLOADERS_DIR}/{res.bootloader_type}/{arch}"
+                lfile.extract_file(target)
         else:
             missing.add(res)
 
@@ -1558,7 +1560,7 @@ def initialize_image_storage(region: RegionController):
         maaslog.warning(
             f"removing unexpected {file} file from the image storage"
         )
-        if file.is_file():
-            file.unlink()
-        elif file.is_dir():
+        if file.is_dir():
             shutil.rmtree(file)
+        else:
+            file.unlink()

@@ -13,8 +13,11 @@ from maasserver.bootresources import (
 )
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
-from maasserver.models.bootresourcefile import BootResourceFile
-from maasserver.models.bootresourceset import BootResourceSet
+from maasserver.models import (
+    BootResourceFile,
+    BootResourceSet,
+    RegionController,
+)
 from maasserver.models.largefile import LargeFile
 from maasserver.utils.orm import reload_object
 
@@ -43,50 +46,53 @@ def list_files(base_path):
     return {str(path.relative_to(base_path)) for path in base_path.iterdir()}
 
 
+def make_LargeFile(factory, content: bytes = None, size=None):
+    if content is None:
+        content_size = size
+        if content_size is None:
+            content_size = 512
+        content = factory.make_bytes(size=content_size)
+    if size is None:
+        size = len(content)
+    sha256 = hashlib.sha256()
+    sha256.update(content)
+    digest = sha256.hexdigest()
+    largeobject = LargeObjectFile()
+    with largeobject.open("wb") as stream:
+        stream.write(content)
+    return LargeFile.objects.create(
+        sha256=digest,
+        size=len(content),
+        total_size=size,
+        content=largeobject,
+    )
+
+
+def make_boot_resource_file_with_content_largefile(
+    factory,
+    resource_set: BootResourceSet,
+    filename: str | None = None,
+    filetype: str | None = None,
+    extra: str | None = None,
+    content: bytes | None = None,
+    size: int | None = None,
+    regions: list[RegionController] | None = None,
+) -> BootResourceFile:
+    largefile = make_LargeFile(factory, content=content, size=size)
+    return factory.make_BootResourceFile(
+        resource_set,
+        filename=filename,
+        filetype=filetype,
+        size=largefile.size,
+        sha256=largefile.sha256,
+        extra=extra,
+        largefile=largefile,
+        synced=[(r, -1) for r in regions] if regions else None,
+    )
+
+
 @pytest.mark.usefixtures("maasdb")
 class TestExportImagesFromDB:
-    def make_LargeFile(self, factory, content: bytes = None, size=None):
-        if content is None:
-            content_size = size
-            if content_size is None:
-                content_size = 512
-            content = factory.make_bytes(size=content_size)
-        if size is None:
-            size = len(content)
-        sha256 = hashlib.sha256()
-        sha256.update(content)
-        digest = sha256.hexdigest()
-        largeobject = LargeObjectFile()
-        with largeobject.open("wb") as stream:
-            stream.write(content)
-        return LargeFile.objects.create(
-            sha256=digest,
-            size=len(content),
-            total_size=size,
-            content=largeobject,
-        )
-
-    def make_boot_resource_file_with_content_largefile(
-        self,
-        factory,
-        resource_set: BootResourceSet,
-        filename: str | None = None,
-        filetype: str | None = None,
-        extra: str | None = None,
-        content: bytes | None = None,
-        size: int | None = None,
-    ) -> BootResourceFile:
-        largefile = self.make_LargeFile(factory, content=content, size=size)
-        return factory.make_BootResourceFile(
-            resource_set,
-            filename=filename,
-            filetype=filetype,
-            size=largefile.size,
-            sha256=largefile.sha256,
-            extra=extra,
-            largefile=largefile,
-        )
-
     def test_create_files(self, controller, image_store_dir, factory):
         resource1 = factory.make_BootResource(
             name="ubuntu/jammy",
@@ -98,7 +104,7 @@ class TestExportImagesFromDB:
             label="stable",
         )
         content1 = b"ubuntu-jammy"
-        self.make_boot_resource_file_with_content_largefile(
+        make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set1,
             filename="boot-initrd",
@@ -115,7 +121,7 @@ class TestExportImagesFromDB:
             label="candidate",
         )
         content2 = b"centos-8"
-        self.make_boot_resource_file_with_content_largefile(
+        make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set2,
             filename="boot-kernel",
@@ -143,7 +149,7 @@ class TestExportImagesFromDB:
             version="20230901",
             label="stable",
         )
-        self.make_boot_resource_file_with_content_largefile(
+        make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set,
             filename="boot-initrd",
@@ -162,7 +168,7 @@ class TestExportImagesFromDB:
             version="20230901",
             label="stable",
         )
-        resource_file = self.make_boot_resource_file_with_content_largefile(
+        resource_file = make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set,
             filename="boot-initrd",
@@ -201,6 +207,44 @@ class TestExportImagesFromDB:
         export_images_from_db(controller)
         assert resource_file.exists()
 
+
+@pytest.mark.usefixtures("maasdb")
+class TestInitialiseImageStorate:
+    def test_empty(self, controller, image_store_dir: Path):
+        initialize_image_storage(controller)
+        assert list_files(image_store_dir) == {"bootloaders"}
+
+    def test_remove_extra_files(self, controller, image_store_dir: Path):
+        extra_file = image_store_dir / "abcde"
+        extra_file.write_text("some content")
+        extra_dir = image_store_dir / "somedir"
+        extra_dir.mkdir(parents=True)
+        extra_other_file = extra_dir / "somefile"
+        extra_other_file.write_text("some content")
+        extra_symlink = image_store_dir / "somelink"
+        extra_symlink.symlink_to(extra_other_file)
+
+        initialize_image_storage(controller)
+        assert not extra_file.exists()
+        assert not extra_dir.exists()
+        assert not extra_symlink.exists()
+
+    def test_missing_local_files(
+        self, controller, image_store_dir: Path, factory
+    ):
+        resource = factory.make_usable_boot_resource()
+        other = factory.make_usable_boot_resource()
+        rset = resource.sets.first()
+        for rfile in rset.files.all():
+            lfile = rfile.local_file()
+            lfile.unlink()
+
+        initialize_image_storage(controller)
+        reload_object(resource)
+        reload_object(other)
+        assert resource.get_latest_complete_set() is None
+        assert other.get_latest_complete_set() is not None
+
     def test_booloaders_export(
         self, controller, tmpdir, image_store_dir, factory
     ):
@@ -224,14 +268,15 @@ class TestExportImagesFromDB:
                 },
             )
         )
-        self.make_boot_resource_file_with_content_largefile(
+        make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set,
             filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
             filename="grub2-signed.tar.xz",
             content=tarball.read_bytes(),
+            regions=[controller],
         )
-        export_images_from_db(controller)
+        initialize_image_storage(controller)
         bootloader_dir = image_store_dir / "bootloaders/uefi/amd64"
         assert list_files(bootloader_dir) == {
             "grubx64.efi",
@@ -261,52 +306,18 @@ class TestExportImagesFromDB:
                 },
             )
         )
-        rfile = self.make_boot_resource_file_with_content_largefile(
+        rfile = make_boot_resource_file_with_content_largefile(
             factory,
             resource_set=resource_set,
             filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
             filename="grub2-signed.tar.xz",
             content=tarball.read_bytes(),
+            regions=[controller],
         )
         tarball.rename(rfile.local_file().path)
-        export_images_from_db(controller)
+        initialize_image_storage(controller)
         bootloader_dir = image_store_dir / "bootloaders/uefi/amd64"
         assert list_files(bootloader_dir) == {
             "grubx64.efi",
             "bootx64.efi",
         }
-
-
-@pytest.mark.usefixtures("maasdb")
-class TestInitialiseImageStorate:
-    def test_empty(self, controller, image_store_dir: Path):
-        initialize_image_storage(controller)
-        assert list_files(image_store_dir) == {"bootloaders"}
-
-    def test_remove_extra_files(self, controller, image_store_dir: Path):
-        extra_file = image_store_dir / "abcde"
-        extra_file.write_text("some content")
-        extra_dir = image_store_dir / "somedir"
-        extra_dir.mkdir(parents=True)
-        extra_other_file = extra_dir / "somefile"
-        extra_other_file.write_text("some content")
-
-        initialize_image_storage(controller)
-        assert not extra_file.exists()
-        assert not extra_dir.exists()
-
-    def test_missing_local_files(
-        self, controller, image_store_dir: Path, factory
-    ):
-        resource = factory.make_usable_boot_resource()
-        other = factory.make_usable_boot_resource()
-        rset = resource.sets.first()
-        for rfile in rset.files.all():
-            lfile = rfile.local_file()
-            lfile.unlink()
-
-        initialize_image_storage(controller)
-        reload_object(resource)
-        reload_object(other)
-        assert resource.get_latest_complete_set() is None
-        assert other.get_latest_complete_set() is not None
