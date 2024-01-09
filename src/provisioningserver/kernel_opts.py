@@ -4,7 +4,6 @@
 """Generate kernel command-line options for inclusion in PXE configs."""
 
 from collections import namedtuple
-import os
 
 import curtin
 from distro_info import UbuntuDistroInfo
@@ -68,22 +67,10 @@ def compose_logging_opts(params: KernelParameters):
     return ["log_host=%s" % params.log_host, "log_port=%d" % params.log_port]
 
 
-def get_last_directory(root):
-    """Return the last directory from the directories in the given root.
-
-    This is used to get the most recent ephemeral import directory.
-    The ephemeral directories are named after the release date: 20120424,
-    20120424, 20120301, etc. so fetching the last one (sorting by name)
-    returns the most recent.
-    """
-    dirs = (os.path.join(root, directory) for directory in os.listdir(root))
-    dirs = filter(os.path.isdir, dirs)
-    return max(dirs)
-
-
 def compose_purpose_opts(params: KernelParameters):
     """Return the list of the purpose-specific kernel options."""
 
+    is_v6 = IPAddress(params.fs_host).version == 6
     image_filename = params.xinstall_path
     if not image_filename:
         image_filename = "squashfs"
@@ -92,32 +79,16 @@ def compose_purpose_opts(params: KernelParameters):
     if image_filename.endswith(".tgz") or image_filename.endswith(".txz"):
         image_type = "tar"
 
+    server_addr = f"[{params.fs_host}]" if is_v6 else params.fs_host
+
     kernel_params = [
-        "root=%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s"
-        % (
-            image_type,
-            (
-                "[%s]" % params.fs_host
-                if IPAddress(params.fs_host).version == 6
-                else params.fs_host
-            ),
-            params.osystem,
-            params.arch,
-            params.subarch,
-            params.release,
-            params.label,
-            image_filename,
-        ),
+        f"root={image_type}:http://{server_addr}:5248/images/{image_filename}",
         # Read by cloud-initramfs-dyn-netconf initramfs-tools networking
         # configuration in the initramfs.  Choose IPv4 or IPv6 based on the
         # family of fs_host.  If BOOTIF is set, IPv6 config uses that
         # exclusively.
-        (
-            "ip=::::%s:BOOTIF" % params.hostname
-            if IPAddress(params.fs_host).version == 4
-            else "ip=off"
-        ),
-        ("ip6=dhcp" if IPAddress(params.fs_host).version == 6 else "ip6=off"),
+        (f"ip=::::{params.hostname}:BOOTIF" if not is_v6 else "ip=off"),
+        ("ip6=dhcp" if is_v6 else "ip6=off"),
         # Select the MAAS datasource by default.
         "cc:{'datasource_list': ['MAAS']}end_cc",
         # Read by cloud-init.

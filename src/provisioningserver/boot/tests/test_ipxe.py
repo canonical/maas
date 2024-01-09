@@ -19,7 +19,6 @@ from provisioningserver.boot.ipxe import (
     re_config_file,
 )
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import tempdir
@@ -101,7 +100,7 @@ class TestIPXEBootMethodRender(MAASTestCase):
         method = IPXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
         fs_host = re.escape(
-            "http://%s:5248/images" % (convert_host_to_uri_str(params.fs_host))
+            f"http://{convert_host_to_uri_str(params.fs_host)}:5248/images"
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
@@ -111,18 +110,9 @@ class TestIPXEBootMethodRender(MAASTestCase):
         # start with #ipxe.
         self.assertTrue(output.startswith("#!ipxe"))
         # The iPXE parameters are all set according to the options.
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
         for regex in [
-            rf"(?ms).*^\s*kernel {fs_host}/{image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s*initrd {fs_host}/{image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s*kernel {fs_host}/{params.kernel}$",
+            rf"(?ms).*^\s*initrd {fs_host}/{params.initrd}$",
             r"(?ms).*^\s*imgargs .+?$",
         ]:
             self.assertRegex(output, regex)

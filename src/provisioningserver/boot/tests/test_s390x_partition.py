@@ -5,14 +5,12 @@
 
 
 import random
-import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import s390x_partition as s390x_partition_module
 from provisioningserver.boot.s390x import format_bootif
 from provisioningserver.boot.s390x_partition import S390XPartitionBootMethod
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
 
@@ -67,19 +65,10 @@ class TestS390XPartitionBootMethod(MAASTestCase):
 
         output = s390x_partition.get_reader(None, params, mac)
         output = output.read(output.size).decode()
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
 
         for regex in [
-            rf"(?ms).*^\s+kernel={image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+initrd={image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+kernel={params.kernel}$",
+            rf"(?ms).*^\s+initrd={params.initrd}$",
             rf"(?ms).*^\s+append=.*BOOTIF={format_bootif(mac)}+?$",
         ]:
             self.assertRegex(output, regex)
@@ -96,18 +85,9 @@ class TestS390XPartitionBootMethod(MAASTestCase):
 
         output = s390x_partition.get_reader(None, params)
         output = output.read(output.size).decode()
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
         for regex in [
-            rf"(?ms).*^\s+kernel={image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+initrd={image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+kernel={params.kernel}$",
+            rf"(?ms).*^\s+initrd={params.initrd}$",
             r"(?ms).*^\s+append=.*$",
         ]:
             self.assertRegex(output, regex)

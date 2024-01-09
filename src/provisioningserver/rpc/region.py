@@ -137,6 +137,7 @@ class GetBootConfig(amp.Command):
         # in 2.1.1. After 2.2 they can be set to manditory.
         (b"kernel", amp.Unicode(optional=True)),
         (b"initrd", amp.Unicode(optional=True)),
+        (b"xinstall_path", amp.Unicode(optional=True)),
         # boot_dtb is optional as not all archs require it.
         (b"boot_dtb", amp.Unicode(optional=True)),
         (b"purpose", amp.Unicode()),

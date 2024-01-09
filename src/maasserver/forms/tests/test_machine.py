@@ -99,12 +99,12 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
-                "osystem": osystem["name"],
+                "osystem": osystem,
                 "min_hwe_kernel": "hwe-t",
                 "hwe_kernel": "hwe-p",
             },
@@ -126,12 +126,12 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
-                "osystem": osystem["name"],
+                "osystem": osystem,
             },
             instance=node,
         )
@@ -166,14 +166,14 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        osystem = make_usable_osystem(self)
-        release = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        release = releases[0]
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
-                "osystem": osystem["name"],
-                "distro_series": "{}/{}".format(osystem["name"], release),
+                "osystem": osystem,
+                "distro_series": f"{osystem}/{release}",
             },
             instance=node,
         )
@@ -183,14 +183,14 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         release = factory.make_name("release")
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
-                "osystem": osystem["name"],
-                "distro_series": "{}/{}".format(osystem["name"], release),
+                "osystem": osystem,
+                "distro_series": f"{osystem}/{release}",
             },
             instance=node,
         )
@@ -244,14 +244,14 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         node = factory.make_Node(owner=user)
-        osystem = make_usable_osystem(self)
-        release = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        release = releases[0]
         invalid = factory.make_name("invalid_os")
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
-                "osystem": osystem["name"],
+                "osystem": osystem,
                 "distro_series": f"{invalid}/{release}",
             },
             instance=node,
@@ -263,15 +263,15 @@ class TestMachineForm(MAASServerTestCase):
         user = factory.make_User()
         self.client.login(user=user)
         machine = factory.make_Machine(owner=user)
-        osystem = make_usable_osystem(self)
-        release = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        release = releases[0]
         form = MachineForm(
             data={
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
                 "enable_hw_sync": True,
-                "osystem": osystem["name"],
-                "distro_series": "{}/{}".format(osystem["name"], release),
+                "osystem": osystem,
+                "distro_series": f"{osystem}/{release}",
             },
             instance=machine,
         )
@@ -294,9 +294,7 @@ class TestMachineForm(MAASServerTestCase):
                     "architecture": make_usable_architecture(self),
                     "enable_hw_sync": True,
                     "osystem": osystem_name,
-                    "distro_series": "{}/{}".format(
-                        osystem_name, release_name
-                    ),
+                    "distro_series": f"{osystem_name}/{release_name}",
                 },
                 instance=machine,
             )

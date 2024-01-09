@@ -9,7 +9,6 @@ from unittest.mock import sentinel
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers import osystem as osystem_module
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
@@ -30,19 +29,6 @@ class TestOperatingSystem(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
             ],
         )
-
-    def make_boot_image_for(self, osystem, release):
-        return dict(osystem=osystem, release=release)
-
-    def configure_list_boot_images_for(self, osystem):
-        images = [
-            self.make_boot_image_for(osystem.name, release)
-            for release in osystem.get_supported_releases()
-        ]
-        self.patch_autospec(
-            osystem_module, "list_boot_images_for"
-        ).return_value = images
-        return images
 
     def test_is_release_supported(self):
         osystem = self.make_usable_osystem()
@@ -66,33 +52,6 @@ class TestOperatingSystem(MAASTestCase):
         self.assertEqual(
             [(release, release) for release in sorted(releases, reverse=True)],
             osystem.format_release_choices(releases),
-        )
-
-    def test_gen_supported_releases(self):
-        osystem = self.make_usable_osystem()
-        images = self.configure_list_boot_images_for(osystem)
-        releases = {image["release"] for image in images}
-        self.assertCountEqual(releases, osystem.gen_supported_releases())
-
-    def test_get_xinstall_parameters(self):
-        # The base OperatingSystems class should only look for root-tgz,
-        # child classes can override.
-        osystem = make_osystem(self, factory.make_name("os"))
-        tmpdir = self.make_dir()
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        release = factory.make_name("release")
-        label = factory.make_name("label")
-        dir_path = os.path.join(
-            tmpdir, osystem.name, arch, subarch, release, label
-        )
-        os.makedirs(dir_path)
-        for fname in ["squashfs", "root-tgz", "root-dd"]:
-            factory.make_file(dir_path, fname)
-        self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
-        self.assertEqual(
-            ("root-tgz", "tgz"),
-            osystem.get_xinstall_parameters(arch, subarch, release, label),
         )
 
 

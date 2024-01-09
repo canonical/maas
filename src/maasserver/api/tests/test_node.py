@@ -846,8 +846,8 @@ class TestPowerMixin(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         response = self.client.post(
             self.get_node_uri(machine),
             {"op": "power_on", "distro_series": distro_series},

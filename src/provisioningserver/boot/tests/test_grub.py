@@ -19,7 +19,6 @@ from provisioningserver.boot.grub import (
     UEFIAMD64BootMethod,
 )
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import tempdir
@@ -82,20 +81,11 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith('set default="0"'))
         # The UEFI parameters are all set according to the options.
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
 
         for regex in [
             r"(?ms).*\s+lin.*cc:\\{\'datasource_list\': \[\'MAAS\'\]\\}end_cc.*",
-            rf"(?ms).*^\s+linux  {fs_host}/{image_dir}/{params.kernel} .+?$",
-            rf"(?ms).*^\s+initrd {fs_host}/{image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+linux  {fs_host}/{params.kernel} .+?$",
+            rf"(?ms).*^\s+initrd {fs_host}/{params.initrd}$",
         ]:
             self.assertRegex(output, regex)
 
@@ -114,18 +104,10 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith('set default="0"'))
         # The UEFI parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
-        )
-
         for regex in [
             r"(?ms).*\s+lin.*cc:\\{\'datasource_list\': \[\'MAAS\'\]\\}end_cc.*",
-            rf"(?ms).*^\s+linux  /images/{image_dir}/{params.kernel} .+?$",
-            rf"(?ms).*^\s+initrd /images/{image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+linux  /images/{params.kernel} .+?$",
+            rf"(?ms).*^\s+initrd /images/{params.initrd}$",
         ]:
             self.assertRegex(output, regex)
 

@@ -16,7 +16,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,
-    patch_usable_osystems,
 )
 from maastesting.testcase import MAASTestCase
 
@@ -63,9 +62,9 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
 
     def test_set_config_default_distro_series(self):
         self.become_admin()
-        osystem = make_usable_osystem(self)
-        Config.objects.set_config("default_osystem", osystem["name"])
-        selected_release = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        Config.objects.set_config("default_osystem", osystem)
+        selected_release = releases[0]
         response = self.client.post(
             reverse("maas_handler"),
             {
@@ -84,11 +83,11 @@ class TestMAASHandlerAPI(APITestCase.ForUser):
 
     def test_set_config_only_default_osystem_are_valid_for_distro_series(self):
         self.become_admin()
-        default_osystem = make_osystem_with_releases(self)
-        other_osystem = make_osystem_with_releases(self)
-        patch_usable_osystems(self, [default_osystem, other_osystem])
-        Config.objects.set_config("default_osystem", default_osystem["name"])
-        invalid_release = other_osystem["releases"][0]["name"]
+        default_osystem, _ = make_osystem_with_releases(self)
+        _, other_osystem_releases = make_osystem_with_releases(self)
+        factory.make_default_ubuntu_release_bootable()
+        Config.objects.set_config("default_osystem", default_osystem)
+        invalid_release = other_osystem_releases[0]
         response = self.client.post(
             reverse("maas_handler"),
             {

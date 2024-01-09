@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.boot.s390x`."""
 
 
-import re
 from unittest.mock import Mock
 
 from twisted.python.filepath import FilePath
@@ -21,7 +20,6 @@ from provisioningserver.boot.s390x import (
 )
 from provisioningserver.boot.testing import TFTPPathAndComponents
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
@@ -156,18 +154,9 @@ class TestS390XBootMethodRenderConfig(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
         for regex in [
-            rf"(?ms).*^\s+KERNEL {image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+INITRD {image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+KERNEL {params.kernel}$",
+            rf"(?ms).*^\s+INITRD {params.initrd}$",
             r"(?ms).*^\s+APPEND .+?$",
         ]:
             self.assertRegex(output, regex)

@@ -177,6 +177,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
 from metadataserver.user_data import generate_user_data_for_status
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import (
@@ -5661,11 +5662,7 @@ class Node(CleanSave, TimestampedModel):
             does not support it, `None` will be returned. The node must be
             powered on manually.
         """
-        # Avoid circular imports.
-        from maasserver.clusterrpc.boot_images import (
-            get_common_available_boot_images,
-        )
-        from maasserver.models import NodeUserData
+        from maasserver.models import BootResource, NodeUserData
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
@@ -5685,34 +5682,42 @@ class Node(CleanSave, TimestampedModel):
                         "default_distro_series",
                     ]
                 )
-            osystems = defaultdict(set)
-            for image in get_common_available_boot_images():
-                if image["purpose"] == "xinstall":
-                    osystems[image["osystem"]].add(image["release"])
+            arch, platform = self.architecture.split("/")
             if self.status in deployment_like_status:
                 osystem = self.get_osystem(default=config["default_osystem"])
                 distro_series = self.get_distro_series(
                     default=config["default_distro_series"]
                 )
-                os_releases = osystems.get(osystem, [])
-                if distro_series not in os_releases:
+                resource = BootResource.objects.get_resource_for(
+                    osystem,
+                    arch,
+                    platform,
+                    distro_series,
+                    BOOT_IMAGE_PURPOSE.XINSTALL,
+                )
+                if resource is None:
                     raise ValidationError(
-                        "Deployment operating system %s %s is unavailable."
-                        % (osystem, distro_series)
+                        f"Deployment operating system {osystem}/{distro_series} "
+                        f"is unavailable for {arch}/{platform}."
                     )
             # Non-Ubuntu deployments use the commissioning OS during deployment
             if self.status in COMMISSIONING_LIKE_STATUSES or (
                 self.status in deployment_like_status
                 and self.osystem != "ubuntu"
             ):
-                os_releases = osystems.get(config["commissioning_osystem"], [])
-                if config["commissioning_distro_series"] not in os_releases:
+                resource = BootResource.objects.get_resource_for(
+                    config["commissioning_osystem"],
+                    arch,
+                    platform,
+                    config["commissioning_distro_series"],
+                    BOOT_IMAGE_PURPOSE.COMMISSIONING,
+                )
+
+                if resource is None:
                     raise ValidationError(
-                        "Ephemeral operating system %s %s is unavailable."
-                        % (
-                            config["commissioning_osystem"],
-                            config["commissioning_distro_series"],
-                        )
+                        f"Ephemeral operating system {config['commissioning_osystem']}"
+                        f"/{config['commissioning_distro_series']} "
+                        f"for {arch}/{platform} is unavailable."
                     )
 
         # Record the user data for the node. Note that we do this

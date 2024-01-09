@@ -149,21 +149,36 @@ class BootResourceManager(Manager):
                 return resource
         return get_first(commissionable)
 
-    def get_resource_for(self, osystem, architecture, subarchitecture, series):
+    def get_resource_for(
+        self,
+        osystem,
+        architecture,
+        subarchitecture,
+        series,
+        purpose=None,
+    ):
         """Return resource that support the given osystem, architecture,
         subarchitecture, and series."""
+        if purpose is not None:
+            os_driver = OperatingSystemRegistry.get_item(osystem)
+            if (
+                os_driver is None
+                or purpose not in os_driver.get_boot_image_purposes()
+            ):
+                return None
+
         if osystem != "custom":
             name = f"{osystem}/{series}"
-            rtype = (BOOT_RESOURCE_TYPE.SYNCED,)
+            rtype = (BOOT_RESOURCE_TYPE.SYNCED, BOOT_RESOURCE_TYPE.UPLOADED)
         else:
             name = series
             rtype = (BOOT_RESOURCE_TYPE.UPLOADED,)
 
-        resources = BootResource.objects.filter(
+        resources = self.filter(
             rtype__in=rtype,
             name=name,
             architecture__startswith=architecture,
-        )
+        ).all()
         for resource in resources:
             if resource.supports_subarch(
                 subarchitecture
@@ -173,7 +188,7 @@ class BootResourceManager(Manager):
 
     def get_resources_matching_boot_images(self, images):
         """Return `BootResource` that match the given images."""
-        resources = BootResource.objects.all()
+        resources = self.all()
         matched_resources = set()
         for image in images:
             if image["osystem"] == "bootloader":
@@ -564,11 +579,10 @@ class BootResource(CleanSave, TimestampedModel):
     extra = JSONField(blank=True, default=dict)
 
     def __str__(self):
-        return "<BootResource name={}, arch={}, kflavor={}, base={}>".format(
-            self.name,
-            self.architecture,
-            self.kflavor,
-            self.base_image,
+        return (
+            f"<BootResource name={self.name}, arch={self.architecture}, "
+            f"kflavor={self.kflavor}, base={self.base_image} "
+            f"rtype={self.rtype}>"
         )
 
     @property

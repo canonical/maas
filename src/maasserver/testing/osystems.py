@@ -6,11 +6,6 @@
 
 from random import randint
 
-from maasserver.clusterrpc import boot_images
-from maasserver.clusterrpc.testing.osystems import (
-    make_rpc_osystem,
-    make_rpc_release,
-)
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.models import Node
 from maasserver.testing.factory import factory
@@ -20,7 +15,11 @@ from provisioningserver.drivers.osystem import (
 )
 
 
-def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
+def make_osystem_with_releases(
+    testcase,
+    osystem_name: str | None = None,
+    releases: list[str] | None = None,
+) -> tuple[str, list[str]]:
     """Generate an arbitrary operating system.
 
     :param osystem_name: The operating system name. Useful in cases where
@@ -32,7 +31,6 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
         osystem_name = factory.make_name("os")
     if releases is None:
         releases = [factory.make_name("release") for _ in range(3)]
-    rpc_releases = [make_rpc_release(release) for release in releases]
     if osystem_name not in OperatingSystemRegistry:
         OperatingSystemRegistry.register_item(osystem_name, CustomOS())
         testcase.addCleanup(
@@ -53,7 +51,7 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
                 name=(f"{osystem_name}/{release}"),
                 architecture=arch,
             )
-    return make_rpc_osystem(osystem_name, releases=rpc_releases)
+    return osystem_name, releases
 
 
 def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
@@ -73,35 +71,12 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
             make_osystem_with_releases(testcase)
             for _ in range(randint(start, 2))
         ]
-    os_releases = []
-    for osystem in osystems:
-        for release in osystem["releases"]:
-            os_releases.append(
-                {
-                    "osystem": osystem["name"],
-                    "release": release["name"],
-                    "purpose": "xinstall",
-                }
-            )
     # Make sure the Commissioning release is always available.
-    ubuntu = factory.make_default_ubuntu_release_bootable()
-    os_releases.append(
-        {
-            "osystem": ubuntu.name.split("/")[0],
-            "release": ubuntu.name.split("/")[1],
-            "purpose": "xinstall",
-        }
-    )
-    testcase.patch(
-        boot_images, "get_common_available_boot_images"
-    ).return_value = os_releases
+    factory.make_default_ubuntu_release_bootable()
 
 
 def make_usable_osystem(testcase, osystem_name=None, releases=None):
     """Return arbitrary operating system, and make it "usable."
-
-    A usable operating system is one that is returned from the
-    RPC call ListOperatingSystems.
 
     :param testcase: A `TestCase` whose `patch` this function can pass to
         `patch_usable_osystems`.

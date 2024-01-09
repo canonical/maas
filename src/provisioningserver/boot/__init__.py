@@ -16,7 +16,6 @@ from tftp.backend import IReader
 from twisted.internet.defer import inlineCallbacks, returnValue
 from zope.interface import implementer
 
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.config import debug_enabled
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import (
@@ -336,7 +335,7 @@ class BootMethod(metaclass=ABCMeta):
                 if error.errno != ENOENT:
                     raise
         else:
-            error = (
+            error_msg = (
                 "No PXE template found in %r for:\n"
                 "  Purpose: %r, Arch: %r, Subarch: %r\n"
                 "This can happen if you manually power up a node when its "
@@ -345,8 +344,8 @@ class BootMethod(metaclass=ABCMeta):
                 "Commissioning or Allocated."
                 % (pxe_templates_dir, purpose, arch, subarch)
             )
-            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, error)
-            raise AssertionError(error)
+            try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, error_msg)
+            raise AssertionError(error_msg)
 
     def compose_template_namespace(self, kernel_params: KernelParameters):
         """Composes the namespace variables that are used by a boot
@@ -355,52 +354,20 @@ class BootMethod(metaclass=ABCMeta):
         dtb_subarchs = ["xgene-uboot-mustang"]
 
         def fs_host(params: KernelParameters):
-            return "http://%s:5248/images/" % (
-                convert_host_to_uri_str(params.fs_host)
-            )
-
-        def kernel_image_dir(params: KernelParameters):
-            return compose_image_path(
-                params.kernel_osystem,
-                params.arch,
-                params.subarch,
-                params.kernel_release,
-                params.kernel_label,
-            )
+            return f"http://{convert_host_to_uri_str(params.fs_host)}:5248/images/"
 
         def initrd_path(params: KernelParameters):
-            # Normally the initrd filename is the SimpleStream filetype. If
-            # no filetype is given try the filetype.
-            if params.initrd is not None:
-                initrd = params.initrd
-            else:
-                initrd = "boot-initrd"
-            return f"{kernel_image_dir(params)}/{initrd}"
+            return params.initrd or "boot-initrd"
 
         def kernel_name(params: KernelParameters):
-            if params.kernel is not None:
-                return params.kernel
-            else:
-                return "boot-kernel"
+            return kernel_path(params).split("/")[-1]
 
         def kernel_path(params: KernelParameters):
-            # Normally the kernel filename is the SimpleStream filetype. If
-            # no filetype is given try the filetype.
-            if params.kernel is not None:
-                kernel = params.kernel
-            else:
-                kernel = "boot-kernel"
-            return f"{kernel_image_dir(params)}/{kernel}"
+            return params.kernel or "boot-kernel"
 
         def dtb_path(params: KernelParameters):
             if params.subarch in dtb_subarchs:
-                # Normally the dtb filename is the SimpleStream filetype. If
-                # no filetype is given try the filetype.
-                if params.boot_dtb is not None:
-                    boot_dtb = params.boot_dtb
-                else:
-                    boot_dtb = "boot-dtb"
-                return f"{kernel_image_dir(params)}/{boot_dtb}"
+                return params.boot_dtb or "boot-dtb"
             else:
                 return None
 

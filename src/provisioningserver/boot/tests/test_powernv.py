@@ -21,7 +21,6 @@ from provisioningserver.boot.powernv import (
 )
 from provisioningserver.boot.testing import TFTPPathAndComponents
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.network import convert_host_to_uri_str
@@ -152,7 +151,7 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
             self, arch="ppc64el", purpose="xinstall"
         )
         fs_host = re.escape(
-            "http://%s:5248/images" % (convert_host_to_uri_str(params.fs_host))
+            f"http://{convert_host_to_uri_str(params.fs_host)}:5248/images"
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
@@ -162,18 +161,9 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
         for regex in [
-            rf"(?ms).*^\s+KERNEL {fs_host}/{image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+INITRD {fs_host}/{image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+KERNEL {fs_host}/{params.kernel}$",
+            rf"(?ms).*^\s+INITRD {fs_host}/{params.initrd}$",
             r"(?ms).*^\s+APPEND .+?$",
         ]:
             self.assertRegex(output, regex)

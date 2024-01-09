@@ -34,4 +34,4 @@ class CustomOS(OperatingSystem):
         return release
 
     def get_image_filetypes(self) -> dict[str, str]:
-        return self._get_image_filetypes(tgz=True, dd=True)
+        return self._get_image_filetypes(tgz=True, dd=True, squashfs=True)

@@ -9,7 +9,6 @@ import os.path
 from pipes import quote
 from urllib.parse import urlencode, urlparse
 
-from crochet import TimeoutError
 from curtin.config import merge_config
 from curtin.pack import pack_install
 from django.conf import settings
@@ -18,8 +17,6 @@ from django.urls import reverse
 import tempita
 import yaml
 
-from maasserver import logger
-from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     build_metadata_url,
     compose_debconf_cloud_init_preseed,
@@ -31,8 +28,14 @@ from maasserver.compose_preseed import (
     RSYSLOG_PORT,
 )
 from maasserver.enum import FILESYSTEM_TYPE, PRESEED_TYPE
-from maasserver.exceptions import ClusterUnavailable, MissingBootImage
-from maasserver.models import BootResource, Config, NodeKey, PackageRepository
+from maasserver.exceptions import MissingBootImage
+from maasserver.models import (
+    BootResource,
+    BootResourceFile,
+    Config,
+    NodeKey,
+    PackageRepository,
+)
 from maasserver.models.filesystem import Filesystem
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.preseed_network import compose_curtin_network_config
@@ -48,9 +51,12 @@ from maasserver.utils.curtin import (
 )
 from maasserver.utils.osystems import get_release_version_from_string
 from metadataserver.user_data.snippets import get_snippet_context
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+)
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.url import compose_URL
 
 maaslog = get_maas_logger("preseed")
@@ -442,103 +448,99 @@ def get_curtin_userdata(request, node):
     )
 
 
-def get_curtin_image(rack_controller, arch, platform, osystem, series):
+def get_curtin_image(
+    arch: str, platform: str, os_name: str, series: str
+) -> tuple[BootResourceFile, str]:
     """Return boot image that supports 'xinstall' for the given node."""
-    try:
-        images = get_boot_images_for(
-            rack_controller, osystem, arch, platform, series
+    osystem = OperatingSystemRegistry.get_item(os_name)
+    if osystem is None:
+        raise MissingBootImage(
+            "Error generating the URL of curtin's image file.  "
+            f"Unsupported OS: {os_name} "
         )
-    except (NoConnectionsAvailable, TimeoutError):
-        logger.error(
-            "Unable to get RPC connection for rack controller '%s' (%s)",
-            rack_controller.hostname,
-            rack_controller.system_id,
-        )
-        raise ClusterUnavailable(
-            "Unable to get RPC connection for rack controller '%s' (%s)"
-            % (rack_controller.hostname, rack_controller.system_id)
-        )
-    # A matching subarch may be a newer subarch which contains support for
-    # an older one. e.g Xenial hwe-16.04 will match for ga-16.04. First
-    # try to find the subarch we are deploying, if that isn't found allow
-    # a newer version.
-    for check in (
-        lambda i: i["subarchitecture"] == platform,
-        lambda i: "platform" in i and i["platform"] == platform,
-        lambda i: "supported_platforms" in i
-        and platform in i["supported_platforms"].split(","),
-        lambda i: True,
-    ):
-        for image in images:
-            if image["purpose"] == "xinstall" and check(image):
-                return image
 
-    raise MissingBootImage(
-        "Error generating the URL of curtin's image file.  "
-        "No image could be found for the given selection: "
-        "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall."
-        % (osystem, arch, platform, series)
+    resource = BootResource.objects.get_resource_for(
+        os_name,
+        arch,
+        platform,
+        series,
+        BOOT_IMAGE_PURPOSE.XINSTALL,
     )
+    if resource is None:
+        raise MissingBootImage(
+            "Error generating the URL of curtin's image file.  "
+            "No image could be found for the given selection: "
+            f"os={os_name}, arch={arch}, subarch={platform}, series={series}, "
+            "purpose=xinstall."
+        )
+    rset = resource.get_latest_complete_set()
+    if rset is None:
+        raise MissingBootImage(
+            f"Boot resource {os_name}/{series} doesn't have a complete set"
+        )
+    filetypes = osystem.get_image_filetypes()
+    try:
+        rfile = rset.files.filter(filetype__in=filetypes.keys()).get()
+    except BootResourceFile.DoesNotExist:
+        raise MissingBootImage(
+            "Error generating the URL of curtin's image file.  "
+            "No image could be found for the given selection: "
+            f"os={os_name}, arch={arch}, subarch={platform}, series={series}, "
+            "purpose=xinstall."
+        )
+
+    return rfile, filetypes[rfile.filetype]
 
 
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
-    osystem = node.get_osystem()
+    os_name = node.get_osystem()
     series = node.get_distro_series()
     arch, platform = node.split_arch()
-    precise = osystem == "ubuntu" and series == "precise"
+    precise = os_name == "ubuntu" and series == "precise"
 
-    image = None
-    rack = node.get_boot_rack_controller()
+    image, xinstall_type = None, None
     # Try to find an image for overriden kernel first
-    if node.hwe_kernel:
-        try:
-            image = get_curtin_image(
-                rack,
-                arch,
-                node.hwe_kernel,
-                osystem,
-                series,
+    try:
+        if node.hwe_kernel:
+            image, xinstall_type = get_curtin_image(
+                arch, node.hwe_kernel, os_name, series
             )
-        except MissingBootImage:
-            pass
-
+    except MissingBootImage:
+        pass
     # As a last resort, search for an image using the machine platform
-    if not image:
-        image = get_curtin_image(rack, arch, platform, osystem, series)
+    if image is None:
+        image, xinstall_type = get_curtin_image(
+            arch, platform, os_name, series
+        )
 
-    # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
-    # somehow with the content of contrib/maas-cluster-http.conf.
-    # Per etc/services cluster is opening port 5248 to serve images via HTTP
-    if image["xinstall_type"] == "squashfs":
-        # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and drop
-        # of iscsi), precise is no longer deployable. To address a squashfs
-        # image is made available allowing it to be deployed in the
-        # commissioning ephemeral environment.
+    if image.filetype == "squashfs":
         if precise:
             url_prepend = "fsimage:"
         else:
             return "cp:///media/root-ro"
-    elif image["xinstall_type"] in {"tgz", "tbz", "txz"}:
+    elif xinstall_type in {"tgz", "tbz", "txz"}:
         url_prepend = ""
     else:
-        url_prepend = "%s:" % image["xinstall_type"]
+        url_prepend = f"{xinstall_type}:"
 
     if precise:
         # See above: it is the only squashfs available for precise
         platform = "generic"
     dyn_uri = "/".join(
         [
-            osystem,
+            image.sha256,
+            os_name,
             arch,
             platform,
             series,
-            image["label"],
-            image["xinstall_path"],
+            image.resource_set.label,
+            image.filename,
         ]
     )
     url = compose_URL(
-        "http://:5248/images/%s" % dyn_uri, str(node.boot_cluster_ip)
+        f"http://:5248/images/{dyn_uri}",
+        str(node.boot_cluster_ip),
     )
     return url_prepend + url
 

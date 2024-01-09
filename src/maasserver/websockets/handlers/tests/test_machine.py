@@ -3714,7 +3714,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.patch(
             power_workflow, "get_temporal_task_queue_for_bmc"
         ).return_value = "vlan-1"
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         handler = MachineHandler(user, {}, request)
         handler.action(
             {
@@ -3722,16 +3722,14 @@ class TestMachineHandler(MAASServerTestCase):
                 "system_id": node.system_id,
                 "action": "deploy",
                 "extra": {
-                    "osystem": osystem["name"],
-                    "distro_series": osystem["releases"][0]["name"],
+                    "osystem": osystem,
+                    "distro_series": releases[0],
                 },
             }
         )
         node = reload_object(node)
-        self.expectThat(node.osystem, Equals(osystem["name"]))
-        self.expectThat(
-            node.distro_series, Equals(osystem["releases"][0]["name"])
-        )
+        self.assertEqual(osystem, node.osystem)
+        self.assertEqual(releases[0], node.distro_series)
 
     def test_clone_errors_bundled(self):
         user = factory.make_admin()

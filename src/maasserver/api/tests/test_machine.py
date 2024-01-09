@@ -425,8 +425,8 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {"op": "deploy", "distro_series": distro_series},
@@ -438,7 +438,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 json_load_bytes(response.content)["system_id"],
             ),
         )
-        self.assertEqual(osystem["name"], reload_object(machine).osystem)
+        self.assertEqual(osystem, reload_object(machine).osystem)
         self.assertEqual(distro_series, reload_object(machine).distro_series)
 
     def test_POST_deploy_validates_distro_series(self):
@@ -478,15 +478,15 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         license_key = factory.make_string()
         self.patch(forms, "validate_license_key").return_value = True
         response = self.client.post(
             self.get_machine_uri(machine),
             {
                 "op": "deploy",
-                "osystem": osystem["name"],
+                "osystem": osystem,
                 "distro_series": distro_series,
                 "license_key": license_key,
             },
@@ -508,15 +508,15 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         license_key = factory.make_string()
         self.patch(forms, "validate_license_key").return_value = False
         response = self.client.post(
             self.get_machine_uri(machine),
             {
                 "op": "deploy",
-                "osystem": osystem["name"],
+                "osystem": osystem,
                 "distro_series": distro_series,
                 "license_key": license_key,
             },
@@ -799,8 +799,8 @@ class TestMachineAPI(APITestCase.ForUser):
         )
 
     def test_POST_deploy_not_allowed_statuses(self):
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {"op": "deploy", "distro_series": distro_series}
         not_allowed_statuses = [
             status
@@ -819,9 +819,8 @@ class TestMachineAPI(APITestCase.ForUser):
             self.assertEqual(http.client.CONFLICT, response.status_code)
             error_message = response.content.decode("utf-8")
             self.assertEqual(
-                "Can't deploy a machine that is in the '{}' state".format(
-                    NODE_STATUS_CHOICES_DICT[not_allowed_status]
-                ),
+                "Can't deploy a machine that is in the "
+                f"'{NODE_STATUS_CHOICES_DICT[not_allowed_status]}' state",
                 error_message,
             )
 
@@ -861,8 +860,8 @@ class TestMachineAPI(APITestCase.ForUser):
             factory.pick_ip_in_Subnet(auto_ip.subnet),
         )
 
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         user_data = b64encode(
             b"\xff\x00\xff\xfe\xff\xff\xfe"
             + factory.make_string().encode("ascii")
@@ -916,8 +915,8 @@ class TestMachineAPI(APITestCase.ForUser):
             factory.pick_ip_in_Subnet(auto_ip.subnet),
         )
 
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         user_data = factory.make_name("user_data")
         response = self.client.post(
             self.get_machine_uri(machine),
@@ -944,8 +943,8 @@ class TestMachineAPI(APITestCase.ForUser):
             architecture=make_usable_architecture(self),
             bmc_connected_to=rack_controller,
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         comment = factory.make_name("comment")
         machine_start = self.patch(node_module.Machine, "start")
         machine_start.return_value = False
@@ -976,8 +975,8 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         machine_start = self.patch(node_module.Machine, "start")
         self.patch(machines_module, "get_curtin_merged_config")
         machine_start.return_value = False
@@ -1009,8 +1008,8 @@ class TestMachineAPI(APITestCase.ForUser):
             architecture=make_usable_architecture(self),
             bmc_connected_to=rack_controller,
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         machine_start = self.patch(node_module.Machine, "start")
         machine_start.return_value = False
         response = self.client.post(
@@ -1032,8 +1031,8 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {"op": "deploy", "distro_series": distro_series}
         response = self.client.post(self.get_machine_uri(machine), request)
         self.assertEqual(http.client.OK, response.status_code)
@@ -1048,8 +1047,8 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {"op": "deploy", "distro_series": distro_series}
         response = self.client.post(self.get_machine_uri(machine), request)
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
@@ -1063,8 +1062,8 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {
             "op": "deploy",
             "distro_series": distro_series,
@@ -1087,8 +1086,8 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {
             "op": "deploy",
             "distro_series": distro_series,
@@ -1117,8 +1116,8 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         request = {
             "op": "deploy",
             "distro_series": distro_series,
@@ -1149,8 +1148,8 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {"op": "deploy", "distro_series": distro_series},
@@ -1179,8 +1178,8 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1216,8 +1215,8 @@ class TestMachineAPI(APITestCase.ForUser):
         machine.nodemetadata_set.create(
             key="vcenter_registration", value="True"
         )
-        osystem = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1250,8 +1249,8 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self)
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1290,8 +1289,8 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         rbac.store.add_pool(machine.pool)
         rbac.store.allow(self.user.username, machine.pool, "admin-machines")
-        osystem = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1329,8 +1328,8 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         rbac.store.add_pool(machine.pool)
         rbac.store.allow(self.user.username, machine.pool, "deploy-machines")
-        osystem = make_usable_osystem(self, "esxi", ["6.7"])
-        distro_series = osystem["default_release"]
+        _, releases = make_usable_osystem(self, "esxi", ["6.7"])
+        distro_series = releases[0]
         response = self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1401,16 +1400,14 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             architecture=make_usable_architecture(self),
         )
-        osystem = make_usable_osystem(
+        osystem, releases = make_usable_osystem(
             self, osystem_name="ubuntu", releases=["focal"]
         )
         response = self.client.post(
             self.get_machine_uri(machine),
             {
                 "op": "deploy",
-                "distro_series": "{}/{}".format(
-                    osystem["name"], osystem["default_release"]
-                ),
+                "distro_series": f"{osystem}/{releases[0]}",
                 "enable_hw_sync": True,
             },
         )
@@ -2706,9 +2703,9 @@ class TestMachineAPITransactional(APITransactionTestCase.ForUser):
             StaticIPAddress.objects.allocate_new(requested_address="10.0.0.2")
             StaticIPAddress.objects.allocate_new(requested_address="10.0.0.3")
 
-        osystem = make_usable_osystem(self)
-        distro_series = osystem["default_release"]
-        machine.osystem = osystem["name"]
+        osystem, releases = make_usable_osystem(self)
+        distro_series = releases[0]
+        machine.osystem = osystem
         machine.distro_series = distro_series
         machine.save()
 

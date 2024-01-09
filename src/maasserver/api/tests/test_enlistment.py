@@ -10,7 +10,6 @@ from django.conf import settings
 from django.urls import reverse
 
 from maasserver.api import machines as machines_module
-from maasserver.clusterrpc import boot_images
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Domain, Machine, Node, NodeMetadata
 from maasserver.models.node import PowerInfo
@@ -30,13 +29,7 @@ class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
             False, False, False, False, None, None
         )
-        ubuntu = factory.make_default_ubuntu_release_bootable()
-        osystem, release = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {"osystem": osystem, "release": release, "purpose": "xinstall"}
-        ]
+        factory.make_default_ubuntu_release_bootable()
 
     def test_POST_create_creates_machine(self):
         architecture = make_usable_architecture(self)
@@ -294,13 +287,7 @@ class TestMachineHostnameEnlistment(APITestCase.ForAnonymousAndUserAndAdmin):
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
             False, False, False, False, None, None
         )
-        ubuntu = factory.make_default_ubuntu_release_bootable()
-        osystem, release = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {"osystem": osystem, "release": release, "purpose": "xinstall"}
-        ]
+        factory.make_default_ubuntu_release_bootable()
 
     def test_created_machine_gets_default_domain_appended(self):
         hostname_without_domain = factory.make_name("hostname")
@@ -769,13 +756,8 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
             False, False, False, False, None, None
         )
-        ubuntu = factory.make_default_ubuntu_release_bootable()
-        osystem, release = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {"osystem": osystem, "release": release, "purpose": "xinstall"}
-        ]
+        factory.make_RegionController()
+        factory.make_default_ubuntu_release_bootable()
 
     def test_POST_sets_power_type_if_admin(self):
         response = self.client.post(

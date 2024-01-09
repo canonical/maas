@@ -4,7 +4,6 @@
 """Test composition of kernel command lines."""
 
 
-import os
 import random
 from unittest.mock import sentinel
 
@@ -17,7 +16,6 @@ from provisioningserver.kernel_opts import (
     compose_kernel_command_line,
     CURTIN_KERNEL_CMDLINE_NAME,
     get_curtin_kernel_cmdline_sep,
-    get_last_directory,
     KernelParameters,
 )
 
@@ -40,6 +38,21 @@ def make_kernel_parameters(testcase=None, **parms):
             if field not in parms
         }
     )
+    for field in ["kernel", "initrd", "boot_dtb", "xinstall_path"]:
+        if parms[field] and "/" not in parms[field]:
+            hash = factory.make_hex_string(64)
+            parms[field] = "/".join(
+                [
+                    hash,
+                    parms["osystem"],
+                    parms["arch"],
+                    parms["subarch"],
+                    parms["release"],
+                    parms["label"],
+                    parms[field],
+                ]
+            )
+
     # KernelParameters will handle setting the default.
     if not had_log_port:
         del parms["log_port"]
@@ -60,16 +73,6 @@ def make_kernel_parameters(testcase=None, **parms):
 
 
 class TestUtilitiesKernelOpts(MAASTestCase):
-    def test_get_last_directory(self):
-        root = self.make_dir()
-        dir1 = os.path.join(root, "20120405")
-        dir2 = os.path.join(root, "20120105")
-        dir3 = os.path.join(root, "20120403")
-        os.makedirs(dir1)
-        os.makedirs(dir2)
-        os.makedirs(dir3)
-        self.assertEqual(dir1, get_last_directory(root))
-
     def test_kernel_parameters_callable(self):
         # KernelParameters instances are callable; an alias for _replace().
         params = make_kernel_parameters()
@@ -159,7 +162,7 @@ class TestKernelOpts(MAASTestCase):
         )
         cmdline = compose_kernel_command_line(params)
         for needle in [
-            "root=tar:http://10.0.2.254:5248/images/centos/amd64/generic/8/stable/root.tgz",
+            f"root=tar:http://10.0.2.254:5248/images/{params.xinstall_path}",
             "ip6=off",
             f"ip=::::{params.hostname}:BOOTIF",
             "nvme-core.multipath=0",
@@ -410,9 +413,7 @@ class TestKernelOpts(MAASTestCase):
         for needle in [
             "ro",
             (
-                f"root=squash:http://{params.fs_host}:5248/images"
-                f"/{params.osystem}/{params.arch}/{params.subarch}/{params.release}"
-                f"/{params.label}/{params.xinstall_path}"
+                f"root=squash:http://{params.fs_host}:5248/images/{params.xinstall_path}"
             ),
         ]:
             self.assertIn(needle, compose_kernel_command_line(params))
@@ -422,9 +423,7 @@ class TestKernelOpts(MAASTestCase):
         for needle in [
             "ro",
             (
-                f"root=squash:http://[{params.fs_host}]:5248/images"
-                f"/{params.osystem}/{params.arch}/{params.subarch}/{params.release}"
-                f"/{params.label}/{params.xinstall_path}"
+                f"root=squash:http://[{params.fs_host}]:5248/images/{params.xinstall_path}"
             ),
         ]:
             self.assertIn(needle, compose_kernel_command_line(params))
@@ -435,11 +434,7 @@ class TestKernelOpts(MAASTestCase):
         )
         for needle in [
             "ro",
-            (
-                f"root=squash:http://[{params.fs_host}]:5248/images"
-                f"/{params.osystem}/{params.arch}/{params.subarch}/{params.release}"
-                f"/{params.label}/squashfs"
-            ),
+            (f"root=squash:http://[{params.fs_host}]:5248/images/squashfs"),
         ]:
             self.assertIn(needle, compose_kernel_command_line(params))
 

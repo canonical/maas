@@ -22,7 +22,6 @@ from provisioningserver.boot.pxe import (
     re_config_file,
 )
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
-from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import atomic_symlink, tempdir
@@ -267,7 +266,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         method = PXEBootMethod()
         params = make_kernel_parameters(self, purpose="xinstall")
         fs_host = re.escape(
-            "http://%s:5248/images" % (convert_host_to_uri_str(params.fs_host))
+            f"http://{convert_host_to_uri_str(params.fs_host)}:5248/images"
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
@@ -277,19 +276,9 @@ class TestPXEBootMethodRender(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = re.escape(
-            compose_image_path(
-                osystem=params.kernel_osystem,
-                arch=params.arch,
-                subarch=params.subarch,
-                release=params.kernel_release,
-                label=params.kernel_label,
-            )
-        )
-
         for regex in [
-            rf"(?ms).*^\s+KERNEL {fs_host}/{image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+INITRD {fs_host}/{image_dir}/{params.initrd}$",
+            rf"(?ms).*^\s+KERNEL {fs_host}/{params.kernel}$",
+            rf"(?ms).*^\s+INITRD {fs_host}/{params.initrd}$",
             r"(?ms).*^\s+APPEND .+?$",
         ]:
             self.assertRegex(output, regex)
@@ -314,17 +303,10 @@ class TestPXEBootMethodRender(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
-        )
         for regex in [
-            rf"(?ms).*^\s+KERNEL {image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+INITRD {image_dir}/{params.initrd}$",
-            rf"(?ms).*^\s+FDT {image_dir}/{params.boot_dtb}$",
+            rf"(?ms).*^\s+KERNEL {params.kernel}$",
+            rf"(?ms).*^\s+INITRD {params.initrd}$",
+            rf"(?ms).*^\s+FDT {params.boot_dtb}$",
             r"(?ms).*^\s+APPEND .+?$",
         ]:
             self.assertRegex(output, regex)
@@ -349,17 +331,10 @@ class TestPXEBootMethodRender(MAASTestCase):
         # typically start with a DEFAULT line.
         self.assertTrue(output.startswith("DEFAULT "))
         # The PXE parameters are all set according to the options.
-        image_dir = compose_image_path(
-            osystem=params.kernel_osystem,
-            arch=params.arch,
-            subarch=params.subarch,
-            release=params.kernel_release,
-            label=params.kernel_label,
-        )
         for regex in [
-            rf"(?ms).*^\s+KERNEL {image_dir}/{params.kernel}$",
-            rf"(?ms).*^\s+INITRD {image_dir}/{params.initrd}$",
-            rf"(?ms).*^\s+FDT {image_dir}/{params.boot_dtb}$",
+            rf"(?ms).*^\s+KERNEL {params.kernel}$",
+            rf"(?ms).*^\s+INITRD {params.initrd}$",
+            rf"(?ms).*^\s+FDT {params.boot_dtb}$",
             r"(?ms).*^\s+APPEND .+?$",
         ]:
             self.assertRegex(output, regex)
@@ -449,9 +424,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
                 purpose=self.purpose,
             ),
         }
-        fs_host = "http://%s:5248/images" % (
-            convert_host_to_uri_str(options["kernel_params"].fs_host)
-        )
+        fs_host = f"http://{convert_host_to_uri_str(options['kernel_params'].fs_host)}:5248/images"
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -459,15 +432,13 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         self.assertIn(default_section_label, config)
         default_section = dict(config[default_section_label])
 
-        self.assertTrue(
-            default_section["KERNEL"].startswith(
-                f"{fs_host}/{osystem}/{arch}/{subarch}"
-            )
+        self.assertEqual(
+            f"{fs_host}/{options['kernel_params'].kernel}",
+            default_section["KERNEL"],
         )
-        self.assertTrue(
-            default_section["INITRD"].startswith(
-                f"{fs_host}/{osystem}/{arch}/{subarch}"
-            )
+        self.assertEqual(
+            f"{fs_host}/{options['kernel_params'].initrd}",
+            default_section["INITRD"],
         )
         self.assertEqual("2", default_section["IPAPPEND"])
 
@@ -496,9 +467,7 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
                 purpose="enlist",
             ),
         }
-        fs_host = "http://%s:5248/images" % (
-            convert_host_to_uri_str(options["kernel_params"].fs_host)
-        )
+        fs_host = f"http://{convert_host_to_uri_str(options['kernel_params'].fs_host)}:5248/images"
         output = method.get_reader(**options).read(10000).decode("utf-8")
         config = parse_pxe_config(output)
         # The default section is defined.
@@ -523,15 +492,13 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
             self.assertGreaterEqual(
                 section.keys(), {"KERNEL", "INITRD", "APPEND"}
             )
-            self.assertTrue(
-                section["KERNEL"].startswith(
-                    f"{fs_host}/{osystem}/{section_label}"
-                )
+            self.assertEqual(
+                f"{fs_host}/{options['kernel_params'].kernel}",
+                section["KERNEL"],
             )
-            self.assertTrue(
-                section["INITRD"].startswith(
-                    f"{fs_host}/{osystem}/{section_label}"
-                )
+            self.assertEqual(
+                f"{fs_host}/{options['kernel_params'].initrd}",
+                section["INITRD"],
             )
             self.assertIn("APPEND", section)
 

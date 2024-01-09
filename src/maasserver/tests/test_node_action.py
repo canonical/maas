@@ -680,9 +680,9 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         mock_node_start = self.patch(node, "start")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
@@ -710,9 +710,9 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         mock_node_start = self.patch(node, "start")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         extra = {"user_data": "foo: bar"}
@@ -740,9 +740,9 @@ class TestDeployAction(MAASServerTestCase):
             node_action_module, "get_curtin_config"
         )
         mock_get_curtin_config.side_effect = NodeActionError("error")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         error = self.assertRaises(
@@ -782,9 +782,9 @@ class TestDeployAction(MAASServerTestCase):
             power_type="manual",
             owner=admin,
         )
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
 
         extra = {
             "osystem": os_name,
@@ -825,11 +825,11 @@ class TestDeployAction(MAASServerTestCase):
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
 
-        osystem = make_usable_osystem(
+        osystem, releases = make_usable_osystem(
             self, osystem_name="ubuntu", releases=["focal"]
         )
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        os_name = osystem
+        release_name = releases[0]
         extra = {
             "osystem": os_name,
             "distro_series": release_name,
@@ -853,11 +853,11 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(
+        osystem, releases = make_usable_osystem(
             self, osystem_name="ubuntu", releases=["focal"]
         )
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        os_name = osystem
+        release_name = releases[0]
         extra = {"osystem": os_name, "distro_series": release_name}
         with pytest.raises(NodeActionError) as exception:
             Deploy(node, user, request).execute(**extra)
@@ -881,11 +881,11 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(
+        osystem, releases = make_usable_osystem(
             self, osystem_name="ubuntu", releases=["focal"]
         )
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         Deploy(node, user, request).execute()
@@ -905,9 +905,9 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         mock_node_start = self.patch(node, "start")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         extra = {
             "osystem": os_name,
             "distro_series": release_name,
@@ -1002,9 +1002,9 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         extra = {"osystem": os_name, "distro_series": release_name + "*"}
         Deploy(node, user, request).execute(**extra)
         self.assertEqual(node.osystem, os_name)
@@ -1017,9 +1017,9 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(self)
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self)
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         action = Deploy(node, user, request)
@@ -1037,9 +1037,9 @@ class TestDeployAction(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
-        osystem = make_usable_osystem(self, osystem_name="windows")
-        os_name = osystem["name"]
-        release_name = osystem["releases"][0]["name"]
+        osystem, releases = make_usable_osystem(self, osystem_name="windows")
+        os_name = osystem
+        release_name = releases[0]
         Config.objects.set_config("default_osystem", os_name)
         Config.objects.set_config("default_distro_series", release_name)
         extra = {"enable_hw_sync": True}

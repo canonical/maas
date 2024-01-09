@@ -145,20 +145,20 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
-        osystem = make_osystem_with_releases(self)
+        osystem, osystem_releases = make_osystem_with_releases(self)
         releases = [
             (
-                "{}/{}".format(osystem["name"], release["name"]),
-                release["title"],
+                "{}/{}".format(osystem, release),
+                release,
             )
-            for release in osystem["releases"]
+            for release in osystem_releases
         ]
         self.patch(general, "list_osystem_choices").return_value = [
-            (osystem["name"], osystem["title"])
+            (osystem, osystem)
         ]
         self.patch(general, "list_release_choices").return_value = releases
         expected_osinfo = {
-            "osystems": [(osystem["name"], osystem["title"])],
+            "osystems": [(osystem, osystem)],
             "releases": releases,
             "kernels": {
                 "ubuntu": {"focal": [("hwe-20.04", "focal (hwe-20.04)")]}

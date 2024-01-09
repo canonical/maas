@@ -19,10 +19,15 @@ from django.urls import reverse
 import yaml
 
 from maasserver import preseed as preseed_module
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.compose_preseed import get_archive_config, make_clean_repo_name
-from maasserver.enum import FILESYSTEM_TYPE, NODE_STATUS, PRESEED_TYPE
-from maasserver.exceptions import ClusterUnavailable, MissingBootImage
+from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_TYPE,
+    FILESYSTEM_TYPE,
+    NODE_STATUS,
+    PRESEED_TYPE,
+)
+from maasserver.exceptions import MissingBootImage
 from maasserver.models import BootResource, Config, NodeKey, PackageRepository
 from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.preseed import (
@@ -73,29 +78,84 @@ from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.http import make_HttpRequest
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+)
+from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
 
 
 class BootImageHelperMixin:
-    def make_rpc_boot_image_for(self, node, purpose):
+    def setUp(self):
+        super().setUp()
+        self.region = factory.make_RegionController()
+        self.rack_controller = factory.make_RackController()
+        configs = Config.objects.get_configs(
+            ["default_osystem", "default_distro_series"]
+        )
+        self.dft_osystem = configs["default_osystem"]
+        self.dft_distro_series = configs["default_distro_series"]
+
+    def make_boot_image_for_system(
+        self,
+        osystem=None,
+        series=None,
+        arch=None,
+        subarch="generic",
+        platform=None,
+        label=None,
+        image_type=None,
+        purpose=BOOT_IMAGE_PURPOSE.XINSTALL,
+    ):
+        osystem = osystem or self.dft_osystem
+        if series is None:
+            series = self.dft_distro_series
+        arch = arch or factory.make_name("arch")
+        subarch = subarch or factory.make_name("subarch")
+        if osystem != "custom":
+            rtype = BOOT_RESOURCE_TYPE.SYNCED
+        else:
+            rtype = BOOT_RESOURCE_TYPE.UPLOADED
+
+        if osystem not in OperatingSystemRegistry:
+            OperatingSystemRegistry.register_item(osystem, CustomOS())
+            self.addCleanup(OperatingSystemRegistry.unregister_item, osystem)
+
+        if purpose == BOOT_IMAGE_PURPOSE.BOOTLOADER:
+            boot_type = "uefi"
+            image_type = BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ
+        else:
+            os_drv = OperatingSystemRegistry.get_item(
+                osystem
+            ).get_image_filetypes()
+            image_type = image_type or next(iter(os_drv))
+            boot_type = None
+
+        return factory.make_usable_boot_resource(
+            name=f"{osystem}/{series}",
+            architecture=f"{arch}/{subarch}",
+            platform=platform,
+            bootloader_type=boot_type,
+            image_filetype=image_type,
+            label=label,
+            rtype=rtype,
+        )
+
+    def make_boot_image_for_node(
+        self,
+        node,
+        purpose=BOOT_IMAGE_PURPOSE.XINSTALL,
+        image_type=None,
+        label=None,
+    ):
         osystem = node.get_osystem()
         series = node.get_distro_series()
         arch, subarch = node.split_arch()
-        return make_rpc_boot_image(
-            osystem=osystem,
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            purpose=purpose,
+        return self.make_boot_image_for_system(
+            osystem, series, arch, subarch, subarch, label, image_type, purpose
         )
-
-    def configure_get_boot_images_for_node(self, node, purpose):
-        boot_image = self.make_rpc_boot_image_for(node, purpose)
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
 
 
 class TestGetNetlocAndPath(MAASServerTestCase):
@@ -589,7 +649,7 @@ class TestNodeDeprecatedPreseedContext(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         context = get_node_deprecated_preseed_context()
         self.assertEqual(
             {
@@ -612,7 +672,7 @@ class TestNodePreseedContext(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         release = factory.make_string()
         context = get_node_preseed_context(make_HttpRequest(), node, release)
         self.assertEqual(
@@ -631,9 +691,9 @@ class TestNodePreseedContext(
 
     def test_context_contains_third_party_drivers(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         release = factory.make_string()
         enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
@@ -692,7 +752,7 @@ class TestRenderPreseed(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         preseed = render_preseed(
             make_HttpRequest(), node, self.preseed, "precise"
         )
@@ -707,7 +767,7 @@ class TestRenderPreseed(
             primary_rack=self.rpc_rack_controller,
             status=NODE_STATUS.COMMISSIONING,
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         request = make_HttpRequest()
         preseed = render_preseed(
@@ -1174,7 +1234,7 @@ class TestGetCurtinUserData(
         self.patch(
             preseed_module, "curtin_supports_custom_storage"
         ).return_value = True
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config"
         )
@@ -1202,7 +1262,8 @@ class TestGetCurtinUserData(
         self.patch(
             preseed_module, "curtin_supports_custom_storage_for_dd"
         ).return_value = True
-        self.configure_get_boot_images_for_node(node, "xinstall")
+
+        self.make_boot_image_for_node(node, "xinstall")
         mock_compose_storage = self.patch(
             preseed_module, "compose_curtin_storage_config"
         )
@@ -1215,7 +1276,7 @@ class TestGetCurtinUserData(
             primary_rack=self.rpc_rack_controller,
             osystem=factory.make_name("osystem"),
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
@@ -1231,7 +1292,7 @@ class TestGetCurtinUserData(
             osystem="ubuntu",
             distro_series="bionic",
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
@@ -1247,7 +1308,7 @@ class TestGetCurtinUserData(
             osystem="ubuntu",
             distro_series="trusty",
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         mock_compose_network = self.patch(
             preseed_module, "compose_curtin_network_config"
         )
@@ -1262,7 +1323,7 @@ class TestGetCurtinUserData(
             primary_rack=self.rpc_rack_controller,
             osystem=factory.make_name("osystem"),
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         self.patch(
             preseed_module, "curtin_supports_custom_storage"
         ).return_value = True
@@ -1281,7 +1342,7 @@ class TestGetCurtinUserData(
             primary_rack=self.rpc_rack_controller,
             osystem=factory.make_name("osystem"),
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         self.patch(
             preseed_module, "curtin_supports_custom_storage"
         ).return_value = True
@@ -1314,7 +1375,7 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
             primary_rack=self.rpc_rack_controller
         )
         Config.objects.set_config("enable_third_party_drivers", True)
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         get_third_party_driver = self.patch(
             preseed_module, "get_third_party_driver"
         )
@@ -1350,7 +1411,7 @@ class TestGetCurtinUserDataOS(
             primary_rack=self.rpc_rack_controller, osystem=self.os_name
         )
         arch, subarch = node.split_arch()
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         user_data = get_curtin_userdata(make_HttpRequest(), node)
 
         # Just check that the user data looks good.
@@ -1399,7 +1460,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
         config = get_curtin_config(request, node)
         self.assertIn("debconf_selections:", config)
@@ -1409,7 +1470,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         power_state_template = dedent(
             """\
         power_state:
@@ -1427,7 +1488,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         apt_mirrors_template = dedent(
             """\
         apt_mirrors:
@@ -1447,7 +1508,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         apt_proxy_template = dedent(
             """\
         apt_proxy: http://127.0.0.1:8000/
@@ -1466,7 +1527,7 @@ class TestCurtinUtilities(
         )
         node.distro_series = "precise"
         node.save()
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
         self.assertIn("mode: reboot", config)
 
@@ -1474,7 +1535,7 @@ class TestCurtinUtilities(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
         config = get_curtin_config(request, node)
         yaml_conf = yaml.safe_load(config)
@@ -1489,7 +1550,7 @@ class TestCurtinUtilities(
             primary_rack=self.rpc_rack_controller
         )
         node.save()
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
         self.assertIn(
             "grub2: grub2   grub2/update_nvram  boolean false",
@@ -1503,7 +1564,7 @@ class TestCurtinUtilities(
             bios_boot_method="s390x",
         )
         node.save()
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
         self.assertIn(
             "maas_00: chreipl node /dev/" + node.get_boot_disk().name, config
@@ -1511,10 +1572,10 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_has_yum_proxy_late_command(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=random.choice(["centos", "rhel"]),
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
         self.assertIn("proxy=", config)
 
@@ -1549,7 +1610,6 @@ class TestCurtinUtilities(
                 'netplan info || (echo "netplan not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
-        self.configure_get_boot_images_for_node(node, "xinstall")
         base_osystem, base_release = boot_resource.split_base_image()
         config = get_curtin_config(
             make_HttpRequest(),
@@ -1614,7 +1674,7 @@ class TestCurtinUtilities(
         factory.make_PackageRepository(
             url=main_url, default=True, arches=["i386", "amd64"]
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         self.assertAptConfig(yaml.safe_load(userdata[0]))
@@ -1627,7 +1687,7 @@ class TestCurtinUtilities(
         factory.make_PackageRepository(
             url=main_url, default=True, arches=["i386", "amd64"]
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         self.assertAptConfig(yaml.safe_load(userdata[0]))
@@ -1667,7 +1727,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         factory.make_PackageRepository(
             url=main_url, default=True, arches=["i386", "amd64"], key=key
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = get_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
@@ -1688,7 +1748,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             arches=["i386", "amd64"],
             disabled_pockets=["updates", "backports"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
@@ -1714,7 +1774,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             disabled_pockets=["updates", "backports"],
             disabled_components=["universe", "multiverse"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
@@ -1731,7 +1791,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             arches=["i386", "amd64"],
             disable_sources=False,
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         preseed = yaml.safe_load(userdata[0])
@@ -1750,7 +1810,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             default=False,
             arches=["i386", "amd64"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         ppa = PackageRepository.objects.get_additional_repositories(
@@ -1783,7 +1843,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             default=False,
             arches=["i386", "amd64"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         ppas = PackageRepository.objects.get_additional_repositories(
@@ -1823,7 +1883,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             default=False,
             arches=["i386", "amd64"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
@@ -1852,7 +1912,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             arches=["i386", "amd64"],
             components=["main", "universe"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
@@ -1886,7 +1946,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             distributions=["contrail"],
             components=["main", "universe"],
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         repository = PackageRepository.objects.get_additional_repositories(
@@ -1915,7 +1975,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         factory.make_PackageRepository(
             url=main_url, default=True, arches=["ppc64el", "arm64"]
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         archive = PackageRepository.objects.get_default_archive(
@@ -1926,7 +1986,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_compose_curtin_archive_config_main_archive_for_custom_os(self):
         node = self.make_fastpath_node("amd64")
         node.osystem = "custom"
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         # compose_curtin_archive_config returns a list.
         userdata = compose_curtin_archive_config(make_HttpRequest(), node)
         self.assertAptConfig(yaml.safe_load(userdata[0]))
@@ -1939,59 +1999,12 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         self.assertEqual({"curtin_preseed"}, context.keys())
         self.assertIn("cloud-init", context["curtin_preseed"])
 
-    def test_get_curtin_image_calls_get_boot_images_for(self):
-        osystem = factory.make_name("os")
-        series = factory.make_name("series")
-        architecture = make_usable_architecture(self)
-        arch, subarch = architecture.split("/")
-        node = factory.make_Node_with_Interface_on_Subnet(
-            osystem=osystem, distro_series=series, architecture=architecture
-        )
-        mock_get_boot_images_for = self.patch(
-            preseed_module, "get_boot_images_for"
-        )
-        mock_get_boot_images_for.return_value = [
-            make_rpc_boot_image(purpose="xinstall")
-        ]
-        get_curtin_image(
-            node.get_boot_rack_controller(),
-            arch,
-            subarch,
-            osystem,
-            series,
-        )
-        mock_get_boot_images_for.assert_called_once_with(
-            node.get_boot_primary_rack_controller(),
-            osystem,
-            arch,
-            subarch,
-            series,
-        )
-
-    def test_get_curtin_image_raises_ClusterUnavailable(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        arch, platform = node.split_arch()
-        self.patch(
-            preseed_module, "get_boot_images_for"
-        ).side_effect = NoConnectionsAvailable
-        self.assertRaises(
-            ClusterUnavailable,
-            get_curtin_image,
-            node.get_boot_rack_controller(),
-            arch,
-            platform,
-            "",
-            "",
-        )
-
     def test_get_curtin_image_raises_MissingBootImage(self):
         node = factory.make_Node()
         arch, platform = node.split_arch()
-        self.patch(preseed_module, "get_boot_images_for").return_value = []
         self.assertRaises(
             MissingBootImage,
             get_curtin_image,
-            node.get_boot_rack_controller(),
             arch,
             platform,
             "",
@@ -2002,87 +2015,63 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
         node = factory.make_Node(architecture=(f"{arch}/{subarch}"))
-        other_images = [make_rpc_boot_image() for _ in range(3)]
-        xinstall_image = make_rpc_boot_image(
-            purpose="xinstall", architecture=arch, subarchitecture=subarch
+        _ = [self.make_boot_image_for_system() for _ in range(3)]
+        xinstall_res = self.make_boot_image_for_system(
+            purpose="xinstall", arch=arch, subarch=subarch, platform=subarch
         )
-        other_xinstall_image = make_rpc_boot_image(
-            purpose="xinstall", architecture=arch
+        self.make_boot_image_for_system(
+            purpose="xinstall", arch=arch, subarch="generic"
         )
-        images = other_images + [xinstall_image, other_xinstall_image]
-        self.patch(preseed_module, "get_boot_images_for").return_value = images
-        self.assertEqual(
-            xinstall_image,
-            get_curtin_image(
-                node.get_boot_rack_controller(),
-                arch,
-                subarch,
-                node.get_osystem(),
-                node.get_distro_series(),
-            ),
+        bfile, ftype = get_curtin_image(
+            arch,
+            subarch,
+            node.get_osystem(),
+            node.get_distro_series(),
         )
+        self.assertEqual(xinstall_res, bfile.resource_set.resource)
+        self.assertEqual(ftype, bfile.filetype)
 
     def test_get_curtin_image_returns_xinstall_image_for_newer(self):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
         node = factory.make_Node(architecture=(f"{arch}/{subarch}"))
-        other_images = [make_rpc_boot_image() for _ in range(3)]
-        xinstall_image = make_rpc_boot_image(
-            purpose="xinstall", architecture=arch
+        _ = [self.make_boot_image_for_system() for _ in range(3)]
+        xinstall_res = self.make_boot_image_for_system(
+            purpose="xinstall", arch=arch, subarch=subarch
         )
-        images = other_images + [xinstall_image]
-        self.patch(preseed_module, "get_boot_images_for").return_value = images
-        self.assertEqual(
-            xinstall_image,
-            get_curtin_image(
-                node.get_boot_rack_controller(),
-                arch,
-                subarch,
-                node.get_osystem(),
-                node.get_distro_series(),
-            ),
+        bfile, ftype = get_curtin_image(
+            arch,
+            subarch,
+            node.get_osystem(),
+            node.get_distro_series(),
         )
+        self.assertEqual(xinstall_res, bfile.resource_set.resource)
+        self.assertEqual(ftype, bfile.filetype)
 
     def test_get_curtin_installer_url_returns_url_for_tgz(self):
-        osystem = make_usable_osystem(self)
-        series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        series = releases[0]
         architecture = make_usable_architecture(self)
-        xinstall_path = factory.make_name("xi_path")
-        xinstall_type = factory.make_name("xi_type")
         cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
-            osystem=osystem["name"],
+            primary_rack=self.rack_controller,
+            osystem=osystem,
             architecture=architecture,
             distro_series=series,
             boot_cluster_ip=cluster_ip,
         )
         arch, subarch = architecture.split("/")
-        boot_image = make_rpc_boot_image(
-            osystem=osystem["name"],
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            purpose="xinstall",
-            xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type,
-        )
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
-
+        image_type = BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
+        res = self.make_boot_image_for_node(node, image_type=image_type)
+        image = [
+            f for f in res.sets.first().files.all() if f.filetype == image_type
+        ][0]
         installer_url = get_curtin_installer_url(node)
         self.assertEqual(
-            "%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s"
-            % (
-                xinstall_type,
-                cluster_ip,
-                osystem["name"],
-                arch,
-                subarch,
-                series,
-                boot_image["label"],
-                xinstall_path,
+            (
+                f"http://{cluster_ip}:5248/images/{image.sha256}/"
+                f"{osystem}/{arch}/{subarch}/{series}/"
+                f"{image.resource_set.label}/{image.filename}"
             ),
             installer_url,
         )
@@ -2093,98 +2082,62 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         osystem = "ubuntu"
         series = "precise"
         architecture = make_usable_architecture(self)
-        xinstall_path = factory.make_name("xi_path")
-        xinstall_type = factory.make_name("xi_type")
         cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=osystem,
             architecture=architecture,
             distro_series=series,
             boot_cluster_ip=cluster_ip,
         )
-        arch, subarch = architecture.split("/")
-        boot_image = make_rpc_boot_image(
-            osystem=osystem,
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            purpose="xinstall",
-            xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type,
-        )
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
-
+        arch, _ = architecture.split("/")
+        image_type = BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+        res = self.make_boot_image_for_node(node, image_type=image_type)
+        image = [
+            f for f in res.sets.first().files.all() if f.filetype == image_type
+        ][0]
         installer_url = get_curtin_installer_url(node)
         self.assertEqual(
-            "%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s"
-            % (
-                xinstall_type,
-                cluster_ip,
-                osystem,
-                arch,
-                "generic",  # Precise will not boot with any other subarch
-                series,
-                boot_image["label"],
-                xinstall_path,
+            (
+                f"fsimage:http://{cluster_ip}:5248/images/{image.sha256}/"
+                f"{osystem}/{arch}/generic/{series}/"
+                f"{image.resource_set.label}/{image.filename}"
             ),
             installer_url,
         )
 
     def test_get_curtin_installer_url_returns_cp_for_squashfs(self):
-        osystem = make_usable_osystem(self)
-        series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        series = releases[0]
         architecture = make_usable_architecture(self)
-        xinstall_path = factory.make_name("xi_path")
-        xinstall_type = "squashfs"
+        image_type = BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
         cluster_ip = factory.make_ipv4_address()
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
-            osystem=osystem["name"],
+            primary_rack=self.rack_controller,
+            osystem=osystem,
             architecture=architecture,
             distro_series=series,
             boot_cluster_ip=cluster_ip,
         )
-        arch, subarch = architecture.split("/")
-        boot_image = make_rpc_boot_image(
-            osystem=osystem["name"],
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            purpose="xinstall",
-            xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type,
-        )
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
+        self.make_boot_image_for_node(node, image_type=image_type)
 
         installer_url = get_curtin_installer_url(node)
         self.assertEqual("cp:///media/root-ro", installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
-        osystem = make_usable_osystem(self)
-        series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        series = releases[0]
         architecture = make_usable_architecture(self)
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
-            osystem=osystem["name"],
+            primary_rack=self.rack_controller,
+            osystem=osystem,
             architecture=architecture,
             distro_series=series,
         )
         # Make boot image that is not xinstall
-        arch, subarch = architecture.split("/")
-        boot_image = make_rpc_boot_image(
-            osystem=osystem["name"],
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
+        self.make_boot_image_for_node(
+            node, purpose=BOOT_IMAGE_PURPOSE.BOOTLOADER
         )
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
 
         error = self.assertRaises(
             MissingBootImage, get_curtin_installer_url, node
@@ -2193,52 +2146,9 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         msg = (
             "No image could be found for the given selection: "
             "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall."
-            % (osystem["name"], arch, subarch, node.get_distro_series())
+            % (osystem, arch, subarch, node.get_distro_series())
         )
         self.assertIn(msg, "%s" % error)
-
-    def test_get_curtin_installer_url_doesnt_append_on_root_tar(self):
-        osystem = make_usable_osystem(self)
-        series = osystem["default_release"]
-        architecture = make_usable_architecture(self)
-        xinstall_path = factory.make_name("xi_path")
-        xinstall_type = random.choice(["tgz", "tbz", "txz"])
-        cluster_ip = factory.make_ipv4_address()
-        node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
-            osystem=osystem["name"],
-            architecture=architecture,
-            distro_series=series,
-            boot_cluster_ip=cluster_ip,
-        )
-        arch, subarch = architecture.split("/")
-        boot_image = make_rpc_boot_image(
-            osystem=osystem["name"],
-            release=series,
-            architecture=arch,
-            subarchitecture=subarch,
-            purpose="xinstall",
-            xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type,
-        )
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
-
-        installer_url = get_curtin_installer_url(node)
-        self.assertEqual(
-            "http://%s:5248/images/%s/%s/%s/%s/%s/%s"
-            % (
-                cluster_ip,
-                osystem["name"],
-                arch,
-                subarch,
-                series,
-                boot_image["label"],
-                xinstall_path,
-            ),
-            installer_url,
-        )
 
     def test_get_preseed_type_for_commissioning(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -2254,7 +2164,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
     def test_get_preseed_type_for_curtin(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         self.assertEqual(PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_poweroff(self):
@@ -2360,7 +2270,7 @@ class TestPreseedMethods(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller, status=NODE_STATUS.DEPLOYING
         )
-        self.configure_get_boot_images_for_node(node, "xinstall")
+        self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
         preseed = get_preseed(request, node)
         curtin_url = f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/MAAS/metadata/curtin"
@@ -2434,7 +2344,7 @@ class TestPreseedURLs(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller
         )
-        self.configure_get_boot_images_for_node(node, "install")
+        self.make_boot_image_for_node(node, "install")
         response = self.client.get(
             compose_preseed_url(
                 node,

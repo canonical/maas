@@ -44,7 +44,6 @@ from provisioningserver.prometheus.metrics import METRICS_DEFINITIONS
 from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.rackdservices import tftp as tftp_module
 from provisioningserver.rackdservices.tftp import (
-    get_boot_image,
     log_request,
     Port,
     TFTPBackend,
@@ -55,157 +54,10 @@ from provisioningserver.rackdservices.tftp import (
 )
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import GetBootConfig
-from provisioningserver.testing.boot_images import (
-    make_boot_image_params,
-    make_image,
-)
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
 TIMEOUT = get_testing_timeout()
-
-
-class TestGetBootImage(MAASTestCase):
-    """Tests for `get_boot_image`."""
-
-    def make_boot_image(self, params, purpose, subarch=None, subarches=None):
-        image = make_image(params, purpose)
-        if subarch is not None:
-            image["subarchitecture"] = subarch
-        if subarches is not None:
-            image["supported_subarches"] = subarches
-        return image
-
-    def make_all_boot_images(
-        self, return_purpose, subarch=None, subarches=None
-    ):
-        params = make_boot_image_params()
-        images = []
-        return_image = None
-        all_purposes = ["commissioning", "xinstall", "install"]
-        for purpose in all_purposes:
-            image = self.make_boot_image(
-                params, purpose, subarch=subarch, subarches=subarches
-            )
-            if purpose == return_purpose:
-                return_image = image
-            images.append(image)
-        return images, return_image
-
-    def patch_list_boot_images(self, images):
-        self.patch(tftp_module, "list_boot_images").return_value = images
-
-    def test_returns_commissioning_image_for_enlist(self):
-        images, expected_image = self.make_all_boot_images("commissioning")
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                expected_image["subarchitecture"],
-                "enlist",
-                skip_subarchitecture_check=False,
-            ),
-        )
-
-    def test_returns_commissioning_image_for_commissioning(self):
-        images, expected_image = self.make_all_boot_images("commissioning")
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                expected_image["subarchitecture"],
-                expected_image["purpose"],
-                skip_subarchitecture_check=False,
-            ),
-        )
-
-    def test_returns_xinstall_image_for_xinstall(self):
-        images, expected_image = self.make_all_boot_images("xinstall")
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                expected_image["subarchitecture"],
-                expected_image["purpose"],
-                skip_subarchitecture_check=False,
-            ),
-        )
-
-    def test_returns_install_image_for_install(self):
-        images, expected_image = self.make_all_boot_images("install")
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                expected_image["subarchitecture"],
-                expected_image["purpose"],
-                skip_subarchitecture_check=False,
-            ),
-        )
-
-    def test_returns_image_by_its_supported_subarches(self):
-        subarch = factory.make_name("hwe")
-        other_subarches = [factory.make_name("hwe") for _ in range(3)]
-        subarches = ",".join(other_subarches + [subarch])
-        images, expected_image = self.make_all_boot_images(
-            "commissioning", subarch="generic", subarches=subarches
-        )
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                subarch,
-                expected_image["purpose"],
-                skip_subarchitecture_check=False,
-            ),
-        )
-
-    def test_skip_subarch_check(self):
-        subarch = factory.make_name("generic")
-        images, expected_image = self.make_all_boot_images(
-            "commissioning", subarch=""
-        )
-        self.patch_list_boot_images(images)
-        self.assertEqual(
-            expected_image,
-            get_boot_image(
-                expected_image["osystem"],
-                expected_image["release"],
-                expected_image["architecture"],
-                subarch,
-                expected_image["purpose"],
-                skip_subarchitecture_check=True,
-            ),
-        )
-
-    def test_returns_None_if_missing_image(self):
-        images, _ = self.make_all_boot_images(None)
-        self.patch_list_boot_images(images)
-        self.assertIsNone(
-            get_boot_image(
-                factory.make_name("os"),
-                factory.make_name("release"),
-                factory.make_name("arch"),
-                factory.make_name("subarch"),
-                factory.make_name("purpose"),
-                skip_subarchitecture_check=False,
-            )
-        )
 
 
 class TestBytesReader(MAASTestCase):
@@ -387,20 +239,6 @@ class TestTFTPBackend(MAASTestCase):
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
 
-        # Stub the output of list_boot_images so the label is set in the
-        # kernel parameters.
-        boot_image = {
-            "osystem": fake_params["osystem"],
-            "release": fake_params["release"],
-            "architecture": fake_params["arch"],
-            "subarchitecture": fake_params["subarch"],
-            "purpose": fake_params["purpose"],
-            "supported_subarches": "",
-            "label": fake_params["label"],
-        }
-        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
-        del fake_params["label"]
-
         # Stub RPC call to return the fake configuration parameters.
         clients = []
         for _ in range(10):
@@ -454,20 +292,6 @@ class TestTFTPBackend(MAASTestCase):
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
-
-        # Stub the output of list_boot_images so the label is set in the
-        # kernel parameters.
-        boot_image = {
-            "osystem": fake_params["osystem"],
-            "release": fake_params["release"],
-            "architecture": fake_params["arch"],
-            "subarchitecture": fake_params["subarch"],
-            "purpose": fake_params["purpose"],
-            "supported_subarches": "",
-            "label": fake_params["label"],
-        }
-        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
-        del fake_params["label"]
 
         # Stub RPC call to return the fake configuration parameters.
         clients = []
@@ -525,20 +349,6 @@ class TestTFTPBackend(MAASTestCase):
         # Fake kernel configuration parameters, as returned from the RPC call.
         fake_kernel_params = make_kernel_parameters()
         fake_params = fake_kernel_params._asdict()
-
-        # Stub the output of list_boot_images so the label is set in the
-        # kernel parameters.
-        boot_image = {
-            "osystem": fake_params["osystem"],
-            "release": fake_params["release"],
-            "architecture": fake_params["arch"],
-            "subarchitecture": fake_params["subarch"],
-            "purpose": fake_params["purpose"],
-            "supported_subarches": "",
-            "label": fake_params["label"],
-        }
-        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
-        del fake_params["label"]
 
         # Stub RPC call to return the fake configuration parameters.
         clients = []
@@ -607,21 +417,6 @@ class TestTFTPBackend(MAASTestCase):
             kernel_label=label,
         )
         fake_params = fake_kernel_params._asdict()
-
-        # Stub the output of list_boot_images so the label is set in the
-        # kernel parameters.
-        boot_image = {
-            "osystem": fake_params["osystem"],
-            "release": fake_params["release"],
-            "architecture": fake_params["arch"],
-            "subarchitecture": fake_params["subarch"],
-            "purpose": fake_params["purpose"],
-            "supported_subarches": "",
-            "label": fake_params["label"],
-            "xinstall_path": fake_params["xinstall_path"],
-        }
-        self.patch(tftp_module, "list_boot_images").return_value = [boot_image]
-        del fake_params["label"]
 
         # Stub RPC call to return the fake configuration parameters.
         client = Mock()
@@ -756,10 +551,6 @@ class TestTFTPBackend(MAASTestCase):
             label="no-such-image", kernel_label="no-such-image"
         )
         fake_params = fake_kernel_params._asdict()
-
-        # Stub the output of list_boot_images so no images exist.
-        self.patch(tftp_module, "list_boot_images").return_value = []
-        del fake_params["label"]
 
         # Stub RPC call to return the fake configuration parameters.
         client = Mock()

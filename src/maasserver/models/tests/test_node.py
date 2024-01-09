@@ -34,16 +34,12 @@ from testtools.matchers import (
     Not,
 )
 from twisted.internet import defer
-from twisted.internet.error import ConnectionClosed, ConnectionDone
+from twisted.internet.error import ConnectionDone
 import yaml
 
-from maasserver import bootresources
-from maasserver import preseed as preseed_module
 from maasserver import server_address
 from maasserver import workflow as workflow_module
-from maasserver.clusterrpc import boot_images
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -73,7 +69,6 @@ from maasserver.exceptions import (
 )
 from maasserver.models import (
     BMCRoutableRackControllerRelationship,
-    BootResource,
     BridgeInterface,
     Config,
     Controller,
@@ -192,7 +187,6 @@ from provisioningserver.rpc.cluster import (
     AddChassis,
     DecomposeMachine,
     DisableAndShutoffRackd,
-    IsImportBootImagesRunning,
 )
 from provisioningserver.rpc.exceptions import (
     CannotDisableAndShutoffRackd,
@@ -3889,15 +3883,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type="manual", enable_ssh=True
         )
-        br = factory.make_default_ubuntu_release_bootable(
-            arch=node.architecture
-        )
-        os_name, release = br.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {"osystem": os_name, "release": release, "purpose": "xinstall"}
-        ]
+        arch, _ = node.split_arch()
+        factory.make_default_ubuntu_release_bootable(arch=arch)
         node_start = self.patch(node, "start")
         # Return a post-commit hook from Node.start().
         node_start.side_effect = (
@@ -4826,15 +4813,6 @@ class TestNode(MAASServerTestCase):
         node.osystem = factory.make_name("osystem")
         node.distro_series = factory.make_name("distro")
         admin = factory.make_admin()
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": node.osystem,
-                "release": node.distro_series,
-                "purpose": "xinstall",
-            }
-        ]
         self.assertRaises(ValidationError, node._start, admin)
 
     def test_get_boot_purpose_known_node(self):
@@ -4859,12 +4837,7 @@ class TestNode(MAASServerTestCase):
             ),
         ]
         node = factory.make_Node()
-        mock_get_boot_images_for = self.patch(
-            preseed_module, "get_boot_images_for"
-        )
         for purpose, parameters in options:
-            boot_image = make_rpc_boot_image(purpose=purpose)
-            mock_get_boot_images_for.return_value = [boot_image]
             for name, value in parameters.items():
                 setattr(node, name, value)
             self.assertEqual(purpose, node.get_boot_purpose())
@@ -8924,7 +8897,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         install_kvm=False,
         register_vmhost=False,
         ephemeral_deploy=False,
-        architecture=None,
+        architecture="i386/generic",
     ):
         if network is None:
             # can't use a link-local network as MAAS server IPs for those are
@@ -8941,15 +8914,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Validation during start requires an OS to be set
         ubuntu = factory.make_default_ubuntu_release_bootable()
         osystem, distro_series = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": osystem,
-                "release": distro_series,
-                "purpose": "xinstall",
-            }
-        ]
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.READY,
             with_boot_disk=with_boot_disk,
@@ -9037,20 +9001,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.osystem = "rhel"
         node.distro_series = "9.1"
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": "ubuntu",
-                "release": "focal",
-                "purpose": "xinstall",
-            },
-            {
-                "osystem": "rhel",
-                "release": "9.1",
-                "purpose": "xinstall",
-            },
-        ]
         with ExpectedException(ValidationError):
             node.start(admin)
 
@@ -9075,20 +9025,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.osystem = "rhel"
         node.distro_series = "9.1"
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": "ubuntu",
-                "release": "focal",
-                "purpose": "xinstall",
-            },
-            {
-                "osystem": "rhel",
-                "release": "9.1",
-                "purpose": "xinstall",
-            },
-        ]
         node.start(admin)
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
@@ -9112,15 +9048,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
         node.osystem = "ubuntu"
         node.distro_series = "focal"
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": "ubuntu",
-                "release": "focal",
-                "purpose": "xinstall",
-            },
-        ]
         node.start(admin)
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
@@ -9841,17 +9768,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES)
         )
         # Validation during start requires an OS to be set
-        ubuntu = factory.make_default_ubuntu_release_bootable()
-        osystem, distro_series = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": osystem,
-                "release": distro_series,
-                "purpose": "xinstall",
-            }
-        ]
+        factory.make_default_ubuntu_release_bootable()
         script_result = factory.make_ScriptResult()
         script_result.script.apply_configured_networking = True
         script_result.script.save()
@@ -9879,17 +9796,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             owner=user, status=random.choice(COMMISSIONING_LIKE_STATUSES)
         )
         # Validation during start requires an OS to be set
-        ubuntu = factory.make_default_ubuntu_release_bootable()
-        osystem, distro_series = ubuntu.name.split("/")
-        self.patch(
-            boot_images, "get_common_available_boot_images"
-        ).return_value = [
-            {
-                "osystem": osystem,
-                "release": distro_series,
-                "purpose": "xinstall",
-            }
-        ]
+        factory.make_default_ubuntu_release_bootable()
         script_result = factory.make_ScriptResult()
         setattr(
             node,
@@ -11378,163 +11285,6 @@ class TestRackController(MAASTransactionServerTestCase):
         self.assertEqual(
             rack_controller_service.status_info,
             "{:.0%} connected to region controllers.".format(1.0 - percentage),
-        )
-
-    fake_images = [
-        {
-            "release": "custom_os",
-            "osystem": "custom",
-            "architecture": "amd64",
-            "subarchitecture": "generic",
-        },
-        {
-            "release": "trusty",
-            "osystem": "ubuntu",
-            "architecture": "amd64",
-            "subarchitecture": "generic",
-        },
-        {
-            "release": "trusty",
-            "osystem": "ubuntu",
-            "architecture": "amd64",
-            "subarchitecture": "hwe-t",
-        },
-        {
-            "release": "trusty",
-            "osystem": "ubuntu",
-            "architecture": "amd64",
-            "subarchitecture": "hwe-x",
-        },
-    ]
-
-    expected_images = [
-        {
-            "name": "ubuntu/trusty",
-            "architecture": "amd64",
-            "subarches": ["generic", "hwe-t", "hwe-x"],
-        },
-        {
-            "name": "custom_os",
-            "architecture": "amd64",
-            "subarches": ["generic"],
-        },
-    ]
-
-    def test_list_boot_images(self):
-        rack_controller = factory.make_RackController()
-        self.patch(
-            boot_images, "get_boot_images"
-        ).return_value = self.fake_images
-        self.patch(
-            BootResource.objects, "boot_images_are_in_sync"
-        ).return_value = True
-        images = rack_controller.list_boot_images()
-        self.assertTrue(images["connected"])
-        self.assertCountEqual(self.expected_images, images["images"])
-        self.assertEqual("synced", images["status"])
-        self.assertEqual("synced", rack_controller.get_image_sync_status())
-
-    def test_list_boot_images_when_disconnected(self):
-        rack_controller = factory.make_RackController()
-        images = rack_controller.list_boot_images()
-        self.assertFalse(images["connected"])
-        self.assertCountEqual([], images["images"])
-        self.assertEqual("unknown", images["status"])
-        self.assertEqual("unknown", rack_controller.get_image_sync_status())
-
-    def test_list_boot_images_when_connection_closed(self):
-        rack_controller = factory.make_RackController()
-        self.patch(
-            boot_images, "get_boot_images"
-        ).side_effect = ConnectionClosed()
-        images = rack_controller.list_boot_images()
-        self.assertFalse(images["connected"])
-        self.assertCountEqual([], images["images"])
-        self.assertEqual("unknown", images["status"])
-        self.assertEqual("unknown", rack_controller.get_image_sync_status())
-
-    def test_list_boot_images_region_importing(self):
-        rack_controller = factory.make_RackController()
-        self.patch(
-            boot_images, "get_boot_images"
-        ).return_value = self.fake_images
-        fake_is_import_resources_running = self.patch(
-            bootresources, "is_import_resources_running"
-        )
-        fake_is_import_resources_running.return_value = True
-        images = rack_controller.list_boot_images()
-        self.assertThat(fake_is_import_resources_running, MockCalledOnce())
-        self.assertTrue(images["connected"])
-        self.assertCountEqual(self.expected_images, images["images"])
-        self.assertEqual("region-importing", images["status"])
-        self.assertEqual(
-            "region-importing", rack_controller.get_image_sync_status()
-        )
-
-    def test_list_boot_images_syncing(self):
-        rack_controller = factory.make_RackController()
-        self.patch(
-            boot_images, "get_boot_images"
-        ).return_value = self.fake_images
-        self.patch(
-            BootResource.objects, "boot_images_are_in_sync"
-        ).return_value = False
-        self.patch(
-            rack_controller, "is_import_boot_images_running"
-        ).return_value = True
-        images = rack_controller.list_boot_images()
-        self.assertTrue(images["connected"])
-        self.assertCountEqual(self.expected_images, images["images"])
-        self.assertEqual("syncing", images["status"])
-        self.assertEqual("syncing", rack_controller.get_image_sync_status())
-
-    def test_list_boot_images_out_of_sync(self):
-        rack_controller = factory.make_RackController()
-        self.patch(
-            boot_images, "get_boot_images"
-        ).return_value = self.fake_images
-        self.patch(
-            BootResource.objects, "boot_images_are_in_sync"
-        ).return_value = False
-        self.patch(
-            rack_controller, "is_import_boot_images_running"
-        ).return_value = False
-        images = rack_controller.list_boot_images()
-        self.assertTrue(images["connected"])
-        self.assertCountEqual(self.expected_images, images["images"])
-        self.assertEqual("out-of-sync", images["status"])
-        self.assertEqual(
-            "out-of-sync", rack_controller.get_image_sync_status()
-        )
-
-    def test_list_boot_images_when_empty(self):
-        rack_controller = factory.make_RackController()
-        self.patch(boot_images, "get_boot_images").return_value = []
-        self.patch(
-            BootResource.objects, "boot_images_are_in_sync"
-        ).return_value = False
-        self.patch(
-            rack_controller, "is_import_boot_images_running"
-        ).return_value = True
-        images = rack_controller.list_boot_images()
-        self.assertTrue(images["connected"])
-        self.assertCountEqual([], images["images"])
-        self.assertEqual("syncing", images["status"])
-
-    def test_is_import_images_running(self):
-        running = factory.pick_bool()
-        rackcontroller = factory.make_RackController()
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-        protocol = fixture.makeCluster(
-            rackcontroller, IsImportBootImagesRunning
-        )
-        protocol.IsImportBootImagesRunning.return_value = defer.succeed(
-            {"running": running}
-        )
-        self.assertEqual(
-            running, rackcontroller.is_import_boot_images_running()
         )
 
 

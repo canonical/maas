@@ -32,7 +32,6 @@ from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
-from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.common import Client
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import GetBootConfig, MarkNodeFailed
@@ -43,57 +42,6 @@ from provisioningserver.utils.twisted import deferred, RPCFetcher
 
 maaslog = get_maas_logger("tftp")
 log = LegacyLogger()
-
-
-def get_boot_image(
-    osystem: str,
-    release: str,
-    architecture: str,
-    subarchitecture: str,
-    purpose: str,
-    skip_subarchitecture_check: bool,
-):
-    """Get the boot image for the params on this rack controller."""
-    # Match on purpose; enlist uses the commissioning purpose.
-    if purpose == "enlist":
-        purpose = "commissioning"
-
-    # Get the matching boot images, minus subarchitecture.
-    boot_images = list_boot_images()
-    boot_images = [
-        image
-        for image in boot_images
-        if (
-            image["osystem"] == osystem
-            and image["release"] == release
-            and image["architecture"] == architecture
-            and image["purpose"] == purpose
-        )
-    ]
-
-    if not len(boot_images):
-        return None
-
-    # Non-ubuntu OS will be installed by Ubuntu ephemeral images, but ephemeral custom images
-    # will use a different kernel specified by the region. The subarchitecture check should be skipped in these cases.
-    if skip_subarchitecture_check:
-        return boot_images[0]
-
-    for image in boot_images:
-        # See if exact subarchitecture match.
-        if image["subarchitecture"] == subarchitecture:
-            return image
-
-    # Not exact match check if subarchitecture is in the supported
-    # subarchitectures list.
-    for image in boot_images:
-        subarches = image.get("supported_subarches", "")
-        subarches = subarches.split(",")
-        if subarchitecture in subarches:
-            return image
-
-    # No matching boot image was found.
-    return None
 
 
 def log_request(file_name, clock=reactor):
@@ -277,16 +225,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             params["xinstall_path"] = ""
             return params
         else:
-            # fetch kernel image
-            kernel_image = get_boot_image(
-                params["kernel_osystem"],
-                params["kernel_release"],
-                params["arch"],
-                params["subarch"],
-                params["purpose"],
-                skip_subarchitecture_check=False,
-            )
-            if kernel_image is None:
+            # check kernel image
+            if params["kernel"] is None:
                 # No matching kernel image.
                 self._handle_image_not_found(
                     params["kernel_osystem"],
@@ -300,20 +240,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 )
                 params["kernel_label"] = "no-such-image"
             else:
-                params["kernel_label"] = kernel_image["label"]
+                params["kernel_label"] = params["kernel"].split("/")[5]
 
-            # Fetch boot image
-            boot_image = get_boot_image(
-                params["osystem"],
-                params["release"],
-                params["arch"],
-                params["subarch"],
-                params["purpose"],
-                # Skip the subarchitecture check if the kernel osystem is not equal to the osystem
-                skip_subarchitecture_check=params["osystem"]
-                != params["kernel_osystem"],
-            )
-            if boot_image is None:
+            # check boot image
+            if params["xinstall_path"] is None:
                 # No matching boot image.
                 self._handle_image_not_found(
                     params["osystem"],
@@ -327,8 +257,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 )
                 params["label"] = "no-such-image"
             else:
-                params["label"] = boot_image["label"]
-                params["xinstall_path"] = boot_image.get("xinstall_path", "")
+                params["label"] = params["xinstall_path"].split("/")[5]
             return params
 
     @deferred

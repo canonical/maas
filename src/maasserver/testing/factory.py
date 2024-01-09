@@ -2681,7 +2681,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_default_ubuntu_release_bootable(self, arch=None, extra=None):
         if arch is None:
-            arch = self.make_name("arch")
+            arch = "i386"  # default test node architecture
         default_osystem = Config.objects.get_config(
             name="commissioning_osystem"
         )

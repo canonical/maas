@@ -1926,10 +1926,10 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_distro_filter(self):
-        osystem = make_usable_osystem(self)
-        series = osystem["default_release"]
+        osystem, releases = make_usable_osystem(self)
+        series = releases[0]
         node1 = factory.make_Node(
-            osystem=osystem["name"],
+            osystem=osystem,
             distro_series=series,
         )
         factory.make_Node()
@@ -1939,14 +1939,14 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_osystem_filter(self):
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         node1 = factory.make_Node(
-            osystem=osystem["name"],
-            distro_series=osystem["default_release"],
+            osystem=osystem,
+            distro_series=releases[0],
         )
         factory.make_Node()
         constraints = {
-            "osystem": osystem["name"][1:],
+            "osystem": osystem[1:],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1957,7 +1957,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         agent_name = factory.make_name()
         desc = factory.make_unicode_string(size=30, spaces=True)
         err_desc = factory.make_unicode_string(size=30, spaces=True)
-        osystem = make_usable_osystem(self)
+        osystem, releases = make_usable_osystem(self)
         space = factory.make_Space()
         subnet = factory.make_Subnet(space=space)
         zone = factory.make_Zone()
@@ -1972,8 +1972,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
             bmc=pod.as_bmc(),
             hostname=hostname,
             agent_name=agent_name,
-            osystem=osystem["name"],
-            distro_series=osystem["default_release"],
+            osystem=osystem,
+            distro_series=releases[0],
             description=desc,
             error_description=err_desc,
             owner_data={key: val},
@@ -1993,8 +1993,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
             hostname,
             node1.fqdn,
             pool.name,
-            osystem["name"],
-            osystem["default_release"],
+            osystem,
+            releases[0],
             val,
             space.name,
             zone.name,

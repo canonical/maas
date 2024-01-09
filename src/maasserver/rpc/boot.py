@@ -132,17 +132,31 @@ def get_boot_filenames(
         )
         boot_resource_set = boot_resource.get_latest_complete_set()
         boot_resource_files = {
-            bfile.filetype: bfile.filename
+            bfile.filetype: "/".join(
+                [
+                    bfile.sha256,
+                    osystem,
+                    arch,
+                    boot_resource_subarch,
+                    series,
+                    boot_resource_set.label,
+                    bfile.filename,
+                ]
+            )
             for bfile in boot_resource_set.files.all()
         }
     except ObjectDoesNotExist:
         # If a filename can not be found return None to allow the rack to
         # figure out what todo.
-        return None, None, None
-    kernel = boot_resource_files.get(BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL)
-    initrd = boot_resource_files.get(BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD)
-    boot_dtb = boot_resource_files.get(BOOT_RESOURCE_FILE_TYPE.BOOT_DTB)
-    return kernel, initrd, boot_dtb
+        return None, None, None, None
+    kernel = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, None)
+    initrd = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, None)
+    boot_dtb = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, None)
+    if len(boot_resource_files) > 0:
+        rootfs = next(iter(boot_resource_files.values()))
+    else:
+        rootfs = None
+    return kernel, initrd, boot_dtb, rootfs
 
 
 def merge_kparams_with_extra(kparams, extra_kernel_opts):
@@ -695,7 +709,8 @@ def get_config(
             configs["commissioning_distro_series"],
         )
 
-    kernel, initrd, boot_dtb = get_boot_filenames(
+    # FIXME alexsander-souza: check the ephemeral deployment case
+    kernel, initrd, boot_dtb, rootfs = get_boot_filenames(
         arch,
         subarch,
         osystem,
@@ -716,6 +731,7 @@ def get_config(
         "kernel": kernel,
         "initrd": initrd,
         "boot_dtb": boot_dtb,
+        "xinstall_path": rootfs,
         "purpose": boot_purpose,
         "hostname": hostname,
         "domain": domain,

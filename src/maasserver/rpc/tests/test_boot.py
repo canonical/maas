@@ -18,7 +18,13 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
 )
-from maasserver.models import Config, Event
+from maasserver.models import (
+    BootResource,
+    BootResourceFile,
+    BootResourceSet,
+    Config,
+    Event,
+)
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.preseed import compose_enlistment_preseed_url
@@ -710,6 +716,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
             None,
             None,
+            None,
         )
         factory.make_default_ubuntu_release_bootable(arch)
         self.patch_autospec(boot_module, "event_log_pxe_request")
@@ -724,6 +731,7 @@ class TestGetConfig(MAASServerTestCase):
         remote_ip = factory.make_ip_address()
         arch = "armhf"
         self.patch(boot_module, "get_boot_filenames").return_value = (
+            None,
             None,
             None,
             None,
@@ -1319,6 +1327,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
             None,
             None,
+            None,
         )
         commissioning_series = "bionic"
         commissioning_subarch = "ga-18.04"
@@ -1356,6 +1365,7 @@ class TestGetConfig(MAASServerTestCase):
     # hardware testing on deployed machines.
     def test_testing_deployed_node_uses_default_min_hwe_kernel(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
+            None,
             None,
             None,
             None,
@@ -1441,6 +1451,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
             None,
             None,
+            None,
         )
         distro_series = random.choice(["trusty", "vivid", "wily", "xenial"])
         rack_controller = factory.make_RackController()
@@ -1462,6 +1473,7 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_returns_base_image_for_custom_ubuntu_image_xinstall(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
+            None,
             None,
             None,
             None,
@@ -1527,6 +1539,7 @@ class TestGetConfig(MAASServerTestCase):
             None,
             None,
             None,
+            None,
         )
         commissioning_series = "xenial"
         Config.objects.set_config(
@@ -1552,6 +1565,7 @@ class TestGetConfig(MAASServerTestCase):
 
     def test_returns_commissioning_os_when_erasing_disks(self):
         self.patch(boot_module, "get_boot_filenames").return_value = (
+            None,
             None,
             None,
             None,
@@ -1587,6 +1601,26 @@ class TestGetBootFilenames(MAASServerTestCase):
         super().setUp()
         self.region = factory.make_RegionController()
 
+    def composeURL(
+        self,
+        bres: BootResource,
+        bset: BootResourceSet,
+        bfile: BootResourceFile,
+    ) -> str:
+        arch, subarch = bres.architecture.split("/", maxsplit=1)
+        osystem, series = bres.name.split("/", maxsplit=1)
+        return "/".join(
+            [
+                bfile.sha256,
+                osystem,
+                arch,
+                subarch,
+                series,
+                bset.label,
+                bfile.filename,
+            ]
+        )
+
     def test_get_filenames(self):
         release = factory.make_default_ubuntu_release_bootable()
         arch, subarch = release.architecture.split("/")
@@ -1598,27 +1632,49 @@ class TestGetBootFilenames(MAASServerTestCase):
             synced=[(self.region, -1)],
         )
 
-        kernel, initrd, boot_dbt = get_boot_filenames(
+        kernel, initrd, boot_dbt, rootfs = get_boot_filenames(
             arch, subarch, osystem, series
         )
 
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
+                ),
+            ),
             kernel,
         )
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
+                ),
+            ),
             initrd,
         )
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
+                ),
+            ),
             boot_dbt,
+        )
+        self.assertEqual(
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+                ),
+            ),
+            rootfs,
         )
 
     def test_get_filenames_finds_subarch_when_generic(self):
@@ -1632,32 +1688,54 @@ class TestGetBootFilenames(MAASServerTestCase):
             synced=[(self.region, -1)],
         )
 
-        kernel, initrd, boot_dbt = get_boot_filenames(
+        kernel, initrd, boot_dbt, rootfs = get_boot_filenames(
             arch, "generic", osystem, series
         )
 
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
+                ),
+            ),
             kernel,
         )
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
+                ),
+            ),
             initrd,
         )
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
+                ),
+            ),
             boot_dbt,
+        )
+        self.assertEqual(
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+                ),
+            ),
+            rootfs,
         )
 
     def test_returns_all_none_when_not_found(self):
         self.assertEqual(
-            (None, None, None),
+            (None, None, None, None),
             get_boot_filenames(
                 factory.make_name("arch"),
                 factory.make_name("subarch"),
@@ -1668,7 +1746,7 @@ class TestGetBootFilenames(MAASServerTestCase):
 
     def test_returns_all_none_when_not_found_and_generic(self):
         self.assertEqual(
-            (None, None, None),
+            (None, None, None, None),
             get_boot_filenames(
                 factory.make_name("arch"),
                 "generic",
@@ -1683,21 +1761,39 @@ class TestGetBootFilenames(MAASServerTestCase):
         osystem, series = release.name.split("/")
         boot_resource_set = release.get_latest_complete_set()
 
-        kernel, initrd, boot_dbt = get_boot_filenames(
+        kernel, initrd, boot_dbt, rootfs = get_boot_filenames(
             arch, subarch, osystem, series
         )
 
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
+                ),
+            ),
             kernel,
         )
         self.assertEqual(
-            boot_resource_set.files.get(
-                filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
-            ).filename,
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
+                ),
+            ),
             initrd,
+        )
+        self.assertEqual(
+            self.composeURL(
+                release,
+                boot_resource_set,
+                boot_resource_set.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+                ),
+            ),
+            rootfs,
         )
         self.assertIsNone(boot_dbt)
 
