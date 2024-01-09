@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"golang.org/x/sync/errgroup"
+	"maas.io/core/src/maasagent/internal/imagecache"
 )
 
 var (
@@ -61,6 +62,8 @@ type Proxy interface {
 	SetServerTLSConfig(*tls.Config)
 	SetUpstreamTLSConfig(*tls.Config)
 	SetHandlerOverride(http.Handler)
+	SetBootloaderRegistry(*imagecache.BootloaderRegistry)
+	GetBootloaderRegistry() *imagecache.BootloaderRegistry
 }
 
 // ProxyGroup is a group of Proxies, this may consist of IPv4, IPv6 and
@@ -166,6 +169,14 @@ func WithClientTLS(certPath, keyPath string, skipVerify bool) ProxyOption {
 func WithHandler(h http.Handler) ProxyOption {
 	return func(p Proxy) error {
 		p.SetHandlerOverride(h)
+
+		return nil
+	}
+}
+
+func WithBootloaderRegistry(registry *imagecache.BootloaderRegistry) ProxyOption {
+	return func(p Proxy) error {
+		p.SetBootloaderRegistry(registry)
 
 		return nil
 	}

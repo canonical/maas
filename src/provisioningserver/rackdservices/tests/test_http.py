@@ -157,7 +157,6 @@ class TestRackHTTPService(MAASTestCase):
         target_path = http.compose_http_config_path("rackd.nginx.conf")
         with open(target_path, "r") as fh:
             contents = fh.read()
-        self.assertIn(f"alias {resource_root}", contents)
         for region_ip in region_ips:
             self.assertIn(f"server {region_ip}:5240;", contents)
 

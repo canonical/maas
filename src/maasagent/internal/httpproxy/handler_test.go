@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"maas.io/core/src/maasagent/internal/imagecache"
 )
 
 type MockResponseWriter struct {
@@ -86,6 +87,14 @@ func (m MockProxy) GetClient() *http.Client {
 	}
 }
 
+func (m MockProxy) GetAliases() map[string]string {
+	return make(map[string]string)
+}
+
+func (m MockProxy) GetBootloaderRegistry() *imagecache.BootloaderRegistry {
+	return nil
+}
+
 func TestServeHTTP(t *testing.T) {
 	validURL, _ := url.Parse("http://127.0.0.1:5248/exists")
 	invalidURL, _ := url.Parse("http://127.0.0.1:5248/notexist")
@@ -114,8 +123,9 @@ func TestServeHTTP(t *testing.T) {
 		},
 		"405_METHOD_NOT_ALLOWED": {
 			In: &http.Request{
-				Method:     http.MethodPost,
+				Method:     http.MethodOptions,
 				RemoteAddr: "127.0.0.1",
+				URL:        validURL,
 			},
 			OutStatusCode: http.StatusMethodNotAllowed,
 		},
@@ -141,6 +151,37 @@ func TestServeHTTP(t *testing.T) {
 
 			assert.Equal(tt, caseParams.OutStatusCode, resp.Status)
 			assert.Equal(tt, caseParams.OutBody, resp.Body)
+		})
+	}
+}
+
+func TestIsBootResourceRequest(t *testing.T) {
+	table := map[string]struct {
+		In  string
+		Out bool
+	}{
+		"is_boot_resource": {
+			In:  "http://localhost:5248/images/ubuntu/amd64/ga-22.04/jammy/stable/boot-kernel",
+			Out: true,
+		},
+		"is_not_boot_resource": {
+			In:  "http://localhost:5248/MAAS/metadata/status/abcdef",
+			Out: false,
+		},
+	}
+
+	for tname, tcase := range table {
+		client := &proxyClient{}
+
+		t.Run(tname, func(tt *testing.T) {
+			testURL, err := url.Parse(tcase.In)
+			if err != nil {
+				tt.Fatal(err)
+			}
+
+			result := client.isBootResourceRequest(testURL)
+
+			assert.Equal(tt, tcase.Out, result)
 		})
 	}
 }

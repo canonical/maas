@@ -8,28 +8,34 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/rs/zerolog/log"
+
+	"maas.io/core/src/maasagent/internal/imagecache"
 )
 
 const (
 	defaultReadHeaderTimeout = 30 * time.Second
+	defaultReadTimeout       = 5 * time.Minute
+	defaultWriteTimeout      = 5 * time.Minute
 )
 
 // proxyCommon is a struct intended to be embedded into
 // proxy structs for common functionality
 type proxyCommon struct {
-	handlerOverride http.Handler
-	listener        net.Listener
 	serverTLS       *tls.Config
 	clientTLS       *tls.Config
 	server          *http.Server
+	bootloaders     *imagecache.BootloaderRegistry
+	handlerOverride http.Handler
+	listener        net.Listener
 	addr            string
 	origins         []*url.URL
-	port            int
 	keepalive       time.Duration
+	port            int
 }
 
 // ValidateDNSName uses a given resolver to verify a configured name is a valid DNS record
@@ -64,6 +70,16 @@ func (p *proxyCommon) SetHandlerOverride(h http.Handler) {
 func (p *proxyCommon) SetPort(port int) error {
 	p.port = port
 	return nil
+}
+
+// SetBootloaderRegistry sets a given *imagecache.BootloaderRegistry to the proxy
+func (p *proxyCommon) SetBootloaderRegistry(registry *imagecache.BootloaderRegistry) {
+	p.bootloaders = registry
+}
+
+// GetBootloaderRegistry gets the set BootloaderRegistry
+func (p *proxyCommon) GetBootloaderRegistry() *imagecache.BootloaderRegistry {
+	return p.bootloaders
 }
 
 // Listen creates a net.Listener and begins serving HTTP on it
@@ -101,6 +117,12 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 
 	if unixListener, ok := p.listener.(*net.UnixListener); ok {
 		unixListener.SetUnlinkOnClose(true)
+
+		//nolint:gosec // gosec wants 0600 which is too strict for use with Nginx
+		err = os.Chmod(addr, 0666) // same permissions as MAAS' api sockets
+		if err != nil {
+			return err
+		}
 	}
 
 	if p.serverTLS != nil {
@@ -113,6 +135,8 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 		DisableGeneralOptionsHandler: true,
 		IdleTimeout:                  p.keepalive,
 		ReadHeaderTimeout:            defaultReadHeaderTimeout,
+		ReadTimeout:                  defaultReadTimeout,
+		WriteTimeout:                 defaultWriteTimeout,
 	}
 
 	if p.keepalive > 0 {

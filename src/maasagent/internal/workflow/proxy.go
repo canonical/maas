@@ -11,6 +11,7 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"maas.io/core/src/maasagent/internal/httpproxy"
+	"maas.io/core/src/maasagent/internal/imagecache"
 )
 
 const (
@@ -110,11 +111,19 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		}
 	}
 
+	bootloaderRegistry := imagecache.NewBootloaderRegistry(nil, "")
+
+	err = bootloaderRegistry.LinkAll()
+	if err != nil {
+		return err
+	}
+
 	if nginxActive {
 		log.Debug("Creating Unix Socket HTTP Proxy")
 
 		socketOpts := []httpproxy.ProxyOption{
 			httpproxy.WithBindAddr(getSocketFilePath()),
+			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
 		}
 		socketOpts = append(socketOpts, originOpts...)
 		groupOpts = append(
@@ -128,6 +137,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		ipv4Opts := []httpproxy.ProxyOption{
 			httpproxy.WithBindAddr("0.0.0.0"),
 			httpproxy.WithPort(5258),
+			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
 		}
 		ipv4Opts = append(ipv4Opts, originOpts...)
 
@@ -136,6 +146,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		ipv6Opts := []httpproxy.ProxyOption{
 			httpproxy.WithBindAddr("::"),
 			httpproxy.WithPort(5258),
+			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
 		}
 		ipv6Opts = append(ipv6Opts, originOpts...)
 		groupOpts = append(
