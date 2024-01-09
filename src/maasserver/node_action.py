@@ -22,7 +22,6 @@ from django.http.request import HttpRequest
 
 from maasserver import locks
 from maasserver.audit import create_audit_event
-from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
     ENDPOINT,
     NODE_ACTION_TYPE,
@@ -45,7 +44,6 @@ from maasserver.models.scriptresult import ScriptResult
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_base_osystem_series, get_curtin_config
-from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
     get_working_kernel,
     validate_osystem_and_distro_series,
@@ -890,34 +888,6 @@ class OverrideFailedTesting(NodeAction):
         self.node.override_failed_testing(self.user, "via web interface")
 
 
-class ImportImages(NodeAction):
-    """Import images on a rack or region and rack controller."""
-
-    name = "import-images"
-    display = "Import Images"
-    display_sentence = "importing images"
-    permission = NodePermission.admin
-    for_type = {
-        NODE_TYPE.RACK_CONTROLLER,
-        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-    }
-    action_type = NODE_ACTION_TYPE.MISC
-    audit_description = "Started importing images on '%s'."
-
-    def get_node_action_audit_description(self, action):
-        """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
-
-    def _execute(self):
-        """See `NodeAction.execute`."""
-        try:
-            post_commit_do(
-                RackControllersImporter.schedule, self.node.system_id
-            )
-        except RPC_EXCEPTIONS as exception:
-            raise NodeActionError(exception)
-
-
 class RescueMode(NodeAction):
     """Start the rescue mode process."""
 
@@ -1131,7 +1101,6 @@ ACTION_CLASSES = (
     Clone,
     SetZone,
     SetPool,
-    ImportImages,
     Delete,
 )
 

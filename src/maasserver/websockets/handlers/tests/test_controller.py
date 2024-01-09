@@ -233,7 +233,7 @@ class TestControllerHandler(MAASServerTestCase):
             [{"system_id": node1.system_id}, {"system_id": node2.system_id}]
         )
         self.assertEqual(
-            {node1.system_id: "Unknown", node2.system_id: "Unknown"}, data
+            {node1.system_id: "Synced", node2.system_id: "Synced"}, data
         )
 
     def test_dehydrate_show_os_info_returns_true(self):

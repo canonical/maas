@@ -53,21 +53,15 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_POST_import_boot_images_import_to_rack_controllers(self):
-        from maasserver.clusterrpc import boot_images
-
-        self.patch(boot_images, "RackControllersImporter")
         self.become_admin()
         rack = factory.make_RackController(owner=factory.make_User())
         response = self.client.post(
             self.get_rack_uri(rack), {"op": "import_boot_images"}
         )
         self.assertEqual(
-            http.client.OK,
+            http.client.ACCEPTED,
             response.status_code,
-            explain_unexpected_response(http.client.OK, response),
-        )
-        boot_images.RackControllersImporter.schedule.assert_called_once_with(
-            rack.system_id
+            explain_unexpected_response(http.client.ACCEPTED, response),
         )
 
     def test_POST_import_boot_images_denied_if_not_admin(self):
@@ -82,7 +76,12 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
         )
 
     def test_GET_list_boot_images(self):
+        factory.make_RegionController()
         rack = factory.make_RackController(owner=factory.make_User())
+        resource = factory.make_usable_boot_resource(
+            architecture="amd64/hwe-16.04",
+            extra={"subarches": "hwe-p,hwe-t,hwe-16.04,hwe-16.10"},
+        )
         self.become_admin()
         response = self.client.get(
             self.get_rack_uri(rack), {"op": "list_boot_images"}
@@ -92,9 +91,12 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertEqual(
-            {"connected", "images", "status"},
-            json_load_bytes(response.content).keys(),
+        ret = json_load_bytes(response.content)
+        self.assertEqual({"connected", "images", "status"}, ret.keys())
+        image = ret["images"][0]
+        self.assertCountEqual(image["name"], resource.name)
+        self.assertCountEqual(
+            image["subarches"], ["hwe-p", "hwe-t", "hwe-16.04", "hwe-16.10"]
         )
 
     def test_GET_list_boot_images_denied_if_not_admin(self):
@@ -261,20 +263,16 @@ class TestRackControllersAPI(APITestCase.ForUser):
         )
 
     def test_POST_import_boot_images_import_to_rack_controllers(self):
-        from maasserver.clusterrpc import boot_images
-
-        self.patch(boot_images, "RackControllersImporter")
         self.become_admin()
         factory.make_RackController(owner=factory.make_User())
         response = self.client.post(
             self.get_rack_uri(), {"op": "import_boot_images"}
         )
         self.assertEqual(
-            http.client.OK,
+            http.client.ACCEPTED,
             response.status_code,
-            explain_unexpected_response(http.client.OK, response),
+            explain_unexpected_response(http.client.ACCEPTED, response),
         )
-        boot_images.RackControllersImporter.schedule.assert_called_once_with()
 
     def test_POST_import_boot_images_denied_if_not_admin(self):
         factory.make_RackController(owner=factory.make_User())

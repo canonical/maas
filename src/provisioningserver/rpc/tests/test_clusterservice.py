@@ -361,39 +361,6 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         )
 
 
-class TestClusterProtocol_IsImportBootImagesRunning(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_import_boot_images_running_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.IsImportBootImagesRunning.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_is_import_boot_images_running_returns_False(self):
-        mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running"
-        )
-        mock_is_running.return_value = False
-        response = yield call_responder(
-            Cluster(), cluster.IsImportBootImagesRunning, {}
-        )
-        self.assertEqual({"running": False}, response)
-
-    @inlineCallbacks
-    def test_is_import_boot_images_running_returns_True(self):
-        mock_is_running = self.patch(
-            clusterservice, "is_import_boot_images_running"
-        )
-        mock_is_running.return_value = True
-        response = yield call_responder(
-            Cluster(), cluster.IsImportBootImagesRunning, {}
-        )
-        self.assertEqual({"running": True}, response)
-
-
 class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 

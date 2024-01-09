@@ -546,17 +546,6 @@ class EvaluateTag(amp.Command):
     errors = []
 
 
-class IsImportBootImagesRunning(amp.Command):
-    """Check if the import boot images task is running on the cluster.
-
-    :since: 1.7
-    """
-
-    arguments = []
-    response = [(b"running", amp.Boolean())]
-    errors = {}
-
-
 class AddChassis(amp.Command):
     """Probe and enlist the chassis which a rack controller can connect to.
 

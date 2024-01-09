@@ -109,7 +109,6 @@ from maasserver.exceptions import (
     StorageClearProblem,
 )
 from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.bootresource import BootResource
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -194,7 +193,6 @@ from provisioningserver.rpc.cluster import (
     AddChassis,
     CheckIPs,
     DisableAndShutoffRackd,
-    IsImportBootImagesRunning,
 )
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -6816,29 +6814,6 @@ class RackController(Controller):
                     ),
                 )
 
-    def get_image_sync_status(self, boot_images=None):
-        """Return the status of the boot image import process."""
-        # Avoid circular imports.
-        from maasserver import bootresources
-        from maasserver.clusterrpc.boot_images import get_boot_images
-
-        try:
-            if bootresources.is_import_resources_running():
-                status = "region-importing"
-            else:
-                if boot_images is None:
-                    boot_images = get_boot_images(self)
-                if BootResource.objects.boot_images_are_in_sync(boot_images):
-                    status = "synced"
-                else:
-                    if self.is_import_boot_images_running():
-                        status = "syncing"
-                    else:
-                        status = "out-of-sync"
-        except (NoConnectionsAvailable, TimeoutError, ConnectionClosed):
-            status = "unknown"
-        return status
-
     def list_boot_images(self):
         """Return a list of boot images available on the rack controller."""
         # Avoid circular imports.
@@ -6871,23 +6846,12 @@ class RackController(Controller):
                 }
                 for (name, arch), subarches in downloaded_boot_images.items()
             ]
-            status = self.get_image_sync_status(boot_images)
+            status = (
+                "synced"  # FIXME alexsander-souza: racks are always synced
+            )
             return {"images": images, "connected": True, "status": status}
         except (NoConnectionsAvailable, ConnectionClosed, TimeoutError):
             return {"images": [], "connected": False, "status": "unknown"}
-
-    def is_import_boot_images_running(self):
-        """Return whether the boot images are running
-
-        :raises NoConnectionsAvailable: When no connections to the rack
-            controller are available for use.
-        :raises crochet.TimeoutError: If a response has not been received
-            within 30 seconds.
-        """
-        client = getClientFor(self.system_id, timeout=1)
-        call = client(IsImportBootImagesRunning)
-        response = call.wait(30)
-        return response["running"]
 
 
 class RegionController(Controller):

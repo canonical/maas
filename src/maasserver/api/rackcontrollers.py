@@ -2,8 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from django.conf import settings
-from django.http import HttpResponse
 from formencode.validators import StringBool
 from piston3.utils import rc
 
@@ -18,9 +16,8 @@ from maasserver.api.utils import get_optional_param
 from maasserver.clusterrpc.driver_parameters import get_all_power_types
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ControllerForm
-from maasserver.models import RackController
+from maasserver.models import BootResource, RackController
 from maasserver.permissions import NodePermission
-from maasserver.utils.orm import post_commit_do
 
 # Rack controller's fields exposed on the API.
 DISPLAYED_RACK_CONTROLLER_FIELDS = (
@@ -185,14 +182,13 @@ class RackControllerHandler(NodeHandler, PowerMixin):
     def import_boot_images(self, request, system_id):
         """@description-title Import boot images
         @description Import boot images on a given rack controller or all
-        rack controllers.
+        rack controllers. (deprecated)
 
         @param (string) "{system_id}" [required=true] A rack controller
         system_id.
 
-        @success (http-status-code) "200" 200
-        @success (content) "success-single" Import of boot images started on
-        <rack controller name>
+        @success (http-status-code) "202" 202
+        @success (content) "success-single" No action
 
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested rack controller system_id
@@ -200,17 +196,10 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error-example "not-found"
             No RackController matches the given query.
         """
-        # Avoid circular import.
-        from maasserver.clusterrpc.boot_images import RackControllersImporter
-
-        rack = self.model.objects.get_node_or_404(
+        self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
         )
-        post_commit_do(RackControllersImporter.schedule, rack.system_id)
-        return HttpResponse(
-            "Import of boot images started on %s" % rack.hostname,
-            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
-        )
+        return rc.ACCEPTED
 
     @admin_method
     @operation(idempotent=True)
@@ -218,7 +207,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         """@description-title List available boot images
         @description Lists all available boot images for a given rack
         controller system_id and whether they are in sync with the
-        region controller.
+        region controller. (deprecated)
 
         @param (string) "{system_id}" [required=true] The rack controller
         system_id for which you want to list boot images.
@@ -229,10 +218,27 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error-example "not-found"
             No RackController matches the given query.
         """
-        rack = self.model.objects.get_node_or_404(
+        self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
         )
-        return rack.list_boot_images()
+        images = []
+        for res in BootResource.objects.all():
+            arch, subarch = res.split_arch()
+            subarches = [subarch]
+            if "subarches" in res.extra:
+                subarches.extend(res.extra["subarches"].split(","))
+            images.append(
+                {
+                    "name": res.name,
+                    "architecture": arch,
+                    "subarches": sorted(set(subarches)),
+                }
+            )
+        return {
+            "images": images,
+            "connected": True,
+            "status": "synced",
+        }
 
     @classmethod
     def resource_uri(cls, rackcontroller=None):
@@ -252,26 +258,12 @@ class RackControllersHandler(NodesHandler, PowersMixin):
     @operation(idempotent=False)
     def import_boot_images(self, request):
         """@description-title Import boot images on all rack controllers
-        @description Imports boot images on all rack controllers.
+        @description Imports boot images on all rack controllers. (deprecated)
 
-        @success (http-status-code) "200" 200
-        @success (content) "success-all" Import of boot images started on
-        all rack controllers
-
-        @error (http-status-code) "404" 404
-        @error (content) "not-found" The requested rack controller system_id
-        is not found.
-        @error-example "not-found"
-            No RackController matches the given query.
+        @success (http-status-code) "202" 202
+        @success (content) "success-all" No action
         """
-        # Avoid circular import.
-        from maasserver.clusterrpc.boot_images import RackControllersImporter
-
-        post_commit_do(RackControllersImporter.schedule)
-        return HttpResponse(
-            "Import of boot images started on all rack controllers",
-            content_type=("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
-        )
+        return rc.ACCEPTED
 
     @admin_method
     @operation(idempotent=True)

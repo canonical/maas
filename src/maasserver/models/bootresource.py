@@ -236,19 +236,6 @@ class BootResourceManager(Manager):
                 matched_resources.add(resource)
         return list(matched_resources)
 
-    def boot_images_are_in_sync(self, images):
-        """Return True if the given images match items in the `BootResource`
-        table."""
-        resources = BootResource.objects.all()
-        matched_resources = self.get_resources_matching_boot_images(images)
-        if len(matched_resources) == 0 and len(images) > 0:
-            # If there are images, but no resources then there is a mismatch.
-            return False
-        if len(matched_resources) != resources.count():
-            # If not all resources have been matched then there is a mismatch.
-            return False
-        return True
-
     def get_hwe_kernels(
         self,
         name=None,

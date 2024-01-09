@@ -263,14 +263,8 @@ class BootResourcesHandler(OperationsHandler):
         # If an upload contained the full file, then we can have the clusters
         # sync a new resource.
         if file_content is not None:
-            # Avoid circular import.
-            from maasserver.clusterrpc.boot_images import (
-                RackControllersImporter,
-            )
-
             rfile = resource.sets.first().files.first()
             post_commit_do(filestore_add_file, rfile)
-            post_commit_do(RackControllersImporter.schedule)
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request

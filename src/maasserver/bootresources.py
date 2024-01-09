@@ -15,7 +15,6 @@ __all__ = [
 ]
 
 from datetime import timedelta
-from operator import itemgetter
 import os
 import shutil
 from subprocess import CalledProcessError, check_call
@@ -34,7 +33,7 @@ from temporalio.client import WorkflowFailureError
 from temporalio.common import WorkflowIDReusePolicy
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.python.failure import Failure
 
 from maasserver import locks
@@ -68,7 +67,6 @@ from maasserver.models import (
     RegionController,
 )
 from maasserver.release_notifications import ReleaseNotifications
-from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
     get_maas_user_agent,
@@ -112,7 +110,6 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_lock_path
-from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils import snap
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
@@ -1106,23 +1103,15 @@ def _import_resources(notify=None):
     :param notify: Instance of `Deferred` that is called when all the metadata
         has been downloaded and the image data download has been started.
     """
-    # Avoid circular import.
-    from maasserver.clusterrpc.boot_images import RackControllersImporter
 
     # Sync boot resources into the region.
     d = deferToDatabase(_import_resources_with_lock, notify=notify)
-
-    # FIXME alexsander: remove this
-    def cb_import(_):
-        d = deferToDatabase(RackControllersImporter.new)
-        d.addCallback(lambda importer: importer.run())
-        return d
 
     def eb_import(failure):
         failure.trap(DatabaseLockNotHeld)
         maaslog.info("Skipping import as another import is already running.")
 
-    return d.addCallbacks(cb_import, eb_import)
+    return d.addErrback(eb_import)
 
 
 def create_gnupg_home():
@@ -1377,30 +1366,13 @@ class ImportResourcesProgressService(TimerService):
         if (
             yield deferToDatabase(self.are_boot_images_available_in_the_region)
         ):
-            # The region has boot resources. The racks will too soon if
-            # they haven't already. Nothing to see here, please move along.
+            # The region has boot resources. We are all set
             yield deferToDatabase(self.clear_import_warning)
         else:
-            # We can ask racks if they somehow have some imported images
-            # already, from another source perhaps. We can provide a better
-            # message to the user in this case.
-            # TODO alexsander: remove this
-            if (yield self.are_boot_images_available_in_any_rack()):
-                warning = self.warning_rack_has_boot_images
-            else:
-                warning = self.warning_rack_has_no_boot_images
+            warning = self.warning_has_no_boot_images
             yield deferToDatabase(self.set_import_warning, warning)
 
-    warning_rack_has_boot_images = dedent(
-        """\
-    One or more of your rack controller(s) currently has boot images, but your
-    region controller does not. Machines will not be able to provision until
-    you import boot images into the region. Visit the
-    <a href="%(images_link)s">boot images</a> page to start the import.
-    """
-    )
-
-    warning_rack_has_no_boot_images = dedent(
+    warning_has_no_boot_images = dedent(
         """\
     Boot image import process not started. Machines will not be able to
     provision without boot images. Visit the
@@ -1420,34 +1392,7 @@ class ImportResourcesProgressService(TimerService):
     @transactional
     def are_boot_images_available_in_the_region(self):
         """Return true if there are boot images available in the region."""
-        # TODO alexsander: it's not this simple
         return BootResource.objects.all().exists()
-
-    @asynchronous(timeout=90)
-    def are_boot_images_available_in_any_rack(self):
-        """Return true if there are boot images available in any rack.
-
-        Only considers racks that are currently connected, and ignores
-        errors resulting from communicating with the racks.
-        """
-        # TODO alexsander: remove this
-        clients = getAllClients()
-
-        def get_images(client):
-            d = client(ListBootImages)
-            d.addCallback(itemgetter("images"))
-            return d
-
-        d = DeferredList(map(get_images, clients), consumeErrors=True)
-
-        def has_boot_images(results):
-            return any(
-                len(result) > 0
-                for success, result in results
-                if success  # Ignore failures.
-            )
-
-        return d.addCallback(has_boot_images)
 
 
 def export_images_from_db(region: RegionController):

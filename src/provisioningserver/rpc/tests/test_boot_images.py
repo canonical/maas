@@ -25,7 +25,6 @@ from provisioningserver.rpc.boot_images import (
     fix_sources_for_cluster,
     get_hosts_from_sources,
     import_boot_images,
-    is_import_boot_images_running,
     list_boot_images,
     reload_boot_images,
 )
@@ -384,16 +383,3 @@ class TestImportBootImages(MAASTestCase):
             fix_sources_for_cluster(sources, maas_url)
         )
         protocol.UpdateLastImageSync.assert_not_called()
-
-
-class TestIsImportBootImagesRunning(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    @defer.inlineCallbacks
-    def test_returns_True_when_lock_is_held(self):
-        yield concurrency.boot_images.acquire()
-        self.addCleanup(concurrency.boot_images.release)
-        self.assertTrue(is_import_boot_images_running())
-
-    def test_returns_False_when_lock_is_not_held(self):
-        self.assertFalse(is_import_boot_images_running())

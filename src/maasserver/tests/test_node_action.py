@@ -10,7 +10,6 @@ from netaddr import IPNetwork
 import pytest
 
 from maasserver import locks
-from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -20,7 +19,6 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODE_TYPE,
-    NODE_TYPE_CHOICES,
     NODE_TYPE_CHOICES_DICT,
     POWER_STATE,
 )
@@ -45,7 +43,6 @@ from maasserver.node_action import (
     Delete,
     Deploy,
     ExitRescueMode,
-    ImportImages,
     Lock,
     MarkBroken,
     MarkFixed,
@@ -1806,47 +1803,6 @@ class TestOverrideFailedTesting(MAASServerTestCase):
         )
         action = OverrideFailedTesting(node, owner, request)
         self.assertFalse(action.is_permitted())
-
-
-class TestImportImagesAction(MAASServerTestCase):
-    def test_import_images(self):
-        user = factory.make_admin()
-        request = factory.make_fake_request("/")
-        request.user = user
-        rack = factory.make_RackController()
-        mock_import = self.patch(RackControllersImporter, "schedule")
-
-        with post_commit_hooks:
-            ImportImages(rack, user, request).execute()
-
-        mock_import.assert_called_once()
-        audit_event = Event.objects.get(type__level=AUDIT)
-        self.assertEqual(
-            audit_event.description,
-            "Started importing images on '%s'." % rack.hostname,
-        )
-
-    def test_requires_admin_permission(self):
-        user = factory.make_User()
-        request = factory.make_fake_request("/")
-        request.user = user
-        rack = factory.make_RackController()
-        self.assertFalse(ImportImages(rack, user, request).is_permitted())
-
-    def test_requires_rack(self):
-        user = factory.make_User()
-        request = factory.make_fake_request("/")
-        request.user = user
-        node = factory.make_Node(
-            node_type=factory.pick_choice(
-                NODE_TYPE_CHOICES,
-                but_not=[
-                    NODE_TYPE.RACK_CONTROLLER,
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                ],
-            )
-        )
-        self.assertFalse(ImportImages(node, user, request).is_actionable())
 
 
 class TestRescueModeAction(MAASServerTestCase):

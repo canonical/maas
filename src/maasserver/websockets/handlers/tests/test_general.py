@@ -226,7 +226,6 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertCountEqual(
             [
                 "delete",
-                "import-images",
                 "off",
                 "on",
                 "set-zone",
@@ -243,7 +242,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_region_and_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {}, None)
         self.assertCountEqual(
-            ["set-zone", "delete", "import-images"],
+            ["set-zone", "delete"],
             [
                 action["name"]
                 for action in handler.region_and_rack_controller_actions({})

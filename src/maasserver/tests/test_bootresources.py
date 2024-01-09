@@ -36,7 +36,6 @@ from maasserver.bootresources import (
     set_global_default_releases,
     SimpleStreamsHandler,
 )
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -58,13 +57,8 @@ from maasserver.models import (
 )
 from maasserver.models.node import RegionController
 from maasserver.models.signals.testing import SignalsDisabled
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.dblocks import lock_held_in_other_thread
-from maasserver.testing.eventloop import (
-    RegionEventLoopFixture,
-    RunningEventLoopFixture,
-)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -85,7 +79,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
-from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
@@ -1657,13 +1650,6 @@ class TestImportImages(MAASTransactionServerTestCase):
             (capture.env["http_proxy"], capture.env["http_proxy"]),
         )
 
-    def test_import_resources_schedules_import_to_rack_controllers(self):
-        from maasserver.clusterrpc import boot_images
-
-        self.patch(boot_images.RackControllersImporter, "run")
-        bootresources._import_resources()
-        boot_images.RackControllersImporter.run.assert_called_once()
-
     def test_restarts_import_if_source_changed(self):
         # Regression test for LP:1766370
         self.patch(signals.bootsources, "post_commit_do")
@@ -1944,44 +1930,18 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         return maas_url, maas_url_path
 
-    def patch_are_functions(self, service, region_answer, cluster_answer):
+    def patch_are_functions(self, service, region_answer):
         # Patch the are_boot_images_available_* functions.
         are_region_func = self.patch_autospec(
             service, "are_boot_images_available_in_the_region"
         )
         are_region_func.return_value = region_answer
-        are_cluster_func = self.patch_autospec(
-            service, "are_boot_images_available_in_any_rack"
-        )
-        are_cluster_func.return_value = cluster_answer
-
-    def test_adds_warning_if_boot_images_exists_on_cluster_not_region(self):
-        maas_url, maas_url_path = self.set_maas_url()
-
-        service = bootresources.ImportResourcesProgressService()
-        self.patch_are_functions(service, False, True)
-
-        check_boot_images = asynchronous(service.check_boot_images)
-        check_boot_images().wait(TIMEOUT)
-
-        error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        error_expected = """\
-        One or more of your rack controller(s) currently has boot images, but
-        your region controller does not. Machines will not be able to provision
-        until you import boot images into the region. Visit the
-        <a href="%s">boot images</a> page to start the import.
-        """
-        images_link = maas_url + urljoin(maas_url_path, "/r/images")
-        self.assertEqual(
-            normalise_whitespace(error_expected % images_link),
-            normalise_whitespace(error_observed),
-        )
 
     def test_adds_warning_if_boot_image_import_not_started(self):
         maas_url, maas_url_path = self.set_maas_url()
 
         service = bootresources.ImportResourcesProgressService()
-        self.patch_are_functions(service, False, False)
+        self.patch_are_functions(service, False)
 
         check_boot_images = asynchronous(service.check_boot_images)
         check_boot_images().wait(TIMEOUT)
@@ -2005,7 +1965,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         )
 
         service = bootresources.ImportResourcesProgressService()
-        self.patch_are_functions(service, True, False)
+        self.patch_are_functions(service, True)
 
         check_boot_images = asynchronous(service.check_boot_images)
         check_boot_images().wait(TIMEOUT)
@@ -2038,40 +1998,6 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.assertFalse(service.are_boot_images_available_in_the_region())
         factory.make_BootResource()
         self.assertTrue(service.are_boot_images_available_in_the_region())
-
-    def test_are_boot_images_available_in_any_rack(self):
-        # Import the websocket handlers now: merely defining DeviceHandler,
-        # e.g., causes a database access, which will crash if it happens
-        # inside the reactor thread where database access is forbidden and
-        # prevented. My own opinion is that a class definition should not
-        # cause a database access and we ought to fix that.
-        import maasserver.websockets.handlers  # noqa
-
-        rack_controller = factory.make_RackController()
-        service = bootresources.ImportResourcesProgressService()
-
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        region_rpc = MockLiveRegionToClusterRPCFixture()
-        self.useFixture(region_rpc)
-
-        # are_boot_images_available_in_the_region() returns False when there
-        # are no clusters connected.
-        self.assertFalse(service.are_boot_images_available_in_any_rack())
-
-        # Connect a rack controller to the region via RPC.
-        cluster_rpc = region_rpc.makeCluster(rack_controller, ListBootImages)
-
-        # are_boot_images_available_in_the_region() returns False when none of
-        # the clusters have any images.
-        cluster_rpc.ListBootImages.return_value = succeed({"images": []})
-        self.assertFalse(service.are_boot_images_available_in_any_rack())
-
-        # are_boot_images_available_in_the_region() returns True when a
-        # cluster has an imported boot image.
-        response = {"images": [make_rpc_boot_image()]}
-        cluster_rpc.ListBootImages.return_value = succeed(response)
-        self.assertTrue(service.are_boot_images_available_in_any_rack())
 
 
 class TestBootResourceRepoWriter(MAASServerTestCase):

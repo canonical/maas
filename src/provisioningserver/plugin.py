@@ -87,17 +87,6 @@ class ProvisioningServiceMaker:
 
         return tftp_service
 
-    def _makeImageDownloadService(self, rpc_service, tftp_root):
-        from provisioningserver.rackdservices.image_download_service import (
-            ImageDownloadService,
-        )
-
-        image_download_service = ImageDownloadService(
-            rpc_service, tftp_root, reactor
-        )
-        image_download_service.setName("image_download")
-        return image_download_service
-
     def _makeLeaseSocketService(self, rpc_service):
         from provisioningserver.rackdservices.lease_socket_service import (
             LeaseSocketService,
@@ -201,7 +190,6 @@ class ProvisioningServiceMaker:
         yield self._makeLeaseSocketService(rpc_service)
         yield self._makeNodePowerMonitorService()
         yield self._makeServiceMonitorService(rpc_service)
-        yield self._makeImageDownloadService(rpc_service, tftp_root)
         yield self._makeRackHTTPService(tftp_root, rpc_service)
         yield self._makeExternalService(rpc_service)
         yield self._makeSnapUpdateCheckService(rpc_service)

@@ -22,10 +22,6 @@ from maasserver.bootsources import (
     get_os_info_from_boot_sources,
     set_simplestreams_env,
 )
-from maasserver.clusterrpc.boot_images import (
-    get_common_available_boot_images,
-    is_import_boot_images_running,
-)
 from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS, NODE_TYPE
 from maasserver.models import (
     BootResource,
@@ -271,7 +267,6 @@ class BootResourceHandler(Handler):
             resource.size = human_readable_bytes(resource_set.total_size)
             resource.last_update = resource_set.updated
             resource.complete = resource_set.complete
-            # FIXME report progress correctly
             if not resource.complete:
                 progress = resource_set.sync_progress
                 if progress > 0.0:
@@ -283,23 +278,9 @@ class BootResourceHandler(Handler):
                     resource.downloading = False
                     resource.icon = "queued"
             else:
-                # See if the resource also exists on all the clusters.
-                if resource in self.rack_resources:
-                    resource.status = "Synced"
-                    resource.downloading = False
-                    resource.icon = "succeeded"
-                else:
-                    resource.complete = False
-                    if self.racks_syncing:
-                        resource.status = "Syncing to rack controller(s)"
-                        resource.downloading = True
-                        resource.icon = "in-progress"
-                    else:
-                        resource.status = (
-                            "Waiting for rack controller(s) to sync"
-                        )
-                        resource.downloading = False
-                        resource.icon = "waiting"
+                resource.status = "Synced"
+                resource.downloading = False
+                resource.icon = "succeeded"
 
     def format_ubuntu_core_images(self):
         """Return formatted other images for selection."""
@@ -595,24 +576,9 @@ class BootResourceHandler(Handler):
                 resource.downloading = False
                 resource.icon = "queued"
         else:
-            # See if all the resources exist on all the racks.
-            rack_has_resources = any(
-                res in group for res in self.rack_resources
-            )
-            if rack_has_resources:
-                resource.status = "Synced"
-                resource.downloading = False
-                resource.icon = "succeeded"
-            else:
-                resource.complete = False
-                if self.racks_syncing:
-                    resource.status = "Syncing to rack controller(s)"
-                    resource.downloading = True
-                    resource.icon = "in-progress"
-                else:
-                    resource.status = "Waiting for rack controller(s) to sync"
-                    resource.downloading = False
-                    resource.icon = "waiting"
+            resource.status = "Synced"
+            resource.downloading = False
+            resource.icon = "succeeded"
         return resource
 
     def combine_resources(self, resources):
@@ -666,15 +632,6 @@ class BootResourceHandler(Handler):
             "default_distro_series"
         )
 
-        # Load list of boot resources that currently exist on all racks.
-        rack_images = get_common_available_boot_images()
-        self.racks_syncing = is_import_boot_images_running()
-        self.rack_resources = (
-            BootResource.objects.get_resources_matching_boot_images(
-                rack_images
-            )
-        )
-
         # Load all the resources and generate the result
         resources = [
             {
@@ -716,7 +673,7 @@ class BootResourceHandler(Handler):
         return {
             "connection_error": self.connection_error,
             "region_import_running": is_import_resources_running(),
-            "rack_import_running": self.racks_syncing,
+            "rack_import_running": False,
             "resources": resources,
             "ubuntu": ubuntu_resources,
             "ubuntu_core_images": self.format_ubuntu_core_images(),

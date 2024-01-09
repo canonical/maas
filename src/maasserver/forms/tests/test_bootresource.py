@@ -136,6 +136,7 @@ class TestBootResourceForm(MAASServerTestCase):
     def test_prevents_reversed_osystem_from_driver(self):
         reserved_name = factory.make_name("name")
         OperatingSystemRegistry.register_item(reserved_name, CustomOS())
+        self.addCleanup(OperatingSystemRegistry.unregister_item, reserved_name)
         upload_type, _ = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode("utf-8")

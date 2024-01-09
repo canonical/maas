@@ -156,11 +156,6 @@ def _import_boot_images(sources, maas_url, http_proxy=None, https_proxy=None):
     )
 
 
-def is_import_boot_images_running():
-    """Return True if the import process is currently running."""
-    return concurrency.boot_images.locked
-
-
 def touch_last_image_sync_timestamp():
     """Inform the region that images have just been synchronised.
 

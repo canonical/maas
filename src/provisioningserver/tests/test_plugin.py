@@ -29,9 +29,6 @@ from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
 from provisioningserver.rackdservices.external import RackExternalService
-from provisioningserver.rackdservices.image_download_service import (
-    ImageDownloadService,
-)
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
@@ -158,7 +155,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = {
             "dhcp_probe",
             "networks_monitor",
-            "image_download",
             "lease_socket_service",
             "node_monitor",
             "external",
@@ -195,7 +191,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         expected_services = {
             "dhcp_probe",
             "networks_monitor",
-            "image_download",
             "lease_socket_service",
             "node_monitor",
             "external",
@@ -239,13 +234,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker.makeService(Options(), clock=None)
         self.assertTrue(file1.exists())
         self.assertFalse(file2.exists())
-
-    def test_image_download_service(self):
-        options = Options()
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options, clock=None)
-        image_service = service.getServiceNamed("image_download")
-        self.assertIsInstance(image_service, ImageDownloadService)
 
     def test_node_monitor_service(self):
         options = Options()

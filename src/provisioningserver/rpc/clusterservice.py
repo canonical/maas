@@ -61,7 +61,6 @@ from provisioningserver.rpc import (
 )
 from provisioningserver.rpc.boot_images import (
     import_boot_images,
-    is_import_boot_images_running,
     list_boot_images,
 )
 from provisioningserver.rpc.common import Ping, RPCProtocol
@@ -308,15 +307,6 @@ class Cluster(RPCProtocol):
             https_proxy=get_proxy_url(https_proxy),
         )
         return {}
-
-    @cluster.IsImportBootImagesRunning.responder
-    def is_import_boot_images_running(self):
-        """is_import_boot_images_running()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.IsImportBootImagesRunning`.
-        """
-        return {"running": is_import_boot_images_running()}
 
     @cluster.DescribePowerTypes.responder
     def describe_power_types(self):

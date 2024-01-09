@@ -20,7 +20,7 @@ from django.db.models import (
 from maasserver.config import RegionConfiguration
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import ControllerForm
-from maasserver.models import Controller, Event, RackController, VLAN
+from maasserver.models import Controller, Event, VLAN
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_action import get_node_action
 from maasserver.permissions import NodePermission
@@ -228,14 +228,16 @@ class ControllerHandler(NodeHandler):
 
     def check_images(self, params):
         """Get the image sync statuses of requested controllers."""
+        from maasserver import bootresources
+
+        # FIXME alexsander-souza: we could be more precise
+        if bootresources.is_import_resources_running():
+            status = "Region Importing"
+        else:
+            status = "Synced"
         result = {}
         for node in [self.get_object(param) for param in params]:
-            # We use a RackController method; without the cast, it's a Node.
-            node = node.as_rack_controller()
-            if isinstance(node, RackController):
-                result[node.system_id] = (
-                    node.get_image_sync_status().replace("-", " ").title()
-                )
+            result[node.system_id] = status
         return result
 
     def dehydrate_show_os_info(self, obj):

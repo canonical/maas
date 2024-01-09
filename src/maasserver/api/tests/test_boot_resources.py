@@ -19,7 +19,6 @@ from maasserver.api.boot_resources import (
     boot_resource_to_dict,
     filestore_add_file,
 )
-from maasserver.clusterrpc.boot_images import RackControllersImporter
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -149,11 +148,6 @@ class TestHelpers(APITestCase.ForUser):
         )
 
 
-def prevent_scheduling_of_image_imports(test):
-    """Make `RackControllersImporter.schedule` a no-op."""
-    test.patch_autospec(RackControllersImporter, "schedule")
-
-
 class TestBootResourcesAPI(APITestCase.ForUser):
     """Test the the boot resource API."""
 
@@ -249,7 +243,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         return random.choice(list(filetypes.items()))
 
     def test_POST_creates_boot_resource(self):
-        prevent_scheduling_of_image_imports(self)
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
@@ -282,7 +275,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         mock_filestore.assert_called_once()
 
     def test_POST_creates_boot_resource_with_default_filetype(self):
-        prevent_scheduling_of_image_imports(self)
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
 
@@ -385,7 +377,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
 
     def test_POST_returns_full_definition_of_boot_resource(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
-        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         name = factory.make_name("name")
@@ -412,27 +403,6 @@ class TestBootResourcesAPI(APITestCase.ForUser):
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         mock_filestore.assert_not_called()
-
-    def test_POST_calls_import_boot_images_on_all_clusters(self):
-        mock_filestore = self.patch(boot_resources, "filestore_add_file")
-        self.become_admin()
-
-        from maasserver.clusterrpc import boot_images
-
-        self.patch(boot_images, "RackControllersImporter")
-
-        name = factory.make_name("name")
-        architecture = make_usable_architecture(self)
-        params = {
-            "name": name,
-            "architecture": architecture,
-            "content": (factory.make_file_upload(content=sample_binary_data)),
-            "base_image": "ubuntu/focal",
-        }
-        response = self.client.post(reverse("boot_resources_handler"), params)
-        self.assertEqual(http.client.CREATED, response.status_code)
-        boot_images.RackControllersImporter.schedule.assert_called_once_with()
-        mock_filestore.assert_called_once()
 
     def test_import_requires_admin(self):
         response = self.client.post(
@@ -553,7 +523,6 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
         )
 
     def test_PUT_resource_file_writes_content(self):
-        prevent_scheduling_of_image_imports(self)
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
         self.become_admin()
         rfile, content = self.make_empty_resource_file()
@@ -634,7 +603,6 @@ class TestBootResourceFileUploadAPI(APITestCase.ForUser):
 
     def test_PUT_with_multiple_requests_and_large_content(self):
         mock_filestore = self.patch(boot_resources, "filestore_add_file")
-        prevent_scheduling_of_image_imports(self)
         self.become_admin()
 
         # Get large amount of data to test with

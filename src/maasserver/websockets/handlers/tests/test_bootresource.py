@@ -293,24 +293,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         self.assertFalse(response["region_import_running"])
 
-    def test_returns_rack_import_running_True(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        self.patch(
-            bootresource, "is_import_boot_images_running"
-        ).return_value = True
-        response = handler.poll({})
-        self.assertTrue(response["rack_import_running"])
-
-    def test_returns_rack_import_running_False(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        self.patch(
-            bootresource, "is_import_boot_images_running"
-        ).return_value = False
-        response = handler.poll({})
-        self.assertFalse(response["rack_import_running"])
-
     def test_returns_resources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
@@ -741,51 +723,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource = response["resources"][0]
         self.assertEqual("Synced", resource["status"])
         self.assertEqual("succeeded", resource["icon"])
-
-    def test_combined_subarch_resource_shows_waiting_for_cluster_to_sync(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        name = f"ubuntu/{factory.make_name('series')}"
-        arch = factory.make_name("arch")
-        subarches = [factory.make_name("subarch") for _ in range(3)]
-        for subarch in subarches:
-            factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=name,
-                architecture=f"{arch}/{subarch}",
-            )
-        self.patch(
-            BootResource.objects, "get_resources_matching_boot_images"
-        ).return_value = []
-        response = handler.poll({})
-        resource = response["resources"][0]
-        self.assertEqual(
-            "Waiting for rack controller(s) to sync", resource["status"]
-        )
-        self.assertEqual("waiting", resource["icon"])
-
-    def test_combined_subarch_resource_shows_clusters_syncing(self):
-        owner = factory.make_admin()
-        handler = BootResourceHandler(owner, {}, None)
-        name = f"ubuntu/{factory.make_name('series')}"
-        arch = factory.make_name("arch")
-        subarches = [factory.make_name("subarch") for _ in range(3)]
-        for subarch in subarches:
-            factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=name,
-                architecture=f"{arch}/{subarch}",
-            )
-        self.patch(
-            BootResource.objects, "get_resources_matching_boot_images"
-        ).return_value = []
-        self.patch(
-            bootresource, "is_import_boot_images_running"
-        ).return_value = True
-        response = handler.poll({})
-        resource = response["resources"][0]
-        self.assertEqual("Syncing to rack controller(s)", resource["status"])
-        self.assertEqual("in-progress", resource["icon"])
 
     def test_ubuntu_core_images_returns_images_from_cache(self):
         owner = factory.make_admin()
