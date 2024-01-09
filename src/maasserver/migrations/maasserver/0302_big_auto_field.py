@@ -2,6 +2,75 @@
 
 from django.db import migrations, models
 
+# See https://bugs.launchpad.net/maas/+bug/2048519
+# If an env was initially installed with MAAS 1.x, the first VLAN has id=0.
+# Since 0 is not a valid id for BigAutoField, we have to move it to a positive id and update all the foreign keys.
+MIGRATE_VLAN_QUERIES = (
+    "ALTER TABLE maasserver_interface ALTER COLUMN vlan_id SET DEFAULT NULL",
+    """
+        CREATE OR REPLACE FUNCTION migrate_vlan_sequence_lp_2048519(original_id int)
+        RETURNS void AS $$
+        DECLARE
+            new_record_id INT;
+        BEGIN
+            IF EXISTS ( 
+                SELECT id from maasserver_vlan WHERE id = original_id
+            )
+            THEN 
+                new_record_id := nextval('maasserver_vlan_id_seq');
+                UPDATE maasserver_vlan
+                    SET id = new_record_id
+                    WHERE id = original_id;
+                
+                UPDATE maasserver_interface
+                    SET vlan_id = new_record_id
+                    WHERE vlan_id = original_id;
+            
+                UPDATE maasserver_subnet
+                    SET vlan_id = new_record_id
+                    WHERE vlan_id = original_id;
+            
+                UPDATE maasserver_vlan
+                    SET relay_vlan_id = new_record_id
+                    WHERE relay_vlan_id = original_id;
+            END IF;
+        END;
+        $$ LANGUAGE plpgsql
+    """,
+    "BEGIN",
+    "SELECT migrate_vlan_sequence_lp_2048519(0)",
+    "COMMIT",
+    "DROP FUNCTION migrate_vlan_sequence_lp_2048519",
+)
+
+# Same for the space
+MIGRATE_SPACE_QUERIES = (
+    """
+        CREATE OR REPLACE FUNCTION migrate_space_sequence_lp_2048519(original_id int)
+        RETURNS void AS $$
+        DECLARE
+            new_record_id INT;
+        BEGIN
+            IF EXISTS ( 
+                SELECT id from maasserver_space WHERE id = original_id
+            )
+            THEN
+                new_record_id := nextval('maasserver_space_id_seq');
+                UPDATE maasserver_space
+                    SET id = new_record_id
+                    WHERE id = original_id;
+        
+                UPDATE maasserver_vlan
+                    SET space_id = new_record_id
+                    WHERE space_id = original_id;
+            END IF;
+        END;
+        $$ LANGUAGE plpgsql
+    """,
+    "SELECT migrate_space_sequence_lp_2048519(0)",
+    "DROP FUNCTION migrate_space_sequence_lp_2048519",
+)
+
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -593,6 +662,7 @@ class Migration(migrations.Migration):
                 verbose_name="ID",
             ),
         ),
+        *(migrations.RunSQL(query) for query in MIGRATE_SPACE_QUERIES),
         migrations.AlterField(
             model_name="space",
             name="id",
@@ -723,6 +793,7 @@ class Migration(migrations.Migration):
                 verbose_name="ID",
             ),
         ),
+        *(migrations.RunSQL(query) for query in MIGRATE_VLAN_QUERIES),
         migrations.AlterField(
             model_name="vlan",
             name="id",
