@@ -5,7 +5,6 @@
 
 
 from django.db import connection
-from testtools.matchers import HasLength
 
 from maasserver.dbviews import _ALL_VIEWS, register_all_views
 from maasserver.models.subnet import Subnet
@@ -34,7 +33,7 @@ class TestRoutablePairs(MAASServerTestCase):
     def test_contains_nothing_when_there_are_no_nodes(self):
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertThat(cursor.fetchall(), HasLength(0))
+            self.assertEqual(len(cursor.fetchall()), 0)
 
     def make_node_with_address(self, cidr, space=None, vlan=None):
         node = factory.make_Node()

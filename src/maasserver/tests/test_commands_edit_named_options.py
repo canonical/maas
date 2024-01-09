@@ -12,7 +12,6 @@ import textwrap
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from testtools.matchers import Equals, FileContains
 
 from maasserver.models import Config
 from maasserver.testing.factory import factory
@@ -102,7 +101,8 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         options_file = self.make_file(contents=content)
         self.assertFailsWithMessage(options_file, message)
         # The original file must be untouched.
-        self.assertThat(options_file, FileContains(content))
+        with open(options_file, "r") as fh:
+            self.assertEqual(content, fh.read())
 
     def test_exits_when_no_file_to_edit(self):
         dir = self.make_dir()
@@ -198,7 +198,8 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         files.remove(os.path.basename(options_file))
         [backup_file] = files
         backup_file = os.path.join(options_file_base, backup_file)
-        self.assertThat(backup_file, FileContains(OPTIONS_FILE))
+        with open(backup_file, "r") as fh:
+            self.assertEqual(fh.read(), OPTIONS_FILE)
 
     def test_migrates_bind_config_to_database(self):
         options_file = self.make_file(
@@ -256,11 +257,11 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         )
 
         upstream_dns = get_one(Config.objects.filter(name="upstream_dns"))
-        self.assertThat(
+        self.assertEqual(
             OrderedDict.fromkeys(
                 ["192.168.1.1", "192.168.1.2", "192.168.1.3"]
             ),
-            Equals(OrderedDict.fromkeys(upstream_dns.value.split())),
+            OrderedDict.fromkeys(upstream_dns.value.split()),
         )
 
     def test_dry_run_migrates_nothing_and_prints_config(self):

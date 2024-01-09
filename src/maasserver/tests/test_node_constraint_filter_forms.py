@@ -5,13 +5,6 @@ from functools import partial
 import random
 
 from django import forms
-from testtools.matchers import (
-    ContainsAll,
-    Equals,
-    MatchesDict,
-    MatchesListwise,
-    StartsWith,
-)
 
 from maasserver.enum import (
     DEPLOYMENT_TARGET,
@@ -103,9 +96,9 @@ class TestUtils(MAASServerTestCase):
         )
 
     def test_JUJU_ACQUIRE_FORM_FIELDS_MAPPING_fields(self):
-        self.assertThat(
-            list(AcquireNodeForm().fields),
-            ContainsAll(JUJU_ACQUIRE_FORM_FIELDS_MAPPING),
+        self.assertGreaterEqual(
+            set(AcquireNodeForm().fields),
+            set(JUJU_ACQUIRE_FORM_FIELDS_MAPPING),
         )
 
     def test_detect_nonexistent_names_returns_empty_if_no_names(self):
@@ -264,7 +257,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         s1 = factory.make_Subnet(vlan=v1, space=None)
         factory.make_Node_with_Interface_on_Subnet(subnet=s1)
         form = FilterNodeForm(data={"subnets": "space:bar"})
-        self.assertThat(form.is_valid(), Equals(False), dict(form.errors))
+        self.assertFalse(form.is_valid(), dict(form.errors))
 
     def test_subnets_filters_by_space(self):
         subnets = [factory.make_Subnet(space=RANDOM) for _ in range(3)]
@@ -790,10 +783,12 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_invalid_tags(self):
         form = FilterNodeForm(data={"tags": ["big", "unknown"]})
         self.assertFalse(form.is_valid())
-        self.assertThat(
-            form.errors,
-            MatchesDict(
-                {"tags": MatchesListwise([StartsWith("No such tag(s):")])}
+        tags_error = form.errors.get("tags")
+        self.assertIn(
+            tags_error,
+            (
+                [("No such tag(s): 'big', 'unknown'.")],
+                [("No such tag(s): 'unknown', 'big'.")],
             ),
         )
 

@@ -8,7 +8,6 @@ from collections import defaultdict
 from random import randint
 
 from netaddr import IPAddress
-from testtools.matchers import Equals
 
 from maasserver import server_address
 from maasserver.exceptions import UnresolvableHost
@@ -208,16 +207,14 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
-        self.assertThat(
+        self.assertEqual(
             region_ips,
-            Equals(
-                [
-                    IPAddress("192.168.0.254"),
-                    IPAddress("192.168.0.1"),
-                    IPAddress("192.168.0.2"),
-                    IPAddress("192.168.0.4"),
-                ]
-            ),
+            [
+                IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.1"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ],
         )
 
     def test_alternates_do_not_contain_duplicate_for_maas_url_ip(self):
@@ -259,16 +256,14 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
-        self.assertThat(
+        self.assertEqual(
             region_ips,
-            Equals(
-                [
-                    IPAddress("192.168.0.254"),
-                    IPAddress("192.168.0.1"),
-                    IPAddress("192.168.0.2"),
-                    IPAddress("192.168.0.4"),
-                ]
-            ),
+            [
+                IPAddress("192.168.0.254"),
+                IPAddress("192.168.0.1"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ],
         )
 
     def test_alternates_use_consistent_subnet(self):
@@ -290,15 +285,13 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
-        self.assertThat(
+        self.assertEqual(
             region_ips,
-            Equals(
-                [
-                    IPAddress("192.168.0.1"),
-                    IPAddress("192.168.0.2"),
-                    IPAddress("192.168.0.4"),
-                ]
-            ),
+            [
+                IPAddress("192.168.0.1"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+            ],
         )
 
     def test_alternates_support_ipv4_and_ipv6(self):
@@ -323,16 +316,14 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
-        self.assertThat(
+        self.assertEqual(
             region_ips,
-            Equals(
-                [
-                    IPAddress("192.168.0.1"),
-                    IPAddress("2001:db8::1"),
-                    IPAddress("192.168.0.2"),
-                    IPAddress("192.168.0.4"),
-                    IPAddress("2001:db8::2"),
-                    IPAddress("2001:db8::4"),
-                ]
-            ),
+            [
+                IPAddress("192.168.0.1"),
+                IPAddress("2001:db8::1"),
+                IPAddress("192.168.0.2"),
+                IPAddress("192.168.0.4"),
+                IPAddress("2001:db8::2"),
+                IPAddress("2001:db8::4"),
+            ],
         )

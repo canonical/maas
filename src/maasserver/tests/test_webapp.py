@@ -6,7 +6,6 @@ import random
 from unittest.mock import sentinel
 
 from django.core.handlers.wsgi import WSGIHandler
-from testtools.matchers import Is, IsInstance, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.web.error import UnsupportedMethod
@@ -19,7 +18,6 @@ from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.webapp import OverlaySite
 from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.twisted import reducedWebLogFormatter
 
@@ -38,11 +36,8 @@ class TestCleanPathRequest(MAASTestCase):
         request.requestReceived(
             sentinel.command, double_path, sentinel.version
         )
-        self.assertThat(
-            mock_super_requestReceived,
-            MockCalledOnceWith(
-                sentinel.command, single_path, sentinel.version
-            ),
+        mock_super_requestReceived.assert_called_once_with(
+            sentinel.command, single_path, sentinel.version
         )
 
     def test_requestReceived_converts_extra_slashes_ignores_args(self):
@@ -59,11 +54,8 @@ class TestCleanPathRequest(MAASTestCase):
         request.requestReceived(
             sentinel.command, double_path, sentinel.version
         )
-        self.assertThat(
-            mock_super_requestReceived,
-            MockCalledOnceWith(
-                sentinel.command, single_path, sentinel.version
-            ),
+        mock_super_requestReceived.assert_called_once_with(
+            sentinel.command, single_path, sentinel.version
         )
 
 
@@ -91,7 +83,7 @@ class TestOverlaySite(MAASTestCase):
         self.assertIs(resource, maas)
         self.assertIsNot(resource.render, mock_render)
         resource.render(request)
-        self.assertThat(mock_render, MockCalledOnceWith(request))
+        mock_render.assert_called_once_with(request)
 
     def test_getResourceFor_wraps_render_wo_underlay_raises_no_method(self):
         root = Resource()
@@ -127,7 +119,7 @@ class TestOverlaySite(MAASTestCase):
         request = DummyRequest([b"MAAS"])
         resource = site.getResourceFor(request)
         resource.render(request)
-        self.assertThat(mock_underlay_maas_render, MockCalledOnceWith(request))
+        mock_underlay_maas_render.assert_called_once_with(request)
 
     def test_getResourceFor_doesnt_wrapper_render_if_already_wrapped(self):
         underlay_root = Resource()
@@ -191,14 +183,9 @@ class TestWebApplicationService(MAASTestCase):
     def test_init_creates_site(self):
         service = self.make_webapp()
         self.assertIsInstance(service.site, Site)
-        self.assertThat(
-            service.site,
-            MatchesStructure(
-                requestFactory=Is(webapp.CleanPathRequest),
-                _logFormatter=Is(reducedWebLogFormatter),
-                timeOut=Is(None),
-            ),
-        )
+        self.assertIs(service.site.requestFactory, webapp.CleanPathRequest)
+        self.assertIs(service.site._logFormatter, reducedWebLogFormatter)
+        self.assertIsNone(service.site.timeOut)
         self.assertIsInstance(service.websocket, WebSocketFactory)
 
     def test_start_and_stop_the_service(self):
@@ -239,11 +226,10 @@ class TestWebApplicationService(MAASTestCase):
             b"MAAS", request=None
         )
         self.assertIsInstance(underlay_maas_resource, webapp.ResourceOverlay)
-        self.assertThat(
-            underlay_maas_resource.basis,
-            MatchesStructure(
-                _reactor=Is(reactor),
-                _threadpool=Is(service.threadpool),
-                _application=IsInstance(WSGIHandler),
-            ),
+        self.assertIs(underlay_maas_resource.basis._reactor, reactor)
+        self.assertIs(
+            underlay_maas_resource.basis._threadpool, service.threadpool
+        )
+        self.assertIsInstance(
+            underlay_maas_resource.basis._application, WSGIHandler
         )

@@ -6,8 +6,6 @@ import json
 from math import ceil
 import random
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     FILESYSTEM_GROUP_TYPE,
@@ -47,7 +45,6 @@ from maasserver.storage_layouts import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
-from maastesting.matchers import MockCalledOnceWith
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import SCRIPT_TYPE
 from provisioningserver.refresh.node_info_scripts import (
@@ -430,7 +427,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             StorageLayoutBase, "configure_storage"
         )
         layout.configure()
-        self.assertThat(mock_configure_storage, MockCalledOnceWith(True))
+        mock_configure_storage.assert_called_once_with(True)
 
     def test_is_uefi_partition_detects_uefi_partition(self):
         node = make_Node_with_uefi_boot_method()
@@ -503,14 +500,10 @@ class LayoutHelpersMixin:
             ),
             partition.size,
         )
-        self.assertThat(
-            partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.FAT32,
-                label="efi",
-                mount_point="/boot/efi",
-            ),
-        )
+        fs = partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.FAT32)
+        self.assertEqual(fs.label, "efi")
+        self.assertEqual(fs.mount_point, "/boot/efi")
 
 
 class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
@@ -546,12 +539,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_large_gpt_partition(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -569,12 +560,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         partitions = partition_table.partitions.order_by("id").all()
         root_partition = partitions[0]
         self.assertIsNotNone(root_partition)
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_for_powernv(self):
         node = make_ppc64el_Node_with_powernv_boot_method()
@@ -602,12 +591,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_for_powerkvm(self):
         node = make_ppc64el_Node_with_uefi_boot_method()
@@ -635,12 +622,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_uefi_defaults(self):
         node = make_Node_with_uefi_boot_method()
@@ -672,12 +657,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_for_arm64(self):
         node = make_arm64_Node_without_uefi_boot_method()
@@ -701,12 +684,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             boot_partition.size,
         )
-        self.assertThat(
-            boot_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="boot", mount_point="/boot"
-            ),
-        )
+        fs = boot_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "boot")
+        self.assertEqual(fs.mount_point, "/boot")
 
         # Validate root partition.
         root_partition = partitions[1]
@@ -721,12 +702,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_boot_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -757,12 +736,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             boot_partition.size,
         )
-        self.assertThat(
-            boot_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="boot", mount_point="/boot"
-            ),
-        )
+        fs = boot_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "boot")
+        self.assertEqual(fs.mount_point, "/boot")
 
         # Validate root partition.
         root_partition = partitions[2]
@@ -778,12 +755,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_root_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -814,12 +789,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_boot_size_and_root_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -855,12 +828,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             boot_partition.size,
         )
-        self.assertThat(
-            boot_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="boot", mount_point="/boot"
-            ),
-        )
+        fs = boot_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "boot")
+        self.assertEqual(fs.mount_point, "/boot")
 
         # Validate root partition.
         root_partition = partitions[2]
@@ -871,12 +842,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_root_device_and_root_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -920,12 +889,10 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             ),
             root_partition.size,
         )
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_is_layout_with_uefi(self):
         node = make_Node_with_uefi_boot_method()
@@ -1131,12 +1098,10 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         logical_volume = volume_group.virtual_devices.first()
         self.assertEqual(volume_group.get_size(), logical_volume.size)
         self.assertEqual(layout.DEFAULT_LV_NAME, logical_volume.name)
-        self.assertThat(
-            logical_volume.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = logical_volume.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_vg_name_and_lv_name(self):
         node = make_Node_with_uefi_boot_method()
@@ -1169,12 +1134,10 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         logical_volume = volume_group.virtual_devices.first()
         self.assertEqual(volume_group.get_size(), logical_volume.size)
         self.assertEqual(lv_name, logical_volume.name)
-        self.assertThat(
-            logical_volume.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = logical_volume.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_lv_size(self):
         node = make_Node_with_uefi_boot_method()
@@ -1209,12 +1172,10 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         self.assertEqual(expected_size, logical_volume.size)
         self.assertEqual(layout.DEFAULT_LV_NAME, logical_volume.name)
-        self.assertThat(
-            logical_volume.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = logical_volume.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_creates_layout_with_large_gpt_partition(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -1602,12 +1563,10 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         partitions = partition_table.partitions.order_by("id").all()
         root_partition = partitions[1]
         self.assertIsNotNone(root_partition)
-        self.assertThat(
-            root_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = root_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_configure_creates_boot_partition(self):
         node = make_Node_with_uefi_boot_method()
@@ -1624,12 +1583,10 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         partitions = partition_table.partitions.order_by("id").all()
         boot_partition = partitions[1]
         self.assertEqual(1 * 1024**3, boot_partition.size)
-        self.assertThat(
-            boot_partition.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="boot", mount_point="/boot"
-            ),
-        )
+        fs = boot_partition.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "boot")
+        self.assertEqual(fs.mount_point, "/boot")
 
     def test_configure_storage_creates_bcache_layout_with_ssd(self):
         node = make_Node_with_uefi_boot_method()
@@ -1669,12 +1626,10 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         )
         bcache = root_partition.get_effective_filesystem().filesystem_group
         self.assertIsNotNone(bcache)
-        self.assertThat(
-            bcache.virtual_device.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = bcache.virtual_device.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_configure_storage_creates_bcache_layout_without_partition(self):
         node = make_Node_with_uefi_boot_method()
@@ -1708,12 +1663,10 @@ class TestBcacheStorageLayout(MAASServerTestCase):
             ssd_filesystem.cache_set.filesystemgroup_set.first(),
         )
         bcache = root_partition.get_effective_filesystem().filesystem_group
-        self.assertThat(
-            bcache.virtual_device.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = bcache.virtual_device.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_configure_storage_creates_bcache_layout_with_cache_mode(self):
         node = make_Node_with_uefi_boot_method()
@@ -1751,12 +1704,10 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         )
         bcache = root_partition.get_effective_filesystem().filesystem_group
         self.assertEqual(cache_mode, bcache.cache_mode)
-        self.assertThat(
-            bcache.virtual_device.get_effective_filesystem(),
-            MatchesStructure.byEquality(
-                fstype=FILESYSTEM_TYPE.EXT4, label="root", mount_point="/"
-            ),
-        )
+        fs = bcache.virtual_device.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs.label, "root")
+        self.assertEqual(fs.mount_point, "/")
 
     def test_is_layout_with_uefi(self):
         node = make_Node_with_uefi_boot_method()

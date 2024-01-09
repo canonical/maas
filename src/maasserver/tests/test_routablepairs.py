@@ -8,7 +8,6 @@ from itertools import product, takewhile
 import random
 
 from testtools import ExpectedException
-from testtools.matchers import AfterPreprocessing, Equals
 
 from maasserver.models.node import Node
 from maasserver.routablepairs import (
@@ -219,9 +218,9 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
                 sip_same_space.get_ipaddress(),
             ),
         ]
-        self.assertThat(
-            find_addresses_between_nodes(lefts, rights),
-            AfterPreprocessing(list, Equals(expected)),
+        self.assertEqual(
+            list(find_addresses_between_nodes(lefts, rights)),
+            expected,
         )
 
         # Same node, same space, different VLAN and subnet. We did not add

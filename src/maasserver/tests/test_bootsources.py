@@ -8,7 +8,6 @@ from unittest.mock import ANY, MagicMock, patch
 
 from fixtures import EnvironmentVariableFixture
 from requests.exceptions import ConnectionError
-from testtools.matchers import HasLength
 
 from maasserver import bootsources
 from maasserver.bootsources import (
@@ -39,7 +38,6 @@ from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL
 from provisioningserver.import_images import (
     download_descriptions as download_descriptions_module,
@@ -100,11 +98,10 @@ class TestHelpers(MAASServerTestCase):
         created = ensure_boot_source_definition()
         self.assertTrue(
             created,
-            "Should have returned True signaling that the "
-            "sources where added.",
+            "Should have returned True signaling that the sources were added.",
         )
         sources = BootSource.objects.all()
-        self.assertThat(sources, HasLength(1))
+        self.assertEqual(len(sources), 1)
         [source] = sources
         self.assertEqual(source.url, DEFAULT_IMAGES_URL)
         self.assertEqual(
@@ -149,11 +146,10 @@ class TestHelpers(MAASServerTestCase):
         created = ensure_boot_source_definition()
         self.assertTrue(
             created,
-            "Should have returned True signaling that the "
-            "sources where added.",
+            "Should have returned True signaling that the sources were added.",
         )
         sources = BootSource.objects.all()
-        self.assertThat(sources, HasLength(1))
+        self.assertEqual(len(sources), 1)
         [source] = sources
         self.assertEqual(source.url, DEFAULT_IMAGES_URL)
         self.assertEqual(
@@ -174,8 +170,7 @@ class TestHelpers(MAASServerTestCase):
         created = ensure_boot_source_definition()
         self.assertFalse(
             created,
-            "Should have returned False signaling that the "
-            "sources where not added.",
+            "Should have returned False signaling that the sources were not added.",
         )
         self.assertCountEqual(sources, BootSource.objects.all())
 
@@ -426,9 +421,8 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         )
         factory.make_BootSource(keyring_data=b"1234")
         cache_boot_sources()
-        self.assertThat(
-            mock_download,
-            MockCalledOnceWith(ANY, user_agent=get_maas_user_agent()),
+        mock_download.assert_called_once_with(
+            ANY, user_agent=get_maas_user_agent()
         )
 
     def test_doesnt_have_env_http_and_https_proxy_set_if_disabled(self):

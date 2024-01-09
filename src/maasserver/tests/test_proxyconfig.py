@@ -9,7 +9,6 @@ import random
 
 from django.conf import settings
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import Contains, FileContains, Not
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import proxyconfig
@@ -19,7 +18,6 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.proxy import config
 from provisioningserver.utils import snap
 
@@ -50,17 +48,14 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         enabled = yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         # enabled's cidr must be present
-        matcher = Contains("acl localnet src %s" % enabled.cidr)
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
-            FileContains(matcher=matcher),
-        )
+        needle = f"acl localnet src {enabled.cidr}"
+
+        with self.proxy_path.open("r") as fh:
+            contents = fh.read()
+        self.assertIn(needle, contents)
         # disabled's cidr must not be present
-        matcher = Not(Contains("acl localnet src %s" % disabled.cidr))
-        self.assertThat(
-            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
-            FileContains(matcher=matcher),
-        )
+        disabled_line = f"acl localnet src {disabled.cidr}"
+        self.assertNotIn(disabled_line, contents)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -85,8 +80,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         )
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn("never_direct allow all", lines)
-            self.assertIn(cache_peer_line, lines)
+        self.assertIn("never_direct allow all", lines)
+        self.assertIn(cache_peer_line, lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -106,8 +101,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn("never_direct allow all", lines)
-            self.assertNotIn("cache_peer", lines)
+        self.assertNotIn("never_direct allow all", lines)
+        self.assertNotIn("cache_peer", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -129,8 +124,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn("never_direct allow all", lines)
-            self.assertNotIn("cache_peer", lines)
+        self.assertNotIn("never_direct allow all", lines)
+        self.assertNotIn("cache_peer", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -142,7 +137,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertNotIn("dns_v4_first on", lines)
+        self.assertNotIn("dns_v4_first on", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -154,7 +149,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn("dns_v4_first on", lines)
+        self.assertIn("dns_v4_first on", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -167,7 +162,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         yield proxyconfig.proxy_update_config(reload_proxy=False)
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
-            self.assertIn("http_port %s" % port, lines)
+        self.assertIn(f"http_port {port}", lines)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -175,9 +170,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.assertThat(
-            self.service_monitor.reloadService,
-            MockCalledOnceWith("proxy", if_on=True),
+        self.service_monitor.reloadService.assert_called_once_with(
+            "proxy", if_on=True
         )
 
     @wait_for_reactor
@@ -187,9 +181,8 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(snap, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.assertThat(
-            self.service_monitor.restartService,
-            MockCalledOnceWith("proxy", if_on=True),
+        self.service_monitor.restartService.assert_called_once_with(
+            "proxy", if_on=True
         )
 
     @wait_for_reactor
@@ -198,7 +191,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", False)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
-        self.assertThat(self.service_monitor.reloadService, MockNotCalled())
+        self.service_monitor.reloadService.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -206,4 +199,4 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.patch(settings, "PROXY_CONNECT", True)
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config(reload_proxy=False)
-        self.assertThat(self.service_monitor.reloadService, MockNotCalled())
+        self.service_monitor.reloadService.assert_not_called()

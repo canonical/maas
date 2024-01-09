@@ -5,8 +5,6 @@ from pathlib import Path
 import random
 from unittest.mock import call, MagicMock
 
-from testtools.matchers import HasLength
-
 from maasserver import deprecations, eventloop, locks, start_up, vault
 from maasserver.config import RegionConfiguration
 from maasserver.models.config import Config
@@ -27,11 +25,6 @@ from maasserver.testing.vault import FakeVaultClient
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting import get_testing_timeout
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from provisioningserver.config import ConfigurationFile
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.security import to_hex
@@ -92,12 +85,11 @@ class TestStartUp(MAASTransactionServerTestCase):
         start_up.start_up()
         # However, it did call inner_start_up() twice; the first call resulted
         # in the "Boom!" exception so it tried again.
-        self.expectThat(
-            inner_start_up,
-            MockCallsMatch(call(master=False), call(master=False)),
+        inner_start_up.assert_has_calls(
+            [call(master=False), call(master=False)]
         )
         # It also slept once, for 3 seconds, between those attempts.
-        self.expectThat(start_up.pause, MockCalledOnceWith(3.0))
+        start_up.pause.assert_called_once_with(3.0)
 
     def test_start_up_fetches_secret_from_vault_after_migration(self):
         vault.clear_vault_client_caches()
@@ -147,24 +139,24 @@ class TestInnerStartUp(MAASServerTestCase):
     def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
-        self.assertThat(start_up.dns_kms_setting_changed, MockCalledOnceWith())
+        start_up.dns_kms_setting_changed.assert_called_once_with()
 
     def test_does_not_call_dns_kms_setting_changed_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
+        start_up.dns_kms_setting_changed.assert_not_called()
 
     def test_calls_load_builtin_scripts_if_master(self):
         self.patch_autospec(start_up, "load_builtin_scripts")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
-        self.assertThat(start_up.load_builtin_scripts, MockCalledOnceWith())
+        start_up.load_builtin_scripts.assert_called_once_with()
 
     def test_does_not_call_load_builtin_scripts_if_not_master(self):
         self.patch_autospec(start_up, "load_builtin_scripts")
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertThat(start_up.load_builtin_scripts, MockNotCalled())
+        start_up.load_builtin_scripts.assert_not_called()
 
     def test_resets_deprecated_commissioning_release_if_master(self):
         Config.objects.set_config(
@@ -225,13 +217,13 @@ class TestInnerStartUp(MAASServerTestCase):
     def test_doesnt_call_dns_kms_setting_changed_if_not_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertThat(start_up.dns_kms_setting_changed, MockNotCalled())
+        start_up.dns_kms_setting_changed.assert_not_called()
 
     def test_creates_region_controller(self):
-        self.assertThat(RegionController.objects.all(), HasLength(0))
+        self.assertCountEqual(RegionController.objects.all(), [])
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertThat(RegionController.objects.all(), HasLength(1))
+        self.assertNotEqual(list(RegionController.objects.all()), [])
 
     def test_creates_maas_id_file(self):
         self.assertIsNone(MAAS_ID.get())

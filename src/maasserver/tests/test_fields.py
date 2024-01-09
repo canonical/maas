@@ -35,7 +35,6 @@ from maasserver.tests.models import (
     XMLFieldModel,
 )
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -127,7 +126,7 @@ class TestLargeObjectField(MAASLegacyServerTestCase):
             self.addCleanup(large_object.close)
             mock_close = self.patch(large_object, "close")
             stream.write(data)
-        self.assertThat(mock_close, MockCalledOnceWith())
+        mock_close.assert_called_once_with()
 
     def test_unlink(self):
         data = factory.make_bytes()

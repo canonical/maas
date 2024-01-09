@@ -7,8 +7,6 @@
 import random
 from unittest.mock import call, create_autospec, sentinel
 
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 from twisted.python.failure import Failure
@@ -22,12 +20,6 @@ from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockAnyCall,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 
 wait_for_reactor = wait_for()
 
@@ -41,17 +33,12 @@ class TestRackControllerService(
 
     def test_init_sets_properties(self):
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
-        self.assertThat(
-            service,
-            MatchesStructure.byEquality(
-                clock=reactor,
-                starting=None,
-                watching=set(),
-                needsDHCPUpdate=set(),
-                ipcWorker=sentinel.ipcWorker,
-                postgresListener=sentinel.listener,
-            ),
-        )
+        self.assertEqual(service.clock, reactor)
+        self.assertIsNone(service.starting)
+        self.assertEqual(service.watching, set())
+        self.assertEqual(service.needsDHCPUpdate, set())
+        self.assertIs(service.ipcWorker, sentinel.ipcWorker)
+        self.assertIs(service.postgresListener, sentinel.listener)
 
     def test_startService_sets_starting_to_result_of_processId_get(self):
         ipcWorker = create_autospec(
@@ -165,10 +152,10 @@ class TestRackControllerService(
         mock_coreHandler = self.patch(service, "coreHandler")
         yield service.startService()
         calls = [
-            call("sys_core_%d" % process.id, "watch_%d" % rack.id)
+            call(f"sys_core_{process.id}", f"watch_{rack.id}")
             for rack in rack_controllers
         ]
-        self.assertThat(mock_coreHandler, MockCallsMatch(*calls))
+        mock_coreHandler.assert_has_calls(calls)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -242,7 +229,7 @@ class TestRackControllerService(
         self.assertIn(service.dhcpHandler, listener.listeners[dhcp_channel])
         self.assertEqual({rack_id}, service.watching)
         self.assertEqual({rack_id}, service.needsDHCPUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_coreHandler_watch_doesnt_call_register(self):
         processId = random.randint(0, 100)
@@ -258,7 +245,7 @@ class TestRackControllerService(
         self.assertNotIn(sys_channel, listener.registeredChannels)
         self.assertEqual({rack_id}, service.watching)
         self.assertEqual({rack_id}, service.needsDHCPUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_coreHandler_raises_ValueError_for_unknown_action(self):
         processId = random.randint(0, 100)
@@ -266,10 +253,8 @@ class TestRackControllerService(
         listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
-        with ExpectedException(ValueError):
-            service.coreHandler(
-                "sys_core_%d" % processId, "invalid_%d" % rack_id
-            )
+        with self.assertRaisesRegex(ValueError, "Unknown action: invalid"):
+            service.coreHandler(f"sys_core_{processId}", f"invalid_{rack_id}")
 
     def test_dhcpHandler_adds_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
@@ -279,7 +264,7 @@ class TestRackControllerService(
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
         self.assertEqual({rack_id}, service.needsDHCPUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_dhcpHandler_doesnt_add_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
@@ -288,20 +273,20 @@ class TestRackControllerService(
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
         self.assertEqual(set(), service.needsDHCPUpdate)
-        self.assertThat(mock_startProcessing, MockNotCalled())
+        mock_startProcessing.assert_not_called()
 
     def test_startProcessing_doesnt_call_start_when_looping_call_running(self):
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
         mock_start = self.patch(service.processing, "start")
         service.processing.running = True
         service.startProcessing()
-        self.assertThat(mock_start, MockNotCalled())
+        mock_start.assert_not_called()
 
     def test_startProcessing_calls_start_when_looping_call_not_running(self):
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
         mock_start = self.patch(service.processing, "start")
         service.startProcessing()
-        self.assertThat(mock_start, MockCalledOnceWith(0, now=False))
+        mock_start.assert_called_once_with(0, now=False)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -314,7 +299,7 @@ class TestRackControllerService(
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
         yield service.processingDone
-        self.assertThat(mock_processDHCP, MockNotCalled())
+        mock_processDHCP.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -327,7 +312,7 @@ class TestRackControllerService(
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
         yield service.processingDone
-        self.assertThat(mock_processDHCP, MockNotCalled())
+        mock_processDHCP.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -340,7 +325,7 @@ class TestRackControllerService(
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
         yield service.processingDone
-        self.assertThat(mock_processDHCP, MockCalledOnceWith(rack_id))
+        mock_processDHCP.assert_called_once_with(rack_id)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -352,10 +337,9 @@ class TestRackControllerService(
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
-        for _ in range(len(rack_ids)):
-            yield service.processingDone
         for rack_id in rack_ids:
-            self.assertThat(mock_processDHCP, MockAnyCall(rack_id))
+            yield service.processingDone
+            mock_processDHCP.assert_any_call(rack_id)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -373,9 +357,7 @@ class TestRackControllerService(
         service.startProcessing()
         for _ in range(2):
             yield service.processingDone
-        self.assertThat(
-            mock_processDHCP, MockCallsMatch(call(rack_id), call(rack_id))
-        )
+        mock_processDHCP.assert_has_calls([call(rack_id), call(rack_id)])
 
     @wait_for_reactor
     @inlineCallbacks
@@ -389,7 +371,7 @@ class TestRackControllerService(
         )
         mock_configure_dhcp.return_value = succeed(None)
         yield service.processDHCP(rack.id)
-        self.assertThat(mock_configure_dhcp, MockCalledOnceWith(rack))
+        mock_configure_dhcp.assert_called_once_with(rack)
 
     @wait_for_reactor
     @inlineCallbacks

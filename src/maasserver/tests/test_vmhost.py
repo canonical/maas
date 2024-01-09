@@ -20,7 +20,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
     DiscoveredPod,
@@ -1076,20 +1075,17 @@ class TestRequestCommissioningResults(MAASTransactionServerTestCase):
             NodeKey.objects.get_token_for_node, machine
         )
         await vmhost_module.request_commissioning_results(pod)
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                SendPodCommissioningResults,
-                pod_id=pod.id,
-                name=pod.name,
-                type=pod.power_type,
-                system_id=machine.system_id,
-                context=power_params,
-                consumer_key=token.consumer.key,
-                token_key=token.key,
-                token_secret=token.secret,
-                metadata_url=urlparse(
-                    "http://localhost:5240/MAAS/metadata/latest/"
-                ),
+        client.assert_called_once_with(
+            SendPodCommissioningResults,
+            pod_id=pod.id,
+            name=pod.name,
+            type=pod.power_type,
+            system_id=machine.system_id,
+            context=power_params,
+            consumer_key=token.consumer.key,
+            token_key=token.key,
+            token_secret=token.secret,
+            metadata_url=urlparse(
+                "http://localhost:5240/MAAS/metadata/latest/"
             ),
         )

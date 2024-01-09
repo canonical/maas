@@ -7,13 +7,6 @@ import random
 from textwrap import dedent
 
 from testtools.content import text_content
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesDict,
-)
 import yaml
 
 from maasserver.enum import (
@@ -43,22 +36,17 @@ class AssertStorageConfigMixin:
 
     def assertStorageConfig(self, expected, observed, strip_uuids=False):
         self.assertIsInstance(observed, list)
-        self.assertThat(observed, HasLength(1))
+        self.assertEqual(len(observed), 1)
         observed = observed[0]
         observed = yaml.safe_load(observed)
-        self.assertThat(
-            observed,
-            ContainsDict(
-                {
-                    "partitioning_commands": MatchesDict(
-                        {"builtin": Equals(["curtin", "block-meta", "custom"])}
-                    ),
-                    "storage": MatchesDict(
-                        {"version": Equals(1), "config": IsInstance(list)}
-                    ),
-                }
-            ),
+        self.assertEqual(
+            observed.get("partitioning_commands"),
+            {"builtin": ["curtin", "block-meta", "custom"]},
         )
+        self.assertIn("storage", observed)
+        storage = observed["storage"]
+        self.assertEqual(storage.get("version"), 1)
+        self.assertIsInstance(storage.get("config"), list)
         storage_observed = observed["storage"]["config"]
         storage_expected = yaml.safe_load(expected)["config"]
         if strip_uuids:

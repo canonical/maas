@@ -5,10 +5,8 @@
 
 
 import time
-from unittest.mock import call
 
 from piston3.models import Nonce
-from testtools.matchers import ContainsAll, StartsWith
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import Clock
 
@@ -26,11 +24,6 @@ from maasserver.nonces_cleanup import time as module_time
 from maasserver.nonces_cleanup import timestamp_threshold
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 
 
 class TestCleanupOldNonces(MAASServerTestCase):
@@ -59,7 +52,7 @@ class TestCleanupOldNonces(MAASServerTestCase):
 
         # The old nonces plus the checkpoint nonce are deleted.
         self.assertEqual(len(old_nonces) + 1, cleanup_count)
-        self.assertThat(Nonce.objects.all(), ContainsAll(new_nonces))
+        self.assertGreaterEqual(set(Nonce.objects.all()), set(new_nonces))
         self.assertEqual(len(new_nonces) + 1, Nonce.objects.all().count())
 
 
@@ -133,7 +126,7 @@ class TestUtilities(MAASServerTestCase):
 
     def test_get_time_string_ends_with_suffix(self):
         now = time.time()
-        self.assertThat(get_time_string(now), StartsWith(key_prefix))
+        self.assertTrue(get_time_string(now).startswith(key_prefix))
 
 
 class TestNonceCleanupService(MAASServerTestCase):
@@ -156,19 +149,20 @@ class TestNonceCleanupService(MAASServerTestCase):
 
         # `cleanup_old_nonces` is not called before the service is
         # started.
-        self.assertThat(cleanup_old_nonces, MockNotCalled())
+        cleanup_old_nonces.assert_not_called()
         # `cleanup_old_nonces` is called the moment the service is
         # started.
         service.startService()
-        self.assertThat(cleanup_old_nonces, MockCalledOnceWith())
+        cleanup_old_nonces.assert_called_once_with()
         # Advancing the clock by `interval - 1` means that
         # `cleanup_old_nonces` has still only been called once.
         service.clock.advance(interval - 1)
-        self.assertThat(cleanup_old_nonces, MockCalledOnceWith())
+        cleanup_old_nonces.assert_called_once_with()
+        cleanup_old_nonces.reset_mock()
         # Advancing the clock one more second causes another call to
         # `cleanup_old_nonces`.
         service.clock.advance(1)
-        self.assertThat(cleanup_old_nonces, MockCallsMatch(call(), call()))
+        cleanup_old_nonces.assert_called_once_with()
 
     def test_interval_can_be_set(self):
         interval = self.getUniqueInteger()

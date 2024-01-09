@@ -15,7 +15,6 @@ from lxml.html import fromstring
 from maasserver.config_forms import DictCharField, DictCharWidget
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 
 
 class TestDictCharField(MAASServerTestCase):
@@ -318,9 +317,7 @@ class TestDictCharWidget(MAASServerTestCase):
         )
         widget.render("foo", [])
 
-        self.assertThat(
-            mock_widget.render, MockCalledOnceWith(ANY, initials[0], ANY)
-        )
+        mock_widget.render.assert_called_once_with(ANY, initials[0], ANY)
 
     def test_multiple_values_returns_dict_with_list(self):
         inputs = [

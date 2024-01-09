@@ -28,12 +28,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import CountQueries
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
 
@@ -74,7 +68,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         self.assertCountEqual(
             NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys(), failed_statuses
         )
-        self.assertThat(maaslog, MockNotCalled())
+        maaslog.assert_not_called()
 
 
 class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
@@ -128,7 +122,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         mark_nodes_failed_after_missing_script_timeout(now(), 20)
         node = reload_object(node)
         self.assertEqual(self.status, node.status)
-        self.assertThat(self.maaslog, MockNotCalled())
+        self.maaslog.assert_not_called()
 
     def test_mark_nodes_failed_after_missing_timeout_heartbeat(self):
         node, script_set = self.make_node()
@@ -164,11 +158,11 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             self.maaslog.call_args_list,
         )
         if node.enable_ssh:
-            self.assertThat(self.mock_stop, MockNotCalled())
+            self.mock_stop.assert_not_called()
         else:
-            self.assertThat(self.mock_stop, MockCalledOnce())
+            self.mock_stop.assert_called_once()
             self.assertIn(
-                call("%s: Stopped because SSH is disabled" % node.hostname),
+                call(f"{node.hostname}: Stopped because SSH is disabled"),
                 self.maaslog.call_args_list,
             )
         for script_result in script_results:
@@ -246,11 +240,11 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
             self.maaslog.call_args_list,
         )
         if node.enable_ssh:
-            self.assertThat(self.mock_stop, MockNotCalled())
+            self.mock_stop.assert_not_called()
         else:
-            self.assertThat(self.mock_stop, MockCalledOnce())
+            self.mock_stop.assert_called_once()
             self.assertIn(
-                call("%s: Stopped because SSH is disabled" % node.hostname),
+                call(f"{node.hostname}: Stopped because SSH is disabled"),
                 self.maaslog.call_args_list,
             )
         self.assertEqual(
@@ -293,7 +287,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         node = reload_object(node)
 
         self.assertEqual(self.status, node.status)
-        self.assertThat(self.mock_stop, MockNotCalled())
+        self.mock_stop.assert_not_called()
         self.assertEqual(
             SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status
         )
@@ -378,18 +372,19 @@ class TestStatusMonitorService(MAASServerTestCase):
         self.assertEqual(service.step, interval)
 
         # `check_status` is not called before the service is started.
-        self.assertThat(mock_check_status, MockNotCalled())
+        mock_check_status.assert_not_called()
         # `check_status` is called the moment the service is started.
         service.startService()
-        self.assertThat(mock_check_status, MockCalledOnceWith())
+        mock_check_status.assert_called_once_with()
+        mock_check_status.reset_mock()
         # Advancing the clock by `interval - 1` means that
         # `mark_nodes_failed_after_expiring` has still only been called once.
         service.clock.advance(interval - 1)
-        self.assertThat(mock_check_status, MockCalledOnceWith())
+        mock_check_status.assert_not_called()
         # Advancing the clock one more second causes another call to
         # `check_status`.
         service.clock.advance(1)
-        self.assertThat(mock_check_status, MockCallsMatch(call(), call()))
+        mock_check_status.assert_called_once_with()
 
     def test_interval_can_be_set(self):
         interval = self.getUniqueInteger()

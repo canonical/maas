@@ -6,12 +6,6 @@ from unittest.mock import ANY, call, create_autospec
 
 from django.db import transaction
 from fixtures import FakeLogger
-from testtools.matchers import (
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-)
 from twisted.internet import reactor
 from twisted.internet.base import DelayedCall
 from twisted.internet.task import Clock
@@ -46,7 +40,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.utils.threads import deferToDatabase
 from maastesting import get_testing_timeout
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.twisted import (
     always_fail_with,
     always_succeed_with,
@@ -147,19 +140,19 @@ class TestDoPopulateTags(MAASServerTestCase):
         for rack, client, creds, nodes in zip(
             rack_controllers, clients, rack_creds, rack_nodes
         ):
-            self.expectThat(
-                client,
-                MockCallsMatch(
+            self.assertEqual(
+                client.mock_calls,
+                [
                     call(
                         EvaluateTag,
+                        system_id=rack.system_id,
                         tag_name=tag_name,
                         tag_definition=tag_definition,
-                        system_id=rack.system_id,
                         tag_nsmap=tag_nsmap,
                         credentials=creds,
                         nodes=nodes,
                     )
-                ),
+                ],
             )
 
     def test_logs_successes(self):
@@ -287,17 +280,14 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         for rack, protocol, creds in zip(
             rack_controllers, protocols, rack_creds
         ):
-            self.expectThat(
-                protocol.EvaluateTag,
-                MockCalledOnceWith(
-                    protocol,
-                    tag_name=tag.name,
-                    tag_definition=tag.definition,
-                    system_id=rack.system_id,
-                    tag_nsmap=ANY,
-                    credentials=creds,
-                    nodes=ANY,
-                ),
+            protocol.EvaluateTag.assert_called_once_with(
+                protocol,
+                tag_name=tag.name,
+                tag_definition=tag.definition,
+                system_id=rack.system_id,
+                tag_nsmap=ANY,
+                credentials=creds,
+                nodes=ANY,
             )
 
 
@@ -319,21 +309,13 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
 
         # A call has been scheduled to populate tags.
         calls = clock.getDelayedCalls()
-        self.assertThat(calls, HasLength(1))
+        self.assertEqual(len(calls), 1)
         [call] = calls
-        self.assertThat(
-            call,
-            MatchesAll(
-                IsInstance(DelayedCall),
-                MatchesStructure.byEquality(
-                    time=0,
-                    func=deferToDatabase,
-                    args=(populate_tags, tag),
-                    kw={},
-                ),
-                first_only=True,
-            ),
-        )
+        self.assertIsInstance(call, DelayedCall)
+        self.assertEqual(call.time, 0)
+        self.assertEqual(call.func, deferToDatabase)
+        self.assertEqual(call.args, (populate_tags, tag))
+        self.assertEqual(call.kw, {})
 
     def test_populate_in_region_when_no_clients(self):
         clock = self.patch(tag_module, "reactor", Clock())

@@ -12,7 +12,6 @@ from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse
 from fixtures import FakeLogger
-from testtools.matchers import Equals
 
 from maasserver import middleware as middleware_module
 from maasserver.exceptions import MAASAPIException, MAASAPINotFound
@@ -36,7 +35,6 @@ from maasserver.utils.orm import (
     make_deadlock_failure,
     make_serialization_failure,
 )
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -222,14 +220,12 @@ class TestExceptionMiddleware(MAASServerTestCase):
         )
         request = self.make_fake_request()
         response = self.process_exception(request, exception)
-        self.expectThat(
-            response.status_code, Equals(http.client.SERVICE_UNAVAILABLE)
-        )
-        self.expectThat(
+        self.assertEqual(response.status_code, http.client.SERVICE_UNAVAILABLE)
+        self.assertEqual(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(str(exception)),
+            str(exception),
         )
-        self.expectThat(response["Retry-After"], Equals("%s" % retry_after))
+        self.assertEqual(response["Retry-After"], str(retry_after))
 
     def test_handles_error_on_API(self):
         error_message = factory.make_string()
@@ -630,4 +626,4 @@ class TestRBACMiddleware(MAASServerTestCase):
         mock_clear = self.patch(rbac, "clear")
         request = factory.make_fake_request(factory.make_string(), "GET")
         self.process_request(request)
-        self.assertThat(mock_clear, MockCalledOnceWith())
+        mock_clear.assert_called_once_with()

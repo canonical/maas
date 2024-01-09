@@ -6,10 +6,9 @@
 
 from operator import attrgetter
 import random
+from unittest import TestCase
 from unittest.mock import ANY, call, MagicMock, sentinel
 
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.names.dns import A, Record_SOA, RRHeader, SOA
@@ -32,11 +31,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.dbtasks import DatabaseTasksService
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.utils.events import Event
 
@@ -44,22 +38,19 @@ wait_for_reactor = wait_for()
 
 
 class TestRegionControllerService(MAASServerTestCase):
+    assertRaises = TestCase.assertRaises
+
     def make_service(self, listener=MagicMock(), dbtasks=MagicMock()):
         # Don't retry on failure or the tests will loop forever.
         return RegionControllerService(listener, dbtasks, retryOnFailure=False)
 
     def test_init_sets_properties(self):
         service = self.make_service(sentinel.listener, sentinel.dbtasks)
-        self.assertThat(
-            service,
-            MatchesStructure.byEquality(
-                clock=reactor,
-                processingDefer=None,
-                needsDNSUpdate=True,
-                postgresListener=sentinel.listener,
-                dbtasks=sentinel.dbtasks,
-            ),
-        )
+        self.assertEqual(service.clock, reactor)
+        self.assertIsNone(service.processingDefer)
+        self.assertTrue(service.needsDNSUpdate)
+        self.assertEqual(service.postgresListener, sentinel.listener)
+        self.assertEqual(service.dbtasks, sentinel.dbtasks)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -68,15 +59,14 @@ class TestRegionControllerService(MAASServerTestCase):
         service = self.make_service(listener)
         service.startService()
         yield service.processingDefer
-        self.assertThat(
-            listener.register,
-            MockCallsMatch(
+        listener.register.assert_has_calls(
+            [
                 call("sys_dns", service.markDNSForUpdate),
                 call("sys_dns_updates", service.queueDynamicDNSUpdate),
                 call("sys_proxy", service.markProxyForUpdate),
                 call("sys_rbac", service.markRBACForUpdate),
                 call("sys_vault_migration", service.restartRegion),
-            ),
+            ]
         )
 
     def test_startService_markAllForUpdate_on_connect(self):
@@ -96,14 +86,13 @@ class TestRegionControllerService(MAASServerTestCase):
         listener = MagicMock()
         service = self.make_service(listener)
         service.stopService()
-        self.assertThat(
-            listener.unregister,
-            MockCallsMatch(
+        listener.unregister.assert_has_calls(
+            [
                 call("sys_dns", service.markDNSForUpdate),
                 call("sys_proxy", service.markProxyForUpdate),
                 call("sys_rbac", service.markRBACForUpdate),
                 call("sys_vault_migration", service.restartRegion),
-            ),
+            ]
         )
 
     @wait_for_reactor
@@ -119,21 +108,21 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markDNSForUpdate(None, None)
         self.assertTrue(service.needsDNSUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_markProxyForUpdate_sets_needsProxyUpdate_and_starts_process(self):
         service = self.make_service()
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markProxyForUpdate(None, None)
         self.assertTrue(service.needsProxyUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_markRBACForUpdate_sets_needsRBACUpdate_and_starts_process(self):
         service = self.make_service()
         mock_startProcessing = self.patch(service, "startProcessing")
         service.markRBACForUpdate(None, None)
         self.assertTrue(service.needsRBACUpdate)
-        self.assertThat(mock_startProcessing, MockCalledOnceWith())
+        mock_startProcessing.assert_called_once_with()
 
     def test_restart_region_restarts_eventloop(self):
         restart_mock = self.patch(eventloop, "restart")
@@ -146,13 +135,13 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_start = self.patch(service.processing, "start")
         service.processing.running = True
         service.startProcessing()
-        self.assertThat(mock_start, MockNotCalled())
+        mock_start.assert_not_called()
 
     def test_startProcessing_calls_start_when_looping_call_not_running(self):
         service = self.make_service(sentinel.listener, sentinel.dbtasks)
         mock_start = self.patch(service.processing, "start")
         service.startProcessing()
-        self.assertThat(mock_start, MockCalledOnceWith(0.1, now=False))
+        mock_start.assert_called_once_with(0.1, now=False)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -182,7 +171,7 @@ class TestRegionControllerService(MAASServerTestCase):
         )
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(mock_dns_update_all_zones, MockNotCalled())
+        mock_dns_update_all_zones.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -194,7 +183,7 @@ class TestRegionControllerService(MAASServerTestCase):
         )
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(mock_proxy_update_config, MockNotCalled())
+        mock_proxy_update_config.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -204,7 +193,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_rbacSync = self.patch(service, "_rbacSync")
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(mock_rbacSync, MockNotCalled())
+        mock_rbacSync.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -237,10 +226,9 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_dns_update_all_zones.assert_called_once_with(
             dynamic_updates=[], requires_reload=True
         )
-        self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
-        self.assertThat(
-            mock_msg,
-            MockCalledOnceWith("Reloaded DNS configuration; regiond started."),
+        mock_check_serial.assert_called_once_with(dns_result)
+        mock_msg.assert_called_once_with(
+            "Reloaded DNS configuration; regiond started."
         )
 
     @wait_for_reactor
@@ -277,18 +265,16 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_killService.return_value = succeed(None)
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(
-            mock_dns_update_all_zones,
-            MockCallsMatch(
+        mock_dns_update_all_zones.assert_has_calls(
+            [
                 call(dynamic_updates=[], requires_reload=True),
                 call(dynamic_updates=[], requires_reload=False),
-            ),
+            ]
         )
-        self.assertThat(
-            mock_check_serial,
-            MockCallsMatch(call(dns_result_0), call(dns_result_1)),
+        mock_check_serial.assert_has_calls(
+            [call(dns_result_0), call(dns_result_1)]
         )
-        self.assertThat(mock_killService, MockCalledOnceWith("bind9"))
+        mock_killService.assert_called_once_with("bind9")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -302,12 +288,8 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_msg = self.patch(region_controller.log, "msg")
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(
-            mock_proxy_update_config, MockCalledOnceWith(reload_proxy=True)
-        )
-        self.assertThat(
-            mock_msg, MockCalledOnceWith("Successfully configured proxy.")
-        )
+        mock_proxy_update_config.assert_called_once_with(reload_proxy=True)
+        mock_msg.assert_called_once_with("Successfully configured proxy.")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -319,10 +301,9 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_msg = self.patch(region_controller.log, "msg")
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(mock_rbacSync, MockCalledOnceWith())
-        self.assertThat(
-            mock_msg,
-            MockCalledOnceWith("Synced RBAC service; regiond started."),
+        mock_rbacSync.assert_called_once_with()
+        mock_msg.assert_called_once_with(
+            "Synced RBAC service; regiond started."
         )
 
     @wait_for_reactor
@@ -340,9 +321,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_dns_update_all_zones.assert_called_once_with(
             dynamic_updates=[], requires_reload=True
         )
-        self.assertThat(
-            mock_err, MockCalledOnceWith(ANY, "Failed configuring DNS.")
-        )
+        mock_err.assert_called_once_with(ANY, "Failed configuring DNS.")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -356,12 +335,8 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_err = self.patch(region_controller.log, "err")
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(
-            mock_proxy_update_config, MockCalledOnceWith(reload_proxy=True)
-        )
-        self.assertThat(
-            mock_err, MockCalledOnceWith(ANY, "Failed configuring proxy.")
-        )
+        mock_proxy_update_config.assert_called_once_with(reload_proxy=True)
+        mock_err.assert_called_once_with(ANY, "Failed configuring proxy.")
 
     @wait_for_reactor
     @inlineCallbacks
@@ -373,9 +348,8 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_err = self.patch(region_controller.log, "err")
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(
-            mock_err,
-            MockCalledOnceWith(ANY, "Failed syncing resources to RBAC."),
+        mock_err.assert_called_once_with(
+            ANY, "Failed syncing resources to RBAC."
         )
 
     @wait_for_reactor
@@ -392,13 +366,10 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_pause.return_value = succeed(None)
         service.startProcessing()
         yield service.processingDefer
-        self.assertThat(
-            mock_err,
-            MockCalledOnceWith(ANY, "Failed syncing resources to RBAC."),
+        mock_err.assert_called_once_with(
+            ANY, "Failed syncing resources to RBAC."
         )
-        self.assertThat(
-            mock_pause, MockCalledOnceWith(service.rbacRetryOnFailureDelay)
-        )
+        mock_pause.assert_called_once_with(service.rbacRetryOnFailureDelay)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -479,7 +450,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup = self.patch(service.dnsResolver, "lookupAuthority")
         mock_lookup.side_effect = lambda *args: succeed(([], [], []))
         # Error should not be raised.
-        with ExpectedException(DNSReloadError):
+        with self.assertRaises(DNSReloadError):
             yield service._checkSerial((formatted_serial, True, dns_names))
 
     @wait_for_reactor
@@ -494,7 +465,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup = self.patch(service.dnsResolver, "lookupAuthority")
         mock_lookup.side_effect = ValueError()
         # Error should not be raised.
-        with ExpectedException(DNSReloadError):
+        with self.assertRaises(DNSReloadError):
             yield service._checkSerial((formatted_serial, True, dns_names))
 
     @wait_for_reactor
@@ -509,7 +480,7 @@ class TestRegionControllerService(MAASServerTestCase):
         mock_lookup = self.patch(service.dnsResolver, "lookupAuthority")
         mock_lookup.side_effect = TimeoutError()
         # Error should not be raised.
-        with ExpectedException(DNSReloadError):
+        with self.assertRaises(DNSReloadError):
             yield service._checkSerial((formatted_serial, True, dns_names))
 
     def test_getRBACClient_returns_None_when_no_url(self):
@@ -654,12 +625,9 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         mock_dns_update_all_zones.assert_called_once_with(
             dynamic_updates=[], requires_reload=True
         )
-        self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
-        self.assertThat(
-            mock_msg,
-            MockCalledOnceWith(
-                "Reloaded DNS configuration; %s" % (publications[-1].source)
-            ),
+        mock_check_serial.assert_called_once_with(dns_result)
+        mock_msg.assert_called_once_with(
+            "Reloaded DNS configuration; %s" % (publications[-1].source)
         )
 
     @wait_for_reactor
@@ -700,8 +668,8 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         mock_dns_update_all_zones.assert_called_once_with(
             dynamic_updates=[], requires_reload=True
         )
-        self.assertThat(mock_check_serial, MockCalledOnceWith(dns_result))
-        self.assertThat(mock_msg, MockCalledOnceWith(expected_msg))
+        mock_check_serial.assert_called_once_with(dns_result)
+        mock_msg.assert_called_once_with(expected_msg)
 
     def test_rbacSync_returns_None_when_nothing_to_do(self):
         RBACSync.objects.clear("resource-pool")
@@ -731,9 +699,8 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.patch(service, "_getRBACClient").return_value = rbac_client
 
         self.assertEqual([], service._rbacSync())
-        self.assertThat(
-            rbac_client.update_resources,
-            MockCalledOnceWith("resource-pool", updates=resources),
+        rbac_client.update_resources.assert_called_once_with(
+            "resource-pool", updates=resources
         )
         self.assertFalse(RBACSync.objects.exists())
         last_sync = RBACLastSync.objects.get()
@@ -750,9 +717,8 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.patch(service, "_getRBACClient").return_value = rbac_client
 
         self.assertEqual([], service._rbacSync())
-        self.assertThat(
-            rbac_client.update_resources,
-            MockCalledOnceWith("resource-pool", updates=resources),
+        rbac_client.update_resources.assert_called_once_with(
+            "resource-pool", updates=resources
         )
         self.assertFalse(RBACSync.objects.exists())
         last_sync = RBACLastSync.objects.get()
@@ -776,14 +742,11 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service.rbacInit = True
 
         self.assertEqual(reasons, service._rbacSync())
-        self.assertThat(
-            rbac_client.update_resources,
-            MockCalledOnceWith(
-                "resource-pool",
-                updates=resources[1:],
-                removals=set(),
-                last_sync_id="a-b-c",
-            ),
+        rbac_client.update_resources.assert_called_once_with(
+            "resource-pool",
+            updates=resources[1:],
+            removals=set(),
+            last_sync_id="a-b-c",
         )
         self.assertFalse(RBACSync.objects.exists())
         last_sync = RBACLastSync.objects.get()
@@ -810,9 +773,8 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service.rbacInit = True
 
         self.assertEqual(reasons, service._rbacSync())
-        self.assertThat(
-            rbac_client.update_resources,
-            MockCallsMatch(
+        rbac_client.update_resources.assert_has_calls(
+            [
                 call(
                     "resource-pool",
                     updates=resources[1:],
@@ -820,7 +782,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
                     last_sync_id="a-b-c",
                 ),
                 call("resource-pool", updates=resources),
-            ),
+            ]
         )
         self.assertFalse(RBACSync.objects.exists())
         last_sync = RBACLastSync.objects.get()

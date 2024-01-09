@@ -27,7 +27,6 @@ from maasserver.utils.orm import (
     enable_all_database_connections,
 )
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import logger
 from provisioningserver.utils.twisted import asynchronous, ThreadPool
@@ -102,7 +101,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(options)
-        self.assertThat(mock_pserv, MockCalledOnceWith())
+        mock_pserv.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_makeService_without_import_services(self):
@@ -127,13 +126,10 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             len(service.services),
             "Not all services are named.",
         )
-        self.assertThat(
-            logger.configure,
-            MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD
-            ),
+        logger.configure.assert_called_once_with(
+            options["verbosity"], logger.LoggingMode.TWISTD
         )
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+        crochet.no_setup.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_makeService_with_import_services(self):
@@ -166,13 +162,11 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             len(service.services),
             "Not all services are named.",
         )
-        self.assertThat(
-            logger.configure,
-            MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD
-            ),
+        logger.configure.assert_called_once_with(
+            options["verbosity"], logger.LoggingMode.TWISTD
         )
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+
+        crochet.no_setup.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_configures_thread_pool(self):
@@ -224,7 +218,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(options)
-        self.assertThat(mock_pserv, MockCalledOnceWith())
+        mock_pserv.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_makeService(self):
@@ -267,13 +261,10 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             len(service.services),
             "Not all services are named.",
         )
-        self.assertThat(
-            logger.configure,
-            MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD
-            ),
+        logger.configure.assert_called_once_with(
+            options["verbosity"], logger.LoggingMode.TWISTD
         )
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+        crochet.no_setup.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_makeService_cleanup_prometheus_dir(self):
@@ -344,7 +335,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         # Disable _configureThreads() as it's too invasive right now.
         self.patch_autospec(service_maker, "_configureThreads")
         service_maker.makeService(options)
-        self.assertThat(mock_pserv, MockCalledOnceWith())
+        mock_pserv.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_makeService(self):
@@ -398,13 +389,10 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             len(service.services),
             "Not all services are named.",
         )
-        self.assertThat(
-            logger.configure,
-            MockCalledOnceWith(
-                options["verbosity"], logger.LoggingMode.TWISTD
-            ),
+        logger.configure.assert_called_once_with(
+            options["verbosity"], logger.LoggingMode.TWISTD
         )
-        self.assertThat(crochet.no_setup, MockCalledOnceWith())
+        crochet.no_setup.assert_called_once_with()
 
     @asynchronous(timeout=5)
     def test_configures_thread_pool(self):

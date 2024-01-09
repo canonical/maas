@@ -26,7 +26,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 
 
 class TestRBACClient(MAASServerTestCase):
@@ -99,16 +98,13 @@ class TestRBACClient(MAASServerTestCase):
                 Resource(identifier="2", name="pool-2"),
             ],
         )
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "GET",
-                "https://rbac.example.com/api/"
-                "service/v1/resources/resource-pool",
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=None,
-            ),
+        self.mock_request.assert_called_once_with(
+            "GET",
+            "https://rbac.example.com/api/"
+            "service/v1/resources/resource-pool",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
         )
 
     def test_update_resources(self):
@@ -135,16 +131,13 @@ class TestRBACClient(MAASServerTestCase):
             last_sync_id="a-b-c",
         )
         self.assertEqual(sync_id, "x-y-z")
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "POST",
-                "https://rbac.example.com/api/"
-                "service/v1/resources/resource-pool",
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=json,
-            ),
+        self.mock_request.assert_called_once_with(
+            "POST",
+            "https://rbac.example.com/api/"
+            "service/v1/resources/resource-pool",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=json,
         )
 
     def test_update_resources_no_sync_id(self):
@@ -169,16 +162,13 @@ class TestRBACClient(MAASServerTestCase):
             "resource-pool", updates=updates, removals=removals
         )
         self.assertEqual(sync_id, "x-y-z")
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "POST",
-                "https://rbac.example.com/api/"
-                "service/v1/resources/resource-pool",
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=json,
-            ),
+        self.mock_request.assert_called_once_with(
+            "POST",
+            "https://rbac.example.com/api/"
+            "service/v1/resources/resource-pool",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=json,
         )
 
     def test_update_resources_sync_conflict(self):
@@ -209,17 +199,14 @@ class TestRBACClient(MAASServerTestCase):
             {"admin": ALL_RESOURCES},
             self.client.allowed_for_user("maas", user, "admin"),
         )
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "GET",
-                "https://rbac.example.com/api/"
-                "service/v1/resources/maas/"
-                "allowed-for-user?u={}&p=admin".format(user),
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=None,
-            ),
+        self.mock_request.assert_called_once_with(
+            "GET",
+            "https://rbac.example.com/api/"
+            "service/v1/resources/maas/"
+            "allowed-for-user?u={}&p=admin".format(user),
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
         )
 
     def test_allowed_for_user_resource_ids(self):
@@ -232,17 +219,14 @@ class TestRBACClient(MAASServerTestCase):
             {"admin": [1, 2, 3]},
             self.client.allowed_for_user("maas", user, "admin"),
         )
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "GET",
-                "https://rbac.example.com/api/"
-                "service/v1/resources/maas/"
-                "allowed-for-user?u={}&p=admin".format(user),
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=None,
-            ),
+        self.mock_request.assert_called_once_with(
+            "GET",
+            "https://rbac.example.com/api/"
+            "service/v1/resources/maas/"
+            "allowed-for-user?u={}&p=admin".format(user),
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
         )
 
 
@@ -517,15 +501,12 @@ class TestRBACUserClient(MAASServerTestCase):
         ]
         self.mock_responses(products)
         self.assertEqual(self.client._get_maas_product(), maas)
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "GET",
-                "https://rbac.example.com/api/" "rbac/v1/product",
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=None,
-            ),
+        self.mock_request.assert_called_once_with(
+            "GET",
+            "https://rbac.example.com/api/" "rbac/v1/product",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
         )
 
     def test_get_registerable_services(self):
@@ -577,25 +558,20 @@ class TestRBACUserClient(MAASServerTestCase):
         self.assertEqual(
             self.client.get_registerable_services(), [maas1, maas2]
         )
-        self.assertThat(
-            self.mock_request,
-            MockCallsMatch(
-                mock.call(
-                    "GET",
-                    "https://rbac.example.com/api/rbac/v1/product",
-                    auth=mock.ANY,
-                    cookies=mock.ANY,
-                    json=None,
-                ),
-                mock.call(
-                    "GET",
-                    "https://rbac.example.com/api/"
-                    "rbac/v1/service/registerable",
-                    auth=mock.ANY,
-                    cookies=mock.ANY,
-                    json=None,
-                ),
-            ),
+        self.mock_request.assert_any_call(
+            "GET",
+            "https://rbac.example.com/api/rbac/v1/product",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
+        )
+
+        self.mock_request.assert_any_call(
+            "GET",
+            "https://rbac.example.com/api/" "rbac/v1/service/registerable",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
         )
 
     def test_register_service(self):
@@ -608,16 +584,12 @@ class TestRBACUserClient(MAASServerTestCase):
             response,
         )
         json = {"public-key": "dead-beef"}
-        self.assertThat(
-            self.mock_request,
-            MockCalledOnceWith(
-                "POST",
-                "https://rbac.example.com/api/"
-                "rbac/v1/service/3/credentials",
-                auth=mock.ANY,
-                cookies=mock.ANY,
-                json=json,
-            ),
+        self.mock_request.assert_called_once_with(
+            "POST",
+            "https://rbac.example.com/api/" "rbac/v1/service/3/credentials",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=json,
         )
 
     def test_create_service(self):
@@ -634,22 +606,17 @@ class TestRBACUserClient(MAASServerTestCase):
         self.mock_responses(products, maas)
         self.assertEqual(self.client.create_service("maas"), maas)
         json = {"name": "maas", "product": {"$ref": "/api/rbac/v1/product/1"}}
-        self.assertThat(
-            self.mock_request,
-            MockCallsMatch(
-                mock.call(
-                    "GET",
-                    "https://rbac.example.com/api/rbac/v1/product",
-                    auth=mock.ANY,
-                    cookies=mock.ANY,
-                    json=None,
-                ),
-                mock.call(
-                    "POST",
-                    "https://rbac.example.com/api/rbac/v1/service",
-                    auth=mock.ANY,
-                    cookies=mock.ANY,
-                    json=json,
-                ),
-            ),
+        self.mock_request.assert_any_call(
+            "GET",
+            "https://rbac.example.com/api/rbac/v1/product",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=None,
+        )
+        self.mock_request.assert_any_call(
+            "POST",
+            "https://rbac.example.com/api/rbac/v1/service",
+            auth=mock.ANY,
+            cookies=mock.ANY,
+            json=json,
         )

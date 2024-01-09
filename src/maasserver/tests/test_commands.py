@@ -12,7 +12,6 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from requests.exceptions import RequestException
-from testtools.matchers import AfterPreprocessing, HasLength
 
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
@@ -37,10 +36,6 @@ def assertCommandErrors(runner, command, *args, **kwargs):
         CommandError, call_command, command, *args, **kwargs
     )
     return str(exception)
-
-
-# Is the given buffer empty or does it contain only whitespace?
-IsEmpty = AfterPreprocessing(lambda buf: buf.getvalue().strip(), HasLength(0))
 
 
 class TestCommands(MAASServerTestCase):
@@ -86,8 +81,8 @@ class TestCommands(MAASServerTestCase):
         )
         user = User.objects.get(username=username)
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_not_prompts_for_password_if_ext_auth(self):
@@ -143,8 +138,8 @@ class TestCommands(MAASServerTestCase):
         )
         user = User.objects.get(username=username)
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_prompts_for_email_if_not_given(self):
@@ -170,8 +165,9 @@ class TestCommands(MAASServerTestCase):
         )
         user = User.objects.get(username=username)
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
+
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_not_prompt_for_ssh_import_if_other_params_given(self):
@@ -190,8 +186,8 @@ class TestCommands(MAASServerTestCase):
             stderr=stderr,
         )
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
 
     def test_createadmin_prompts_for_ssh_import_if_not_given(self):
         stderr = StringIO()
@@ -218,8 +214,9 @@ class TestCommands(MAASServerTestCase):
         )
         user = User.objects.get(username=username)
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
+
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_creates_admin_and_ssh_key(self):
@@ -250,8 +247,9 @@ class TestCommands(MAASServerTestCase):
         user = get_one(User.objects.filter(username=username))
         sshkey = get_one(SSHKey.objects.filter(user=user))
 
-        self.assertThat(stderr, IsEmpty)
-        self.assertThat(stdout, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+        self.assertEqual(stdout.getvalue().strip(), "")
+
         self.assertTrue(user.check_password(password))
         self.assertTrue(user.is_superuser)
         self.assertEqual(email, user.email)
@@ -450,7 +448,7 @@ class TestApikeyCommand(MAASServerTestCase):
         call_command(
             "apikey", username=user.username, stderr=stderr, stdout=stdout
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
 
         expected_token = get_one(user.userprofile.get_authorisation_tokens())
         expected_string = (
@@ -470,7 +468,8 @@ class TestApikeyCommand(MAASServerTestCase):
             stderr=stderr,
             stdout=stdout,
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
+
         keys_after = user.userprofile.get_authorisation_tokens()
         expected_num_keys = num_keys + 1
         self.assertEqual(expected_num_keys, len(keys_after))
@@ -493,7 +492,7 @@ class TestApikeyCommand(MAASServerTestCase):
             stderr=stderr,
             stdout=stdout,
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
 
         keys_after = user.userprofile.get_authorisation_tokens()
         self.assertEqual(0, len(keys_after))
@@ -523,7 +522,7 @@ class TestApikeyCommand(MAASServerTestCase):
             delete=token_string,
             stderr=stderr,
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
 
         # Delete it again. Check that there's a sensible rejection.
         error_text = assertCommandErrors(
@@ -546,7 +545,7 @@ class TestApikeyCommand(MAASServerTestCase):
             stderr=stderr,
             stdout=stdout,
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
 
     def test_api_key_rejects_update_of_nonexistent_key(self):
         stderr = StringIO()
@@ -560,7 +559,7 @@ class TestApikeyCommand(MAASServerTestCase):
             delete=token_string,
             stderr=stderr,
         )
-        self.assertThat(stderr, IsEmpty)
+        self.assertEqual(stderr.getvalue().strip(), "")
 
         # Try to update the deleted token.
         error_text = assertCommandErrors(

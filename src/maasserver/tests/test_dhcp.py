@@ -8,17 +8,6 @@ from unittest.mock import ANY
 from django.core.exceptions import ValidationError
 from netaddr import IPAddress, IPNetwork
 import pytest
-from testtools import ExpectedException
-from testtools.matchers import (
-    AllMatch,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-)
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -50,7 +39,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import always_fail_with, always_succeed_with
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.cluster import (
@@ -955,14 +943,12 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
 
-        self.assertThat(
+        self.assertEqual(
             dhcp.get_ntp_server_addresses_for_rack(rack),
-            Equals(
-                {
-                    (space1.id, subnet1.get_ipnetwork().version): address1.ip,
-                    (space2.id, subnet2.get_ipnetwork().version): address2.ip,
-                }
-            ),
+            {
+                (space1.id, subnet1.get_ipnetwork().version): address1.ip,
+                (space2.id, subnet2.get_ipnetwork().version): address2.ip,
+            },
         )
 
     def test_returned_dict_chooses_minimum_address(self):
@@ -980,15 +966,13 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             for _ in range(10)
         }
 
-        self.assertThat(
+        self.assertEqual(
             dhcp.get_ntp_server_addresses_for_rack(rack),
-            Equals(
-                {
-                    (space.id, subnet.get_ipnetwork().version): min(
-                        (address.ip for address in addresses), key=IPAddress
-                    )
-                }
-            ),
+            {
+                (space.id, subnet.get_ipnetwork().version): min(
+                    (address.ip for address in addresses), key=IPAddress
+                )
+            },
         )
 
     def test_returned_dict_prefers_vlans_with_dhcp_on(self):
@@ -1016,16 +1000,14 @@ class TestGetNTPServerAddressesForRack(MAASServerTestCase):
             subnet=subnet2,
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
-        self.assertThat(
+        self.assertEqual(
             dhcp.get_ntp_server_addresses_for_rack(rack),
-            Equals(
-                {
-                    (
-                        space.id,
-                        subnet2.get_ipnetwork().version,
-                    ): expected_address.ip
-                }
-            ),
+            {
+                (
+                    space.id,
+                    subnet2.get_ipnetwork().version,
+                ): expected_address.ip
+            },
         )
 
     def test_constant_query_count(self):
@@ -1226,24 +1208,22 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             search_list=default_domain.name,
         )
         self.assertIsInstance(config, dict)
-        self.assertThat(
+        self.assertGreaterEqual(
             config.keys(),
-            ContainsAll(
-                [
-                    "subnet",
-                    "subnet_mask",
-                    "subnet_cidr",
-                    "broadcast_ip",
-                    "router_ip",
-                    "dns_servers",
-                    "ntp_servers",
-                    "domain_name",
-                    "search_list",
-                    "pools",
-                    "dhcp_snippets",
-                    "disabled_boot_architectures",
-                ]
-            ),
+            {
+                "subnet",
+                "subnet_mask",
+                "subnet_cidr",
+                "broadcast_ip",
+                "router_ip",
+                "dns_servers",
+                "ntp_servers",
+                "domain_name",
+                "search_list",
+                "pools",
+                "dhcp_snippets",
+                "disabled_boot_architectures",
+            },
         )
 
     def test_sets_ipv4_dns_from_arguments(self):
@@ -1288,7 +1268,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [""], ntp_servers, default_domain
         )
-        self.expectThat(config["ntp_servers"], Equals(ntp_servers))
+        self.assertEqual(config["ntp_servers"], ntp_servers)
 
     def test_sets_ntp_from_empty_dict_argument(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1301,7 +1281,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [""], {}, default_domain
         )
-        self.expectThat(config["ntp_servers"], Equals([]))
+        self.assertEqual(config["ntp_servers"], [])
 
     def test_sets_ntp_from_dict_argument(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1322,7 +1302,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [""], ntp_servers, default_domain
         )
-        self.expectThat(config["ntp_servers"], Equals([address.ip]))
+        self.assertEqual(config["ntp_servers"], [address.ip])
 
     def test_sets_ntp_from_dict_argument_with_alternates(self):
         r1 = factory.make_RackController(interface=False)
@@ -1351,11 +1331,11 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             r1, subnet, [""], r1_ntp_servers, default_domain, peer_rack=r2
         )
-        self.expectThat(config["ntp_servers"], Equals([a1.ip, a2.ip]))
+        self.assertEqual(config["ntp_servers"], [a1.ip, a2.ip])
         config = dhcp.make_subnet_config(
             r2, subnet, [""], r2_ntp_servers, default_domain, peer_rack=r1
         )
-        self.expectThat(config["ntp_servers"], Equals([a2.ip, a1.ip]))
+        self.assertEqual(config["ntp_servers"], [a2.ip, a1.ip])
 
     def test_ipv4_dns_from_subnet(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1447,11 +1427,9 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         config = dhcp.make_subnet_config(
             rack_controller, subnet, [maas_dns], ntp_servers, default_domain
         )
-        self.assertThat(
+        self.assertEqual(
             config["dns_servers"],
-            Equals(
-                [maas_dns, IPAddress("2001:db8::1"), IPAddress("2001:db8::2")]
-            ),
+            [maas_dns, IPAddress("2001:db8::1"), IPAddress("2001:db8::2")],
         )
 
     def test_ipv6_rack_dns_from_subnet(self):
@@ -1524,7 +1502,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             [factory.make_name("ntp")],
             default_domain,
         )
-        self.expectThat(config["domain_name"], Equals(default_domain.name))
+        self.assertEqual(config["domain_name"], default_domain.name)
 
     def test_sets_other_items_from_subnet_and_interface(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1541,11 +1519,11 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             [factory.make_name("ntp")],
             default_domain,
         )
-        self.expectThat(
+        self.assertEqual(
             config["broadcast_ip"],
-            Equals(str(subnet.get_ipnetwork().broadcast)),
+            str(subnet.get_ipnetwork().broadcast),
         )
-        self.expectThat(config["router_ip"], Equals(subnet.gateway_ip))
+        self.assertEqual(config["router_ip"], subnet.gateway_ip)
 
     def test_passes_IP_addresses_as_strings(self):
         rack_controller = factory.make_RackController(interface=False)
@@ -1562,11 +1540,11 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             [factory.make_name("ntp")],
             default_domain,
         )
-        self.expectThat(config["subnet"], IsInstance(str))
-        self.expectThat(config["subnet_mask"], IsInstance(str))
-        self.expectThat(config["subnet_cidr"], IsInstance(str))
-        self.expectThat(config["broadcast_ip"], IsInstance(str))
-        self.expectThat(config["router_ip"], IsInstance(str))
+        self.assertIsInstance(config["subnet"], str)
+        self.assertIsInstance(config["subnet_mask"], str)
+        self.assertIsInstance(config["subnet_cidr"], str)
+        self.assertIsInstance(config["broadcast_ip"], str)
+        self.assertIsInstance(config["router_ip"], str)
 
     def test_defines_IPv4_subnet(self):
         network = IPNetwork("10.9.8.7/24")
@@ -1586,14 +1564,14 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             default_domain,
             search_list=search_list,
         )
-        self.expectThat(config["subnet"], Equals("10.9.8.0"))
-        self.expectThat(config["subnet_mask"], Equals("255.255.255.0"))
-        self.expectThat(config["subnet_cidr"], Equals("10.9.8.0/24"))
-        self.expectThat(config["broadcast_ip"], Equals("10.9.8.255"))
-        self.expectThat(config["domain_name"], Equals(default_domain.name))
-        self.expectThat(
+        self.assertEqual(config["subnet"], "10.9.8.0")
+        self.assertEqual(config["subnet_mask"], "255.255.255.0")
+        self.assertEqual(config["subnet_cidr"], "10.9.8.0/24")
+        self.assertEqual(config["broadcast_ip"], "10.9.8.255")
+        self.assertEqual(config["domain_name"], default_domain.name)
+        self.assertEqual(
             config["search_list"],
-            Equals([default_domain.name, "foo.example.com"]),
+            [default_domain.name, "foo.example.com"],
         )
 
     def test_defines_IPv6_subnet(self):
@@ -1616,18 +1594,18 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         )
         # Don't expect a specific literal value, like we do for IPv4; there
         # are different spellings.
-        self.expectThat(
+        self.assertEqual(
             IPAddress(config["subnet"]),
-            Equals(IPAddress("fd38:c341:27da:c831::")),
+            IPAddress("fd38:c341:27da:c831::"),
         )
         # (Netmask is not used for the IPv6 config, so ignore it.)
-        self.expectThat(
+        self.assertEqual(
             IPNetwork(config["subnet_cidr"]),
-            Equals(IPNetwork("fd38:c341:27da:c831::/64")),
+            IPNetwork("fd38:c341:27da:c831::/64"),
         )
-        self.expectThat(
+        self.assertEqual(
             config["search_list"],
-            Equals([default_domain.name, "foo.example.com"]),
+            [default_domain.name, "foo.example.com"],
         )
 
     def test_returns_multiple_pools(self):
@@ -1663,7 +1641,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             ],
             config["pools"],
         )
-        self.expectThat(config["domain_name"], Equals(default_domain.name))
+        self.assertEqual(config["domain_name"], default_domain.name)
 
     def test_returns_multiple_pools_with_failover_peer(self):
         network = IPNetwork("10.9.8.0/24")
@@ -2641,31 +2619,10 @@ class TestGetDHCPConfiguration(MAASServerTestCase):
     def assertHasConfigurationForNTP(
         self, shared_network, subnet, ntp_servers
     ):
-        self.assertThat(
-            shared_network,
-            MatchesAll(
-                # Quick-n-dirty: match only one shared network.
-                HasLength(1),
-                AllMatch(
-                    ContainsDict(
-                        {
-                            "subnets": MatchesAll(
-                                # Quick-n-dirty: match only one subnet.
-                                HasLength(1),
-                                AllMatch(
-                                    ContainsDict(
-                                        {
-                                            "subnet_cidr": Equals(subnet.cidr),
-                                            "ntp_servers": Equals(ntp_servers),
-                                        }
-                                    )
-                                ),
-                            )
-                        }
-                    )
-                ),
-            ),
-        )
+        [network] = shared_network
+        [the_subnet] = network.get("subnets", [])
+        self.assertEqual(the_subnet.get("subnet_cidr"), subnet.cidr)
+        self.assertEqual(the_subnet.get("ntp_servers"), ntp_servers)
 
     def test_uses_global_ntp_servers_when_ntp_external_only_is_set(self):
         ntp_servers = [factory.make_hostname(), factory.make_ip_address()]
@@ -2815,29 +2772,23 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
         yield dhcp.configure_dhcp(rack_controller)
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     @wait_for_reactor
@@ -2886,8 +2837,8 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
         yield dhcp.configure_dhcp(rack_controller)
 
-        self.assertThat(ipv4_stub, MockNotCalled())
-        self.assertThat(ipv6_stub, MockNotCalled())
+        ipv4_stub.assert_not_called()
+        ipv6_stub.assert_not_called()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -2905,21 +2856,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dhcpv4_service = Service.objects.get(
                 node=rack_controller, name="dhcpd"
             )
-            self.assertThat(
-                dhcpv4_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.UNKNOWN, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv4_service.status, SERVICE_STATUS.UNKNOWN)
+            self.assertEqual(dhcpv4_service.status_info, "")
             dhcpv6_service = Service.objects.get(
                 node=rack_controller, name="dhcpd6"
             )
-            self.assertThat(
-                dhcpv6_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.UNKNOWN, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv6_service.status, SERVICE_STATUS.UNKNOWN)
+            self.assertEqual(dhcpv6_service.status_info, "")
 
         yield deferToDatabase(service_statuses_are_unknown)
 
@@ -2930,21 +2873,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dhcpv4_service = Service.objects.get(
                 node=rack_controller, name="dhcpd"
             )
-            self.assertThat(
-                dhcpv4_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.RUNNING, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv4_service.status, SERVICE_STATUS.RUNNING)
+            self.assertEqual(dhcpv4_service.status_info, "")
             dhcpv6_service = Service.objects.get(
                 node=rack_controller, name="dhcpd6"
             )
-            self.assertThat(
-                dhcpv6_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.RUNNING, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv6_service.status, SERVICE_STATUS.RUNNING)
+            self.assertEqual(dhcpv6_service.status_info, "")
 
         yield deferToDatabase(services_are_running)
 
@@ -2966,21 +2901,14 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dhcpv4_service = Service.objects.get(
                 node=rack_controller, name="dhcpd"
             )
-            self.assertThat(
-                dhcpv4_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.UNKNOWN, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv4_service.status, SERVICE_STATUS.UNKNOWN)
+            self.assertEqual(dhcpv4_service.status_info, "")
+
             dhcpv6_service = Service.objects.get(
                 node=rack_controller, name="dhcpd6"
             )
-            self.assertThat(
-                dhcpv6_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.UNKNOWN, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv6_service.status, SERVICE_STATUS.UNKNOWN)
+            self.assertEqual(dhcpv6_service.status_info, "")
 
         yield deferToDatabase(service_statuses_are_unknown)
 
@@ -2991,21 +2919,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dhcpv4_service = Service.objects.get(
                 node=rack_controller, name="dhcpd"
             )
-            self.assertThat(
-                dhcpv4_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.OFF, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv4_service.status, SERVICE_STATUS.OFF)
+            self.assertEqual(dhcpv4_service.status_info, "")
             dhcpv6_service = Service.objects.get(
                 node=rack_controller, name="dhcpd6"
             )
-            self.assertThat(
-                dhcpv6_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.OFF, status_info=""
-                ),
-            )
+            self.assertEqual(dhcpv6_service.status, SERVICE_STATUS.OFF)
+            self.assertEqual(dhcpv6_service.status_info, "")
 
         yield deferToDatabase(service_status_updated)
 
@@ -3024,7 +2944,7 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         ipv6_exc = factory.make_name("ipv6_failure")
         ipv6_stub.side_effect = always_fail_with(CannotConfigureDHCP(ipv6_exc))
 
-        with ExpectedException(CannotConfigureDHCP):
+        with self.assertRaisesRegex(CannotConfigureDHCP, "ipv[46]_failure"):
             yield dhcp.configure_dhcp(rack_controller)
 
         @transactional
@@ -3032,21 +2952,13 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             dhcpv4_service = Service.objects.get(
                 node=rack_controller, name="dhcpd"
             )
-            self.assertThat(
-                dhcpv4_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.DEAD, status_info=ipv4_exc
-                ),
-            )
+            self.assertEqual(dhcpv4_service.status, SERVICE_STATUS.DEAD)
+            self.assertEqual(dhcpv4_service.status_info, ipv4_exc)
             dhcpv6_service = Service.objects.get(
                 node=rack_controller, name="dhcpd6"
             )
-            self.assertThat(
-                dhcpv6_service,
-                MatchesStructure.byEquality(
-                    status=SERVICE_STATUS.DEAD, status_info=ipv6_exc
-                ),
-            )
+            self.assertEqual(dhcpv6_service.status, SERVICE_STATUS.DEAD)
+            self.assertEqual(dhcpv6_service.status_info, ipv6_exc)
 
         yield deferToDatabase(service_status_updated)
 
@@ -3233,29 +3145,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
 
         dhcp.validate_dhcp_config()
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_calls_connected_rack_when_subnet_primary_rack_is_disconn(self):
@@ -3276,29 +3182,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
         dhcp.validate_dhcp_config(dhcp_snippet)
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_calls_connected_rack_when_node_primary_rack_is_disconn(self):
@@ -3340,29 +3240,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
         interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_calls_validate_with_new_dhcp_snippet(self):
@@ -3386,29 +3280,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             }
         )
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_calls_validate_with_disabled_dhcp_snippet(self):
@@ -3427,29 +3315,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             }
         )
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_calls_validate_with_updated_dhcp_snippet(self):
@@ -3479,29 +3361,23 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
                 }
                 break
 
-        self.assertThat(
-            ipv4_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v4,
-                shared_networks=config.shared_networks_v4,
-                hosts=config.hosts_v4,
-                interfaces=interfaces_v4,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv4_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            interfaces=interfaces_v4,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
-        self.assertThat(
-            ipv6_stub,
-            MockCalledOnceWith(
-                ANY,
-                omapi_key=config.omapi_key,
-                failover_peers=config.failover_peers_v6,
-                shared_networks=config.shared_networks_v6,
-                hosts=config.hosts_v6,
-                interfaces=interfaces_v6,
-                global_dhcp_snippets=config.global_dhcp_snippets,
-            ),
+        ipv6_stub.assert_called_once_with(
+            ANY,
+            omapi_key=config.omapi_key,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            interfaces=interfaces_v6,
+            global_dhcp_snippets=config.global_dhcp_snippets,
         )
 
     def test_get_racks_by_subnet_relayed(self):

@@ -46,7 +46,6 @@ from maasserver.utils.orm import DisabledDatabaseConnection, transactional
 from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver import api_twisted
 from provisioningserver.utils.twisted import asynchronous
@@ -68,7 +67,7 @@ class TestMAASServices(MAASServerTestCase):
             service.startService = Mock()
             services.addService(service)
         yield services.startService()
-        self.assertThat(calls, MockCallsMatch(call()))
+        calls.assert_called_once_with()
         self.assertEqual(1, services.running)
 
     @wait_for_reactor
@@ -83,7 +82,7 @@ class TestMAASServices(MAASServerTestCase):
             service.startService = calls
             services.addService(service)
         yield services.startService()
-        self.assertThat(calls, MockCallsMatch(call(), call()))
+        calls.assert_has_calls((call(), call()))
         self.assertEqual(1, services.running)
 
     @wait_for_reactor

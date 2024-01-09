@@ -23,7 +23,6 @@ from django.http import StreamingHttpResponse
 from django.urls import reverse
 from fixtures import FakeLogger, Fixture
 from testtools import ExpectedException
-from testtools.matchers import ContainsAll, Equals, HasLength, Not
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 
@@ -206,7 +205,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
     def test_streams_product_index_contains_keys(self):
         response = self.get_stream_client("index.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(output, ContainsAll(["index", "updated", "format"]))
+        self.assertGreaterEqual(output.keys(), {"index", "updated", "format"})
 
     def test_streams_product_index_format_is_index_1(self):
         response = self.get_stream_client("index.json")
@@ -216,14 +215,14 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
     def test_streams_product_index_index_has_maas_v2_download(self):
         response = self.get_stream_client("index.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(output["index"], ContainsAll(["maas:v2:download"]))
+        self.assertIn("maas:v2:download", output["index"])
 
     def test_streams_product_index_maas_v2_download_contains_keys(self):
         response = self.get_stream_client("index.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
-            output["index"]["maas:v2:download"],
-            ContainsAll(["datatype", "path", "updated", "products", "format"]),
+        self.assertGreaterEqual(
+            output["index"]["maas:v2:download"].keys(),
+            {"datatype", "path", "updated", "products", "format"},
         )
 
     def test_streams_product_index_maas_v2_download_has_valid_values(self):
@@ -262,17 +261,15 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         # Product listing should be the same as all of the completed
         # boot resources in the database.
         self.assertCountEqual(
-            products, output["index"]["maas:v2:download"]["products"]
+            output["index"]["maas:v2:download"]["products"], products
         )
 
     def test_streams_product_download_contains_keys(self):
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
-            output,
-            ContainsAll(
-                ["datatype", "updated", "content_id", "products", "format"]
-            ),
+        self.assertGreaterEqual(
+            output.keys(),
+            {"datatype", "updated", "content_id", "products", "format"},
         )
 
     def test_streams_product_download_has_valid_values(self):
@@ -295,39 +292,35 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         self.assertEqual({}, output["products"])
 
     def test_streams_product_download_has_valid_product_keys(self):
-        products = []
+        products = set()
         for _ in range(3):
             product, _ = self.make_usable_product_boot_resource()
-            products.append(product)
+            products.add(product)
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Product listing should be the same as all of the completed
         # boot resources in the database.
-        self.assertThat(output["products"], ContainsAll(products))
+        self.assertGreaterEqual(output["products"].keys(), products)
 
     def test_streams_product_download_product_contains_keys(self):
         product, _ = self.make_usable_product_boot_resource()
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
-            output["products"][product],
-            ContainsAll(
-                [
-                    "versions",
-                    "subarch",
-                    "label",
-                    "version",
-                    "arch",
-                    "release",
-                    "os",
-                ]
-            ),
+        self.assertGreaterEqual(
+            output["products"][product].keys(),
+            {
+                "versions",
+                "subarch",
+                "label",
+                "version",
+                "arch",
+                "release",
+                "os",
+            },
         )
         # Verify optional fields aren't added
-        self.assertThat(
-            output["products"][product],
-            Not(ContainsAll(["kflavor", "bootloader_type"])),
-        )
+        for key in ["kflavor", "bootloader_type"]:
+            self.assertNotIn(key, output["products"][product])
 
     def test_streams_product_download_product_adds_optional_fields(self):
         kflavor = factory.make_name("kflavor")
@@ -377,27 +370,27 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         resource_sets = [
             factory.make_BootResourceSet(resource) for _ in range(3)
         ]
-        versions = []
+        versions = set()
         for resource_set in resource_sets:
             factory.make_boot_resource_file_with_content(
                 resource_set, synced=[(self.region, -1)]
             )
-            versions.append(resource_set.version)
+            versions.add(resource_set.version)
         product = self.get_product_name_for_resource(resource)
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(
-            output["products"][product]["versions"], ContainsAll(versions)
+        self.assertGreaterEqual(
+            output["products"][product]["versions"].keys(), versions
         )
 
     def test_streams_product_download_product_version_contains_items(self):
         product, resource = self.make_usable_product_boot_resource()
         resource_set = resource.get_latest_complete_set()
-        items = [rfile.filename for rfile in resource_set.files.all()]
+        items = set(rfile.filename for rfile in resource_set.files.all())
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         version = output["products"][product]["versions"][resource_set.version]
-        self.assertThat(version["items"], ContainsAll(items))
+        self.assertGreaterEqual(version["items"].keys(), items)
 
     def test_streams_product_download_product_item_contains_keys(self):
         product, resource = self.make_usable_product_boot_resource()
@@ -406,9 +399,9 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         version = output["products"][product]["versions"][resource_set.version]
-        self.assertThat(
-            version["items"][resource_file.filename],
-            ContainsAll(["path", "ftype", "sha256", "size"]),
+        self.assertGreaterEqual(
+            version["items"][resource_file.filename].keys(),
+            {"path", "ftype", "sha256", "size"},
         )
 
     def test_streams_product_download_product_item_has_valid_values(self):
@@ -1937,9 +1930,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
     def test_calls_try_check_boot_images(self):
         service = bootresources.ImportResourcesProgressService()
         func, args, kwargs = service.call
-        self.expectThat(func, Equals(service.try_check_boot_images))
-        self.expectThat(args, HasLength(0))
-        self.expectThat(kwargs, HasLength(0))
+        self.assertEqual(func, service.try_check_boot_images)
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
 
 
 class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):

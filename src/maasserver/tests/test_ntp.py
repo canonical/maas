@@ -4,38 +4,12 @@
 """Tests for `maasserver.ntp`."""
 
 
-from netaddr import IPAddress, IPSet
-from testtools.matchers import (
-    AfterPreprocessing,
-    ContainsAll,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-    Not,
-)
+from netaddr import IPSet
 
 from maasserver.models.config import Config
 from maasserver.ntp import get_peers_for, get_servers_for
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-
-
-def IsSetOfServers(servers):
-    return MatchesAll(
-        IsInstance(frozenset), Equals(frozenset(servers)), first_only=True
-    )
-
-
-IsEmptySet = MatchesAll(
-    IsInstance(frozenset), Equals(frozenset()), first_only=True
-)
-
-
-IsIPv6Address = AfterPreprocessing(
-    IPAddress, MatchesStructure(version=Equals(6))
-)
 
 
 def populate_node_with_addresses(node, subnets):
@@ -62,13 +36,13 @@ class TestGetServersFor_ExternalOnly(MAASServerTestCase):
     def test_yields_nothing_when_no_ntp_servers_defined(self):
         Config.objects.set_config("ntp_servers", "")
         servers = get_servers_for(node=self.make_node())
-        self.assertThat(servers, IsEmptySet)
+        self.assertEqual(servers, set())
 
     def test_yields_all_ntp_servers_when_defined(self):
         ntp_servers = factory.make_hostname(), factory.make_hostname()
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
         servers = get_servers_for(node=self.make_node())
-        self.assertThat(servers, IsSetOfServers(ntp_servers))
+        self.assertEqual(servers, set(ntp_servers))
 
 
 class TestGetServersFor_Common(MAASServerTestCase):
@@ -97,13 +71,13 @@ class TestGetServersFor_Region_RegionRack_None(TestGetServersFor_Common):
     def test_yields_nothing_when_no_ntp_servers_defined(self):
         Config.objects.set_config("ntp_servers", "")
         servers = get_servers_for(node=self.make_node())
-        self.assertThat(servers, IsEmptySet)
+        self.assertEqual(servers, set())
 
     def test_yields_all_ntp_servers_when_defined(self):
         ntp_servers = factory.make_hostname(), factory.make_hostname()
         Config.objects.set_config("ntp_servers", " ".join(ntp_servers))
         servers = get_servers_for(node=self.make_node())
-        self.assertThat(servers, IsSetOfServers(ntp_servers))
+        self.assertEqual(servers, set(ntp_servers))
 
 
 class TestGetServersFor_Rack(TestGetServersFor_Common):
@@ -130,9 +104,7 @@ class TestGetServersFor_Rack(TestGetServersFor_Common):
         )
 
         servers = get_servers_for(rack)
-        self.assertThat(
-            servers, IsSetOfServers({region1_address.ip, region2_address.ip})
-        )
+        self.assertEqual(servers, {region1_address.ip, region2_address.ip})
 
 
 class TestGetServersFor_Machine(TestGetServersFor_Common):
@@ -157,9 +129,7 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         )
 
         servers = get_servers_for(machine)
-        self.assertThat(
-            servers, IsSetOfServers({rack1_address.ip, rack2_address.ip})
-        )
+        self.assertEqual(servers, {rack1_address.ip, rack2_address.ip})
 
     def test_yields_boot_rack_addresses_when_machine_has_booted(self):
         machine = factory.make_Machine()
@@ -192,11 +162,8 @@ class TestGetServersFor_Machine(TestGetServersFor_Common):
         vlan.save()
 
         servers = get_servers_for(machine)
-        self.assertThat(
-            servers,
-            IsSetOfServers(
-                {rack_primary_address.ip, rack_secondary_address.ip}
-            ),
+        self.assertEqual(
+            servers, {rack_primary_address.ip, rack_secondary_address.ip}
         )
 
 
@@ -220,9 +187,7 @@ class TestGetServersFor_Device(TestGetServersFor_Common):
         )
 
         servers = get_servers_for(device)
-        self.assertThat(
-            servers, IsSetOfServers({rack1_address.ip, rack2_address.ip})
-        )
+        self.assertEqual(servers, {rack1_address.ip, rack2_address.ip})
 
 
 class TestGetServersFor_Selection(MAASServerTestCase):
@@ -286,8 +251,9 @@ class TestGetServersFor_Selection(MAASServerTestCase):
         )
 
         servers = get_servers_for(node)
-        self.assertThat(servers, Not(HasLength(0)))
-        self.assertThat(preferred_networks, ContainsAll(servers))
+        self.assertNotEqual(len(servers), 0)
+        for server in servers:
+            self.assertIn(server, preferred_networks)
 
 
 class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
@@ -309,12 +275,8 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
             subnet=node1_address.subnet,
         )
 
-        self.assertThat(
-            get_peers_for(node1), IsSetOfServers({node2_address.ip})
-        )
-        self.assertThat(
-            get_peers_for(node2), IsSetOfServers({node1_address.ip})
-        )
+        self.assertEqual(get_peers_for(node1), {node2_address.ip})
+        self.assertEqual(get_peers_for(node2), {node1_address.ip})
 
     def test_prefers_closest_addresses(self):
         subnet4 = factory.make_Subnet(version=4)
@@ -348,8 +310,9 @@ class TestGetPeersFor_Region_RegionRack(MAASServerTestCase):
 
         for node in (node1, node2):
             peers = get_peers_for(node)
-            self.assertThat(peers, Not(HasLength(0)))
-            self.assertThat(preferred_networks, ContainsAll(peers))
+            self.assertNotEqual(len(peers), 0)
+            for peer in peers:
+                self.assertIn(peer, preferred_networks)
 
 
 class TestGetPeersFor_Other(MAASServerTestCase):
@@ -372,12 +335,12 @@ class TestGetPeersFor_Other(MAASServerTestCase):
             subnet=node1_address.subnet,
         )
 
-        self.assertThat(get_peers_for(node1), IsEmptySet)
-        self.assertThat(get_peers_for(node2), IsEmptySet)
+        self.assertEqual(get_peers_for(node1), set())
+        self.assertEqual(get_peers_for(node2), set())
 
 
 class TestGetPeersFor_None(MAASServerTestCase):
     """Tests `get_peers_for` for `None`, i.e. where there is no node."""
 
     def test_yields_nothing(self):
-        self.assertThat(get_peers_for(None), IsEmptySet)
+        self.assertEqual(get_peers_for(None), set())

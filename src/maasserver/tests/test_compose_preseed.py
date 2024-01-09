@@ -5,14 +5,6 @@ from ipaddress import ip_address
 import random
 
 from django.urls import reverse
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    KeysEqual,
-    MatchesDict,
-    MatchesListwise,
-    StartsWith,
-)
 import yaml
 
 import maasserver.compose_preseed as cp_module
@@ -35,7 +27,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.http import make_HttpRequest
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
@@ -371,80 +362,36 @@ class TestAptProxy(MAASServerTestCase):
 
 class TestComposePreseed(MAASServerTestCase):
     def assertSystemInfo(self, config):
-        self.assertThat(
-            config,
-            ContainsDict(
-                {
-                    "system_info": MatchesDict(
-                        {
-                            "package_mirrors": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["i386", "amd64"]
-                                            ),
-                                            "search": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        [
-                                                            PackageRepository.get_main_archive().url
-                                                        ]
-                                                    ),
-                                                    "security": Equals(
-                                                        [
-                                                            PackageRepository.get_main_archive().url
-                                                        ]
-                                                    ),
-                                                }
-                                            ),
-                                            "failsafe": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        "http://archive.ubuntu.com/ubuntu"
-                                                    ),
-                                                    "security": Equals(
-                                                        "http://security.ubuntu.com/ubuntu"
-                                                    ),
-                                                }
-                                            ),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "search": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        [
-                                                            PackageRepository.get_ports_archive().url
-                                                        ]
-                                                    ),
-                                                    "security": Equals(
-                                                        [
-                                                            PackageRepository.get_ports_archive().url
-                                                        ]
-                                                    ),
-                                                }
-                                            ),
-                                            "failsafe": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        "http://ports.ubuntu.com/ubuntu-ports"
-                                                    ),
-                                                    "security": Equals(
-                                                        "http://ports.ubuntu.com/ubuntu-ports"
-                                                    ),
-                                                }
-                                            ),
-                                        }
-                                    ),
-                                ]
-                            )
-                        }
-                    )
-                }
-            ),
+        main_archive_url = PackageRepository.get_main_archive().url
+        ports_archive_url = PackageRepository.get_ports_archive().url
+        expected_package_mirrors = [
+            {
+                "arches": ["i386", "amd64"],
+                "search": {
+                    "primary": [main_archive_url],
+                    "security": [main_archive_url],
+                },
+                "failsafe": {
+                    "primary": "http://archive.ubuntu.com/ubuntu",
+                    "security": "http://security.ubuntu.com/ubuntu",
+                },
+            },
+            {
+                "arches": ["default"],
+                "search": {
+                    "primary": [ports_archive_url],
+                    "security": [ports_archive_url],
+                },
+                "failsafe": {
+                    "primary": "http://ports.ubuntu.com/ubuntu-ports",
+                    "security": "http://ports.ubuntu.com/ubuntu-ports",
+                },
+            },
+        ]
+
+        self.assertEqual(
+            config.get("system_info", {}).get("package_mirrors"),
+            expected_package_mirrors,
         )
 
     def assertAptConfig(self, config, apt_proxy):
@@ -478,19 +425,13 @@ class TestComposePreseed(MAASServerTestCase):
                 components,
             )
 
-        self.assertThat(
-            config,
-            ContainsDict(
-                {
-                    "apt": ContainsDict(
-                        {
-                            "preserve_sources_list": Equals(False),
-                            "proxy": Equals(apt_proxy),
-                            "sources_list": Equals(sources_list),
-                        }
-                    )
-                }
-            ),
+        self.assertEqual(
+            config.get("apt", {}),
+            {
+                "preserve_sources_list": False,
+                "proxy": apt_proxy,
+                "sources_list": sources_list,
+            },
         )
         self.assertEqual(
             config["snap"],
@@ -533,19 +474,15 @@ class TestComposePreseed(MAASServerTestCase):
         )
         self.assertIn("datasource", preseed)
         self.assertIn("MAAS", preseed["datasource"])
-        self.assertThat(
-            preseed["datasource"]["MAAS"],
-            KeysEqual(
-                "metadata_url", "consumer_key", "token_key", "token_secret"
-            ),
+        self.assertEqual(
+            preseed["datasource"]["MAAS"].keys(),
+            {"metadata_url", "consumer_key", "token_key", "token_secret"},
         )
-        self.assertThat(
-            preseed["reporting"]["maas"],
-            KeysEqual(
-                "consumer_key", "endpoint", "token_key", "token_secret", "type"
-            ),
+        self.assertEqual(
+            preseed["reporting"]["maas"].keys(),
+            {"consumer_key", "endpoint", "token_key", "token_secret", "type"},
         )
-        self.assertThat(preseed["rsyslog"]["remotes"], KeysEqual("maas"))
+        self.assertEqual(preseed["rsyslog"]["remotes"].keys(), {"maas"})
         self.assertAptConfig(preseed, apt_proxy)
         self.assertEqual(
             preseed["snap"],
@@ -567,7 +504,7 @@ class TestComposePreseed(MAASServerTestCase):
         nic.vlan.save()
         request = make_HttpRequest()
         preseed = compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
-        self.assertThat(preseed, StartsWith("#cloud-config\n"))
+        self.assertTrue(preseed.startswith("#cloud-config\n"))
 
     def test_compose_preseed_for_commissioning_node_manages_etc_hosts(self):
         # Regression test for LP:1670444
@@ -877,11 +814,9 @@ class TestComposePreseed(MAASServerTestCase):
 
         self.assertIn("datasource", preseed)
         self.assertIn("MAAS", preseed["datasource"])
-        self.assertThat(
-            preseed["datasource"]["MAAS"],
-            KeysEqual(
-                "metadata_url", "consumer_key", "token_key", "token_secret"
-            ),
+        self.assertEqual(
+            preseed["datasource"]["MAAS"].keys(),
+            {"metadata_url", "consumer_key", "token_key", "token_secret"},
         )
         self.assertDictEqual(
             {
@@ -1010,14 +945,11 @@ class TestComposePreseed(MAASServerTestCase):
         request = make_HttpRequest()
         expected_url = f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('curtin-metadata')}"
         compose_preseed(request, PRESEED_TYPE.CURTIN, node)
-        self.assertThat(
-            compose_preseed_mock,
-            MockCalledOnceWith(
-                PRESEED_TYPE.CURTIN,
-                (node.system_id, node.hostname),
-                (token.consumer.key, token.key, token.secret),
-                expected_url,
-            ),
+        compose_preseed_mock.assert_called_once_with(
+            PRESEED_TYPE.CURTIN,
+            (node.system_id, node.hostname),
+            (token.consumer.key, token.key, token.secret),
+            expected_url,
         )
 
     def test_compose_preseed_propagates_NoSuchOperatingSystem(self):
@@ -1088,8 +1020,8 @@ class TestComposePreseed(MAASServerTestCase):
             preseed["datasource"],
         )
         self.assertTrue(preseed["manage_etc_hosts"])
-        self.assertDictEqual({"remotes": {"maas": url}}, preseed["rsyslog"])
-        self.assertDictEqual(
+        self.assertEqual({"remotes": {"maas": url}}, preseed["rsyslog"])
+        self.assertEqual(
             {
                 "delay": "now",
                 "mode": "poweroff",
@@ -1107,54 +1039,36 @@ class TestComposePreseed(MAASServerTestCase):
         )
         default = PackageRepository.get_main_archive().url
         ports = PackageRepository.get_ports_archive().url
-        self.assertThat(
-            preseed,
-            ContainsDict(
-                {
-                    "apt": ContainsDict(
-                        {
-                            "preserve_sources_list": Equals(False),
-                            "primary": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["amd64", "i386"]
-                                            ),
-                                            "uri": Equals(default),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "uri": Equals(ports),
-                                        }
-                                    ),
-                                ]
-                            ),
-                            "proxy": Equals(apt_proxy),
-                            "security": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["amd64", "i386"]
-                                            ),
-                                            "uri": Equals(default),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "uri": Equals(ports),
-                                        }
-                                    ),
-                                ]
-                            ),
-                        }
-                    )
-                }
-            ),
+        self.maxDiff = None
+        apt = preseed.get("apt", {})
+        # don't need to assert against this
+        apt.pop("sources_list", None)
+        self.assertEqual(
+            preseed.get("apt"),
+            {
+                "preserve_sources_list": False,
+                "primary": [
+                    {
+                        "arches": ["amd64", "i386"],
+                        "uri": default,
+                    },
+                    {
+                        "arches": ["default"],
+                        "uri": ports,
+                    },
+                ],
+                "proxy": apt_proxy,
+                "security": [
+                    {
+                        "arches": ["amd64", "i386"],
+                        "uri": default,
+                    },
+                    {
+                        "arches": ["default"],
+                        "uri": ports,
+                    },
+                ],
+            },
         )
 
     def test_compose_enlistment_preseed_has_header(self):
@@ -1166,7 +1080,7 @@ class TestComposePreseed(MAASServerTestCase):
             rack_controller,
             {"metadata_enlist_url": url, "syslog_host_port": url},
         )
-        self.assertThat(preseed, StartsWith("#cloud-config\n"))
+        self.assertTrue(preseed.startswith("#cloud-config\n"))
 
     def test_compose_enlistment_preseed_disables_suites(self):
         default = PackageRepository.get_main_archive()

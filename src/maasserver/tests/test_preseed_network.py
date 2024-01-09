@@ -7,14 +7,6 @@ import random
 from textwrap import dedent
 
 from netaddr import IPAddress
-from testtools import ExpectedException
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    IsInstance,
-    MatchesDict,
-    MatchesListwise,
-)
 import yaml
 
 from maasserver import preseed_network as preseed_network_module
@@ -110,19 +102,14 @@ class AssertNetworkConfigMixin:
     ):
         output = output[0]
         output = yaml.safe_load(output)
-        self.assertThat(
-            output,
-            ContainsDict(
-                {
-                    "network_commands": MatchesDict(
-                        {"builtin": Equals(["curtin", "net-meta", "custom"])}
-                    ),
-                    "network": MatchesDict(
-                        {"version": Equals(1), "config": IsInstance(list)}
-                    ),
-                }
-            ),
+        self.assertEqual(
+            output.get("network_commands"),
+            {"builtin": ["curtin", "net-meta", "custom"]},
         )
+        self.assertIn("network", output)
+        network = output["network"]
+        self.assertEqual(network.get("version"), 1)
+        self.assertIsInstance(network.get("config"), list)
         expected_network = yaml.safe_load(expected)
         output_network = output["network"]["config"]
         if strip_macs:
@@ -131,8 +118,7 @@ class AssertNetworkConfigMixin:
         if strip_ips:
             expected_network = self.stripIPs(expected_network)
             output_network = self.stripIPs(output_network)
-        expected_equals = list(map(Equals, expected_network))
-        self.assertThat(output_network, MatchesListwise(expected_equals))
+        self.assertEqual(output_network, expected_network)
 
     def collect_interface_config(self, node, filter="physical"):
         interfaces = node.current_config.interface_set.filter(
@@ -634,7 +620,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_interface_with_accept_ra(self):
         node = factory.make_Node()
@@ -677,7 +663,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_bond(self):
         node = factory.make_Node()
@@ -727,7 +713,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_non_lacp_bond_with_params(self):
         node = factory.make_Node()
@@ -789,7 +775,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_lacp_bond_with_params(self):
         node = factory.make_Node()
@@ -850,7 +836,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_active_backup_with_legacy_parameter(self):
         node = factory.make_Node()
@@ -911,7 +897,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_bridge(self):
         node = factory.make_Node()
@@ -957,7 +943,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_bridge_standard_with_params(self):
         node = factory.make_Node()
@@ -1015,7 +1001,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
         self.assertIn(
@@ -1074,7 +1060,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
         self.assertIn(
@@ -1138,7 +1124,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         # Verify that stp is boolean value not an integer value.
         [output] = compose_curtin_network_config(node, version=2)
         self.assertIn(
@@ -1226,7 +1212,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
 
     def test_disconnected_fabric(self):
         node = factory.make_Node()
@@ -1361,7 +1347,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         netplan_with_source_routing = self._render_netplan_dict(
             node, source_routing=True
         )
@@ -1436,9 +1422,8 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(
-            netplan_with_source_routing,
-            Equals(expected_netplan_with_source_routing),
+        self.assertEqual(
+            netplan_with_source_routing, expected_netplan_with_source_routing
         )
         v1 = self._render_v1_dict(node)
         expected_v1 = {
@@ -1494,7 +1479,7 @@ class TestNetplan(MAASServerTestCase):
                 ],
             }
         }
-        self.expectThat(v1, Equals(expected_v1))
+        self.assertEqual(v1, expected_v1)
 
     def test_multiple_ethernet_interfaces_with_dns(self):
         node = factory.make_Node()
@@ -1567,7 +1552,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         v1 = self._render_v1_dict(node)
         expected_v1 = {
             "network": {
@@ -1612,7 +1597,7 @@ class TestNetplan(MAASServerTestCase):
                 ],
             }
         }
-        self.expectThat(v1, Equals(expected_v1))
+        self.assertEqual(v1, expected_v1)
 
     def test_multiple_ethernet_with_default_gateway_with_dns(self):
         node = factory.make_Node()
@@ -1802,7 +1787,7 @@ class TestNetplan(MAASServerTestCase):
                 ]
             )
         }
-        self.expectThat(netplan, Equals(expected_netplan))
+        self.assertEqual(netplan, expected_netplan)
         v1 = self._render_v1_dict(node)
         expected_v1 = {
             "network": {
@@ -1827,7 +1812,7 @@ class TestNetplan(MAASServerTestCase):
                 ],
             }
         }
-        self.expectThat(v1, Equals(expected_v1))
+        self.assertEqual(v1, expected_v1)
 
     def test_ha__default_dns(self):
         node = factory.make_Node()
@@ -1895,7 +1880,7 @@ class TestNetplan(MAASServerTestCase):
                 ],
             }
         }
-        self.expectThat(v1, Equals(expected_v1))
+        self.assertEqual(v1, expected_v1)
 
     def test_dns_includes_rack_controllers(self):
         # Regression test for LP:1881133
@@ -2022,5 +2007,4 @@ class TestGetNextRoutingTableId(MAASServerTestCase):
         generator = NodeNetworkConfiguration(node)
         for _ in range(252):
             generator.get_next_routing_table_id()
-        with ExpectedException(IndexError):
-            generator.get_next_routing_table_id()
+        self.assertRaises(IndexError, generator.get_next_routing_table_id)

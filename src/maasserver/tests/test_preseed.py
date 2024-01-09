@@ -16,20 +16,6 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import (
-    AllMatch,
-    Contains,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    Not,
-    StartsWith,
-)
 import yaml
 
 from maasserver import preseed as preseed_module
@@ -86,7 +72,6 @@ from maasserver.testing.testcase import (
 from maasserver.third_party_drivers import DriversConfig
 from maasserver.utils.curtin import curtin_supports_webhook_events
 from maastesting.http import make_HttpRequest
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -143,13 +128,12 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
-                "%s_%s_%s_%s_%s_%s"
-                % (prefix, osystem, arch, subarch, release, hostname),
+                f"{prefix}_{osystem}_{arch}_{subarch}_{release}_{hostname}",
                 f"{prefix}_{osystem}_{arch}_{subarch}_{release}",
                 f"{prefix}_{osystem}_{arch}_{subarch}",
                 f"{prefix}_{osystem}_{arch}",
                 f"{prefix}_{osystem}",
-                "%s" % prefix,
+                prefix,
                 "generic",
             ],
             list(
@@ -167,7 +151,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             [
                 f"{prefix}_{osystem}_{release}",
                 f"{prefix}_{osystem}",
-                "%s" % prefix,
+                prefix,
             ],
             list(get_preseed_filenames(None, prefix, osystem, release)),
         )
@@ -184,7 +168,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
                 f"{osystem}_{arch}_{subarch}_{release}",
                 f"{osystem}_{arch}_{subarch}",
                 f"{osystem}_{arch}",
-                "%s" % osystem,
+                osystem,
             ],
             list(get_preseed_filenames(node, "", osystem, release)),
         )
@@ -236,8 +220,8 @@ class TestGetPreseedFilenames(MAASServerTestCase):
                 f"{osystem}_{arch}_{subarch}",
                 f"{arch}_{subarch}",
                 f"{osystem}_{arch}",
-                "%s" % arch,
-                "%s" % osystem,
+                arch,
+                osystem,
             ],
             list(get_preseed_filenames(node, "", osystem, release)),
         )
@@ -273,9 +257,8 @@ class TestConfiguration(MAASServerTestCase):
     """Test for correct configuration of the preseed component."""
 
     def test_setting_defined(self):
-        self.assertThat(
-            settings.PRESEED_TEMPLATE_LOCATIONS, AllMatch(IsInstance(str))
-        )
+        for location in settings.PRESEED_TEMPLATE_LOCATIONS:
+            self.assertIsInstance(location, str)
 
 
 class TestGetPreseedTemplate(MAASServerTestCase):
@@ -727,16 +710,14 @@ class TestRenderPreseed(
         self.configure_get_boot_images_for_node(node, "install")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         request = make_HttpRequest()
-        preseed = render_preseed(request, node, self.preseed, "precise")
-        self.assertThat(
-            preseed.decode("utf-8"),
-            MatchesAll(
-                Contains(
-                    f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/"
-                ),
-                Not(Contains(maas_url)),
-            ),
+        preseed = render_preseed(
+            request, node, self.preseed, "precise"
+        ).decode("utf-8")
+        rack_url = (
+            f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/"
         )
+        self.assertIn(rack_url, preseed)
+        self.assertNotIn(maas_url, preseed)
 
 
 class TestRenderEnlistmentPreseed(MAASServerTestCase):
@@ -865,7 +846,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet()
         )
         self.assertIsInstance(preseeds, list)
-        self.assertThat(preseeds, HasLength(1))
+        self.assertEqual(len(preseeds), 1)
         reporter = self.load_reporter(preseeds)
         self.assertIsInstance(reporter, dict)
         if curtin_supports_webhook_events():
@@ -980,11 +961,11 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             "#cloud-config",
             config["cloudconfig"]["maas-cloud-config"]["content"],
         )
-        self.assertThat(
+        self.assertEqual(
             yaml.safe_load(
                 config["cloudconfig"]["maas-cloud-config"]["content"]
             ),
-            Equals(ds_config),
+            ds_config,
         )
         self.assertIn(
             "#cloud-config",
@@ -1172,9 +1153,8 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
             },
             get_curtin_merged_config(sentinel.request, sentinel.node),
         )
-        self.assertThat(
-            mock_yaml_config,
-            MockCalledOnceWith(sentinel.request, sentinel.node),
+        mock_yaml_config.assert_called_once_with(
+            sentinel.request, sentinel.node
         )
 
 
@@ -1203,10 +1183,9 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
-        self.assertThat(
-            mock_compose_network,
-            MockCalledOnceWith(node, version=ANY, source_routing=ANY),
+        mock_compose_storage.assert_called_once_with(node)
+        mock_compose_network.assert_called_once_with(
+            node, version=ANY, source_routing=ANY
         )
 
     def test_get_curtin_userdata_includes_storage_for_dd(self):
@@ -1229,7 +1208,7 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+        mock_compose_storage.assert_called_once_with(node)
 
     def test_get_curtin_userdata_always_includes_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1242,9 +1221,8 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(
-            mock_compose_network,
-            MockCalledOnceWith(node, version=ANY, source_routing=ANY),
+        mock_compose_network.assert_called_once_with(
+            node, version=ANY, source_routing=ANY
         )
 
     def test_get_curtin_userdata_uses_v2_for_bionic(self):
@@ -1259,9 +1237,8 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(
-            mock_compose_network,
-            MockCalledOnceWith(node, version=2, source_routing=ANY),
+        mock_compose_network.assert_called_once_with(
+            node, version=2, source_routing=ANY
         )
 
     def test_get_curtin_userdata_uses_v1_for_trusty(self):
@@ -1276,9 +1253,8 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(
-            mock_compose_network,
-            MockCalledOnceWith(node, version=1, source_routing=ANY),
+        mock_compose_network.assert_called_once_with(
+            node, version=1, source_routing=ANY
         )
 
     def test_get_curtin_userdata_includes_storage_when_curtin_supported(self):
@@ -1298,7 +1274,7 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockCalledOnceWith(node))
+        mock_compose_storage.assert_called_once_with(node)
 
     def test_get_curtin_userdata_doesnt_incl_storage_when_not_supported(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1317,7 +1293,7 @@ class TestGetCurtinUserData(
         )
         user_data = get_curtin_userdata(make_HttpRequest(), node)
         self.assertIn("PREFIX='curtin'", user_data)
-        self.assertThat(mock_compose_storage, MockNotCalled())
+        mock_compose_storage.assert_not_called()
 
 
 class TestRenderCurtinUserdataWithThirdPartyDrivers(
@@ -1405,33 +1381,19 @@ class TestCurtinUtilities(
         for pocket in archive.POCKETS_TO_DISABLE:
             if archive.disabled_pockets and pocket in archive.disabled_pockets:
                 continue
-            sources_list += "deb {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
+            sources_list += (
+                f"deb {archive.url} $RELEASE-{pocket} {components}\n"
             )
             if archive.disable_sources:
                 sources_list += "# "
-            sources_list += "deb-src {} $RELEASE-{} {}\n".format(
-                archive.url,
-                pocket,
-                components,
+            sources_list += (
+                f"deb-src {archive.url} $RELEASE-{pocket} {components}\n"
             )
 
-        self.assertThat(
-            config,
-            ContainsDict(
-                {
-                    "apt": ContainsDict(
-                        {
-                            "preserve_sources_list": Equals(False),
-                            "proxy": Equals(ANY),
-                            "sources_list": Equals(sources_list),
-                        }
-                    )
-                }
-            ),
-        )
+        apt_config = config.get("apt")
+        self.assertFalse(apt_config.get("preserve_sources_list"))
+        self.assertIn("proxy", apt_config)
+        self.assertEqual(apt_config.get("sources_list"), sources_list)
 
     def test_get_curtin_config(self):
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1543,11 +1505,8 @@ class TestCurtinUtilities(
         node.save()
         self.configure_get_boot_images_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
-        self.assertThat(
-            config,
-            Contains(
-                "maas_00: chreipl node /dev/" + node.get_boot_disk().name
-            ),
+        self.assertIn(
+            "maas_00: chreipl node /dev/" + node.get_boot_disk().name, config
         )
 
     def test_get_curtin_config_has_yum_proxy_late_command(self):
@@ -1635,7 +1594,7 @@ class TestCurtinUtilities(
         #  security:
         #  - arches: [default]
         #    uri: http://us.archive.ubuntu.com/ubuntu
-        self.assertThat(userdata_lines, HasLength(2))
+        self.assertEqual(len(userdata_lines), 2)
         key, value = userdata_lines[0].split(":", 1)
         return value.strip()
 
@@ -1784,7 +1743,6 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_compose_curtin_archive_config_has_ppa(self):
         node = self.make_fastpath_node("i386")
         node.osystem = "ubuntu"
-        node.distro_series = "xenial"
         ppa_url = "http://ppa.launchpad.net/maas/next/ubuntu"
         factory.make_PackageRepository(
             name="MAAS PPA",
@@ -1801,12 +1759,10 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(ppa)
-        self.assertThat(
-            preseed["apt"]["sources"][repo_name]["key"], ContainsAll(ppa.key)
-        )
-        self.assertThat(
+        self.assertEqual(preseed["apt"]["sources"][repo_name]["key"], ppa.key)
+        self.assertEqual(
+            f"deb {ppa.url} $RELEASE main",
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll(f"deb {ppa.url} {node.distro_series} main"),
         )
 
     def test_compose_curtin_archive_config_uses_multiple_ppa(self):
@@ -1838,23 +1794,23 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         self.assertCountEqual(ppas, [ppa_first, ppa_second])
         # Clean up PPA name
         ppa_name = make_clean_repo_name(ppa_first)
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][ppa_name]["key"],
-            ContainsAll(ppa_first.key),
+            ppa_first.key,
         )
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][ppa_name]["source"],
-            ContainsAll("deb %s $RELEASE main" % ppa_first.url),
+            "deb %s $RELEASE main" % ppa_first.url,
         )
         # Clean up PPA name
         ppa_name = make_clean_repo_name(ppa_second)
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][ppa_name]["key"],
-            ContainsAll(ppa_second.key),
+            ppa_second.key,
         )
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][ppa_name]["source"],
-            ContainsAll("deb %s $RELEASE main" % ppa_second.url),
+            "deb %s $RELEASE main" % ppa_second.url,
         )
 
     def test_compose_curtin_archive_config_has_custom_repository(self):
@@ -1876,13 +1832,13 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         preseed = yaml.safe_load(userdata[0])
         # cleanup the name for the PPA file
         repo_name = make_clean_repo_name(repository)
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["key"],
-            ContainsAll(repository.key),
+            repository.key,
         )
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll("deb %s $RELEASE main" % repository.url),
+            "deb %s $RELEASE main" % repository.url,
         )
 
     def test_compose_curtin_archive_config_custom_repo_with_components(self):
@@ -1909,13 +1865,13 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         for component in repository.components:
             components += "%s " % component
         components = components.strip()
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["key"],
-            ContainsAll(repository.key),
+            repository.key,
         )
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll(f"deb {repository.url} $RELEASE {components}"),
+            f"deb {repository.url} $RELEASE {components}",
         )
 
     def test_compose_curtin_archive_config_custom_repo_components_dists(self):
@@ -1943,16 +1899,13 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         for component in repository.components:
             components += "%s " % component
         components = components.strip()
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["key"],
-            ContainsAll(repository.key),
+            repository.key,
         )
-        self.assertThat(
+        self.assertEqual(
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll(
-                "deb %s %s %s"
-                % (repository.url, repository.distributions[0], components)
-            ),
+            f"deb {repository.url} {repository.distributions[0]} {components}",
         )
 
     def test_compose_curtin_archive_config_ports_archive_for_other_arch(self):
@@ -2007,15 +1960,12 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             osystem,
             series,
         )
-        self.assertThat(
-            mock_get_boot_images_for,
-            MockCalledOnceWith(
-                node.get_boot_primary_rack_controller(),
-                osystem,
-                arch,
-                subarch,
-                series,
-            ),
+        mock_get_boot_images_for.assert_called_once_with(
+            node.get_boot_primary_rack_controller(),
+            osystem,
+            arch,
+            subarch,
+            series,
         )
 
     def test_get_curtin_image_raises_ClusterUnavailable(self):
@@ -2337,139 +2287,73 @@ class TestPreseedMethods(
     """
 
     def assertSystemInfo(self, config):
-        self.assertThat(
-            config,
-            ContainsDict(
-                {
-                    "system_info": MatchesDict(
-                        {
-                            "package_mirrors": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["i386", "amd64"]
-                                            ),
-                                            "search": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        [
-                                                            PackageRepository.get_main_archive().url
-                                                        ]
-                                                    ),
-                                                    "security": Equals(
-                                                        [
-                                                            PackageRepository.get_main_archive().url
-                                                        ]
-                                                    ),
-                                                }
-                                            ),
-                                            "failsafe": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        "http://archive.ubuntu.com/ubuntu"
-                                                    ),
-                                                    "security": Equals(
-                                                        "http://security.ubuntu.com/ubuntu"
-                                                    ),
-                                                }
-                                            ),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "search": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        [
-                                                            PackageRepository.get_ports_archive().url
-                                                        ]
-                                                    ),
-                                                    "security": Equals(
-                                                        [
-                                                            PackageRepository.get_ports_archive().url
-                                                        ]
-                                                    ),
-                                                }
-                                            ),
-                                            "failsafe": MatchesDict(
-                                                {
-                                                    "primary": Equals(
-                                                        "http://ports.ubuntu.com/ubuntu-ports"
-                                                    ),
-                                                    "security": Equals(
-                                                        "http://ports.ubuntu.com/ubuntu-ports"
-                                                    ),
-                                                }
-                                            ),
-                                        }
-                                    ),
-                                ]
-                            )
-                        }
-                    )
-                }
-            ),
+        system_info = config.get("system_info")
+        self.assertEqual(
+            system_info,
+            {
+                "package_mirrors": [
+                    {
+                        "arches": ["i386", "amd64"],
+                        "search": {
+                            "primary": [
+                                PackageRepository.get_main_archive().url
+                            ],
+                            "security": [
+                                PackageRepository.get_main_archive().url
+                            ],
+                        },
+                        "failsafe": {
+                            "primary": "http://archive.ubuntu.com/ubuntu",
+                            "security": "http://security.ubuntu.com/ubuntu",
+                        },
+                    },
+                    {
+                        "arches": ["default"],
+                        "search": {
+                            "primary": [
+                                PackageRepository.get_ports_archive().url
+                            ],
+                            "security": [
+                                PackageRepository.get_ports_archive().url
+                            ],
+                        },
+                        "failsafe": {
+                            "primary": "http://ports.ubuntu.com/ubuntu-ports",
+                            "security": "http://ports.ubuntu.com/ubuntu-ports",
+                        },
+                    },
+                ]
+            },
         )
 
     def assertAptConfig(self, config, apt_proxy):
-        self.assertThat(
-            config,
-            ContainsDict(
-                {
-                    "apt": ContainsDict(
-                        {
-                            "preserve_sources_list": Equals(False),
-                            "primary": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["amd64", "i386"]
-                                            ),
-                                            "uri": Equals(
-                                                PackageRepository.get_main_archive().url
-                                            ),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "uri": Equals(
-                                                PackageRepository.get_ports_archive().url
-                                            ),
-                                        }
-                                    ),
-                                ]
-                            ),
-                            "proxy": Equals(apt_proxy),
-                            "security": MatchesListwise(
-                                [
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(
-                                                ["amd64", "i386"]
-                                            ),
-                                            "uri": Equals(
-                                                PackageRepository.get_main_archive().url
-                                            ),
-                                        }
-                                    ),
-                                    MatchesDict(
-                                        {
-                                            "arches": Equals(["default"]),
-                                            "uri": Equals(
-                                                PackageRepository.get_ports_archive().url
-                                            ),
-                                        }
-                                    ),
-                                ]
-                            ),
-                        }
-                    )
-                }
-            ),
+        apt = config.get("apt")
+        self.assertEqual(
+            apt,
+            {
+                "preserve_sources_list": False,
+                "primary": [
+                    {
+                        "arches": ["amd64", "i386"],
+                        "uri": PackageRepository.get_main_archive().url,
+                    },
+                    {
+                        "arches": ["default"],
+                        "uri": PackageRepository.get_ports_archive().url,
+                    },
+                ],
+                "proxy": apt_proxy,
+                "security": [
+                    {
+                        "arches": ["amd64", "i386"],
+                        "uri": PackageRepository.get_main_archive().url,
+                    },
+                    {
+                        "arches": ["default"],
+                        "uri": PackageRepository.get_ports_archive().url,
+                    },
+                ],
+            },
         )
 
     def test_get_preseed_returns_curtin_preseed(self):
@@ -2533,16 +2417,17 @@ class TestPreseedURLs(
         maas_url = factory.make_simple_http_url(path="")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
 
-        self.assertThat(compose_enlistment_preseed_url(), StartsWith(maas_url))
+        self.assertTrue(compose_enlistment_preseed_url().startswith(maas_url))
 
     def test_compose_enlistment_preseed_url_returns_abs_link_wth_rack(self):
         maas_url = factory.make_simple_http_url(path="")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         rack_controller = factory.make_RackController(url=maas_url)
 
-        self.assertThat(
-            compose_enlistment_preseed_url(rack_controller=rack_controller),
-            StartsWith(maas_url),
+        self.assertTrue(
+            compose_enlistment_preseed_url(
+                rack_controller=rack_controller
+            ).startswith(maas_url),
         )
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
@@ -2565,10 +2450,9 @@ class TestPreseedURLs(
         )
 
     def test_compose_preseed_url_returns_absolute_link(self):
-        self.assertThat(
+        self.assertTrue(
             compose_preseed_url(
                 factory.make_Node_with_Interface_on_Subnet(),
                 base_url=self.rpc_rack_controller.url,
-            ),
-            StartsWith("http://"),
+            ).startswith("http://")
         )

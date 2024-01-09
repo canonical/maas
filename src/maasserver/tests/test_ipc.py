@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 import uuid
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, inlineCallbacks, succeed
 
@@ -39,7 +38,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.fixtures import TempDirectory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -179,7 +177,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         yield disconnected.get(timeout=2)
         yield master.stopService()
 
-        self.assertThat(workers.killWorker, MockCalledOnceWith(pid))
+        workers.killWorker.assert_called_once_with(pid)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -240,15 +238,11 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         regiond_service = yield deferToDatabase(self.getRegiondService)
 
-        self.assertThat(
-            regiond_service,
-            MatchesStructure.byEquality(
-                status=SERVICE_STATUS.DEGRADED,
-                status_info="1 process running but %s were expected."
-                % (workers.MAX_WORKERS_COUNT),
-            ),
+        self.assertEqual(regiond_service.status, SERVICE_STATUS.DEGRADED)
+        self.assertEqual(
+            regiond_service.status_info,
+            f"1 process running but {workers.MAX_WORKERS_COUNT} were expected.",
         )
-
         yield master.stopService()
 
     @wait_for_reactor
@@ -493,12 +487,8 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         # The service status for the region should now be running.
         regiond_service = yield deferToDatabase(self.getRegiondService)
-        self.assertThat(
-            regiond_service,
-            MatchesStructure.byEquality(
-                status=SERVICE_STATUS.RUNNING, status_info=""
-            ),
-        )
+        self.assertEqual(regiond_service.status, SERVICE_STATUS.RUNNING)
+        self.assertEqual(regiond_service.status_info, "")
 
         # Delete all the processes and an update should re-create them
         # and the service status should still be running.
@@ -510,12 +500,8 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         yield master.update()
         regiond_service = yield deferToDatabase(self.getRegiondService)
-        self.assertThat(
-            regiond_service,
-            MatchesStructure.byEquality(
-                status=SERVICE_STATUS.RUNNING, status_info=""
-            ),
-        )
+        self.assertEqual(regiond_service.status, SERVICE_STATUS.RUNNING)
+        self.assertEqual(regiond_service.status_info, "")
 
         yield master.stopService()
 
@@ -533,9 +519,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         yield master.registerWorker(pid, MagicMock())
         yield master.update()
 
-        self.assertThat(
-            mock_mark_dead, MockCalledOnceWith(other_region, dead_region=True)
-        )
+        mock_mark_dead.assert_called_once_with(other_region, dead_region=True)
 
         yield master.stopService()
 
