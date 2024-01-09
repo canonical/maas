@@ -209,7 +209,7 @@ class TestExportImagesFromDB:
 
 
 @pytest.mark.usefixtures("maasdb")
-class TestInitialiseImageStorate:
+class TestInitialiseImageStorage:
     def test_empty(self, controller, image_store_dir: Path):
         initialize_image_storage(controller)
         assert list_files(image_store_dir) == {"bootloaders"}
@@ -227,6 +227,17 @@ class TestInitialiseImageStorate:
         initialize_image_storage(controller)
         assert not extra_file.exists()
         assert not extra_dir.exists()
+        assert not extra_symlink.exists()
+
+    def test_remove_extra_symlink(
+        self, controller, image_store_dir: Path, tmp_path
+    ):
+        extra_dir = tmp_path / "somedir"
+        extra_dir.mkdir(parents=True)
+        extra_symlink = image_store_dir / "somelink"
+        extra_symlink.symlink_to(extra_dir)
+
+        initialize_image_storage(controller)
         assert not extra_symlink.exists()
 
     def test_missing_local_files(

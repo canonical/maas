@@ -1560,7 +1560,9 @@ def initialize_image_storage(region: RegionController):
         maaslog.warning(
             f"removing unexpected {file} file from the image storage"
         )
-        if file.is_dir():
+        if file.is_symlink():
+            file.unlink()
+        elif file.is_dir():
             shutil.rmtree(file)
         else:
             file.unlink()
