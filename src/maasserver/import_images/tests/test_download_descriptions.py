@@ -10,21 +10,19 @@ from unittest.mock import ANY, call, Mock, sentinel
 
 from fixtures import FakeLogger
 
-from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
-from provisioningserver.import_images import download_descriptions
-from provisioningserver.import_images.boot_image_mapping import (
-    BootImageMapping,
-)
-from provisioningserver.import_images.download_descriptions import (
+from maasserver.import_images import download_descriptions
+from maasserver.import_images.boot_image_mapping import BootImageMapping
+from maasserver.import_images.download_descriptions import (
     clean_up_repo_item,
     RepoDumper,
     validate_product,
 )
-from provisioningserver.import_images.testing.factory import (
+from maasserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
+from maastesting.factory import factory
+from maastesting.testcase import MAASTestCase
 
 
 class TestValidateProduct(MAASTestCase):

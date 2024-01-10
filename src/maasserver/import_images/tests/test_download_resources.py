@@ -1,7 +1,7 @@
 # Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.import_images.download_resources`."""
+"""Tests for `maasserver.import_images.download_resources`."""
 
 
 from datetime import datetime
@@ -14,11 +14,11 @@ from unittest import mock
 from simplestreams.contentsource import ChecksummingContentSource
 from simplestreams.objectstores import FileStore
 
+from maasserver.import_images import download_resources
+from maasserver.import_images.product_mapping import ProductMapping
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.config import DEFAULT_IMAGES_URL
-from provisioningserver.import_images import download_resources
-from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.utils.fs import tempdir
 
 

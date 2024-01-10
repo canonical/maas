@@ -5,13 +5,10 @@
 
 __all__ = [
     "ensure_boot_source_definition",
-    "get_simplestream_endpoint",
     "ImportResourcesProgressService",
     "ImportResourcesService",
     "IMPORT_RESOURCES_SERVICE_PERIOD",
     "is_import_resources_running",
-    "simplestreams_file_handler",
-    "simplestreams_stream_handler",
 ]
 
 from datetime import timedelta
@@ -23,7 +20,6 @@ import threading
 
 from django.db import connection, transaction
 from django.db.models import F
-from django.http import FileResponse, HttpResponse
 from pkg_resources import parse_version
 from simplestreams import util as sutil
 from simplestreams.log import LOG, WARNING
@@ -55,7 +51,17 @@ from maasserver.enum import (
     COMPONENT,
 )
 from maasserver.eventloop import services
-from maasserver.exceptions import MAASAPINotFound
+from maasserver.import_images.download_descriptions import (
+    download_all_image_descriptions,
+    image_passes_filter,
+    validate_product,
+)
+from maasserver.import_images.helpers import (
+    get_os_from_product,
+    get_signing_policy,
+)
+from maasserver.import_images.keyrings import write_all_keyrings
+from maasserver.import_images.product_mapping import map_products
 from maasserver.models import (
     BootResource,
     BootResourceFile,
@@ -97,17 +103,6 @@ from maasserver.workflow.bootresource import (
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import is_dev_environment
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.import_images.download_descriptions import (
-    download_all_image_descriptions,
-    image_passes_filter,
-    validate_product,
-)
-from provisioningserver.import_images.helpers import (
-    get_os_from_product,
-    get_signing_policy,
-)
-from provisioningserver.import_images.keyrings import write_all_keyrings
-from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_lock_path
 from provisioningserver.utils import snap
@@ -123,208 +118,6 @@ from provisioningserver.utils.version import DISTRIBUTION
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
-
-
-def get_simplestream_endpoint():
-    """Returns the simplestreams endpoint for the Region."""
-    return {
-        "url": absolute_reverse(
-            "simplestreams_stream_handler", kwargs={"filename": "index.json"}
-        ),
-        "keyring_data": b"",
-        "selections": [],
-    }
-
-
-class SimpleStreamsHandler:
-    """Simplestreams endpoint, that the racks talk to.
-
-    This is not called from piston3, as piston uses emitters which
-    breaks the ability to return streaming content.
-
-    Anyone can access this endpoint. No credentials are required.
-    """
-
-    def get_json_response(self, content):
-        """Return `HttpResponse` for JSON content."""
-        response = HttpResponse(content)
-        response["Content-Type"] = "application/json"
-        return response
-
-    def get_boot_resource_identifiers(self, resource):
-        """Return tuple (os, arch, subarch, series) for the given resource."""
-        arch, subarch = resource.split_arch()
-        if "/" in resource.name:
-            os, series = resource.name.split("/")
-        else:
-            os = "custom"
-            series = resource.name
-        return (os, arch, subarch, series)
-
-    def get_product_name(self, resource):
-        """Return product name for the given resource."""
-        os, arch, subarch, series = self.get_boot_resource_identifiers(
-            resource
-        )
-        return f"maas:boot:{os}:{arch}:{subarch}:{series}"
-
-    def gen_complete_boot_resources(self):
-        """Return generator of `BootResource` that contains a complete set."""
-        resources = BootResource.objects.all()
-        for resource in resources:
-            # Only add resources that have a complete set.
-            if resource.get_latest_complete_set() is None:
-                continue
-            yield resource
-
-    def gen_products_names(self):
-        """Return generator of avaliable products on the endpoint."""
-        for resource in self.gen_complete_boot_resources():
-            yield self.get_product_name(resource)
-
-    def get_product_index(self):
-        """Returns the streams product index `index.json`."""
-        products = list(self.gen_products_names())
-        updated = sutil.timestamp()
-        index = {
-            "index": {
-                "maas:v2:download": {
-                    "datatype": "image-downloads",
-                    "path": "streams/v1/maas:v2:download.json",
-                    "updated": updated,
-                    "products": products,
-                    "format": "products:1.0",
-                }
-            },
-            "updated": updated,
-            "format": "index:1.0",
-        }
-        data = sutil.dump_data(index) + b"\n"
-        log.debug(
-            f"Simplestreams product index: {data.decode('utf-8', 'replace')}.",
-        )
-        return self.get_json_response(data)
-
-    def get_product_item(self, resource, resource_set, rfile):
-        """Returns the item description for the `rfile`."""
-        os, arch, subarch, series = self.get_boot_resource_identifiers(
-            resource
-        )
-        path = f"{os}/{arch}/{subarch}/{series}/{resource_set.version}/{rfile.filename}"
-        item = {
-            "path": path,
-            "ftype": rfile.filetype,
-            "sha256": rfile.sha256,
-            "size": rfile.size,
-        }
-        item.update(rfile.extra)
-        return item
-
-    def get_product_data(self, resource):
-        """Returns the product data for this resource."""
-        os, arch, subarch, series = self.get_boot_resource_identifiers(
-            resource
-        )
-        versions = {}
-        label = None
-        for resource_set in resource.sets.order_by("id").reverse():
-            if not resource_set.complete:
-                continue
-            # Set the label to the latest complete set label. In most cases the
-            # label will be the same for all sets. Only time it will differ is
-            # when daily has been enabled for a resource, that was previously
-            # only release. Only the latest version of the resource will be
-            # downloaded.
-            if label is None:
-                label = resource_set.label
-            items = {
-                rfile.filename: self.get_product_item(
-                    resource, resource_set, rfile
-                )
-                for rfile in resource_set.files.all()
-            }
-            versions[resource_set.version] = {"items": items}
-        product = {
-            "versions": versions,
-            "subarch": subarch,
-            "label": label,
-            "version": series,
-            "arch": arch,
-            "release": series,
-            "os": os,
-        }
-        if resource.kflavor is not None:
-            product["kflavor"] = resource.kflavor
-        if resource.bootloader_type is not None:
-            product["bootloader-type"] = resource.bootloader_type
-        if resource.rolling:
-            product["rolling"] = resource.rolling
-        product.update(resource.extra)
-        return product
-
-    def get_product_download(self):
-        """Returns the streams download index `download.json`."""
-        products = {}
-        for resource in self.gen_complete_boot_resources():
-            name = self.get_product_name(resource)
-            products[name] = self.get_product_data(resource)
-        updated = sutil.timestamp()
-        index = {
-            "datatype": "image-downloads",
-            "updated": updated,
-            "content_id": "maas:v2:download",
-            "products": products,
-            "format": "products:1.0",
-        }
-        data = sutil.dump_data(index) + b"\n"
-        return self.get_json_response(data)
-
-    def streams_handler(self, request, filename):
-        """Handles requests into the "streams/" content."""
-        if filename == "index.json":
-            return self.get_product_index()
-        elif filename == "maas:v2:download.json":
-            return self.get_product_download()
-        raise MAASAPINotFound()
-
-    def files_handler(
-        self, request, osystem, arch, subarch, series, version, filename
-    ):
-        """Handles requests for getting the boot resource data."""
-        if osystem == "custom":
-            name = series
-        else:
-            name = f"{osystem}/{series}"
-        arch = f"{arch}/{subarch}"
-        try:
-            resource = BootResource.objects.get(name=name, architecture=arch)
-            resource_set = resource.sets.get(version=version)
-            rfile = resource_set.files.get(filename=filename)
-        except (
-            BootResource.DoesNotExist,
-            BootResourceFile.DoesNotExist,
-            BootResourceSet.DoesNotExist,
-        ):
-            raise MAASAPINotFound()
-        lfile = rfile.local_file()
-        if not lfile.complete:
-            raise MAASAPINotFound()
-        response = FileResponse(open(lfile.path, "rb"))
-        return response
-
-
-def simplestreams_stream_handler(request, filename):
-    handler = SimpleStreamsHandler()
-    return handler.streams_handler(request, filename)
-
-
-def simplestreams_file_handler(
-    request, os, arch, subarch, series, version, filename
-):
-    handler = SimpleStreamsHandler()
-    return handler.files_handler(
-        request, os, arch, subarch, series, version, filename
-    )
 
 
 class BootResourceStore(ObjectStore):

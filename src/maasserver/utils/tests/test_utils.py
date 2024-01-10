@@ -73,12 +73,11 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_kwargs(self):
         maas_url = factory.make_simple_http_url()
-        filename = factory.make_name("file")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
         absolute_url = absolute_reverse(
-            "simplestreams_stream_handler", kwargs={"filename": filename}
+            "metadata-version", kwargs={"version": "lastest"}
         )
-        reversed_url = reverse("simplestreams_stream_handler", args=[filename])
+        reversed_url = reverse("metadata-version", args=["lastest"])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )
@@ -86,14 +85,13 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_args(self):
         maas_url = factory.make_simple_http_url()
-        filename = factory.make_name("file")
         self.useFixture(RegionConfigurationFixture(maas_url=maas_url))
 
         observed_url = absolute_reverse(
-            "simplestreams_stream_handler", kwargs={"filename": filename}
+            "metadata-version", kwargs={"version": "lastest"}
         )
 
-        reversed_url = reverse("simplestreams_stream_handler", args=[filename])
+        reversed_url = reverse("metadata-version", args=["lastest"])
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )

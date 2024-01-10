@@ -23,6 +23,11 @@ from maasserver.bootsources import (
     set_simplestreams_env,
 )
 from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS, NODE_TYPE
+from maasserver.import_images.download_descriptions import (
+    download_all_image_descriptions,
+    image_passes_filter,
+)
+from maasserver.import_images.keyrings import write_all_keyrings
 from maasserver.models import (
     BootResource,
     BootSource,
@@ -47,11 +52,6 @@ from maasserver.websockets.base import (
 )
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.import_images.download_descriptions import (
-    download_all_image_descriptions,
-    image_passes_filter,
-)
-from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER

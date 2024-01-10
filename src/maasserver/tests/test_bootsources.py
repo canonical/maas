@@ -22,6 +22,11 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import COMPONENT
+from maasserver.import_images import (
+    download_descriptions as download_descriptions_module,
+)
+from maasserver.import_images.boot_image_mapping import BootImageMapping
+from maasserver.import_images.helpers import ImageSpec
 from maasserver.models import (
     BootSource,
     BootSourceCache,
@@ -39,13 +44,6 @@ from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from provisioningserver.config import DEFAULT_IMAGES_URL
-from provisioningserver.import_images import (
-    download_descriptions as download_descriptions_module,
-)
-from provisioningserver.import_images.boot_image_mapping import (
-    BootImageMapping,
-)
-from provisioningserver.import_images.helpers import ImageSpec
 
 
 def patch_and_capture_env_for_download_all_image_descriptions(testcase):

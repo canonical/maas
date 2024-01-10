@@ -24,6 +24,10 @@ from maasserver.components import (
     register_persistent_error,
 )
 from maasserver.enum import COMPONENT
+from maasserver.import_images.download_descriptions import (
+    download_all_image_descriptions,
+)
+from maasserver.import_images.keyrings import write_all_keyrings
 from maasserver.models import (
     BootSource,
     BootSourceCache,
@@ -38,10 +42,6 @@ from maasserver.utils.threads import deferToDatabase
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.import_images.download_descriptions import (
-    download_all_image_descriptions,
-)
-from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.arch import get_architecture
 from provisioningserver.utils.fs import tempdir

@@ -6,7 +6,7 @@
 import hashlib
 import os
 
-from provisioningserver.import_images.helpers import maaslog
+from maasserver.import_images.helpers import maaslog
 from provisioningserver.logger import LegacyLogger
 
 log = LegacyLogger()

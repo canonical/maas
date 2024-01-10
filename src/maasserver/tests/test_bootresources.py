@@ -4,9 +4,7 @@
 
 from datetime import datetime
 from email.utils import format_datetime
-import http.client
 from io import BytesIO
-import json
 import logging
 import os
 from os import environ
@@ -17,10 +15,7 @@ from typing import BinaryIO
 from unittest.mock import ANY, MagicMock, Mock, sentinel
 from urllib.parse import urljoin
 
-from django.conf import settings
 from django.db import transaction
-from django.http import StreamingHttpResponse
-from django.urls import reverse
 from fixtures import FakeLogger, Fixture
 from testtools import ExpectedException
 from twisted.application.internet import TimerService
@@ -32,9 +27,7 @@ from maasserver.bootresources import (
     BootResourceStore,
     download_all_boot_resources,
     download_boot_resources,
-    get_simplestream_endpoint,
     set_global_default_releases,
-    SimpleStreamsHandler,
 )
 from maasserver.components import (
     get_persistent_error,
@@ -46,6 +39,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     COMPONENT,
 )
+from maasserver.import_images.product_mapping import ProductMapping
 from maasserver.listener import PostgresListenerService
 from maasserver.models import (
     BootResource,
@@ -64,7 +58,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils import absolute_reverse, get_maas_user_agent
+from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import (
     get_one,
     post_commit_hooks,
@@ -78,7 +72,6 @@ from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.auth import get_maas_user_gpghome
-from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
@@ -102,21 +95,6 @@ def make_boot_resource_file_with_stream(
     return rfile, BytesIO(content), content
 
 
-class TestHelpers(MAASServerTestCase):
-    """Tests for `maasserver.bootresources` helpers."""
-
-    def test_get_simplestreams_endpoint(self):
-        endpoint = get_simplestream_endpoint()
-        self.assertEqual(
-            absolute_reverse(
-                "simplestreams_stream_handler",
-                kwargs={"filename": "index.json"},
-            ),
-            endpoint["url"],
-        )
-        self.assertEqual([], endpoint["selections"])
-
-
 class SimplestreamsEnvFixture(Fixture):
     """Clears the env variables set by the methods that interact with
     simplestreams."""
@@ -127,356 +105,6 @@ class SimplestreamsEnvFixture(Fixture):
         for key in ["GNUPGHOME", "http_proxy", "https_proxy", "no_proxy"]:
             prior_env[key] = os.environ.get(key, "")
         self.addCleanup(os.environ.update, prior_env)
-
-
-class TestSimpleStreamsHandler(MAASServerTestCase):
-    """Tests for `maasserver.bootresources.SimpleStreamsHandler`."""
-
-    def setUp(self):
-        super().setUp()
-        self.region = factory.make_RegionController()
-
-    def reverse_stream_handler(self, filename):
-        return reverse(
-            "simplestreams_stream_handler", kwargs={"filename": filename}
-        )
-
-    def reverse_file_handler(
-        self, os, arch, subarch, series, version, filename
-    ):
-        return reverse(
-            "simplestreams_file_handler",
-            kwargs={
-                "os": os,
-                "arch": arch,
-                "subarch": subarch,
-                "series": series,
-                "version": version,
-                "filename": filename,
-            },
-        )
-
-    def get_stream_client(self, filename):
-        return self.client.get(self.reverse_stream_handler(filename))
-
-    def get_file_client(self, os, arch, subarch, series, version, filename):
-        return self.client.get(
-            self.reverse_file_handler(
-                os, arch, subarch, series, version, filename
-            )
-        )
-
-    def get_product_name_for_resource(self, resource):
-        arch, subarch = resource.architecture.split("/")
-        if "/" in resource.name:
-            os, series = resource.name.split("/")
-        else:
-            os = "custom"
-            series = resource.name
-        return f"maas:boot:{os}:{arch}:{subarch}:{series}"
-
-    def make_usable_product_boot_resource(
-        self, kflavor=None, bootloader_type=None, rolling=False
-    ):
-        resource = factory.make_usable_boot_resource(
-            kflavor=kflavor, bootloader_type=bootloader_type, rolling=rolling
-        )
-        return self.get_product_name_for_resource(resource), resource
-
-    def test_streams_other_than_allowed_returns_404(self):
-        allowed_paths = ["index.json", "maas:v2:download.json"]
-        invalid_paths = [
-            "%s.json" % factory.make_name("path") for _ in range(3)
-        ]
-        for path in allowed_paths:
-            response = self.get_stream_client(path)
-            self.assertEqual(http.client.OK, response.status_code)
-        for path in invalid_paths:
-            response = self.get_stream_client(path)
-            self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-    def test_streams_product_index_contains_keys(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertGreaterEqual(output.keys(), {"index", "updated", "format"})
-
-    def test_streams_product_index_format_is_index_1(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual("index:1.0", output["format"])
-
-    def test_streams_product_index_index_has_maas_v2_download(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertIn("maas:v2:download", output["index"])
-
-    def test_streams_product_index_maas_v2_download_contains_keys(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertGreaterEqual(
-            output["index"]["maas:v2:download"].keys(),
-            {"datatype", "path", "updated", "products", "format"},
-        )
-
-    def test_streams_product_index_maas_v2_download_has_valid_values(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(
-            "image-downloads", output["index"]["maas:v2:download"]["datatype"]
-        )
-        self.assertEqual(
-            "streams/v1/maas:v2:download.json",
-            output["index"]["maas:v2:download"]["path"],
-        )
-        self.assertEqual(
-            "products:1.0", output["index"]["maas:v2:download"]["format"]
-        )
-
-    def test_streams_product_index_empty_products(self):
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual([], output["index"]["maas:v2:download"]["products"])
-
-    def test_streams_product_index_empty_with_incomplete_resource(self):
-        resource = factory.make_BootResource()
-        factory.make_BootResourceSet(resource)
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual([], output["index"]["maas:v2:download"]["products"])
-
-    def test_streams_product_index_with_resources(self):
-        products = []
-        for _ in range(3):
-            product, _ = self.make_usable_product_boot_resource()
-            products.append(product)
-        response = self.get_stream_client("index.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        # Product listing should be the same as all of the completed
-        # boot resources in the database.
-        self.assertCountEqual(
-            output["index"]["maas:v2:download"]["products"], products
-        )
-
-    def test_streams_product_download_contains_keys(self):
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertGreaterEqual(
-            output.keys(),
-            {"datatype", "updated", "content_id", "products", "format"},
-        )
-
-    def test_streams_product_download_has_valid_values(self):
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual("image-downloads", output["datatype"])
-        self.assertEqual("maas:v2:download", output["content_id"])
-        self.assertEqual("products:1.0", output["format"])
-
-    def test_streams_product_download_empty_products(self):
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual({}, output["products"])
-
-    def test_streams_product_download_empty_with_incomplete_resource(self):
-        resource = factory.make_BootResource()
-        factory.make_BootResourceSet(resource)
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual({}, output["products"])
-
-    def test_streams_product_download_has_valid_product_keys(self):
-        products = set()
-        for _ in range(3):
-            product, _ = self.make_usable_product_boot_resource()
-            products.add(product)
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        # Product listing should be the same as all of the completed
-        # boot resources in the database.
-        self.assertGreaterEqual(output["products"].keys(), products)
-
-    def test_streams_product_download_product_contains_keys(self):
-        product, _ = self.make_usable_product_boot_resource()
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertGreaterEqual(
-            output["products"][product].keys(),
-            {
-                "versions",
-                "subarch",
-                "label",
-                "version",
-                "arch",
-                "release",
-                "os",
-            },
-        )
-        # Verify optional fields aren't added
-        for key in ["kflavor", "bootloader_type"]:
-            self.assertNotIn(key, output["products"][product])
-
-    def test_streams_product_download_product_adds_optional_fields(self):
-        kflavor = factory.make_name("kflavor")
-        bootloader_type = factory.make_name("bootloader_type")
-        product, _ = self.make_usable_product_boot_resource(
-            kflavor, bootloader_type, True
-        )
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEqual(kflavor, output["products"][product]["kflavor"])
-        self.assertEqual(
-            bootloader_type, output["products"][product]["bootloader-type"]
-        )
-        self.assertTrue(output["products"][product]["rolling"])
-
-    def test_streams_product_download_product_has_valid_values(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        label = resource.get_latest_complete_set().label
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        output_product = output["products"][product]
-        self.assertEqual(subarch, output_product["subarch"])
-        self.assertEqual(label, output_product["label"])
-        self.assertEqual(series, output_product["version"])
-        self.assertEqual(arch, output_product["arch"])
-        self.assertEqual(series, output_product["release"])
-        self.assertEqual(os, output_product["os"])
-        for key, value in resource.extra.items():
-            self.assertEqual(value, output_product[key])
-
-    def test_streams_product_download_product_uses_latest_complete_label(self):
-        product, resource = self.make_usable_product_boot_resource()
-        # Incomplete resource_set
-        factory.make_BootResourceSet(resource)
-        newest_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(
-            newest_set, synced=[(self.region, -1)]
-        )
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        output_product = output["products"][product]
-        self.assertEqual(newest_set.label, output_product["label"])
-
-    def test_streams_product_download_product_contains_multiple_versions(self):
-        resource = factory.make_BootResource()
-        resource_sets = [
-            factory.make_BootResourceSet(resource) for _ in range(3)
-        ]
-        versions = set()
-        for resource_set in resource_sets:
-            factory.make_boot_resource_file_with_content(
-                resource_set, synced=[(self.region, -1)]
-            )
-            versions.add(resource_set.version)
-        product = self.get_product_name_for_resource(resource)
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertGreaterEqual(
-            output["products"][product]["versions"].keys(), versions
-        )
-
-    def test_streams_product_download_product_version_contains_items(self):
-        product, resource = self.make_usable_product_boot_resource()
-        resource_set = resource.get_latest_complete_set()
-        items = set(rfile.filename for rfile in resource_set.files.all())
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        version = output["products"][product]["versions"][resource_set.version]
-        self.assertGreaterEqual(version["items"].keys(), items)
-
-    def test_streams_product_download_product_item_contains_keys(self):
-        product, resource = self.make_usable_product_boot_resource()
-        resource_set = resource.get_latest_complete_set()
-        resource_file = resource_set.files.order_by("?")[0]
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        version = output["products"][product]["versions"][resource_set.version]
-        self.assertGreaterEqual(
-            version["items"][resource_file.filename].keys(),
-            {"path", "ftype", "sha256", "size"},
-        )
-
-    def test_streams_product_download_product_item_has_valid_values(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        resource_set = resource.get_latest_complete_set()
-        resource_file = resource_set.files.order_by("?")[0]
-        path = "{}/{}/{}/{}/{}/{}".format(
-            os,
-            arch,
-            subarch,
-            series,
-            resource_set.version,
-            resource_file.filename,
-        )
-        response = self.get_stream_client("maas:v2:download.json")
-        output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        version = output["products"][product]["versions"][resource_set.version]
-        item = version["items"][resource_file.filename]
-        self.assertEqual(path, item["path"])
-        self.assertEqual(resource_file.filetype, item["ftype"])
-        self.assertEqual(resource_file.sha256, item["sha256"])
-        self.assertEqual(resource_file.size, item["size"])
-        for key, value in resource_file.extra.items():
-            self.assertEqual(value, item[key])
-
-    def test_download_invalid_boot_resource_returns_404(self):
-        os = factory.make_name("os")
-        series = factory.make_name("series")
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        version = factory.make_name("version")
-        filename = factory.make_name("filename")
-        response = self.get_file_client(
-            os, arch, subarch, series, version, filename
-        )
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-    def test_download_invalid_version_returns_404(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        version = factory.make_name("version")
-        filename = factory.make_name("filename")
-        response = self.get_file_client(
-            os, arch, subarch, series, version, filename
-        )
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-    def test_download_invalid_filename_returns_404(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        resource_set = resource.get_latest_complete_set()
-        version = resource_set.version
-        filename = factory.make_name("filename")
-        response = self.get_file_client(
-            os, arch, subarch, series, version, filename
-        )
-        self.assertEqual(http.client.NOT_FOUND, response.status_code)
-
-    def test_download_valid_path_returns_200(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        resource_set = resource.get_latest_complete_set()
-        version = resource_set.version
-        resource_file = resource_set.files.order_by("?")[0]
-        filename = resource_file.filename
-        response = self.get_file_client(
-            os, arch, subarch, series, version, filename
-        )
-        self.assertEqual(http.client.OK, response.status_code)
-
-    def test_download_returns_streaming_response(self):
-        product, resource = self.make_usable_product_boot_resource()
-        _, _, os, arch, subarch, series = product.split(":")
-        resource_set = resource.get_latest_complete_set()
-        version = resource_set.version
-        resource_file = resource_set.files.order_by("?")[0]
-        filename = resource_file.filename
-        response = self.get_file_client(
-            os, arch, subarch, series, version, filename
-        )
-        self.assertIsInstance(response, StreamingHttpResponse)
 
 
 def make_product(ftype=None, kflavor=None, subarch=None, platform=None):
@@ -1066,7 +694,6 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 architecture=architecture,
                 kflavor="generic",
             )
-            release_name = resource.name.split("/")[1]
             resource_set = factory.make_BootResourceSet(
                 resource,
                 version=product["version_name"],
@@ -1079,12 +706,6 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             )
             # The resource has a complete set.
             self.assertIsNotNone(resource.get_latest_complete_set())
-            # The resource is references in the simplestreams endpoint.
-            simplestreams_response = SimpleStreamsHandler().get_product_index()
-            simplestreams_content = simplestreams_response.content.decode(
-                settings.DEFAULT_CHARSET
-            )
-            self.assertIn(release_name, simplestreams_content)
         product["sha256"] = factory.make_string(size=64)
         product["size"] = randint(1024, 2048)
         store = BootResourceStore()

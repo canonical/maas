@@ -8,17 +8,14 @@ resources themselves.  The two are handled in separate Simplestreams
 synchronisation stages.
 """
 
-
 import re
 
 from simplestreams import util as sutil
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
 from simplestreams.util import path_from_mirror_url, products_exdata
 
-from provisioningserver.import_images.boot_image_mapping import (
-    BootImageMapping,
-)
-from provisioningserver.import_images.helpers import (
+from maasserver.import_images.boot_image_mapping import BootImageMapping
+from maasserver.import_images.helpers import (
     get_os_from_product,
     get_signing_policy,
     ImageSpec,

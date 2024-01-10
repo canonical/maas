@@ -6,9 +6,9 @@
 
 from simplestreams.util import SignatureMissingException
 
+from maasserver.import_images import helpers
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.import_images import helpers
 
 
 class TestGetSigningPolicy(MAASTestCase):

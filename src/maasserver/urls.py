@@ -10,10 +10,6 @@ from django.views.generic import TemplateView
 
 from maasserver import urls_api
 from maasserver.api.doc_oapi import landing_page
-from maasserver.bootresources import (
-    simplestreams_file_handler,
-    simplestreams_stream_handler,
-)
 from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.prometheus.service import prometheus_discovery_handler
 from maasserver.prometheus.stats import prometheus_stats_handler
@@ -29,17 +25,6 @@ urlpatterns = [
         "accounts/discharge-request/",
         MacaroonDischargeRequest(),
         name="discharge-request",
-    ),
-    re_path(
-        r"^images-stream/streams/v1/(?P<filename>.*)$",
-        simplestreams_stream_handler,
-        name="simplestreams_stream_handler",
-    ),
-    re_path(
-        r"^images-stream/(?P<os>.*)/(?P<arch>.*)/(?P<subarch>.*)/"
-        "(?P<series>.*)/(?P<version>.*)/(?P<filename>.*)$",
-        simplestreams_file_handler,
-        name="simplestreams_file_handler",
     ),
     path(
         "maas-run-scripts",

@@ -14,6 +14,11 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
 )
+from maasserver.import_images.boot_image_mapping import BootImageMapping
+from maasserver.import_images.testing.factory import (
+    make_image_spec,
+    set_resource,
+)
 from maasserver.models import BootResource, BootSourceSelection, Config
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
@@ -31,13 +36,6 @@ from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
-from provisioningserver.import_images.boot_image_mapping import (
-    BootImageMapping,
-)
-from provisioningserver.import_images.testing.factory import (
-    make_image_spec,
-    set_resource,
-)
 
 
 class PatchOSInfoMixin:

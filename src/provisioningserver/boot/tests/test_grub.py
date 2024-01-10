@@ -69,7 +69,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(arch="amd64", purpose="xinstall")
         fs_host = re.escape(
-            "(http,%s:5248)/images" % (convert_host_to_uri_str(params.fs_host))
+            f"(http,{convert_host_to_uri_str(params.fs_host)}:5248)/images"
         )
         output = method.get_reader(
             backend=None, kernel_params=params, protocol="tftp"

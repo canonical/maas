@@ -7,9 +7,9 @@ import hashlib
 import os
 from unittest import mock
 
+from maasserver.import_images import keyrings
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.import_images import keyrings
 
 
 class TestWriteKeyring(MAASTestCase):
