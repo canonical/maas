@@ -4,17 +4,6 @@
 import json
 
 from django.urls import reverse
-from testtools.matchers import (
-    Equals,
-    GreaterThan,
-    IsInstance,
-    KeysEqual,
-    LessThan,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    MatchesSetwise,
-)
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import eventloop, ipc
@@ -27,7 +16,6 @@ from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.testing import MAASIDFixture
 
 TIMEOUT = get_testing_timeout()
-is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2**16))
 
 
 class TestRPCView(MAASTransactionServerTestCase):
@@ -42,8 +30,8 @@ class TestRPCView(MAASTransactionServerTestCase):
         response = self.client.get(reverse("rpc-info"))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content.decode("unicode_escape"))
-        self.assertThat(info, KeysEqual("eventloops"))
-        self.assertThat(info["eventloops"], MatchesDict({}))
+        self.assertEqual(info.keys(), {"eventloops"})
+        self.assertEqual(info["eventloops"], {})
 
     def test_rpc_info_from_running_ipc_master(self):
         # Run the IPC master, IPC worker, and RPC service so the endpoints
@@ -83,20 +71,17 @@ class TestRPCView(MAASTransactionServerTestCase):
 
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content.decode("unicode_escape"))
-        self.assertThat(info, KeysEqual("eventloops"))
-        self.assertThat(
-            info["eventloops"],
-            MatchesDict(
-                {
-                    # Each entry in the endpoints dict is a mapping from an
-                    # event loop to a list of (host, port) tuples. Each tuple is
-                    # a potential endpoint for connecting into that event loop.
-                    eventloop.loop.name: MatchesSetwise(
-                        *(
-                            MatchesListwise((Equals(addr), is_valid_port))
-                            for addr, _ in ipcMaster._getListenAddresses(5240)
-                        )
-                    )
-                }
-            ),
-        )
+        self.assertEqual(info.keys(), {"eventloops"})
+        eventloops = info["eventloops"]
+        self.assertEqual(eventloops.keys(), {eventloop.loop.name})
+        endpoints = eventloops[eventloop.loop.name]
+        ips, ports = zip(*endpoints)
+        expected_ips, _ = zip(*ipcMaster._getListenAddresses(5240))
+        # Each entry in the endpoints dict is a mapping from an event
+        # loop to a list of (host, port) tuples. Each tuple is a
+        # potential endpoint for connecting into that event loop.
+        self.assertCountEqual(ips, expected_ips)
+        for port in ports:
+            self.assertIsInstance(port, int)
+            self.assertGreater(port, 0)
+            self.assertLess(port, 2**16)

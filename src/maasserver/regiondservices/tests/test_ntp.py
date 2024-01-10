@@ -4,7 +4,6 @@
 """Tests for `maasserver.regiondservices.ntp`."""
 
 
-from testtools.matchers import AllMatch, Equals, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -20,13 +19,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import (
-    ContainedBy,
-    DocTestMatches,
-    Matches,
-    MockCalledOnce,
-    MockCalledOnceWith,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
@@ -87,16 +79,19 @@ class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
         configure_region = self.patch_autospec(ntp, "configure_region")
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
-        self.assertThat(
-            configure_region,
-            MockCalledOnceWith(refs, Matches(AllMatch(ContainedBy(peers)))),
-        )
-        self.assertThat(restartService, MockCalledOnceWith("ntp_region"))
+        self.assertEqual(configure_region.call_count, 1)
+        (called_refs, called_peers) = configure_region.call_args[0]
+        self.assertEqual(called_refs, refs)
+        self.assertGreaterEqual(peers, called_peers)
+
+        restartService.assert_called_once_with("ntp_region")
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `configure_region`.
+        configure_region.reset_mock()
+        restartService.reset_mock()
         yield service._tryUpdate()
-        self.assertThat(configure_region, MockCalledOnce())
-        self.assertThat(restartService, MockCalledOnceWith("ntp_region"))
+        configure_region.assert_not_called()
+        restartService.assert_not_called()
 
 
 class TestRegionNetworkTimeProtocolService_Errors(
@@ -128,17 +123,11 @@ class TestRegionNetworkTimeProtocolService_Errors(
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
-        self.assertThat(
+        self.assertIn(
+            "Failed to update NTP configuration.\nTraceback (most recent call last):",
             logger.output,
-            DocTestMatches(
-                """
-                Failed to update NTP configuration.
-                Traceback (most recent call last):
-                ...
-                maastesting.factory.TestException#...
-                """
-            ),
         )
+        self.assertIn(str(broken_method.side_effect), logger.output)
 
 
 class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
@@ -161,12 +150,5 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         observed = service._getConfiguration()
         self.assertIsInstance(observed, ntp._Configuration)
 
-        expected_references = Equals(frozenset(ntp_servers))
-        expected_peers = AllMatch(ContainedBy({addr4.ip, addr6.ip}))
-
-        self.assertThat(
-            observed,
-            MatchesStructure(
-                references=expected_references, peers=expected_peers
-            ),
-        )
+        self.assertEqual(observed.references, ntp_servers)
+        self.assertGreater({addr4.ip, addr6.ip}, observed.peers)

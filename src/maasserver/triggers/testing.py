@@ -6,7 +6,6 @@
 
 from django.contrib.auth.models import User
 from piston3.models import Token
-from testtools.matchers import GreaterThan, Is, Not
 from twisted.internet.defer import DeferredQueue, inlineCallbacks, returnValue
 
 from maasserver.enum import INTERFACE_TYPE, NODE_TYPE
@@ -884,14 +883,10 @@ class DNSHelpersMixin:
         old = self.getCapturedPublication()
         new = yield self.capturePublication()
         if old is None:
-            self.assertThat(
-                new, Not(Is(None)), "DNS has not been published at all."
-            )
+            self.assertIsNotNone(new, "DNS has not been published at all.")
         else:
-            self.assertThat(
-                new.serial,
-                GreaterThan(old.serial),
-                "DNS has not been published again.",
+            self.assertGreater(
+                new.serial, old.serial, "DNS has not been published again."
             )
 
 
@@ -931,15 +926,13 @@ class RBACHelpersMixin:
         old = self.getCapturedSynced()
         new = yield self.captureSynced()
         if old is None:
-            self.assertThat(
-                new,
-                Not(Is(None)),
-                "RBAC sync tracking has not been modified at all.",
+            self.assertIsNotNone(
+                new, "RBAC sync tracking has not been modified at all."
             )
         else:
-            self.assertThat(
+            self.assertGreater(
                 new.id,
-                GreaterThan(old.id),
+                old.id,
                 "RBAC sync tracking has not been modified again.",
             )
 

@@ -5,7 +5,6 @@
 
 
 from netaddr import IPAddress
-from testtools.matchers import AllMatch, ContainsAll, Equals, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -21,12 +20,6 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.fixtures import MAASRootFixture
-from maastesting.matchers import (
-    DocTestMatches,
-    Matches,
-    MockCalledOnce,
-    MockCalledOnceWith,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
@@ -99,31 +92,29 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
         write_config = self.patch_autospec(syslog, "write_config")
         restartService = self.patch_autospec(service_monitor, "restartService")
         yield service._tryUpdate()
-        self.assertThat(
-            write_config,
-            MockCalledOnceWith(
-                True,
-                Matches(
-                    ContainsAll(
-                        [
-                            {
-                                "ip": service._formatIP(ip),
-                                "name": node.hostname,
-                            }
-                            for node, ip in peers
-                        ]
-                    )
-                ),
-                port=port,
-                promtail_port=None,
-            ),
+        self.assertEqual(write_config.call_count, 1)
+        self.assertEqual(
+            write_config.call_args.kwargs,
+            {"port": port, "promtail_port": None},
         )
-        self.assertThat(restartService, MockCalledOnceWith("syslog_region"))
+        write_local, called_peers = write_config.call_args.args
+        self.assertTrue(write_local)
+        self.assertCountEqual(
+            called_peers,
+            [
+                {"ip": service._formatIP(ip), "name": node.hostname}
+                for node, ip in peers
+            ],
+        )
+
+        restartService.assert_called_once_with("syslog_region")
+        write_config.reset_mock()
+        restartService.reset_mock()
         # If the configuration has not changed then a second call to
         # `_tryUpdate` does not result in another call to `write_config`.
         yield service._tryUpdate()
-        self.assertThat(write_config, MockCalledOnce())
-        self.assertThat(restartService, MockCalledOnceWith("syslog_region"))
+        write_config.assert_not_called()
+        restartService.assert_not_called()
 
 
 class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):
@@ -152,17 +143,12 @@ class TestRegionSyslogService_Errors(MAASTransactionServerTestCase):
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
-        self.assertThat(
+        self.maxDiff = None
+        self.assertIn(
+            "Failed to update syslog configuration.\nTraceback (most recent call last):",
             logger.output,
-            DocTestMatches(
-                """
-                Failed to update syslog configuration.
-                Traceback (most recent call last):
-                ...
-                maastesting.factory.TestException#...
-                """
-            ),
         )
+        self.assertIn(str(broken_method.side_effect), logger.output)
 
 
 class TestRegionSyslogService_Database(MAASServerTestCase):
@@ -181,6 +167,6 @@ class TestRegionSyslogService_Database(MAASServerTestCase):
         observed = service._getConfiguration()
         self.assertIsInstance(observed, syslog._Configuration)
 
-        expected_peers = AllMatch(Equals((peer.hostname, IPAddress(addr4.ip))))
-
-        self.assertThat(observed, MatchesStructure(peers=expected_peers))
+        self.assertEqual(
+            observed.peers, {(peer.hostname, IPAddress(addr4.ip))}
+        )

@@ -7,7 +7,6 @@
 import random
 from unittest.mock import sentinel
 
-from testtools.matchers import MatchesStructure
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import Clock
 
@@ -25,7 +24,6 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
@@ -48,14 +46,11 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
 
     def test_init_sets_up_timer_correctly(self):
         monitor_service = ServiceMonitorService(sentinel.clock)
-        self.assertThat(
-            monitor_service,
-            MatchesStructure.byEquality(
-                call=(monitor_service.monitorServices, (), {}),
-                step=30,
-                clock=sentinel.clock,
-            ),
+        self.assertIs(monitor_service.clock, sentinel.clock)
+        self.assertEqual(
+            monitor_service.call, (monitor_service.monitorServices, (), {})
         )
+        self.assertEqual(monitor_service.step, 30)
 
     def test_monitorServices_does_not_do_anything_in_dev_environment(self):
         # Belt-n-braces make sure we're in a development environment.
@@ -65,8 +60,8 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
-        self.assertThat(mock_ensureServices, MockNotCalled())
-        self.assertDocTestMatches(
+        mock_ensureServices.assert_not_called()
+        self.assertIn(
             "Skipping check of services; they're not running under the "
             "supervision of systemd.",
             logger.output,
@@ -81,7 +76,7 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         monitor_service = ServiceMonitorService(Clock())
         mock_ensureServices = self.patch(service_monitor, "ensureServices")
         monitor_service.monitorServices()
-        self.assertThat(mock_ensureServices, MockCalledOnceWith())
+        mock_ensureServices.assert_called_once_with()
 
     def test_monitorServices_handles_failure(self):
         # Pretend we're in a production environment.
@@ -94,11 +89,8 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         mock_ensureServices.return_value = fail(factory.make_exception())
         with TwistedLoggerFixture() as logger:
             monitor_service.monitorServices()
-        self.assertDocTestMatches(
-            """\
-            Failed to monitor services and update database.
-            Traceback (most recent call last):
-            ...""",
+        self.assertIn(
+            "Failed to monitor services and update database.\nTraceback (most recent call last):",
             logger.output,
         )
 
@@ -126,17 +118,12 @@ class TestServiceMonitorService(MAASTransactionServerTestCase):
         yield monitor_service.startService()
         yield monitor_service.stopService()
 
-        service = yield deferToDatabase(
+        a_service = yield deferToDatabase(
             transactional(Service.objects.get), node=region, name=service.name
         )
-        self.assertThat(
-            service,
-            MatchesStructure.byEquality(
-                name=service.name,
-                status=SERVICE_STATUS.RUNNING,
-                status_info="",
-            ),
-        )
+        self.assertEqual(a_service.name, service.name)
+        self.assertEqual(a_service.status, SERVICE_STATUS.RUNNING)
+        self.assertEqual(a_service.status_info, "")
 
     @wait_for_reactor
     @inlineCallbacks

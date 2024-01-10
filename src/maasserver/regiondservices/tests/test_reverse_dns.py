@@ -16,7 +16,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.utils.testing import callWithServiceRunning
 from provisioningserver.utils.tests.test_network import TestReverseResolveMixIn
 
@@ -100,14 +99,12 @@ class TestReverseDNSService(
         listener.unregister = Mock()
         service = ReverseDNSService(postgresListener=listener)
         yield service.startService()
-        self.assertThat(
-            listener.register,
-            MockCalledOnceWith("neighbour", service.consumeNeighbourEvent),
+        listener.register.assert_called_once_with(
+            "neighbour", service.consumeNeighbourEvent
         )
         service.stopService()
-        self.assertThat(
-            listener.unregister,
-            MockCalledOnceWith("neighbour", service.consumeNeighbourEvent),
+        listener.unregister.assert_called_once_with(
+            "neighbour", service.consumeNeighbourEvent
         )
 
     @wait_for()
@@ -118,8 +115,8 @@ class TestReverseDNSService(
         ip = factory.make_ip_address(ipv6=False)
         service = ReverseDNSService()
         yield callWithServiceRunning(
-            service, service.consumeNeighbourEvent, "create", "%s/32" % ip
+            service, service.consumeNeighbourEvent, "create", f"{ip}/32"
         )
-        self.assertThat(reverseResolve, MockCalledOnceWith(ip))
+        reverseResolve.assert_called_once_with(ip)
         result = yield deferToDatabase(RDNS.objects.first)
         self.assertIsNone(result)

@@ -26,7 +26,6 @@ from maasserver.triggers.testing import (
 from maasserver.utils.orm import psql_array
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 
 wait_for_reactor = wait_for()
 
@@ -105,7 +104,7 @@ class TestTriggers(MAASServerTestCase):
     def test_register_system_triggers_ensures_zone_serial(self):
         mock_create = self.patch(zone_serial, "create_if_not_exists")
         register_system_triggers()
-        self.assertThat(mock_create, MockCalledOnceWith())
+        mock_create.assert_called_once_with()
 
 
 class TestSysDNSUpdates(

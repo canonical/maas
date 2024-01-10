@@ -7,13 +7,11 @@ import http.client
 from django.conf import settings
 from django.contrib.auth import SESSION_KEY
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals, MatchesSetwise
 
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
-from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import json_load_bytes
 from provisioningserver.events import AUDIT
@@ -23,32 +21,28 @@ class TestLogin(MAASServerTestCase):
     def test_login_GET_returns_not_authenticated(self):
         self.client.handler.enforce_csrf_checks = True
         response = self.client.get(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(
             json_load_bytes(response.content),
-            Equals(
-                {
-                    "authenticated": False,
-                    "external_auth_url": None,
-                    "no_users": True,
-                }
-            ),
+            {
+                "authenticated": False,
+                "external_auth_url": None,
+                "no_users": True,
+            },
         )
 
     def test_login_GET_returns_not_authenticated_with_users(self):
         factory.make_User()
         self.client.handler.enforce_csrf_checks = True
         response = self.client.get(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(
             json_load_bytes(response.content),
-            Equals(
-                {
-                    "authenticated": False,
-                    "external_auth_url": None,
-                    "no_users": False,
-                }
-            ),
+            {
+                "authenticated": False,
+                "external_auth_url": None,
+                "no_users": False,
+            },
         )
 
     def test_login_GET_returns_authenticated(self):
@@ -57,16 +51,14 @@ class TestLogin(MAASServerTestCase):
         self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
         response = self.client.get(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(
             json_load_bytes(response.content),
-            Equals(
-                {
-                    "authenticated": True,
-                    "external_auth_url": None,
-                    "no_users": False,
-                }
-            ),
+            {
+                "authenticated": True,
+                "external_auth_url": None,
+                "no_users": False,
+            },
         )
 
     def test_login_GET_returns_external_auth_url(self):
@@ -75,16 +67,14 @@ class TestLogin(MAASServerTestCase):
             "external-auth", {"url": auth_url}
         )
         response = self.client.get(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertThat(
+        self.assertEqual(response.status_code, http.client.OK)
+        self.assertEqual(
             json_load_bytes(response.content),
-            Equals(
-                {
-                    "authenticated": False,
-                    "external_auth_url": auth_url,
-                    "no_users": True,
-                }
-            ),
+            {
+                "authenticated": False,
+                "external_auth_url": auth_url,
+                "no_users": True,
+            },
         )
 
     def test_login_returns_204_when_already_authenticated(self):
@@ -93,7 +83,7 @@ class TestLogin(MAASServerTestCase):
         self.client.handler.enforce_csrf_checks = True
         self.client.login(username=user.username, password=password)
         response = self.client.post(reverse("login"))
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
 
     def test_login_returns_204_on_authentication(self):
         password = factory.make_string()
@@ -102,11 +92,8 @@ class TestLogin(MAASServerTestCase):
         response = self.client.post(
             reverse("login"), {"username": user.username, "password": password}
         )
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
-        self.assertThat(
-            response.cookies.keys(),
-            MatchesSetwise(Equals("csrftoken"), Equals("sessionid")),
-        )
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
+        self.assertEqual(response.cookies.keys(), {"csrftoken", "sessionid"})
 
     def test_login_returns_400_on_bad_authentication(self):
         password = factory.make_string()
@@ -119,7 +106,7 @@ class TestLogin(MAASServerTestCase):
                 "password": factory.make_name("password"),
             },
         )
-        self.assertThat(response, HasStatusCode(http.client.BAD_REQUEST))
+        self.assertEqual(response.status_code, http.client.BAD_REQUEST)
 
     def test_login_creates_audit_event(self):
         password = factory.make_string()
@@ -140,7 +127,7 @@ class TestLogout(MAASServerTestCase):
         self.client.login(username=user.username, password=password)
         self.client.handler.enforce_csrf_checks = False
         response = self.client.post(reverse("logout"))
-        self.assertThat(response, HasStatusCode(http.client.NO_CONTENT))
+        self.assertEqual(response.status_code, http.client.NO_CONTENT)
         self.assertNotIn(SESSION_KEY, self.client.session)
 
     def test_logout_GET_returns_405(self):
@@ -150,9 +137,7 @@ class TestLogout(MAASServerTestCase):
         self.client.login(username=user.username, password=password)
         self.client.handler.enforce_csrf_checks = False
         response = self.client.get(reverse("logout"))
-        self.assertThat(
-            response, HasStatusCode(http.client.METHOD_NOT_ALLOWED)
-        )
+        self.assertEqual(response.status_code, http.client.METHOD_NOT_ALLOWED)
 
     def test_logout_creates_audit_event(self):
         password = factory.make_string()
@@ -187,7 +172,7 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             token_to_dict(token), json_load_bytes(response.content)
         )
@@ -203,7 +188,7 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
             token_to_dict(token), json_load_bytes(response.content)
         )
@@ -222,7 +207,7 @@ class TestAuthenticate(MAASServerTestCase):
                 "consumer": consumer,
             },
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(
             token_to_dict(token), json_load_bytes(response.content)
         )
@@ -241,7 +226,7 @@ class TestAuthenticate(MAASServerTestCase):
                 "consumer": consumer,
             },
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(
             token_to_dict(tokens[0]), json_load_bytes(response.content)
         )
@@ -255,7 +240,7 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         [token] = get_auth_tokens(user)
         self.assertEqual(
             token_to_dict(token), json_load_bytes(response.content)
@@ -275,10 +260,9 @@ class TestAuthenticate(MAASServerTestCase):
                 "consumer": consumer,
             },
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
-        self.assertThat(
-            json_load_bytes(response.content),
-            ContainsDict({"name": Equals(consumer)}),
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(
+            json_load_bytes(response.content).get("name"), consumer
         )
 
     def test_rejects_unknown_username(self):
@@ -288,7 +272,7 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_rejects_incorrect_password(self):
         username = factory.make_name("username")
@@ -298,7 +282,7 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password + "-garbage"},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_rejects_inactive_user(self):
         username = factory.make_name("username")
@@ -310,11 +294,11 @@ class TestAuthenticate(MAASServerTestCase):
             reverse("authenticate"),
             data={"username": username, "password": password},
         )
-        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_rejects_GET(self):
         response = self.client.get(reverse("authenticate"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
         self.assertEqual("POST", response["Allow"])
 
     def test_authenticate_creates_audit_event_with_tokens(self):
@@ -352,19 +336,19 @@ class TestAuthenticate(MAASServerTestCase):
 class TestCSRF(MAASServerTestCase):
     def test_method_not_allowed_on_get(self):
         response = self.client.get(reverse("csrf"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
 
     def test_method_not_allowed_on_put(self):
         response = self.client.put(reverse("csrf"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
 
     def test_method_not_allowed_on_delete(self):
         response = self.client.delete(reverse("csrf"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
+        self.assertEqual(response.status_code, HTTPStatus.METHOD_NOT_ALLOWED)
 
     def test_forbidden_when_not_authenticated(self):
         response = self.client.post(reverse("csrf"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.FORBIDDEN))
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
 
     def test_returns_csrf(self):
         # Force the client to test for CSRF because the view should be CSRF
@@ -372,7 +356,7 @@ class TestCSRF(MAASServerTestCase):
         self.client.handler.enforce_csrf_checks = True
         self.client.login(user=factory.make_User())
         response = self.client.post(reverse("csrf"))
-        self.assertThat(response, HasStatusCode(HTTPStatus.OK))
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         body = json_load_bytes(response.content)
         self.assertIn("csrf", body)
         # Should not have an updated CSRF cookie, because it was marked as

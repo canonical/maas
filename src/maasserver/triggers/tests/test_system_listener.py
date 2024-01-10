@@ -6,13 +6,10 @@
 
 
 from datetime import datetime, timedelta
-import json
 import random
 
 from django.db import connection as db_connection
 from netaddr import IPAddress
-from testtools import ExpectedException
-from testtools.matchers import Equals
 from twisted.internet.defer import (
     CancelledError,
     DeferredList,
@@ -466,7 +463,7 @@ class TestCoreRegionRackRPCConnectionInsertListener(
         finally:
             yield listener.stopService()
         self.assertEqual(
-            "rack controller %s connected" % rack_controller.hostname,
+            f"rack controller {rack_controller.hostname} connected",
             self.getCapturedPublication().source,
         )
 
@@ -724,11 +721,9 @@ class TestCoreRegionRackRPCConnectionDeleteListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "rack controller %s disconnected" % rack_controller.hostname
-            ),
+            f"rack controller {rack_controller.hostname} disconnected",
         )
 
 
@@ -2702,7 +2697,7 @@ class TestDHCPStaticIPAddressListener(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_sends_message_for_delet_an_ip(self):
+    def test_sends_message_for_delete_an_ip(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
         secondary_rack = yield deferToDatabase(self.create_rack_controller)
@@ -3693,7 +3688,7 @@ class TestDNSDomainListener(
         finally:
             yield listener.stopService()
         self.assertEqual(
-            "added zone %s" % name,
+            f"added zone {name}",
             self.getCapturedPublication().source,
         )
 
@@ -3708,7 +3703,7 @@ class TestDNSDomainListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.create_domain, {"authoritative": False})
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -3737,7 +3732,7 @@ class TestDNSDomainListener(
         finally:
             yield listener.stopService()
         self.assertEqual(
-            "added zone %s" % domain_name,
+            f"added zone {domain_name}",
             self.getCapturedPublication().source,
         )
 
@@ -3794,12 +3789,9 @@ class TestDNSDomainListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "zone %s renamed to %s and ttl changed to %s"
-                % (old_name, new_name, new_ttl)
-            ),
+            f"zone {old_name} renamed to {new_name} and ttl changed to {new_ttl}",
         )
 
     @wait_for_reactor
@@ -3846,7 +3838,7 @@ class TestDNSStaticIPAddressListener(
                 sip.id,
                 {"alloc_type": IPADDRESS_TYPE.STICKY},
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -3993,7 +3985,7 @@ class TestDNSStaticIPAddressListener(
             yield deferToDatabase(
                 self.update_staticipaddress, sip.id, {"ip": new_ip}
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4073,7 +4065,7 @@ class TestDNSStaticIPAddressListener(
             yield deferToDatabase(
                 self.update_staticipaddress, sip.id, {"ip": new_ip}
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4107,12 +4099,9 @@ class TestDNSInterfaceStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "ip %s connected to %s on %s"
-                % (sip.ip, node.hostname, interface.name)
-            ),
+            f"ip {sip.ip} connected to {node.hostname} on {interface.name}",
         )
 
     @wait_for_reactor
@@ -4137,7 +4126,7 @@ class TestDNSInterfaceStaticIPAddressListener(
                 self.create_staticipaddress,
                 {"interface": interface, "subnet": subnet},
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4166,12 +4155,9 @@ class TestDNSInterfaceStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "ip %s disconnected from %s on %s"
-                % (sip.ip, node.hostname, interface.name)
-            ),
+            f"ip {sip.ip} disconnected from {node.hostname} on {interface.name}",
         )
 
     @wait_for_reactor
@@ -4197,7 +4183,7 @@ class TestDNSInterfaceStaticIPAddressListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4356,12 +4342,9 @@ class TestDNSDNSResourceStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "ip %s linked to resource %s on zone %s"
-                % (sip.ip, resource.name, domain.name)
-            ),
+            f"ip {sip.ip} linked to resource {resource.name} on zone {domain.name}",
         )
 
     @wait_for_reactor
@@ -4385,12 +4368,9 @@ class TestDNSDNSResourceStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "ip %s unlinked from resource %s on zone %s"
-                % (sip.ip, resource.name, domain.name)
-            ),
+            f"ip {sip.ip} unlinked from resource {resource.name} on zone {domain.name}",
         )
 
 
@@ -4420,12 +4400,9 @@ class TestDNSDNSDataListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "added %s to resource %s on zone %s"
-                % (data.rrtype, resource.name, domain.name)
-            ),
+            f"added {data.rrtype} to resource {resource.name} on zone {domain.name}",
         )
 
     @wait_for_reactor
@@ -4459,12 +4436,9 @@ class TestDNSDNSDataListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "updated %s in resource %s on zone %s"
-                % (data.rrtype, resource.name, domain.name)
-            ),
+            f"updated {data.rrtype} in resource {resource.name} on zone {domain.name}",
         )
 
     @wait_for_reactor
@@ -4489,12 +4463,9 @@ class TestDNSDNSDataListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "removed %s from resource %s on zone %s"
-                % (data.rrtype, resource.name, domain.name)
-            ),
+            f"removed {data.rrtype} from resource {resource.name} on zone {domain.name}",
         )
 
 
@@ -4536,7 +4507,7 @@ class TestDNSSubnetListener(
             yield deferToDatabase(
                 self.create_subnet, {"rdns_mode": RDNS_MODE.DISABLED}
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4632,7 +4603,7 @@ class TestDNSSubnetListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4728,7 +4699,7 @@ class TestDNSNodeListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=1)
         finally:
             yield listener.stopService()
@@ -4778,12 +4749,9 @@ class TestDNSInterfaceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "node %s renamed interface %s to %s"
-                % (node.hostname, name_old, name_new)
-            ),
+            f"node {node.hostname} renamed interface {name_old} to {name_new}",
         )
 
     @wait_for_reactor
@@ -4831,12 +4799,9 @@ class TestDNSInterfaceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "node %s removed interface %s"
-                % (node.hostname, interface.name)
-            ),
+            f"node {node.hostname} removed interface {interface.name}",
         )
 
     @wait_for_reactor
@@ -4910,12 +4875,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration upstream_dns set to %s"
-                % json.dumps(upstream_dns_new)
-            ),
+            f'configuration upstream_dns set to "{upstream_dns_new}"',
         )
 
     @wait_for_reactor
@@ -4935,11 +4897,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration dnssec_validation set to %s" % json.dumps("no")
-            ),
+            'configuration dnssec_validation set to "no"',
         )
 
     @wait_for_reactor
@@ -4962,12 +4922,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration default_dns_ttl set to %s"
-                % json.dumps(default_dns_ttl_new)
-            ),
+            f"configuration default_dns_ttl set to {default_dns_ttl_new}",
         )
 
     @wait_for_reactor
@@ -4990,12 +4947,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration maas_internal_domain set to %s"
-                % json.dumps(maas_internal_domain_new)
-            ),
+            f'configuration maas_internal_domain set to "{maas_internal_domain_new}"',
         )
 
     @wait_for_reactor
@@ -5018,12 +4972,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration dns_trusted_acl set to %s"
-                % json.dumps(dns_trusted_acl_new)
-            ),
+            f'configuration dns_trusted_acl set to "{dns_trusted_acl_new}"',
         )
 
     @wait_for_reactor
@@ -5048,12 +4999,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration upstream_dns changed to %s"
-                % (json.dumps(upstream_dns_new))
-            ),
+            f'configuration upstream_dns changed to "{upstream_dns_new}"',
         )
 
     @wait_for_reactor
@@ -5076,12 +5024,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration dnssec_validation changed to %s"
-                % (json.dumps("yes"))
-            ),
+            'configuration dnssec_validation changed to "yes"',
         )
 
     @wait_for_reactor
@@ -5108,12 +5053,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration default_dns_ttl changed to %s"
-                % (json.dumps(default_dns_ttl_new))
-            ),
+            f"configuration default_dns_ttl changed to {default_dns_ttl_new}",
         )
 
     @wait_for_reactor
@@ -5142,12 +5084,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration maas_internal_domain changed to %s"
-                % (json.dumps(maas_internal_domain_new))
-            ),
+            f'configuration maas_internal_domain changed to "{maas_internal_domain_new}"',
         )
 
     @wait_for_reactor
@@ -5174,12 +5113,9 @@ class TestDNSConfigListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration dns_trusted_acl changed to %s"
-                % (json.dumps(dns_trusted_acl_new))
-            ),
+            f'configuration dns_trusted_acl changed to "{dns_trusted_acl_new}"',
         )
 
 
@@ -5208,12 +5144,9 @@ class TestDNSConfigListenerLegacy(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration windows_kms_host set to %s"
-                % json.dumps(kms_host_new)
-            ),
+            f'configuration windows_kms_host set to "{kms_host_new}"',
         )
 
     @wait_for_reactor
@@ -5238,12 +5171,9 @@ class TestDNSConfigListenerLegacy(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
             self.getCapturedPublication().source,
-            Equals(
-                "configuration windows_kms_host changed to %s"
-                % (json.dumps(kms_host_new))
-            ),
+            f'configuration windows_kms_host changed to "{kms_host_new}"',
         )
 
 
