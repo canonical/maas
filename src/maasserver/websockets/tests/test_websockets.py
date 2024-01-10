@@ -14,7 +14,6 @@ HyBi-07 (http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-07),
 which are drafts of RFC 6455.
 """
 
-from testtools.matchers import StartsWith
 from twisted.internet.address import IPv6Address
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.testing import (
@@ -915,12 +914,11 @@ class TestWebSocketsResource(MAASTestCase):
             ],
             request.responseHeaders.getAllRawHeaders(),
         )
-        self.assertThat(
-            channel.transport.value(),
-            StartsWith(
+        self.assertTrue(
+            channel.transport.value().startswith(
                 b"HTTP/1.1 101 Switching Protocols\r\n"
                 b"Transfer-Encoding: chunked\r\n"
-            ),
+            )
         )
         self.assertEqual(101, request.code)
         self.assertIsNone(request.transport)

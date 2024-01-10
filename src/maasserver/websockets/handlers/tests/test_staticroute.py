@@ -6,8 +6,6 @@
 
 import random
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -61,7 +59,7 @@ class TestStaticRouteHandler(MAASServerTestCase):
         gateway_ip = factory.pick_ip_in_Subnet(source)
         metric = random.randint(0, 500)
         handler = StaticRouteHandler(user, {}, None)
-        staticroute = handler.create(
+        response = handler.create(
             {
                 "source": source.id,
                 "destination": destination.id,
@@ -69,15 +67,12 @@ class TestStaticRouteHandler(MAASServerTestCase):
                 "metric": metric,
             }
         )
-        self.assertThat(
-            StaticRoute.objects.get(id=staticroute["id"]),
-            MatchesStructure.byEquality(
-                source=source,
-                destination=destination,
-                gateway_ip=gateway_ip,
-                metric=metric,
-            ),
-        )
+
+        staticroute = StaticRoute.objects.get(id=response["id"])
+        self.assertEqual(staticroute.source, source)
+        self.assertEqual(staticroute.destination, destination)
+        self.assertEqual(staticroute.gateway_ip, gateway_ip)
+        self.assertEqual(staticroute.metric, metric)
 
     def test_create_admin_only(self):
         user = factory.make_User()
@@ -106,15 +101,11 @@ class TestStaticRouteHandler(MAASServerTestCase):
         data = self.dehydrate_staticroute(staticroute)
         data["metric"] = random.randint(0, 500)
         handler.update(data)
-        self.assertThat(
-            StaticRoute.objects.get(id=data["id"]),
-            MatchesStructure.byEquality(
-                source=staticroute.source,
-                destination=staticroute.destination,
-                gateway_ip=staticroute.gateway_ip,
-                metric=data["metric"],
-            ),
-        )
+        a_staticroute = StaticRoute.objects.get(id=data["id"])
+        self.assertEqual(a_staticroute.source, staticroute.source)
+        self.assertEqual(a_staticroute.destination, staticroute.destination)
+        self.assertEqual(a_staticroute.gateway_ip, staticroute.gateway_ip)
+        self.assertEqual(a_staticroute.metric, data["metric"])
 
     def test_update_admin_only(self):
         user = factory.make_User()

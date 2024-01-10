@@ -4,8 +4,6 @@
 """Tests for `maasserver.websockets.handlers.iprange`"""
 
 
-from testtools.matchers import MatchesStructure
-
 from maasserver.models.iprange import IPRange
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -60,12 +58,10 @@ class TestIPRangeHandler(MAASServerTestCase):
                 "end_ip": "192.168.0.20",
             }
         )
-        self.assertThat(
-            IPRange.objects.get(id=ip_range["id"]),
-            MatchesStructure.byEquality(
-                type="reserved", start_ip="192.168.0.10", end_ip="192.168.0.20"
-            ),
-        )
+        created = IPRange.objects.get(id=ip_range["id"])
+        self.assertEqual(created.type, "reserved")
+        self.assertEqual(created.start_ip, "192.168.0.10")
+        self.assertEqual(created.end_ip, "192.168.0.20")
 
     def test_update(self):
         user = factory.make_User()
@@ -80,12 +76,10 @@ class TestIPRangeHandler(MAASServerTestCase):
         )
         ip_range["end_ip"] = "192.168.0.30"
         handler.update(ip_range)
-        self.assertThat(
-            IPRange.objects.get(id=ip_range["id"]),
-            MatchesStructure.byEquality(
-                type="reserved", start_ip="192.168.0.10", end_ip="192.168.0.30"
-            ),
-        )
+        created = IPRange.objects.get(id=ip_range["id"])
+        self.assertEqual(created.type, "reserved")
+        self.assertEqual(created.start_ip, "192.168.0.10")
+        self.assertEqual(created.end_ip, "192.168.0.30")
 
     def test_delete(self):
         user = factory.make_User()

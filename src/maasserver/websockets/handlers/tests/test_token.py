@@ -4,8 +4,6 @@
 """Tests for `maasserver.websockets.handlers.token`"""
 
 
-from testtools.matchers import KeysEqual
-
 from maasserver.models.event import Event
 from maasserver.models.user import create_auth_token, get_auth_tokens
 from maasserver.testing.factory import factory
@@ -57,9 +55,7 @@ class TestTokenHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = TokenHandler(user, {}, None)
         new_token = handler.create({})
-        self.assertThat(
-            new_token, KeysEqual("id", "key", "secret", "consumer")
-        )
+        self.assertEqual(new_token.keys(), {"id", "key", "secret", "consumer"})
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(event.description, "Created token.")
@@ -69,9 +65,7 @@ class TestTokenHandler(MAASServerTestCase):
         handler = TokenHandler(user, {}, None)
         name = factory.make_name("name")
         new_token = handler.create({"name": name})
-        self.assertThat(
-            new_token, KeysEqual("id", "key", "secret", "consumer")
-        )
+        self.assertEqual(new_token.keys(), {"id", "key", "secret", "consumer"})
         self.assertEqual(name, new_token["consumer"]["name"])
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
@@ -84,8 +78,8 @@ class TestTokenHandler(MAASServerTestCase):
         token = create_auth_token(user, name)
         new_name = factory.make_name("name")
         updated_token = handler.update({"id": token.id, "name": new_name})
-        self.assertThat(
-            updated_token, KeysEqual("id", "key", "secret", "consumer")
+        self.assertEqual(
+            updated_token.keys(), {"id", "key", "secret", "consumer"}
         )
         self.assertEqual(new_name, updated_token["consumer"]["name"])
         event = Event.objects.get(type__level=AUDIT)

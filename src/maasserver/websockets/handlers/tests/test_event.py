@@ -8,8 +8,6 @@ import datetime
 import random
 from unittest.mock import sentinel
 
-from testtools.matchers import Equals, Is
-
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -21,7 +19,6 @@ from maasserver.websockets.handlers.event import (
     dehydrate_event_type_level,
     EventHandler,
 )
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 
 
 class TestEventHandler(MAASServerTestCase):
@@ -197,8 +194,8 @@ class TestEventHandler(MAASServerTestCase):
         handler = EventHandler(user, {}, None)
         node = factory.make_Node()
         handler.cache["node_ids"].append(node.id)
-        self.expectThat(handler.clear({"node_id": node.id}), Is(None))
-        self.expectThat(handler.cache["node_ids"], Equals([]))
+        self.assertIsNone(handler.clear({"node_id": node.id}))
+        self.assertEqual(handler.cache["node_ids"], [])
 
     def test_on_listen_calls_listen_for_create(self):
         user = factory.make_User()
@@ -207,9 +204,7 @@ class TestEventHandler(MAASServerTestCase):
         mock_listen.return_value = None
         pk = random.randint(1, 1000)
         handler.on_listen(sentinel.channel, "create", pk)
-        self.assertThat(
-            mock_listen, MockCalledOnceWith(sentinel.channel, "create", pk)
-        )
+        mock_listen.assert_called_once_with(sentinel.channel, "create", pk)
 
     def test_on_listen_doesnt_call_listen_for_non_create(self):
         user = factory.make_User()
@@ -220,7 +215,7 @@ class TestEventHandler(MAASServerTestCase):
         action = factory.make_string()
         if action != "create":
             handler.on_listen(sentinel.channel, action, pk)
-            self.assertThat(mock_listen, MockNotCalled())
+            mock_listen.assert_not_called()
 
     def test_on_listen_returns_None_if_obj_no_longer_exists(self):
         user = factory.make_User()

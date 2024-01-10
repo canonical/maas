@@ -5,21 +5,11 @@
 
 
 from itertools import product
+from operator import itemgetter
 import random
 from unittest.mock import sentinel
 
 from testscenarios import multiply_scenarios
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesListwise,
-    Not,
-)
 
 from maasserver.models.notification import (
     NotificationDismissal,
@@ -29,36 +19,39 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime, Handler
 from maasserver.websockets.handlers.notification import NotificationHandler
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 
 
-def MatchesRenderedNotification(ntfn):
-    """Return a matcher for a rendered notification."""
-    return MatchesDict(
-        {
-            "id": Equals(ntfn.id),
-            "ident": Is(None) if ntfn.ident is None else Equals(ntfn.ident),
-            "user": Is(None) if ntfn.user_id is None else Equals(ntfn.user_id),
-            "users": Is(ntfn.users),
-            "admins": Is(ntfn.admins),
-            "updated": Equals(dehydrate_datetime(ntfn.updated)),
-            "created": Equals(dehydrate_datetime(ntfn.created)),
-            "message": Equals(ntfn.render()),
-            "category": Equals(ntfn.category),
-            "dismissable": Equals(ntfn.dismissable),
-        }
+def dismissed_by_user(notification, user):
+    return NotificationDismissal.objects.filter(
+        notification=notification, user=user
+    ).exists()
+
+
+def assertNotificationEqual(testcase, response, reference_notification):
+    testcase.assertEqual(response["id"], reference_notification.id)
+    if reference_notification.ident is None:
+        testcase.assertIsNone(response["ident"])
+    else:
+        testcase.assertEqual(response["ident"], reference_notification.ident)
+    if reference_notification.user_id is None:
+        testcase.assertIsNone(response["user"])
+    else:
+        testcase.assertEqual(response["user"], reference_notification.user_id)
+    testcase.assertIs(response["users"], reference_notification.users)
+    testcase.assertIs(response["admins"], reference_notification.admins)
+    testcase.assertEqual(
+        response["updated"],
+        dehydrate_datetime(reference_notification.updated),
     )
-
-
-def HasBeenDismissedBy(user):
-    """Has `user` dismissed the notification we're matching against?"""
-
-    def dismissed_by_user(notification):
-        return NotificationDismissal.objects.filter(
-            notification=notification, user=user
-        ).exists()
-
-    return AfterPreprocessing(dismissed_by_user, Is(True))
+    testcase.assertEqual(
+        response["created"],
+        dehydrate_datetime(reference_notification.created),
+    )
+    testcase.assertEqual(response["message"], reference_notification.render())
+    testcase.assertEqual(response["category"], reference_notification.category)
+    testcase.assertEqual(
+        response["dismissable"], reference_notification.dismissable
+    )
 
 
 class TestNotificationHandler(MAASServerTestCase):
@@ -68,10 +61,8 @@ class TestNotificationHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
-        self.assertThat(
-            handler.get({"id": notification.id}),
-            MatchesRenderedNotification(notification),
-        )
+        data = handler.get({"id": notification.id})
+        assertNotificationEqual(self, data, notification)
 
     def test_list(self):
         user = factory.make_User()
@@ -85,11 +76,14 @@ class TestNotificationHandler(MAASServerTestCase):
             factory.make_Notification(admins=True),
             factory.make_Notification(admins=False),
         ]
-        expected = [
-            MatchesRenderedNotification(notifications[0]),
-            MatchesRenderedNotification(notifications[2]),
-        ]
-        self.assertThat(handler.list({}), MatchesListwise(expected))
+        this_user_notification = notifications[0]
+        all_users_notification = notifications[2]
+        response = sorted(handler.list({}), key=itemgetter("id"))
+
+        self.assertEqual(len(response), 2)
+        (n1, n2) = response
+        assertNotificationEqual(self, n1, this_user_notification)
+        assertNotificationEqual(self, n2, all_users_notification)
 
     def test_list_for_admin(self):
         admin = factory.make_admin()
@@ -103,19 +97,21 @@ class TestNotificationHandler(MAASServerTestCase):
             factory.make_Notification(admins=True),  # Will match.
             factory.make_Notification(admins=False),
         ]
-        expected = [
-            MatchesRenderedNotification(notifications[0]),
-            MatchesRenderedNotification(notifications[4]),
-        ]
-        self.assertThat(handler.list({}), MatchesListwise(expected))
+        this_admin_notification = notifications[0]
+        all_admins_notification = notifications[4]
+        response = sorted(handler.list({}), key=itemgetter("id"))
+        self.assertEqual(len(response), 2)
+        (n1, n2) = response
+        assertNotificationEqual(self, n1, this_admin_notification)
+        assertNotificationEqual(self, n2, all_admins_notification)
 
     def test_dismiss(self):
         user = factory.make_User()
         handler = NotificationHandler(user, {}, None)
         notification = factory.make_Notification(user=user)
-        self.assertThat(notification, Not(HasBeenDismissedBy(user)))
+        self.assertFalse(dismissed_by_user(notification, user))
         handler.dismiss({"id": str(notification.id)})
-        self.assertThat(notification, HasBeenDismissedBy(user))
+        self.assertTrue(dismissed_by_user(notification, user))
 
     def test_not_dismissable(self):
         user = factory.make_User()
@@ -134,9 +130,11 @@ class TestNotificationHandler(MAASServerTestCase):
             factory.make_Notification(user=user),
             factory.make_Notification(users=True),
         ]
-        self.assertThat(notifications, AllMatch(Not(HasBeenDismissedBy(user))))
+        for notification in notifications:
+            self.assertFalse(dismissed_by_user(notification, user))
         handler.dismiss({"id": [str(ntfn.id) for ntfn in notifications]})
-        self.assertThat(notifications, AllMatch(HasBeenDismissedBy(user)))
+        for notification in notifications:
+            self.assertTrue(dismissed_by_user(notification, user))
 
 
 class TestNotificationHandlerListening(MAASServerTestCase):
@@ -149,13 +147,12 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         user = factory.make_User()
         handler = NotificationHandler(user, {}, None)
 
-        self.assertThat(
+        self.assertIs(
             handler.on_listen("notification", sentinel.action, sentinel.pk),
-            Is(sentinel.on_listen),
+            sentinel.on_listen,
         )
-        self.assertThat(
-            super_on_listen,
-            MockCalledOnceWith("notification", sentinel.action, sentinel.pk),
+        super_on_listen.assert_called_once_with(
+            "notification", sentinel.action, sentinel.pk
         )
 
     def test_on_listen_for_dismissal_up_calls_with_delete(self):
@@ -169,15 +166,14 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         # A dismissal notification from the database.
         dismissal = "%d:%d" % (notification.id, user.id)
 
-        self.assertThat(
+        self.assertIs(
             handler.on_listen(
                 "notificationdismissal", sentinel.action, dismissal
             ),
-            Is(sentinel.on_listen),
+            sentinel.on_listen,
         )
-        self.assertThat(
-            super_on_listen,
-            MockCalledOnceWith("notification", "delete", notification.id),
+        super_on_listen.assert_called_once_with(
+            "notification", "delete", notification.id
         )
 
     def test_on_listen_for_dismissal_for_other_user_does_nothing(self):
@@ -191,13 +187,12 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         # A dismissal notification from the database FOR ANOTHER USER.
         dismissal = "%d:%d" % (notification.id, random.randrange(1, 99999))
 
-        self.assertThat(
+        self.assertIsNone(
             handler.on_listen(
                 "notificationdismissal", sentinel.action, dismissal
-            ),
-            Is(None),
+            )
         )
-        self.assertThat(super_on_listen, MockNotCalled())
+        super_on_listen.assert_not_called()
 
     def test_on_listen_for_edited_notification_does_nothing(self):
         super_on_listen = self.patch(Handler, "on_listen")
@@ -208,11 +203,10 @@ class TestNotificationHandlerListening(MAASServerTestCase):
         notification = factory.make_Notification(user=user)
         notification.dismiss(user)
 
-        self.assertThat(
+        self.assertIsNone(
             handler.on_listen("notification", "update", notification.id),
-            Is(None),
         )
-        self.assertThat(super_on_listen, MockNotCalled())
+        super_on_listen.assert_not_called()
 
 
 class TestNotificationHandlerListeningScenarios(MAASServerTestCase):
@@ -251,23 +245,12 @@ class TestNotificationHandlerListeningScenarios(MAASServerTestCase):
             user=to_user, users=self.to_users, admins=self.to_admins
         )
 
-        if notification.is_relevant_to(user):
-            expected = MatchesAll(
-                IsInstance(tuple),
-                MatchesListwise(
-                    (
-                        Equals("notification"),
-                        Equals("create"),
-                        MatchesRenderedNotification(notification),
-                    )
-                ),
-                first_only=True,
-            )
-        else:
-            expected = Is(None)
-
         handler = NotificationHandler(user, {}, None)
-        self.assertThat(
-            handler.on_listen("notification", "create", notification.id),
-            expected,
-        )
+        response = handler.on_listen("notification", "create", notification.id)
+        if notification.is_relevant_to(user):
+            handler_name, action, data = response
+            self.assertEqual(handler_name, "notification")
+            self.assertEqual(action, "create")
+            assertNotificationEqual(self, data, notification)
+        else:
+            self.assertIsNone(response)

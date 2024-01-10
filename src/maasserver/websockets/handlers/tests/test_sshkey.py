@@ -4,8 +4,6 @@
 """Tests for `maasserver.websockets.handlers.sshkey`"""
 
 
-from testtools.matchers import ContainsDict, Equals
-
 from maasserver.models.event import Event
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
@@ -17,7 +15,6 @@ from maasserver.utils.orm import get_one
 from maasserver.websockets.base import HandlerDoesNotExistError, HandlerError
 from maasserver.websockets.handlers.sshkey import SSHKeyHandler
 from maasserver.websockets.handlers.timestampedmodel import dehydrate_datetime
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import AUDIT
 
 
@@ -70,10 +67,8 @@ class TestSSHKeyHandler(MAASServerTestCase):
         handler = SSHKeyHandler(user, {}, None)
         key_string = get_data("data/test_rsa0.pub")
         new_sshkey = handler.create({"key": key_string})
-        self.assertThat(
-            new_sshkey,
-            ContainsDict({"user": Equals(user.id), "key": Equals(key_string)}),
-        )
+        self.assertEqual(new_sshkey.get("user"), user.id)
+        self.assertEqual(new_sshkey.get("key"), key_string)
 
     def test_delete(self):
         user = factory.make_User()
@@ -89,9 +84,8 @@ class TestSSHKeyHandler(MAASServerTestCase):
         auth_id = factory.make_name("auth")
         mock_save_keys = self.patch(KeySource.objects, "save_keys_for_user")
         handler.import_keys({"protocol": protocol, "auth_id": auth_id})
-        self.assertThat(
-            mock_save_keys,
-            MockCalledOnceWith(user=user, protocol=protocol, auth_id=auth_id),
+        mock_save_keys.assert_called_once_with(
+            user=user, protocol=protocol, auth_id=auth_id
         )
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)

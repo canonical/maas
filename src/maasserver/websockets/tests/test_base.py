@@ -9,8 +9,6 @@ from unittest.mock import ANY, MagicMock, sentinel
 
 from django.db.models.query import QuerySet
 from django.http import HttpRequest
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
-from testtools.testcase import ExpectedException
 from twisted.internet.defer import succeed
 
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
@@ -36,7 +34,6 @@ from maasserver.websockets.base import (
     HandlerValidationError,
 )
 from maastesting import get_testing_timeout
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous
@@ -52,34 +49,32 @@ def make_handler(name, **kwargs):
 class TestHandlerMeta(MAASTestCase):
     def test_creates_handler_with_default_meta(self):
         handler = Handler(None, {}, None)
-        self.assertThat(
-            handler._meta,
-            MatchesStructure(
-                abstract=Is(False),
-                allowed_methods=Equals(
-                    [
-                        "list",
-                        "get",
-                        "create",
-                        "update",
-                        "delete",
-                        "set_active",
-                        "unsubscribe",
-                    ]
-                ),
-                handler_name=Equals(""),
-                object_class=Is(None),
-                queryset=Is(None),
-                pk=Equals("id"),
-                fields=Is(None),
-                exclude=Is(None),
-                list_fields=Is(None),
-                list_exclude=Is(None),
-                non_changeable=Is(None),
-                methods_using_apiserver=Equals([]),
-                form=Is(None),
-            ),
+        meta = handler._meta
+        self.assertFalse(meta.abstract)
+        self.assertEqual(
+            meta.allowed_methods,
+            [
+                "list",
+                "get",
+                "create",
+                "update",
+                "delete",
+                "set_active",
+                "unsubscribe",
+            ],
         )
+
+        self.assertEqual(meta.handler_name, "")
+        self.assertIsNone(meta.object_class)
+        self.assertIsNone(meta.queryset)
+        self.assertEqual(meta.pk, "id")
+        self.assertIsNone(meta.fields)
+        self.assertIsNone(meta.exclude)
+        self.assertIsNone(meta.list_fields)
+        self.assertIsNone(meta.list_exclude)
+        self.assertIsNone(meta.non_changeable)
+        self.assertEqual(meta.methods_using_apiserver, [])
+        self.assertIsNone(meta.form)
 
     def test_creates_handler_with_options(self):
         handler = make_handler(
@@ -97,24 +92,23 @@ class TestHandlerMeta(MAASTestCase):
             non_changeable=["system_id"],
             form=sentinel.form,
         )
-        self.assertThat(
-            handler._meta,
-            MatchesStructure(
-                abstract=Is(True),
-                allowed_methods=Equals(["list"]),
-                methods_using_apiserver=Equals(["list"]),
-                handler_name=Equals("testing"),
-                object_class=Is(Node),
-                queryset=IsInstance(QuerySet),
-                pk=Equals("system_id"),
-                fields=Equals(["hostname", "distro_series"]),
-                exclude=Equals(["system_id"]),
-                list_fields=Equals(["hostname"]),
-                list_exclude=Equals(["hostname"]),
-                non_changeable=Equals(["system_id"]),
-                form=Is(sentinel.form),
-            ),
+        meta = handler._meta
+        self.assertTrue(meta.abstract)
+        self.assertEqual(
+            meta.allowed_methods,
+            ["list"],
         )
+        self.assertEqual(meta.handler_name, "testing")
+        self.assertIs(meta.object_class, Node)
+        self.assertIsInstance(meta.queryset, QuerySet)
+        self.assertEqual(meta.pk, "system_id")
+        self.assertEqual(meta.fields, ["hostname", "distro_series"])
+        self.assertEqual(meta.exclude, ["system_id"])
+        self.assertEqual(meta.list_fields, ["hostname"])
+        self.assertEqual(meta.list_exclude, ["hostname"])
+        self.assertEqual(meta.non_changeable, ["system_id"])
+        self.assertEqual(meta.methods_using_apiserver, ["list"])
+        self.assertIs(meta.form, sentinel.form)
 
     def test_sets_handler_name_based_on_class_name(self):
         names = [
@@ -124,7 +118,7 @@ class TestHandlerMeta(MAASTestCase):
         ]
         for class_name, handler_name in names:
             obj = make_handler(class_name)
-            self.expectThat(obj._meta.handler_name, Equals(handler_name))
+            self.assertEqual(obj._meta.handler_name, handler_name)
 
     def test_sets_object_class_based_on_queryset(self):
         handler = make_handler("TestHandler", queryset=Node.objects.all())
@@ -230,27 +224,21 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         mock_dehydrate_hostname = self.patch(handler, "dehydrate_hostname")
         mock_dehydrate_hostname.return_value = sentinel.hostname
         node = factory.make_Node()
-        self.expectThat(
-            {"hostname": sentinel.hostname},
-            Equals(handler.full_dehydrate(node)),
+        self.assertEqual(
+            {"hostname": sentinel.hostname}, handler.full_dehydrate(node)
         )
-        self.expectThat(
-            mock_dehydrate_hostname, MockCalledOnceWith(node.hostname)
-        )
+        mock_dehydrate_hostname.assert_called_once_with(node.hostname)
 
     def test_full_dehydrate_calls_final_dehydrate_method(self):
         handler = self.make_nodes_handler(fields=["hostname"])
         mock_dehydrate = self.patch_autospec(handler, "dehydrate")
         mock_dehydrate.return_value = sentinel.final_dehydrate
         node = factory.make_Node()
-        self.expectThat(
-            sentinel.final_dehydrate, Equals(handler.full_dehydrate(node))
+        self.assertEqual(
+            sentinel.final_dehydrate, handler.full_dehydrate(node)
         )
-        self.expectThat(
-            mock_dehydrate,
-            MockCalledOnceWith(
-                node, {"hostname": node.hostname}, for_list=False
-            ),
+        mock_dehydrate.assert_called_once_with(
+            node, {"hostname": node.hostname}, for_list=False
         )
 
     def test_dehydrate_does_nothing(self):
@@ -273,8 +261,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "hostname": hostname,
             },
         )
-        self.expectThat(system_id, Equals(node.system_id))
-        self.expectThat(hostname, Equals(node.hostname))
+        self.assertEqual(system_id, node.system_id)
+        self.assertEqual(hostname, node.hostname)
 
     def test_full_hydrate_only_sets_allowed_fields(self):
         hostname = factory.make_name("hostname")
@@ -293,9 +281,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "power_type": "manual",
             },
         )
-        self.expectThat(hostname, Equals(node.hostname))
-        self.expectThat(power_state, Equals(node.power_state))
-        self.expectThat("ipmi", Equals(node.power_type))
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual(power_state, node.power_state)
+        self.assertEqual("ipmi", node.power_type)
 
     def test_full_hydrate_only_sets_non_excluded_fields(self):
         hostname = factory.make_name("hostname")
@@ -315,9 +303,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "power_type": "manual",
             },
         )
-        self.expectThat(hostname, Equals(node.hostname))
-        self.expectThat("off", Equals(node.power_state))
-        self.expectThat("ipmi", Equals(node.power_type))
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual("off", node.power_state)
+        self.assertEqual("ipmi", node.power_type)
 
     def test_full_hydrate_only_doesnt_set_fields_not_allowed_to_change(self):
         hostname = factory.make_name("hostname")
@@ -337,9 +325,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "power_type": "manual",
             },
         )
-        self.expectThat(hostname, Equals(node.hostname))
-        self.expectThat("off", Equals(node.power_state))
-        self.expectThat("ipmi", Equals(node.power_type))
+        self.assertEqual(hostname, node.hostname)
+        self.assertEqual("off", node.power_state)
+        self.assertEqual("ipmi", node.power_type)
 
     def test_full_hydrate_calls_fields_hydrate_method_if_present(self):
         call_hostname = factory.make_name("hostname")
@@ -351,10 +339,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         mock_hydrate_hostname = self.patch(handler, "hydrate_hostname")
         mock_hydrate_hostname.return_value = hostname
         handler.full_hydrate(node, {"hostname": call_hostname})
-        self.expectThat(hostname, Equals(node.hostname))
-        self.expectThat(
-            mock_hydrate_hostname, MockCalledOnceWith(call_hostname)
-        )
+        self.assertEqual(hostname, node.hostname)
+        mock_hydrate_hostname.assert_called_once_with(call_hostname)
 
     def test_full_hydrate_calls_final_hydrate_method(self):
         hostname = factory.make_name("hostname")
@@ -364,13 +350,11 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         )
         mock_hydrate = self.patch_autospec(handler, "hydrate")
         mock_hydrate.return_value = sentinel.final_hydrate
-        self.expectThat(
+        self.assertEqual(
             sentinel.final_hydrate,
-            Equals(handler.full_hydrate(node, {"hostname": hostname})),
+            handler.full_hydrate(node, {"hostname": hostname}),
         )
-        self.expectThat(
-            mock_hydrate, MockCalledOnceWith(node, {"hostname": hostname})
-        )
+        mock_hydrate.assert_called_once_with(node, {"hostname": hostname})
 
     def test_hydrate_does_nothing(self):
         handler = self.make_nodes_handler()
@@ -456,13 +440,13 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
 
     def test_execute_only_allows_meta_allowed_methods(self):
         handler = self.make_nodes_handler(allowed_methods=["list"])
-        with ExpectedException(HandlerNoSuchMethodError):
-            handler.execute("get", {}).wait(TIMEOUT)
+        d = handler.execute("get", {})
+        self.assertRaises(HandlerNoSuchMethodError, d.wait, TIMEOUT)
 
     def test_execute_raises_HandlerNoSuchMethodError(self):
         handler = self.make_nodes_handler(allowed_methods=["extra_method"])
-        with ExpectedException(HandlerNoSuchMethodError):
-            handler.execute("extra_method", {}).wait(TIMEOUT)
+        d = handler.execute("extra_method", {})
+        self.assertRaises(HandlerNoSuchMethodError, d.wait, TIMEOUT)
 
     def test_execute_calls_in_database_thread_with_params(self):
         # Methods are assumed by default to be synchronous and are called in a
@@ -472,7 +456,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         self.patch(base, "deferToDatabase").return_value = sentinel.thing
         result = handler.execute("get", params).wait(TIMEOUT)
         self.assertIs(result, sentinel.thing)
-        self.assertThat(base.deferToDatabase, MockCalledOnceWith(ANY, params))
+        base.deferToDatabase.assert_called_once_with(ANY, params)
 
     def test_apiserver_client_initialization(self):
         # Methods are assumed by default to be synchronous and are called in a
@@ -488,7 +472,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         self.patch(base, "deferToThread").return_value = sentinel.thing
         result = handler.execute("get", params).wait(TIMEOUT)
         self.assertIs(result, sentinel.thing)
-        self.assertThat(base.deferToThread, MockCalledOnceWith(ANY, params))
+        base.deferToThread.assert_called_once_with(ANY, params)
 
     def test_execute_track_latency(self):
         mock_metrics = self.patch(PROMETHEUS_METRICS, "update")
@@ -697,8 +681,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         )
         name = factory.make_name("zone")
         json_obj = handler.create({"name": name})
-        self.expectThat({"name": name, "description": ""}, Equals(json_obj))
-        self.expectThat(name, Equals(Zone.objects.get(name=name).name))
+        self.assertEqual({"name": name, "description": ""}, json_obj)
+        self.assertEqual(name, Zone.objects.get(name=name).name)
 
     def test_create_without_form_uses_object_id(self):
         # Uses a VLAN, which only requires a Fabric.
@@ -710,10 +694,10 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         fabric = factory.make_Fabric()
         vid = random.randint(1, 4094)
         json_obj = handler.create({"vid": vid, "fabric": fabric.id})
-        self.expectThat({"vid": vid, "fabric": fabric.id}, Equals(json_obj))
+        self.assertEqual({"vid": vid, "fabric": fabric.id}, json_obj)
         vlan = VLAN.objects.get(vid=vid)
-        self.expectThat(vid, Equals(vlan.vid))
-        self.expectThat(fabric, Equals(fabric))
+        self.assertEqual(vid, vlan.vid)
+        self.assertEqual(fabric, fabric)
 
     def test_create_with_form_creates_node(self):
         hostname = factory.make_name("hostname")
@@ -730,8 +714,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "mac_addresses": [factory.make_mac_address()],
             }
         )
-        self.expectThat(
-            {"hostname": hostname, "architecture": arch}, Equals(json_obj)
+        self.assertEqual(
+            {"hostname": hostname, "architecture": arch}, json_obj
         )
 
     def test_create_with_form_uses_form_from_get_form_class(self):
@@ -749,8 +733,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                 "mac_addresses": [factory.make_mac_address()],
             }
         )
-        self.expectThat(
-            {"hostname": hostname, "architecture": arch}, Equals(json_obj)
+        self.assertEqual(
+            {"hostname": hostname, "architecture": arch}, json_obj
         )
 
     def test_create_raised_permission_error(self):
@@ -803,8 +787,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         json_obj = handler.update(
             {"system_id": node.system_id, "hostname": hostname}
         )
-        self.expectThat({"hostname": hostname}, Equals(json_obj))
-        self.expectThat(reload_object(node).hostname, Equals(hostname))
+        self.assertEqual({"hostname": hostname}, json_obj)
+        self.assertEqual(reload_object(node).hostname, hostname)
 
     def test_update_with_form_updates_node(self):
         arch = make_usable_architecture(self)
@@ -817,8 +801,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         json_obj = handler.update(
             {"system_id": node.system_id, "hostname": hostname}
         )
-        self.expectThat({"hostname": hostname}, Equals(json_obj))
-        self.expectThat(reload_object(node).hostname, Equals(hostname))
+        self.assertEqual({"hostname": hostname}, json_obj)
+        self.assertEqual(reload_object(node).hostname, hostname)
 
     def test_update_with_form_uses_form_from_get_form_class(self):
         arch = make_usable_architecture(self)
@@ -830,8 +814,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         json_obj = handler.update(
             {"system_id": node.system_id, "hostname": hostname}
         )
-        self.expectThat({"hostname": hostname}, Equals(json_obj))
-        self.expectThat(reload_object(node).hostname, Equals(hostname))
+        self.assertEqual({"hostname": hostname}, json_obj)
+        self.assertEqual(reload_object(node).hostname, hostname)
 
     def test_update_with_form_raises_permission_error(self):
         arch = make_usable_architecture(self)
@@ -866,7 +850,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler = self.make_nodes_handler()
         mock_get = self.patch(handler, "get")
         handler.set_active({})
-        self.assertThat(mock_get, MockNotCalled())
+        mock_get.assert_not_called()
 
     def test_set_active_clears_active_if_missing_pk(self):
         handler = self.make_nodes_handler()
@@ -878,8 +862,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         node = factory.make_Node()
         handler = self.make_nodes_handler(fields=["system_id"])
         node_data = handler.set_active({"system_id": node.system_id})
-        self.expectThat(node_data["system_id"], Equals(node.system_id))
-        self.expectThat(handler.cache["active_pk"], Equals(node.system_id))
+        self.assertEqual(node_data["system_id"], node.system_id)
+        self.assertEqual(handler.cache["active_pk"], node.system_id)
 
     def test_on_listen_calls_listen(self):
         handler = self.make_nodes_handler()
@@ -887,9 +871,8 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         mock_listen = self.patch(handler, "listen")
         mock_listen.side_effect = HandlerDoesNotExistError()
         handler.on_listen(sentinel.channel, sentinel.action, pk)
-        self.assertThat(
-            mock_listen,
-            MockCalledOnceWith(sentinel.channel, sentinel.action, pk),
+        mock_listen.assert_called_once_with(
+            sentinel.channel, sentinel.action, pk
         )
 
     def test_on_listen_returns_None_if_unknown_action(self):
@@ -1009,13 +992,11 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler.cache["loaded_pks"].add(node.system_id)
         mock_dehydrate = self.patch(handler, "full_dehydrate")
         mock_dehydrate.return_value = sentinel.data
-        self.expectThat(
+        self.assertEqual(
             handler.on_listen(sentinel.channel, "update", node.system_id),
-            Equals((handler._meta.handler_name, "update", sentinel.data)),
+            (handler._meta.handler_name, "update", sentinel.data),
         )
-        self.expectThat(
-            mock_dehydrate, MockCalledOnceWith(node, for_list=True)
-        )
+        mock_dehydrate.assert_called_once_with(node, for_list=True)
 
     def test_on_listen_update_call_full_dehydrate_not_for_list_if_active(self):
         node = factory.make_Node()
@@ -1024,25 +1005,22 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         handler.cache["active_pk"] = node.system_id
         mock_dehydrate = self.patch(handler, "full_dehydrate")
         mock_dehydrate.return_value = sentinel.data
-        self.expectThat(
+        self.assertEqual(
             handler.on_listen(sentinel.channel, "update", node.system_id),
-            Equals((handler._meta.handler_name, "update", sentinel.data)),
+            (handler._meta.handler_name, "update", sentinel.data),
         )
-        self.expectThat(
-            mock_dehydrate, MockCalledOnceWith(node, for_list=False)
-        )
+        mock_dehydrate.assert_called_once_with(node, for_list=False)
 
     def test_listen_calls_get_object_with_pk_on_other_actions(self):
         handler = self.make_nodes_handler()
         mock_get_object = self.patch(handler, "get_object")
         mock_get_object.return_value = sentinel.obj
-        self.expectThat(
+        self.assertEqual(
             handler.listen(sentinel.channel, "update", sentinel.pk),
-            Equals(sentinel.obj),
+            sentinel.obj,
         )
-        self.expectThat(
-            mock_get_object,
-            MockCalledOnceWith({handler._meta.pk: sentinel.pk}),
+        mock_get_object.assert_called_once_with(
+            {handler._meta.pk: sentinel.pk}
         )
 
     def test_sort_simple(self):

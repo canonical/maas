@@ -6,8 +6,6 @@ from unittest.mock import sentinel
 
 from fixtures import FakeLogger
 from netaddr import IPNetwork
-from testtools import ExpectedException
-from testtools.matchers import MatchesRegex
 
 from maasserver.api import discoveries as discoveries_module
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
@@ -18,7 +16,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.subnet import SubnetHandler
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.utils.network import IPRangeStatistics
 
 
@@ -137,7 +134,7 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": subnet.id})
 
     def test_reloads_user(self):
@@ -146,7 +143,7 @@ class TestSubnetHandlerDelete(MAASServerTestCase):
         subnet = factory.make_Subnet()
         user.is_superuser = False
         user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": subnet.id})
 
 
@@ -174,7 +171,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         vlan = factory.make_VLAN()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
 
     def test_create_reloads_user(self):
@@ -183,7 +180,7 @@ class TestSubnetHandlerCreate(MAASServerTestCase):
         vlan = factory.make_VLAN()
         user.is_superuser = False
         user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.create({"vlan": vlan.id, "cidr": "192.168.0.0/24"})
 
 
@@ -217,7 +214,7 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.update({"id": subnet.id})
 
     def test_reloads_user(self):
@@ -226,7 +223,7 @@ class TestSubnetHandlerUpdate(MAASServerTestCase):
         subnet = factory.make_Subnet()
         user.is_superuser = False
         user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.update({"id": subnet.id})
 
 
@@ -251,12 +248,9 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         cidr = subnet.get_ipnetwork()
         result = handler.scan({"id": subnet.id})
         self.assertEqual(sentinel.result, result)
-        self.assertThat(
-            self.scan_all_rack_networks, MockCalledOnceWith(cidrs=[cidr])
-        )
-        self.assertThat(
-            self.user_friendly_scan_results,
-            MockCalledOnceWith(sentinel.rpc_result),
+        self.scan_all_rack_networks.assert_called_once_with(cidrs=[cidr])
+        self.user_friendly_scan_results.assert_called_once_with(
+            sentinel.rpc_result
         )
 
     def test_scan_as_admin_logs_the_fact_that_a_scan_happened(self):
@@ -270,33 +264,33 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         handler.scan({"id": subnet.id})
         # Use MatchesRegex here rather than DocTestMatches because usernames
         # can contain characters that confuse DocTestMatches (e.g. periods).
-        self.assertThat(
+        self.assertRegex(
             logger.output,
-            MatchesRegex(
-                "User '%s' initiated a neighbour discovery scan against subnet: %s"
-                % (re.escape(user.username), re.escape(str(cidr)))
-            ),
+            "User '%s' initiated a neighbour discovery scan against subnet: %s"
+            % (re.escape(user.username), re.escape(str(cidr))),
         )
 
     def test_scan_ipv6_fails(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=6)
-        with ExpectedException(ValueError, ".*only IPv4.*"):
+        with self.assertRaisesRegex(ValueError, ".*only IPv4.*"):
             handler.scan({"id": subnet.id})
 
     def test_scan_fails_if_no_rack_is_configured_with_subnet(self):
         user = factory.make_admin()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet(version=4)
-        with ExpectedException(ValueError, ".*must be configured on a rack*"):
+        with self.assertRaisesRegex(
+            ValueError, ".*must be configured on a rack*"
+        ):
             handler.scan({"id": subnet.id})
 
     def test_scan_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = SubnetHandler(user, {}, None)
         subnet = factory.make_Subnet()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.scan({"id": subnet.id})
 
     def test_reloads_user(self):
@@ -305,5 +299,5 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         subnet = factory.make_Subnet()
         user.is_superuser = False
         user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.scan({"id": subnet.id})

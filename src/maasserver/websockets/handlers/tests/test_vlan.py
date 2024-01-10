@@ -4,9 +4,6 @@
 
 import random
 
-from testtools import ExpectedException
-from testtools.matchers import ContainsDict, Equals
-
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
@@ -100,16 +97,9 @@ class TestVLANHandler(MAASServerTestCase):
         new_vlan = handler.create(
             {"fabric": fabric.id, "vid": vid, "name": name}
         )
-        self.assertThat(
-            new_vlan,
-            ContainsDict(
-                {
-                    "fabric": Equals(fabric.id),
-                    "name": Equals(name),
-                    "vid": Equals(vid),
-                }
-            ),
-        )
+        self.assertEqual(new_vlan.get("fabric"), fabric.id)
+        self.assertEqual(new_vlan.get("name"), name)
+        self.assertEqual(new_vlan.get("vid"), vid)
 
 
 class TestVLANHandlerUpdate(MAASServerTestCase):
@@ -118,8 +108,11 @@ class TestVLANHandlerUpdate(MAASServerTestCase):
         handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
         old_name = vlan.name
-        with ExpectedException(HandlerPermissionError):
-            handler.update({"id": vlan.id, "name": "new-name"})
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.update,
+            {"id": vlan.id, "name": "new-name"},
+        )
         vlan = reload_object(vlan)
         self.assertEqual(old_name, vlan.name)
 
@@ -153,8 +146,9 @@ class TestVLANHandlerDelete(MAASServerTestCase):
         user = factory.make_User()
         handler = VLANHandler(user, {}, None)
         vlan = factory.make_VLAN()
-        with ExpectedException(HandlerPermissionError):
-            handler.delete({"id": vlan.id})
+        self.assertRaises(
+            HandlerPermissionError, handler.delete, {"id": vlan.id}
+        )
 
 
 class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
@@ -196,13 +190,14 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         rack = factory.make_RackController()
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=rack, vlan=vlan)
         factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
-        with ExpectedException(HandlerValidationError):
-            handler.configure_dhcp(
-                {
-                    "id": vlan.id,
-                    "controllers": [rack.system_id, rack.system_id],
-                }
-            )
+        self.assertRaises(
+            HandlerValidationError,
+            handler.configure_dhcp,
+            {
+                "id": vlan.id,
+                "controllers": [rack.system_id, rack.system_id],
+            },
+        )
 
     def test_configure_dhcp_with_no_parameters_disables_dhcp(self):
         user = factory.make_admin()
@@ -242,8 +237,11 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
         vlan.primary_rack = rack
         vlan.save()
         factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
-        with ExpectedException(HandlerPermissionError):
-            handler.configure_dhcp({"id": vlan.id, "controllers": []})
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.configure_dhcp,
+            {"id": vlan.id, "controllers": []},
+        )
 
     def test_configure_dhcp_optionally_creates_iprange(self):
         user = factory.make_admin()
@@ -385,19 +383,20 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
             vlan=vlan, cidr="10.0.0.0/24", gateway_ip=""
         )
         self.assertEqual(0, subnet.get_dynamic_ranges().count())
-        with ExpectedException(ValueError):
-            handler.configure_dhcp(
-                {
-                    "id": vlan.id,
-                    "controllers": [rack.system_id],
-                    "extra": {
-                        "subnet": subnet.id,
-                        "gateway": "1.0.0.1",
-                        "start": "10.0.0.2",
-                        "end": "10.0.0.99",
-                    },
-                }
-            )
+        self.assertRaises(
+            ValueError,
+            handler.configure_dhcp,
+            {
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "1.0.0.1",
+                    "start": "10.0.0.2",
+                    "end": "10.0.0.99",
+                },
+            },
+        )
 
     def test_configure_dhcp_gateway_fe80_allowed(self):
         user = factory.make_admin()
@@ -434,20 +433,20 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
             vlan=vlan, cidr="10.0.0.0/24", gateway_ip=""
         )
         self.assertEqual(0, subnet.get_dynamic_ranges().count())
-        with ExpectedException(ValueError):
-            handler.configure_dhcp(
-                {
-                    "id": vlan.id,
-                    "controllers": [rack.system_id],
-                    "extra": {
-                        "subnet": subnet.id,
-                        "gateway": "10.0.0.1",
-                        "start": "10.0.0.1",
-                        "end": "10.0.0.99",
-                    },
-                }
-            )
-        vlan = reload_object(vlan)
+        self.assertRaises(
+            ValueError,
+            handler.configure_dhcp,
+            {
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "10.0.0.1",
+                    "start": "10.0.0.1",
+                    "end": "10.0.0.99",
+                },
+            },
+        )
 
     def test_configure_dhcp_gateway_raises_if_dynamic_range_required(self):
         user = factory.make_admin()
@@ -459,19 +458,20 @@ class TestVLANHandlerConfigureDHCP(MAASServerTestCase):
             vlan=vlan, cidr="10.0.0.0/24", gateway_ip=""
         )
         self.assertEqual(0, subnet.get_dynamic_ranges().count())
-        with ExpectedException(ValueError):
-            handler.configure_dhcp(
-                {
-                    "id": vlan.id,
-                    "controllers": [rack.system_id],
-                    "extra": {
-                        "subnet": subnet.id,
-                        "gateway": "10.0.0.1",
-                        "start": "",
-                        "end": "",
-                    },
-                }
-            )
+        self.assertRaises(
+            ValueError,
+            handler.configure_dhcp,
+            {
+                "id": vlan.id,
+                "controllers": [rack.system_id],
+                "extra": {
+                    "subnet": subnet.id,
+                    "gateway": "10.0.0.1",
+                    "start": "",
+                    "end": "",
+                },
+            },
+        )
 
     def test_configure_dhcp_ignores_undefined_subnet(self):
         user = factory.make_admin()

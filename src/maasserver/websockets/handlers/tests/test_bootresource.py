@@ -5,7 +5,6 @@ import datetime
 import random
 from unittest.mock import ANY
 
-from testtools.matchers import ContainsAll, HasLength
 from twisted.internet import reactor
 from twisted.internet.defer import succeed
 
@@ -34,7 +33,6 @@ from maasserver.utils.orm import get_one, reload_object
 from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers import bootresource
 from maasserver.websockets.handlers.bootresource import BootResourceHandler
-from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from provisioningserver.config import DEFAULT_IMAGES_URL, DEFAULT_KEYRINGS_PATH
 
 
@@ -317,24 +315,22 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_usable_boot_resource()
         response = handler.poll({})
         resource = response["resources"][0]
-        self.assertThat(
-            resource,
-            ContainsAll(
-                [
-                    "id",
-                    "rtype",
-                    "name",
-                    "title",
-                    "arch",
-                    "size",
-                    "complete",
-                    "status",
-                    "icon",
-                    "downloading",
-                    "numberOfNodes",
-                    "lastUpdate",
-                ]
-            ),
+        self.assertGreaterEqual(
+            resource.keys(),
+            {
+                "id",
+                "rtype",
+                "name",
+                "title",
+                "arch",
+                "size",
+                "complete",
+                "status",
+                "icon",
+                "downloading",
+                "numberOfNodes",
+                "lastUpdate",
+            },
         )
 
     def test_returns_ubuntu_release_version_name(self):
@@ -841,7 +837,7 @@ class TestBootResourceStopImport(MAASTransactionServerTestCase):
         handler = BootResourceHandler(owner, {}, None)
         mock_stop_import = self.patch_stop_import_resources()
         result = handler.stop_import({})
-        self.assertThat(mock_stop_import, MockCalledOnceWith())
+        mock_stop_import.assert_called_once_with()
         self.assertEqual(handler.poll({}), result)
 
 
@@ -881,8 +877,8 @@ class TestBootResourceSaveUbuntu(
         handler.save_ubuntu(
             {"url": sources[0].url, "releases": [], "arches": []}
         )
-        self.assertThat(mock_stop_import, MockCalledOnceWith())
-        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
+        mock_stop_import.assert_called_once_with()
+        mock_import.assert_called_once_with(notify=ANY)
 
     def test_sets_release_selections(self):
         owner = factory.make_admin()
@@ -903,7 +899,7 @@ class TestBootResourceSaveUbuntu(
         )
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
-        self.assertThat(selections, HasLength(len(releases)))
+        self.assertEqual(len(selections), len(releases))
         self.assertCountEqual(
             releases, [selection.release for selection in selections]
         )
@@ -1048,8 +1044,8 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
         mock_stop_import = self.patch_stop_import_resources()
         mock_import = self.patch_import_resources()
         handler.save_ubuntu_core({"images": []})
-        self.assertThat(mock_stop_import, MockCalledOnceWith())
-        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
+        mock_stop_import.assert_called_once_with()
+        mock_import.assert_called_once_with(notify=ANY)
 
 
 class TestBootResourceSaveOther(MAASTransactionServerTestCase):
@@ -1143,8 +1139,8 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
         mock_stop_import = self.patch_stop_import_resources()
         mock_import = self.patch_import_resources()
         handler.save_other({"images": []})
-        self.assertThat(mock_stop_import, MockCalledOnceWith())
-        self.assertThat(mock_import, MockCalledOnceWith(notify=ANY))
+        mock_stop_import.assert_called_once_with()
+        mock_import.assert_called_once_with(notify=ANY)
 
 
 class TestBootResourceFetch(MAASServerTestCase):
@@ -1182,15 +1178,11 @@ class TestBootResourceFetch(MAASServerTestCase):
             {"url": url, "keyring_data": keyring_data},
         )
         self.assertEqual("Mirror provides no Ubuntu images.", str(error))
-        self.assertThat(mock_set_env, MockCalledOnce())
-        self.assertThat(
-            mock_write_keyrings, MockCalledOnceWith(ANY, [expected_source])
-        )
-        self.assertThat(
-            mock_download,
-            MockCalledOnceWith(
-                [expected_source], user_agent=get_maas_user_agent()
-            ),
+        mock_set_env.assert_called_once()
+        mock_write_keyrings.assert_called_once_with(ANY, [expected_source])
+
+        mock_download.assert_called_once_with(
+            [expected_source], user_agent=get_maas_user_agent()
         )
 
     def test_url_without_trailing_slash(self):
@@ -1214,9 +1206,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             handler.fetch,
             {"url": url, "keyring_data": keyring_data},
         )
-        self.assertThat(
-            mock_write_keyrings, MockCalledOnceWith(ANY, [expected_source])
-        )
+        mock_write_keyrings.assert_called_once_with(ANY, [expected_source])
 
     def test_raises_error_on_downloading_resources(self):
         owner = factory.make_admin()

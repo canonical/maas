@@ -3,7 +3,6 @@
 
 
 from datetime import datetime, timedelta
-from functools import partial
 import json
 import logging
 from operator import itemgetter
@@ -15,18 +14,7 @@ from unittest.mock import ANY
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from lxml import etree
-from testtools import ExpectedException
 from testtools.content import text_content
-from testtools.matchers import (
-    ContainsDict,
-    Equals,
-    MatchesDict,
-    MatchesException,
-    MatchesListwise,
-    MatchesStructure,
-    Raises,
-    StartsWith,
-)
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.enum import (
@@ -125,7 +113,6 @@ from maasserver.websockets.handlers.node_result import NodeResultHandler
 from maasserver.workflow import power as power_workflow
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import TwistedLoggerFixture
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -2147,15 +2134,11 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_Filesystem(
             node_config=machine.current_config, label="acquired", acquired=True
         )
-        self.assertThat(
-            handler.get({"system_id": machine.system_id}),
-            ContainsDict(
-                {
-                    "special_filesystems": Equals(
-                        [handler.dehydrate_filesystem(filesystem)]
-                    )
-                }
-            ),
+        self.assertEqual(
+            handler.get({"system_id": machine.system_id})[
+                "special_filesystems"
+            ],
+            [handler.dehydrate_filesystem(filesystem)],
         )
 
     def test_get_includes_acquired_special_filesystems(self):
@@ -2170,15 +2153,11 @@ class TestMachineHandler(MAASServerTestCase):
         filesystem = factory.make_Filesystem(
             node_config=machine.current_config, label="acquired", acquired=True
         )
-        self.assertThat(
-            handler.get({"system_id": machine.system_id}),
-            ContainsDict(
-                {
-                    "special_filesystems": Equals(
-                        [handler.dehydrate_filesystem(filesystem)]
-                    )
-                }
-            ),
+        self.assertEqual(
+            handler.get({"system_id": machine.system_id})[
+                "special_filesystems"
+            ],
+            [handler.dehydrate_filesystem(filesystem)],
         )
 
     def test_get_includes_static_ip_addresses(self):
@@ -2429,15 +2408,15 @@ class TestMachineHandler(MAASServerTestCase):
                 "power_parameters": {},
             }
         )
-        self.expectThat(created_node["hostname"], Equals(hostname))
-        self.expectThat(created_node["pxe_mac"], Equals(mac))
-        self.expectThat(created_node["extra_macs"], Equals([]))
-        self.expectThat(created_node["link_speeds"], Equals([]))
-        self.expectThat(created_node["architecture"], Equals(architecture))
-        self.expectThat(created_node["description"], Equals(description))
-        self.expectThat(created_node["zone"]["id"], Equals(zone.id))
-        self.expectThat(created_node["power_type"], Equals("manual"))
-        self.expectThat(created_node["power_parameters"], Equals({}))
+        self.assertEqual(created_node["hostname"], hostname)
+        self.assertEqual(created_node["pxe_mac"], mac)
+        self.assertEqual(created_node["extra_macs"], [])
+        self.assertEqual(created_node["link_speeds"], [])
+        self.assertEqual(created_node["architecture"], architecture)
+        self.assertEqual(created_node["description"], description)
+        self.assertEqual(created_node["zone"]["id"], zone.id)
+        self.assertEqual(created_node["power_type"], "manual")
+        self.assertEqual(created_node["power_parameters"], {})
 
     def test_create_starts_auto_commissioning(self):
         user = factory.make_admin()
@@ -2461,7 +2440,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "power_parameters": {},
             }
         )
-        self.assertThat(mock_start_commissioning, MockCalledOnceWith(user))
+        mock_start_commissioning.assert_called_once_with(user)
 
     def test_create_creates_deployed_node(self):
         user = factory.make_admin()
@@ -2521,16 +2500,13 @@ class TestMachineHandler(MAASServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.update, node_data
         )
-        self.assertThat(
+        self.assertEqual(
             error.message_dict,
-            Equals(
-                {
-                    "architecture": [
-                        "'%s' is not a valid architecture.  "
-                        "It should be one of: ''." % arch
-                    ]
-                }
-            ),
+            {
+                "architecture": [
+                    f"'{arch}' is not a valid architecture.  It should be one of: ''."
+                ]
+            },
         )
 
     def test_update_updates_node(self):
@@ -2558,21 +2534,19 @@ class TestMachineHandler(MAASServerTestCase):
             "power_address": power_address,
         }
         updated_node = handler.update(node_data)
-        self.expectThat(updated_node["hostname"], Equals(new_hostname))
-        self.expectThat(updated_node["architecture"], Equals(new_architecture))
-        self.expectThat(updated_node["description"], Equals(new_description))
-        self.expectThat(updated_node["zone"]["id"], Equals(new_zone.id))
-        self.expectThat(updated_node["pool"]["id"], Equals(new_pool.id))
-        self.expectThat(updated_node["power_type"], Equals("virsh"))
-        self.expectThat(
+        self.assertEqual(updated_node["hostname"], new_hostname)
+        self.assertEqual(updated_node["architecture"], new_architecture)
+        self.assertEqual(updated_node["description"], new_description)
+        self.assertEqual(updated_node["zone"]["id"], new_zone.id)
+        self.assertEqual(updated_node["pool"]["id"], new_pool.id)
+        self.assertEqual(updated_node["power_type"], "virsh")
+        self.assertEqual(
             updated_node["power_parameters"],
-            Equals(
-                {
-                    "power_id": power_id,
-                    "power_pass": power_pass,
-                    "power_address": power_address,
-                }
-            ),
+            {
+                "power_id": power_id,
+                "power_pass": power_pass,
+                "power_address": power_address,
+            },
         )
 
     def test_update_no_pool(self):
@@ -2598,7 +2572,7 @@ class TestMachineHandler(MAASServerTestCase):
             "power_address": power_address,
         }
         updated_node = handler.update(node_data)
-        self.expectThat(updated_node["pool"]["id"], Equals(node.pool.id))
+        self.assertEqual(updated_node["pool"]["id"], node.pool.id)
 
     def test_update_adds_tags_to_node(self):
         user = factory.make_admin()
@@ -2714,14 +2688,9 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(new_name, block_device.name)
         self.assertCountEqual(new_tags, block_device.tags)
         efs = block_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=new_fstype,
-                mount_point=new_mount_point,
-                mount_options=new_mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, new_fstype)
+        self.assertEqual(efs.mount_point, new_mount_point)
+        self.assertEqual(efs.mount_options, new_mount_options)
 
     def test_update_disk_for_virtual_block_device(self):
         user = factory.make_admin()
@@ -3087,14 +3056,9 @@ class TestMachineHandler(MAASServerTestCase):
             human_readable_bytes(partition.size),
         )
         efs = partition.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, fstype)
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_create_partition_locked_raises_permission_error(self):
         user = factory.make_admin()
@@ -3226,14 +3190,9 @@ class TestMachineHandler(MAASServerTestCase):
             partition, bcache.get_bcache_backing_filesystem().partition
         )
         efs = bcache.virtual_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, fstype)
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_create_bcache_for_block_device(self):
         user = factory.make_admin()
@@ -3300,14 +3259,9 @@ class TestMachineHandler(MAASServerTestCase):
             bcache.get_bcache_backing_filesystem().block_device.id,
         )
         efs = bcache.virtual_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, fstype)
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_create_bcache_set_locked_raises_permission_error(self):
         user = factory.make_admin()
@@ -3391,14 +3345,9 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(name, raid.name)
         self.assertEqual("raid-5", raid.group_type)
         efs = raid.virtual_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, fstype)
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_create_raid_locked_raises_permission_error(self):
         user = factory.make_admin()
@@ -3493,14 +3442,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         self.assertEqual(size, logical_volume.size)
         efs = logical_volume.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                fstype=fstype,
-                mount_point=mount_point,
-                mount_options=mount_options,
-            ),
-        )
+        self.assertEqual(efs.fstype, fstype)
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_create_logical_volume_locked_raises_permission_error(self):
         user = factory.make_admin()
@@ -4290,7 +4234,7 @@ class TestMachineHandler(MAASServerTestCase):
         nic2 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, vlan=nic1.vlan
         )
-        with ExpectedException(ValidationError):
+        with self.assertRaisesRegex(ValidationError, "This field is required"):
             handler.create_bond(
                 {"system_id": node.system_id, "parents": [nic1.id, nic2.id]}
             )
@@ -4354,7 +4298,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node()
         handler = MachineHandler(user, {}, None)
         nic1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        with ExpectedException(ValidationError):
+        with self.assertRaisesRegex(ValidationError, "This field is required"):
             handler.create_bridge(
                 {"system_id": node.system_id, "parents": [nic1.id]}
             )
@@ -4441,7 +4385,10 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         new_name = factory.make_name("name")
-        with ExpectedException(ValidationError):
+        with self.assertRaisesRegex(
+            ValidationError,
+            "Select a valid choice. That choice is not one of the available choices.",
+        ):
             handler.update_interface(
                 {
                     "system_id": node.system_id,
@@ -4508,11 +4455,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "ip_address": ip_address,
             }
         )
-        self.assertThat(
-            Interface.update_link_by_id,
-            MockCalledOnceWith(
-                ANY, link_id, mode, subnet, ip_address=ip_address
-            ),
+        Interface.update_link_by_id.assert_called_once_with(
+            ANY, link_id, mode, subnet, ip_address=ip_address
         )
 
     def test_link_subnet_calls_nothing_if_link_id_is_deleted(self):
@@ -4537,7 +4481,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "ip_address": ip_address,
             }
         )
-        self.assertThat(Interface.update_link_by_id, MockNotCalled())
+        Interface.update_link_by_id.assert_not_called()
 
     def test_link_subnet_calls_link_subnet_if_not_link_id(self):
         user = factory.make_admin()
@@ -4557,9 +4501,8 @@ class TestMachineHandler(MAASServerTestCase):
                 "ip_address": ip_address,
             }
         )
-        self.assertThat(
-            Interface.link_subnet,
-            MockCalledOnceWith(ANY, mode, subnet, ip_address=ip_address),
+        Interface.link_subnet.assert_called_once_with(
+            ANY, mode, subnet, ip_address=ip_address
         )
 
     def test_link_subnet_locked_raises_permission_error(self):
@@ -4624,26 +4567,20 @@ class TestMachineHandler(MAASServerTestCase):
             node=node, tags=["rotary"], size=size
         )
         handler = MachineHandler(user, {}, None)
-        self.assertThat(
+        self.assertEqual(
             handler.get_grouped_storages([ssd, hdd, rotary]),
-            MatchesListwise(
-                [
-                    MatchesDict(
-                        {
-                            "count": Equals(1),
-                            "size": Equals(ssd.size),
-                            "disk_type": Equals("ssd"),
-                        }
-                    ),
-                    MatchesDict(
-                        {
-                            "count": Equals(2),
-                            "size": Equals(hdd.size),
-                            "disk_type": Equals("hdd"),
-                        }
-                    ),
-                ]
-            ),
+            [
+                {
+                    "count": 1,
+                    "size": ssd.size,
+                    "disk_type": "ssd",
+                },
+                {
+                    "count": 2,
+                    "size": hdd.size,
+                    "disk_type": "hdd",
+                },
+            ],
         )
 
     def test_scriptresult_cache_allows_duplicate_with_diff_params(self):
@@ -4782,11 +4719,8 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
             {"system_id": node.system_id}
         )
         self.assertEqual(power_state, POWER_STATE.ERROR)
-        self.assertThat(
-            mock_log_err,
-            MockCalledOnceWith(
-                ANY, "Failed to update power state of machine."
-            ),
+        mock_log_err.assert_called_once_with(
+            ANY, "Failed to update power state of machine."
         )
 
 
@@ -4801,14 +4735,12 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.mount_special, params
         )
-        self.assertThat(
+        self.assertEqual(
             dict(error),
-            Equals(
-                {
-                    "fstype": ["This field is required."],
-                    "mount_point": ["This field is required."],
-                }
-            ),
+            {
+                "fstype": ["This field is required."],
+                "mount_point": ["This field is required."],
+            },
         )
 
     def test_fstype_must_be_a_non_storage_type(self):
@@ -4824,16 +4756,12 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
             error = self.assertRaises(
                 HandlerValidationError, handler.mount_special, params
             )
-            self.expectThat(
-                dict(error),
-                ContainsDict(
-                    {
-                        "fstype": MatchesListwise(
-                            [StartsWith("Select a valid choice.")]
-                        )
-                    }
-                ),
-                "using fstype " + fstype,
+            self.assertEqual(
+                dict(error)["fstype"],
+                [
+                    f"Select a valid choice. {fstype} is not one of the available choices."
+                ],
+                f"using fstype {fstype}",
             )
 
     def test_mount_point_must_be_absolute(self):
@@ -4848,14 +4776,11 @@ class TestMachineHandlerMountSpecial(MAASServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.mount_special, params
         )
-        self.assertThat(
-            dict(error),
-            ContainsDict(
-                {
-                    # XXX: Wow, what a lame error from AbsolutePathField!
-                    "mount_point": Equals(["Enter a valid value."])
-                }
-            ),
+        self.assertEqual(
+            dict(error)[
+                "mount_point"
+            ],  # XXX: Wow, what a lame error from AbsolutePathField!
+            ["Enter a valid value."],
         )
 
     def test_locked_raises_permission_error(self):
@@ -4892,19 +4817,13 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
             "mount_options": mount_options,
         }
         self.assertIsNone(handler.mount_special(params))
-        self.assertThat(
-            list(machine.current_config.special_filesystems),
-            MatchesListwise(
-                [
-                    MatchesStructure.byEquality(
-                        fstype=self.fstype,
-                        mount_point=mount_point,
-                        mount_options=mount_options,
-                        node_config=machine.current_config,
-                    )
-                ]
-            ),
-        )
+        special_fss = list(machine.current_config.special_filesystems)
+        self.assertEqual(len(special_fss), 1)
+        fs = special_fss[0]
+        self.assertEqual(fs.fstype, self.fstype)
+        self.assertEqual(fs.mount_point, mount_point)
+        self.assertEqual(fs.mount_options, mount_options)
+        self.assertEqual(fs.node_config, machine.current_config)
 
     def test_user_mounts_non_storage_filesystem_on_allocated_machine(self):
         user = factory.make_User()
@@ -4934,14 +4853,9 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
         self.patch(
             MachineHandler, "_get_node_or_permission_error"
         ).return_value = machine
-        raises_node_state_violation = Raises(
-            MatchesException(
-                NodeStateViolation,
-                re.escape(
-                    "Cannot mount the filesystem because the "
-                    "machine is not Allocated or Ready."
-                ),
-            )
+        err_msg_regex = re.escape(
+            "Cannot mount the filesystem because the "
+            "machine is not Allocated or Ready."
         )
         for status in status_iter:
             machine.status = status
@@ -4951,11 +4865,12 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
                 "mount_point": factory.make_absolute_path(),
                 "mount_options": factory.make_name("options"),
             }
-            self.expectThat(
-                partial(handler.mount_special, params),
-                raises_node_state_violation,
-                "using status %d on %s" % (status, self.fstype),
-            )
+            with self.assertRaisesRegex(
+                NodeStateViolation,
+                err_msg_regex,
+                msg=f"using status {status} on {self.fstype}",
+            ):
+                handler.mount_special(params)
 
 
 class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
@@ -4985,15 +4900,8 @@ class TestMachineHandlerUnmountSpecial(MAASServerTestCase):
         error = self.assertRaises(
             HandlerValidationError, handler.unmount_special, params
         )
-        self.assertThat(
-            dict(error),
-            ContainsDict(
-                {
-                    # XXX: Wow, what a lame error from AbsolutePathField!
-                    "mount_point": Equals(["Enter a valid value."])
-                }
-            ),
-        )
+        # XXX: Wow, what a lame error from AbsolutePathField!
+        self.assertEqual(dict(error)["mount_point"], ["Enter a valid value."])
 
 
 class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
@@ -5047,14 +4955,8 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         self.patch(
             MachineHandler, "_get_node_or_permission_error"
         ).return_value = machine
-        raises_node_state_violation = Raises(
-            MatchesException(
-                NodeStateViolation,
-                re.escape(
-                    "Cannot unmount the filesystem because the "
-                    "machine is not Allocated or Ready."
-                ),
-            )
+        err_msg_regex = re.escape(
+            "Cannot unmount the filesystem because the machine is not Allocated or Ready."
         )
         for status in status_iter:
             machine.status = status
@@ -5067,11 +4969,12 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
                 "system_id": machine.system_id,
                 "mount_point": filesystem.mount_point,
             }
-            self.expectThat(
-                partial(handler.unmount_special, params),
-                raises_node_state_violation,
-                "using status %d on %s" % (status, self.fstype),
-            )
+            with self.assertRaisesRegex(
+                NodeStateViolation,
+                err_msg_regex,
+                msg=f"using status {status} on {self.fstype}",
+            ):
+                handler.unmount_special(params)
 
     def test_locked_raises_permission_error(self):
         admin = factory.make_admin()
@@ -5130,10 +5033,8 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             }
         )
         efs = block_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(mount_point=None, mount_options=None),
-        )
+        self.assertIsNone(efs.mount_point)
+        self.assertIsNone(efs.mount_options)
 
     def test_unmount_partition_filesystem(self):
         user = factory.make_admin()
@@ -5157,10 +5058,8 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             }
         )
         efs = partition.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(mount_point=None, mount_options=None),
-        )
+        self.assertIsNone(efs.mount_point)
+        self.assertIsNone(efs.mount_options)
 
     def test_mount_blockdevice_filesystem(self):
         user = factory.make_admin()
@@ -5185,12 +5084,8 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             }
         )
         efs = block_device.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                mount_point=mount_point, mount_options=mount_options
-            ),
-        )
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_mount_partition_filesystem(self):
         user = factory.make_admin()
@@ -5216,12 +5111,8 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             }
         )
         efs = partition.get_effective_filesystem()
-        self.assertThat(
-            efs,
-            MatchesStructure.byEquality(
-                mount_point=mount_point, mount_options=mount_options
-            ),
-        )
+        self.assertEqual(efs.mount_point, mount_point)
+        self.assertEqual(efs.mount_options, mount_options)
 
     def test_change_blockdevice_filesystem(self):
         user = factory.make_admin()

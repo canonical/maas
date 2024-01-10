@@ -4,8 +4,6 @@
 """Tests for `maasserver.websockets.handlers.sslkey`"""
 
 
-from testtools.matchers import ContainsDict, Equals
-
 from maasserver.models.sslkey import SSLKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -57,10 +55,8 @@ class TestSSLKeyHandler(MAASServerTestCase):
         handler = SSLKeyHandler(user, {}, None)
         key_string = get_data("data/test_x509_0.pem")
         new_sslkey = handler.create({"key": key_string})
-        self.assertThat(
-            new_sslkey,
-            ContainsDict({"user": Equals(user.id), "key": Equals(key_string)}),
-        )
+        self.assertEqual(new_sslkey.get("user"), user.id)
+        self.assertEqual(new_sslkey.get("key"), key_string)
 
     def test_delete(self):
         user = factory.make_User()
