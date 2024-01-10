@@ -25,8 +25,9 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 from twisted.python.filepath import FilePath
+from twisted.web.client import Agent, readBody
 
-from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.boot import BootMethodRegistry, BytesReader
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.kernel_opts import KernelParameters
@@ -106,6 +107,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         self.client_to_remote = {}
         self.client_service = client_service
         self.fetcher = RPCFetcher()
+        self._cache_proxy = Agent(reactor)
 
     def _get_new_client_for_remote(self, remote_ip):
         """Return a new client for the `remote_ip`.
@@ -303,6 +305,16 @@ class TFTPBackend(FilesystemSynchronousBackend):
 
         return self.get_kernel_params(params).addCallback(generate)
 
+    @deferred
+    @inlineCallbacks
+    def get_cache_reader(self, file_name: str | bytes):
+        if type(file_name) == bytes:
+            file_name = file_name.decode("utf-8")
+        url = f"http://localhost:5248/images/{file_name}"
+        resp = yield self._cache_proxy.request(b"GET", url.encode("utf-8"))
+        body = yield readBody(resp)
+        return BytesReader(body)
+
     @staticmethod
     def no_response_errback(failure, file_name):
         failure.trap(BootConfigNoResponse)
@@ -313,7 +325,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
     def handle_boot_method(self, file_name: TFTPPath, protocol: str, result):
         boot_method, params = result
         if boot_method is None:
-            return super().get_reader(file_name)
+            try:
+                return super().get_reader(file_name)
+            except (BackendError, FileNotFound):
+                return self.get_cache_reader(file_name)
 
         # Map pxe namespace architecture names to MAAS's.
         arch = params.get("arch")

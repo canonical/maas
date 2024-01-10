@@ -17,7 +17,7 @@ var (
 
 var (
 	srcDstPathMap = map[string]string{
-		"/usr/lib/shim/shim.efi.signed":                         "bootx64.efi",
+		"/usr/lib/shim/shimx64.efi.signed":                      "bootx64.efi",
 		"/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed": "grubx64.efi",
 		"/usr/lib/PXELINUX/lpxelinux.0":                         "lpxelinux.0",
 		"./lpxelinux.0":                                         "pxelinux.0",
@@ -157,7 +157,12 @@ func NewBootloaderLinker(src, dst string, existing map[string]*BootloaderLinker,
 // Link links the src file to dst if not already linked
 func (b *BootloaderLinker) Link() error {
 	if !b.linked {
-		err := os.Symlink(b.src, b.dst)
+		_, err := os.Stat(b.src)
+		if err != nil {
+			return err
+		}
+
+		err = os.Symlink(b.src, b.dst)
 		if err != nil && !os.IsExist(err) {
 			rmErr := os.Remove(b.dst)
 			if rmErr != nil {

@@ -73,16 +73,16 @@ func TestBootloaderRegistryLinkAll(t *testing.T) {
 
 			err := registry.LinkAll()
 			if err != nil {
-				if tcase.NotFound {
-					assert.True(tt, os.IsNotExist(err), err)
-					return
-				}
 				tt.Error(err)
 			}
 
 			for src, dst := range in {
 				link, err := os.Readlink(path.Join(dir, dst))
 				if err != nil {
+					if tcase.NotFound {
+						assert.True(tt, os.IsNotExist(err), err)
+						continue
+					}
 					tt.Error(err)
 				}
 
