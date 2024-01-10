@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.boot.uefi_amd64`."""
 
 
-import os
 import random
 import re
 
@@ -12,16 +11,10 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import boot
 from provisioningserver.boot import BytesReader
-from provisioningserver.boot import grub as grub_module
-from provisioningserver.boot.grub import (
-    CONFIG_FILE,
-    re_config_file,
-    UEFIAMD64BootMethod,
-)
+from provisioningserver.boot.grub import re_config_file, UEFIAMD64BootMethod
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 
@@ -365,85 +358,3 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
                 backend, f"/grub/grub.cfg-default-{arch}-{subarch}".encode()
             ),
         )
-
-    def test_link_bootloader_creates_grub_cfg(self):
-        method = UEFIAMD64BootMethod()
-        with tempdir() as tmp:
-            stream_path = os.path.join(
-                tmp,
-                "bootloader",
-                method.bios_boot_method,
-                method.bootloader_arches[0],
-            )
-            os.makedirs(stream_path)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(stream_path, bootloader_file)
-
-            method.link_bootloader(tmp)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(tmp, bootloader_file)
-                self.assertTrue(os.path.islink(bootloader_file_path))
-            grub_file_path = os.path.join(tmp, "grub", "grub.cfg")
-            with open(grub_file_path, "r") as fh:
-                contents = fh.read()
-        self.assertIn(CONFIG_FILE, contents)
-
-    def test_link_bootloader_copies_previous_downloaded_files(self):
-        method = UEFIAMD64BootMethod()
-        with tempdir() as tmp:
-            new_dir = os.path.join(tmp, "new")
-            current_dir = os.path.join(tmp, "current")
-            os.makedirs(new_dir)
-            os.makedirs(current_dir)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(current_dir, bootloader_file)
-
-            method.link_bootloader(new_dir)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(new_dir, bootloader_file)
-                self.assertTrue(os.path.isfile(bootloader_file_path))
-
-    def test_link_bootloader_copies_from_system(self):
-        method = UEFIAMD64BootMethod()
-        bootloader_dir = "/var/lib/maas/boot-resources/%s" % factory.make_name(
-            "snapshot"
-        )
-        # Since the fall back looks for paths on the filesystem we need to
-        # intercept the calls and make sure they were called with the right
-        # arguments otherwise the test environment will interfere.
-        allowed_src_files = [
-            "/usr/lib/shim/shim.efi.signed",
-            "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
-        ]
-
-        def fake_exists(path):
-            if path in allowed_src_files:
-                return True
-            else:
-                return False
-
-        self.patch(grub_module.os.path, "exists").side_effect = fake_exists
-        mock_atomic_symlink = self.patch(grub_module, "atomic_symlink")
-
-        method._find_and_copy_bootloaders(bootloader_dir)
-
-        mock_atomic_symlink.assert_any_call(
-            "/usr/lib/shim/shim.efi.signed",
-            os.path.join(bootloader_dir, "bootx64.efi"),
-        )
-        mock_atomic_symlink.assert_any_call(
-            "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
-            os.path.join(bootloader_dir, "grubx64.efi"),
-        )
-
-    def test_link_bootloader_logs_missing_bootloader_files(self):
-        method = UEFIAMD64BootMethod()
-        self.patch(grub_module.os.path, "exists").return_value = False
-        mock_maaslog = self.patch(grub_module.maaslog, "error")
-        bootloader_dir = "/var/lib/maas/boot-resources/%s" % factory.make_name(
-            "snapshot"
-        )
-        method._find_and_copy_bootloaders(bootloader_dir)
-        mock_maaslog.assert_called_once()

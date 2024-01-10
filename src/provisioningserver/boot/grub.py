@@ -10,10 +10,8 @@ import re
 from textwrap import dedent
 
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
-from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.fs import atomic_symlink
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 maaslog = get_maas_logger("uefi_amd64")
@@ -152,46 +150,7 @@ class UEFIAMD64BootMethod(BootMethod):
             template.substitute(namespace).strip().encode("utf-8")
         )
 
-    def _find_and_copy_bootloaders(self, destination, log_missing=True):
-        if not super()._find_and_copy_bootloaders(destination, False):
-            # If a previous copy of the UEFI AMD64 Grub files can't be found
-            # see the files are on the system from an Ubuntu package install.
-            # The package uses a different filename than what MAAS uses so
-            # when we copy make sure the right name is used.
-            missing_files = []
-
-            if os.path.exists("/usr/lib/shim/shim.efi.signed"):
-                atomic_symlink(
-                    "/usr/lib/shim/shim.efi.signed",
-                    os.path.join(destination, "bootx64.efi"),
-                )
-            else:
-                missing_files.append("bootx64.efi")
-
-            if os.path.exists(
-                "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed"
-            ):
-                atomic_symlink(
-                    "/usr/lib/grub/x86_64-efi-signed/grubnetx64.efi.signed",
-                    os.path.join(destination, "grubx64.efi"),
-                )
-            else:
-                missing_files.append("grubx64.efi")
-
-            if missing_files != [] and log_missing:
-                err_msg = (
-                    "Unable to find a copy of %s in the SimpleStream and the "
-                    "packages shim-signed, and grub-efi-amd64-signed are not "
-                    "installed. The %s bootloader type may not work."
-                    % (", ".join(missing_files), self.name)
-                )
-                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
-                maaslog.error(err_msg)
-                return False
-        return True
-
-    def link_bootloader(self, destination: str):
-        super().link_bootloader(destination)
+    def install_templates(self, destination: str):
         config_path = os.path.join(destination, "grub")
         config_dst = os.path.join(config_path, "grub.cfg")
         if not os.path.exists(config_path):

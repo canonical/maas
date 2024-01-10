@@ -5,16 +5,12 @@
 
 
 from itertools import repeat
-import os
 import re
-import shutil
 
 import tempita
 
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
-from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.fs import atomic_copy, atomic_symlink
 
 maaslog = get_maas_logger("pxe")
 
@@ -125,112 +121,3 @@ class PXEBootMethod(BootMethod):
         return BytesReader(
             tempita.Template(step1).substitute(namespace).encode("utf-8")
         )
-
-    def link_bootloader(self, destination: str):
-        """Installs the required files for this boot method into the
-        destination.
-
-        :param destination: path to install bootloader
-        """
-        super().link_bootloader(destination)
-        # When lpxelinux.0 doesn't exist we run find and copy to add that file
-        # in the correct place.
-        lpxelinux = os.path.join(destination, "lpxelinux.0")
-        if not os.path.exists(lpxelinux):
-            self._find_and_copy_bootloaders(
-                destination, bootloader_files=["lpxelinux.0"]
-            )
-
-        # Symlink pxelinux.0 to lpxelinux.0 for backwards compatibility of
-        # external DHCP servers that point next-server to pxelinux.0.
-        pxelinux = os.path.join(destination, "pxelinux.0")
-        atomic_symlink(lpxelinux, pxelinux)
-
-    def _link_simplestream_bootloaders(self, stream_path, destination):
-        super()._link_simplestream_bootloaders(stream_path, destination)
-
-        # MAAS only requires the bootloader_files listed above to boot.
-        # However some users may want to use extra PXE files in custom
-        # configs or for debug. PXELinux checks / and then /syslinux so
-        # create a symlink to the stream_path which contains all extra PXE
-        # files. This also ensures if upstream ever starts requiring more
-        # modules PXE will continue to work.
-        syslinux_dst = os.path.join(destination, "syslinux")
-        atomic_symlink(stream_path, syslinux_dst)
-
-    def _find_and_copy_bootloaders(
-        self, destination, log_missing=True, bootloader_files=None
-    ):
-        if bootloader_files is None:
-            bootloader_files = self.bootloader_files
-        boot_sources_base = os.path.realpath(os.path.join(destination, ".."))
-        default_search_path = os.path.join(boot_sources_base, "current")
-        syslinux_search_path = os.path.join(default_search_path, "syslinux")
-        # In addition to the default search path search the previous
-        # syslinux subdir as well. Previously MAAS didn't copy all of the
-        # files required for PXE into the root tftp path. Also search the
-        # paths the syslinux-common and pxelinux Ubuntu packages installs files
-        # to on Xenial.
-        search_paths = [
-            default_search_path,
-            syslinux_search_path,
-            "/usr/lib/PXELINUX",
-            "/usr/lib/syslinux/modules/bios",
-        ]
-        files_found = []
-        for search_path in search_paths:
-            for bootloader_file in bootloader_files:
-                bootloader_src = os.path.join(search_path, bootloader_file)
-                bootloader_src = os.path.realpath(bootloader_src)
-                bootloader_dst = os.path.join(destination, bootloader_file)
-                if os.path.exists(bootloader_src) and not os.path.exists(
-                    bootloader_dst
-                ):
-                    # If the file was found in a previous snapshot copy it as
-                    # once we're done the previous snapshot will be deleted. If
-                    # the file was found elsewhere on the filesystem create a
-                    # symlink so we stay current with that source.
-                    if boot_sources_base in bootloader_src:
-                        atomic_copy(bootloader_src, bootloader_dst)
-                    else:
-                        atomic_symlink(bootloader_src, bootloader_dst)
-                    files_found.append(bootloader_file)
-
-        missing_files = [
-            bootloader_file
-            for bootloader_file in bootloader_files
-            if bootloader_file not in files_found
-        ]
-        if missing_files != []:
-            files_are_missing = True
-            if log_missing:
-                err_msg = (
-                    "Unable to find a copy of %s in the SimpleStream or in "
-                    "the system search paths %s. The %s bootloader type may "
-                    "not work."
-                    % (
-                        ", ".join(missing_files),
-                        ", ".join(search_paths),
-                        self.name,
-                    )
-                )
-                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
-                maaslog.error(err_msg)
-        else:
-            files_are_missing = False
-
-        syslinux_search_paths = [
-            syslinux_search_path,
-            "/usr/lib/syslinux/modules/bios",
-        ]
-        for search_path in syslinux_search_paths:
-            if os.path.exists(search_path):
-                syslinux_src = os.path.realpath(search_path)
-                syslinux_dst = os.path.join(destination, "syslinux")
-                if destination in os.path.realpath(syslinux_src):
-                    shutil.copy(bootloader_src, bootloader_dst)
-                else:
-                    atomic_symlink(syslinux_src, syslinux_dst)
-                break
-
-        return files_are_missing

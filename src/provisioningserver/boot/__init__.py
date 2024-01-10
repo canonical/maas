@@ -26,7 +26,6 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import locate_template, tftp
-from provisioningserver.utils.fs import atomic_copy, atomic_symlink
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
     find_mac_via_arp,
@@ -202,83 +201,12 @@ class BootMethod(metaclass=ABCMeta):
         """
         return None
 
-    def _link_simplestream_bootloaders(self, stream_path, destination):
-        """Link the bootloaders downloaded from the SimpleStream into the
-        destination(tftp root).
-
-        :param stream_path: The path to the bootloaders in the SimpleStream
-        :param destination: The path to link the bootloaders to
-        """
-        for bootloader_file in self.bootloader_files:
-            bootloader_src = os.path.join(stream_path, bootloader_file)
-            bootloader_dst = os.path.join(destination, bootloader_file)
-            if os.path.exists(bootloader_src):
-                atomic_symlink(bootloader_src, bootloader_dst)
-            else:
-                err_msg = (
-                    "SimpleStream is missing required bootloader file '%s' "
-                    "from bootloader %s." % (bootloader_file, self.name)
-                )
-                try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
-                maaslog.error(err_msg)
-
-    def _find_and_copy_bootloaders(self, destination, log_missing=True):
-        """Attempt to copy bootloaders from the previous snapshot
-
-        :param destination: The path to link the bootloaders to
-        :param log_missing: Log missing files, default True
-
-        :return: True if all bootloaders have been found and copied, False
-                 otherwise.
-        """
-        boot_sources_base = os.path.realpath(os.path.join(destination, ".."))
-        previous_snapshot = os.path.join(boot_sources_base, "current")
-        files_found = True
-        for bootloader_file in self.bootloader_files:
-            bootloader_src = os.path.join(previous_snapshot, bootloader_file)
-            bootloader_src = os.path.realpath(bootloader_src)
-            bootloader_dst = os.path.join(destination, bootloader_file)
-            if os.path.exists(bootloader_src):
-                # Copy files if their realpath is inside the previous snapshot
-                # as once we're done the previous snapshot is deleted. Symlinks
-                # to other areas of the filesystem are maintained.
-                if boot_sources_base in bootloader_src:
-                    atomic_copy(bootloader_src, bootloader_dst)
-                else:
-                    atomic_symlink(bootloader_src, bootloader_dst)
-            else:
-                files_found = False
-                if log_missing:
-                    err_msg = (
-                        "Unable to find a copy of %s in the SimpleStream or a "
-                        "previously downloaded copy. The %s bootloader type "
-                        "may not work." % (bootloader_file, self.name)
-                    )
-                    try_send_rack_event(EVENT_TYPES.RACK_IMPORT_ERROR, err_msg)
-                    maaslog.error(err_msg)
-        return files_found
-
-    def link_bootloader(self, destination: str):
+    def install_templates(self, destination: str):
         """Installs the required files for this boot method into the
         destination.
 
-        :param destination: path to install bootloader
+        :param destination: path to install bootloader templates
         """
-        # A bootloader can be used for multiple arches but the rack only
-        # stores the bootloader files in the arch listed in the SimpleStream.
-        bootloaders_in_simplestream = False
-        for arch in self.bootloader_arches:
-            stream_path = os.path.join(
-                destination, "bootloader", self.bios_boot_method, arch
-            )
-            if os.path.exists(stream_path):
-                bootloaders_in_simplestream = True
-                break
-
-        if bootloaders_in_simplestream:
-            self._link_simplestream_bootloaders(stream_path, destination)
-        else:
-            self._find_and_copy_bootloaders(destination)
 
     def __init__(self):
         super().__init__()
@@ -311,7 +239,7 @@ class BootMethod(metaclass=ABCMeta):
 
     def _get_template_dir(self):
         """Gets the template directory for the boot method."""
-        return locate_template("%s" % self.template_subdir)
+        return locate_template(f"{self.template_subdir}")
 
     def _get_template(self, purpose, arch, subarch):
         """Gets the best avaliable template for the boot method.
@@ -432,3 +360,9 @@ builtin_boot_methods = [
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)
+
+
+def install_boot_method_templates(tftp_root: str):
+    os.makedirs(tftp_root, exist_ok=True)
+    for _, m in BootMethodRegistry:
+        m.install_templates(tftp_root)

@@ -144,8 +144,3 @@ class PowerNVBootMethod(BootMethod):
 
         namespace["kernel_command"] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
-
-    def link_bootloader(self, destination: str):
-        """Does nothing. No extra boot files are required."""
-        # PowerNV doesn't actually use the provided pxelinux.0. It emulates
-        # pxelinux behaviour using its own bootloader.

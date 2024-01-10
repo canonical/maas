@@ -145,7 +145,3 @@ class S390XBootMethod(BootMethod):
 
         namespace["kernel_command"] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
-
-    def link_bootloader(self, destination: str):
-        """Does nothing. No extra boot files are required. All of the boot
-        files from PXEBootMethod will suffice."""

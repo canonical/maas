@@ -260,14 +260,6 @@ class WindowsPXEBootMethod(BootMethod):
             return self.compose_bcd(kernel_params, local_host)
         return self.output_static(kernel_params, path)
 
-    def link_bootloader(self, destination: str):
-        """Installs the required files for Windows booting into the
-        tftproot.
-
-        Does nothing. Windows requires manual installation of bootloader
-        files, due to licensing.
-        """
-
     def compose_preseed_url(self, url):
         """Modifies the url to replace all forward slashes with
         backslashes, and prepends the ^ character to any upper-case

@@ -25,14 +25,12 @@ from provisioningserver.boot import (
     get_main_archive_url,
     get_ports_archive_url,
     get_remote_mac,
-    maaslog,
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils.fs import atomic_symlink, tempdir
 
 TIMEOUT = get_testing_timeout()
 
@@ -144,99 +142,6 @@ class TestBootMethod(MAASTestCase):
             method.get_template,
             *factory.make_names("purpose", "arch", "subarch"),
         )
-
-    def test_link_bootloader_links_simplestream_bootloader_files(self):
-        method = FakeBootMethod()
-        with tempdir() as tmp:
-            stream_path = os.path.join(
-                tmp,
-                "bootloader",
-                method.bios_boot_method,
-                method.bootloader_arches[0],
-            )
-            os.makedirs(stream_path)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(stream_path, bootloader_file)
-
-            method.link_bootloader(tmp)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(tmp, bootloader_file)
-                self.assertTrue(os.path.islink(bootloader_file_path))
-
-    def test_link_bootloader_logs_missing_simplestream_file(self):
-        method = FakeBootMethod()
-        mock_maaslog = self.patch(maaslog, "error")
-        mock_try_send_rack_event = self.patch(boot, "try_send_rack_event")
-        with tempdir() as tmp:
-            stream_path = os.path.join(
-                tmp,
-                "bootloader",
-                method.bios_boot_method,
-                method.bootloader_arches[0],
-            )
-            os.makedirs(stream_path)
-            for bootloader_file in method.bootloader_files[1:]:
-                factory.make_file(stream_path, bootloader_file)
-
-            method.link_bootloader(tmp)
-
-            mock_maaslog.assert_called_once()
-            mock_try_send_rack_event.assert_called_once()
-
-    def test_link_bootloader_copies_previous_downloaded_files(self):
-        method = FakeBootMethod()
-        with tempdir() as tmp:
-            new_dir = os.path.join(tmp, "new")
-            current_dir = os.path.join(tmp, "current")
-            os.makedirs(new_dir)
-            os.makedirs(current_dir)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(current_dir, bootloader_file)
-
-            method.link_bootloader(new_dir)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(new_dir, bootloader_file)
-                self.assertTrue(os.path.isfile(bootloader_file_path))
-
-    def test_link_bootloader_links_bootloaders_found_elsewhere_on_fs(self):
-        method = FakeBootMethod()
-        with tempdir() as tmp:
-            bootresources_dir = os.path.join(tmp, "boot-resources")
-            new_dir = os.path.join(bootresources_dir, "new")
-            current_dir = os.path.join(bootresources_dir, "current")
-            os.makedirs(new_dir)
-            os.makedirs(current_dir)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(tmp, bootloader_file)
-                atomic_symlink(
-                    os.path.join(tmp, bootloader_file),
-                    os.path.join(current_dir, bootloader_file),
-                )
-
-            method.link_bootloader(new_dir)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(new_dir, bootloader_file)
-                self.assertTrue(os.path.islink(bootloader_file_path))
-
-    def test_link_bootloader_logs_missing_previous_downloaded_files(self):
-        method = FakeBootMethod()
-        mock_maaslog = self.patch(maaslog, "error")
-        mock_try_send_rack_event = self.patch(boot, "try_send_rack_event")
-        with tempdir() as tmp:
-            new_dir = os.path.join(tmp, "new")
-            current_dir = os.path.join(tmp, "current")
-            os.makedirs(new_dir)
-            os.makedirs(current_dir)
-            for bootloader_file in method.bootloader_files[1:]:
-                factory.make_file(current_dir, bootloader_file)
-
-            method.link_bootloader(new_dir)
-
-            mock_maaslog.assert_called_once()
-            mock_try_send_rack_event.assert_called_once()
 
     def test_compose_template_namespace(self):
         kernel_params = make_kernel_parameters()

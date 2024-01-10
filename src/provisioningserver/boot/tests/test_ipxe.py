@@ -4,24 +4,17 @@
 """Tests for the ipxe boot method."""
 
 
-import os
 import re
 
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
-from maastesting.matchers import FileContains
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import BytesReader
-from provisioningserver.boot.ipxe import (
-    CONFIG_FILE,
-    IPXEBootMethod,
-    re_config_file,
-)
+from provisioningserver.boot.ipxe import IPXEBootMethod, re_config_file
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 
@@ -81,14 +74,6 @@ class TestIPXEBootMethod(MAASTestCase):
     def test_user_class(self):
         method = IPXEBootMethod()
         self.assertEqual("iPXE", method.user_class)
-
-    def test_link_bootloader_creates_ipxe_cfg(self):
-        method = IPXEBootMethod()
-        with tempdir() as tmp:
-            method.link_bootloader(tmp)
-
-            cfg_file_path = os.path.join(tmp, "ipxe.cfg")
-            self.assertTrue(cfg_file_path, FileContains(CONFIG_FILE))
 
 
 class TestIPXEBootMethodRender(MAASTestCase):

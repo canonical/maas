@@ -112,9 +112,8 @@ class IPXEBootMethod(BootMethod):
             tempita.Template(step1).substitute(namespace).encode("utf-8")
         )
 
-    def link_bootloader(self, destination: str):
+    def install_templates(self, destination: str):
         """Install the ipxe.cfg to chainload with append MAC address."""
-        super().link_bootloader(destination)
         config_dst = os.path.join(destination, "ipxe.cfg")
         with open(config_dst, "wb") as stream:
             stream.write(CONFIG_FILE.encode("utf-8"))

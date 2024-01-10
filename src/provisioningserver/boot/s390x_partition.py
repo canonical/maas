@@ -75,6 +75,3 @@ class S390XPartitionBootMethod(BootMethod):
         return BytesReader(
             tempita.Template(step1).substitute(namespace).encode("utf-8")
         )
-
-    def link_bootloader(self, destination):
-        """Does nothing. No extra boot files are required."""

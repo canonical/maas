@@ -306,6 +306,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertEqual(tftp_service.port, tftp_port)
         self.assertIsInstance(tftp_service.backend, TFTPBackend)
         self.assertEqual(tftp_service.backend.base.path, tftp_root)
+        self.assertTrue(os.path.exists(tftp_root))
 
     def test_lease_socket_service(self):
         options = Options()

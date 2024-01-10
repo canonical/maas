@@ -5,7 +5,6 @@
 
 
 from collections import OrderedDict
-import os
 import re
 
 from twisted.python.filepath import FilePath
@@ -14,17 +13,14 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
 from provisioningserver.boot import BytesReader
-from provisioningserver.boot import pxe as pxe_module
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
-    maaslog,
     PXEBootMethod,
     re_config_file,
 )
 from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils.fs import atomic_symlink, tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 
@@ -100,117 +96,6 @@ class TestPXEBootMethod(MAASTestCase):
     def test_arch_octet(self):
         method = PXEBootMethod()
         self.assertEqual("00:00", method.arch_octet)
-
-    def test_link_simplestream_bootloaders_creates_syslinux_link(self):
-        method = PXEBootMethod()
-        with tempdir() as tmp:
-            stream_path = os.path.join(
-                tmp,
-                "bootloader",
-                method.bios_boot_method,
-                method.bootloader_arches[0],
-            )
-            os.makedirs(stream_path)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(stream_path, bootloader_file)
-
-            method.link_bootloader(tmp)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(tmp, bootloader_file)
-                self.assertTrue(os.path.islink(bootloader_file_path))
-            syslinux_link = os.path.join(tmp, "syslinux")
-            self.assertTrue(os.path.islink(syslinux_link))
-            self.assertEqual(stream_path, os.path.realpath(syslinux_link))
-
-    def test_link_simplestream_bootloaders_creates_lpxelinux_and_links(self):
-        method = PXEBootMethod()
-        with tempdir() as tmp:
-            stream_path = os.path.join(
-                tmp,
-                "bootloader",
-                method.bios_boot_method,
-                method.bootloader_arches[0],
-            )
-            os.makedirs(stream_path)
-            for bootloader_file in method.bootloader_files:
-                factory.make_file(stream_path, bootloader_file)
-
-            method.link_bootloader(tmp)
-
-            self.assertTrue(os.path.exists(os.path.join(tmp, "lpxelinux.0")))
-            self.assertTrue(os.path.islink(os.path.join(tmp, "pxelinux.0")))
-
-    def test_link_bootloader_copies_previously_downloaded_files(self):
-        method = PXEBootMethod()
-        with tempdir() as tmp:
-            new_dir = os.path.join(tmp, "new")
-            current_dir = os.path.join(tmp, "current")
-            os.makedirs(new_dir)
-            os.makedirs(current_dir)
-            factory.make_file(current_dir, method.bootloader_files[0])
-            for bootloader_file in method.bootloader_files[1:]:
-                factory.make_file(current_dir, bootloader_file)
-            real_syslinux_dir = os.path.join(tmp, "syslinux")
-            os.makedirs(real_syslinux_dir)
-            atomic_symlink(
-                real_syslinux_dir, os.path.join(current_dir, "syslinux")
-            )
-
-            method.link_bootloader(new_dir)
-
-            for bootloader_file in method.bootloader_files:
-                bootloader_file_path = os.path.join(new_dir, bootloader_file)
-                self.assertTrue(os.path.isfile(bootloader_file_path))
-            syslinux_link = os.path.join(new_dir, "syslinux")
-            self.assertTrue(os.path.islink(syslinux_link))
-            self.assertEqual(
-                real_syslinux_dir, os.path.realpath(syslinux_link)
-            )
-
-    def test_link_bootloader_links_files_found_on_fs(self):
-        method = PXEBootMethod()
-        bootloader_dir = (
-            "/var/lib/maas/boot-resources/snapshot-%s"
-            % factory.make_name("snapshot")
-        )
-
-        def fake_exists(path):
-            if "/usr/lib/syslinux/modules/bios" in path:
-                return True
-            else:
-                return False
-
-        self.patch(pxe_module.os.path, "exists").side_effect = fake_exists
-        mock_atomic_copy = self.patch(pxe_module, "atomic_copy")
-        mock_atomic_symlink = self.patch(pxe_module, "atomic_symlink")
-        mock_shutil_copy = self.patch(pxe_module.shutil, "copy")
-
-        method.link_bootloader(bootloader_dir)
-
-        mock_atomic_copy.assert_not_called()
-        mock_shutil_copy.assert_not_called()
-        for bootloader_file in method.bootloader_files:
-            bootloader_src = os.path.join(
-                "/usr/lib/syslinux/modules/bios", bootloader_file
-            )
-            bootloader_dst = os.path.join(bootloader_dir, bootloader_file)
-            mock_atomic_symlink.assert_any_call(bootloader_src, bootloader_dst)
-        mock_atomic_symlink.assert_any_call(
-            "/usr/lib/syslinux/modules/bios",
-            os.path.join(bootloader_dir, "syslinux"),
-        )
-
-    def test_link_bootloader_logs_missing_files(self):
-        method = PXEBootMethod()
-        mock_maaslog = self.patch(maaslog, "error")
-        # If we don't mock the return value and the test system has the
-        # pxelinux and syslinux-common package installed the fallback kicks
-        # which makes PXE work but this test fail.
-        self.patch(os.path, "exists").return_value = False
-        self.patch(pxe_module, "atomic_symlink")
-        method.link_bootloader("foo")
-        self.assertTrue(mock_maaslog.called)
 
 
 def parse_pxe_config(text):
