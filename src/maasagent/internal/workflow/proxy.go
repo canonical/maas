@@ -35,8 +35,9 @@ type configureHTTPProxyParam struct {
 // for the agent's HTTP proxy, configuring the proxy with the
 // appropriate info from the region
 type HTTPProxyConfigurator struct {
-	ready   chan struct{}
-	Proxies *httpproxy.ProxyGroup
+	Proxies        *httpproxy.ProxyGroup
+	ready          chan struct{}
+	imageCacheSize int64
 }
 
 // NewHTTPProxyConfigurator returns a new HTTPProxy Configurator
@@ -49,6 +50,10 @@ func NewHTTPProxyConfigurator() *HTTPProxyConfigurator {
 // Ready returns a channel for waiting for the proxy to be ready
 func (p *HTTPProxyConfigurator) Ready() <-chan struct{} {
 	return p.ready
+}
+
+func (p *HTTPProxyConfigurator) SetCacheSize(s int64) {
+	p.imageCacheSize = s
 }
 
 // ConfigureHTTPProxy is a Temporal activity to configure the HTTP proxy
@@ -118,12 +123,18 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		return err
 	}
 
+	cache, err := imagecache.NewFSCache(p.imageCacheSize, "")
+	if err != nil {
+		return err
+	}
+
 	if nginxActive {
 		log.Debug("Creating Unix Socket HTTP Proxy")
 
 		socketOpts := []httpproxy.ProxyOption{
 			httpproxy.WithBindAddr(getSocketFilePath()),
 			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
+			httpproxy.WithImageCache(cache),
 		}
 		socketOpts = append(socketOpts, originOpts...)
 		groupOpts = append(
@@ -138,6 +149,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 			httpproxy.WithBindAddr("0.0.0.0"),
 			httpproxy.WithPort(5258),
 			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
+			httpproxy.WithImageCache(cache),
 		}
 		ipv4Opts = append(ipv4Opts, originOpts...)
 
@@ -147,6 +159,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 			httpproxy.WithBindAddr("::"),
 			httpproxy.WithPort(5258),
 			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
+			httpproxy.WithImageCache(cache),
 		}
 		ipv6Opts = append(ipv6Opts, originOpts...)
 		groupOpts = append(

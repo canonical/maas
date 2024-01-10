@@ -34,11 +34,12 @@ const (
 
 // config represents a neccessary set of configuration options for MAAS Agent
 type config struct {
-	MAASUUID    string   `yaml:"maas_uuid"`
-	SystemID    string   `yaml:"system_id"`
-	Secret      string   `yaml:"secret"`
-	LogLevel    string   `yaml:"log_level"`
-	Controllers []string `yaml:"controllers,flow"`
+	MAASUUID       string   `yaml:"maas_uuid"`
+	SystemID       string   `yaml:"system_id"`
+	Secret         string   `yaml:"secret"`
+	LogLevel       string   `yaml:"log_level"`
+	Controllers    []string `yaml:"controllers,flow"`
+	ImageCacheSize int64    `yaml:"image_cache_size"`
 }
 
 func Run() int {
@@ -92,6 +93,9 @@ func Run() int {
 	}
 
 	httpProxies := wf.NewHTTPProxyConfigurator()
+	if cfg.ImageCacheSize > 0 {
+		httpProxies.SetCacheSize(cfg.ImageCacheSize)
+	}
 
 	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
 		worker.WithAllowedWorkflows(map[string]interface{}{

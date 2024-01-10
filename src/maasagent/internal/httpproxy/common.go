@@ -32,6 +32,7 @@ type proxyCommon struct {
 	bootloaders     *imagecache.BootloaderRegistry
 	handlerOverride http.Handler
 	listener        net.Listener
+	imagecache      imagecache.Cache
 	addr            string
 	origins         []*url.URL
 	keepalive       time.Duration
@@ -80,6 +81,14 @@ func (p *proxyCommon) SetBootloaderRegistry(registry *imagecache.BootloaderRegis
 // GetBootloaderRegistry gets the set BootloaderRegistry
 func (p *proxyCommon) GetBootloaderRegistry() *imagecache.BootloaderRegistry {
 	return p.bootloaders
+}
+
+func (p *proxyCommon) SetImageCache(cache imagecache.Cache) {
+	p.imagecache = cache
+}
+
+func (p *proxyCommon) GetImageCache() imagecache.Cache {
+	return p.imagecache
 }
 
 // Listen creates a net.Listener and begins serving HTTP on it

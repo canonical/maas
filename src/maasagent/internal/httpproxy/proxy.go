@@ -64,6 +64,8 @@ type Proxy interface {
 	SetHandlerOverride(http.Handler)
 	SetBootloaderRegistry(*imagecache.BootloaderRegistry)
 	GetBootloaderRegistry() *imagecache.BootloaderRegistry
+	SetImageCache(imagecache.Cache)
+	GetImageCache() imagecache.Cache
 }
 
 // ProxyGroup is a group of Proxies, this may consist of IPv4, IPv6 and
@@ -177,6 +179,14 @@ func WithHandler(h http.Handler) ProxyOption {
 func WithBootloaderRegistry(registry *imagecache.BootloaderRegistry) ProxyOption {
 	return func(p Proxy) error {
 		p.SetBootloaderRegistry(registry)
+
+		return nil
+	}
+}
+
+func WithImageCache(cache imagecache.Cache) ProxyOption {
+	return func(p Proxy) error {
+		p.SetImageCache(cache)
 
 		return nil
 	}

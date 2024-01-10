@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,6 +53,7 @@ type proxyClient struct {
 	origin      *url.URL
 	c           *http.Client
 	bootloaders *imagecache.BootloaderRegistry
+	cache       imagecache.Cache
 }
 
 func (p *proxyClient) setForwardedForHeaders(orig, req *http.Request) {
@@ -97,15 +101,39 @@ func (p *proxyClient) isBootResourceRequest(requestURL *url.URL) bool {
 	return bootResourceRegexp.MatchString(requestURL.Path)
 }
 
+func (p *proxyClient) cacheResponse(hash string) (*http.Response, bool, error) {
+	result, ok, err := p.cache.Get(hash)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !ok {
+		return nil, ok, nil
+	}
+
+	return &http.Response{
+		Status:     "200 OK",
+		StatusCode: http.StatusOK,
+		Body:       result,
+	}, true, nil
+}
+
 func (p *proxyClient) bootResourceRequest(orig *http.Request) (*http.Response, context.CancelFunc, error) {
 	urlSlice := strings.Split(orig.URL.Path, "/")
 
 	fileHash := urlSlice[2]
 
-	orig.URL.Path = path.Join("/boot-resources/", fileHash)
+	var (
+		resp   *http.Response
+		cancel context.CancelFunc
+		err    error
+		ok     bool
+	)
 
 	if p.bootloaders.IsBootloader(urlSlice[len(urlSlice)-1]) {
-		f, ok, err := p.bootloaders.Find(urlSlice[len(urlSlice)-1])
+		var f *os.File
+
+		f, ok, err = p.bootloaders.Find(urlSlice[len(urlSlice)-1])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -118,16 +146,53 @@ func (p *proxyClient) bootResourceRequest(orig *http.Request) (*http.Response, c
 			}, nil, nil
 		}
 
-		remotePath, err := p.bootloaders.FindRemoteURL(urlSlice[len(urlSlice)-1])
+		var remotePath string
+
+		remotePath, err = p.bootloaders.FindRemoteURL(urlSlice[len(urlSlice)-1])
 		if err != nil {
 			return nil, nil, err
 		}
 
 		orig.URL.Path = remotePath
+
+		return p.req(orig, nil)
 	}
 
-	// TODO check cache and write to it
-	return p.req(orig, nil)
+	resp, ok, err = p.cacheResponse(fileHash)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !ok {
+		orig.URL.Path = path.Join("/boot-resources/", fileHash)
+
+		resp, cancel, err = p.req(orig, nil)
+		if err != nil {
+			return nil, cancel, err
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			var contentLength int64
+
+			contentLength, err = strconv.ParseInt(resp.Header.Get("content-length"), 10, 64)
+			if err != nil {
+				return nil, cancel, err
+			}
+
+			origBody := resp.Body
+
+			defer func() {
+				err = origBody.Close()
+			}()
+
+			resp.Body, err = p.cache.Set(fileHash, origBody, contentLength, false)
+			if err != nil {
+				return nil, cancel, err
+			}
+		}
+	}
+
+	return resp, cancel, err
 }
 
 // Get sends a GET request to a configured origin for the requested file
@@ -195,6 +260,7 @@ func (p *proxyHandler) GetClient() (*proxyClient, error) {
 		origin:      origin,
 		c:           p.proxy.GetClient(),
 		bootloaders: p.proxy.GetBootloaderRegistry(),
+		cache:       p.proxy.GetImageCache(),
 	}, nil
 }
 
@@ -223,7 +289,14 @@ func (p *proxyHandler) log(req *http.Request, resp *http.Response, origPath stri
 }
 
 func (p *proxyHandler) handleErr(w http.ResponseWriter, err error) {
-	// TODO handle non-origin errors
+	log.Err(err).Send()
+
+	w.WriteHeader(http.StatusInternalServerError)
+
+	_, err = w.Write([]byte(err.Error()))
+	if err != nil {
+		log.Err(err).Send()
+	}
 }
 
 // ServeHTTP implements the http.Handler interface and proxies requests to a
@@ -259,7 +332,9 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer cancel()
+	if cancel != nil {
+		defer cancel()
+	}
 
 	p.log(r, resp, origPath, err)
 
@@ -281,6 +356,22 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.handleErr(w, err)
 		}
 	}()
+
+	// content-type and content-length needs to be set when coming from cache,
+	// when passed through these should be set from the origin. resp.Body is only ever
+	// of type *os.File coming from the cache regardless of whether it's added or existing
+	if f, ok := resp.Body.(*os.File); ok {
+		var info fs.FileInfo
+
+		info, err = f.Stat()
+		if err != nil {
+			p.handleErr(w, err)
+			return
+		}
+
+		w.Header().Set("content-type", "application/octet-stream")
+		w.Header().Set("content-length", strconv.Itoa(int(info.Size())))
+	}
 
 	_, err = io.Copy(w, resp.Body)
 	if err != nil {

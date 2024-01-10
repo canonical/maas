@@ -95,6 +95,10 @@ func (m MockProxy) GetBootloaderRegistry() *imagecache.BootloaderRegistry {
 	return nil
 }
 
+func (m MockProxy) GetImageCache() imagecache.Cache {
+	return nil
+}
+
 func TestServeHTTP(t *testing.T) {
 	validURL, _ := url.Parse("http://127.0.0.1:5248/exists")
 	invalidURL, _ := url.Parse("http://127.0.0.1:5248/notexist")
