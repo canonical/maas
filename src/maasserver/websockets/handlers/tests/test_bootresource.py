@@ -616,7 +616,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        resources = [
+        _ = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
@@ -624,9 +624,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             )
             for subarch in subarches
         ]
-        self.patch(
-            BootResource.objects, "get_resources_matching_boot_images"
-        ).return_value = resources
         response = handler.poll({})
         resource = response["resources"][0]
         self.assertTrue(resource["complete"])
@@ -708,7 +705,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         name = f"ubuntu/{factory.make_name('series')}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        resources = [
+        _ = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
@@ -716,9 +713,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             )
             for subarch in subarches
         ]
-        self.patch(
-            BootResource.objects, "get_resources_matching_boot_images"
-        ).return_value = resources
         response = handler.poll({})
         resource = response["resources"][0]
         self.assertEqual("Synced", resource["status"])

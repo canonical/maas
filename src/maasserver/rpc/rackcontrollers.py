@@ -5,7 +5,6 @@
 
 __all__ = [
     "register",
-    "update_last_image_sync",
 ]
 
 from typing import Optional
@@ -24,7 +23,6 @@ from maasserver.models import (
     ScriptSet,
     StaticIPAddress,
 )
-from maasserver.models.timestampedmodel import now
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from provisioningserver.logger import get_maas_logger
@@ -244,18 +242,6 @@ def report_neighbours(system_id, neighbours):
         raise NoSuchNode.from_system_id(system_id)
     else:
         rack_controller.report_neighbours(neighbours)
-
-
-@synchronous
-@transactional
-def update_last_image_sync(system_id):
-    """Update rack controller's last_image_sync.
-
-    for :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync.
-    """
-    RackController.objects.filter(system_id=system_id).update(
-        last_image_sync=now()
-    )
 
 
 @synchronous

@@ -67,7 +67,7 @@ from twisted.internet.defer import (
     returnValue,
     succeed,
 )
-from twisted.internet.error import ConnectionClosed, ConnectionDone
+from twisted.internet.error import ConnectionDone
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
@@ -6813,45 +6813,6 @@ class RackController(Controller):
                         1.0 - percentage
                     ),
                 )
-
-    def list_boot_images(self):
-        """Return a list of boot images available on the rack controller."""
-        # Avoid circular imports.
-        from maasserver.clusterrpc.boot_images import get_boot_images
-
-        try:
-            # Combine all boot images one per name and arch
-            downloaded_boot_images = defaultdict(set)
-            boot_images = get_boot_images(self)
-            for image in boot_images:
-                if image["osystem"] == "custom":
-                    image_name = image["release"]
-                else:
-                    image_name = "{}/{}".format(
-                        image["osystem"], image["release"]
-                    )
-                image_arch = image["architecture"]
-                image_subarch = image["subarchitecture"]
-                downloaded_boot_images[image_name, image_arch].add(
-                    image_subarch
-                )
-
-            # Return a list of dictionaries each containing one entry per
-            # name, architecture like boot-resources does
-            images = [
-                {
-                    "name": name,
-                    "architecture": arch,
-                    "subarches": sorted(subarches),
-                }
-                for (name, arch), subarches in downloaded_boot_images.items()
-            ]
-            status = (
-                "synced"  # FIXME alexsander-souza: racks are always synced
-            )
-            return {"images": images, "connected": True, "status": status}
-        except (NoConnectionsAvailable, ConnectionClosed, TimeoutError):
-            return {"images": [], "connected": False, "status": "unknown"}
 
 
 class RegionController(Controller):

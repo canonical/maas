@@ -13,11 +13,7 @@ __all__ = [
     "ConfigureDHCPv6",
     "ConfigureDHCPv6",
     "DescribePowerTypes",
-    "GetPreseedData",
     "Identify",
-    "ListBootImages",
-    "ListOperatingSystems",
-    "ListSupportedArchitectures",
     "PowerCycle",
     "PowerDriverCheck",
     "PowerOff",
@@ -36,7 +32,6 @@ from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     AmpList,
     AttrsClassArgument,
-    Bytes,
     CompressedAmpList,
     IPAddress,
     IPNetwork,
@@ -44,36 +39,6 @@ from provisioningserver.rpc.arguments import (
     StructureAsJSON,
 )
 from provisioningserver.rpc.common import Authenticate, Identify
-
-
-class ListBootImages(amp.Command):
-    """List the boot images available on this rack controller.
-
-    This command compresses the images list to allow more images in the
-    response and to remove the amp.TooLong error.
-
-    :since: 1.7.6
-    """
-
-    arguments = []
-    response = [
-        (
-            b"images",
-            CompressedAmpList(
-                [
-                    (b"osystem", amp.Unicode()),
-                    (b"architecture", amp.Unicode()),
-                    (b"subarchitecture", amp.Unicode()),
-                    (b"release", amp.Unicode()),
-                    (b"label", amp.Unicode()),
-                    (b"purpose", amp.Unicode()),
-                    (b"xinstall_type", amp.Unicode()),
-                    (b"xinstall_path", amp.Unicode()),
-                ]
-            ),
-        )
-    ]
-    errors = []
 
 
 class DescribePowerTypes(amp.Command):
@@ -85,72 +50,6 @@ class DescribePowerTypes(amp.Command):
     arguments = []
     response = [(b"power_types", StructureAsJSON())]
     errors = []
-
-
-class ListSupportedArchitectures(amp.Command):
-    """Report the cluster's supported architectures.
-
-    :since: 1.5
-    """
-
-    arguments = []
-    response = [
-        (
-            b"architectures",
-            AmpList(
-                [(b"name", amp.Unicode()), (b"description", amp.Unicode())]
-            ),
-        )
-    ]
-    errors = []
-
-
-class ListOperatingSystems(amp.Command):
-    """Report the cluster's supported operating systems.
-
-    :since: 1.7
-    """
-
-    arguments = []
-    response = [
-        (
-            b"osystems",
-            AmpList(
-                [
-                    (b"name", amp.Unicode()),
-                    (b"title", amp.Unicode()),
-                    (
-                        b"releases",
-                        AmpList(
-                            [
-                                (b"name", amp.Unicode()),
-                                (b"title", amp.Unicode()),
-                                (b"requires_license_key", amp.Boolean()),
-                                (b"can_commission", amp.Boolean()),
-                            ]
-                        ),
-                    ),
-                    (b"default_release", amp.Unicode(optional=True)),
-                    (
-                        b"default_commissioning_release",
-                        amp.Unicode(optional=True),
-                    ),
-                ]
-            ),
-        )
-    ]
-    errors = []
-
-
-class GetOSReleaseTitle(amp.Command):
-    """Get the title for the operating systems release.
-
-    :since: 1.7
-    """
-
-    arguments = [(b"osystem", amp.Unicode()), (b"release", amp.Unicode())]
-    response = [(b"title", amp.Unicode())]
-    errors = {exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem"}
 
 
 class ValidateLicenseKey(amp.Command):
@@ -178,29 +77,6 @@ class PowerDriverCheck(amp.Command):
     response = [(b"missing_packages", amp.ListOf(amp.Unicode()))]
     errors = {
         exceptions.UnknownPowerType: b"UnknownPowerType",
-        NotImplementedError: b"NotImplementedError",
-    }
-
-
-class GetPreseedData(amp.Command):
-    """Get OS-specific preseed data.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"osystem", amp.Unicode()),
-        (b"preseed_type", amp.Unicode()),
-        (b"node_system_id", amp.Unicode()),
-        (b"node_hostname", amp.Unicode()),
-        (b"consumer_key", amp.Unicode()),
-        (b"token_key", amp.Unicode()),
-        (b"token_secret", amp.Unicode()),
-        (b"metadata_url", ParsedURL()),
-    ]
-    response = [(b"data", StructureAsJSON())]
-    errors = {
-        exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem",
         NotImplementedError: b"NotImplementedError",
     }
 
@@ -484,42 +360,6 @@ class ValidateDHCPv6Config(_ValidateDHCPConfig):
 
     :since: 2.1
     """
-
-
-class ImportBootImages(amp.Command):
-    """Import boot images and report the final
-    boot images that exist on the cluster.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (
-            b"sources",
-            AmpList(
-                [
-                    (b"url", amp.Unicode()),
-                    (b"keyring_data", Bytes()),
-                    (
-                        b"selections",
-                        AmpList(
-                            [
-                                (b"os", amp.Unicode()),
-                                (b"release", amp.Unicode()),
-                                (b"arches", amp.ListOf(amp.Unicode())),
-                                (b"subarches", amp.ListOf(amp.Unicode())),
-                                (b"labels", amp.ListOf(amp.Unicode())),
-                            ]
-                        ),
-                    ),
-                ]
-            ),
-        ),
-        (b"http_proxy", ParsedURL(optional=True)),
-        (b"https_proxy", ParsedURL(optional=True)),
-    ]
-    response = []
-    errors = []
 
 
 class EvaluateTag(amp.Command):

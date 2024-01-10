@@ -65,7 +65,6 @@ from maasserver.preseed import (
     render_preseed,
     TemplateNotFoundError,
 )
-from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
@@ -641,13 +640,13 @@ class TestPreseedContext(MAASServerTestCase):
 
 
 class TestNodeDeprecatedPreseedContext(
-    PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase
+    BootImageHelperMixin, MAASTransactionServerTestCase
 ):
     """Test for `get_node_deprecated_preseed_context`."""
 
     def test_get_node_deprecated_preseed_context_contains_keys(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "install")
         context = get_node_deprecated_preseed_context()
@@ -663,14 +662,12 @@ class TestNodeDeprecatedPreseedContext(
         )
 
 
-class TestNodePreseedContext(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestNodePreseedContext(BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "install")
         release = factory.make_string()
@@ -731,9 +728,7 @@ class TestPreseedTemplate(MAASTestCase):
         self.assertEqual(self.json, observed)
 
 
-class TestRenderPreseed(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestRenderPreseed(BootImageHelperMixin, MAASServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -750,7 +745,7 @@ class TestRenderPreseed(
 
     def test_render_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "install")
         preseed = render_preseed(
@@ -761,10 +756,10 @@ class TestRenderPreseed(
         self.assertIsInstance(preseed, bytes)
 
     def test_get_preseed_uses_requests_url(self):
-        self.rpc_rack_controller.save()
+        self.rack_controller.save()
         maas_url = factory.make_simple_http_url()
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             status=NODE_STATUS.COMMISSIONING,
         )
         self.make_boot_image_for_node(node, "install")
@@ -1218,14 +1213,12 @@ class TestGetCurtinMergedConfig(MAASServerTestCase):
         )
 
 
-class TestGetCurtinUserData(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestGetCurtinUserData(BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata_calls_compose_curtin_config_on_ubuntu(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller, osystem="ubuntu"
+            primary_rack=self.rack_controller, osystem="ubuntu"
         )
         main_url = PackageRepository.get_main_archive().url
         factory.make_PackageRepository(
@@ -1253,7 +1246,7 @@ class TestGetCurtinUserData(
         # required to select the correct root device based on the boot device
         # See LP:1640301
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=random.choice(["windows", "ubuntu-core", "esxi"]),
         )
         self.patch(
@@ -1273,7 +1266,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_always_includes_networking(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=factory.make_name("osystem"),
         )
         self.make_boot_image_for_node(node, "xinstall")
@@ -1288,7 +1281,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_uses_v2_for_bionic(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem="ubuntu",
             distro_series="bionic",
         )
@@ -1304,7 +1297,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_uses_v1_for_trusty(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem="ubuntu",
             distro_series="trusty",
         )
@@ -1320,7 +1313,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_includes_storage_when_curtin_supported(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=factory.make_name("osystem"),
         )
         self.make_boot_image_for_node(node, "xinstall")
@@ -1339,7 +1332,7 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata_doesnt_incl_storage_when_not_supported(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=factory.make_name("osystem"),
         )
         self.make_boot_image_for_node(node, "xinstall")
@@ -1358,7 +1351,7 @@ class TestGetCurtinUserData(
 
 
 class TestRenderCurtinUserdataWithThirdPartyDrivers(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
+    BootImageHelperMixin, MAASServerTestCase
 ):
     """Ensures curtin configs for all third-party drivers can be rendered."""
 
@@ -1372,7 +1365,7 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
 
     def test_render_curtin_preseed_with_third_party_driver(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         Config.objects.set_config("enable_third_party_drivers", True)
         self.make_boot_image_for_node(node, "xinstall")
@@ -1396,9 +1389,7 @@ class TestRenderCurtinUserdataWithThirdPartyDrivers(
         self.assertIn("driver_07_update_initramfs", config["late_commands"])
 
 
-class TestGetCurtinUserDataOS(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestGetCurtinUserDataOS(BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata` using os specific scenarios."""
 
     # Create a scenario for each possible os specific preseed.
@@ -1408,7 +1399,7 @@ class TestGetCurtinUserDataOS(
 
     def test_get_curtin_userdata(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller, osystem=self.os_name
+            primary_rack=self.rack_controller, osystem=self.os_name
         )
         arch, subarch = node.split_arch()
         self.make_boot_image_for_node(node, "xinstall")
@@ -1418,9 +1409,7 @@ class TestGetCurtinUserDataOS(
         self.assertIn("PREFIX='curtin'", user_data)
 
 
-class TestCurtinUtilities(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestCurtinUtilities(BootImageHelperMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def assertAptConfig(self, config, archive=None):
@@ -1458,7 +1447,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
@@ -1468,7 +1457,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_removes_power_state(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "xinstall")
         power_state_template = dedent(
@@ -1486,7 +1475,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_removes_apt_mirrors(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "xinstall")
         apt_mirrors_template = dedent(
@@ -1506,7 +1495,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_removes_apt_proxy(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "xinstall")
         apt_proxy_template = dedent(
@@ -1523,7 +1512,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_contains_reboot_for_precise(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         node.distro_series = "precise"
         node.save()
@@ -1533,7 +1522,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_with_request_url(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
@@ -1547,7 +1536,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_has_grub2_debconf_selections(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         node.save()
         self.make_boot_image_for_node(node, "xinstall")
@@ -1559,7 +1548,7 @@ class TestCurtinUtilities(
 
     def test_get_curtin_config_has_s390x_local_boot_late_command(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             architecture="s390x/generic",
             bios_boot_method="s390x",
         )
@@ -1587,7 +1576,7 @@ class TestCurtinUtilities(
         )
         osystem, release = boot_resource.name.split("/")
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             osystem=osystem,
             distro_series=release,
             architecture=boot_resource.architecture,
@@ -1632,7 +1621,7 @@ class TestCurtinUtilities(
             main_arch = factory.make_name("arch")
         arch = "{}/{}".format(main_arch, factory.make_name("subarch"))
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller, architecture=arch
+            primary_rack=self.rack_controller, architecture=arch
         )
         return node
 
@@ -1993,7 +1982,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
 
     def test_get_curtin_context(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         context = get_curtin_context(make_HttpRequest(), node)
         self.assertEqual({"curtin_preseed"}, context.keys())
@@ -2188,9 +2177,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
 
 
-class TestPreseedMethods(
-    PreseedRPCMixin, BootImageHelperMixin, MAASTransactionServerTestCase
-):
+class TestPreseedMethods(BootImageHelperMixin, MAASTransactionServerTestCase):
     """Tests for `get_enlist_preseed` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
@@ -2268,7 +2255,7 @@ class TestPreseedMethods(
 
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller, status=NODE_STATUS.DEPLOYING
+            primary_rack=self.rack_controller, status=NODE_STATUS.DEPLOYING
         )
         self.make_boot_image_for_node(node, "xinstall")
         request = make_HttpRequest()
@@ -2282,7 +2269,7 @@ class TestPreseedMethods(
 
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             status=NODE_STATUS.COMMISSIONING,
         )
         preseed = get_preseed(make_HttpRequest(), node)
@@ -2291,7 +2278,7 @@ class TestPreseedMethods(
     def test_get_preseed_returns_comm_preseed_for_ephemeral_deployment(self):
         # A diskless node is one that it is ephemerally deployed.
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             status=NODE_STATUS.COMMISSIONING,
             with_boot_disk=False,
         )
@@ -2300,16 +2287,14 @@ class TestPreseedMethods(
 
     def test_get_preseed_returns_commissioning_preseed_for_disk_erasing(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller,
+            primary_rack=self.rack_controller,
             status=NODE_STATUS.DISK_ERASING,
         )
         preseed = get_preseed(make_HttpRequest(), node)
         self.assertIn(b"#cloud-config", preseed)
 
 
-class TestPreseedURLs(
-    PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase
-):
+class TestPreseedURLs(BootImageHelperMixin, MAASServerTestCase):
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
@@ -2342,13 +2327,13 @@ class TestPreseedURLs(
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
         node = factory.make_Node_with_Interface_on_Subnet(
-            primary_rack=self.rpc_rack_controller
+            primary_rack=self.rack_controller
         )
         self.make_boot_image_for_node(node, "install")
         response = self.client.get(
             compose_preseed_url(
                 node,
-                base_url=self.rpc_rack_controller.url,
+                base_url=self.rack_controller.url,
                 default_region_ip="127.0.0.1",
             ),
             HTTP_HOST="testserver",
@@ -2363,6 +2348,6 @@ class TestPreseedURLs(
         self.assertTrue(
             compose_preseed_url(
                 factory.make_Node_with_Interface_on_Subnet(),
-                base_url=self.rpc_rack_controller.url,
+                base_url=self.rack_controller.url,
             ).startswith("http://")
         )

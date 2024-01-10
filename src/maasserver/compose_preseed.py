@@ -6,12 +6,11 @@
 
 from datetime import timedelta
 from ipaddress import ip_address
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from django.urls import reverse
 import yaml
 
-from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, POWER_STATE, PRESEED_TYPE
 from maasserver.models import PackageRepository
@@ -20,10 +19,12 @@ from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import get_default_region_ip, get_remote_ip
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchOperatingSystem,
+from provisioningserver.drivers.osystem import (
+    Node,
+    OperatingSystemRegistry,
+    Token,
 )
+from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from provisioningserver.utils.url import compose_URL
 
 # Default port for RSYSLOG
@@ -608,6 +609,34 @@ def _get_metadata_url(request, preseed_type, node):
     )
 
 
+def get_preseed_data(preseed_type, node, token, metadata_url):
+    """Obtain optional preseed data for this OS, preseed type, and node.
+
+    :param preseed_type: The type of preseed to compose.
+    :param node: The node model instance.
+    :param token: The token model instance.
+    :param metadata_url: The URL where this node's metadata will be made
+        available.
+
+    :raises NoSuchOperatingSystem: When the node's declared operating
+        system is not known to its cluster.
+    :raises NotImplementedError: When this node's OS does not want to
+        define any OS-specific preseed data.
+    """
+    osystem = node.get_osystem()
+    try:
+        os_drv = OperatingSystemRegistry[osystem]
+    except KeyError:
+        raise NoSuchOperatingSystem(osystem)
+    else:
+        return os_drv.compose_preseed(
+            preseed_type,
+            Node(node.system_id, node.hostname),
+            Token(token.consumer.key, token.key, token.secret),
+            urlparse(metadata_url).geturl(),
+        )
+
+
 def compose_preseed(request, preseed_type, node):
     """Put together preseed data for `node`.
 
@@ -640,16 +669,6 @@ def compose_preseed(request, preseed_type, node):
             # via the API, in response to cloud-init for example, the prudent
             # course of action might be to turn the node's power off, mark it
             # as broken, and notify the user.
-            raise
-        except NoConnectionsAvailable:
-            # This means that the region is not in contact with the node's
-            # cluster controller. In the UI this could be shown as an error
-            # message. This is, however, a show-stopping problem when booting
-            # or installing a node. A caller cannot turn the node's power off
-            # via the usual methods because they rely on a connection to the
-            # cluster. This /could/ generate a preseed that aborts the boot or
-            # installation. The caller /could/ mark the node as broken. For
-            # now, let the caller make the decision, which might be to retry.
             raise
 
         # There is no OS-specific preseed data.

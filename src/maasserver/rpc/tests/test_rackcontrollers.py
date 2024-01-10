@@ -11,13 +11,11 @@ from fixtures import FakeLogger
 from maasserver import locks, worker_user
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import RackController, RegionController
-from maasserver.models.timestampedmodel import now
 from maasserver.rpc import rackcontrollers
 from maasserver.rpc.rackcontrollers import (
     register,
     report_neighbours,
     update_foreign_dhcp,
-    update_last_image_sync,
     update_state,
 )
 from maasserver.testing.factory import factory
@@ -384,17 +382,6 @@ class TestReportNeighbours(MAASServerTestCase):
         self.assertThat(
             patched_report_neighbours, MockCalledOnceWith(sentinel.neighbours)
         )
-
-
-class TestUpdateLastImageSync(MAASServerTestCase):
-    def test_updates_last_image_sync(self):
-        rack = factory.make_RackController()
-        previous_sync = rack.last_image_sync = now()
-        rack.save()
-
-        update_last_image_sync(rack.system_id)
-
-        self.assertNotEqual(previous_sync, reload_object(rack).last_image_sync)
 
 
 class TestUpdateState(MAASServerTestCase):

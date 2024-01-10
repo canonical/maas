@@ -31,7 +31,6 @@ from twisted.protocols import amp
 from zope.interface import implementer
 
 from maasserver import eventloop
-from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dns.config import get_trusted_networks
 from maasserver.models.config import Config
 from maasserver.models.node import RackController
@@ -102,15 +101,6 @@ class Region(RPCProtocol):
             return {"digest": digest, "salt": salt}
 
         return d.addCallback(got_secret)
-
-    @region.ReportBootImages.responder
-    def report_boot_images(self, uuid, images):
-        """report_boot_images(uuid, images)
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.ReportBootImages`.
-        """
-        return {}
 
     @region.UpdateLease.responder
     def update_lease(
@@ -229,17 +219,6 @@ class Region(RPCProtocol):
             bios_boot_method=bios_boot_method,
         )
 
-    @region.GetBootSources.responder
-    def get_boot_sources(self, uuid):
-        """get_boot_sources_v2()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.GetBootSources`.
-        """
-        d = deferToDatabase(get_simplestream_endpoint)
-        d.addCallback(lambda source: {"sources": [source]})
-        return d
-
     @region.GetArchiveMirrors.responder
     def get_archive_mirrors(self):
         """get_archive_mirrors()
@@ -282,17 +261,6 @@ class Region(RPCProtocol):
         """
         d = deferToDatabase(nodes.list_cluster_nodes_power_parameters, uuid)
         d.addCallback(lambda nodes: {"nodes": nodes})
-        return d
-
-    @region.UpdateLastImageSync.responder
-    def update_last_image_sync(self, system_id):
-        """update_last_image_sync()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.UpdateLastImageSync`.
-        """
-        d = deferToDatabase(rackcontrollers.update_last_image_sync, system_id)
-        d.addCallback(lambda args: {})
         return d
 
     @region.UpdateNodePowerState.responder

@@ -186,56 +186,6 @@ class BootResourceManager(Manager):
                 return resource
         return None
 
-    def get_resources_matching_boot_images(self, images):
-        """Return `BootResource` that match the given images."""
-        resources = self.all()
-        matched_resources = set()
-        for image in images:
-            if image["osystem"] == "bootloader":
-                matching_resources = resources.filter(
-                    rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                    bootloader_type=image["release"],
-                    architecture__startswith=image["architecture"],
-                )
-            else:
-                if image["osystem"] != "custom":
-                    rtypes = [
-                        BOOT_RESOURCE_TYPE.SYNCED,
-                        BOOT_RESOURCE_TYPE.UPLOADED,
-                    ]
-                    name = "{}/{}".format(image["osystem"], image["release"])
-                else:
-                    rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
-                    name = image["release"]
-                matching_resources = resources.filter(
-                    rtype__in=rtypes,
-                    name=name,
-                    architecture__startswith=image["architecture"],
-                )
-            for resource in matching_resources:
-                if resource is None:
-                    # This shouldn't happen at all, but just to be sure.
-                    continue
-                if not resource.supports_subarch(image["subarchitecture"]):
-                    # This matching resource doesn't support the images
-                    # subarchitecture, so its not a matching resource.
-                    continue
-                resource_set = resource.get_latest_complete_set()
-                if resource_set is None:
-                    # Possible that the import just started, and there is no
-                    # set. Making it not a matching resource, as it cannot
-                    # exist on the cluster unless it has a set.
-                    continue
-                if (
-                    resource_set.label != image["label"]
-                    and image["label"] != "*"
-                ):
-                    # The label is different so the cluster has a different
-                    # version of this set.
-                    continue
-                matched_resources.add(resource)
-        return list(matched_resources)
-
     def get_hwe_kernels(
         self,
         name=None,

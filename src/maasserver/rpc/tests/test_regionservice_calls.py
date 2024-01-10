@@ -6,9 +6,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from hashlib import sha256
 from hmac import HMAC
-from itertools import product
 from json import dumps
-import os.path
 import random
 from random import randint
 import time
@@ -32,7 +30,6 @@ from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 from maasserver import eventloop
-from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, POWER_STATE
 from maasserver.models import Config, Event, EventType, Node, PackageRepository
@@ -67,7 +64,6 @@ from provisioningserver.rpc.region import (
     CreateNode,
     GetArchiveMirrors,
     GetBootConfig,
-    GetBootSources,
     GetControllerType,
     GetDNSConfiguration,
     GetProxies,
@@ -78,7 +74,6 @@ from provisioningserver.rpc.region import (
     ListNodePowerParameters,
     MarkNodeFailed,
     RegisterEventType,
-    ReportBootImages,
     ReportForeignDHCPServer,
     ReportNeighbours,
     RequestNodeInfoByMACAddress,
@@ -91,7 +86,6 @@ from provisioningserver.rpc.region import (
     UpdateServices,
 )
 from provisioningserver.rpc.testing import call_responder
-from provisioningserver.testing.config import ClusterConfigurationFixture
 
 wait_for_reactor = wait_for()
 
@@ -172,78 +166,6 @@ class TestRegionProtocol_StartTLS(MAASTestCase):
         # the responder is not aware of this, and is called just like
         # any other.
         d = call_responder(Region(), amp.StartTLS, {})
-
-        def check(response):
-            self.assertEqual({}, response)
-
-        return d.addCallback(check)
-
-
-class TestRegionProtocol_ReportBootImages(MAASTestCase):
-    def test_report_boot_images_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(ReportBootImages.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    def test_report_boot_images_can_be_called(self):
-        uuid = factory.make_name("uuid")
-        images = [
-            {
-                "architecture": factory.make_name("architecture"),
-                "subarchitecture": factory.make_name("subarchitecture"),
-                "release": factory.make_name("release"),
-                "purpose": factory.make_name("purpose"),
-                "base_image": factory.make_base_image_name(),
-            }
-        ]
-
-        d = call_responder(
-            Region(), ReportBootImages, {"uuid": uuid, "images": images}
-        )
-
-        def check(response):
-            self.assertEqual({}, response)
-
-        return d.addCallback(check)
-
-    @wait_for_reactor
-    def test_report_boot_images_with_real_things_to_report(self):
-        # tftppath.report_boot_images()'s return value matches the
-        # arguments schema that ReportBootImages declares, and is
-        # serialised correctly.
-
-        # Example boot image definitions.
-        archs = "i386", "amd64"
-        subarchs = "generic", "special"
-        releases = "precise", "trusty"
-        purposes = "commission", "install"
-
-        # Create a TFTP file tree with a variety of subdirectories.
-        tftpdir = self.make_dir()
-        for options in product(archs, subarchs, releases, purposes):
-            os.makedirs(os.path.join(tftpdir, *options))
-
-        # Ensure that report_boot_images() uses the above TFTP file tree.
-        self.useFixture(ClusterConfigurationFixture(tftp_root=tftpdir))
-
-        images = [
-            {
-                "architecture": arch,
-                "subarchitecture": subarch,
-                "release": release,
-                "purpose": purpose,
-            }
-            for arch, subarch, release, purpose in product(
-                archs, subarchs, releases, purposes
-            )
-        ]
-
-        d = call_responder(
-            Region(),
-            ReportBootImages,
-            {"uuid": factory.make_name("uuid"), "images": images},
-        )
 
         def check(response):
             self.assertEqual({}, response)
@@ -391,26 +313,6 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
                 ]
             ),
         )
-
-
-class TestRegionProtocol_GetBootSources(MAASTransactionServerTestCase):
-    def test_get_boot_sources_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(GetBootSources.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    def test_get_boot_sources_returns_simplestreams_endpoint(self):
-        uuid = factory.make_name("uuid")
-
-        d = call_responder(Region(), GetBootSources, {"uuid": uuid})
-
-        def check(response):
-            self.assertEqual(
-                {"sources": [get_simplestream_endpoint()]}, response
-            )
-
-        return d.addCallback(check)
 
 
 class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):

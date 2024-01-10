@@ -6,9 +6,7 @@
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import namedtuple
-import os
 
-from provisioningserver.config import ClusterConfiguration
 from provisioningserver.utils.registry import Registry
 
 
@@ -35,18 +33,6 @@ Node = namedtuple("Node", ("system_id", "hostname"))
 # A cluster-side representation of a Token, relevant to the osystem code,
 # with only minimal fields.
 Token = namedtuple("Token", ("consumer_key", "token_key", "token_secret"))
-
-
-def list_boot_images_for(osystem):
-    """List all boot images for the given osystem."""
-    # Circular import
-    from provisioningserver.rpc.boot_images import list_boot_images
-
-    return [
-        image
-        for image in list_boot_images()
-        if image["osystem"] == osystem.name
-    ]
 
 
 class OperatingSystem(metaclass=ABCMeta):
@@ -106,26 +92,12 @@ class OperatingSystem(metaclass=ABCMeta):
                 choices.append((release, title))
         return choices
 
-    def gen_supported_releases(self):
-        """List operating system's supported releases.
-
-        This is based off the boot images that the cluster currently has
-        for this operating system.
-        """
-        for image in list_boot_images_for(self):
-            release = image["release"]
-            if self.is_release_supported(release):
-                yield release
-
-    def get_supported_releases(self):
+    def get_supported_releases(self) -> set[str]:
         """Return operating system's supported releases as a set.
-
-        This is based off the boot images that the cluster currently has
-        for this operating system.
 
         :return: set of supported releases
         """
-        return set(self.gen_supported_releases())
+        return set()
 
     def get_supported_commissioning_releases(self):
         """List operating system's supported commissioning releases.
@@ -220,45 +192,6 @@ class OperatingSystem(metaclass=ABCMeta):
 
     def get_image_filetypes(self) -> dict[str, str]:
         return self._get_image_filetypes(tgz=True)
-
-    def _find_image(
-        self,
-        arch: str,
-        subarch: str,
-        release: str,
-        label: str,
-        filetypes: dict[str, str],
-        default_fname=None,
-    ) -> tuple[str, str] | None:
-        with ClusterConfiguration.open() as config:
-            base_path = os.path.join(
-                config.tftp_root, self.name, arch, subarch, release, label
-            )
-
-        try:
-            for fname in os.listdir(base_path):
-                if fname in filetypes.keys():
-                    return fname, filetypes[fname]
-        except FileNotFoundError:
-            # In case the path does not exist
-            pass
-        if self.default_fname and self.default_fname in filetypes:
-            # If none is found return the default for messaging.
-            return self.default_fname, filetypes[self.default_fname]
-        else:
-            return list(filetypes.items())[0]
-
-    def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Return the xinstall image name and type for this operating system.
-
-        :param arch: Architecture of boot image.
-        :param subarch: Sub-architecture of boot image.
-        :param release: Release of boot image.
-        :param label: Label of boot image.
-        :return: tuple with name of root image and image type
-        """
-        filetypes = self.get_image_filetypes()
-        return self._find_image(arch, subarch, release, label, filetypes)
 
 
 class OperatingSystemRegistry(Registry):

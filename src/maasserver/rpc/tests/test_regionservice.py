@@ -549,9 +549,9 @@ class TestRackClient(MAASTestCase):
         )
         client = RackClient(conn, {})
         call_cache = client._getCallCache()
-        result = yield client(cluster.ListBootImages)
+        result = yield client(cluster.PowerDriverCheck)
         self.assertIs(sentinel.boot_images, result)
-        self.assertNotIn(cluster.ListBootImages, call_cache)
+        self.assertNotIn(cluster.PowerDriverCheck, call_cache)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -563,11 +563,11 @@ class TestRackClient(MAASTestCase):
             sentinel.boot_images
         )
         client = RackClient(conn, {})
-        yield client(cluster.ListBootImages)
+        yield client(cluster.PowerDriverCheck)
         mock_metrics.assert_called_with(
             "maas_region_rack_rpc_call_latency",
             "observe",
-            labels={"call": "ListBootImages"},
+            labels={"call": "PowerDriverCheck"},
             value=ANY,
         )
 

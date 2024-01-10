@@ -3,9 +3,7 @@
 
 from hashlib import sha256
 from hmac import HMAC
-from itertools import product
 import json
-import os.path
 from pathlib import Path
 import random
 import socket
@@ -40,8 +38,6 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver import concurrency
-from provisioningserver.boot import tftppath
-from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import (
     DHCPConfigNameResolutionDisabled,
     fix_shared_networks_failover,
@@ -49,10 +45,6 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_interface,
     make_shared_network,
-)
-from provisioningserver.drivers.osystem import (
-    OperatingSystem,
-    OperatingSystemRegistry,
 )
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -66,16 +58,14 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.drivers.power import PowerError
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.rpc import (
-    boot_images,
     cluster,
     clusterservice,
     common,
     dhcp,
     exceptions,
     getRegionClient,
+    pods,
 )
-from provisioningserver.rpc import osystems as osystems_rpc_module
-from provisioningserver.rpc import pods
 from provisioningserver.rpc import power as power_module
 from provisioningserver.rpc import region, tags
 from provisioningserver.rpc.clusterservice import (
@@ -88,7 +78,6 @@ from provisioningserver.rpc.clusterservice import (
     spawnProcessAndNullifyStdout,
 )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
@@ -96,7 +85,6 @@ from provisioningserver.rpc.testing import (
 from provisioningserver.rpc.testing.doubles import (
     FakeBusyConnectionToRegion,
     FakeConnection,
-    StubOS,
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -191,174 +179,6 @@ class TestClusterProtocol_StartTLS(MAASTestCase):
             self.assertEqual({}, response)
 
         return d.addCallback(check)
-
-
-class TestClusterProtocol_ListBootImages(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_list_boot_images_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ListBootImages.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_list_boot_images_can_be_called(self):
-        self.useFixture(ClusterConfigurationFixture())
-        self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
-        list_boot_images = self.patch(tftppath, "list_boot_images")
-        list_boot_images.return_value = []
-
-        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
-
-        self.assertEqual({"images": []}, response)
-
-    @inlineCallbacks
-    def test_list_boot_images_with_things_to_report(self):
-        # tftppath.list_boot_images()'s return value matches the
-        # response schema that ListBootImages declares, and is
-        # serialised correctly.
-
-        # Example boot image definitions.
-        osystems = "ubuntu", "centos"
-        archs = "i386", "amd64"
-        subarchs = "generic", "special"
-        releases = "precise", "trusty"
-        labels = "beta-1", "release"
-        purposes = "commissioning", "install", "xinstall"
-
-        # Populate a TFTP file tree with a variety of subdirectories.
-        tftpdir = self.make_dir()
-        current_dir = os.path.join(tftpdir, "current")
-        os.makedirs(current_dir)
-        for options in product(osystems, archs, subarchs, releases, labels):
-            os.makedirs(os.path.join(current_dir, *options))
-            make_osystem(self, options[0], purposes)
-
-        self.useFixture(
-            ClusterConfigurationFixture(
-                tftp_root=os.path.join(tftpdir, "current")
-            )
-        )
-        self.patch(boot_images, "CACHED_BOOT_IMAGES", None)
-
-        expected_images = [
-            {
-                "osystem": osystem,
-                "architecture": arch,
-                "subarchitecture": subarch,
-                "release": release,
-                "label": label,
-                "purpose": purpose,
-            }
-            for osystem, arch, subarch, release, label, purpose in product(
-                osystems, archs, subarchs, releases, labels, purposes
-            )
-        ]
-        for expected_image in expected_images:
-            if expected_image["purpose"] == "xinstall":
-                if expected_image["osystem"] == "ubuntu":
-                    expected_image["xinstall_path"] = "squashfs"
-                    expected_image["xinstall_type"] = "squashfs"
-                else:
-                    expected_image["xinstall_path"] = "root-tgz"
-                    expected_image["xinstall_type"] = "tgz"
-            else:
-                expected_image["xinstall_path"] = ""
-                expected_image["xinstall_type"] = ""
-
-        response = yield call_responder(Cluster(), cluster.ListBootImages, {})
-
-        self.assertEqual(response.keys(), {"images"})
-        self.assertCountEqual(expected_images, response["images"])
-
-
-class TestClusterProtocol_ImportBootImages(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_import_boot_images_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ImportBootImages.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_import_boot_images_can_be_called(self):
-        self.patch(clusterservice, "import_boot_images")
-
-        conn_cluster = Cluster()
-        conn_cluster.service = MagicMock()
-        conn_cluster.service.maas_url = factory.make_simple_http_url()
-
-        response = yield call_responder(
-            conn_cluster, cluster.ImportBootImages, {"sources": []}
-        )
-        self.assertEqual({}, response)
-
-    @inlineCallbacks
-    def test_import_boot_images_calls_import_boot_images_with_sources(self):
-        import_boot_images = self.patch(clusterservice, "import_boot_images")
-
-        sources = [
-            {
-                "url": factory.make_url(),
-                "keyring_data": b"",
-                "selections": [
-                    {
-                        "os": "ubuntu",
-                        "release": "trusty",
-                        "arches": ["amd64"],
-                        "subarches": ["generic"],
-                        "labels": ["release"],
-                    }
-                ],
-            }
-        ]
-
-        conn_cluster = Cluster()
-        conn_cluster.service = MagicMock()
-        conn_cluster.service.maas_url = factory.make_simple_http_url()
-
-        yield call_responder(
-            conn_cluster, cluster.ImportBootImages, {"sources": sources}
-        )
-
-        import_boot_images.assert_called_once_with(
-            sources,
-            conn_cluster.service.maas_url,
-            http_proxy=None,
-            https_proxy=None,
-        )
-
-    @inlineCallbacks
-    def test_import_boot_images_calls_import_boot_images_with_proxies(self):
-        import_boot_images = self.patch(clusterservice, "import_boot_images")
-
-        proxy = "http://%s.example.com" % factory.make_name("proxy")
-        parsed_proxy = urlparse(proxy)
-
-        conn_cluster = Cluster()
-        conn_cluster.service = MagicMock()
-        conn_cluster.service.maas_url = factory.make_simple_http_url()
-
-        yield call_responder(
-            conn_cluster,
-            cluster.ImportBootImages,
-            {
-                "sources": [],
-                "http_proxy": parsed_proxy,
-                "https_proxy": parsed_proxy,
-            },
-        )
-
-        import_boot_images.assert_called_once_with(
-            [],
-            conn_cluster.service.maas_url,
-            http_proxy=proxy,
-            https_proxy=proxy,
-        )
 
 
 class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
@@ -2048,119 +1868,6 @@ class TestClusterClientCheckerService(MAASTestCase):
         client._conn.transport.loseConnection.assert_called_once_with()
 
 
-class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ListSupportedArchitectures.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_returns_architectures(self):
-        architectures = yield call_responder(
-            Cluster(), cluster.ListSupportedArchitectures, {}
-        )
-        # Assert that one of the built-in architectures is in the data
-        # returned by ListSupportedArchitectures.
-        self.assertIn(
-            {"name": "i386/generic", "description": "i386"},
-            architectures["architectures"],
-        )
-
-
-class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ListOperatingSystems.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_returns_oses(self):
-        # Patch in some operating systems with some randomised data. See
-        # StubOS for details of the rules that are used to populate the
-        # non-random elements.
-        operating_systems = [
-            StubOS(
-                factory.make_name("os"),
-                releases=[
-                    (factory.make_name("name"), factory.make_name("title"))
-                    for _ in range(random.randint(2, 5))
-                ],
-            )
-            for _ in range(random.randint(2, 5))
-        ]
-        self.patch(
-            osystems_rpc_module,
-            "OperatingSystemRegistry",
-            [(os.name, os) for os in operating_systems],
-        )
-        osystems = yield call_responder(
-            Cluster(), cluster.ListOperatingSystems, {}
-        )
-        # The fully-populated output from gen_operating_systems() sent
-        # back over the wire.
-        expected_osystems = list(gen_operating_systems())
-        for expected_osystem in expected_osystems:
-            expected_osystem["releases"] = list(expected_osystem["releases"])
-        expected = {"osystems": expected_osystems}
-        self.assertEqual(expected, osystems)
-
-
-class TestClusterProtocol_GetOSReleaseTitle(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.GetOSReleaseTitle.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_calls_get_os_release_title(self):
-        title = factory.make_name("title")
-        get_os_release_title = self.patch(
-            clusterservice, "get_os_release_title"
-        )
-        get_os_release_title.return_value = title
-        arguments = {
-            "osystem": factory.make_name("osystem"),
-            "release": factory.make_name("release"),
-        }
-        observed = yield call_responder(
-            Cluster(), cluster.GetOSReleaseTitle, arguments
-        )
-        expected = {"title": title}
-        self.assertEqual(expected, observed)
-        # The arguments are passed to the responder positionally.
-        get_os_release_title.assert_called_once_with(
-            arguments["osystem"], arguments["release"]
-        )
-
-    @inlineCallbacks
-    def test_exception_when_os_does_not_exist(self):
-        # A remote NoSuchOperatingSystem exception is re-raised locally.
-        get_os_release_title = self.patch(
-            clusterservice, "get_os_release_title"
-        )
-        get_os_release_title.side_effect = exceptions.NoSuchOperatingSystem()
-        arguments = {
-            "osystem": factory.make_name("osystem"),
-            "release": factory.make_name("release"),
-        }
-        with TestCase.assertRaises(self, exceptions.NoSuchOperatingSystem):
-            yield call_responder(
-                Cluster(), cluster.GetOSReleaseTitle, arguments
-            )
-
-
 class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
@@ -2208,77 +1915,6 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
             yield call_responder(
                 Cluster(), cluster.ValidateLicenseKey, arguments
             )
-
-
-class TestClusterProtocol_GetPreseedData(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    assertRaises = TestCase.assertRaises
-
-    def make_arguments(self):
-        return {
-            "osystem": factory.make_name("osystem"),
-            "preseed_type": factory.make_name("preseed_type"),
-            "node_system_id": factory.make_name("system_id"),
-            "node_hostname": factory.make_name("hostname"),
-            "consumer_key": factory.make_name("consumer_key"),
-            "token_key": factory.make_name("token_key"),
-            "token_secret": factory.make_name("token_secret"),
-            "metadata_url": urlparse(factory.make_url()),
-        }
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.GetPreseedData.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_calls_get_preseed_data(self):
-        get_preseed_data = self.patch(clusterservice, "get_preseed_data")
-        get_preseed_data.return_value = factory.make_name("data")
-        arguments = self.make_arguments()
-        observed = yield call_responder(
-            Cluster(), cluster.GetPreseedData, arguments
-        )
-        expected = {"data": get_preseed_data.return_value}
-        self.assertEqual(expected, observed)
-        # The arguments are passed to the responder positionally.
-        get_preseed_data.assert_called_once_with(
-            arguments["osystem"],
-            arguments["preseed_type"],
-            arguments["node_system_id"],
-            arguments["node_hostname"],
-            arguments["consumer_key"],
-            arguments["token_key"],
-            arguments["token_secret"],
-            arguments["metadata_url"],
-        )
-
-    @inlineCallbacks
-    def test_exception_when_os_does_not_exist(self):
-        # A remote NoSuchOperatingSystem exception is re-raised locally.
-        get_preseed_data = self.patch(clusterservice, "get_preseed_data")
-        get_preseed_data.side_effect = exceptions.NoSuchOperatingSystem()
-        arguments = self.make_arguments()
-        with self.assertRaises(exceptions.NoSuchOperatingSystem):
-            yield call_responder(Cluster(), cluster.GetPreseedData, arguments)
-
-    @inlineCallbacks
-    def test_exception_when_preseed_not_implemented(self):
-        # A remote NotImplementedError exception is re-raised locally.
-        # Choose an operating system which has not overridden the
-        # default compose_preseed.
-        osystem_name, *_ = (
-            osystem_name
-            for osystem_name, osystem in OperatingSystemRegistry
-            if type(osystem).compose_preseed == OperatingSystem.compose_preseed
-        )
-        arguments = self.make_arguments()
-        arguments["osystem"] = osystem_name
-        with self.assertRaises(NotImplementedError):
-            yield call_responder(Cluster(), cluster.GetPreseedData, arguments)
 
 
 class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):

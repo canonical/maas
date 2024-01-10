@@ -24,14 +24,10 @@ from maasserver.models import NodeKey, PackageRepository
 from maasserver.models.config import Config
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.http import make_HttpRequest
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchOperatingSystem,
-)
+from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from provisioningserver.testing.os import make_osystem
 
 
@@ -971,28 +967,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
             NoSuchOperatingSystem,
-            compose_preseed,
-            make_HttpRequest(),
-            PRESEED_TYPE.CURTIN,
-            node,
-        )
-
-    def test_compose_preseed_propagates_NoConnectionsAvailable(self):
-        # If the region does not have any connections to the node's cluster
-        # controller, compose_preseed() simply passes the exception up.
-        os_name = factory.make_name("os")
-        make_osystem(self, os_name, [BOOT_IMAGE_PURPOSE.XINSTALL])
-        make_usable_osystem(self, os_name)
-        rack_controller = factory.make_RackController()
-        node = factory.make_Node(
-            interface=True, osystem=os_name, status=NODE_STATUS.READY
-        )
-        nic = node.get_boot_interface()
-        nic.vlan.dhcp_on = True
-        nic.vlan.primary_rack = rack_controller
-        nic.vlan.save()
-        self.assertRaises(
-            NoConnectionsAvailable,
             compose_preseed,
             make_HttpRequest(),
             PRESEED_TYPE.CURTIN,

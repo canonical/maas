@@ -4,7 +4,6 @@
 """Tests for `provisioningserver.drivers.osystem`."""
 
 
-import os
 from unittest.mock import sentinel
 
 from maastesting.factory import factory
@@ -13,7 +12,6 @@ from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
 )
-from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.testing.os import make_osystem
 from provisioningserver.utils.testing import RegistryFixture
 
@@ -238,36 +236,6 @@ class TestFindImage(MAASTestCase):
             },
         ),
     ]
-
-    def test_find_image(self):
-        osystem = make_osystem(self, factory.make_name("os"))
-        tmpdir = self.make_dir()
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        release = factory.make_name("release")
-        label = factory.make_name("label")
-        dir_path = os.path.join(
-            tmpdir, osystem.name, arch, subarch, release, label
-        )
-        os.makedirs(dir_path)
-        if self.fname:
-            factory.make_file(dir_path, self.fname)
-        self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
-        filesystems = osystem._get_image_filetypes(
-            tgz=self.tgz,
-            dd=self.dd,
-            squashfs=self.squashfs,
-        )
-        self.assertEqual(
-            self.expected,
-            osystem._find_image(
-                arch,
-                subarch,
-                release,
-                label,
-                filesystems,
-            ),
-        )
 
 
 class TestOperatingSystemRegistry(MAASTestCase):

@@ -35,7 +35,6 @@ from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from provisioningserver import concurrency
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
-from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
 )
@@ -59,20 +58,11 @@ from provisioningserver.rpc import (
     pods,
     region,
 )
-from provisioningserver.rpc.boot_images import (
-    import_boot_images,
-    list_boot_images,
-)
 from provisioningserver.rpc.common import Ping, RPCProtocol
 from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
-from provisioningserver.rpc.osystems import (
-    gen_operating_systems,
-    get_os_release_title,
-    get_preseed_data,
-    validate_license_key,
-)
+from provisioningserver.rpc.osystems import validate_license_key
 from provisioningserver.rpc.power import (
     get_power_state,
     maybe_change_power_state,
@@ -280,34 +270,6 @@ class Cluster(RPCProtocol):
         digest = calculate_digest(MAAS_SECRET.get(), message, salt)
         return {"digest": digest, "salt": salt}
 
-    @cluster.ListBootImages.responder
-    def list_boot_images(self):
-        """list_boot_images()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ListBootImages`.
-        """
-        return {"images": list_boot_images()}
-
-    @cluster.ImportBootImages.responder
-    def import_boot_images(self, sources, http_proxy=None, https_proxy=None):
-        """import_boot_images()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ImportBootImages`.
-        """
-
-        def get_proxy_url(url):
-            return None if url is None else url.geturl()
-
-        import_boot_images(
-            sources,
-            self.service.maas_url,
-            http_proxy=get_proxy_url(http_proxy),
-            https_proxy=get_proxy_url(https_proxy),
-        )
-        return {}
-
     @cluster.DescribePowerTypes.responder
     def describe_power_types(self):
         """describe_power_types()
@@ -324,33 +286,6 @@ class Cluster(RPCProtocol):
             )
         }
 
-    @cluster.ListSupportedArchitectures.responder
-    def list_supported_architectures(self):
-        return {
-            "architectures": [
-                {"name": arch.name, "description": arch.description}
-                for _, arch in ArchitectureRegistry
-            ]
-        }
-
-    @cluster.ListOperatingSystems.responder
-    def list_operating_systems(self):
-        """list_operating_systems()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ListOperatingSystems`.
-        """
-        return {"osystems": gen_operating_systems()}
-
-    @cluster.GetOSReleaseTitle.responder
-    def get_os_release_title(self, osystem, release):
-        """get_os_release_title()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.GetOSReleaseTitle`.
-        """
-        return {"title": get_os_release_title(osystem, release)}
-
     @cluster.ValidateLicenseKey.responder
     def validate_license_key(self, osystem, release, key):
         """validate_license_key()
@@ -359,36 +294,6 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.ValidateLicenseKey`.
         """
         return {"is_valid": validate_license_key(osystem, release, key)}
-
-    @cluster.GetPreseedData.responder
-    def get_preseed_data(
-        self,
-        osystem,
-        preseed_type,
-        node_system_id,
-        node_hostname,
-        consumer_key,
-        token_key,
-        token_secret,
-        metadata_url,
-    ):
-        """get_preseed_data()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.GetPreseedData`.
-        """
-        return {
-            "data": get_preseed_data(
-                osystem,
-                preseed_type,
-                node_system_id,
-                node_hostname,
-                consumer_key,
-                token_key,
-                token_secret,
-                metadata_url,
-            )
-        }
 
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):

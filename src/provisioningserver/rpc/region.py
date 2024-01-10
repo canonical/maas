@@ -12,7 +12,6 @@ __all__ = [
     "CreateNode",
     "GetArchiveMirrors",
     "GetBootConfig",
-    "GetBootSources",
     "GetControllerType",
     "GetDiscoveryState",
     "GetDNSConfiguration",
@@ -23,7 +22,6 @@ __all__ = [
     "MarkNodeFailed",
     "RegisterEventType",
     "RegisterRackController",
-    "ReportBootImages",
     "ReportForeignDHCPServer",
     "ReportMDNSEntries",
     "ReportNeighbours",
@@ -31,7 +29,6 @@ __all__ = [
     "SendEvent",
     "SendEventMACAddress",
     "UpdateControllerState",
-    "UpdateLastImageSync",
     "UpdateNodePowerState",
 ]
 
@@ -39,7 +36,6 @@ from twisted.protocols import amp
 
 from provisioningserver.rpc.arguments import (
     AmpList,
-    Bytes,
     ParsedURL,
     StructureAsJSON,
 )
@@ -82,31 +78,6 @@ class RegisterRackController(amp.Command):
         (b"uuid", amp.Unicode(optional=True)),
     ]
     errors = {CannotRegisterRackController: b"CannotRegisterRackController"}
-
-
-class ReportBootImages(amp.Command):
-    """Report boot images available on the invoking cluster controller.
-
-    :since: 1.5
-    """
-
-    arguments = [
-        # The cluster UUID.
-        (b"uuid", amp.Unicode()),
-        (
-            b"images",
-            AmpList(
-                [
-                    (b"architecture", amp.Unicode()),
-                    (b"subarchitecture", amp.Unicode()),
-                    (b"release", amp.Unicode()),
-                    (b"purpose", amp.Unicode()),
-                ]
-            ),
-        ),
-    ]
-    response = []
-    errors = []
 
 
 class GetBootConfig(amp.Command):
@@ -158,44 +129,6 @@ class GetBootConfig(amp.Command):
         (b"ephemeral_opts", amp.Unicode(optional=True)),
     ]
     errors = {BootConfigNoResponse: b"BootConfigNoResponse"}
-
-
-class GetBootSources(amp.Command):
-    """Report boot sources and selections for the given cluster.
-
-    Includes the new os field for the selections.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        # The cluster UUID.
-        (b"uuid", amp.Unicode())
-    ]
-    response = [
-        (
-            b"sources",
-            AmpList(
-                [
-                    (b"url", amp.Unicode()),
-                    (b"keyring_data", Bytes()),
-                    (
-                        b"selections",
-                        AmpList(
-                            [
-                                (b"os", amp.Unicode()),
-                                (b"release", amp.Unicode()),
-                                (b"arches", amp.ListOf(amp.Unicode())),
-                                (b"subarches", amp.ListOf(amp.Unicode())),
-                                (b"labels", amp.ListOf(amp.Unicode())),
-                            ]
-                        ),
-                    ),
-                ]
-            ),
-        )
-    ]
-    errors = []
 
 
 class GetArchiveMirrors(amp.Command):
@@ -278,20 +211,6 @@ class ListNodePowerParameters(amp.Command):
         )
     ]
     errors = {NoSuchCluster: b"NoSuchCluster"}
-
-
-class UpdateLastImageSync(amp.Command):
-    """Update Rack Controller's Last Image Sync.
-
-    :since: 2.0
-    """
-
-    arguments = [
-        # A rack controller's system_id.
-        (b"system_id", amp.Unicode())
-    ]
-    response = []
-    errors = []
 
 
 class UpdateNodePowerState(amp.Command):
