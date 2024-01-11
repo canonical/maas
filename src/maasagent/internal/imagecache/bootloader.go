@@ -12,7 +12,7 @@ import (
 
 var (
 	// ErrInvalidBootloader is an error for when a non-existent bootloader is requested
-	ErrInvalidBootloader = errors.New("the requested bootloader was invaild")
+	ErrInvalidBootloader = errors.New("the requested bootloader was invalid")
 )
 
 var (
@@ -22,10 +22,15 @@ var (
 		"/usr/lib/PXELINUX/lpxelinux.0":                         "lpxelinux.0",
 		"./lpxelinux.0":                                         "pxelinux.0",
 		"/usr/lib/syslinux/modules/bios/chain.c32":              "chain.c32",
+		"/usr/lib/syslinux/modules/bios/ifcpu.c32":              "ifcpu.c32",
 		"/usr/lib/syslinux/modules/bios/ifcpu64.c32":            "ifcpu64.c32",
 		"/usr/lib/syslinux/modules/bios/ldlinux.c32":            "ldlinux.c32",
 		"/usr/lib/syslinux/modules/bios/libcom32.c32":           "libcom32.c32",
 		"/usr/lib/syslinux/modules/bios/libutil.c32":            "libutil.c32",
+		// these are listed, but always intended to be remote fetches
+		"./bootppc64.bin": "bootppc64.bin",
+		"./bootaa64.efi":  "bootaa64.efi",
+		"./grubaa64.efi":  "grubaa64.efi",
 	}
 	grubARMFiles = map[string]struct{}{
 		"bootaa64.efi": {},
@@ -42,6 +47,7 @@ var (
 		"lpxelinux.0":  {},
 		"chain.c32":    {},
 		"ifcpu.c32":    {},
+		"ifcpu64.c32":  {},
 		"ldlinux.c32":  {},
 		"libcom32.c32": {},
 		"libutil.c32":  {},
@@ -195,13 +201,13 @@ func (b *BootloaderLinker) Open() (*os.File, error) {
 func (b *BootloaderLinker) RemotePath() (string, error) {
 	var p string
 
-	if _, ok := grubARMFiles[b.dst]; ok {
+	if _, ok := grubARMFiles[b.name]; ok {
 		p = path.Join("bootloaders/uefi/arm64/", b.name)
-	} else if _, ok := grubX64Files[b.dst]; ok {
+	} else if _, ok := grubX64Files[b.name]; ok {
 		p = path.Join("bootloaders/uefi/amd64/", b.name)
-	} else if _, ok := ppcBootloaderFiles[b.dst]; ok {
+	} else if _, ok := ppcBootloaderFiles[b.name]; ok {
 		p = path.Join("bootloaders/open-firmware/ppc64el/", b.name)
-	} else if _, ok := pxeFiles[b.dst]; ok {
+	} else if _, ok := pxeFiles[b.name]; ok {
 		p = path.Join("bootloader/pxe/i386/", b.name)
 	} else {
 		return "", ErrInvalidBootloader
