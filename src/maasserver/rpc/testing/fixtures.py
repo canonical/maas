@@ -108,7 +108,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
       result = client(region.Identify)
       io.flush()  # Call this in the reactor thread.
 
-      self.assertThat(result, ...)
+      self.assertEqual(result, ...)
 
     """
 
@@ -207,7 +207,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
       d = client(region.Identify)
 
       def check(result):
-          self.assertThat(result, ...)
+          self.assertEqual(result, ...)
       d.addCallback(check)
 
     """

@@ -3,29 +3,19 @@
 
 """testtools custom matchers"""
 
-from difflib import ndiff
 import doctest
-from functools import partial
 
 from testtools import matchers
-from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
     Equals,
-    GreaterThan,
     HasLength,
-    IsInstance,
-    LessThan,
     Matcher,
     MatchesAll,
-    MatchesAny,
     MatchesPredicate,
-    MatchesStructure,
     Mismatch,
-    PathExists,
 )
-from twisted.internet import defer
 
 
 class Matches:
@@ -81,15 +71,6 @@ class IsCallable(Matcher):
 
     def __str__(self):
         return self.__class__.__name__
-
-
-class Provides(MatchesPredicate):
-    """Match if the given interface is provided."""
-
-    def __init__(self, iface):
-        super().__init__(
-            iface.providedBy, "%%r does not provide %s" % iface.getName()
-        )
 
 
 class HasAttribute(Matcher):
@@ -209,23 +190,6 @@ class MockCalledOnce(Matcher):
             )
 
 
-class MockAnyCall(MockCalledWith):
-    """Matches if the matchee Mock was called at any time with the provided
-    args.
-
-    Use of Mock.assert_any_call is discouraged as it passes if you typo
-    the function name.
-    """
-
-    def match(self, mock):
-        try:
-            mock.assert_any_call(*self.args, **self.kwargs)
-        except AssertionError as e:
-            return Mismatch(*e.args)
-
-        return None
-
-
 class MockCallsMatch(Matcher):
     """Matches if the matchee Mock was called with exactly the given
     sequence of calls.
@@ -276,63 +240,6 @@ class MockNotCalled(Matcher):
         return matcher.match(mock)
 
 
-class IsFiredDeferred(Matcher):
-    """Matches if the subject is a fired `Deferred`."""
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def match(self, thing):
-        if not isinstance(thing, defer.Deferred):
-            return Mismatch(f"{thing!r} is not a Deferred")
-        if not thing.called:
-            return Mismatch(f"{thing!r} has not been called")
-        return None
-
-
-class IsUnfiredDeferred(Matcher):
-    """Matches if the subject is an unfired `Deferred`."""
-
-    def __str__(self):
-        return self.__class__.__name__
-
-    def match(self, thing):
-        if not isinstance(thing, defer.Deferred):
-            return Mismatch(f"{thing!r} is not a Deferred")
-        if thing.called:
-            return Mismatch(
-                f"{thing!r} has been called (result={thing.result!r})"
-            )
-        return None
-
-
-class MatchesPartialCall(Matcher):
-    def __init__(self, func, *args, **keywords):
-        super().__init__()
-        if len(keywords) > 0:
-            self.expected = partial(func, *args, **keywords)
-        else:
-            self.expected = partial(func, *args)
-
-    def match(self, observed):
-        matcher = MatchesAll(
-            IsInstance(partial),
-            MatchesStructure.fromExample(
-                self.expected, "func", "args", "keywords"
-            ),
-            first_only=True,
-        )
-        return matcher.match(observed)
-
-
-def GreaterThanOrEqual(value):
-    return MatchesAny(GreaterThan(value), Equals(value))
-
-
-def LessThanOrEqual(value):
-    return MatchesAny(LessThan(value), Equals(value))
-
-
 class DocTestMatches(matchers.DocTestMatches):
     """See if a string matches a doctest example.
 
@@ -344,106 +251,6 @@ class DocTestMatches(matchers.DocTestMatches):
 
     def __init__(self, example, flags=DEFAULT_FLAGS):
         super().__init__(example, flags)
-
-
-class FileContains(Matcher):
-    """Matches if the given file has the specified contents.
-
-    This differs from testtools' matcher in that it is strict about binary and
-    text; a comparison of text must be done with an encoding.
-    """
-
-    def __init__(self, contents=None, matcher=None, encoding=None):
-        """Construct a ``FileContains`` matcher.
-
-        Can be used in a basic mode where the file contents are compared for
-        equality against the expected file contents (by passing ``contents``).
-        Can also be used in a more advanced way where the file contents are
-        matched against an arbitrary matcher (by passing ``matcher`` instead).
-
-        :param contents: If specified, match the contents of the file with
-            these contents.
-        :param matcher: If specified, match the contents of the file against
-            this matcher.
-        :param encoding: If specified, the file is read in text mode with the
-            given encoding; ``contents`` should be a Unicode string, or
-            ``matcher`` should expect to compare against one. If ``encoding``
-            is not specified or is ``None``, the comparison is done byte-wise;
-            ``contents`` should be a byte string, or ``matcher`` should expect
-            to compare against one.
-        """
-        if contents is None and matcher is None:
-            raise AssertionError(
-                "Must provide one of `contents` or `matcher`."
-            )
-        if contents is not None and matcher is not None:
-            raise AssertionError(
-                "Must provide either `contents` or `matcher`, not both."
-            )
-        if matcher is None:
-            self.matcher = Equals(contents)
-        else:
-            self.matcher = matcher
-        self.encoding = encoding
-
-    def match(self, path):
-        mismatch = PathExists().match(path)
-        if mismatch is not None:
-            return mismatch
-        if self.encoding is None:
-            # Binary match.
-            with open(path, "rb") as fd:
-                actual_contents = fd.read()
-        else:
-            # Text/Unicode match.
-            with open(path, encoding=self.encoding) as fd:
-                actual_contents = fd.read()
-        return self.matcher.match(actual_contents)
-
-    def __str__(self):
-        if self.encoding is None:
-            return (
-                "File at path exists and its contents (unencoded; raw) "
-                "match %s" % (self.matcher,)
-            )
-        else:
-            return (
-                "File at path exists and its contents (encoded as %s) "
-                "match %s" % (self.encoding, self.matcher)
-            )
-
-
-class TextEquals(Matcher):
-    """Compares two blocks of text for equality.
-
-    This differs from `Equals` in that is calculates an `ndiff` between the
-    two which will be included in the test results, making this especially
-    appropriate for longer pieces of text.
-    """
-
-    def __init__(self, expected):
-        super().__init__()
-        self.expected = expected
-
-    def match(self, observed):
-        if observed != self.expected:
-            diff = self._diff(self.expected, observed)
-            return Mismatch(
-                "Observed text does not match expectations; see diff.",
-                {"diff": Content(UTF8_TEXT, lambda: map(str.encode, diff))},
-            )
-
-    @staticmethod
-    def _diff(expected, observed):
-        # ndiff works better when lines consistently end with newlines.
-        a = str(expected).splitlines(keepends=False)
-        a = list(line + "\n" for line in a)
-        b = str(observed).splitlines(keepends=False)
-        b = list(line + "\n" for line in b)
-
-        yield "--- expected\n"
-        yield "+++ observed\n"
-        yield from ndiff(a, b)
 
 
 # The matchee is a non-empty string. In addition a string containing only
@@ -458,18 +265,3 @@ IsNonEmptyString = MatchesAll(
     ),
     first_only=True,
 )
-
-
-class ContainedBy(Matcher):
-    """Test if the matchee is in the given container."""
-
-    def __init__(self, haystack):
-        super().__init__()
-        self.haystack = haystack
-
-    def __str__(self):
-        return f"{self.__class__.__name__}({self.haystack!r})"
-
-    def match(self, needle):
-        if needle not in self.haystack:
-            return Mismatch(f"{needle!r} not in {self.haystack!r}")

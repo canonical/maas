@@ -3,14 +3,12 @@
 
 """Tests for the top-level region RPC API."""
 
-
 from unittest.mock import sentinel
 
-from testtools.deferredruntest import assert_fails_with
+from twisted.internet.defer import inlineCallbacks
 
 from maasserver import eventloop, rpc
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import exceptions
 
@@ -19,10 +17,13 @@ wait_for_reactor = wait_for()
 
 class TestFunctions(MAASTestCase):
     @wait_for_reactor
+    @inlineCallbacks
     def test_getClientFor_service_not_running(self):
-        return assert_fails_with(
-            rpc.getClientFor(sentinel.uuid), exceptions.NoConnectionsAvailable
-        )
+        with self.assertRaisesRegex(
+            exceptions.NoConnectionsAvailable,
+            "sentinel.uuid; no connections available",
+        ):
+            yield rpc.getClientFor(sentinel.uuid)
 
     @wait_for_reactor
     def test_getClientFor(self):
@@ -30,7 +31,7 @@ class TestFunctions(MAASTestCase):
         getClientFor = getServiceNamed.return_value.getClientFor
         getClientFor.return_value = sentinel.client
         self.assertIs(getClientFor(sentinel.uuid), sentinel.client)
-        self.assertThat(getClientFor, MockCalledOnceWith(sentinel.uuid))
+        getClientFor.assert_called_once_with(sentinel.uuid)
 
     @wait_for_reactor
     def test_getAllClients_service_not_running(self):
@@ -42,4 +43,4 @@ class TestFunctions(MAASTestCase):
         getAllClients = getServiceNamed.return_value.getAllClients
         getAllClients.return_value = sentinel.clients
         self.assertIs(getAllClients(), sentinel.clients)
-        self.assertThat(getAllClients, MockCalledOnceWith())
+        getAllClients.assert_called_once_with()

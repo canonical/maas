@@ -10,7 +10,6 @@ import time
 
 from django.utils import timezone
 from netaddr import IPAddress
-from testtools.matchers import MatchesStructure
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.fields import normalise_macaddress
@@ -142,17 +141,14 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
-        self.assertThat(
-            sip,
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip=ip,
-                subnet=subnet,
-                lease_time=kwargs["lease_time"],
-                created=datetime.fromtimestamp(kwargs["timestamp"]),
-                updated=datetime.fromtimestamp(kwargs["timestamp"]),
-            ),
-        )
+        self.assertEqual(sip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(sip.ip, ip)
+        self.assertEqual(sip.subnet, subnet)
+        self.assertEqual(sip.lease_time, kwargs["lease_time"])
+
+        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        self.assertEqual(sip.created, t0)
+        self.assertEqual(sip.updated, t0)
 
     def test_create_ignores_none_hostname(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -170,17 +166,14 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
-        self.assertThat(
-            sip,
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip=ip,
-                subnet=subnet,
-                lease_time=kwargs["lease_time"],
-                created=datetime.fromtimestamp(kwargs["timestamp"]),
-                updated=datetime.fromtimestamp(kwargs["timestamp"]),
-            ),
-        )
+        self.assertEqual(sip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(sip.ip, ip)
+        self.assertEqual(sip.subnet, subnet)
+        self.assertEqual(sip.lease_time, kwargs["lease_time"])
+
+        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        self.assertEqual(sip.created, t0)
+        self.assertEqual(sip.updated, t0)
         # No DNS record should have been crated.
         self.assertEqual(0, DNSResource.objects.count())
 
@@ -277,17 +270,14 @@ class TestUpdateLease(MAASServerTestCase):
         sip = StaticIPAddress.objects.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip
         ).first()
-        self.assertThat(
-            sip,
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip=ip,
-                subnet=subnet,
-                lease_time=kwargs["lease_time"],
-                created=datetime.fromtimestamp(kwargs["timestamp"]),
-                updated=datetime.fromtimestamp(kwargs["timestamp"]),
-            ),
-        )
+        self.assertEqual(sip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(sip.ip, ip)
+        self.assertEqual(sip.subnet, subnet)
+        self.assertEqual(sip.lease_time, kwargs["lease_time"])
+
+        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        self.assertEqual(sip.created, t0)
+        self.assertEqual(sip.updated, t0)
         self.assertCountEqual(
             [boot_interface.id], sip.interface_set.values_list("id", flat=True)
         )
@@ -360,17 +350,14 @@ class TestUpdateLease(MAASServerTestCase):
         sip = StaticIPAddress.objects.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=ip
         ).first()
-        self.assertThat(
-            sip,
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip=ip,
-                subnet=subnet,
-                lease_time=kwargs["lease_time"],
-                created=datetime.fromtimestamp(kwargs["timestamp"]),
-                updated=datetime.fromtimestamp(kwargs["timestamp"]),
-            ),
-        )
+        self.assertEqual(sip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+        self.assertEqual(sip.ip, ip)
+        self.assertEqual(sip.subnet, subnet)
+        self.assertEqual(sip.lease_time, kwargs["lease_time"])
+
+        t0 = datetime.fromtimestamp(kwargs["timestamp"])
+        self.assertEqual(sip.created, t0)
+        self.assertEqual(sip.updated, t0)
         self.assertCountEqual(
             [boot_interface.id, bond_interface.id],
             sip.interface_set.values_list("id", flat=True),

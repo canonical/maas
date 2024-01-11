@@ -5,26 +5,12 @@
 
 
 from collections import defaultdict
-from operator import attrgetter
 import random
+import re
 from unittest import skip
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 from django.db import IntegrityError
-from testtools import ExpectedException
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesAny,
-    MatchesListwise,
-    MatchesSetwise,
-)
 from twisted.application.service import Service
 from twisted.internet import reactor, tcp
 from twisted.internet.address import IPv4Address
@@ -59,7 +45,6 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch, Provides
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
@@ -101,9 +86,9 @@ class TestRegionServer(MAASTransactionServerTestCase):
         service.running = True  # Pretend it's running.
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         protocol.connectionMade()
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
 
     def test_connectionMade_drops_connection_if_service_not_running(self):
         service = RegionService(sentinel.ipcWorker)
@@ -111,12 +96,12 @@ class TestRegionServer(MAASTransactionServerTestCase):
         service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         transport = self.patch(protocol, "transport")
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         protocol.connectionMade()
         # The protocol is not added to the connection set.
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         # The transport is instructed to lose the connection.
-        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+        transport.loseConnection.assert_called_with()
 
     def test_connectionLost_updates_services_connection_set(self):
         service = RegionService(sentinel.ipcWorker)
@@ -129,9 +114,9 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
         protocol.connectionLost(reason=None)
         # The connection is removed from the set, but the key remains.
-        self.assertDictEqual({protocol.ident: set()}, service.connections)
+        self.assertEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
-        self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
+        connectionLost_up_call.assert_called_once_with(None)
 
     def test_connectionLost_uses_ipcWorker_to_unregister(self):
         ipcWorker = MagicMock()
@@ -148,14 +133,13 @@ class TestRegionServer(MAASTransactionServerTestCase):
         service.connections[protocol.ident] = {protocol}
 
         protocol.connectionLost(reason=None)
-        self.assertThat(
-            ipcWorker.rpcUnregisterConnection,
-            MockCalledOnceWith(protocol.connid),
+        ipcWorker.rpcUnregisterConnection.assert_called_once_with(
+            protocol.connid
         )
         # The connection is removed from the set, but the key remains.
-        self.assertDictEqual({protocol.ident: set()}, service.connections)
+        self.assertEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
-        self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
+        connectionLost_up_call.assert_called_once_with(None)
 
     def patch_authenticate_for_failure(self, client):
         authenticate = self.patch_autospec(client, "authenticateCluster")
@@ -172,12 +156,12 @@ class TestRegionServer(MAASTransactionServerTestCase):
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         self.patch_authenticate_for_failure(protocol)
         transport = self.patch(protocol, "transport")
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         protocol.connectionMade()
         # The protocol is not added to the connection set.
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         # The transport is instructed to lose the connection.
-        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+        transport.loseConnection.assert_called_with()
 
     def test_connectionMade_drops_connections_if_authentication_errors(self):
         logger = self.useFixture(TwistedLoggerFixture())
@@ -189,23 +173,21 @@ class TestRegionServer(MAASTransactionServerTestCase):
         protocol.transport = MagicMock()
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_error(protocol, exception_type())
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
 
         connectionMade = wait_for_reactor(protocol.connectionMade)
         connectionMade()
 
         # The protocol is not added to the connection set.
-        self.assertDictEqual({}, service.connections)
+        self.assertEqual({}, service.connections)
         # The transport is instructed to lose the connection.
-        self.assertThat(
-            protocol.transport.loseConnection, MockCalledOnceWith()
-        )
+        protocol.transport.loseConnection.assert_called_once_with()
 
         # The log was written to.
-        self.assertDocTestMatches(
-            """\
-            Rack controller '...' could not be authenticated; dropping
-            connection. Check that /var/lib/maas/secret...""",
+        self.assertEqual(
+            "Rack controller 'None' could not be authenticated; dropping "
+            "connection. Check that /var/lib/maas/secret on the controller "
+            "contains the correct shared key.",
             logger.dump(),
         )
 
@@ -389,9 +371,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "interfaces": {},
             },
         )
-        self.assertThat(
-            mock_addConnectionFor,
-            MockCalledOnceWith(rack_controller.system_id, protocol),
+        mock_addConnectionFor.assert_called_once_with(
+            rack_controller.system_id, protocol
         )
 
     @wait_for_reactor
@@ -438,12 +419,9 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "interfaces": {},
             },
         )
-        self.assertTrue(sentinel.host, protocol.hostIsRemote)
-        self.assertThat(
-            ipcWorker.rpcRegisterConnection,
-            MockCalledOnceWith(
-                protocol.connid, protocol.ident, host.host, host.port
-            ),
+        self.assertTrue(protocol.hostIsRemote)
+        ipcWorker.rpcRegisterConnection.assert_called_once_with(
+            protocol.connid, protocol.ident, host.host, host.port
         )
 
     @wait_for_reactor
@@ -467,21 +445,17 @@ class TestRegionServer(MAASTransactionServerTestCase):
         patched_create = self.patch(RackController.objects, "create")
         patched_create.side_effect = IntegrityError()
         hostname = factory.make_name("hostname")
-        error = yield assert_fails_with(
-            call_responder(
+        msg = re.escape(
+            "Failed to register rack controller 'None' with the master. "
+            "Connection will be dropped."
+        )
+
+        with self.assertRaisesRegex(CannotRegisterRackController, msg):
+            yield call_responder(
                 self.make_Region(),
                 RegisterRackController,
                 {"system_id": None, "hostname": hostname, "interfaces": {}},
-            ),
-            CannotRegisterRackController,
-        )
-        self.assertEqual(
-            (
-                "Failed to register rack controller 'None' with the master. "
-                "Connection will be dropped.",
-            ),
-            error.args,
-        )
+            )
 
 
 class TestRackClient(MAASTestCase):
@@ -578,10 +552,9 @@ class TestRegionService(MAASTestCase):
         self.assertIsInstance(service, Service)
         self.assertIsInstance(service.connections, defaultdict)
         self.assertIs(service.connections.default_factory, set)
-        self.assertThat(
-            service.endpoints,
-            AllMatch(AllMatch(Provides(IStreamServerEndpoint))),
-        )
+        for endpoints in service.endpoints:
+            for endpoint in endpoints:
+                self.assertTrue(IStreamServerEndpoint.providedBy(endpoint))
         self.assertIsInstance(service.factory, Factory)
         self.assertEqual(RegionServer, service.factory.protocol)
         self.assertIsInstance(service.events.connected, events.Event)
@@ -596,7 +569,7 @@ class TestRegionService(MAASTestCase):
 
         def check_started(_):
             # Ports are saved as private instance vars.
-            self.assertThat(service.ports, HasLength(1))
+            self.assertEqual(len(service.ports), 1)
             [port] = service.ports
             self.assertIsInstance(port, tcp.Port)
             self.assertIsInstance(port.factory, Factory)
@@ -644,7 +617,7 @@ class TestRegionService(MAASTestCase):
 
         def check(port):
             self.assertIsNone(port)
-            self.assertThat(service.ports, HasLength(0))
+            self.assertEqual(service.ports, [])
             return service.stopService()
 
         return service.starting.addCallback(check)
@@ -660,16 +633,11 @@ class TestRegionService(MAASTestCase):
         endpoints = self.patch(service, "endpoints", [[Mock()]])
         endpoints[0][0].listen.return_value = fail(exception)
 
-        logged_failures_expected = [
-            AfterPreprocessing((lambda failure: failure.value), Is(exception))
-        ]
-
         with TwistedLoggerFixture() as logger:
             yield service.startService()
 
-        self.assertThat(
-            logger.failures, MatchesListwise(logged_failures_expected)
-        )
+        for failure in logger.failures:
+            self.assertIs(failure.value, exception)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -705,14 +673,12 @@ class TestRegionService(MAASTestCase):
         self.addCleanup(wait_for_reactor(service.stopService))
 
         # A single port has been bound.
-        self.assertThat(
-            service.ports,
-            MatchesAll(HasLength(1), AllMatch(IsInstance(tcp.Port))),
-        )
+        self.assertEqual(len(service.ports), 1)
 
         # The port is not listening on port 1; i.e. a belt-n-braces check that
         # endpoint_2 was not used.
         [port] = service.ports
+        self.assertIsInstance(port, tcp.Port)
         self.assertNotEqual(1, port.getHost().port)
 
     @wait_for_reactor
@@ -772,7 +738,7 @@ class TestRegionService(MAASTestCase):
 
         def check(_):
             # The CancelledError is suppressed.
-            self.assertThat(service.ports, HasLength(0))
+            self.assertEqual(service.ports, [])
 
         return service.starting.addCallback(check)
 
@@ -794,14 +760,8 @@ class TestRegionService(MAASTestCase):
             service.connections[conn.ident].add(conn)
         transports = {self.patch(conn, "transport") for conn in connections}
         yield service.stopService()
-        self.assertThat(
-            transports,
-            AllMatch(
-                AfterPreprocessing(
-                    attrgetter("loseConnection"), MockCalledOnceWith()
-                )
-            ),
-        )
+        for mock_transport in transports:
+            mock_transport.loseConnection.assert_called_once_with()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -825,19 +785,16 @@ class TestRegionService(MAASTestCase):
         # stopService() completes without returning an error.
         yield service.stopService()
         # Connection-specific errors are logged.
-        self.assertDocTestMatches(
-            """\
-            Failure when closing RPC connection.
-            Traceback (most recent call last):
-            ...
-            builtins.OSError: broken
-            ...
-            Failure when closing RPC connection.
-            Traceback (most recent call last):
-            ...
-            builtins.OSError: broken
-            """,
+        self.assertRegex(
             logger.dump(),
+            (
+                r"(?ms)Failure when closing RPC connection\.\s*"
+                r"Traceback \(most recent call last\):.*"
+                r"builtins\.OSError: broken.*"
+                r"Failure when closing RPC connection\.\s*"
+                r"Traceback \(most recent call last\):.*"
+                r"builtins\.OSError: broken"
+            ),
         )
 
     @wait_for_reactor
@@ -854,23 +811,25 @@ class TestRegionService(MAASTestCase):
         return service.stopService()
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_getClientFor_errors_when_no_connections(self):
         service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
-        return assert_fails_with(
-            service.getClientFor(factory.make_UUID(), timeout=0),
-            exceptions.NoConnectionsAvailable,
-        )
+        with self.assertRaisesRegex(
+            exceptions.NoConnectionsAvailable, r"no connections available\.$"
+        ):
+            yield service.getClientFor(factory.make_UUID(), timeout=0)
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_getClientFor_errors_when_no_connections_for_cluster(self):
         service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
         service.connections[uuid].clear()
-        return assert_fails_with(
-            service.getClientFor(uuid, timeout=0),
-            exceptions.NoConnectionsAvailable,
-        )
+        with self.assertRaisesRegex(
+            exceptions.NoConnectionsAvailable, r"no connections available\.$"
+        ):
+            yield service.getClientFor(uuid, timeout=0)
 
     @wait_for_reactor
     def test_getClientFor_returns_random_connection(self):
@@ -913,7 +872,9 @@ class TestRegionService(MAASTestCase):
     def test_getRandomClient_empty_raises_NoConnectionsAvailable(self):
         service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
-        with ExpectedException(NoConnectionsAvailable):
+        with self.assertRaisesRegex(
+            NoConnectionsAvailable, r"no connections available\.$"
+        ):
             service.getRandomClient()
 
     @wait_for_reactor
@@ -928,22 +889,15 @@ class TestRegionService(MAASTestCase):
         c4 = DummyConnection()
         service.connections[uuid2].update({c3, c4})
         clients = service.getAllClients()
-        self.assertThat(
-            list(clients),
-            MatchesAny(
-                MatchesSetwise(
-                    Equals(RackClient(c1, {})), Equals(RackClient(c3, {}))
-                ),
-                MatchesSetwise(
-                    Equals(RackClient(c1, {})), Equals(RackClient(c4, {}))
-                ),
-                MatchesSetwise(
-                    Equals(RackClient(c2, {})), Equals(RackClient(c3, {}))
-                ),
-                MatchesSetwise(
-                    Equals(RackClient(c2, {})), Equals(RackClient(c4, {}))
-                ),
-            ),
+        (one, two) = list(clients)
+        self.assertIn(
+            (one, two),
+            [
+                (RackClient(c1, {}), RackClient(c3, {})),
+                (RackClient(c1, {}), RackClient(c4, {})),
+                (RackClient(c2, {}), RackClient(c3, {})),
+                (RackClient(c2, {}), RackClient(c4, {})),
+            ],
         )
 
     def test_rack_controller_is_disconnected_returns_True_with_no_connections(
@@ -991,8 +945,8 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: {c1, c2}}, service.connections)
         # Both mock waiters are called twice. A real waiter would only be
         # called once because it immediately unregisters itself once called.
-        self.assertThat(waiter1.callback, MockCallsMatch(call(c1), call(c2)))
-        self.assertThat(waiter2.callback, MockCallsMatch(call(c1), call(c2)))
+        waiter1.callback.assert_has_calls((call(c1), call(c2)))
+        waiter2.callback.assert_has_calls((call(c1), call(c2)))
 
     def test_addConnectionFor_fires_connected_event(self):
         service = RegionService(sentinel.ipcWorker)
@@ -1002,7 +956,7 @@ class TestRegionService(MAASTestCase):
         mock_fire = self.patch(service.events.connected, "fire")
         service._addConnectionFor(uuid, c1)
 
-        self.assertThat(mock_fire, MockCalledOnceWith(uuid))
+        mock_fire.assert_called_once_with(uuid)
 
     def test_removeConnectionFor_removes_connection(self):
         service = RegionService(sentinel.ipcWorker)
@@ -1032,7 +986,7 @@ class TestRegionService(MAASTestCase):
         mock_fire = self.patch(service.events.disconnected, "fire")
         service._removeConnectionFor(uuid, c1)
 
-        self.assertThat(mock_fire, MockCalledOnceWith(uuid))
+        mock_fire.assert_called_once_with(uuid)
 
     @wait_for_reactor
     def test_getConnectionFor_returns_existing_connection(self):
@@ -1097,6 +1051,7 @@ class TestRegionService(MAASTestCase):
         return d.addCallback(check)
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_getConnectionFor_cancels_waiter_when_it_times_out(self):
         service = RegionService(sentinel.ipcWorker)
         uuid = factory.make_UUID()
@@ -1104,10 +1059,8 @@ class TestRegionService(MAASTestCase):
         d = service._getConnectionFor(uuid, 1)
         # A waiter is added for the connection we're interested in.
         self.assertEqual({uuid: {d}}, service.waiters)
-        d = assert_fails_with(d, CancelledError)
+        with self.assertRaisesRegex(CancelledError, "^$"):
+            yield d
 
-        def check(_):
-            # The waiter has been unregistered.
-            self.assertEqual({uuid: set()}, service.waiters)
-
-        return d.addCallback(check)
+        # The waiter has been unregistered.
+        self.assertEqual({uuid: set()}, service.waiters)

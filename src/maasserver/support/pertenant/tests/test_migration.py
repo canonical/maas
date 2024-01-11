@@ -7,7 +7,6 @@
 from unittest.mock import call, sentinel
 
 from django.contrib.auth.models import User
-from testtools.matchers import MatchesStructure
 
 from maasserver.models import Node, SSHKey
 from maasserver.support.pertenant import migration
@@ -34,7 +33,6 @@ from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 
 
 def get_ssh_key_string(num=0):
@@ -49,15 +47,10 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual([], list(self.find_legacy_user()))
         legacy_user = get_legacy_user()
         self.assertEqual([legacy_user], list(self.find_legacy_user()))
-        self.assertThat(
-            legacy_user,
-            MatchesStructure.byEquality(
-                first_name="Shared",
-                last_name="Environment",
-                email=legacy_user_name + "@localhost",
-                is_active=True,
-            ),
-        )
+        self.assertEqual(legacy_user.first_name, "Shared")
+        self.assertEqual(legacy_user.last_name, "Environment")
+        self.assertEqual(legacy_user.email, legacy_user_name + "@localhost")
+        self.assertTrue(legacy_user.is_active)
 
     def test_get_legacy_user_creates_user_only_once(self):
         legacy_user1 = get_legacy_user()
@@ -76,7 +69,7 @@ class TestFunctions(MAASServerTestCase):
             factory.make_FileStorage(owner=user),
             factory.make_FileStorage(owner=None),
         ]
-        self.assertSetEqual({files[0], files[2]}, set(get_unowned_files()))
+        self.assertEqual({files[0], files[2]}, set(get_unowned_files()))
 
     def test_get_real_users_no_users(self):
         get_legacy_user()  # Ensure at least the legacy user exists.
@@ -85,7 +78,7 @@ class TestFunctions(MAASServerTestCase):
     def test_get_real_users(self):
         get_legacy_user()  # Ensure at least the legacy user exists.
         users = [factory.make_User(), factory.make_User()]
-        self.assertSetEqual(set(users), set(get_real_users()))
+        self.assertEqual(set(users), set(get_real_users()))
 
     def test_get_owned_nodes_no_nodes(self):
         self.assertEqual([], list(get_owned_nodes()))
@@ -99,7 +92,7 @@ class TestFunctions(MAASServerTestCase):
             factory.make_Node(owner=factory.make_User()),
             factory.make_Node(owner=factory.make_User()),
         }
-        self.assertSetEqual(nodes, set(get_owned_nodes()))
+        self.assertEqual(nodes, set(get_owned_nodes()))
 
     def test_get_owned_nodes_with_nodes_owned_by_system_users(self):
         factory.make_Node(owner=get_legacy_user()),
@@ -124,7 +117,7 @@ class TestFunctions(MAASServerTestCase):
         factory.make_Node(owner=user1)
         factory.make_Node(owner=user2)
         factory.make_Node(owner=None)
-        self.assertSetEqual({user1, user2}, set(get_owned_nodes_owners()))
+        self.assertEqual({user1, user2}, set(get_owned_nodes_owners()))
 
     def test_get_destination_user_one_real_user(self):
         user = factory.make_User()
@@ -172,7 +165,7 @@ class TestCopySSHKeys(MAASServerTestCase):
         user2 = factory.make_User()
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
-        self.assertSetEqual(
+        self.assertEqual(
             {key1.key}, {ssh_key.key for ssh_key in user2s_ssh_keys}
         )
 
@@ -185,7 +178,7 @@ class TestCopySSHKeys(MAASServerTestCase):
         key2 = factory.make_SSHKey(user2, key1.key)
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
-        self.assertSetEqual(
+        self.assertEqual(
             {key2.key}, {ssh_key.key for ssh_key in user2s_ssh_keys}
         )
 
@@ -198,7 +191,7 @@ class TestCopySSHKeys(MAASServerTestCase):
         key2 = factory.make_SSHKey(user2, get_ssh_key_string(2))
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
-        self.assertSetEqual(
+        self.assertEqual(
             {key1.key, key2.key}, {ssh_key.key for ssh_key in user2s_ssh_keys}
         )
 
@@ -222,7 +215,7 @@ class TestGiveFileToUser(MAASServerTestCase):
         file = factory.make_FileStorage(owner=None)
         save = self.patch(file, "save")
         give_file_to_user(file, user)
-        self.assertThat(save, MockCalledOnceWith())
+        save.assert_called_once_with()
 
 
 class TestGiveCredentialsToUser(MAASServerTestCase):
@@ -281,7 +274,7 @@ class TestMigrateToUser(MAASServerTestCase):
         migrate_to_user(sentinel.user)
 
         # Each unowned file is given to the destination user one at a time.
-        self.assertThat(get_unowned_files, MockCalledOnceWith())
+        get_unowned_files.assert_called_once_with()
         self.assertEqual(
             [
                 call(sentinel.file1, sentinel.user),
@@ -292,7 +285,7 @@ class TestMigrateToUser(MAASServerTestCase):
         # The SSH keys of each node owner are copied to the destination user,
         # one at a time, and the credentials of these users are given to the
         # destination user.
-        self.assertThat(get_owned_nodes_owners, MockCalledOnceWith())
+        get_owned_nodes_owners.assert_called_once_with()
         self.assertEqual(
             [
                 call(sentinel.node_owner1, sentinel.user),
@@ -308,7 +301,7 @@ class TestMigrateToUser(MAASServerTestCase):
             give_api_credentials_to_user.call_args_list,
         )
         # Each owned node is given to the destination user one at a time.
-        self.assertThat(get_owned_nodes, MockCalledOnceWith())
+        get_owned_nodes.assert_called_once_with()
         self.assertEqual(
             [
                 call(sentinel.node1, sentinel.user),
@@ -377,10 +370,10 @@ class TestMigrate(MAASServerTestCase):
         # The SSH keys have been copied to the legacy user.
         legacy_user = get_legacy_user()
         legacy_users_ssh_keys = get_ssh_keys(legacy_user)
-        self.assertSetEqual({key1.key, key2.key}, set(legacy_users_ssh_keys))
+        self.assertEqual({key1.key, key2.key}, set(legacy_users_ssh_keys))
         # The API credentials have been moved to the legacy user.
         legacy_users_nodes = Node.objects.filter(owner=legacy_user)
-        self.assertSetEqual({node1, node2}, set(legacy_users_nodes))
+        self.assertEqual({node1, node2}, set(legacy_users_nodes))
         self.assertEqual(
             (legacy_user, legacy_user, legacy_user, legacy_user),
             (

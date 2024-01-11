@@ -6,7 +6,6 @@ import random
 from unittest.mock import ANY, DEFAULT
 
 from netaddr import IPAddress, IPNetwork
-from testtools.matchers import ContainsAll, StartsWith
 
 from maasserver import server_address
 from maasserver.dns.config import get_resource_name_for_subnet
@@ -47,7 +46,6 @@ from maasserver.utils import osystems
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maasserver.utils.osystems import get_release_from_distro_info
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils.network import get_source_address
@@ -120,29 +118,30 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         make_usable_architecture(self)
-        self.assertThat(
-            get_config(rack_controller.system_id, local_ip, remote_ip),
-            ContainsAll(
-                [
-                    "arch",
-                    "subarch",
-                    "osystem",
-                    "release",
-                    "kernel_osystem",
-                    "kernel_release",
-                    "kernel",
-                    "initrd",
-                    "boot_dtb",
-                    "purpose",
-                    "hostname",
-                    "domain",
-                    "preseed_url",
-                    "fs_host",
-                    "log_host",
-                    "log_port",
-                    "extra_opts",
-                ]
-            ),
+        self.assertEqual(
+            get_config(rack_controller.system_id, local_ip, remote_ip).keys(),
+            {
+                "arch",
+                "subarch",
+                "osystem",
+                "release",
+                "kernel_osystem",
+                "kernel_release",
+                "kernel",
+                "initrd",
+                "boot_dtb",
+                "purpose",
+                "hostname",
+                "domain",
+                "preseed_url",
+                "fs_host",
+                "log_host",
+                "log_port",
+                "extra_opts",
+                "xinstall_path",
+                "ephemeral_opts",
+                "http_boot",
+            },
         )
 
     def test_returns_success_for_known_node(self):
@@ -345,13 +344,9 @@ class TestGetConfig(MAASServerTestCase):
             },
             config,
         )
-        self.assertThat(
-            maaslog.warning,
-            MockCalledOnceWith(
-                "Device %s with MAC address %s is PXE booting; "
-                "instructing the device to boot locally."
-                % (device.hostname, mac)
-            ),
+        maaslog.warning.assert_called_once_with(
+            f"Device {device.hostname} with MAC address {mac} is PXE booting; "
+            "instructing the device to boot locally."
         )
 
     def test_purpose_local_to_xinstall_for_ephemeral_deployment(self):
@@ -806,16 +801,10 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertThat(
-            observed_config["preseed_url"],
-            StartsWith(
-                "http://%s.%s:5248"
-                % (
-                    get_resource_name_for_subnet(subnet),
-                    Config.objects.get_config("maas_internal_domain"),
-                )
-            ),
-        )
+        resource_subnet = get_resource_name_for_subnet(subnet)
+        internal_domain = Config.objects.get_config("maas_internal_domain")
+        url = f"http://{resource_subnet}.{internal_domain}:5248"
+        self.assertTrue(observed_config["preseed_url"].startswith(url))
 
     def test_preseed_url_for_known_node_uses_rack_url(self):
         rack_url = "http://%s" % factory.make_name("host")
@@ -833,7 +822,7 @@ class TestGetConfig(MAASServerTestCase):
         observed_config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertThat(observed_config["preseed_url"], StartsWith(rack_url))
+        self.assertTrue(observed_config["preseed_url"].startswith(rack_url))
 
     def test_uses_boot_purpose_enlistment(self):
         # test that purpose is set to "commissioning" for
@@ -936,9 +925,7 @@ class TestGetConfig(MAASServerTestCase):
             boot_module, "event_log_pxe_request"
         )
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertThat(
-            event_log_pxe_request, MockCalledOnceWith(node, "rescue")
-        )
+        event_log_pxe_request.assert_called_once_with(node, "rescue")
 
     def test_uses_rescue_mode_reboot_purpose(self):
         # Regression test for LP:1749210
@@ -951,9 +938,7 @@ class TestGetConfig(MAASServerTestCase):
             boot_module, "event_log_pxe_request"
         )
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertThat(
-            event_log_pxe_request, MockCalledOnceWith(node, "rescue")
-        )
+        event_log_pxe_request.assert_called_once_with(node, "rescue")
 
     def test_calls_event_log_pxe_request(self):
         rack_controller = factory.make_RackController()
@@ -965,9 +950,8 @@ class TestGetConfig(MAASServerTestCase):
             boot_module, "event_log_pxe_request"
         )
         get_config(rack_controller.system_id, local_ip, remote_ip, mac=mac)
-        self.assertThat(
-            event_log_pxe_request,
-            MockCalledOnceWith(node, node.get_boot_purpose()),
+        event_log_pxe_request.assert_called_once_with(
+            node, node.get_boot_purpose()
         )
 
     def test_event_log_pxe_request_for_known_boot_purpose(self):

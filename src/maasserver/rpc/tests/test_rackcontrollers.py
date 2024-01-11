@@ -21,7 +21,6 @@ from maasserver.rpc.rackcontrollers import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
@@ -342,11 +341,9 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         interface.save()
         logger = self.useFixture(FakeLogger())
         update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
-        self.assertThat(
+        self.assertIn(
+            "DHCP server on an interface with no VLAN defined",
             logger.output,
-            DocTestMatches(
-                "...DHCP server on an interface with no VLAN defined..."
-            ),
         )
 
     def test_clears_external_dhcp_when_managed_vlan(self):
@@ -379,9 +376,7 @@ class TestReportNeighbours(MAASServerTestCase):
             RackController, "report_neighbours"
         )
         report_neighbours(rack_controller.system_id, sentinel.neighbours)
-        self.assertThat(
-            patched_report_neighbours, MockCalledOnceWith(sentinel.neighbours)
-        )
+        patched_report_neighbours.assert_called_once_with(sentinel.neighbours)
 
 
 class TestUpdateState(MAASServerTestCase):

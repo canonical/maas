@@ -10,17 +10,6 @@ import random
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Contains,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    Not,
-)
 import yaml
 
 from maasserver.config import RegionConfiguration
@@ -166,11 +155,9 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
     def test_exception_when_port_is_too_low(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(CommandError, call_set, database_port=0)
-        self.assertThat(
+        self.assertEqual(
             str(error),
-            Equals(
-                "database-port: Please enter a number that is 1 or greater."
-            ),
+            "database-port: Please enter a number that is 1 or greater.",
         )
 
     def test_exception_when_port_is_too_high(self):
@@ -178,56 +165,34 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
         error = self.assertRaises(
             CommandError, call_set, database_port=2**16
         )
-        self.assertThat(
+        self.assertEqual(
             str(error),
-            Equals(
-                "database-port: Please enter a number that is 65535 or smaller."
-            ),
+            "database-port: Please enter a number that is 65535 or smaller.",
         )
 
 
 class TestConfigurationCommon(MAASTestCase):
-    is_string = IsInstance(str)
-    is_single_line = AfterPreprocessing(str.splitlines, HasLength(1))
-    is_help_string = MatchesAll(is_string, is_single_line, first_only=True)
-
     def test_gen_configuration_options(self):
-        self.assertThat(
-            config.gen_configuration_options(),
-            AllMatch(
-                MatchesListwise(
-                    [
-                        IsInstance(str, bytes),
-                        IsInstance(ConfigurationOption, property),
-                    ]
-                )
-            ),
-        )
+        for name, option in config.gen_configuration_options():
+            self.assertIsInstance(name, (str, bytes))
+            self.assertIsInstance(option, (ConfigurationOption, property))
 
     def test_gen_mutable_configuration_options(self):
-        self.assertThat(
-            config.gen_mutable_configuration_options(),
-            AllMatch(
-                MatchesListwise(
-                    [IsInstance(str, bytes), IsInstance(ConfigurationOption)]
-                )
-            ),
-        )
+        for name, option in config.gen_mutable_configuration_options():
+            self.assertIsInstance(name, (str, bytes))
+            self.assertIsInstance(option, ConfigurationOption)
 
     def test_gen_configuration_options_for_getting(self):
-        self.assertThat(
-            config.gen_configuration_options_for_getting(),
-            AllMatch(MatchesListwise([Not(Contains("_")), IsInstance(dict)])),
-        )
+        for name, option in config.gen_configuration_options_for_getting():
+            self.assertNotIn("_", name)
+            self.assertIsInstance(option, dict)
 
     def test_gen_configuration_options_for_resetting(self):
-        self.assertThat(
-            config.gen_configuration_options_for_resetting(),
-            AllMatch(MatchesListwise([Not(Contains("_")), IsInstance(dict)])),
-        )
+        for name, option in config.gen_configuration_options_for_resetting():
+            self.assertNotIn("_", name)
+            self.assertIsInstance(option, dict)
 
     def test_gen_configuration_options_for_setting(self):
-        self.assertThat(
-            config.gen_configuration_options_for_setting(),
-            AllMatch(MatchesListwise([Not(Contains("_")), IsInstance(dict)])),
-        )
+        for name, option in config.gen_configuration_options_for_setting():
+            self.assertNotIn("_", name)
+            self.assertIsInstance(option, dict)
