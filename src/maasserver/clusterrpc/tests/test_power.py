@@ -1,13 +1,9 @@
 # Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test for :py:mod:`maasserver.clusterrpc.power`."""
-
-
 import random
 from unittest.mock import Mock
 
-from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import deferLater
@@ -33,7 +29,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.cluster import (
     PowerCycle,
     PowerDriverCheck,
@@ -74,15 +69,12 @@ class TestPowerNode(MAASServerTestCase):
         )
 
         power_info = node.get_effective_power_info()
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                self.command,
-                system_id=node.system_id,
-                hostname=node.hostname,
-                power_type=power_info.power_type,
-                context=power_info.power_parameters,
-            ),
+        client.assert_called_once_with(
+            self.command,
+            system_id=node.system_id,
+            hostname=node.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters,
         )
 
     def test_raises_power_problem(self):
@@ -92,7 +84,9 @@ class TestPowerNode(MAASServerTestCase):
             PowerActionAlreadyInProgress("Houston, we have a problem.")
         )
 
-        with ExpectedException(PowerProblem, "Houston, we have a problem."):
+        with self.assertRaisesRegex(
+            PowerProblem, "Houston, we have a problem."
+        ):
             wait_for_reactor(self.power_func)(
                 client,
                 node.system_id,
@@ -116,15 +110,12 @@ class TestPowerCycle(MAASServerTestCase):
         )
 
         power_info = node.get_effective_power_info()
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                PowerCycle,
-                system_id=node.system_id,
-                hostname=node.hostname,
-                power_type=power_info.power_type,
-                context=power_info.power_parameters,
-            ),
+        client.assert_called_once_with(
+            PowerCycle,
+            system_id=node.system_id,
+            hostname=node.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters,
         )
 
     def test_raises_power_problem(self):
@@ -134,7 +125,9 @@ class TestPowerCycle(MAASServerTestCase):
             PowerActionAlreadyInProgress("Houston, we have a problem.")
         )
 
-        with ExpectedException(PowerProblem, "Houston, we have a problem."):
+        with self.assertRaisesRegex(
+            PowerProblem, "Houston, we have a problem."
+        ):
             wait_for_reactor(power_cycle)(
                 client,
                 node.system_id,
@@ -158,15 +151,12 @@ class TestPowerQuery(MAASServerTestCase):
         )
 
         power_info = node.get_effective_power_info()
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                PowerQuery,
-                system_id=node.system_id,
-                hostname=node.hostname,
-                power_type=power_info.power_type,
-                context=power_info.power_parameters,
-            ),
+        client.assert_called_once_with(
+            PowerQuery,
+            system_id=node.system_id,
+            hostname=node.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters,
         )
 
 
@@ -180,11 +170,8 @@ class TestPowerDriverCheck(MAASServerTestCase):
 
         wait_for_reactor(power_driver_check)(client, power_info.power_type)
 
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                PowerDriverCheck, power_type=power_info.power_type
-            ),
+        client.assert_called_once_with(
+            PowerDriverCheck, power_type=power_info.power_type
         )
 
 

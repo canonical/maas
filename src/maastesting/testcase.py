@@ -22,8 +22,6 @@ from nose.tools import nottest
 import testresources
 import testtools
 from testtools.content import text_content
-import testtools.matchers
-from testtools.matchers import AllMatch, IsInstance, Not
 
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
@@ -185,9 +183,8 @@ class MAASTestCase(
         if self.database_use_possible and not self.database_use_permitted:
             from django.db import connection
 
-            self.expectThat(
+            self.assertIsNone(
                 connection.connection,
-                testtools.matchers.Is(None),
                 "Test policy forbids use of the database.",
             )
             connection.close()
@@ -218,9 +215,14 @@ class MAASTestCase(
     def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):
         """Override testtools' version to prevent use of mappings."""
         if seq_type is None:
-            self.assertThat(
-                (seq1, seq2),
-                AllMatch(Not(IsInstance(Mapping))),
+            self.assertNotIsInstance(
+                seq1,
+                Mapping,
+                "Mappings cannot be compared with assertSequenceEqual",
+            )
+            self.assertNotIsInstance(
+                seq2,
+                Mapping,
                 "Mappings cannot be compared with assertSequenceEqual",
             )
         return super().assertSequenceEqual(seq1, seq2, msg, seq_type)

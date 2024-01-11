@@ -8,21 +8,13 @@ import time
 from django.conf import settings
 import dns.resolver
 from netaddr import IPAddress, IPNetwork
-from testtools.matchers import (
-    Contains,
-    Equals,
-    FileContains,
-    HasLength,
-    MatchesSetwise,
-    MatchesStructure,
-)
 
 from maasserver.config import RegionConfiguration
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
-    current_zone_serial,
-    dns_force_reload,
-    dns_update_all_zones,
+    dns_update_all_zones as wrapped_dns_update_all_zones,
+)
+from maasserver.dns.config import (
     forward_domains_to_forwarded_zones,
     get_internal_domain,
     get_resource_name_for_subnet,
@@ -32,6 +24,7 @@ from maasserver.dns.config import (
     get_upstream_dns,
     process_dns_update_notify,
 )
+from maasserver.dns.config import current_zone_serial, dns_force_reload
 from maasserver.dns.zonegenerator import InternalDomainResourseRecord
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS
 from maasserver.listener import PostgresListenerService
@@ -40,7 +33,6 @@ from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.dns.commands import get_named_conf, setup_dns
 from provisioningserver.dns.config import (
     compose_config_path,
@@ -58,6 +50,8 @@ from provisioningserver.utils.twisted import retries
 
 RELOAD_TIMEOUT = 30
 
+dns_update_all_zones = wrapped_dns_update_all_zones.__wrapped__
+
 
 class TestDNSUtilities(MAASServerTestCase):
     def make_listener_without_delay(self):
@@ -74,14 +68,13 @@ class TestDNSUtilities(MAASServerTestCase):
         # A 'sys_dns' signal is also sent, but that is a side-effect of
         # inserting into the DNS publications table, and is tested as part of
         # the system triggers code.
-        self.assertThat(
-            DNSPublication.objects.get_most_recent(),
-            MatchesStructure.byEquality(source="Initial publication"),
+        self.assertEqual(
+            DNSPublication.objects.get_most_recent().source,
+            "Initial publication",
         )
         dns_force_reload()
-        self.assertThat(
-            DNSPublication.objects.get_most_recent(),
-            MatchesStructure.byEquality(source="Force reload"),
+        self.assertEqual(
+            DNSPublication.objects.get_most_recent().source, "Force reload"
         )
 
     def test_forward_domains_to_forwarded_zones(self):
@@ -278,23 +271,20 @@ class TestDNSServer(MAASServerTestCase):
         # to having the expected answer, and just wait for a non-empty return,
         # or timeout (15 seconds because of slow jenkins sometimes.)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
-        self.assertThat(
+        self.assertIn(
+            ip,
             forward_lookup_result,
-            Contains(ip),
-            "Failed to resolve '%s' (results: '%s')."
-            % (fqdn, ",".join(forward_lookup_result)),
+            f"Failed to resolve '{fqdn}' (results: '{','.join(forward_lookup_result)}').",
         )
         # A reverse lookup on the IP address returns the hostname.
         if reverse:
             reverse_lookup_result = self.dig_reverse_resolve(
                 ip, version=version
             )
-            self.assertThat(
+            self.assertIn(
+                f"{fqdn}.",
                 reverse_lookup_result,
-                Contains("%s." % fqdn),
-                "Failed to reverse resolve '%s' missing '%s' "
-                "(results: '%s')."
-                % (ip, "%s." % fqdn, ",".join(reverse_lookup_result)),
+                f"Failed to reverse resolve '{ip}'",
             )
 
 
@@ -302,6 +292,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_dns_update_all_zones_loads_full_dns_config(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
+
         dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
@@ -345,9 +336,7 @@ class TestDNSConfigModifications(TestDNSServer):
             dns_config_module, "bind_reload_with_retries"
         )
         dns_update_all_zones(reload_retry=True)
-        self.assertThat(
-            bind_reload_with_retries, MockCalledOnceWith(timeout=2)
-        )
+        bind_reload_with_retries.assert_called_once_with(timeout=2)
 
     def test_dns_update_all_zones_passes_upstream_dns_parameter(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -357,11 +346,8 @@ class TestDNSConfigModifications(TestDNSServer):
             dns_config_module, "bind_write_options"
         )
         dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
-        self.assertThat(
-            bind_write_options,
-            MockCalledOnceWith(
-                dnssec_validation="auto", upstream_dns=[random_ip]
-            ),
+        bind_write_options.assert_called_once_with(
+            dnssec_validation="auto", upstream_dns=[random_ip]
         )
 
     def test_dns_update_all_zones_writes_trusted_networks_parameter(self):
@@ -372,10 +358,8 @@ class TestDNSConfigModifications(TestDNSServer):
         )
         get_trusted_networks_patch.return_value = [trusted_network]
         dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
-        self.assertThat(
-            compose_config_path(DNSConfig.target_file_name),
-            FileContains(matcher=Contains(trusted_network)),
-        )
+        with open(compose_config_path(DNSConfig.target_file_name), "r") as fh:
+            self.assertIn(trusted_network, fh.read())
 
     def test_dns_update_all_zones_writes_trusted_networks_params_extra(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -385,10 +369,8 @@ class TestDNSConfigModifications(TestDNSServer):
         )
         get_trusted_acls_patch.return_value = [extra_trusted_network.cidr]
         dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
-        self.assertThat(
-            compose_config_path(DNSConfig.target_file_name),
-            FileContains(matcher=Contains(str(extra_trusted_network))),
-        )
+        with open(compose_config_path(DNSConfig.target_file_name), "r") as fh:
+            self.assertIn(str(extra_trusted_network), fh.read())
 
     def test_dns_config_has_NS_record(self):
         self.patch(settings, "DNS_CONNECT", True)
@@ -429,13 +411,10 @@ class TestDNSConfigModifications(TestDNSServer):
         )
         self.assertEqual(fake_serial, serial)
         self.assertTrue(reloaded)
-        self.assertThat(
+        self.assertCountEqual(
             domains,
-            MatchesSetwise(
-                *[
-                    Equals(domain.name)
-                    for domain in Domain.objects.filter(authoritative=True)
-                ]
+            Domain.objects.filter(authoritative=True).values_list(
+                "name", flat=True
             ),
         )
 
@@ -682,20 +661,12 @@ class TestGetInternalDomain(MAASServerTestCase):
         self.assertEqual(
             get_resource_name_for_subnet(subnet), domain.resources[0].name
         )
-        self.assertThat(
+        self.assertCountEqual(
             domain.resources[0].records,
-            MatchesSetwise(
-                Equals(
-                    InternalDomainResourseRecord(
-                        rrtype="A", rrdata=static_ip1.ip
-                    )
-                ),
-                Equals(
-                    InternalDomainResourseRecord(
-                        rrtype="A", rrdata=static_ip2.ip
-                    )
-                ),
-            ),
+            [
+                InternalDomainResourseRecord(rrtype="A", rrdata=static_ip1.ip),
+                InternalDomainResourseRecord(rrtype="A", rrdata=static_ip2.ip),
+            ],
         )
 
     def test_adds_connected_multiple_racks_ipv6(self):
@@ -721,20 +692,16 @@ class TestGetInternalDomain(MAASServerTestCase):
         self.assertEqual(
             get_resource_name_for_subnet(subnet), domain.resources[0].name
         )
-        self.assertThat(
+        self.assertCountEqual(
             domain.resources[0].records,
-            MatchesSetwise(
-                Equals(
-                    InternalDomainResourseRecord(
-                        rrtype="AAAA", rrdata=static_ip1.ip
-                    )
+            [
+                InternalDomainResourseRecord(
+                    rrtype="AAAA", rrdata=static_ip1.ip
                 ),
-                Equals(
-                    InternalDomainResourseRecord(
-                        rrtype="AAAA", rrdata=static_ip2.ip
-                    )
+                InternalDomainResourseRecord(
+                    rrtype="AAAA", rrdata=static_ip2.ip
                 ),
-            ),
+            ],
         )
 
     def test_prefers_static_ip_over_dhcp(self):
@@ -756,7 +723,7 @@ class TestGetInternalDomain(MAASServerTestCase):
             interface=nic,
         )
         domain = get_internal_domain()
-        self.assertThat(domain.resources, HasLength(1))
+        self.assertEqual(len(domain.resources), 1)
         self.assertEqual(
             get_resource_name_for_subnet(subnet), domain.resources[0].name
         )

@@ -4,19 +4,11 @@
 import os
 import random
 import socket
-from unittest.mock import ANY, call, Mock
+from unittest.mock import call, Mock
 from urllib.parse import urlparse
 
 from netaddr import IPAddress, IPNetwork
 from testtools import TestCase
-from testtools.matchers import (
-    Equals,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesSetwise,
-    MatchesStructure,
-)
 
 from maasserver import server_address
 from maasserver.dns import zonegenerator
@@ -51,7 +43,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import transactional
 from maastesting.factory import factory as maastesting_factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockAnyCall, MockCalledOnceWith, MockNotCalled
 from provisioningserver.dns.config import DynamicDNSUpdate
 from provisioningserver.dns.testing import patch_zone_file_config_path
 from provisioningserver.dns.zoneconfig import (
@@ -71,7 +62,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         hostname = urlparse(url).hostname
         result = get_dns_server_address()
         self.assertEqual(ip, result)
-        self.expectThat(resolver, MockAnyCall(hostname, 0))
+        resolver.assert_any_call(hostname, 0)
 
     def test_get_dns_server_address_passes_on_IPv4_IPv6_selection(self):
         ipv4 = factory.pick_bool()
@@ -81,15 +72,12 @@ class TestGetDNSServerAddress(MAASServerTestCase):
 
         get_dns_server_address(ipv4=ipv4, ipv6=ipv6)
 
-        self.assertThat(
-            patch,
-            MockCalledOnceWith(
-                rack_controller=None,
-                include_alternates=False,
-                ipv4=ipv4,
-                ipv6=ipv6,
-                default_region_ip=None,
-            ),
+        patch.assert_called_once_with(
+            rack_controller=None,
+            include_alternates=False,
+            ipv4=ipv4,
+            ipv6=ipv6,
+            default_region_ip=None,
         )
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
@@ -122,8 +110,8 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         maas_url = "http://%s" % hostname
         rack_controller = factory.make_RackController(url=maas_url)
         result = get_dns_server_address(rack_controller)
-        self.expectThat(ip, Equals(result))
-        self.expectThat(resolver, MockAnyCall(hostname, 0))
+        self.assertEqual(ip, result)
+        resolver.assert_any_call(hostname, 0)
 
     def test_get_dns_server_address_ignores_unallowed_dns(self):
         # Regression test for LP:1847537
@@ -184,31 +172,29 @@ class TestWarnLoopback(MAASServerTestCase):
         logger = self.patch(zonegenerator, "logger")
         loopback = "127.0.0.1"
         warn_loopback(loopback)
-        self.assertThat(
-            logger.warning, MockCalledOnceWith(WARNING_MESSAGE % loopback)
-        )
+        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_warns_about_any_IPv4_loopback(self):
         logger = self.patch(zonegenerator, "logger")
         loopback = "127.254.100.99"
         warn_loopback(loopback)
-        self.assertThat(logger.warning, MockCalledOnceWith(ANY))
+        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_warns_about_IPv6_loopback(self):
         logger = self.patch(zonegenerator, "logger")
         loopback = "::1"
         warn_loopback(loopback)
-        self.assertThat(logger.warning, MockCalledOnceWith(ANY))
+        logger.warning.assert_called_once_with(WARNING_MESSAGE % loopback)
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv4(self):
         logger = self.patch(zonegenerator, "logger")
         warn_loopback("10.1.2.3")
-        self.assertThat(logger.warning, MockNotCalled())
+        logger.warning.assert_not_called()
 
     def test_warn_loopback_does_not_warn_about_sensible_IPv6(self):
         logger = self.patch(zonegenerator, "logger")
         warn_loopback("1::9")
-        self.assertThat(logger.warning, MockNotCalled())
+        logger.warning.assert_not_called()
 
 
 class TestLazyDict(TestCase):
@@ -301,29 +287,16 @@ class TestGetHostnameMapping(MAASServerTestCase):
         self.assertEqual(expected_mapping, actual)
 
 
-def forward_zone(domain):
-    """Create a matcher for a :class:`DNSForwardZoneConfig`.
-
-    Returns a matcher which asserts that the test value is a
-    `DNSForwardZoneConfig` with the given domain.
-    """
-    return MatchesAll(
-        IsInstance(DNSForwardZoneConfig),
-        MatchesStructure.byEquality(domain=domain),
-    )
+def assertIsForwardZoneWithDomain(testcase, zone, domain):
+    testcase.assertIsInstance(zone, DNSForwardZoneConfig)
+    testcase.assertEqual(zone.domain, domain)
 
 
-def reverse_zone(domain, network):
-    """Create a matcher for a :class:`DNSReverseZoneConfig`.
-
-    Returns a matcher which asserts that the test value is a
-    :class:`DNSReverseZoneConfig` with the given domain and network.
-    """
+def assertIsReverseZoneWithDomain(testcase, zone, domain, network):
     network = network if network is None else IPNetwork(network)
-    return MatchesAll(
-        IsInstance(DNSReverseZoneConfig),
-        MatchesStructure.byEquality(domain=domain, _network=network),
-    )
+    testcase.assertIsInstance(zone, DNSReverseZoneConfig)
+    testcase.assertEqual(zone.domain, domain)
+    testcase.assertEqual(zone._network, network)
 
 
 class TestZoneGenerator(MAASServerTestCase):
@@ -357,17 +330,12 @@ class TestZoneGenerator(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")
         subnet = factory.make_Subnet(cidr=str(IPNetwork("10/29").cidr))
-        zones = ZoneGenerator(
+        fwd, rev1, rev2 = ZoneGenerator(
             domain, subnet, serial=random.randint(0, 65535)
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone("henry"),
-                reverse_zone(default_domain, "10/29"),
-                reverse_zone(default_domain, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd, "henry")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain, "10/24")
 
     def test_yields_forward_and_reverse_zone_no_overlap_bug(self):
         domain = factory.make_Domain(name="overlap")
@@ -447,17 +415,12 @@ class TestZoneGenerator(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
-        zones = ZoneGenerator(
+        fwd, rev1, rev2 = ZoneGenerator(
             domain, subnet, serial=random.randint(0, 65535)
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone("henry"),
-                reverse_zone(default_domain, "10/29"),
-                reverse_zone(default_domain, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd, "henry")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain, "10/24")
 
     def test_with_child_domain_yields_delegation(self):
         default_domain = Domain.objects.get_default_domain().name
@@ -467,21 +430,16 @@ class TestZoneGenerator(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
-        zones = ZoneGenerator(
+        fwd, rev1, rev2 = ZoneGenerator(
             domain, subnet, serial=random.randint(0, 65535)
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone("henry"),
-                reverse_zone(default_domain, "10/29"),
-                reverse_zone(default_domain, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd, "henry")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain, "10/24")
         expected_map = {
             "john": HostnameRRsetMapping(None, {(30, "NS", default_domain)})
         }
-        self.assertEqual(expected_map, zones[0]._other_mapping)
+        self.assertEqual(expected_map, fwd._other_mapping)
 
     def test_with_child_domain_yields_glue_when_needed(self):
         default_domain = Domain.objects.get_default_domain().name
@@ -497,24 +455,19 @@ class TestZoneGenerator(MAASServerTestCase):
         # We have a subdomain (john.henry) which as an NS RR of
         # 'ns.john.henry', and we should see glue records for it in the parent
         # zone, as well as the A RR in the child.
-        zones = ZoneGenerator(
+        fwd, rev1, rev2 = ZoneGenerator(
             domain, subnet, serial=random.randint(0, 65535)
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone("henry"),
-                reverse_zone(default_domain, "10/29"),
-                reverse_zone(default_domain, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd, "henry")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain, "10/24")
         expected_map = {
             "john": HostnameRRsetMapping(
                 None, {(30, "NS", default_domain), (30, "NS", "ns")}
             ),
             "ns": HostnameRRsetMapping(None, {(30, "A", sip.ip)}),
         }
-        self.assertEqual(expected_map, zones[0]._other_mapping)
+        self.assertEqual(expected_map, fwd._other_mapping)
 
     def test_glue_receives_correct_dynamic_updates(self):
         domain = factory.make_Domain()
@@ -581,18 +534,13 @@ class TestZoneGenerator(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, vlan=subnet.vlan, fabric=subnet.vlan.fabric
         )
-        zones = ZoneGenerator(
+        fwd1, fwd2, rev1, rev2 = ZoneGenerator(
             domains, subnet, serial=random.randint(0, 65535)
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone(domains[0].name),
-                forward_zone(domains[1].name),
-                reverse_zone(domains[0].name, "10/29"),
-                reverse_zone(domains[0].name, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd1, default_domain.name)
+        assertIsForwardZoneWithDomain(self, fwd2, domains[1].name)
+        assertIsReverseZoneWithDomain(self, rev1, default_domain.name, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain.name, "10/24")
         # maas.example.com is the default zone, and has an A RR for its NS RR.
         # example.com has NS maas.example.com., and a glue record for that.
         expected_map_0 = {
@@ -608,8 +556,8 @@ class TestZoneGenerator(MAASServerTestCase):
                 None,
             )
         }
-        self.assertEqual(expected_map_0, zones[0]._other_mapping)
-        self.assertEqual(expected_map_1, zones[1]._other_mapping)
+        self.assertEqual(expected_map_0, fwd1._other_mapping)
+        self.assertEqual(expected_map_1, fwd2._other_mapping)
 
     def test_returns_interface_ips_but_no_nulls(self):
         default_domain = Domain.objects.get_default_domain().name
@@ -639,37 +587,32 @@ class TestZoneGenerator(MAASServerTestCase):
         )
         default_ttl = random.randint(10, 300)
         Config.objects.set_config("default_dns_ttl", default_ttl)
-        zones = ZoneGenerator(
+        fwd, rev1, rev2 = ZoneGenerator(
             domain,
             subnet,
             default_ttl=default_ttl,
             serial=random.randint(0, 65535),
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                forward_zone("henry"),
-                reverse_zone(default_domain, "10/29"),
-                reverse_zone(default_domain, "10/24"),
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd, "henry")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain, "10/24")
         self.assertEqual(
             {
                 node.hostname: HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {"%s" % boot_ip.ip},
+                    {str(boot_ip.ip)},
                     node.node_type,
                 ),
                 "%s.%s"
                 % (interfaces[0].name, node.hostname): HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {"%s" % sip.ip},
+                    {str(sip.ip)},
                     node.node_type,
                 ),
             },
-            zones[0]._mapping,
+            fwd._mapping,
         )
         self.assertEqual(
             {
@@ -677,27 +620,27 @@ class TestZoneGenerator(MAASServerTestCase):
                     None, {(default_ttl, dnsdata.rrtype, dnsdata.rrdata)}
                 )
             }.items(),
-            zones[0]._other_mapping.items(),
+            fwd._other_mapping.items(),
         )
         self.assertEqual(
             {
                 node.fqdn: HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {"%s" % boot_ip.ip},
+                    {str(boot_ip.ip)},
                     node.node_type,
                 ),
                 "%s.%s"
                 % (interfaces[0].name, node.fqdn): HostnameIPMapping(
                     node.system_id,
                     default_ttl,
-                    {"%s" % sip.ip},
+                    {str(sip.ip)},
                     node.node_type,
                 ),
             },
-            zones[1]._mapping,
+            rev1._mapping,
         )
-        self.assertEqual({}, zones[2]._mapping)
+        self.assertEqual({}, rev2._mapping)
 
     def test_forward_zone_includes_subnets_with_allow_dns_false(self):
         default_ttl = random.randint(10, 300)
@@ -839,16 +782,11 @@ class TestZoneGenerator(MAASServerTestCase):
         default_domain = Domain.objects.get_default_domain()
         domains = Domain.objects.filter(name="one")
         subnets = Subnet.objects.all()
-        expected_zones = (
-            forward_zone("one"),
-            reverse_zone(default_domain.name, "10/29"),
-        )
-        self.assertThat(
-            ZoneGenerator(
-                domains, subnets, serial=random.randint(0, 65535)
-            ).as_list(),
-            MatchesSetwise(*expected_zones),
-        )
+        fwd1, rev1 = ZoneGenerator(
+            domains, subnets, serial=random.randint(0, 65535)
+        ).as_list()
+        assertIsForwardZoneWithDomain(self, fwd1, "one")
+        assertIsReverseZoneWithDomain(self, rev1, default_domain.name, "10/29")
 
     def test_yields_internal_forward_zones(self):
         default_domain = Domain.objects.get_default_domain()
@@ -867,48 +805,30 @@ class TestZoneGenerator(MAASServerTestCase):
                 resources=[resource],
             )
             domains.append(domain)
-        zones = ZoneGenerator(
+
+        def assertFwdRecord(zone, domain):
+            resource_name = domain.resources[0].name
+            dns_record = domain.resources[0].records[0]
+            self.assertEqual(zone._other_mapping.keys(), {resource_name})
+            self.assertEqual(
+                zone._other_mapping[resource_name].rrset,
+                {(domain.ttl, dns_record.rrtype, dns_record.rrdata)},
+            )
+
+        fwd1, fwd2, fwd3, rev1, rev2 = ZoneGenerator(
             [],
             [subnet],
             serial=random.randint(0, 65535),
             internal_domains=domains,
         ).as_list()
-        self.assertThat(
-            zones,
-            MatchesSetwise(
-                *[
-                    MatchesAll(
-                        forward_zone(domain.name),
-                        MatchesStructure(
-                            _other_mapping=MatchesDict(
-                                {
-                                    domain.resources[0].name: MatchesStructure(
-                                        rrset=MatchesSetwise(
-                                            Equals(
-                                                (
-                                                    domain.ttl,
-                                                    domain.resources[0]
-                                                    .records[0]
-                                                    .rrtype,
-                                                    domain.resources[0]
-                                                    .records[0]
-                                                    .rrdata,
-                                                )
-                                            )
-                                        )
-                                    )
-                                }
-                            )
-                        ),
-                    )
-                    for domain in domains
-                ]
-                + [
-                    reverse_zone(default_domain.name, "10/29"),
-                    reverse_zone(default_domain.name, "10/24"),
-                ]
-            ),
-        )
+        assertIsForwardZoneWithDomain(self, fwd1, domains[0].name)
+        assertFwdRecord(fwd1, domains[0])
+        assertIsForwardZoneWithDomain(self, fwd2, domains[1].name)
+        assertFwdRecord(fwd2, domains[1])
+        assertIsForwardZoneWithDomain(self, fwd3, domains[2].name)
+        assertFwdRecord(fwd3, domains[2])
+        assertIsReverseZoneWithDomain(self, rev1, default_domain.name, "10/29")
+        assertIsReverseZoneWithDomain(self, rev2, default_domain.name, "10/24")
 
     def test_configs_are_merged_when_overlapping(self):
         self.patch(warn_loopback)

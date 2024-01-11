@@ -7,7 +7,6 @@
 from datetime import datetime, timedelta
 
 from pytz import UTC
-from testtools.matchers import LessThan, MatchesAll
 from twisted.internet.defer import fail, inlineCallbacks
 from twisted.internet.task import Clock
 
@@ -16,20 +15,14 @@ from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maastesting.crochet import wait_for
 from maastesting.factory import factory
-from maastesting.matchers import (
-    DocTestMatches,
-    GreaterThanOrEqual,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.twisted import pause
 
-IsExpectedInterval = MatchesAll(
-    GreaterThanOrEqual(3 * 60 * 60), LessThan(6 * 60 * 60), first_only=True
-)
+
+def _is_expected_interval(interval):
+    return 3 * 60 * 60 <= interval <= 6 * 60 * 60
 
 
 def patch_utcnow(test):
@@ -55,22 +48,21 @@ class TestDNSPublicationGarbageService(MAASTestCase):
         dnsgc.startService()
         self.assertTrue(dnsgc.running)
         self.assertTrue(dnsgc._loop.running)
-        self.assertThat(deferToDatabase, MockNotCalled())
-        self.assertThat(dnsgc._loop.interval, IsExpectedInterval)
+        deferToDatabase.assert_not_called()
+        self.assertTrue(_is_expected_interval(dnsgc._loop.interval))
 
         clock.advance(dnsgc._loop.interval)
-        self.assertThat(
-            deferToDatabase, MockCalledOnceWith(dnsgc._collectGarbage, cutoff)
-        )
-        self.assertThat(dnsgc._loop.interval, IsExpectedInterval)
+        deferToDatabase.assert_called_once_with(dnsgc._collectGarbage, cutoff)
+        self.assertTrue(_is_expected_interval(dnsgc._loop.interval))
 
         dnsgc.stopService()
         self.assertFalse(dnsgc.running)
         self.assertFalse(dnsgc._loop.running)
 
     def test_failures_are_logged(self):
+        exception = factory.make_exception()
         deferToDatabase = self.patch(publication, "deferToDatabase")
-        deferToDatabase.return_value = fail(factory.make_exception())
+        deferToDatabase.return_value = fail(exception)
 
         dnsgc = publication.DNSPublicationGarbageService()
         dnsgc.clock = clock = Clock()
@@ -80,15 +72,11 @@ class TestDNSPublicationGarbageService(MAASTestCase):
             clock.advance(dnsgc._loop.interval)
             dnsgc.stopService()
 
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            DocTestMatches(
-                """\
-            Failure when removing old DNS publications.
-            Traceback (most recent call last):...
-            Failure: maastesting.factory.TestException#...
-            """
-            ),
+            "Failure when removing old DNS publications.\n"
+            "Traceback (most recent call last):\n"
+            f"Failure: maastesting.factory.{type(exception).__name__}: \n",
         )
 
         self.assertFalse(dnsgc.running)
@@ -116,6 +104,4 @@ class TestDNSPublicationGarbageServiceWithDatabase(
         yield pause(0.0)  # Let the reactor tick.
         yield dnsgc.stopService()
 
-        self.assertThat(
-            DNSPublication.objects.collect_garbage, MockCalledOnceWith(cutoff)
-        )
+        DNSPublication.objects.collect_garbage.assert_called_once_with(cutoff)

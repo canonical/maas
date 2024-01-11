@@ -72,7 +72,7 @@ class TestBINDServerResources(MAASTestCase):
             self.assertIsInstance(resources.conf_file, str)
             self.assertIsInstance(resources.rndcconf_file, str)
             self.assertEqual(resources.timeout_deadline, 15)
-            self.assertEqual(resources.timeout_interval, 0.3)
+            self.assertEqual(resources.timeout_interval, 0.01)
 
     def test_setUp_copies_executable(self):
         with BINDServerResources() as resources:

@@ -12,8 +12,6 @@ from random import randint
 from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
-from testtools.matchers import Equals, GreaterThan, HasLength, LessThan
 
 from maasserver import ntp
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, NODE_TYPE, POWER_STATE
@@ -81,9 +79,7 @@ class TestCreateNode(MAASTransactionServerTestCase):
             (node.architecture, node.power_type, node.get_power_parameters()),
         )
 
-        # Node will not have an auto-generated name because migrations are
-        # not ran in the testing environment.
-        # self.expectThat(node.hostname, Contains("-"))
+        self.assertIn("-", node.hostname)
         self.assertIsNotNone(node.id)
         self.assertCountEqual(
             mac_addresses,
@@ -131,14 +127,15 @@ class TestCreateNode(MAASTransactionServerTestCase):
         power_type = random.choice(self.power_types)["name"]
         power_parameters = {}
 
-        with ExpectedException(ValidationError):
-            create_node(
-                architecture,
-                power_type,
-                power_parameters,
-                mac_addresses,
-                hostname=hostname,
-            )
+        self.assertRaises(
+            ValidationError,
+            create_node,
+            architecture,
+            power_type,
+            power_parameters,
+            mac_addresses,
+            hostname=hostname,
+        )
 
     def test_creates_node_with_explicit_domain(self):
         self.prepare_rack_rpc()
@@ -184,14 +181,15 @@ class TestCreateNode(MAASTransactionServerTestCase):
         power_type = random.choice(self.power_types)["name"]
         power_parameters = {}
 
-        with ExpectedException(ValidationError):
-            create_node(
-                architecture,
-                power_type,
-                power_parameters,
-                mac_addresses,
-                factory.make_name("domain"),
-            )
+        self.assertRaises(
+            ValidationError,
+            create_node,
+            architecture,
+            power_type,
+            power_parameters,
+            mac_addresses,
+            factory.make_name("domain"),
+        )
 
     def test_raises_validation_errors_for_invalid_data(self):
         self.prepare_rack_rpc()
@@ -510,9 +508,9 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         nodes_json_lengths = map(len, nodes_json)
         nodes_json_length = sum(nodes_json_lengths)
         expected_maximum = 60 * (2**10)  # 60kiB
-        self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))
+        self.assertLess(nodes_json_length, expected_maximum + 1)
         expected_minimum = 50 * (2**10)  # 50kiB
-        self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))
+        self.assertGreater(nodes_json_length, expected_minimum - 1)
 
     def test_limited_to_10_nodes_at_a_time_by_default(self):
         # Configure the rack controller subnet to be large enough.
@@ -532,8 +530,8 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
             self.make_Node(bmc_connected_to=rack)
 
         # Only 10 nodes' power parameters are returned.
-        self.assertThat(
-            list_cluster_nodes_power_parameters(rack.system_id), HasLength(10)
+        self.assertEqual(
+            len(list_cluster_nodes_power_parameters(rack.system_id)), 10
         )
 
 
@@ -629,12 +627,10 @@ class TestGetTimeConfiguration_Scenarios(MAASServerTestCase):
         get_peers_for = self.patch(ntp, "get_peers_for")
         get_peers_for.return_value = frozenset({sentinel.peer})
         node = factory.make_Node(node_type=self.node_type)
-        self.assertThat(
+        self.assertEqual(
             get_time_configuration(node.system_id),
-            Equals(
-                {
-                    "servers": frozenset({sentinel.server}),
-                    "peers": frozenset({sentinel.peer}),
-                }
-            ),
+            {
+                "servers": frozenset({sentinel.server}),
+                "peers": frozenset({sentinel.peer}),
+            },
         )

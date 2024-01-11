@@ -17,11 +17,6 @@ from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import asynchronous
-from maastesting.matchers import (
-    DocTestMatches,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
@@ -79,11 +74,11 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([sentinel.result], result)
-        self.assertThat(available_callback, MockCalledOnceWith(rack))
-        self.assertThat(unavailable_callback, MockNotCalled())
-        self.assertThat(success_callback, MockCalledOnceWith(rack))
-        self.assertThat(failed_callback, MockNotCalled())
-        self.assertThat(timeout_callback, MockNotCalled())
+        available_callback.assert_called_once_with(rack)
+        unavailable_callback.assert_not_called()
+        success_callback.assert_called_once_with(rack)
+        failed_callback.assert_not_called()
+        timeout_callback.assert_not_called()
 
     def test_with_unavailable_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))
@@ -110,14 +105,12 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([], result)
-        self.assertThat(available_callback, MockNotCalled())
-        self.assertThat(unavailable_callback, MockCalledOnceWith(rack))
-        self.assertThat(success_callback, MockNotCalled())
-        self.assertThat(failed_callback, MockNotCalled())
-        self.assertThat(timeout_callback, MockNotCalled())
-        self.assertThat(
-            logger.output, DocTestMatches("...Unable to get RPC connection...")
-        )
+        available_callback.assert_not_called()
+        unavailable_callback.called_once_with(rack)
+        success_callback.assert_not_called()
+        failed_callback.assert_not_called()
+        timeout_callback.assert_not_called()
+        self.assertIn("Unable to get RPC connection", logger.output)
 
     def test_with_failed_callbacks(self):
         logger = self.useFixture(FakeLogger("maasserver"))
@@ -146,16 +139,15 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([], result)
-        self.assertThat(available_callback, MockCalledOnceWith(rack))
-        self.assertThat(unavailable_callback, MockNotCalled())
-        self.assertThat(success_callback, MockNotCalled())
-        self.assertThat(failed_callback, MockCalledOnceWith(rack))
-        self.assertThat(timeout_callback, MockNotCalled())
-        self.assertThat(
+        available_callback.called_once_with(rack)
+        unavailable_callback.assert_not_called()
+        success_callback.assert_not_called()
+        failed_callback.called_once_with(rack)
+        timeout_callback.assert_not_called()
+
+        self.assertRegex(
             logger.output,
-            DocTestMatches(
-                "Exception during ... on rack controller...MockFailure: ..."
-            ),
+            "Exception during .* on rack controller.*MockFailure: ",
         )
 
     def test_with_timeout_callbacks(self):
@@ -183,14 +175,13 @@ class TestCallClusters(MAASServerTestCase):
             )
         )
         self.assertEqual([], result)
-        self.assertThat(available_callback, MockCalledOnceWith(rack))
-        self.assertThat(unavailable_callback, MockNotCalled())
-        self.assertThat(success_callback, MockNotCalled())
-        self.assertThat(failed_callback, MockNotCalled())
-        self.assertThat(timeout_callback, MockCalledOnceWith(rack))
-        self.assertThat(
-            logger.output, DocTestMatches("...RPC connection timed out...")
-        )
+        available_callback.called_once_with(rack)
+        unavailable_callback.assert_not_called()
+        success_callback.assert_not_called()
+        failed_callback.assert_not_called()
+        timeout_callback.called_once_with(rack)
+
+        self.assertIn("RPC connection timed out", logger.output)
 
 
 class TestCallRacksSynchronously(MAASServerTestCase):

@@ -131,7 +131,7 @@ class BINDServerResources(fixtures.Fixture):
         log_file=None,
         include_in_options=None,
         timeout_deadline=15,
-        timeout_interval=0.3,
+        timeout_interval=0.01,
     ):
         super().__init__()
         self._defaults = dict(
@@ -301,7 +301,6 @@ class BINDServerRunner(fixtures.Fixture):
         while time.time() < timeout and self.is_running():
             if self.is_server_running():
                 break
-            print(".")
             time.sleep(self.config.timeout_interval)
         else:
             raise Exception(

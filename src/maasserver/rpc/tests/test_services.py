@@ -5,7 +5,6 @@
 
 
 from fixtures import FakeLogger
-from testtools.matchers import MatchesStructure
 
 from maasserver.enum import SERVICE_STATUS
 from maasserver.models.service import RACK_SERVICES, Service
@@ -13,7 +12,6 @@ from maasserver.rpc import services
 from maasserver.rpc.services import update_services
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maastesting.matchers import DocTestMatches
 from provisioningserver.rpc.exceptions import NoSuchCluster
 
 
@@ -39,12 +37,10 @@ class TestUpdateServices(MAASTransactionServerTestCase):
         rack_controller = factory.make_RackController()
         with FakeLogger(services.__name__) as logger:
             update_services(rack_controller.system_id, [service])
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            DocTestMatches(
-                "Rack ... reported status for '...' but this is not a "
-                "recognised service (status='...', info='...')."
-            ),
+            f"Rack {rack_controller.system_id} reported status for '{service_name}' but this is not a "
+            f"recognised service (status='{service['status']}', info='{service['status_info']}').\n",
         )
 
     def test_update_services_updates_all_services(self):
@@ -53,11 +49,11 @@ class TestUpdateServices(MAASTransactionServerTestCase):
         }
         rack_controller = factory.make_RackController()
         update_services(rack_controller.system_id, services.values())
-        for service in RACK_SERVICES:
-            self.expectThat(
-                Service.objects.get(node=rack_controller, name=service),
-                MatchesStructure.byEquality(
-                    status=services[service]["status"],
-                    status_info=services[service]["status_info"],
-                ),
+        for service_name in RACK_SERVICES:
+            service = Service.objects.get(
+                node=rack_controller, name=service_name
+            )
+            self.assertEqual(service.status, services[service_name]["status"])
+            self.assertEqual(
+                service.status_info, services[service_name]["status_info"]
             )

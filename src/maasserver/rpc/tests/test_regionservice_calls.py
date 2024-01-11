@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from collections.abc import Sequence
 from datetime import datetime, timedelta
 from hashlib import sha256
 from hmac import HMAC
@@ -10,20 +9,8 @@ from json import dumps
 import random
 from random import randint
 import time
-from unittest import skip
 from urllib.parse import urlparse
 
-from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import (
-    AllMatch,
-    ContainsAll,
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesDict,
-    MatchesStructure,
-)
 from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.protocols import amp
@@ -50,11 +37,6 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import (
-    MockAnyCall,
-    MockCalledOnceWith,
-    MockCalledWith,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rpc.exceptions import NoSuchCluster, NoSuchNode
@@ -88,16 +70,6 @@ from provisioningserver.rpc.region import (
 from provisioningserver.rpc.testing import call_responder
 
 wait_for_reactor = wait_for()
-
-
-are_valid_tls_parameters = MatchesDict(
-    {
-        "tls_localCertificate": IsInstance(ssl.PrivateCertificate),
-        "tls_verifyAuthorities": MatchesAll(
-            IsInstance(Sequence), AllMatch(IsInstance(ssl.Certificate))
-        ),
-    }
-)
 
 
 @transactional
@@ -140,7 +112,7 @@ class TestRegionProtocol_Authenticate(MAASTransactionServerTestCase):
 
         expected_digest = HMAC(secret, message + salt, sha256).digest()
         self.assertEqual(expected_digest, digest)
-        self.assertThat(salt, HasLength(16))
+        self.assertEqual(len(salt), 16)
 
 
 class TestRegionProtocol_StartTLS(MAASTestCase):
@@ -155,7 +127,12 @@ class TestRegionProtocol_StartTLS(MAASTestCase):
         # side-step it.
         protocol = Region()
         cls, func = protocol._commandDispatch[amp.StartTLS.commandName]
-        self.assertThat(func(protocol), are_valid_tls_parameters)
+        result = func(protocol)
+        self.assertIsInstance(
+            result["tls_localCertificate"], ssl.PrivateCertificate
+        )
+        for certificate in result["tls_verifyAuthorities"]:
+            self.assertIsInstance(certificate, ssl.Certificate)
 
     @wait_for_reactor
     def test_StartTLS_returns_nothing(self):
@@ -248,17 +225,14 @@ class TestRegionProtocol_UpdateLeases(MAASTransactionServerTestCase):
         finally:
             yield eventloop.reset()
         for upd in updates:
-            self.assertThat(
-                update_lease_mock,
-                MockAnyCall(
-                    upd["action"],
-                    upd["mac"],
-                    upd["ip_family"],
-                    upd["ip"],
-                    upd["timestamp"],
-                    None,
-                    None,
-                ),
+            update_lease_mock.assert_any_call(
+                upd["action"],
+                upd["mac"],
+                upd["ip_family"],
+                upd["ip"],
+                upd["timestamp"],
+                None,
+                None,
             )
 
 
@@ -289,29 +263,27 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
             },
         )
 
-        self.assertThat(
-            response,
-            ContainsAll(
-                [
-                    "arch",
-                    "subarch",
-                    "osystem",
-                    "release",
-                    "kernel_osystem",
-                    "kernel_release",
-                    "kernel",
-                    "initrd",
-                    "boot_dtb",
-                    "purpose",
-                    "hostname",
-                    "domain",
-                    "preseed_url",
-                    "fs_host",
-                    "log_host",
-                    "extra_opts",
-                    "ephemeral_opts",
-                ]
-            ),
+        self.assertGreater(
+            response.keys(),
+            {
+                "arch",
+                "subarch",
+                "osystem",
+                "release",
+                "kernel_osystem",
+                "kernel_release",
+                "kernel",
+                "initrd",
+                "boot_dtb",
+                "purpose",
+                "hostname",
+                "domain",
+                "preseed_url",
+                "fs_host",
+                "log_host",
+                "extra_opts",
+                "ephemeral_opts",
+            },
         )
 
 
@@ -540,12 +512,17 @@ class TestRegionProtocol_ListNodePowerParameters(
         self.assertCountEqual(nodes, response["nodes"])
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_raises_exception_if_nodegroup_doesnt_exist(self):
         uuid = factory.make_UUID()
 
         d = call_responder(Region(), ListNodePowerParameters, {"uuid": uuid})
 
-        return assert_fails_with(d, NoSuchCluster)
+        with self.assertRaisesRegex(
+            NoSuchCluster,
+            rf"The rack controller with UUID {uuid} could not be found\.",
+        ):
+            yield d
 
 
 class TestRegionProtocol_UpdateNodePowerState(MAASTransactionServerTestCase):
@@ -626,12 +603,9 @@ class TestRegionProtocol_RegisterEventType(MAASTransactionServerTestCase):
 
         self.assertEqual({}, response)
         event_type = yield deferToDatabase(self.get_event_type, name)
-        self.assertThat(
-            event_type,
-            MatchesStructure.byEquality(
-                name=name, description=description, level=level
-            ),
-        )
+        self.assertEqual(event_type.name, name)
+        self.assertEqual(event_type.description, description)
+        self.assertEqual(event_type.level, level)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -716,9 +690,9 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
 
         self.assertEqual({}, response)
         event = yield deferToDatabase(self.get_event, system_id, name)
-        self.expectThat(event.node.system_id, Equals(system_id))
-        self.expectThat(event.description, Equals(event_description))
-        self.expectThat(event.type.name, Equals(name))
+        self.assertEqual(event.node.system_id, system_id)
+        self.assertEqual(event.description, event_description)
+        self.assertEqual(event.type.name, name)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -747,9 +721,8 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
             yield eventloop.reset()
 
         event = yield deferToDatabase(self.get_event, system_id, event_type)
-        self.expectThat(event.created, Equals(timestamp))
+        self.assertEqual(event.created, timestamp)
 
-    @skip("XXX: GavinPanella 2016-03-11 bug=1556188: Fails spuriously.")
     @wait_for_reactor
     @inlineCallbacks
     def test_send_event_does_not_fail_if_unknown_type(self):
@@ -813,15 +786,12 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
         finally:
             yield eventloop.reset()
 
-        self.assertThat(
-            log.debug,
-            MockCalledOnceWith(
-                "Event '{type}: {description}' sent for "
-                "non-existent node '{node_id}'.",
-                type=name,
-                description=event_description,
-                node_id=system_id,
-            ),
+        log.debug.assert_called_once_with(
+            "Event '{type}: {description}' sent for "
+            "non-existent node '{node_id}'.",
+            type=name,
+            description=event_description,
+            node_id=system_id,
         )
 
 
@@ -921,7 +891,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
             yield eventloop.reset()
 
         event = yield deferToDatabase(self.get_event, mac_address, event_type)
-        self.expectThat(event.created, Equals(timestamp))
+        self.assertEqual(event.created, timestamp)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -985,15 +955,12 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
         finally:
             yield eventloop.reset()
 
-        self.assertThat(
-            log.debug,
-            MockCalledOnceWith(
-                "Event '{type}: {description}' sent for non-existent node "
-                "with MAC address '{mac}'.",
-                type=name,
-                description=event_description,
-                mac=mac_address,
-            ),
+        log.debug.assert_called_once_with(
+            "Event '{type}: {description}' sent for non-existent node "
+            "with MAC address '{mac}'.",
+            type=name,
+            description=event_description,
+            mac=mac_address,
         )
 
 
@@ -1032,9 +999,8 @@ class TestRegionProtocol_UpdateServices(MAASTransactionServerTestCase):
         finally:
             yield eventloop.reset()
 
-        self.assertThat(
-            mock_deferToDatabase,
-            MockCalledWith(update_services, system_id, services),
+        mock_deferToDatabase.assert_called_with(
+            update_services, system_id, services
         )
 
 
@@ -1111,16 +1077,13 @@ class TestRegionProtocol_CreateNode(MAASTransactionServerTestCase):
         response = yield call_responder(Region(), CreateNode, params)
         self.assertIsNotNone(response)
 
-        self.assertThat(
-            create_node_function,
-            MockCalledOnceWith(
-                params["architecture"],
-                params["power_type"],
-                params["power_parameters"],
-                params["mac_addresses"],
-                domain=params["domain"],
-                hostname=params["hostname"],
-            ),
+        create_node_function.assert_called_once_with(
+            params["architecture"],
+            params["power_type"],
+            params["power_parameters"],
+            params["mac_addresses"],
+            domain=params["domain"],
+            hostname=params["hostname"],
         )
         self.assertEqual(
             create_node_function.return_value.system_id, response["system_id"]
@@ -1146,9 +1109,8 @@ class TestRegionProtocol_CommissionNode(MAASTransactionServerTestCase):
         response = yield call_responder(Region(), CommissionNode, params)
         self.assertIsNotNone(response)
 
-        self.assertThat(
-            commission_node_function,
-            MockCalledOnceWith(params["system_id"], params["user"]),
+        commission_node_function.assert_called_once_with(
+            params["system_id"], params["user"]
         )
 
 
@@ -1173,9 +1135,8 @@ class TestRegionProtocol_ReportNeighbours(MAASTestCase):
         response = yield call_responder(Region(), ReportNeighbours, params)
         self.assertIsNotNone(response)
 
-        self.assertThat(
-            report_neighbours,
-            MockCalledOnceWith(params["system_id"], params["neighbours"]),
+        report_neighbours.assert_called_once_with(
+            params["system_id"], params["neighbours"]
         )
 
 
@@ -1214,9 +1175,7 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
             Region(), RequestNodeInfoByMACAddress, params
         )
         self.assertIsNotNone(response)
-        self.assertThat(
-            node_info_function, MockCalledOnceWith(params["mac_address"])
-        )
+        node_info_function.assert_called_once_with(params["mac_address"])
         response_purpose = response.pop("purpose")
         self.assertEqual(purpose, response_purpose)
         # Remove the boot_type from the response as node no longer has that
@@ -1228,10 +1187,16 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         self.assertEqual("fastpath", response["boot_type"])
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):
         params = {"mac_address": factory.make_mac_address()}
         d = call_responder(Region(), RequestNodeInfoByMACAddress, params)
-        return assert_fails_with(d, NoSuchNode)
+
+        with self.assertRaisesRegex(
+            NoSuchNode,
+            rf"^Node with mac_address={params['mac_address']} could not be found\.",
+        ):
+            yield d
 
 
 class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
@@ -1285,15 +1250,18 @@ class TestRegionProtocol_GetControllerType(MAASTransactionServerTestCase):
             Region(), GetControllerType, {"system_id": system_id}
         )
         self.assertEqual(example_response, response)
-        self.assertThat(
-            deferToDatabase, MockCalledOnceWith(get_controller_type, system_id)
-        )
+        deferToDatabase.assert_called_once_with(get_controller_type, system_id)
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_raises_NoSuchNode_when_node_does_not_exist(self):
         arguments = {"system_id": factory.make_name("id")}
         d = call_responder(Region(), GetControllerType, arguments)
-        return assert_fails_with(d, NoSuchNode)
+        with self.assertRaisesRegex(
+            NoSuchNode,
+            rf"^Node with system_id={arguments['system_id']} could not be found\.",
+        ):
+            yield d
 
 
 class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
@@ -1323,16 +1291,20 @@ class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
             Region(), GetTimeConfiguration, {"system_id": system_id}
         )
         self.assertEqual(example_response, response)
-        self.assertThat(
-            deferToDatabase,
-            MockCalledOnceWith(get_time_configuration, system_id),
+        deferToDatabase.assert_called_once_with(
+            get_time_configuration, system_id
         )
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_raises_NoSuchNode_when_node_does_not_exist(self):
         arguments = {"system_id": factory.make_name("id")}
         d = call_responder(Region(), GetTimeConfiguration, arguments)
-        return assert_fails_with(d, NoSuchNode)
+        with self.assertRaisesRegex(
+            NoSuchNode,
+            rf"^Node with system_id={arguments['system_id']} could not be found\.",
+        ):
+            yield d
 
 
 class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
@@ -1355,9 +1327,7 @@ class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
             Region(), GetDNSConfiguration, {"system_id": system_id}
         )
         self.assertEqual({"trusted_networks": example_networks}, response)
-        self.assertThat(
-            deferToDatabase, MockCalledOnceWith(get_trusted_networks)
-        )
+        deferToDatabase.assert_called_once_with(get_trusted_networks)
 
 
 class TestRegionProtocol_GetProxyConfiguration(MAASTransactionServerTestCase):
@@ -1389,16 +1359,14 @@ class TestRegionProtocol_GetProxyConfiguration(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetProxyConfiguration, {"system_id": system_id}
         )
-        self.assertThat(
+        self.assertEqual(
             response,
-            Equals(
-                {
-                    "enabled": enabled,
-                    "port": port,
-                    "allowed_cidrs": cidrs,
-                    "prefer_v4_proxy": prefer_v4_proxy,
-                }
-            ),
+            {
+                "enabled": enabled,
+                "port": port,
+                "allowed_cidrs": cidrs,
+                "prefer_v4_proxy": prefer_v4_proxy,
+            },
         )
 
 

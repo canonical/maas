@@ -8,7 +8,6 @@ import http.client
 import json
 
 from django.conf import settings
-from testtools.matchers import Equals
 
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -68,26 +67,26 @@ class TestMAASAPIValidationError(MAASTestCase):
         errors = [factory.make_string(), factory.make_string()]
         exception = MAASAPIValidationError(errors)
         response = exception.make_http_response()
-        self.expectThat(
+        self.assertEqual(
             response.get("Content-Type"),
-            Equals("application/json; charset=%s" % settings.DEFAULT_CHARSET),
+            f"application/json; charset={settings.DEFAULT_CHARSET}",
         )
-        self.expectThat(
+        self.assertEqual(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(json.dumps(errors)),
+            json.dumps(errors),
         )
 
     def test_if_message_is_single_item_list_returns_only_first_message(self):
         errors = [factory.make_string()]
         exception = MAASAPIValidationError(errors)
         response = exception.make_http_response()
-        self.expectThat(
+        self.assertEqual(
             response.get("Content-Type"),
-            Equals("text/plain; charset=%s" % settings.DEFAULT_CHARSET),
+            f"text/plain; charset={settings.DEFAULT_CHARSET}",
         )
-        self.expectThat(
+        self.assertEqual(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(errors[0]),
+            errors[0],
         )
 
     def test_returns_json_response_if_message_is_a_dict(self):
@@ -97,11 +96,11 @@ class TestMAASAPIValidationError(MAASTestCase):
         }
         exception = MAASAPIValidationError(errors)
         response = exception.make_http_response()
-        self.expectThat(
+        self.assertEqual(
             response.get("Content-Type"),
-            Equals("application/json; charset=%s" % settings.DEFAULT_CHARSET),
+            f"application/json; charset={settings.DEFAULT_CHARSET}",
         )
-        self.expectThat(
+        self.assertEqual(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(json.dumps(errors)),
+            json.dumps(errors),
         )

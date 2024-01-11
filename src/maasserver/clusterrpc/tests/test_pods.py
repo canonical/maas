@@ -1,13 +1,9 @@
 # Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test for :py:mod:`maasserver.clusterrpc.power`."""
-
-
 import random
 from unittest.mock import Mock, sentinel
 
-from testtools.matchers import Is, IsInstance, MatchesAny, MatchesDict
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -34,7 +30,6 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod import (
     DiscoveredCluster,
@@ -120,9 +115,7 @@ class TestDiscoverPodProjects(MAASTransactionServerTestCase):
             factory.make_name("pod"), {}, timeout=0.5
         )
         self.assertEqual({}, discovered[0])
-        self.assertThat(
-            discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
-        )
+        self.assertIsInstance(discovered[1][rack_id], CancelledError)
 
 
 class TestDiscoverPod(MAASTransactionServerTestCase):
@@ -213,9 +206,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
             factory.make_name("pod"), {}, timeout=0.5
         )
         self.assertEqual({}, discovered[0])
-        self.assertThat(
-            discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
-        )
+        self.assertIsInstance(discovered[1][rack_id], CancelledError)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -269,7 +260,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
 class TestGetBestDiscoveredResult(MAASTestCase):
     def test_returns_one_of_the_discovered(self):
-        self.assertThat(
+        self.assertIn(
             get_best_discovered_result(
                 (
                     {
@@ -279,7 +270,7 @@ class TestGetBestDiscoveredResult(MAASTestCase):
                     {},
                 )
             ),
-            MatchesAny(Is(sentinel.first), Is(sentinel.second)),
+            (sentinel.first, sentinel.second),
         )
 
     def test_returns_None(self):
@@ -363,20 +354,17 @@ class TestSendPodCommissioningResults(MAASServerTestCase):
             metadata_url,
         )
 
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                SendPodCommissioningResults,
-                pod_id=pod.id,
-                name=pod.name,
-                type=pod.power_type,
-                system_id=node.system_id,
-                context=pod.get_power_parameters(),
-                consumer_key=token.consumer.key,
-                token_key=token.key,
-                token_secret=token.secret,
-                metadata_url=metadata_url,
-            ),
+        client.assert_called_once_with(
+            SendPodCommissioningResults,
+            pod_id=pod.id,
+            name=pod.name,
+            type=pod.power_type,
+            system_id=node.system_id,
+            context=pod.get_power_parameters(),
+            consumer_key=token.consumer.key,
+            token_key=token.key,
+            token_secret=token.secret,
+            metadata_url=metadata_url,
         )
 
     def test_raises_PodProblem_for_UnknownPodType(self):
@@ -511,16 +499,13 @@ class TestComposeMachine(MAASServerTestCase):
             pod.name,
         )
 
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                ComposeMachine,
-                type=pod.power_type,
-                context=pod.get_power_parameters(),
-                request=sentinel.request,
-                pod_id=pod.id,
-                name=pod.name,
-            ),
+        client.assert_called_once_with(
+            ComposeMachine,
+            type=pod.power_type,
+            context=pod.get_power_parameters(),
+            request=sentinel.request,
+            pod_id=pod.id,
+            name=pod.name,
         )
         self.assertEqual(sentinel.machine, machine)
         self.assertEqual(sentinel.hints, hints)
@@ -629,15 +614,12 @@ class TestDecomposeMachine(MAASServerTestCase):
             pod.name,
         )
 
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                DecomposeMachine,
-                type=pod.power_type,
-                context=pod.get_power_parameters(),
-                pod_id=pod.id,
-                name=pod.name,
-            ),
+        client.assert_called_once_with(
+            DecomposeMachine,
+            type=pod.power_type,
+            context=pod.get_power_parameters(),
+            pod_id=pod.id,
+            name=pod.name,
         )
         self.assertEqual(hints, result)
 

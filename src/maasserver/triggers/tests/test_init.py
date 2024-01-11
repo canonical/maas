@@ -7,7 +7,6 @@
 from contextlib import closing
 
 from django.db import connection
-from testtools.matchers import Equals
 
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_procedure, register_trigger
@@ -324,14 +323,14 @@ class TestTriggersUsed(MAASServerTestCase):
         # Note: if this test fails, a trigger may have been added, but not
         # added to the list of expected triggers.
         triggers_found = self.find_triggers_in_database()
-        self.expectThat(
+        self.assertEqual(
             (self.triggers_all - triggers_found),
-            Equals(EMPTY_SET),
+            EMPTY_SET,
             "Some triggers were expected but not found.",
         )
-        self.expectThat(
+        self.assertEqual(
             (triggers_found - self.triggers_all),
-            Equals(EMPTY_SET),
+            EMPTY_SET,
             "Some triggers were unexpected.",
         )
 
