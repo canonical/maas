@@ -322,13 +322,15 @@ class TFTPBackend(FilesystemSynchronousBackend):
         raise FileNotFound(file_name)
 
     @deferred
+    @inlineCallbacks
     def handle_boot_method(self, file_name: TFTPPath, protocol: str, result):
         boot_method, params = result
         if boot_method is None:
             try:
-                return super().get_reader(file_name)
+                reader = yield super().get_reader(file_name)
             except (BackendError, FileNotFound):
-                return self.get_cache_reader(file_name)
+                reader = yield self.get_cache_reader(file_name)
+            return reader
 
         # Map pxe namespace architecture names to MAAS's.
         arch = params.get("arch")
@@ -343,8 +345,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
         remote_host, remote_port = tftp.get_remote_address()
         params["remote_ip"] = remote_host
         params["protocol"] = protocol if protocol else "tftp"
-        d = self.get_boot_method_reader(boot_method, params)
-        return d
+        reader = yield self.get_boot_method_reader(boot_method, params)
+        return reader
 
     @staticmethod
     def all_is_lost_errback(failure):
