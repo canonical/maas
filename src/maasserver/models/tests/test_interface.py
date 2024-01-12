@@ -13,14 +13,6 @@ from django.db.utils import IntegrityError
 from django.http import Http404
 from fixtures import FakeLogger
 from netaddr import EUI, IPAddress, IPNetwork
-from testtools import ExpectedException
-from testtools.matchers import (
-    Contains,
-    Equals,
-    MatchesDict,
-    MatchesListwise,
-    MatchesStructure,
-)
 
 from maasserver.enum import (
     BRIDGE_TYPE,
@@ -63,11 +55,6 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import get_one, reload_object, transactional
 from maastesting.djangotestcase import CountQueries
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
 )
@@ -203,23 +190,23 @@ class TestInterfaceManager(MAASServerTestCase):
         node2 = factory.make_Node()
         node2_eth0 = factory.make_Interface(node=node2, name="eth0")
         node2_eth1 = factory.make_Interface(node=node2, name="eth1")
-        self.assertThat(
+        self.assertEqual(
             Interface.objects.get_interface_dict_for_node(
                 node1, names=("eth0",)
             ),
-            Equals({"eth0": node1_eth0}),
+            {"eth0": node1_eth0},
         )
-        self.assertThat(
+        self.assertEqual(
             Interface.objects.get_interface_dict_for_node(
                 node1, names=("eth0", "eth1")
             ),
-            Equals({"eth0": node1_eth0, "eth1": node1_eth1}),
+            {"eth0": node1_eth0, "eth1": node1_eth1},
         )
-        self.assertThat(
+        self.assertEqual(
             Interface.objects.get_interface_dict_for_node(
                 node2, names=("eth0", "eth1")
             ),
-            Equals({"eth0": node2_eth0, "eth1": node2_eth1}),
+            {"eth0": node2_eth0, "eth1": node2_eth1},
         )
 
     def test_get_all_interfaces_definition_for_node(self):
@@ -948,27 +935,25 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         # Expect alphabetical interface order, interleaved with a parents-first
         # search for each child interface. That is, child interfaces will
         # always be listed after /all/ of their parents.
-        self.expectThat(
+        self.assertEqual(
             iface_list,
-            Equals(
-                [
-                    br1,
-                    eth0,
-                    eth0_vlan,
-                    eth1,
-                    eth2,
-                    eth3,
-                    bond0,
-                    br2,
-                    eth4,
-                    eth5,
-                    br0,
-                ]
-            ),
+            [
+                br1,
+                eth0,
+                eth0_vlan,
+                eth1,
+                eth2,
+                eth3,
+                bond0,
+                br2,
+                eth4,
+                eth5,
+                br0,
+            ],
         )
         # Might as well test that the other host looks okay, too.
         n2_ifaces = list(Interface.objects.all_interfaces_parents_first(node2))
-        self.expectThat(n2_ifaces, Equals([n2_eth0, n2_eth1]))
+        self.assertEqual(n2_ifaces, [n2_eth0, n2_eth1])
 
     def test_all_interfaces_parents_ignores_orphan_interfaces(self):
         # Previous versions of MAAS had a bug which resulted in an "orphan"
@@ -984,7 +969,7 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         # which would otherwise automatically work around this.
         Interface.objects.filter(id=eth0_vlan.id).update(node_config=None)
         iface_list = list(Interface.objects.all_interfaces_parents_first(node))
-        self.expectThat(iface_list, Equals([eth0]))
+        self.assertEqual(iface_list, [eth0])
 
 
 class TestInterface(MAASServerTestCase):
@@ -1027,15 +1012,10 @@ class TestInterface(MAASServerTestCase):
             node_config=node_config,
             mac_address=mac,
         )
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                name=name,
-                node_config=node_config,
-                mac_address=mac,
-                type=INTERFACE_TYPE.PHYSICAL,
-            ),
-        )
+        self.assertEqual(interface.name, name)
+        self.assertEqual(interface.node_config, node_config)
+        self.assertEqual(interface.mac_address, mac)
+        self.assertEqual(interface.type, INTERFACE_TYPE.PHYSICAL)
 
     def test_allows_null_vlan(self):
         name = factory.make_name("name")
@@ -1048,16 +1028,11 @@ class TestInterface(MAASServerTestCase):
             mac_address=mac,
             link_connected=False,
         )
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                name=name,
-                node_config=node_config,
-                mac_address=mac,
-                type=INTERFACE_TYPE.PHYSICAL,
-                vlan=None,
-            ),
-        )
+        self.assertEqual(interface.name, name)
+        self.assertEqual(interface.node_config, node_config)
+        self.assertEqual(interface.mac_address, mac)
+        self.assertEqual(interface.type, INTERFACE_TYPE.PHYSICAL)
+        self.assertIsNone(interface.vlan)
 
     def test_string_representation_contains_essential_data(self):
         name = factory.make_name("name")
@@ -1181,7 +1156,6 @@ class TestInterface(MAASServerTestCase):
 
     def test_get_discovered_returns_discovered_address_for_ipv4_and_ipv6(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        discovered_ips = []
         network_v4 = factory.make_ipv4_network()
         subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
         ip_v4 = factory.pick_ip_in_network(network_v4)
@@ -1190,11 +1164,6 @@ class TestInterface(MAASServerTestCase):
             ip=ip_v4,
             subnet=subnet_v4,
             interface=interface,
-        )
-        discovered_ips.append(
-            MatchesDict(
-                {"ip_address": Equals(ip_v4), "subnet": Equals(subnet_v4)}
-            )
         )
         network_v6 = factory.make_ipv6_network()
         subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
@@ -1205,14 +1174,11 @@ class TestInterface(MAASServerTestCase):
             subnet=subnet_v6,
             interface=interface,
         )
-        discovered_ips.append(
-            MatchesDict(
-                {"ip_address": Equals(ip_v6), "subnet": Equals(subnet_v6)}
-            )
-        )
-        self.assertThat(
-            interface.get_discovered(), MatchesListwise(discovered_ips)
-        )
+        d_v4, d_v6 = interface.get_discovered()
+        self.assertEqual(d_v4["ip_address"], ip_v4)
+        self.assertEqual(d_v4["subnet"], subnet_v4)
+        self.assertEqual(d_v6["ip_address"], ip_v6)
+        self.assertEqual(d_v6["subnet"], subnet_v6)
 
     def test_delete_deletes_related_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1862,24 +1828,20 @@ class TestInterfaceMTU(MAASServerTestCase):
         parent.params = {"mtu": mtu}
         parent.save()
         bridge = parent.create_acquired_bridge()
-        self.assertThat(
-            bridge,
-            MatchesStructure(
-                name=Equals("%s" % parent.get_default_bridge_name()),
-                mac_address=Equals(parent.mac_address),
-                node_config=Equals(parent.node_config),
-                vlan=Equals(parent.vlan),
-                enabled=Equals(True),
-                acquired=Equals(True),
-                params=MatchesDict(
-                    {
-                        "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
-                        "bridge_stp": Equals(False),
-                        "bridge_fd": Equals(15),
-                        "mtu": Equals(mtu),
-                    }
-                ),
-            ),
+        self.assertEqual(bridge.name, parent.get_default_bridge_name())
+        self.assertEqual(bridge.mac_address, parent.mac_address)
+        self.assertEqual(bridge.node_config, parent.node_config)
+        self.assertEqual(bridge.vlan, parent.vlan)
+        self.assertTrue(bridge.enabled)
+        self.assertTrue(bridge.acquired)
+        self.assertEqual(
+            bridge.params,
+            {
+                "bridge_type": BRIDGE_TYPE.STANDARD,
+                "bridge_stp": False,
+                "bridge_fd": 15,
+                "mtu": mtu,
+            },
         )
         self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
@@ -2174,13 +2136,9 @@ class TestBondInterface(MAASServerTestCase):
             mac_address=other_nic.mac_address,
             parents=[parent1, parent2],
         )
-        self.assertThat(
+        self.assertIn(
+            f"While adding {iface.get_log_string()}: found a MAC address already in use by {other_nic.get_log_string()}.",
             logger.output,
-            Contains(
-                "While adding %s: "
-                "found a MAC address already in use by %s."
-                % (iface.get_log_string(), other_nic.get_log_string())
-            ),
         )
 
     def test_node_config_is_set_to_parents_node_config(self):
@@ -2350,13 +2308,9 @@ class TestBridgeInterface(MAASServerTestCase):
             mac_address=other_nic.mac_address,
             parents=[parent1, parent2],
         )
-        self.assertThat(
+        self.assertIn(
+            f"While adding {iface.get_log_string()}: found a MAC address already in use by {other_nic.get_log_string()}.",
             logger.output,
-            Contains(
-                "While adding %s: "
-                "found a MAC address already in use by %s."
-                % (iface.get_log_string(), other_nic.get_log_string())
-            ),
         )
 
     def test_node_config_is_set_to_parents_node_config(self):
@@ -2432,13 +2386,9 @@ class TestUnknownInterface(MAASServerTestCase):
             name="eth0", mac_address=interface.mac_address
         )
         unknown.save()
-        self.assertThat(
+        self.assertIn(
+            f"While adding {unknown.get_log_string()}: found a MAC address already in use by {interface.get_log_string()}.",
             logger.output,
-            Contains(
-                "While adding %s: "
-                "found a MAC address already in use by %s."
-                % (unknown.get_log_string(), interface.get_log_string())
-            ),
         )
 
 
@@ -2550,16 +2500,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         interface.update_ip_addresses(cidr_list)
 
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for i in range(num_connections):
-            ip = interface.ip_addresses.get(ip=cidr_list[i].split("/")[0])
-            self.assertThat(
-                ip,
-                MatchesStructure.byEquality(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                    subnet=subnet_list[i],
-                    ip=str(IPNetwork(cidr_list[i]).ip),
-                ),
-            )
+        for cidr, subnet in zip(cidr_list, subnet_list):
+            ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
+            self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+            self.assertEqual(ip.subnet, subnet)
+            self.assertEqual(ip.ip, str(IPNetwork(cidr).ip))
 
     def test_links_interface_to_vlan_on_existing_subnet_with_logging(self):
         fabric1 = factory.make_Fabric()
@@ -2581,9 +2526,8 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         self.assertEqual(vlan1, interface1.vlan)
         self.assertEqual(vlan2, interface2.vlan)
         self.assertEqual(vlan3, interface3.vlan)
-        self.assertThat(
-            maaslog.info,
-            MockCallsMatch(
+        maaslog.info.assert_has_calls(
+            [
                 call(
                     "%s: Observed connected to %s via %s."
                     % (
@@ -2608,7 +2552,7 @@ class TestUpdateIpAddresses(MAASServerTestCase):
                         subnet3.cidr,
                     )
                 ),
-            ),
+            ]
         )
 
     def test_deletes_old_discovered_ip_addresses_on_interface(self):
@@ -2660,16 +2604,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Discovered IP address should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for i in range(num_connections):
-            ip = interface.ip_addresses.get(ip=cidr_list[i].split("/")[0])
-            self.assertThat(
-                ip,
-                MatchesStructure.byEquality(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                    subnet=subnet_list[i],
-                    ip=str(IPNetwork(cidr_list[i]).ip),
-                ),
-            )
+        for cidr, subnet in zip(cidr_list, subnet_list):
+            ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
+            self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+            self.assertEqual(ip.subnet, subnet)
+            self.assertEqual(ip.ip, str(IPNetwork(cidr).ip))
 
     def test_deletes_old_discovered_ip_addresses_with_unknown_nics(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2718,16 +2657,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Unknown interfaces should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for i in range(num_connections):
-            ip = interface.ip_addresses.get(ip=cidr_list[i].split("/")[0])
-            self.assertThat(
-                ip,
-                MatchesStructure.byEquality(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                    subnet=subnet_list[i],
-                    ip=str(IPNetwork(cidr_list[i]).ip),
-                ),
-            )
+        for cidr, subnet in zip(cidr_list, subnet_list):
+            ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
+            self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+            self.assertEqual(ip.subnet, subnet)
+            self.assertEqual(ip.ip, str(IPNetwork(cidr).ip))
 
     def test_deletes_old_sticky_ip_addresses_not_linked(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2761,16 +2695,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
             "Sticky IP address should have been deleted.",
         )
         self.assertEqual(num_connections, interface.ip_addresses.count())
-        for i in range(num_connections):
-            ip = interface.ip_addresses.get(ip=cidr_list[i].split("/")[0])
-            self.assertThat(
-                ip,
-                MatchesStructure.byEquality(
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                    subnet=subnet_list[i],
-                    ip=str(IPNetwork(cidr_list[i]).ip),
-                ),
-            )
+        for cidr, subnet in zip(cidr_list, subnet_list):
+            ip = interface.ip_addresses.get(ip=cidr.split("/")[0])
+            self.assertEqual(ip.alloc_type, IPADDRESS_TYPE.DISCOVERED)
+            self.assertEqual(ip.subnet, subnet)
+            self.assertEqual(ip.ip, str(IPNetwork(cidr).ip))
 
     def test_deletes_old_ip_address_on_managed_subnet_with_log(self):
         network = factory.make_ip4_or_6_network()
@@ -3111,7 +3040,7 @@ class TestUnlinkIPAddress(MAASServerTestCase):
         mock_ensure_link_up = self.patch_autospec(interface, "ensure_link_up")
         interface.unlink_ip_address(auto_ip, clearing_config=True)
         self.assertIsNone(reload_object(auto_ip))
-        self.assertThat(mock_ensure_link_up, MockNotCalled())
+        mock_ensure_link_up.assert_not_called()
 
 
 class TestUnlinkSubnet(MAASServerTestCase):
@@ -3487,7 +3416,9 @@ class TestUpdateIPAddress(MAASTransactionServerTestCase):
             subnet=subnet,
             interface=other_interface,
         )
-        with ExpectedException(StaticIPAddressUnavailable):
+        with self.assertRaisesRegex(
+            StaticIPAddressUnavailable, r"IP address is already in use\."
+        ):
             interface.update_ip_address(
                 static_ip,
                 INTERFACE_LINK_TYPE.STATIC,
@@ -3609,11 +3540,8 @@ class TestUpdateLinkById(MAASServerTestCase):
         interface.update_link_by_id(
             static_ip.id, INTERFACE_LINK_TYPE.AUTO, subnet
         )
-        self.expectThat(
-            mock_update_ip_address,
-            MockCalledOnceWith(
-                static_ip, INTERFACE_LINK_TYPE.AUTO, subnet, ip_address=None
-            ),
+        mock_update_ip_address.assert_called_once_with(
+            static_ip, INTERFACE_LINK_TYPE.AUTO, subnet, ip_address=None
         )
 
 
@@ -3784,14 +3712,13 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             ip.save()
             maaslog = self.patch_autospec(interface_module, "maaslog")
         with transaction.atomic():
-            with ExpectedException(StaticIPAddressUnavailable):
+            with self.assertRaisesRegex(
+                StaticIPAddressUnavailable,
+                "Automatic IP address cannot be configured on .* without an associated subnet",
+            ):
                 interface.claim_auto_ips()
-        self.expectThat(
-            maaslog.error,
-            MockCalledOnceWith(
-                "Could not find subnet for interface %s."
-                % interface.get_log_string()
-            ),
+        maaslog.error.assert_called_once_with(
+            f"Could not find subnet for interface {interface.get_log_string()}."
         )
 
     def test_excludes_ip_addresses_in_exclude_addresses(self):
@@ -3883,23 +3810,19 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
     def test_creates_acquired_bridge_with_default_options(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         bridge = parent.create_acquired_bridge()
-        self.assertThat(
-            bridge,
-            MatchesStructure(
-                name=Equals("%s" % parent.get_default_bridge_name()),
-                mac_address=Equals(parent.mac_address),
-                node_config=Equals(parent.node_config),
-                vlan=Equals(parent.vlan),
-                enabled=Equals(True),
-                acquired=Equals(True),
-                params=MatchesDict(
-                    {
-                        "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
-                        "bridge_stp": Equals(False),
-                        "bridge_fd": Equals(15),
-                    }
-                ),
-            ),
+        self.assertEqual(bridge.name, parent.get_default_bridge_name())
+        self.assertEqual(bridge.mac_address, parent.mac_address)
+        self.assertEqual(bridge.node_config, parent.node_config)
+        self.assertEqual(bridge.vlan, parent.vlan)
+        self.assertTrue(bridge.enabled)
+        self.assertTrue(bridge.acquired)
+        self.assertEqual(
+            bridge.params,
+            {
+                "bridge_type": BRIDGE_TYPE.STANDARD,
+                "bridge_stp": False,
+                "bridge_fd": 15,
+            },
         )
         self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
@@ -3911,23 +3834,19 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
         bridge = parent.create_acquired_bridge(
             bridge_type=bridge_type, bridge_stp=bridge_stp, bridge_fd=bridge_fd
         )
-        self.assertThat(
-            bridge,
-            MatchesStructure(
-                name=Equals("%s" % parent.get_default_bridge_name()),
-                mac_address=Equals(parent.mac_address),
-                node_config=Equals(parent.node_config),
-                vlan=Equals(parent.vlan),
-                enabled=Equals(True),
-                acquired=Equals(True),
-                params=MatchesDict(
-                    {
-                        "bridge_type": Equals(bridge_type),
-                        "bridge_stp": Equals(bridge_stp),
-                        "bridge_fd": Equals(bridge_fd),
-                    }
-                ),
-            ),
+        self.assertEqual(bridge.name, parent.get_default_bridge_name())
+        self.assertEqual(bridge.mac_address, parent.mac_address)
+        self.assertEqual(bridge.node_config, parent.node_config)
+        self.assertEqual(bridge.vlan, parent.vlan)
+        self.assertTrue(bridge.enabled)
+        self.assertTrue(bridge.acquired)
+        self.assertEqual(
+            bridge.params,
+            {
+                "bridge_type": bridge_type,
+                "bridge_stp": bridge_stp,
+                "bridge_fd": bridge_fd,
+            },
         )
         self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
@@ -3940,23 +3859,19 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY, interface=parent
         )
         bridge = parent.create_acquired_bridge()
-        self.assertThat(
-            bridge,
-            MatchesStructure(
-                name=Equals("%s" % parent.get_default_bridge_name()),
-                mac_address=Equals(parent.mac_address),
-                node_config=Equals(parent.node_config),
-                vlan=Equals(parent.vlan),
-                enabled=Equals(True),
-                acquired=Equals(True),
-                params=MatchesDict(
-                    {
-                        "bridge_type": Equals(BRIDGE_TYPE.STANDARD),
-                        "bridge_stp": Equals(False),
-                        "bridge_fd": Equals(15),
-                    }
-                ),
-            ),
+        self.assertEqual(bridge.name, parent.get_default_bridge_name())
+        self.assertEqual(bridge.mac_address, parent.mac_address)
+        self.assertEqual(bridge.node_config, parent.node_config)
+        self.assertEqual(bridge.vlan, parent.vlan)
+        self.assertTrue(bridge.enabled)
+        self.assertTrue(bridge.acquired)
+        self.assertEqual(
+            bridge.params,
+            {
+                "bridge_type": BRIDGE_TYPE.STANDARD,
+                "bridge_stp": False,
+                "bridge_fd": 15,
+            },
         )
         self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
         self.assertEqual(
