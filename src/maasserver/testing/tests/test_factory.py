@@ -6,8 +6,6 @@
 
 import random
 
-from testtools.matchers import ContainsDict, Equals
-
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -108,7 +106,4 @@ class TestFactoryForNodes(MAASServerTestCase):
             bmc_connected_to=factory.make_RackController(),
             power_parameters={p_key: p_value},
         )
-        self.assertThat(
-            node.get_effective_power_parameters(),
-            ContainsDict({p_key: Equals(p_value)}),
-        )
+        self.assertEqual(node.get_effective_power_parameters()[p_key], p_value)

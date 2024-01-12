@@ -8,19 +8,12 @@ from maasserver.models import discovery as discovery_module
 from maasserver.models import MDNS, Neighbour, RDNS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import (
-    DocTestMatches,
-    IsNonEmptyString,
-    Matches,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 
 
 class TestDiscoveryModel(MAASServerTestCase):
     def test_mac_organization(self):
         discovery = factory.make_Discovery(mac_address="48:51:b7:00:00:00")
-        self.assertThat(discovery.mac_organization, IsNonEmptyString)
+        self.assertEqual(discovery.mac_organization, "Intel Corporate")
 
     def test_ignores_duplicate_macs(self):
         rack1 = factory.make_RackController()
@@ -145,12 +138,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(mdns=True)
         self.assertEqual(0, MDNS.objects.count())
         self.assertEqual(2, Neighbour.objects.count())
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(DocTestMatches("Cleared all mDNS entries."))
-            ),
-        )
+        maaslog.assert_called_once_with("Cleared all mDNS entries.")
 
     def test_clear_neighbour_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
@@ -163,12 +151,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(neighbours=True)
         self.assertEqual(2, MDNS.objects.count())
         self.assertEqual(0, Neighbour.objects.count())
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(DocTestMatches("Cleared all neighbour entries."))
-            ),
-        )
+        maaslog.assert_called_once_with("Cleared all neighbour entries.")
 
     def test_clear_all_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
@@ -181,13 +164,8 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear(all=True)
         self.assertEqual(0, MDNS.objects.count())
         self.assertEqual(0, Neighbour.objects.count())
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(
-                    DocTestMatches("Cleared all mDNS and neighbour entries.")
-                )
-            ),
+        maaslog.assert_called_once_with(
+            "Cleared all mDNS and neighbour entries."
         )
 
     def test_clear_mdns_entries_is_noop_if_what_to_clear_is_unspecified(self):
@@ -202,7 +180,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         Discovery.objects.clear()
         self.assertEqual(2, MDNS.objects.count())
         self.assertEqual(2, Neighbour.objects.count())
-        self.assertThat(maaslog, MockNotCalled())
+        maaslog.assert_not_called()
 
     def test_clear_logs_username_if_given(self):
         user = factory.make_admin()
@@ -210,11 +188,8 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
         factory.make_MDNS()
         factory.make_Neighbour()
         Discovery.objects.clear(user=user, all=True)
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(DocTestMatches("User '%s' cleared..." % user.username))
-            ),
+        maaslog.assert_called_once_with(
+            f"User '{user.username}' cleared all mDNS and neighbour entries."
         )
 
 
@@ -274,11 +249,8 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         Discovery.objects.delete_by_mac_and_ip(
             ip=neigh.ip, mac=neigh.mac_address, user=user
         )
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(DocTestMatches("User '%s' cleared..." % user.username))
-            ),
+        maaslog.assert_called_once_with(
+            f"User '{user.username}' cleared neighbour entry: 1.1.1.1 (00:01:02:03:04:05)."
         )
         neigh = factory.make_Neighbour(
             ip="1.1.1.1", mac_address="00:01:02:03:04:05"
@@ -287,11 +259,6 @@ class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
         Discovery.objects.delete_by_mac_and_ip(
             ip=neigh.ip, mac=neigh.mac_address
         )
-        self.assertThat(
-            maaslog,
-            MockCalledOnceWith(
-                Matches(
-                    DocTestMatches("Cleared neighbour entry: 1.1.1.1 (00:...")
-                )
-            ),
+        maaslog.assert_called_once_with(
+            "Cleared neighbour entry: 1.1.1.1 (00:01:02:03:04:05)."
         )

@@ -4,7 +4,6 @@
 """Test matchers."""
 
 
-from string import whitespace
 from unittest.mock import (
     call,
     create_autospec,
@@ -26,7 +25,6 @@ from maastesting.matchers import (
     HasAttribute,
     IsCallable,
     IsCallableMock,
-    IsNonEmptyString,
     Matches,
     MockCalledOnce,
     MockCalledOnceWith,
@@ -296,23 +294,3 @@ class TestIsCallableMock(MAASTestCase, MockTestMixin):
         matcher = IsCallableMock()
         result = matcher.match(object())
         self.assertMismatch(result, " is not callable")
-
-
-class TestIsNonEmptyString(MAASTestCase, MockTestMixin):
-    """Tests for the `IsNonEmptyString` matcher."""
-
-    def test_matches_non_empty_string(self):
-        self.assertThat("foo", IsNonEmptyString)
-
-    def test_does_not_match_empty_string(self):
-        self.assertMismatch(IsNonEmptyString.match(""), "'' is empty")
-
-    def test_does_not_match_string_containing_only_whitespace(self):
-        self.assertMismatch(
-            IsNonEmptyString.match(whitespace), "%r is whitespace" % whitespace
-        )
-
-    def test_does_not_match_non_strings(self):
-        self.assertMismatch(
-            IsNonEmptyString.match(1234), "1234 is not a string"
-        )

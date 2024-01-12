@@ -3,12 +3,8 @@
 
 """Tests for `maasserver.testing`."""
 
-
-import http.client
-
 from django.db.models.signals import post_save, pre_save
 from django.http import HttpResponse, HttpResponseRedirect
-from testtools.matchers import Equals
 
 from maasserver.models.node import Node
 from maasserver.testing import extract_redirect, NoReceivers
@@ -28,25 +24,20 @@ class TestHelpers(MAASServerTestCase):
     def test_extract_redirect_only_returns_target_path(self):
         url_path = factory.make_string()
         self.assertEqual(
-            "/%s" % url_path,
+            f"/{url_path}",
             extract_redirect(
-                HttpResponseRedirect("http://example.com/%s" % url_path)
+                HttpResponseRedirect(f"http://example.com/{url_path}")
             ),
         )
 
     def test_extract_redirect_errors_out_helpfully_if_not_a_redirect(self):
         content = factory.make_string(10).encode("ascii")
         other_response = HttpResponse(content=content)
-        try:
+        with self.assertRaisesRegex(
+            ValueError,
+            f"Not a redirect: http status 200. Content: {content}",
+        ):
             extract_redirect(other_response)
-        except ValueError as e:
-            self.assertThat(
-                str(e),
-                Equals(
-                    "Not a redirect: http status %d. Content: %s"
-                    % (http.client.OK.value, content)
-                ),
-            )
 
     def test_reload_object_reloads_object(self):
         test_obj = factory.make_Node()

@@ -13,7 +13,6 @@ from testtools.matchers import (
     HasLength,
     Matcher,
     MatchesAll,
-    MatchesPredicate,
     Mismatch,
 )
 
@@ -251,17 +250,3 @@ class DocTestMatches(matchers.DocTestMatches):
 
     def __init__(self, example, flags=DEFAULT_FLAGS):
         super().__init__(example, flags)
-
-
-# The matchee is a non-empty string. In addition a string containing only
-# whitespace will not match.
-IsNonEmptyString = MatchesAll(
-    MatchesPredicate(
-        (lambda observed: isinstance(observed, str)), "%r is not a string"
-    ),
-    MatchesPredicate((lambda observed: len(observed) != 0), "%r is empty"),
-    MatchesPredicate(
-        (lambda observed: not observed.isspace()), "%r is whitespace"
-    ),
-    first_only=True,
-)
