@@ -5,8 +5,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
-from testtools.matchers import MatchesStructure
-from testtools.testcase import ExpectedException
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.interface import PhysicalInterface, VLANInterface
@@ -133,7 +131,8 @@ class TestVLAN(MAASServerTestCase):
         fabric = factory.make_Fabric()
         vlan = VLAN(vid=vid, name=name, fabric=fabric)
         vlan.save()
-        self.assertThat(vlan, MatchesStructure.byEquality(vid=vid, name=name))
+        self.assertEqual(vlan.vid, vid)
+        self.assertEqual(vlan.name, name)
 
     def test_is_fabric_default_detects_default_vlan(self):
         fabric = factory.make_Fabric()
@@ -148,7 +147,9 @@ class TestVLAN(MAASServerTestCase):
     def test_cant_delete_default_vlan(self):
         name = factory.make_name("name")
         fabric = factory.make_Fabric(name=name)
-        with ExpectedException(ValidationError):
+        with self.assertRaisesRegex(
+            ValidationError, "This VLAN is the default VLAN in the fabric"
+        ):
             fabric.get_default_vlan().delete()
 
     def test_manager_get_default_vlan_returns_dflt_vlan_of_dflt_fabric(self):
@@ -192,7 +193,7 @@ class TestVLAN(MAASServerTestCase):
         # Break 'manage_connected_interfaces'.
         self.patch(vlan, "manage_connected_interfaces")
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
-        with ExpectedException(ProtectedError):
+        with self.assertRaisesRegex(ProtectedError, "Interface.vlan"):
             vlan.delete()
 
     def test_subnets_are_reconnected_when_vlan_is_deleted(self):
@@ -257,8 +258,7 @@ class TestVLANVidValidation(MAASServerTestCase):
             self.assertIsNone(vlan.save())
 
         else:
-            with ExpectedException(ValidationError):
-                vlan.save()
+            self.assertRaises(ValidationError, vlan.save)
 
 
 class TestVLANMTUValidation(MAASServerTestCase):
@@ -276,5 +276,4 @@ class TestVLANMTUValidation(MAASServerTestCase):
             # No exception.
             self.assertIsNone(vlan.save())
         else:
-            with ExpectedException(ValidationError):
-                vlan.save()
+            self.assertRaises(ValidationError, vlan.save)

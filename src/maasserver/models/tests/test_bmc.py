@@ -15,13 +15,6 @@ from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
 import petname
-from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    MatchesSetwise,
-    MatchesStructure,
-)
 from twisted.internet.defer import DeferredList, fail, inlineCallbacks, succeed
 
 from maasserver.enum import (
@@ -58,7 +51,6 @@ from maasserver.permissions import PodPermission
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.testing.matchers import MatchesSetwiseWithAll
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
@@ -66,7 +58,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -246,7 +237,9 @@ class TestBMC(MAASServerTestCase):
         power_parameters = {
             "power_address": "protocol://%s" % factory.ip_to_url_format(ip)
         }
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError, "does not support netmasks or subnet prefixes!"
+        ):
             factory.make_BMC(
                 power_type="ipmi", power_parameters=power_parameters
             )
@@ -477,7 +470,7 @@ class TestBMC(MAASServerTestCase):
 
     def test_get_usable_rack_controllers_returns_empty_when_none(self):
         bmc = factory.make_BMC()
-        self.assertThat(bmc.get_usable_rack_controllers(), HasLength(0))
+        self.assertEqual(bmc.get_usable_rack_controllers(), [])
 
     def test_get_usable_rack_controllers_returns_routable_racks(self):
         bmc = factory.make_BMC()
@@ -575,9 +568,8 @@ class TestBMC(MAASServerTestCase):
             bmc, "get_usable_rack_controllers"
         )
         bmc.is_accessible()
-        self.assertThat(
-            mock_get_usable_rack_controllers,
-            MockCalledOnceWith(with_connection=True),
+        mock_get_usable_rack_controllers.assert_called_once_with(
+            with_connection=True
         )
 
     def test_is_accessible_returns_true(self):
@@ -619,23 +611,22 @@ class TestBMC(MAASServerTestCase):
             [rack.system_id for rack in non_routable_racks],
         )
 
-        self.assertThat(
+        self.assertFalse(
             BMCRoutableRackControllerRelationship.objects.filter(
                 id__in=old_relationship_ids
-            ),
-            HasLength(0),
+            ).exists()
         )
-        self.assertThat(
+        self.assertEqual(
             BMCRoutableRackControllerRelationship.objects.filter(
                 rack_controller__in=routable_racks, routable=True
-            ),
-            HasLength(len(routable_racks)),
+            ).count(),
+            len(routable_racks),
         )
-        self.assertThat(
+        self.assertEqual(
             BMCRoutableRackControllerRelationship.objects.filter(
                 rack_controller__in=non_routable_racks, routable=False
-            ),
-            HasLength(len(non_routable_racks)),
+            ).count(),
+            len(non_routable_racks),
         )
 
     def test_get_power_params(self):
@@ -1007,40 +998,34 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         self.patch(pod, "sync_machines")
         pod.sync(discovered, factory.make_User())
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                architectures=Equals(discovered.architectures),
-                name=Equals(discovered.name),
-                version=Equals(discovered.version),
-                cores=Equals(discovered.cores),
-                cpu_speed=Equals(discovered.cpu_speed),
-                memory=Equals(discovered.memory),
-                local_storage=Equals(discovered.local_storage),
-                capabilities=Equals(discovered.capabilities),
-                tags=MatchesSetwise(*[Equals(tag) for tag in discovered.tags]),
-                hints=MatchesStructure(
-                    cores=Equals(discovered.hints.cores),
-                    cpu_speed=Equals(discovered.hints.cpu_speed),
-                    memory=Equals(discovered.hints.memory),
-                    local_storage=Equals(discovered.hints.local_storage),
-                ),
-                default_storage_pool=MatchesStructure(
-                    pool_id=Equals(discovered.storage_pools[0].id)
-                ),
-                storage_pools=MatchesSetwiseWithAll(
-                    *[
-                        MatchesStructure(
-                            name=Equals(pool.name),
-                            pool_id=Equals(pool.id),
-                            pool_type=Equals(pool.type),
-                            path=Equals(pool.path),
-                            storage=Equals(pool.storage),
-                        )
-                        for pool in discovered.storage_pools
-                    ]
-                ),
+        self.assertEqual(pod.architectures, discovered.architectures)
+        self.assertEqual(pod.name, discovered.name)
+        self.assertEqual(pod.version, discovered.version)
+        self.assertEqual(pod.cores, discovered.cores)
+        self.assertEqual(pod.cpu_speed, discovered.cpu_speed)
+        self.assertEqual(pod.memory, discovered.memory)
+        self.assertEqual(pod.local_storage, discovered.local_storage)
+        self.assertEqual(pod.capabilities, discovered.capabilities)
+        self.assertCountEqual(pod.tags, discovered.tags)
+
+        hints = pod.hints
+        self.assertEqual(hints.cores, discovered.hints.cores)
+        self.assertEqual(hints.cpu_speed, discovered.hints.cpu_speed)
+        self.assertEqual(hints.memory, discovered.hints.memory)
+        self.assertEqual(hints.local_storage, discovered.hints.local_storage)
+
+        storage_pools = pod.storage_pools
+        self.assertEqual(
+            pod.default_storage_pool.pool_id, discovered.storage_pools[0].id
+        )
+        self.assertCountEqual(
+            storage_pools.values_list(
+                "name", "pool_id", "pool_type", "path", "storage"
             ),
+            [
+                (sp.name, sp.id, sp.type, sp.path, sp.storage)
+                for sp in discovered.storage_pools
+            ],
         )
 
     def test_sync_lxd_host_removes_trust_password(self):
@@ -2086,25 +2071,21 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 0
             ].mac_address
         )
-        self.assertThat(
-            created_machine,
-            MatchesStructure(
-                architecture=Equals(machine.architecture),
-                bmc=Equals(pod),
-                cpu_count=Equals(machine.cores),
-                cpu_speed=Equals(machine.cpu_speed),
-                memory=Equals(machine.memory),
-                power_state=Equals(machine.power_state),
-                instance_power_parameters=Equals(machine.power_parameters),
-                dynamic=Equals(False),
-                tags=MatchesSetwiseWithAll(
-                    *[
-                        MatchesStructure(name=Equals(tag))
-                        for tag in machine.tags
-                    ]
-                ),
-                physicalblockdevice_set=MatchesSetwiseWithAll(),
-            ),
+        self.assertEqual(created_machine.architecture, machine.architecture)
+        self.assertEqual(created_machine.bmc, pod)
+        self.assertEqual(created_machine.cpu_count, machine.cores)
+        self.assertEqual(created_machine.cpu_speed, machine.cpu_speed)
+        self.assertEqual(created_machine.memory, machine.memory)
+        self.assertEqual(created_machine.power_state, machine.power_state)
+        self.assertEqual(
+            created_machine.instance_power_parameters, machine.power_parameters
+        )
+        self.assertFalse(created_machine.dynamic)
+        self.assertCountEqual(
+            [tag.name for tag in created_machine.tags.all()], machine.tags
+        )
+        self.assertCountEqual(
+            created_machine.physicalblockdevice_set.all(), []
         )
 
     def test_create_machine_doesnt_allow_bad_physical_block_device(self):
@@ -2198,24 +2179,17 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
-        self.assertThat(
-            machine,
-            MatchesStructure(
-                architecture=Equals(discovered_machine.architecture),
-                cpu_count=Equals(discovered_machine.cores),
-                cpu_speed=Equals(discovered_machine.cpu_speed),
-                memory=Equals(discovered_machine.memory),
-                power_state=Equals(discovered_machine.power_state),
-                instance_power_parameters=Equals(
-                    discovered_machine.power_parameters
-                ),
-                tags=MatchesSetwiseWithAll(
-                    *[
-                        MatchesStructure(name=Equals(tag))
-                        for tag in discovered_machine.tags
-                    ]
-                ),
-            ),
+        self.assertEqual(machine.architecture, discovered_machine.architecture)
+        self.assertEqual(machine.cpu_count, discovered_machine.cores)
+        self.assertEqual(machine.cpu_speed, discovered_machine.cpu_speed)
+        self.assertEqual(machine.memory, discovered_machine.memory)
+        self.assertEqual(machine.power_state, discovered_machine.power_state)
+        self.assertEqual(
+            machine.instance_power_parameters,
+            discovered_machine.power_parameters,
+        )
+        self.assertCountEqual(
+            [tag.name for tag in machine.tags.all()], discovered_machine.tags
         )
 
     def test_sync_updates_machine_properties_for_not_dynamic(self):
@@ -2232,24 +2206,12 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         pod.sync(discovered_pod, factory.make_User())
         machine = reload_object(machine)
-        self.assertThat(
-            machine,
-            MatchesStructure(
-                architecture=Equals(machine.architecture),
-                cpu_count=Equals(machine.cpu_count),
-                cpu_speed=Equals(machine.cpu_speed),
-                memory=Equals(machine.memory),
-                power_state=Equals(discovered_machine.power_state),
-                instance_power_parameters=Equals(
-                    discovered_machine.power_parameters
-                ),
-                tags=MatchesSetwiseWithAll(
-                    *[
-                        MatchesStructure(name=Equals(tag))
-                        for tag in machine.tags.all()
-                    ]
-                ),
-            ),
+        self.assertEqual(machine.cpu_count, discovered_machine.cores)
+        self.assertEqual(machine.memory, discovered_machine.memory)
+        self.assertEqual(machine.power_state, discovered_machine.power_state)
+        self.assertEqual(
+            machine.instance_power_parameters,
+            discovered_machine.power_parameters,
         )
 
     def test_sync_creates_machine_vm(self):
@@ -2438,49 +2400,25 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         ).first()
         self.assertIsNone(delete_model_bd)
         self.assertIsNone(delete_path_bd)
-        self.assertThat(
-            keep_model_bd,
-            MatchesStructure(
-                size=Equals(dkeep_model_bd.size),
-                block_size=Equals(dkeep_model_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dkeep_model_bd.tags]
-                ),
-            ),
-        )
+
+        self.assertEqual(keep_model_bd.size, dkeep_model_bd.size)
+        self.assertEqual(keep_model_bd.block_size, dkeep_model_bd.block_size)
+        self.assertCountEqual(keep_model_bd.tags, dkeep_model_bd.tags)
         self.assertEqual(keep_model_bd.vmdisk.size, dkeep_model_bd.size)
-        self.assertThat(
-            keep_path_bd,
-            MatchesStructure(
-                size=Equals(dkeep_path_bd.size),
-                block_size=Equals(dkeep_path_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dkeep_path_bd.tags]
-                ),
-            ),
-        )
+
+        self.assertEqual(keep_path_bd.size, dkeep_path_bd.size)
+        self.assertEqual(keep_path_bd.block_size, dkeep_path_bd.block_size)
+        self.assertCountEqual(keep_path_bd.tags, dkeep_path_bd.tags)
         self.assertEqual(keep_path_bd.vmdisk.size, dkeep_path_bd.size)
-        self.assertThat(
-            new_model_bd,
-            MatchesStructure(
-                size=Equals(dnew_model_bd.size),
-                block_size=Equals(dnew_model_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dnew_model_bd.tags]
-                ),
-            ),
-        )
+
+        self.assertEqual(new_model_bd.size, dnew_model_bd.size)
+        self.assertEqual(new_model_bd.block_size, dnew_model_bd.block_size)
+        self.assertCountEqual(new_model_bd.tags, dnew_model_bd.tags)
         self.assertEqual(new_model_bd.vmdisk.size, dnew_model_bd.size)
-        self.assertThat(
-            new_path_bd,
-            MatchesStructure(
-                size=Equals(dnew_path_bd.size),
-                block_size=Equals(dnew_path_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dnew_path_bd.tags]
-                ),
-            ),
-        )
+
+        self.assertEqual(new_path_bd.size, dnew_path_bd.size)
+        self.assertEqual(new_path_bd.block_size, dnew_path_bd.block_size)
+        self.assertCountEqual(new_path_bd.tags, dnew_path_bd.tags)
         self.assertEqual(new_path_bd.vmdisk.size, dnew_path_bd.size)
 
     def test_sync_updates_existing_machine_cpu_memory(self):
@@ -2531,26 +2469,14 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             mac_address=dnew_interface.mac_address
         ).first()
         self.assertIsNone(delete_interface)
-        self.assertThat(
-            keep_interface,
-            MatchesStructure(
-                vlan=Equals(other_vlan),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dkeep_interface.tags]
-                ),
-            ),
+        self.assertEqual(keep_interface.vlan, other_vlan)
+        self.assertCountEqual(keep_interface.tags, dkeep_interface.tags)
+
+        self.assertEqual(
+            new_interface.vlan,
+            Fabric.objects.get_default_fabric().get_default_vlan(),
         )
-        self.assertThat(
-            new_interface,
-            MatchesStructure(
-                vlan=Equals(
-                    Fabric.objects.get_default_fabric().get_default_vlan()
-                ),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dnew_interface.tags]
-                ),
-            ),
-        )
+        self.assertCountEqual(new_interface.tags, dnew_interface.tags)
         self.assertEqual(new_interface, machine.boot_interface)
 
     def test_sync_updates_existing_machine_vmdisks(self):
@@ -3410,14 +3336,12 @@ class TestGetRequestedIPs(MAASServerTestCase):
         requested_machine = RequestedMachine(
             factory.make_hostname(), "amd64", 1, 1024, [], interfaces
         )
-        self.assertThat(
+        self.assertEqual(
             get_requested_ips(requested_machine),
-            Equals(
-                {
-                    "eth0": ["10.0.0.1", "2001:db8::1"],
-                    "eth1": ["10.0.0.2", "2001:db8::2"],
-                }
-            ),
+            {
+                "eth0": ["10.0.0.1", "2001:db8::1"],
+                "eth1": ["10.0.0.2", "2001:db8::2"],
+            },
         )
 
     def test_leaves_out_keys_with_no_assigned_ips(self):

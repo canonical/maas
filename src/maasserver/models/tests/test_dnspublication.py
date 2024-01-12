@@ -8,14 +8,6 @@ from datetime import datetime, timedelta
 from random import randint
 
 from django.db import connection
-from testtools.matchers import (
-    Equals,
-    HasLength,
-    IsInstance,
-    MatchesAll,
-    MatchesStructure,
-    Not,
-)
 
 from maasserver.models.dnspublication import DNSPublication, zone_serial
 from maasserver.testing.factory import factory
@@ -26,16 +18,11 @@ class TestZoneSerial(MAASServerTestCase):
     """Tests for the `maasserver_zone_serial_seq` sequence."""
 
     def test_parameters(self):
-        self.assertThat(
-            zone_serial,
-            MatchesStructure.byEquality(
-                maxvalue=2**32 - 1,
-                minvalue=1,
-                increment=1,
-                cycle=True,
-                owner="maasserver_dnspublication.serial",
-            ),
-        )
+        self.assertEqual(zone_serial.maxvalue, 2**32 - 1)
+        self.assertEqual(zone_serial.minvalue, 1)
+        self.assertEqual(zone_serial.increment, 1)
+        self.assertTrue(zone_serial.cycle)
+        self.assertEqual(zone_serial.owner, "maasserver_dnspublication.serial")
 
     def test_parameters_in_database(self):
         zone_serial.create_if_not_exists()
@@ -57,14 +44,9 @@ class TestDNSPublication(MAASServerTestCase):
     def test_create_empty(self):
         pub = DNSPublication()
         pub.save()
-        self.assertThat(
-            pub,
-            MatchesStructure(
-                serial=IsInstance(int),
-                created=IsInstance(datetime),
-                source=Equals(""),
-            ),
-        )
+        self.assertIsInstance(pub.serial, int)
+        self.assertIsInstance(pub.created, datetime)
+        self.assertEqual(pub.source, "")
 
     def test_create_with_values(self):
         serial = randint(1, 5000)
@@ -72,19 +54,10 @@ class TestDNSPublication(MAASServerTestCase):
         source = factory.make_name("source")
         pub = DNSPublication(serial=serial, created=created, source=source)
         pub.save()
-        self.assertThat(
-            pub,
-            MatchesStructure(
-                serial=Equals(serial),
-                created=MatchesAll(
-                    IsInstance(datetime),
-                    # `created` is always set; given values are ignored.
-                    Not(Equals(created)),
-                    first_only=True,
-                ),
-                source=Equals(source),
-            ),
-        )
+        self.assertEqual(pub.serial, serial)
+        self.assertIsInstance(pub.created, datetime)
+        self.assertNotEqual(pub.created, created)
+        self.assertEqual(pub.source, source)
 
 
 class TestDNSPublicationManager(MAASServerTestCase):
@@ -99,10 +72,8 @@ class TestDNSPublicationManager(MAASServerTestCase):
         DNSPublication(serial=3).save()
         DNSPublication(serial=30).save()
         DNSPublication(serial=10).save()
-        self.assertThat(
-            DNSPublication.objects.get_most_recent(),
-            MatchesStructure(serial=Equals(10)),
-        )
+        pub = DNSPublication.objects.get_most_recent()
+        self.assertEqual(pub.serial, 10)
 
     def test_get_most_recent_crashes_when_no_publications(self):
         # This is okay because we ensure (using a migration) that there is
@@ -117,18 +88,17 @@ class TestDNSPublicationManager(MAASServerTestCase):
     def test_collect_garbage_removes_all_but_most_recent_record(self):
         for serial in range(10):
             DNSPublication(serial=serial).save()
-        self.assertThat(DNSPublication.objects.all(), HasLength(10))
+        self.assertEqual(DNSPublication.objects.all().count(), 10)
         DNSPublication.objects.collect_garbage()
-        self.assertThat(DNSPublication.objects.all(), HasLength(1))
-        self.assertThat(
-            DNSPublication.objects.get_most_recent(),
-            MatchesStructure(serial=Equals(serial)),
+        self.assertEqual(DNSPublication.objects.all().count(), 1)
+        self.assertEqual(
+            DNSPublication.objects.get_most_recent().serial, serial
         )
 
     def test_collect_garbage_does_nothing_when_no_publications(self):
-        self.assertThat(DNSPublication.objects.all(), HasLength(0))
+        self.assertFalse(DNSPublication.objects.all().exists())
         DNSPublication.objects.collect_garbage()
-        self.assertThat(DNSPublication.objects.all(), HasLength(0))
+        self.assertFalse(DNSPublication.objects.all().exists())
 
     def test_collect_garbage_leaves_records_older_than_specified(self):
         publications = {
@@ -177,4 +147,4 @@ class TestDNSPublicationManager(MAASServerTestCase):
         # The most recent publication will never be deleted.
         DNSPublication.objects.collect_garbage()
         self.assertEqual(deltas, get_ages())
-        self.assertThat(deltas, HasLength(1))
+        self.assertEqual(len(deltas), 1)

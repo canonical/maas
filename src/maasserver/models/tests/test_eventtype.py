@@ -5,8 +5,6 @@ import random
 import threading
 import time
 
-from testtools.matchers import AllMatch, Equals, MatchesStructure
-
 from maasserver.models.eventtype import EventType, LOGGING_LEVELS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -40,12 +38,9 @@ class TestEventType(MAASServerTestCase):
         desc = factory.make_name("desc")
         level = random.choice(list(LOGGING_LEVELS))
         event_type = EventType.objects.register(name, desc, level)
-        self.assertThat(
-            event_type,
-            MatchesStructure.byEquality(
-                name=name, description=desc, level=level
-            ),
-        )
+        self.assertEqual(event_type.name, name)
+        self.assertEqual(event_type.description, desc)
+        self.assertEqual(event_type.level, level)
 
     def test_register_does_not_update_existing_description_or_level(self):
         name = factory.make_name("name")
@@ -60,12 +55,9 @@ class TestEventType(MAASServerTestCase):
         event_type2 = EventType.objects.register(name, desc2, level2)
 
         self.assertEqual(event_type1, event_type2)
-        self.assertThat(
-            event_type2,
-            MatchesStructure.byEquality(
-                name=name, description=desc1, level=level1
-            ),
-        )
+        self.assertEqual(event_type2.name, name)
+        self.assertEqual(event_type2.description, desc1)
+        self.assertEqual(event_type2.level, level1)
 
 
 class TestEventTypeConcurrency(MAASTransactionServerTestCase):
@@ -111,12 +103,8 @@ class TestEventTypeConcurrency(MAASTransactionServerTestCase):
             thread.join()
 
         # All threads return the same event type.
-        self.expectThat(len(threads), Equals(len(event_types)))
-        self.expectThat(
-            event_types,
-            AllMatch(
-                MatchesStructure.byEquality(
-                    name=name, description=desc, level=level
-                )
-            ),
-        )
+        self.assertEqual(len(threads), len(event_types))
+        for et in event_types:
+            self.assertEqual(et.name, name)
+            self.assertEqual(et.description, desc)
+            self.assertEqual(et.level, level)

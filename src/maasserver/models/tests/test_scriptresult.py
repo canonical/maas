@@ -16,7 +16,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import CountQueries
-from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -194,7 +193,7 @@ class TestScriptResult(MAASServerTestCase):
             node=script_result.script_set.node, type_id=event_type.id
         )
         self.assertEqual(expected_msg, event.description)
-        self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
+        mock_logger.assert_called_once_with(expected_msg)
         self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
         self.assertEqual(result, script_result.result)
 
@@ -291,7 +290,7 @@ class TestScriptResult(MAASServerTestCase):
             node=script_result.script_set.node, type_id=event_type.id
         )
         self.assertEqual(expected_msg, event.description)
-        self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
+        mock_logger.assert_called_once_with(expected_msg)
 
     def test_store_result_runs_builtin_commissioning_hooks(self):
         script_set = factory.make_ScriptSet(
@@ -312,11 +311,8 @@ class TestScriptResult(MAASServerTestCase):
 
         script_result.store_result(exit_status, stdout=stdout)
 
-        self.assertThat(
-            mock_hook,
-            MockCalledOnceWith(
-                node=script_set.node, output=stdout, exit_status=exit_status
-            ),
+        mock_hook.assert_called_once_with(
+            node=script_set.node, output=stdout, exit_status=exit_status
         )
 
     def test_store_result_logs_event_upon_hook_failure(self):
@@ -338,9 +334,8 @@ class TestScriptResult(MAASServerTestCase):
         )
         script_result.store_result(0, stdout=b"")
         expected_event = Event.objects.first()
-        self.assertThat(
-            expected_event.description,
-            DocTestMatches("...failed during post-processing."),
+        self.assertIn(
+            "failed during post-processing.", expected_event.description
         )
         self.assertEqual(
             reload_object(script_result).status, SCRIPT_STATUS.FAILED

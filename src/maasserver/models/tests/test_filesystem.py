@@ -8,8 +8,6 @@ from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from testscenarios import multiply_scenarios
-from testtools import ExpectedException
-from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
@@ -189,7 +187,7 @@ class TestFilesystem(MAASServerTestCase):
     def test_cannot_create_filesystem_directly_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Cannot place filesystem directly on the "
@@ -224,19 +222,21 @@ class TestFilesystem(MAASServerTestCase):
         filesystem_dupe = copy(filesystem)
         filesystem_dupe.id = None  # Force INSERT.
 
-        error_messages_expected = Equals(
-            ["Filesystem with this Partition and Acquired already exists."]
-        )
-
         # Saving an unacquired duplicate fails.
         filesystem_dupe.acquired = False
         error = self.assertRaises(ValidationError, filesystem_dupe.save)
-        self.assertThat(error.messages, error_messages_expected)
+        self.assertEqual(
+            error.messages,
+            ["Filesystem with this Partition and Acquired already exists."],
+        )
 
         # Saving an acquired duplicate fails.
         filesystem_dupe.acquired = True
         error = self.assertRaises(ValidationError, filesystem_dupe.save)
-        self.assertThat(error.messages, error_messages_expected)
+        self.assertEqual(
+            error.messages,
+            ["Filesystem with this Partition and Acquired already exists."],
+        )
 
     def test_unique_on_block_device_and_acquired(self):
         # For any given block device, at most one unacquired and one acquired
@@ -255,19 +255,21 @@ class TestFilesystem(MAASServerTestCase):
         filesystem_dupe = copy(filesystem)
         filesystem_dupe.id = None  # Force INSERT.
 
-        error_messages_expected = Equals(
-            ["Filesystem with this Block device and Acquired already exists."]
-        )
-
         # Saving an unacquired duplicate fails.
         filesystem_dupe.acquired = False
         error = self.assertRaises(ValidationError, filesystem_dupe.save)
-        self.assertThat(error.messages, error_messages_expected)
+        self.assertEqual(
+            error.messages,
+            ["Filesystem with this Block device and Acquired already exists."],
+        )
 
         # Saving an acquired duplicate fails.
         filesystem_dupe.acquired = True
         error = self.assertRaises(ValidationError, filesystem_dupe.save)
-        self.assertThat(error.messages, error_messages_expected)
+        self.assertEqual(
+            error.messages,
+            ["Filesystem with this Block device and Acquired already exists."],
+        )
 
 
 class TestFilesystemMountableTypes(MAASServerTestCase):
@@ -333,7 +335,8 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         self.assertIsInstance(filesystem, Filesystem)
         self.assertEqual(self.fstype, filesystem.fstype)
         self.assertTrue(filesystem.is_mountable)
-        self.assertThat(filesystem, MatchesStructure.byEquality(**substrate))
+        for k, v in substrate.items():
+            self.assertEqual(getattr(filesystem, k), v)
 
     def test_cannot_mount_two_filesystems_at_same_point(self):
         substrate = self.make_substrate()
@@ -349,14 +352,9 @@ class TestFilesystemMountableTypes(MAASServerTestCase):
         # at the same directory as another filesystem.
         if filesystem1.uses_mount_point:
             error = self.assertRaises(ValidationError, filesystem2.save)
-            self.assertThat(
+            self.assertEqual(
                 error.messages,
-                Equals(
-                    [
-                        "Another filesystem is already mounted at %s."
-                        % mount_point
-                    ]
-                ),
+                [f"Another filesystem is already mounted at {mount_point}."],
             )
         else:
             self.assertIsNone(filesystem2.save())

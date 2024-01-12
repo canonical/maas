@@ -26,7 +26,6 @@ from maasserver.preseed import CURTIN_INSTALL_LOG
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -1670,7 +1669,7 @@ class TestScriptSet(MAASServerTestCase):
         )
         event = Event.objects.get(node=node, type_id=event_type.id)
         self.assertEqual(expected_msg, event.description)
-        self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
+        mock_logger.assert_called_once_with(expected_msg)
 
     def test_delete(self):
         node = factory.make_Node(with_empty_script_sets=True)

@@ -4,8 +4,6 @@
 """Tests for :class:`NodeKey` model and manager."""
 
 
-from testtools.matchers import HasLength
-
 from maasserver.models import NodeKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -70,7 +68,7 @@ class TestNodeKeyManager(MAASServerTestCase):
         node = factory.make_Node()
         NodeKey.objects.get_token_for_node(node)
         NodeKey.objects.clear_token_for_node(node)
-        self.assertThat(NodeKey.objects.filter(node=node), HasLength(0))
+        self.assertEqual(NodeKey.objects.filter(node=node).count(), 0)
 
     def test_get_node_for_key_inverts_get_token_for_node(self):
         key = NodeKey.objects.get_token_for_node(factory.make_Node()).key

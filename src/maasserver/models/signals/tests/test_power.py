@@ -22,7 +22,6 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit_hooks, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.rpc.exceptions import UnknownPowerType
 
 wait_for_reactor = wait_for()
@@ -39,15 +38,12 @@ class TestStatusQueryEvent(MAASServerTestCase):
             node.save()
             # update_power_state_of_node_soon is registered as a post-commit
             # task, so it's not called immediately.
-            self.expectThat(
-                power.update_power_state_of_node_soon, MockNotCalled()
-            )
+            power.update_power_state_of_node_soon.assert_not_called()
 
         # One post-commit hooks have been fired, then it's called.
         post_commit_hooks.fire()
-        self.assertThat(
-            power.update_power_state_of_node_soon,
-            MockCalledOnceWith(node.system_id),
+        power.update_power_state_of_node_soon.assert_called_once_with(
+            node.system_id
         )
 
     def test_changing_not_tracked_status_of_node_doesnt_emit_event(self):
@@ -56,7 +52,7 @@ class TestStatusQueryEvent(MAASServerTestCase):
         node = factory.make_Node(status=old_status, power_type="virsh")
         node.update_status(NODE_STATUS.DEPLOYING)
         node.save()
-        self.assertThat(power.update_power_state_of_node_soon, MockNotCalled())
+        power.update_power_state_of_node_soon.assert_not_called()
 
 
 class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
@@ -65,11 +61,10 @@ class TestUpdatePowerStateOfNodeSoon(MAASServerTestCase):
         node = factory.make_Node(power_type="virsh")
         clock = Clock()
         power.update_power_state_of_node_soon(node.system_id, clock=clock)
-        self.assertThat(power.update_power_state_of_node, MockNotCalled())
+        power.update_power_state_of_node.assert_not_called()
         clock.advance(power.WAIT_TO_QUERY.total_seconds())
-        self.assertThat(
-            power.update_power_state_of_node,
-            MockCalledOnceWith(node.system_id),
+        power.update_power_state_of_node.assert_called_once_with(
+            node.system_id
         )
 
 
@@ -114,11 +109,8 @@ class TestUpdatePowerStateOfNode(MAASTransactionServerTestCase):
         mock_power_query.side_effect = factory.make_exception("Error")
         mock_log_err = self.patch(power.log, "err")
         yield power.update_power_state_of_node(node.system_id)
-        self.assertThat(
-            mock_log_err,
-            MockCalledOnceWith(
-                ANY,
-                "Failed to update power state of machine after state "
-                "transition.",
-            ),
+        mock_log_err.assert_called_once_with(
+            ANY,
+            "Failed to update power state of machine after state "
+            "transition.",
         )

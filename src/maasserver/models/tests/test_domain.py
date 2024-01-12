@@ -9,8 +9,6 @@ import random
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import ProtectedError
 from netaddr import IPAddress
-from testtools.matchers import HasLength, MatchesStructure
-from testtools.testcase import ExpectedException
 
 from maasserver.dns.zonegenerator import get_hostname_dnsdata_mapping, lazydict
 from maasserver.models.config import Config
@@ -151,14 +149,14 @@ class TestDomain(MAASServerTestCase):
         domain = Domain(name=name)
         domain.save()
         domain_from_db = Domain.objects.get(name=name)
-        self.assertThat(domain_from_db, MatchesStructure.byEquality(name=name))
+        self.assertEqual(domain_from_db.name, name)
 
     def test_create_strips_trailing_dot(self):
         name = factory.make_name("name")
         domain = Domain(name=name + ".")
         domain.save()
         domain_from_db = Domain.objects.get(name=name)
-        self.assertThat(domain_from_db, MatchesStructure.byEquality(name=name))
+        self.assertEqual(domain_from_db.name, name)
 
     def test_get_default_domain_creates_default_domain(self):
         default_domain = Domain.objects.get_default_domain()
@@ -217,8 +215,7 @@ class TestDomain(MAASServerTestCase):
     def test_cant_be_deleted_if_contains_resources(self):
         domain = factory.make_Domain()
         factory.make_DNSResource(domain=domain)
-        with ExpectedException(ProtectedError):
-            domain.delete()
+        self.assertRaises(ProtectedError, domain.delete)
 
     def test_add_delegations_may_do_nothing(self):
         domain = factory.make_Domain()
@@ -499,9 +496,9 @@ class TestRenderRRData(MAASServerTestCase):
         rrdata_list = domain.render_json_for_related_rrdata(as_dict=False)
         rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
         self.assertEqual([rrdata_list[0]], rrdata_dict[name1])
-        self.assertThat(rrdata_dict[name1], HasLength(1))
+        self.assertEqual(len(rrdata_dict[name1]), 1)
         factory.make_DNSData(name=name1, domain=domain, rrtype="MX")
         factory.make_DNSData(name=name2, domain=domain, rrtype="NS")
         rrdata_dict = domain.render_json_for_related_rrdata(as_dict=True)
-        self.assertThat(rrdata_dict[name1], HasLength(2))
-        self.assertThat(rrdata_dict[name2], HasLength(1))
+        self.assertEqual(len(rrdata_dict[name1]), 2)
+        self.assertEqual(len(rrdata_dict[name2]), 1)

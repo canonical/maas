@@ -5,7 +5,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.utils.safestring import SafeString
-from testtools.matchers import EndsWith
 
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 from maasserver.models import sshkey, SSHKey
@@ -164,7 +163,7 @@ class TestGetHTMLDisplayForKey(MAASServerTestCase):
         display = get_html_display_for_key(key, 100)
         # This also verifies that the entire key fits into the string.
         # Otherwise we might accidentally get one of the other cases.
-        self.assertThat(display, EndsWith("&lt;comment&gt;"))
+        self.assertTrue(display.endswith("&lt;comment&gt;"))
         # And of course the check also implies that the text is
         # HTML-escaped:
         self.assertNotIn("<", display)
@@ -187,7 +186,7 @@ class TestGetHTMLDisplayForKey(MAASServerTestCase):
         # And now, on to checking that the text is HTML-safe.
         self.assertNotIn("<", display)
         self.assertNotIn(">", display)
-        self.assertThat(display, EndsWith("&lt;comment&gt;"))
+        self.assertTrue(display.endswith("&lt;comment&gt;"))
 
     def test_display_limits_size_with_large_comment(self):
         # If the key has a large 'comment' part, the key is simply

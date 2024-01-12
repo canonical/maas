@@ -9,8 +9,6 @@ from fixtures import FakeLogger
 from hypothesis import given, settings
 from hypothesis.strategies import integers
 from netaddr import AddrFormatError, IPAddress, IPNetwork
-from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, Is, MatchesStructure
 
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -34,7 +32,6 @@ from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import DocTestMatches
 from provisioningserver.utils.network import inet_ntop, MAASIPRange
 
 
@@ -48,8 +45,7 @@ class TestCreateCidr(MAASServerTestCase):
         self.assertEqual("169.254.0.0/24", cidr)
 
     def test_raises_for_invalid_ipv4_prefixlen(self):
-        with ExpectedException(AddrFormatError):
-            create_cidr("169.254.0.0", 33)
+        self.assertRaises(AddrFormatError, create_cidr, "169.254.0.0", 33)
 
     def test_discards_extra_ipv4_network_bits(self):
         cidr = create_cidr("169.254.0.1", 24)
@@ -69,8 +65,9 @@ class TestCreateCidr(MAASServerTestCase):
         self.assertEqual("2001:67c:1360:8c01::/64", cidr)
 
     def test_raises_for_invalid_ipv6_prefixlen(self):
-        with ExpectedException(AddrFormatError):
-            create_cidr("2001:67c:1360:8c01::", 129)
+        self.assertRaises(
+            AddrFormatError, create_cidr, "2001:67c:1360:8c01::", 129
+        )
 
     def test_accepts_ipaddresses(self):
         cidr = create_cidr(
@@ -180,8 +177,9 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         factory.make_Subnet(name="subnet2", vid=2)
         factory.make_Subnet(name="subnet3", vid=3)
         factory.make_Subnet(name="subnet4", vid=4)
-        with ExpectedException(ValidationError):
-            Subnet.objects.filter_by_specifiers(["vid:4095"])
+        self.assertRaises(
+            ValidationError, Subnet.objects.filter_by_specifiers, ["vid:4095"]
+        )
 
     def test_filter_by_specifiers_works_with_chained_filter(self):
         factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
@@ -209,10 +207,14 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_ip_filter_raises_for_invalid_ip(self):
         factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
-        with ExpectedException(AddrFormatError):
-            Subnet.objects.filter_by_specifiers("ip:x8.8.8.0"),
-        with ExpectedException(AddrFormatError):
-            Subnet.objects.filter_by_specifiers("ip:x2001:db8::"),
+        self.assertRaises(
+            AddrFormatError, Subnet.objects.filter_by_specifiers, "ip:x8.8.8.0"
+        )
+        self.assertRaises(
+            AddrFormatError,
+            Subnet.objects.filter_by_specifiers,
+            "ip:x2001:db8::",
+        )
 
     def test_filter_by_specifiers_ip_filter_matches_specific_cidr(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
@@ -228,10 +230,16 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_ip_filter_raises_for_invalid_cidr(self):
         factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
-        with ExpectedException(AddrFormatError):
-            Subnet.objects.filter_by_specifiers("cidr:x8.8.8.0/24")
-        with ExpectedException(AddrFormatError):
-            Subnet.objects.filter_by_specifiers("cidr:x2001:db8::/64")
+        self.assertRaises(
+            AddrFormatError,
+            Subnet.objects.filter_by_specifiers,
+            "cidr:x8.8.8.0/24",
+        )
+        self.assertRaises(
+            AddrFormatError,
+            Subnet.objects.filter_by_specifiers,
+            "cidr:x2001:db8::/64",
+        )
 
     def test_filter_by_specifiers_ip_chained_filter_matches_specific_ip(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
@@ -539,19 +547,14 @@ class TestSubnet(MAASServerTestCase):
         )
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
-        self.assertThat(
-            subnet_from_db,
-            MatchesStructure.byEquality(
-                name=name,
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=gateway_ip,
-                dns_servers=dns_servers,
-                rdns_mode=rdns_mode,
-                allow_proxy=allow_proxy,
-                allow_dns=allow_dns,
-            ),
-        )
+        self.assertEqual(subnet_from_db.name, name)
+        self.assertEqual(subnet_from_db.vlan, vlan)
+        self.assertEqual(subnet_from_db.cidr, cidr)
+        self.assertEqual(subnet_from_db.gateway_ip, gateway_ip)
+        self.assertEqual(subnet_from_db.dns_servers, dns_servers)
+        self.assertEqual(subnet_from_db.rdns_mode, rdns_mode)
+        self.assertEqual(subnet_from_db.allow_proxy, allow_proxy)
+        self.assertEqual(subnet_from_db.allow_dns, allow_dns)
 
     def test_creates_subnet_with_correct_defaults(self):
         name = factory.make_name("name")
@@ -572,19 +575,14 @@ class TestSubnet(MAASServerTestCase):
         )
         subnet.save()
         subnet_from_db = Subnet.objects.get(name=name)
-        self.assertThat(
-            subnet_from_db,
-            MatchesStructure.byEquality(
-                name=name,
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=gateway_ip,
-                dns_servers=dns_servers,
-                rdns_mode=RDNS_MODE.DEFAULT,
-                allow_proxy=True,
-                allow_dns=True,
-            ),
-        )
+        self.assertEqual(subnet_from_db.name, name)
+        self.assertEqual(subnet_from_db.vlan, vlan)
+        self.assertEqual(subnet_from_db.cidr, cidr)
+        self.assertEqual(subnet_from_db.gateway_ip, gateway_ip)
+        self.assertEqual(subnet_from_db.dns_servers, dns_servers)
+        self.assertEqual(subnet_from_db.rdns_mode, RDNS_MODE.DEFAULT)
+        self.assertTrue(subnet_from_db.allow_proxy)
+        self.assertTrue(subnet_from_db.allow_dns)
 
     def test_creates_subnet_with_default_name_if_name_is_none(self):
         vlan = factory.make_VLAN()
@@ -606,17 +604,12 @@ class TestSubnet(MAASServerTestCase):
         )
         subnet.save()
         subnet_from_db = Subnet.objects.get(cidr=cidr)
-        self.assertThat(
-            subnet_from_db,
-            MatchesStructure.byEquality(
-                name=str(cidr),
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=gateway_ip,
-                dns_servers=dns_servers,
-                rdns_mode=rdns_mode,
-            ),
-        )
+        self.assertEqual(subnet_from_db.name, str(cidr))
+        self.assertEqual(subnet_from_db.vlan, vlan)
+        self.assertEqual(subnet_from_db.cidr, cidr)
+        self.assertEqual(subnet_from_db.gateway_ip, gateway_ip)
+        self.assertEqual(subnet_from_db.dns_servers, dns_servers)
+        self.assertEqual(subnet_from_db.rdns_mode, rdns_mode)
 
     def test_creates_subnet_with_default_name_if_name_is_empty(self):
         vlan = factory.make_VLAN()
@@ -637,22 +630,16 @@ class TestSubnet(MAASServerTestCase):
         )
         subnet.save()
         subnet_from_db = Subnet.objects.get(cidr=cidr)
-        self.assertThat(
-            subnet_from_db,
-            MatchesStructure.byEquality(
-                name=str(cidr),
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=gateway_ip,
-                dns_servers=dns_servers,
-                rdns_mode=rdns_mode,
-            ),
-        )
+        self.assertEqual(subnet_from_db.name, str(cidr))
+        self.assertEqual(subnet_from_db.vlan, vlan)
+        self.assertEqual(subnet_from_db.cidr, cidr)
+        self.assertEqual(subnet_from_db.gateway_ip, gateway_ip)
+        self.assertEqual(subnet_from_db.dns_servers, dns_servers)
+        self.assertEqual(subnet_from_db.rdns_mode, rdns_mode)
 
     def test_disallows_creation_with_space(self):
-        with ExpectedException(AssertionError):
-            space = factory.make_Space()
-            Subnet(space=space)
+        space = factory.make_Space()
+        self.assertRaises(AssertionError, Subnet, space=space)
 
     def test_validates_gateway_ip(self):
         error = self.assertRaises(
@@ -691,16 +678,11 @@ class TestSubnet(MAASServerTestCase):
         cidr = str(factory.make_ip4_or_6_network().cidr)
         name = "subnet-" + cidr
         subnet = Subnet.objects.create_from_cidr(cidr, vlan)
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=name,
-                vlan=vlan,
-                cidr=cidr,
-                gateway_ip=None,
-                dns_servers=[],
-            ),
-        )
+        self.assertEqual(subnet.name, name)
+        self.assertEqual(subnet.vlan, vlan)
+        self.assertEqual(subnet.cidr, cidr)
+        self.assertIsNone(subnet.gateway_ip)
+        self.assertEqual(subnet.dns_servers, [])
 
     def test_get_subnets_with_ip_finds_matching_subnet(self):
         subnet = factory.make_Subnet(cidr=factory.make_ipv4_network())
@@ -784,7 +766,7 @@ class TestSubnet(MAASServerTestCase):
 
     def test_cannot_delete_with_dhcp_enabled(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges()
-        with ExpectedException(ValidationError, ".*servicing a dynamic.*"):
+        with self.assertRaisesRegex(ValidationError, "servicing a dynamic"):
             subnet.delete()
 
 
@@ -794,28 +776,28 @@ class TestGetBestSubnetForIP(MAASServerTestCase):
         expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
         factory.make_Subnet(cidr="10.1.0.0/16")
         subnet = Subnet.objects.get_best_subnet_for_ip("10.1.1.1")
-        self.expectThat(subnet, Equals(expected_subnet))
+        self.assertEqual(subnet, expected_subnet)
 
     def test_returns_most_specific_ipv6_subnet(self):
         factory.make_Subnet(cidr="2001::/16")
         expected_subnet = factory.make_Subnet(cidr="2001:db8:1:2::/64")
         factory.make_Subnet(cidr="2001:db8::/32")
         subnet = Subnet.objects.get_best_subnet_for_ip("2001:db8:1:2::1")
-        self.expectThat(subnet, Equals(expected_subnet))
+        self.assertEqual(subnet, expected_subnet)
 
     def test_returns_most_specific_ipv4_subnet___ipv4_mapped_ipv6_addr(self):
         factory.make_Subnet(cidr="10.0.0.0/8")
         expected_subnet = factory.make_Subnet(cidr="10.1.1.0/24")
         factory.make_Subnet(cidr="10.1.0.0/16")
         subnet = Subnet.objects.get_best_subnet_for_ip("::ffff:10.1.1.1")
-        self.expectThat(subnet, Equals(expected_subnet))
+        self.assertEqual(subnet, expected_subnet)
 
     def test_returns_none_if_no_subnet_found(self):
         factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_Subnet(cidr="10.1.1.0/24")
         factory.make_Subnet(cidr="10.1.0.0/16")
         subnet = Subnet.objects.get_best_subnet_for_ip("::")
-        self.expectThat(subnet, Is(None))
+        self.assertIsNone(subnet)
 
 
 class TestSubnetLabel(MAASServerTestCase):
@@ -1013,9 +995,9 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             subnet=subnet,
         )
         json = subnet.render_json_for_related_ips()
-        self.expectThat(json[0]["ip"], Equals("10.0.0.1"))
-        self.expectThat(json[1]["ip"], Equals("10.0.0.2"))
-        self.expectThat(json[2]["ip"], Equals("10.0.0.154"))
+        self.assertEqual(json[0]["ip"], "10.0.0.1")
+        self.assertEqual(json[1]["ip"], "10.0.0.2")
+        self.assertEqual(json[2]["ip"], "10.0.0.154")
 
     def test_returns_expected_json(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -1027,10 +1009,9 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         json = subnet.render_json_for_related_ips(
             with_username=True, with_summary=True
         )
-        self.assertEqual(list, type(json))
         self.assertEqual(
-            ip.render_json(with_username=True, with_summary=True),
-            json[0],
+            [ip.render_json(with_username=True, with_summary=True)],
+            json,
         )
 
     def test_includes_node_summary(self):
@@ -1125,8 +1106,8 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             subnet=subnet,
         )
         json = subnet.render_json_for_related_ips()
-        self.expectThat(json[0]["ip"], Equals("10.0.0.1"))
-        self.expectThat(json, HasLength(1))
+        self.assertEqual(json[0]["ip"], "10.0.0.1")
+        self.assertEqual(len(json), 1)
 
     def test_query_count_stable(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -1169,7 +1150,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         )
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
-        self.assertThat(ranges, HasLength(1))
+        self.assertEqual(len(ranges), 1)
         self.assertEqual(IPRANGE_TYPE.DYNAMIC, ranges[0].type)
 
     def test_get_dynamic_ranges_returns_unmanaged_dynamic_range_filter(self):
@@ -1178,7 +1159,7 @@ class TestSubnetGetRelatedRanges(MAASServerTestCase):
         )
         dynamic_ranges = subnet.get_dynamic_ranges()
         ranges = list(dynamic_ranges)
-        self.assertThat(ranges, HasLength(1))
+        self.assertEqual(len(ranges), 1)
         self.assertEqual(IPRANGE_TYPE.DYNAMIC, ranges[0].type)
 
     def test_get_dynamic_range_for_ip(self):
@@ -1339,7 +1320,7 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         subnet = self.make_Subnet(
             cidr="10.0.0.0/30", gateway_ip="10.0.0.1", dns_servers=["10.0.0.2"]
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             StaticIPAddressExhaustion,
             "No more IPs available in subnet: 10.0.0.0/30.",
         ):
@@ -1416,9 +1397,9 @@ class TestSubnetGetNextIPForAllocation(MAASServerTestCase):
         logger = self.useFixture(FakeLogger("maas"))
         [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.2", ip)
-        self.assertThat(
+        self.assertRegex(
             logger.output,
-            DocTestMatches("Next IP address...observed previously..."),
+            f"Next IP address to allocate from '.*' has been observed previously: 10.0.0.2 was last claimed by .* via .* on .* at {yesterday}.\n",
         )
 
     def test_uses_smallest_free_range_when_not_considering_neighbours(self):
@@ -1484,7 +1465,7 @@ class TestUnmanagedSubnets(MAASServerTestCase):
         [ip] = subnet.get_next_ip_for_allocation()
         self.assertEqual("10.0.0.4", ip)
         factory.make_StaticIPAddress(ip)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             StaticIPAddressExhaustion,
             "No more IPs available in subnet: 10.0.0.0/29.",
         ):

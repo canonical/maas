@@ -16,7 +16,6 @@ from maasserver.models.user import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 
 
 class TestUser(MAASServerTestCase):
@@ -44,9 +43,8 @@ class TestUser(MAASServerTestCase):
         mock_has_perm = self.patch(models, "_user_has_perm")
         user = factory.make_User()
         user.has_perm(sentinel.perm, sentinel.obj)
-        self.assertThat(
-            mock_has_perm,
-            MockCalledOnceWith(user, sentinel.perm, sentinel.obj),
+        mock_has_perm.assert_called_once_with(
+            user, sentinel.perm, sentinel.obj
         )
 
 

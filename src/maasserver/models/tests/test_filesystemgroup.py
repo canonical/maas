@@ -9,8 +9,6 @@ from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
-from testtools import ExpectedException
-from testtools.matchers import Equals, Is, MatchesStructure, Not
 
 from maasserver.enum import (
     CACHE_MODE_TYPE,
@@ -46,7 +44,6 @@ from maasserver.utils.converters import (
     round_size_to_nearest_block,
 )
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 
 
 class TestManagersGetObjectOr404(MAASServerTestCase):
@@ -639,7 +636,9 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
         )
-        with ExpectedException(AttributeError):
+        with self.assertRaisesRegex(
+            AttributeError, "should not be called when group_type = LVM_VG"
+        ):
             fsgroup.virtual_device
 
     def test_virtual_device_returns_VirtualBlockDevice_for_group(self):
@@ -1063,8 +1062,8 @@ class TestFilesystemGroup(MAASServerTestCase):
             name=factory.make_name("vg"),
         )
         fsgroup.save()
-        self.expectThat(fsgroup.id, Not(Is(None)))
-        self.expectThat(fsgroup.filesystems.count(), Equals(0))
+        self.assertIsNotNone(fsgroup.id)
+        self.assertEqual(fsgroup.filesystems.count(), 0)
 
     def test_cannot_save_without_filesystems(self):
         fsgroup = FilesystemGroup(
@@ -1072,7 +1071,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             name=factory.make_name("vg"),
         )
         fsgroup.save()
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['At least one filesystem must have "
@@ -1083,7 +1082,7 @@ class TestFilesystemGroup(MAASServerTestCase):
 
     def test_cannot_save_without_filesystems_from_different_nodes(self):
         filesystems = [factory.make_Filesystem(), factory.make_Filesystem()]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['All added filesystems must belong to "
@@ -1107,7 +1106,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_PhysicalBlockDevice(node=node),
             ),
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Volume group can only contain lvm "
@@ -1154,7 +1153,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             size=volume_group.get_size(), filesystem_group=volume_group
         )
         filesystem_two.delete()
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "['Volume group cannot be smaller than its "
@@ -1171,7 +1170,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_PhysicalBlockDevice(node=node),
             )
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 0 must have at least 2 raid "
@@ -1198,7 +1197,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_PhysicalBlockDevice(node=node),
             )
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 0 must have at least 2 raid "
@@ -1246,7 +1245,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_PhysicalBlockDevice(node=node),
             )
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 1 must have at least 2 raid "
@@ -1301,7 +1300,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             )
             for _ in range(random.randint(1, 2))
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 5 must have at least 3 raid "
@@ -1343,7 +1342,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             )
             for _ in range(random.randint(1, 3))
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 6 must have at least 4 raid "
@@ -1385,7 +1384,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             )
             for _ in range(random.randint(1, 2))
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 10 must have at least 3 raid "
@@ -1447,7 +1446,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_PhysicalBlockDevice(node=node),
             )
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Bcache requires an assigned cache set.']}"
@@ -1463,7 +1462,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_cannot_save_bcache_without_backing(self):
         node = factory.make_Node()
         cache_set = factory.make_CacheSet(node=node)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['At least one filesystem must have "
@@ -1485,7 +1484,7 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=factory.make_VirtualBlockDevice(node=node),
             )
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Bcache cannot use a logical volume as a "
@@ -1524,7 +1523,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             )
             for _ in range(random.randint(2, 10))
         ]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Bcache can only contain one backing "
@@ -1547,9 +1546,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             VirtualBlockDevice.objects, "create_or_update_for"
         )
         filesystem_group = factory.make_FilesystemGroup()
-        self.assertThat(
-            mock_create_or_update_for, MockCalledOnceWith(filesystem_group)
-        )
+        mock_create_or_update_for.assert_called_once_with(filesystem_group)
 
     def test_save_doesnt_call_create_or_update_for_when_no_filesystems(self):
         mock_create_or_update_for = self.patch(
@@ -1560,7 +1557,7 @@ class TestFilesystemGroup(MAASServerTestCase):
             name=factory.make_name("vg"),
         )
         filesystem_group.save()
-        self.assertThat(mock_create_or_update_for, MockNotCalled())
+        mock_create_or_update_for.assert_not_called()
 
     def test_get_lvm_allocated_size_and_get_lvm_free_space(self):
         """Check get_lvm_allocated_size and get_lvm_free_space methods."""
@@ -1892,14 +1889,12 @@ class TestVolumeGroup(MAASServerTestCase):
         expected_size = round_size_to_nearest_block(
             size, PARTITION_ALIGNMENT_SIZE, False
         )
-        self.assertThat(
-            logical_volume,
-            MatchesStructure.byEquality(
-                name=name,
-                uuid=vguuid,
-                size=expected_size,
-                block_size=volume_group.get_virtual_block_device_block_size(),
-            ),
+        self.assertEqual(logical_volume.name, name)
+        self.assertEqual(logical_volume.uuid, vguuid)
+        self.assertEqual(logical_volume.size, expected_size)
+        self.assertEqual(
+            logical_volume.block_size,
+            volume_group.get_virtual_block_device_block_size(),
         )
 
 
@@ -1959,7 +1954,7 @@ class TestRAID(MAASServerTestCase):
             for _ in range(10)
         ]
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 0 must have at least 2 raid "
@@ -1978,7 +1973,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_create_raid_without_devices_fails(self):
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['At least one filesystem must have been "
@@ -1999,7 +1994,7 @@ class TestRAID(MAASServerTestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 0 must have at least 2 raid "
@@ -2060,7 +2055,7 @@ class TestRAID(MAASServerTestCase):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 1 must have at least 2 raid "
@@ -2124,7 +2119,7 @@ class TestRAID(MAASServerTestCase):
             for _ in range(2)
         ]
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 5 must have at least 3 raid "
@@ -2147,7 +2142,7 @@ class TestRAID(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node) for _ in range(3)
         ]
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 6 must have at least 4 raid "
@@ -2170,7 +2165,7 @@ class TestRAID(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node) for _ in range(2)
         ]
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 10 must have at least 3 raid "
@@ -2197,7 +2192,7 @@ class TestRAID(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node2) for _ in range(5)
         ]
         uuid = str(uuid4())
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['All added filesystems must belong to the "
@@ -2324,7 +2319,7 @@ class TestRAID(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(
             node=other_node, size=device_size
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "['Device needs to be attached to the same node config as "
@@ -2357,7 +2352,7 @@ class TestRAID(MAASServerTestCase):
                 node=other_node, size=device_size
             )
         ).add_partition()
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "['Partition must be on a device from the same node as "
@@ -2391,7 +2386,7 @@ class TestRAID(MAASServerTestCase):
             mount_point="/export/home",
             fstype=FILESYSTEM_TYPE.EXT4,
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("['There is another filesystem on this device.']"),
         ):
@@ -2420,7 +2415,7 @@ class TestRAID(MAASServerTestCase):
             block_devices=block_devices,
         )
         fsids_before = [fs.id for fs in raid.filesystems.all()]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 6 must have at least 4 raid "
@@ -2461,7 +2456,7 @@ class TestRAID(MAASServerTestCase):
             partitions=partitions,
         )
         fsids_before = [fs.id for fs in raid.filesystems.all()]
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['RAID level 6 must have at least 4 raid "
@@ -2545,7 +2540,7 @@ class TestRAID(MAASServerTestCase):
             uuid=uuid,
             partitions=partitions,
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("['Partition does not belong to this array.']"),
         ):
@@ -2576,7 +2571,7 @@ class TestRAID(MAASServerTestCase):
             uuid=uuid,
             block_devices=block_devices,
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("['Device does not belong to this array.']"),
         ):

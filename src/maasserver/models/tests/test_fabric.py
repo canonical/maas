@@ -3,7 +3,6 @@
 
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from testtools.matchers import Contains, MatchesStructure
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.fabric import Fabric
@@ -148,12 +147,9 @@ class TestFabric(MAASServerTestCase):
         fabric = factory.make_Fabric(name=name)
         self.assertEqual(name, fabric.name)
         default_vlan = fabric.get_default_vlan()
-        self.assertThat(
-            default_vlan,
-            MatchesStructure.byEquality(
-                vid=DEFAULT_VID, name=DEFAULT_VLAN_NAME, fabric=fabric
-            ),
-        )
+        self.assertEqual(default_vlan.vid, DEFAULT_VID)
+        self.assertEqual(default_vlan.name, DEFAULT_VLAN_NAME)
+        self.assertEqual(default_vlan.fabric, fabric)
 
     def test_get_default_fabric_creates_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
@@ -223,14 +219,10 @@ class TestFabric(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan()
         )
-        error = self.assertRaises(ValidationError, fabric.delete)
-        self.assertThat(
-            error.message,
-            Contains(
-                "Can't delete fabric; the following interfaces are "
-                "still connected: "
-            ),
-        )
+        msg = "Can't delete fabric; the following interfaces are still connected: "
+
+        with self.assertRaisesRegex(ValidationError, msg):
+            fabric.delete()
 
     def test_cant_delete_fabric_if_connected_to_subnet(self):
         fabric = factory.make_Fabric()
@@ -238,14 +230,10 @@ class TestFabric(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=fabric.get_default_vlan()
         )
-        error = self.assertRaises(ValidationError, fabric.delete)
-        self.assertThat(
-            error.message,
-            Contains(
-                "Can't delete fabric; the following subnets are "
-                "still present: "
-            ),
-        )
+        msg = "Can't delete fabric; the following subnets are still present: "
+
+        with self.assertRaisesRegex(ValidationError, msg):
+            fabric.delete()
 
     def test_cant_delete_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()

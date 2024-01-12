@@ -7,8 +7,6 @@ from unittest.mock import MagicMock, sentinel
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404
-from testtools import ExpectedException
-from testtools.matchers import Equals
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
@@ -26,7 +24,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -346,7 +343,9 @@ class TestBlockDevice(MAASServerTestCase):
 
     def test_type_raise_ValueError(self):
         block_device = factory.make_BlockDevice()
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError, "^BlockDevice is not a subclass of"
+        ):
             block_device.type
 
     def test_actual_instance_returns_PhysicalBlockDevice(self):
@@ -386,7 +385,7 @@ class TestBlockDevice(MAASServerTestCase):
         block_device = BlockDevice()
         for size, display_size in sizes:
             block_device.size = size
-            self.expectThat(block_device.display_size(), Equals(display_size))
+            self.assertEqual(block_device.display_size(), display_size)
 
     def test_get_name(self):
         name = factory.make_name("name")
@@ -533,7 +532,9 @@ class TestBlockDevice(MAASServerTestCase):
             node_config=factory.make_NodeConfig()
         )
         factory.make_PartitionTable(block_device=disk)
-        with ExpectedException(ValueError):
+        with self.assertRaisesRegex(
+            ValueError, "already exists on the block device"
+        ):
             disk.create_partition()
 
     def test_create_partition_if_boot_disk_returns_None_if_not_boot_disk(self):
@@ -597,7 +598,7 @@ class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
         mock_filesystem_group = MagicMock()
         mock_filter_by_block_device.return_value = [mock_filesystem_group]
         self.factory()
-        self.assertThat(mock_filesystem_group.save, MockCalledWith())
+        mock_filesystem_group.save.assert_called_with()
 
 
 class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):

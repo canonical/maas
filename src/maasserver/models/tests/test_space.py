@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from testtools.matchers import MatchesStructure
 
 from maasserver.models.space import DEFAULT_SPACE_NAME, Space
 from maasserver.permissions import NodePermission
@@ -129,7 +128,7 @@ class TestSpace(MAASServerTestCase):
         space = Space(name=name)
         space.save()
         space_from_db = Space.objects.get(name=name)
-        self.assertThat(space_from_db, MatchesStructure.byEquality(name=name))
+        self.assertEqual(space_from_db.name, name)
 
     def test_get_default_space_creates_default_space(self):
         default_space = Space.objects.get_default_space()

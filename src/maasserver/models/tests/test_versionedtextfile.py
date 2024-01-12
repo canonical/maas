@@ -5,12 +5,10 @@ import random
 from unittest.mock import Mock
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
 
 from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 
 SAMPLE_TEXT = """\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
@@ -35,7 +33,7 @@ class TestVersionedTextFile(MAASServerTestCase):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
         textfile.save()
         textfile.data = "foo"
-        with ExpectedException(ValidationError, ".*immutable.*"):
+        with self.assertRaisesRegex(ValidationError, "immutable"):
             textfile.save()
 
     def test_update_links_previous_revision(self):
@@ -222,7 +220,7 @@ class TestVersionedTextFile(MAASServerTestCase):
             )
         for i in remaining_ids:
             self.assertIsNotNone(VersionedTextFile.objects.get(id=i))
-        self.assertThat(gc_hook, MockCalledOnceWith(textfile))
+        gc_hook.assert_called_once_with(textfile)
 
     def test_converts_dos_formatted_to_unix_formatted(self):
         textfile = VersionedTextFile.objects.create(

@@ -7,7 +7,6 @@
 from maasserver.models import domain as domain_module
 from maasserver.models.config import Config
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 
 
 class TestConfigSignals(MAASServerTestCase):
@@ -16,4 +15,4 @@ class TestConfigSignals(MAASServerTestCase):
             domain_module, "dns_kms_setting_changed"
         )
         Config.objects.set_config("windows_kms_host", "8.8.8.8")
-        self.assertThat(dns_kms_setting_changed, MockCalledOnceWith())
+        dns_kms_setting_changed.assert_called_once_with()

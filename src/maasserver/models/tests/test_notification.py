@@ -9,17 +9,6 @@ import random
 
 from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
-from testtools.matchers import (
-    AfterPreprocessing,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    MatchesAll,
-    MatchesSetwise,
-    MatchesStructure,
-    Not,
-)
 
 from maasserver.models.notification import (
     Notification,
@@ -66,27 +55,20 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
             user = None
             notification = method(message, context=context, ident=ident)
 
-        self.assertThat(
-            notification,
-            MatchesStructure(
-                user=Is(None) if user is None else Equals(user),
-                message=Equals(message),
-            ),
-        )
-
         return notification
 
     def assertNotification(self, notification, *, ident):
-        self.assertThat(
-            notification,
-            MatchesStructure(
-                users=Is(self.targets_users),
-                admins=Is(self.targets_admins),
-                user=Not(Is(None)) if self.targets_user else Is(None),
-                ident=Is(None) if ident is None else Equals(ident),
-                category=Equals(self.category),
-            ),
-        )
+        self.assertIs(notification.users, self.targets_users)
+        self.assertIs(notification.admins, self.targets_admins)
+        if self.targets_user:
+            self.assertIsNotNone(notification.user)
+        else:
+            self.assertIsNone(notification.user)
+        if ident is None:
+            self.assertIsNone(notification.ident)
+        else:
+            self.assertEqual(notification.ident, ident)
+        self.assertEqual(notification.category, self.category)
 
     def test_create_new_notification_without_context(self):
         notification = self.makeNotification()
@@ -113,7 +95,7 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
         self.assertNotEqual(n1, n2)
         self.assertNotification(n1, ident=None)
         self.assertNotification(n2, ident=ident)
-        self.assertThat(Notification.objects.filter(ident=ident), HasLength(1))
+        self.assertEqual(Notification.objects.filter(ident=ident).count(), 1)
 
 
 class TestFindingAndDismissingNotifications(MAASServerTestCase):
@@ -128,13 +110,9 @@ class TestFindingAndDismissingNotifications(MAASServerTestCase):
         )
 
     def assertNotifications(self, user, notifications):
-        self.assertThat(
-            Notification.objects.find_for_user(user),
-            MatchesAll(
-                IsInstance(QuerySet),  # Not RawQuerySet.
-                MatchesSetwise(*map(Equals, notifications)),
-            ),
-        )
+        notification = Notification.objects.find_for_user(user)
+        self.assertIsInstance(notification, QuerySet)  # Not RawQuerySet
+        self.assertItemsEqual(notifications, notification)
 
     def test_find_and_dismiss_notifications_for_user(self):
         user = factory.make_User()
@@ -188,15 +166,13 @@ class TestNotification(MAASServerTestCase):
         message = "There are {b:d} of {a} in my suitcase."
         context = {"a": thing_a, "b": thing_b}
         notification = Notification(message=message, context=context)
-        self.assertThat(
+        self.assertEqual(
             notification.render(),
-            Equals(
-                "There are "
-                + str(thing_b)
-                + " of "
-                + thing_a
-                + " in my suitcase."
-            ),
+            "There are "
+            + str(thing_b)
+            + " of "
+            + thing_a
+            + " in my suitcase.",
         )
 
     def test_render_allows_markup_in_message_but_escapes_context(self):
@@ -214,7 +190,7 @@ class TestNotification(MAASServerTestCase):
             error.message_dict,
         )
         self.assertIsNone(notification.id)
-        self.assertThat(Notification.objects.all(), HasLength(0))
+        self.assertFalse(Notification.objects.all().exists())
 
     def test_is_relevant_to_user(self):
         make_Notification = factory.make_Notification
@@ -223,44 +199,44 @@ class TestNotification(MAASServerTestCase):
         user2 = factory.make_User()
         admin = factory.make_admin()
 
-        Yes, No = Is(True), Is(False)
-
-        def assertRelevance(notification, user, yes_or_no):
+        def assertRelevance(notification, user, should_be_relevant: bool):
             # Ensure that is_relevant_to and find_for_user agree, i.e. if
             # is_relevant_to returns True, the notification is in the set
             # returned by find_for_user. Likewise, if is_relevant_to returns
             # False, the notification is not in the find_for_user set.
-            self.assertThat(notification.is_relevant_to(user), yes_or_no)
-            self.assertThat(
+            self.assertEqual(
+                notification.is_relevant_to(user), should_be_relevant
+            )
+            self.assertEqual(
                 Notification.objects.find_for_user(user)
                 .filter(id=notification.id)
                 .exists(),
-                yes_or_no,
+                should_be_relevant,
             )
 
         notification_to_user = make_Notification(user=user)
-        assertRelevance(notification_to_user, None, No)
-        assertRelevance(notification_to_user, user, Yes)
-        assertRelevance(notification_to_user, user2, No)
-        assertRelevance(notification_to_user, admin, No)
+        assertRelevance(notification_to_user, None, False)
+        assertRelevance(notification_to_user, user, True)
+        assertRelevance(notification_to_user, user2, False)
+        assertRelevance(notification_to_user, admin, False)
 
         notification_to_users = make_Notification(users=True)
-        assertRelevance(notification_to_users, None, No)
-        assertRelevance(notification_to_users, user, Yes)
-        assertRelevance(notification_to_users, user2, Yes)
-        assertRelevance(notification_to_users, admin, No)
+        assertRelevance(notification_to_users, None, False)
+        assertRelevance(notification_to_users, user, True)
+        assertRelevance(notification_to_users, user2, True)
+        assertRelevance(notification_to_users, admin, False)
 
         notification_to_admins = make_Notification(admins=True)
-        assertRelevance(notification_to_admins, None, No)
-        assertRelevance(notification_to_admins, user, No)
-        assertRelevance(notification_to_admins, user2, No)
-        assertRelevance(notification_to_admins, admin, Yes)
+        assertRelevance(notification_to_admins, None, False)
+        assertRelevance(notification_to_admins, user, False)
+        assertRelevance(notification_to_admins, user2, False)
+        assertRelevance(notification_to_admins, admin, True)
 
         notification_to_all = make_Notification(users=True, admins=True)
-        assertRelevance(notification_to_all, None, No)
-        assertRelevance(notification_to_all, user, Yes)
-        assertRelevance(notification_to_all, user2, Yes)
-        assertRelevance(notification_to_all, admin, Yes)
+        assertRelevance(notification_to_all, None, False)
+        assertRelevance(notification_to_all, user, True)
+        assertRelevance(notification_to_all, user2, True)
+        assertRelevance(notification_to_all, admin, True)
 
 
 class TestNotificationRepresentation(MAASServerTestCase):
@@ -278,14 +254,11 @@ class TestNotificationRepresentation(MAASServerTestCase):
             context=dict(place="bear trap"),
             category=self.category,
         )
-        self.assertThat(
-            notification,
-            AfterPreprocessing(
-                repr,
-                Equals(
-                    "<Notification %s user='foobar' users=False admins=False "
-                    "'The cat in the bear trap'>" % self.category.upper()
-                ),
+        self.assertEqual(
+            repr(notification),
+            (
+                f"<Notification {self.category.upper()} user='foobar' users=False admins=False "
+                "'The cat in the bear trap'>"
             ),
         )
 
@@ -296,15 +269,9 @@ class TestNotificationRepresentation(MAASServerTestCase):
             context=dict(place="blender"),
             category=self.category,
         )
-        self.assertThat(
-            notification,
-            AfterPreprocessing(
-                repr,
-                Equals(
-                    "<Notification %s user=None users=True admins=False "
-                    "'The cat in the blender'>" % self.category.upper()
-                ),
-            ),
+        self.assertEqual(
+            repr(notification),
+            f"<Notification {self.category.upper()} user=None users=True admins=False 'The cat in the blender'>",
         )
 
     def test_for_admins(self):
@@ -314,13 +281,7 @@ class TestNotificationRepresentation(MAASServerTestCase):
             context=dict(place="lava pit"),
             category=self.category,
         )
-        self.assertThat(
-            notification,
-            AfterPreprocessing(
-                repr,
-                Equals(
-                    "<Notification %s user=None users=False admins=True "
-                    "'The cat in the lava pit'>" % self.category.upper()
-                ),
-            ),
+        self.assertEqual(
+            repr(notification),
+            f"<Notification {self.category.upper()} user=None users=False admins=True 'The cat in the lava pit'>",
         )

@@ -4,23 +4,13 @@
 from datetime import datetime
 from random import randint, shuffle
 import threading
+from unittest import TestCase
 from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from netaddr import IPAddress
 from psycopg2.errorcodes import FOREIGN_KEY_VIOLATION
-from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    AllMatch,
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    Not,
-)
 from twisted.python.failure import Failure
 
 from maasserver import locks
@@ -130,17 +120,22 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 IPADDRESS_TYPE.USER_RESERVED,
             ],
         )
-        with ExpectedException(AssertionError):
-            StaticIPAddress.objects.allocate_new(
-                subnet, user=user, alloc_type=alloc_type
-            )
+        self.assertRaises(
+            AssertionError,
+            StaticIPAddress.objects.allocate_new,
+            subnet,
+            user=user,
+            alloc_type=alloc_type,
+        )
 
     def test_allocate_new_with_reserved_type_requires_a_user(self):
         subnet = factory.make_managed_Subnet()
-        with ExpectedException(AssertionError):
-            StaticIPAddress.objects.allocate_new(
-                subnet, alloc_type=IPADDRESS_TYPE.USER_RESERVED
-            )
+        self.assertRaises(
+            AssertionError,
+            StaticIPAddress.objects.allocate_new,
+            subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+        )
 
     def test_allocate_new_returns_lowest_available_ip(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24", gateway_ip="10.0.0.1")
@@ -180,10 +175,13 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 ],
             ),
         ).ip
-        with ExpectedException(StaticIPAddressUnavailable):
-            StaticIPAddress.objects.allocate_new(
-                subnet, requested_address=requested_address
-            )
+
+        self.assertRaises(
+            StaticIPAddressUnavailable,
+            StaticIPAddress.objects.allocate_new,
+            subnet,
+            requested_address=requested_address,
+        )
 
     def test_allocate_new_raises_when_requested_IP_out_of_network(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -303,7 +301,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
                 subnet=factory.make_managed_Subnet(),
             )
             # There is no pending retry context.
-            self.assertThat(orm.retry_context.stack._cm_pending, HasLength(0))
+            self.assertEqual(len(orm.retry_context.stack._cm_pending), 0)
 
 
 class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
@@ -342,13 +340,12 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
         for thread in threads:
             thread.join()
 
-        self.assertThat(results, AllMatch(IsInstance(StaticIPAddress)))
+        for result in results:
+            self.assertIsInstance(result, StaticIPAddress)
         ips = {sip.ip for sip in results}
-        self.assertThat(ips, HasLength(count))
-        self.assertThat(
-            ips,
-            AllMatch(AfterPreprocessing(subnet.is_valid_static_ip, Is(True))),
-        )
+        self.assertEqual(len(ips), count)
+        for ip in ips:
+            self.assertTrue(subnet.is_valid_static_ip(ip))
 
 
 class TestStaticIPAddressManagerMapping(MAASServerTestCase):
@@ -1455,7 +1452,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
             for _ in range(num_ips)
         ]
         mappings = StaticIPAddress.objects._get_special_mappings(subnet)
-        self.expectThat(mappings, HasLength(len(ips)))
+        self.assertEqual(len(mappings), len(ips))
 
     def test_user_reserved_addresses_included_in_get_hostname_ip_mapping(self):
         # Generate several IPs, with names in domain0, and make sure they don't
@@ -1481,7 +1478,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain0)
         self.assertEqual(expected, mappings)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain1)
-        self.expectThat(mappings, HasLength(0))
+        self.assertEqual(len(mappings), 0)
 
     def test_user_reserved_addresses_included_in_correct_domains(self):
         # Generate some addresses with no names attached, and some more in each
@@ -1554,17 +1551,17 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         factory.make_DNSResource(name=name1, ip_addresses=[ip], domain=domain1)
         factory.make_DNSResource(name=name2, ip_addresses=[ip], domain=domain2)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain0)
-        self.expectThat(mappings, HasLength(0))
+        self.assertEqual(len(mappings), 0)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain1)
         domain1_rr_id = ip.dnsresource_set.filter(domain=domain1.id).first().id
         domain2_rr_id = ip.dnsresource_set.filter(domain=domain2.id).first().id
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             mappings.get(f"{name1}.{domain1.name}"),
             HostnameIPMapping(None, 30, {ip.ip}, None, domain1_rr_id),
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain2)
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             mappings.get(f"{name2}.{domain2.name}"),
             HostnameIPMapping(None, 30, {ip.ip}, None, domain2_rr_id),
@@ -1655,15 +1652,15 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         )
         node.current_config.interface_set.first().ip_addresses.add(ip)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain0)
-        self.expectThat(mappings, HasLength(0))
+        self.assertEqual(len(mappings), 0)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(parent)
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             HostnameIPMapping(node.system_id, 30, {ip.ip}, node.node_type),
             mappings.get(node.fqdn),
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             HostnameIPMapping(node.system_id, 30, {ip.ip}, node.node_type),
             mappings.get(node.fqdn),
@@ -1692,9 +1689,9 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
             domain=domain, name="@", ip_addresses=[ip]
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain0)
-        self.expectThat(mappings, HasLength(0))
+        self.assertEqual(len(mappings), 0)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(parent)
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             HostnameIPMapping(
                 None, 30, {ip.ip}, None, ip.dnsresource_set.first().id
@@ -1702,7 +1699,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
             mappings.get(dnsrr.fqdn),
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-        self.expectThat(mappings, HasLength(1))
+        self.assertEqual(len(mappings), 1)
         self.assertEqual(
             HostnameIPMapping(
                 None, 30, {ip.ip}, None, ip.dnsresource_set.first().id
@@ -1727,8 +1724,8 @@ class TestRenderJSON(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
         )
         json = ip.render_json()
-        self.expectThat(json, Not(Contains("user")))
-        self.expectThat(json, Not(Contains("node_summary")))
+        self.assertNotIn("user", json)
+        self.assertNotIn("node_summary", json)
 
     def test_includes_username_if_requested(self):
         user = factory.make_User()
@@ -1738,9 +1735,9 @@ class TestRenderJSON(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
         )
         json = ip.render_json(with_username=True)
-        self.expectThat(json, Contains("user"))
-        self.expectThat(json, Not(Contains("node_summary")))
-        self.expectThat(json["user"], Equals(user.username))
+        self.assertIn("user", json)
+        self.assertNotIn("node_summary", json)
+        self.assertEqual(json["user"], user.username)
 
     def test_includes_node_summary_if_requested(self):
         user = factory.make_User()
@@ -1752,8 +1749,8 @@ class TestRenderJSON(MAASServerTestCase):
             interface=node.get_boot_interface(),
         )
         json = ip.render_json(with_summary=True)
-        self.expectThat(json, Not(Contains("user")))
-        self.expectThat(json, Contains("node_summary"))
+        self.assertNotIn("user", json)
+        self.assertIn("node_summary", json)
 
     def test_node_summary_includes_interface_name(self):
         user = factory.make_User()
@@ -1767,9 +1764,9 @@ class TestRenderJSON(MAASServerTestCase):
             interface=node.get_boot_interface(),
         )
         json = ip.render_json(with_summary=True)
-        self.expectThat(json, Not(Contains("user")))
-        self.expectThat(json, Contains("node_summary"))
-        self.expectThat(json["node_summary"]["via"], Equals(iface.name))
+        self.assertNotIn("user", json)
+        self.assertIn("node_summary", json)
+        self.assertEqual(json["node_summary"]["via"], iface.name)
 
     def test_data_is_accurate_and_complete(self):
         user = factory.make_User()
@@ -1784,17 +1781,13 @@ class TestRenderJSON(MAASServerTestCase):
             interface=node.get_boot_interface(),
         )
         json = ip.render_json(with_username=True, with_summary=True)
-        self.expectThat(
-            json["created"], Equals(dehydrate_datetime(ip.created))
-        )
-        self.expectThat(
-            json["updated"], Equals(dehydrate_datetime(ip.updated))
-        )
-        self.expectThat(json["user"], Equals(user.username))
+        self.assertEqual(json["created"], dehydrate_datetime(ip.created))
+        self.assertEqual(json["updated"], dehydrate_datetime(ip.updated))
+        self.assertEqual(json["user"], user.username)
         self.assertIn("node_summary", json)
         node_summary = json["node_summary"]
-        self.expectThat(node_summary["system_id"], Equals(node.system_id))
-        self.expectThat(node_summary["node_type"], Equals(node.node_type))
+        self.assertEqual(node_summary["system_id"], node.system_id)
+        self.assertEqual(node_summary["node_type"], node.node_type)
 
 
 class TestAllocTypeName(MAASServerTestCase):
@@ -1812,6 +1805,8 @@ class TestAllocTypeName(MAASServerTestCase):
 
 
 class TestUniqueConstraints(MAASServerTestCase):
+    assertRaises = TestCase.assertRaises
+
     def test_rejects_duplicate_address_of_same_type(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/8")
         factory.make_StaticIPAddress(
@@ -1819,7 +1814,7 @@ class TestUniqueConstraints(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
         )
-        with ExpectedException(ValidationError):
+        with self.assertRaises(ValidationError):
             factory.make_StaticIPAddress(
                 ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.USER_RESERVED
             )
@@ -1829,7 +1824,7 @@ class TestUniqueConstraints(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.STICKY
         )
-        with ExpectedException(IntegrityError):
+        with self.assertRaises(IntegrityError):
             factory.make_StaticIPAddress(
                 ip="10.0.0.1",
                 subnet=subnet,
@@ -1841,7 +1836,7 @@ class TestUniqueConstraints(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
-        with ExpectedException(ValidationError):
+        with self.assertRaises(ValidationError):
             factory.make_StaticIPAddress(
                 ip="10.0.0.1",
                 subnet=subnet,

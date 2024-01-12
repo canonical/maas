@@ -4,7 +4,6 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
-from testtools.matchers import StartsWith
 
 from maasserver.models import SSLKey
 from maasserver.models import sslkey as sslkey_module
@@ -84,7 +83,7 @@ class TestSSLKey(MAASServerTestCase):
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
-        self.assertThat(display, StartsWith("&lt;escape&gt;"))
+        self.assertTrue(display.startswith("&lt;escape&gt;"))
         self.assertNotIn("<", display)
         self.assertNotIn(">", display)
 

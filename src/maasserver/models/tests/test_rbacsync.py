@@ -3,9 +3,6 @@
 
 """Tests for RBACSync models."""
 
-
-from testtools.matchers import HasLength
-
 from maasserver.models.rbacsync import RBACSync
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -27,15 +24,15 @@ class TestRBACSync(MAASServerTestCase):
         self.assertEqual(synced, RBACSync.objects.changes(resource_type))
 
     def test_clear_does_nothing_when_nothing(self):
-        self.assertThat(RBACSync.objects.all(), HasLength(0))
+        self.assertEqual(RBACSync.objects.all().count(), 0)
         RBACSync.objects.clear("resource-pool")
-        self.assertThat(RBACSync.objects.all(), HasLength(0))
+        self.assertEqual(RBACSync.objects.all().count(), 0)
 
     def test_clear_removes_all(self):
         resource_type = "resource-pool"
         for _ in range(3):
             RBACSync.objects.create(resource_type=resource_type)
         RBACSync.objects.create(resource_type="")
-        self.assertThat(RBACSync.objects.all(), HasLength(4))
+        self.assertEqual(RBACSync.objects.all().count(), 4)
         RBACSync.objects.clear(resource_type)
-        self.assertThat(RBACSync.objects.all(), HasLength(0))
+        self.assertEqual(RBACSync.objects.all().count(), 0)

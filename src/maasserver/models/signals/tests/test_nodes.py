@@ -4,8 +4,6 @@
 
 import random
 
-from testtools.matchers import HasLength, MatchesStructure
-
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -60,12 +58,8 @@ class TestNodePreviousStatus(MAASServerTestCase):
         new_status = random.choice(NODE_TRANSITIONS[node.status])
         node.update_status(new_status)
         node.save()
-        self.assertThat(
-            node,
-            MatchesStructure.byEquality(
-                status=new_status, previous_status=old_status
-            ),
-        )
+        self.assertEqual(node.status, new_status)
+        self.assertEqual(node.previous_status, old_status)
 
     def test_chaning_status_doesnt_store_blacklisted_statuses(self):
         black_listed_statuses = [
@@ -171,12 +165,12 @@ class TestNodeCreateServices(MAASServerTestCase):
     def test_doesnt_create_services_for_machine(self):
         machine = factory.make_Node()
         services = Service.objects.filter(node=machine)
-        self.assertThat({service.name for service in services}, HasLength(0))
+        self.assertEqual({service.name for service in services}, set())
 
     def test_doesnt_create_services_for_device(self):
         device = factory.make_Device()
         services = Service.objects.filter(node=device)
-        self.assertThat({service.name for service in services}, HasLength(0))
+        self.assertEqual({service.name for service in services}, set())
 
     def test_creates_services_for_rack_controller(self):
         rack_controller = factory.make_RackController()

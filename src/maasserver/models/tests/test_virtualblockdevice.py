@@ -6,8 +6,6 @@ import re
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
-from testtools.matchers import MatchesStructure
 
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -41,15 +39,12 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0
         )
-        self.assertThat(
-            filesystem_group.virtual_device,
-            MatchesStructure.byEquality(
-                name=filesystem_group.name,
-                size=filesystem_group.get_size(),
-                block_size=(
-                    filesystem_group.get_virtual_block_device_block_size()
-                ),
-            ),
+        device = filesystem_group.virtual_device
+        self.assertEqual(device.name, filesystem_group.name)
+        self.assertEqual(device.size, filesystem_group.get_size())
+        self.assertEqual(
+            device.block_size,
+            filesystem_group.get_virtual_block_device_block_size(),
         )
 
     def test_create_or_update_for_bcache_creates_block_device(self):
@@ -57,15 +52,12 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
-        self.assertThat(
-            filesystem_group.virtual_device,
-            MatchesStructure.byEquality(
-                name=filesystem_group.name,
-                size=filesystem_group.get_size(),
-                block_size=(
-                    filesystem_group.get_virtual_block_device_block_size()
-                ),
-            ),
+        device = filesystem_group.virtual_device
+        self.assertEqual(device.name, filesystem_group.name)
+        self.assertEqual(device.size, filesystem_group.get_size())
+        self.assertEqual(
+            device.block_size,
+            filesystem_group.get_virtual_block_device_block_size(),
         )
 
     def test_create_or_update_for_raid_updates_block_device(self):
@@ -152,7 +144,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         block_device.node_config = factory.make_NodeConfig(
             node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['Node config must be the same as the "
@@ -171,7 +163,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         )
         new_block_device_size = filesystem_group.get_size()
         human_readable_size = human_readable_bytes(new_block_device_size)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape(
                 "{'__all__': ['There is not enough free space (%s) "
