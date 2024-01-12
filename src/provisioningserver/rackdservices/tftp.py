@@ -308,10 +308,12 @@ class TFTPBackend(FilesystemSynchronousBackend):
     @deferred
     @inlineCallbacks
     def get_cache_reader(self, file_name: str | bytes):
-        if type(file_name) == bytes:
-            file_name = file_name.decode("utf-8")
-        url = f"http://localhost:5248/images/{file_name}"
-        resp = yield self._cache_proxy.request(b"GET", url.encode("utf-8"))
+        if type(file_name) == str:
+            file_name = file_name.encode("utf-8")
+        url = b"/".join(
+            [b"http://localhost:5248/images", file_name.strip(b"/")]
+        )
+        resp = yield self._cache_proxy.request(b"GET", url)
         body = yield readBody(resp)
         return BytesReader(body)
 

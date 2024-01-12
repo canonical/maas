@@ -640,6 +640,29 @@ class TestTFTPBackend(MAASTestCase):
             client, GetBootConfig, **params_okay
         )
 
+    def test_get_cache_reader(self):
+        params_okay = {
+            name.decode("ascii"): factory.make_name("value")
+            for name, _ in GetBootConfig.arguments
+        }
+
+        client = Mock()
+        client.localIdent = params_okay["system_id"]
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+
+        backend = TFTPBackend(self.make_dir(), client_service)
+        backend._cache_proxy = Mock()
+
+        filename = factory.make_name()
+
+        backend.get_cache_reader(f"/grub/{filename}")
+
+        backend._cache_proxy.request.assert_called_once_with(
+            b"GET",
+            f"http://localhost:5248/images/grub/{filename}".encode("utf-8"),
+        )
+
 
 class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):

@@ -302,7 +302,7 @@ class HTTPBootResource(resource.Resource):
             producer = NoRangeStaticProducer(request, reader)
             producer.start()
 
-        path = b"/".join(request.postpath)
+        path = b"/".join([s.strip(b"/") for s in request.postpath])
         d = context.call(
             {
                 "local": (localHost, localPort),
