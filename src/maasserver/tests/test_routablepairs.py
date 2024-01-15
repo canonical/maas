@@ -7,8 +7,6 @@
 from itertools import product, takewhile
 import random
 
-from testtools import ExpectedException
-
 from maasserver.models.node import Node
 from maasserver.routablepairs import (
     find_addresses_between_nodes,
@@ -26,12 +24,12 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
 
     def test_rejects_unsaved_nodes_on_the_left(self):
         saved_node, unsaved_node = factory.make_Node(), Node()
-        with ExpectedException(AssertionError, ".* not in the database"):
+        with self.assertRaisesRegex(AssertionError, ".* not in the database"):
             list(find_addresses_between_nodes([unsaved_node], [saved_node]))
 
     def test_rejects_unsaved_nodes_on_the_right(self):
         saved_node, unsaved_node = factory.make_Node(), Node()
-        with ExpectedException(AssertionError, ".* not in the database"):
+        with self.assertRaisesRegex(AssertionError, ".* not in the database"):
             list(find_addresses_between_nodes([saved_node], [unsaved_node]))
 
     def make_node_with_address(self, space, cidr):

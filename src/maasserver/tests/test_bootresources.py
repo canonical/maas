@@ -17,7 +17,6 @@ from urllib.parse import urljoin
 
 from django.db import transaction
 from fixtures import FakeLogger, Fixture
-from testtools import ExpectedException
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
 
@@ -1149,7 +1148,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             bootresources, "download_boot_resources"
         ).side_effect = Exception(exc_text)
 
-        with ExpectedException(Exception, msg=exc_text):
+        with self.assertRaisesRegex(Exception, exc_text):
             download_all_boot_resources(
                 sources=[{"url": "", "keyring": ""}],
                 product_mapping=product_mapping,
@@ -1172,7 +1171,7 @@ class TestImportImages(MAASTransactionServerTestCase):
             bootresources, "download_boot_resources"
         ).side_effect = Exception(exc_text)
 
-        with ExpectedException(Exception, msg=exc_text):
+        with self.assertRaisesRegex(Exception, exc_text):
             download_all_boot_resources(
                 sources=[{"url": "", "keyring": ""}],
                 product_mapping=product_mapping,

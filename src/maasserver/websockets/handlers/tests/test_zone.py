@@ -8,7 +8,6 @@ from collections import defaultdict
 
 from django.core.exceptions import ValidationError
 from django.db.models import Count
-from testtools import ExpectedException
 
 from maasserver.enum import NODE_TYPE
 from maasserver.models.zone import Zone
@@ -99,12 +98,11 @@ class TestZoneHandlerDelete(MAASServerTestCase):
         user = factory.make_User()
         handler = ZoneHandler(user, {}, None)
         zone = factory.make_Zone()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": zone.id})
 
     def test_delete_default_zone_fails(self):
         zone = Zone.objects.get_default_zone()
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)
-        with ExpectedException(ValidationError):
-            handler.delete({"id": zone.id})
+        self.assertRaises(ValidationError, handler.delete, {"id": zone.id})

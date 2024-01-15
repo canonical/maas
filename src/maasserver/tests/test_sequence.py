@@ -9,7 +9,6 @@ import random
 
 from django.db import connection, transaction
 from django.db.utils import DataError, ProgrammingError
-from testtools import ExpectedException
 
 from maasserver.sequence import Sequence
 from maasserver.testing.factory import factory
@@ -101,7 +100,7 @@ class TestSequence(MAASServerTestCase):
         seq = Sequence("dave")
         # Accessing the sequence directly in the database we find that it's
         # not there.
-        with ExpectedException(ProgrammingError, ".* does not exist"):
+        with self.assertRaisesRegex(ProgrammingError, "does not exist"):
             with transaction.atomic():
                 self.query_seq(seq.name)
         # Iterating via `Sequence` automatically vivifies it.

@@ -16,12 +16,10 @@ class TestFakeMethod(MAASTestCase):
         self.assertEqual("Input value", FakeMethod("Input value")())
 
     def test_fakemethod_raises_given_failure(self):
-        class ExpectedException(Exception):
+        class AnException(Exception):
             pass
 
-        self.assertRaises(
-            ExpectedException, FakeMethod(failure=ExpectedException())
-        )
+        self.assertRaises(AnException, FakeMethod(failure=AnException()))
 
     def test_fakemethod_has_no_calls_initially(self):
         self.assertSequenceEqual([], FakeMethod().calls)

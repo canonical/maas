@@ -3,9 +3,6 @@
 
 """Tests for `maasserver.websockets.handlers.space`"""
 
-
-from testtools import ExpectedException
-
 from maasserver.models.space import Space
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -80,7 +77,7 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
         user = factory.make_User()
         handler = SpaceHandler(user, {}, None)
         space = factory.make_Space()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": space.id})
 
     def test_reloads_user(self):
@@ -89,5 +86,5 @@ class TestSpaceHandlerDelete(MAASServerTestCase):
         space = factory.make_Space()
         user.is_superuser = False
         user.save()
-        with ExpectedException(AssertionError, "Permission denied."):
+        with self.assertRaisesRegex(AssertionError, "Permission denied."):
             handler.delete({"id": space.id})

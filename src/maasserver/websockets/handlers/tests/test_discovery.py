@@ -7,8 +7,6 @@
 from datetime import datetime, timedelta
 import time
 
-from testtools import ExpectedException
-
 from maasserver.models import MDNS
 from maasserver.models.discovery import Discovery
 from maasserver.testing.factory import factory
@@ -119,8 +117,7 @@ class TestDiscoveryHandlerClear(MAASServerTestCase):
         factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
         self.assertEqual(1, num_discoveries)
-        with ExpectedException(HandlerPermissionError):
-            handler.clear()
+        self.assertRaises(HandlerPermissionError, handler.clear)
 
     def test_clears_all_by_default(self):
         user = factory.make_admin()
@@ -154,10 +151,11 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
         self.assertEqual(1, num_discoveries)
-        with ExpectedException(HandlerPermissionError):
-            handler.delete_by_mac_and_ip(
-                dict(ip=disco.ip, mac=disco.mac_address)
-            )
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.delete_by_mac_and_ip,
+            dict(ip=disco.ip, mac=disco.mac_address),
+        )
 
     def test_raises_if_missing_ip(self):
         user = factory.make_User()
@@ -165,8 +163,11 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
         self.assertEqual(1, num_discoveries)
-        with ExpectedException(HandlerPermissionError):
-            handler.delete_by_mac_and_ip(dict(mac=disco.mac_address))
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.delete_by_mac_and_ip,
+            dict(mac=disco.mac_address),
+        )
 
     def test_raises_if_missing_mac(self):
         user = factory.make_User()
@@ -174,8 +175,11 @@ class TestDiscoveryHandlerDeleteByMACAndIP(MAASServerTestCase):
         disco = factory.make_Discovery()
         num_discoveries = Discovery.objects.count()
         self.assertEqual(1, num_discoveries)
-        with ExpectedException(HandlerPermissionError):
-            handler.delete_by_mac_and_ip(dict(ip=disco.ip))
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.delete_by_mac_and_ip,
+            dict(ip=disco.ip),
+        )
 
     def test_deletes_discovery_and_returns_number_deleted(self):
         user = factory.make_admin()

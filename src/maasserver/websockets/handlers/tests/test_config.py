@@ -6,8 +6,6 @@
 
 import random
 
-from testtools import ExpectedException
-
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
 from maasserver.models.config import Config, get_default_config
 from maasserver.secrets import SecretManager
@@ -169,8 +167,7 @@ class TestConfigHandler(MAASServerTestCase):
     def test_update_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        with ExpectedException(HandlerPermissionError):
-            handler.update({})
+        self.assertRaises(HandlerPermissionError, handler.update, {})
 
     def test_update_requires_name(self):
         user = factory.make_admin()
@@ -231,8 +228,7 @@ class TestConfigHandler(MAASServerTestCase):
     def test_bulk_update_as_non_admin_asserts(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        with ExpectedException(HandlerPermissionError):
-            handler.bulk_update({})
+        self.assertRaises(HandlerPermissionError, handler.bulk_update, {})
 
     def test_bulk_update_requires_items(self):
         user = factory.make_admin()

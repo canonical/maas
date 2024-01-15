@@ -18,7 +18,6 @@ from django.urls import get_resolver
 from fixtures import FakeLogger
 from piston3.authentication import initialize_server_request
 from piston3.models import Nonce
-from testtools.testcase import ExpectedException
 from twisted.internet.task import Clock
 from twisted.web import wsgi
 
@@ -136,12 +135,13 @@ class TestDeleteOAuthNonce(MAASServerTestCase):
         }
         request = make_request(oauth_env=oauth_env)
         views.delete_oauth_nonce(request)
-        with ExpectedException(Nonce.DoesNotExist):
-            Nonce.objects.get(
-                consumer_key=oauth_consumer_key,
-                token_key=oauth_token,
-                key=oauth_nonce,
-            )
+        self.assertRaises(
+            Nonce.DoesNotExist,
+            Nonce.objects.get,
+            consumer_key=oauth_consumer_key,
+            token_key=oauth_token,
+            key=oauth_nonce,
+        )
 
     def test_skips_missing_nonce(self):
         oauth_consumer_key = factory.make_string(18)

@@ -7,7 +7,6 @@
 import random
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
 
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.testing.factory import factory
@@ -21,5 +20,9 @@ class TestRegionControllerProcess(MAASServerTestCase):
         region = factory.make_RegionController()
         pid = random.randint(1, 5000)
         RegionControllerProcess.objects.create(pid=pid, region=region)
-        with ExpectedException(ValidationError):
-            RegionControllerProcess.objects.create(pid=pid, region=region)
+        self.assertRaises(
+            ValidationError,
+            RegionControllerProcess.objects.create,
+            pid=pid,
+            region=region,
+        )

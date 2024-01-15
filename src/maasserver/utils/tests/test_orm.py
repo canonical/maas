@@ -22,7 +22,6 @@ from psycopg2.errorcodes import (
     SERIALIZATION_FAILURE,
     UNIQUE_VIOLATION,
 )
-from testtools import ExpectedException
 from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
@@ -838,7 +837,7 @@ class TestRetryContext(MAASTestCase):
     def test_destroys_stack_on_exit_even_when_there_is_a_crash(self):
         names = []
         context = orm.RetryContext()
-        with ExpectedException(ZeroDivisionError):
+        with self.assertRaisesRegex(ZeroDivisionError, "division by zero"):
             with context:
                 context.stack.add_pending_contexts(
                     [
@@ -920,7 +919,9 @@ class TestPostCommitHooks(MAASTestCase):
     def test_crashes_on_enter_if_hooks_exist(self):
         hook = Deferred()
         post_commit_hooks.add(hook)
-        with ExpectedException(TransactionManagementError):
+        with self.assertRaisesRegex(
+            TransactionManagementError, "Orphaned post-commit hooks found"
+        ):
             with post_commit_hooks:
                 pass
         # The hook has been cancelled, but CancelledError is suppressed in
@@ -942,7 +943,7 @@ class TestPostCommitHooks(MAASTestCase):
         hooks_fire = self.patch_autospec(post_commit_hooks, "fire")
         hooks_reset = self.patch_autospec(post_commit_hooks, "reset")
         exception_type = factory.make_exception_type()
-        with ExpectedException(exception_type):
+        with self.assertRaisesRegex(exception_type, "^$"):
             with post_commit_hooks:
                 post_commit_hooks.add(Deferred())
                 raise exception_type()
@@ -1275,7 +1276,10 @@ class TestSavepoint(MAASTransactionServerTestCase):
     """Tests for `savepoint`."""
 
     def test_crashes_if_not_already_within_transaction(self):
-        with ExpectedException(TransactionManagementError):
+        with self.assertRaisesRegex(
+            TransactionManagementError,
+            "Savepoints cannot be created outside of a transaction",
+        ):
             with savepoint():
                 pass
 

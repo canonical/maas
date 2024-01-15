@@ -7,7 +7,6 @@
 import random
 
 import formencode.api
-from testtools.testcase import ExpectedException
 
 from maasserver.config import RegionConfiguration
 from maastesting.factory import factory
@@ -54,7 +53,9 @@ class TestRegionConfiguration(MAASTestCase):
         example_url = factory.make_simple_http_url(
             netloc=factory.make_ipv6_address()
         )
-        with ExpectedException(formencode.api.Invalid):
+        with self.assertRaisesRegex(
+            formencode.api.Invalid, "^That is not a valid URL$"
+        ):
             config.maas_url = example_url
 
     def test_set_maas_url_accepts_ipv6_addresses_with_brackets(self):

@@ -6,7 +6,6 @@ import random
 import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from testtools import ExpectedException
 
 from maasserver.models.config import Config
 from maasserver.models.dnsdata import DNSData, HostnameRRsetMapping
@@ -129,22 +128,23 @@ class TestDNSData(MAASServerTestCase):
         dnsdata = DNSData(
             dnsresource=dnsresource, rrtype="CNAME", rrdata=target
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("{'__all__': [\"%s\"]}" % INVALID_CNAME_MSG),
         ):
             dnsdata.save()
 
     def test_rejects_bad_srv(self):
-        with ExpectedException(ValidationError):
-            factory.make_DNSData(rrtype="SRV", rrdata="")
+        self.assertRaises(
+            ValidationError, factory.make_DNSData, rrtype="SRV", rrdata=""
+        )
 
     def test_rejects_bad_sshfp_record(self):
         dnsresource = factory.make_DNSResource(no_ip_addresses=True)
         dnsdata = DNSData(
             dnsresource=dnsresource, rrtype="SSHFP", rrdata="wrong data"
         )
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("{'__all__': [\"%s\"]}" % INVALID_SSHFP_MSG),
         ):
@@ -201,7 +201,7 @@ class TestDNSData(MAASServerTestCase):
         dnsrr = factory.make_DNSResource(name=name, domain=domain)
         dnsrr.save()
         dnsdata = DNSData(dnsresource=dnsrr, rrtype="CNAME", rrdata=target)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("{'__all__': ['%s']}" % CNAME_AND_OTHER_MSG),
         ):
@@ -216,7 +216,7 @@ class TestDNSData(MAASServerTestCase):
             name=name, domain=domain, no_ip_addresses=True, rrtype=rrtype
         ).dnsresource
         dnsdata = DNSData(dnsresource=dnsrr, rrtype="CNAME", rrdata=target)
-        with ExpectedException(
+        with self.assertRaisesRegex(
             ValidationError,
             re.escape("{'__all__': ['%s']}" % CNAME_AND_OTHER_MSG),
         ):
@@ -225,7 +225,7 @@ class TestDNSData(MAASServerTestCase):
     def test_allows_multiple_records_unless_cname(self):
         dnsdata = factory.make_DNSData(no_ip_addresses=True)
         if dnsdata.rrtype == "CNAME":
-            with ExpectedException(
+            with self.assertRaisesRegex(
                 ValidationError,
                 re.escape("{'__all__': ['%s']}" % MULTI_CNAME_MSG),
             ):

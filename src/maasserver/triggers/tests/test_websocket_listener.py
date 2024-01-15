@@ -7,7 +7,6 @@ import random
 from unittest import skip
 
 from netaddr import IPAddress
-from testtools import ExpectedException
 from twisted.internet.defer import (
     CancelledError,
     DeferredList,
@@ -572,7 +571,7 @@ class TestResourcePoolListener(
             yield deferToDatabase(
                 self.create_node, {"node_type": NODE_TYPE.DEVICE}
             )
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=0.2)
         finally:
             yield listener.stopService()
@@ -607,7 +606,7 @@ class TestResourcePoolListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.delete_node, machine.system_id)
-            with ExpectedException(CancelledError):
+            with self.assertRaisesRegex(CancelledError, "^$"):
                 yield dv.get(timeout=0.2)
         finally:
             yield listener.stopService()

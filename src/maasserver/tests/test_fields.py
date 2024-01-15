@@ -7,7 +7,6 @@ import re
 from django.core.exceptions import ValidationError
 from django.db import connection, DatabaseError
 from psycopg2 import OperationalError
-from testtools import ExpectedException
 
 from maasserver.fields import (
     HostListFormField,
@@ -115,7 +114,7 @@ class TestLargeObjectField(MAASLegacyServerTestCase):
 
     def test_insists_on_binary_mode(self):
         message = "Large objects must be opened in binary mode."
-        with ExpectedException(ValueError, message):
+        with self.assertRaisesRegex(ValueError, message):
             large_object = LargeObjectFile()
             large_object.open("w")
 

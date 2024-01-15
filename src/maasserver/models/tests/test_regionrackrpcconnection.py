@@ -7,7 +7,6 @@
 import random
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
 
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.regioncontrollerprocessendpoint import (
@@ -36,7 +35,9 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
-        with ExpectedException(ValidationError):
-            RegionRackRPCConnection.objects.create(
-                endpoint=endpoint, rack_controller=rack_controller
-            )
+        self.assertRaises(
+            ValidationError,
+            RegionRackRPCConnection.objects.create,
+            endpoint=endpoint,
+            rack_controller=rack_controller,
+        )

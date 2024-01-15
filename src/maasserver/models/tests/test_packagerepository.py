@@ -5,7 +5,6 @@
 
 
 from django.core.exceptions import ValidationError
-from testtools import ExpectedException
 
 from maasserver.models import PackageRepository
 from maasserver.testing.factory import factory
@@ -49,10 +48,12 @@ class TestPackageRepositoryManager(MAASServerTestCase):
         self.assertIsNone(gone)
 
     def test_default_repositories_cannot_be_deleted(self):
-        with ExpectedException(ValidationError):
-            PackageRepository.get_main_archive().delete()
-        with ExpectedException(ValidationError):
-            PackageRepository.get_ports_archive().delete()
+        self.assertRaises(
+            ValidationError, PackageRepository.get_main_archive().delete
+        )
+        self.assertRaises(
+            ValidationError, PackageRepository.get_ports_archive().delete
+        )
 
     def test_get_multiple_with_a_ppa(self):
         ppa_arch = "armhf"
