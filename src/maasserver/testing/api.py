@@ -133,8 +133,6 @@ class APITestCaseBase(MAASTestCase, metaclass=APITestType):
     # a subclass; it will be set for you.
     client = None
 
-    assertThat = expectThat = NotImplemented
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Create scenarios for userfactories and clientfactories.

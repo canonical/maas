@@ -1177,9 +1177,8 @@ class TestServiceMonitor(MAASTestCase):
             ):
                 yield service_monitor._performServiceAction(service, action)
 
-        self.assertDocTestMatches(
-            "Service '%s' failed to %s: %s"
-            % (service.name, action, error_output),
+        self.assertEqual(
+            f"Service '{service.name}' failed to {action}: {error_output}\n",
             maaslog.output,
         )
 
@@ -1575,15 +1574,9 @@ class TestServiceMonitor(MAASTestCase):
             "maas.service_monitor", level=logging.WARNING
         ) as maaslog:
             yield service_monitor._ensureService(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s but not in the expected state of "
-            "'%s', its current state is '%s'."
-            % (
-                service.service_name,
-                SERVICE_STATE.ON.value,
-                service_monitor.PROCESS_STATE[SERVICE_STATE.ON],
-                invalid_process_state,
-            ),
+        self.assertEqual(
+            f"Service '{service.service_name}' is on but not in the expected state of 'running', "
+            f"its current state is '{invalid_process_state}'.\n",
             maaslog.output,
         )
 
@@ -1642,15 +1635,9 @@ class TestServiceMonitor(MAASTestCase):
             "maas.service_monitor", level=logging.WARNING
         ) as maaslog:
             yield service_monitor._ensureService(service)
-        self.assertDocTestMatches(
-            "Service '%s' is %s but not in the expected state of "
-            "'%s', its current state is '%s'."
-            % (
-                service.service_name,
-                SERVICE_STATE.DEAD.value,
-                service_monitor.PROCESS_STATE[SERVICE_STATE.DEAD],
-                invalid_process_state,
-            ),
+        self.assertEqual(
+            f"Service '{service.service_name}' is dead but not in the expected state of 'Result: exit-code', "
+            f"its current state is '{invalid_process_state}'.\n",
             maaslog.output,
         )
 
@@ -1672,12 +1659,11 @@ class TestServiceMonitor(MAASTestCase):
         with FakeLogger("maas.service_monitor", level=logging.INFO) as maaslog:
             yield service_monitor._ensureService(service)
         mock_performServiceAction.assert_called_once_with(service, "start")
-        self.assertDocTestMatches(
-            """\
-            Service '%s' is not on, it will be started.
-            Service '%s' has been started and is 'running'.
-            """
-            % (service.service_name, service.service_name),
+        self.assertEqual(
+            (
+                f"Service '{service.service_name}' is not on, it will be started.\n"
+                f"Service '{service.service_name}' has been started and is 'running'.\n"
+            ),
             maaslog.output,
         )
 
@@ -1699,12 +1685,11 @@ class TestServiceMonitor(MAASTestCase):
         with FakeLogger("maas.service_monitor", level=logging.INFO) as maaslog:
             yield service_monitor._ensureService(service)
         mock_performServiceAction.assert_called_once_with(service, "stop")
-        self.assertDocTestMatches(
-            """\
-            Service '%s' is not off, it will be stopped.
-            Service '%s' has been stopped and is 'waiting'.
-            """
-            % (service.service_name, service.service_name),
+        self.assertEqual(
+            (
+                f"Service '{service.service_name}' is not off, it will be stopped.\n"
+                f"Service '{service.service_name}' has been stopped and is 'waiting'.\n"
+            ),
             maaslog.output,
         )
 

@@ -11,7 +11,6 @@ from maasserver.models.signals.interfaces import ensure_link_up
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
-from maastesting.matchers import MockCallsMatch
 
 
 def _mock_ensure_link_up(self):
@@ -318,11 +317,8 @@ class TestDiscoveryConfigChanges(MAASServerTestCase):
             Controller, "update_discovery_state"
         )
         Config.objects.set_config("network_discovery", "active")
-        self.expectThat(
-            mock_update_discovery_state,
-            MockCallsMatch(
-                *[call(NetworkDiscoveryConfig(active=True, passive=True))] * 3
-            ),
+        mock_update_discovery_state.assert_has_calls(
+            [call(NetworkDiscoveryConfig(active=True, passive=True))] * 3
         )
 
     def test_passive_configuration_causes_interface_update(self):
@@ -333,11 +329,8 @@ class TestDiscoveryConfigChanges(MAASServerTestCase):
             Controller, "update_discovery_state"
         )
         Config.objects.set_config("network_discovery", "enabled")
-        self.expectThat(
-            mock_update_discovery_state,
-            MockCallsMatch(
-                *[call(NetworkDiscoveryConfig(active=False, passive=True))] * 3
-            ),
+        mock_update_discovery_state.assert_has_calls(
+            [call(NetworkDiscoveryConfig(active=False, passive=True))] * 3
         )
 
     def test_disabled_configuration_causes_interface_update(self):
@@ -348,12 +341,8 @@ class TestDiscoveryConfigChanges(MAASServerTestCase):
             Controller, "update_discovery_state"
         )
         Config.objects.set_config("network_discovery", "disabled")
-        self.expectThat(
-            mock_update_discovery_state,
-            MockCallsMatch(
-                *[call(NetworkDiscoveryConfig(active=False, passive=False))]
-                * 3
-            ),
+        mock_update_discovery_state.assert_has_calls(
+            [call(NetworkDiscoveryConfig(active=False, passive=False))] * 3
         )
 
 

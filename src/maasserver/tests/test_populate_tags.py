@@ -156,15 +156,15 @@ class TestDoPopulateTags(MAASServerTestCase):
             )
 
     def test_logs_successes(self):
-        rack_controllers = [factory.make_RackController()]
-        clients = self.patch_clients(rack_controllers)
+        rack_controller = factory.make_RackController()
+        clients = self.patch_clients([rack_controller])
 
         tag_name = factory.make_name("tag")
         tag_definition = factory.make_name("definition")
         tag_nsmap = {}
 
         work = []
-        for rack, client in zip(rack_controllers, clients):
+        for rack, client in zip([rack_controller], clients):
             work.append(
                 {
                     "system_id": rack.system_id,
@@ -185,15 +185,14 @@ class TestDoPopulateTags(MAASServerTestCase):
             [d] = _do_populate_tags(work)
             self.assertIsNone(extract_result(d))
 
-        self.assertDocTestMatches(
-            "Tag tag-... (definition-...) evaluated on rack "
-            "controller ... (...)",
+        self.assertEqual(
+            f"Tag {tag_name} ({tag_definition}) evaluated on rack controller {rack_controller.hostname} ({rack_controller.system_id})\n",
             log.output,
         )
 
     def test_logs_failures(self):
-        rack_controllers = [factory.make_RackController()]
-        clients = self.patch_clients(rack_controllers)
+        rack_controller = factory.make_RackController()
+        clients = self.patch_clients([rack_controller])
         clients[0].side_effect = always_fail_with(
             ZeroDivisionError("splendid day for a spot of cricket")
         )
@@ -203,7 +202,7 @@ class TestDoPopulateTags(MAASServerTestCase):
         tag_nsmap = {}
 
         work = []
-        for rack, client in zip(rack_controllers, clients):
+        for rack, client in zip([rack_controller], clients):
             work.append(
                 {
                     "system_id": rack.system_id,
@@ -224,9 +223,11 @@ class TestDoPopulateTags(MAASServerTestCase):
             [d] = _do_populate_tags(work)
             self.assertIsNone(extract_result(d))
 
-        self.assertDocTestMatches(
-            "Tag tag-... (definition-...) could not be evaluated ... (...): "
-            "splendid day for a spot of cricket",
+        self.assertEqual(
+            (
+                f"Tag {tag_name} ({tag_definition}) could not be evaluated on rack controller "
+                f"{rack_controller.hostname} ({rack_controller.system_id}): splendid day for a spot of cricket\n"
+            ),
             log.output,
         )
 

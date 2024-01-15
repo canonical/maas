@@ -224,27 +224,25 @@ class TestDatabaseLockVariations(MAASServerTestCase):
         )
 
     def test_shared_variation(self):
-        lock = dblocks.DatabaseLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseLock(objid)
         self.assertEqual(lock, lock.SHARED)
-        self.assertDocTestMatches(
-            """\
-            SELECT pg_advisory_lock_shared(...)
-            --
-            SELECT pg_advisory_unlock_shared(...)
-            """,
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.SHARED),
+            rf"(?m)SELECT pg_advisory_lock_shared\(\d+, {objid}\)\n"
+            "--\n"
+            rf"SELECT pg_advisory_unlock_shared\(\d+, {objid}\)",
         )
 
     def test_try_shared_variation(self):
-        lock = dblocks.DatabaseLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseLock(objid)
         self.assertEqual(lock, lock.TRY.SHARED)
-        self.assertDocTestMatches(
-            """\
-            SELECT pg_try_advisory_lock_shared(...)
-            --
-            SELECT pg_advisory_unlock_shared(...)
-            """,
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.TRY.SHARED),
+            rf"(?m)SELECT pg_try_advisory_lock_shared\(\d+, {objid}\)\n"
+            "--\n"
+            rf"SELECT pg_advisory_unlock_shared\(\d+, {objid}\)",
         )
 
 
@@ -322,34 +320,38 @@ class TestDatabaseXactLock(MAASTransactionServerTestCase):
 
 class TestDatabaseXactLockVariations(MAASServerTestCase):
     def test_plain_variation(self):
-        lock = dblocks.DatabaseXactLock(get_objid())
-        self.assertDocTestMatches(
-            "SELECT pg_advisory_xact_lock(...)",
+        objid = get_objid()
+        lock = dblocks.DatabaseXactLock(objid)
+        self.assertRegex(
             capture_queries_while_holding_lock(lock),
+            rf"SELECT pg_advisory_xact_lock\(\d+, {objid}\)",
         )
 
     def test_try_variation(self):
-        lock = dblocks.DatabaseXactLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseXactLock(objid)
         self.assertEqual(lock, lock.TRY)
-        self.assertDocTestMatches(
-            "SELECT pg_try_advisory_xact_lock(...)",
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.TRY),
+            rf"SELECT pg_try_advisory_xact_lock\(\d+, {objid}\)",
         )
 
     def test_shared_variation(self):
-        lock = dblocks.DatabaseXactLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseXactLock(objid)
         self.assertEqual(lock, lock.SHARED)
-        self.assertDocTestMatches(
-            "SELECT pg_advisory_xact_lock_shared(...)",
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.SHARED),
+            rf"SELECT pg_advisory_xact_lock_shared\(\d+, {objid}\)",
         )
 
     def test_try_shared_variation(self):
-        lock = dblocks.DatabaseXactLock(get_objid())
+        objid = get_objid()
+        lock = dblocks.DatabaseXactLock(objid)
         self.assertEqual(lock, lock.TRY.SHARED)
-        self.assertDocTestMatches(
-            "SELECT pg_try_advisory_xact_lock_shared(...)",
+        self.assertRegex(
             capture_queries_while_holding_lock(lock.TRY.SHARED),
+            rf"SELECT pg_try_advisory_xact_lock_shared\(\d+, {objid}\)",
         )
 
 

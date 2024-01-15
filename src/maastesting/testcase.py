@@ -30,7 +30,6 @@ from maastesting.fixtures import (
     MAASRootFixture,
     TempDirectory,
 )
-from maastesting.matchers import DocTestMatches
 from maastesting.runtest import (
     MAASCrochetRunTest,
     MAASRunTest,
@@ -226,16 +225,6 @@ class MAASTestCase(
                 "Mappings cannot be compared with assertSequenceEqual",
             )
         return super().assertSequenceEqual(seq1, seq2, msg, seq_type)
-
-    def assertDocTestMatches(
-        self, expected, observed, flags=DocTestMatches.DEFAULT_FLAGS
-    ):
-        """See if `observed` matches `expected`, a doctest sample.
-
-        By default uses the doctest flags `NORMALIZE_WHITESPACE` and
-        `ELLIPSIS`.
-        """
-        self.assertThat(observed, DocTestMatches(expected, flags))
 
     def run(self, result=None):
         with active_test(result, self):

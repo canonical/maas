@@ -714,15 +714,9 @@ class TestRegionService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             yield service.startService()
 
-        self.assertDocTestMatches(
-            """\
-            RegionServer endpoint failed to listen.
-            Traceback (most recent call last):
-            ...
-            %s:
-            """
-            % fullyQualifiedName(error_2),
+        self.assertRegex(
             logger.output,
+            rf"(?ms) RegionServer endpoint failed to listen..*Traceback (most recent call last):.*{fullyQualifiedName(error_2)}",
         )
 
     @wait_for_reactor

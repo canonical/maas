@@ -434,8 +434,8 @@ class TestConfigurationFile(MAASTestCase):
             yaml.safe_dump([1, 2, 3], stream=fd)
         config = ConfigurationFile(config_file)
         error = self.assertRaises(ValueError, config.load)
-        self.assertDocTestMatches(
-            "Configuration in /.../config is not a mapping: [1, 2, 3]",
+        self.assertEqual(
+            f"Configuration in {config_file} is not a mapping: [1, 2, 3]",
             str(error),
         )
 

@@ -6,8 +6,6 @@
 
 import random
 
-from testtools.matchers import Equals
-
 from maasserver.enum import KEYS_PROTOCOL_TYPE
 import maasserver.models.keysource as keysource_module
 from maasserver.models.keysource import KeySource
@@ -15,7 +13,6 @@ from maasserver.models.sshkey import SSHKey
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 
 
 class TestKeySource(MAASServerTestCase):
@@ -33,10 +30,8 @@ class TestKeySource(MAASServerTestCase):
         )
         mock_get_protocol_keys.return_value = []
         keysource.import_keys(user)
-        self.expectThat(
-            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id)
-        )
-        self.expectThat(SSHKey.objects.count(), Equals(0))
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
+        self.assertFalse(SSHKey.objects.all().exists())
 
     def test_import_keys_with_keys(self):
         user = factory.make_User()
@@ -51,10 +46,8 @@ class TestKeySource(MAASServerTestCase):
         )
         mock_get_protocol_keys.return_value = keys.strip().split("\n")
         returned_sshkeys = keysource.import_keys(user)
-        self.expectThat(
-            mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id)
-        )
-        self.expectThat(SSHKey.objects.count(), Equals(2))
+        mock_get_protocol_keys.assert_called_once_with(protocol, auth_id)
+        self.assertEqual(SSHKey.objects.count(), 2)
         self.assertCountEqual(
             returned_sshkeys, SSHKey.objects.filter(keysource=keysource)
         )
@@ -116,8 +109,8 @@ class TestKeySourceManager(MAASServerTestCase):
         auth_id = factory.make_name("auth_id")
         mock_import_keys = self.patch(KeySource, "import_keys")
         KeySource.objects.save_keys_for_user(user, protocol, auth_id)
-        self.expectThat(mock_import_keys, MockCalledOnceWith(user))
-        self.expectThat(KeySource.objects.count(), Equals(1))
+        mock_import_keys.assert_called_once_with(user)
+        self.assertEqual(KeySource.objects.count(), 1)
 
     def test_save_keys_for_user_does_not_create_duplicate_keysource(self):
         user = factory.make_User()
@@ -128,5 +121,5 @@ class TestKeySourceManager(MAASServerTestCase):
         factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         mock_import_keys = self.patch(KeySource, "import_keys")
         KeySource.objects.save_keys_for_user(user, protocol, auth_id)
-        self.expectThat(mock_import_keys, MockCalledOnceWith(user))
-        self.expectThat(KeySource.objects.count(), Equals(1))
+        mock_import_keys.assert_called_once_with(user)
+        self.assertEqual(KeySource.objects.count(), 1)

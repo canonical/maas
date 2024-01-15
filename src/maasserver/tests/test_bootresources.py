@@ -606,9 +606,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         store = BootResourceStore()
         with FakeLogger("maas", logging.WARNING) as logger:
             store.insert(product, [])
-        self.assertDocTestMatches(
-            "Hash mismatch for resourceset=...", logger.output
-        )
+        self.assertIn("Hash mismatch for resourceset=", logger.output)
 
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
         self.patch(bootresources.Event.objects, "create_region_event")
@@ -713,7 +711,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             store.insert(product, [])
 
         self.assertIsNone(resource.get_latest_complete_set())
-        self.assertDocTestMatches(
+        self.assertIn(
             f"Resource {resource} has no complete resource set!",
             logger.output,
         )
@@ -1396,33 +1394,31 @@ class TestImportResourcesInThread(MAASTestCase):
         deferToDatabase.return_value = fail(exception_type())
         d = bootresources._import_resources_in_thread()
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            """\
-            Importing boot resources failed.
-            Traceback (most recent call last):
-            ...
-            """,
+        self.assertIn(
+            (
+                "Importing boot resources failed.\n"
+                "Traceback (most recent call last):"
+            ),
             logger.output,
         )
 
     def test_logs_subprocess_output_on_error(self):
         logger = self.useFixture(TwistedLoggerFixture())
-        exception = CalledProcessError(
-            2, [factory.make_name("command")], factory.make_name("output")
-        )
+        cmd = factory.make_name("command")
+        output = factory.make_name("output")
+        exception = CalledProcessError(2, [cmd], output)
         deferToDatabase = self.patch(bootresources, "deferToDatabase")
         deferToDatabase.return_value = fail(exception)
         d = bootresources._import_resources_in_thread()
         self.assertIsNone(extract_result(d))
-        self.assertDocTestMatches(
-            """\
-            Importing boot resources failed.
-            Traceback (most recent call last):
-            Failure: subprocess.CalledProcessError:
-              Command `command-...` returned non-zero exit status 2:
-            output-...
-            """,
-            logger.output,
+        self.assertEqual(
+            [
+                "Importing boot resources failed.",
+                "Traceback (most recent call last):",
+                f"Failure: subprocess.CalledProcessError: Command `{cmd}` returned non-zero exit status 2:",
+                output,
+            ],
+            logger.output.splitlines(),
         )
 
 
@@ -1604,14 +1600,13 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         try_check_boot_images = asynchronous(service.try_check_boot_images)
         try_check_boot_images().wait(TIMEOUT)
 
-        self.assertDocTestMatches(
-            """\
-            Failure checking for boot images.
-            Traceback (most recent call last):
-            ...
-            maastesting.factory.TestException#...:
-            """,
-            logger.output,
+        self.assertEqual(
+            [
+                "Failure checking for boot images.",
+                "Traceback (most recent call last):",
+                f"Failure: maastesting.factory.{type(exception).__name__}: ",
+            ],
+            logger.output.splitlines(),
         )
 
     def test_are_boot_images_available_in_the_region(self):

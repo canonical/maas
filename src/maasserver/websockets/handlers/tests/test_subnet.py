@@ -262,8 +262,6 @@ class TestSubnetHandlerScan(MAASServerTestCase):
         logger = self.useFixture(FakeLogger())
         cidr = subnet.get_ipnetwork()
         handler.scan({"id": subnet.id})
-        # Use MatchesRegex here rather than DocTestMatches because usernames
-        # can contain characters that confuse DocTestMatches (e.g. periods).
         self.assertRegex(
             logger.output,
             "User '%s' initiated a neighbour discovery scan against subnet: %s"

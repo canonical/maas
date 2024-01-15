@@ -1439,9 +1439,7 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         with FakeLogger("maas.interface") as maaslog:
             iface.update_neighbour(**self.make_neighbour_json())
-        self.assertDocTestMatches(
-            "...: New MAC, IP binding observed...", maaslog.output
-        )
+        self.assertIn(": New MAC, IP binding observed", maaslog.output)
 
     def test_logs_moved_binding(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1453,9 +1451,7 @@ class TestInterfaceUpdateNeighbour(MAASServerTestCase):
         json["mac"] = factory.make_mac_address()
         with FakeLogger("maas.neighbour") as maaslog:
             iface.update_neighbour(**json)
-        self.assertDocTestMatches(
-            "...: IP address...moved from...to...", maaslog.output
-        )
+        self.assertRegex(maaslog.output, ": IP address .* moved from .* to")
 
 
 class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
@@ -1526,9 +1522,7 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         json = self.make_mdns_entry_json()
         with FakeLogger("maas.interface") as maaslog:
             iface.update_mdns_entry(json)
-        self.assertDocTestMatches(
-            "...: New mDNS entry resolved...", maaslog.output
-        )
+        self.assertIn(": New mDNS entry resolved", maaslog.output)
 
     def test_logs_moved_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1539,9 +1533,7 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         json["address"] = factory.make_ip_address(ipv6=False)
         with FakeLogger("maas.mDNS") as maaslog:
             iface.update_mdns_entry(json)
-        self.assertDocTestMatches(
-            "...: Hostname...moved from...to...", maaslog.output
-        )
+        self.assertRegex(maaslog.output, ": Hostname .* moved from .* to")
 
     def test_logs_updated_entry(self):
         iface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1552,8 +1544,8 @@ class TestInterfaceUpdateMDNSEntry(MAASServerTestCase):
         json["hostname"] = factory.make_hostname()
         with FakeLogger("maas.mDNS") as maaslog:
             iface.update_mdns_entry(json)
-        self.assertDocTestMatches(
-            "...: Hostname for...updated from...to...", maaslog.output
+        self.assertRegex(
+            maaslog.output, ": Hostname for .* updated from .* to"
         )
 
 
@@ -4013,13 +4005,10 @@ class TestReportVID(MAASServerTestCase):
         vid = random.randint(1, 4094)
         with FakeLogger("maas.interface") as maaslog:
             iface.report_vid(vid)
-        self.assertDocTestMatches(
-            "...: Automatically created VLAN %d..." % vid, maaslog.output
-        )
+        self.assertIn(f": Automatically created VLAN {vid}", maaslog.output)
         new_vlan = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
-        self.assertDocTestMatches(
-            "Automatically created VLAN (observed by %s)."
-            % (iface.get_log_string()),
+        self.assertIn(
+            f"Automatically created VLAN (observed by {iface.get_log_string()}).",
             new_vlan.description,
         )
 

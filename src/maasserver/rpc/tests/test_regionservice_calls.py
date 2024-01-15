@@ -749,15 +749,13 @@ class TestRegionProtocol_SendEvent(MAASTransactionServerTestCase):
         # The log records the issue. FIXME: Why reject logs if the type is not
         # registered? Seems like the region should record all logs and figure
         # out how to present them.
-        self.assertDocTestMatches(
-            """\
-            Unhandled failure in database task.
-            Traceback (most recent call last):
-            ...
-            provisioningserver.rpc.exceptions.NoSuchEventType:
-            ...
-            """,
+        self.assertRegex(
             logger.output,
+            (
+                r"(?ms)Unhandled failure in database task\..*"
+                r"Traceback \(most recent call last\):.*"
+                "provisioningserver.rpc.exceptions.NoSuchEventType:"
+            ),
         )
 
     @wait_for_reactor
@@ -919,15 +917,13 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
         # The log records the issue. FIXME: Why reject logs if the type is not
         # registered? Seems like the region should record all logs and figure
         # out how to present them.
-        self.assertDocTestMatches(
-            """\
-            Unhandled failure in database task.
-            Traceback (most recent call last):
-            ...
-            provisioningserver.rpc.exceptions.NoSuchEventType:
-            ...
-            """,
+        self.assertRegex(
             logger.output,
+            (
+                r"(?ms)Unhandled failure in database task\..*"
+                r"Traceback \(most recent call last\):.*"
+                "provisioningserver.rpc.exceptions.NoSuchEventType:"
+            ),
         )
 
     @wait_for_reactor

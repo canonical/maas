@@ -1431,13 +1431,9 @@ class TestClusterClient(MAASTestCase):
         self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
-        self.assertDocTestMatches(
-            """...
-            Event-loop 'eventloop:pid=12345' handshake failed;
-            dropping connection.
-            Traceback (most recent call last):...
-            """,
-            logger.dump(),
+        self.assertIn(
+            "Event-loop 'eventloop:pid=12345' handshake failed; dropping connection.",
+            {err["why"] for err in logger.errors},
         )
 
         # The connections list is unchanged because the new connection
@@ -1486,13 +1482,9 @@ class TestClusterClient(MAASTestCase):
         self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
-        self.assertDocTestMatches(
-            """...
-            Event-loop 'eventloop:pid=12345' handshake failed;
-            dropping connection.
-            Traceback (most recent call last):...
-            """,
-            logger.dump(),
+        self.assertIn(
+            "Event-loop 'eventloop:pid=12345' handshake failed; dropping connection.",
+            {err["why"] for err in logger.errors},
         )
 
         # The connections list is unchanged because the new connection
@@ -1633,20 +1625,18 @@ class TestClusterClient(MAASTestCase):
 
     @inlineCallbacks
     def test_registerRackWithRegion_returns_True_when_accepted(self):
+        logger = self.useFixture(TwistedLoggerFixture())
         client = self.make_running_client()
 
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.side_effect = always_succeed_with({"system_id": "..."})
 
-        logger = self.useFixture(TwistedLoggerFixture())
-
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
 
-        self.assertDocTestMatches(
-            "Rack controller '...' registered (via eventloop:pid=12345) with "
-            "MAAS version 2.2 or below.",
-            logger.output,
+        self.assertIn(
+            f"Rack controller '{client.localIdent}' registered (via eventloop:pid=12345) with MAAS version 2.2 or below.",
+            logger.dump(),
         )
 
     @inlineCallbacks
@@ -1663,9 +1653,8 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
 
-        self.assertDocTestMatches(
-            "Rack controller '...' registered (via eventloop:pid=12345) with "
-            " MAAS version 2.3.0.",
+        self.assertEqual(
+            "Rack controller '...' registered (via eventloop:pid=12345) with MAAS version 2.3.0.",
             logger.output,
         )
 
@@ -1683,9 +1672,8 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
 
-        self.assertDocTestMatches(
-            "Rack controller '...' registered (via eventloop:pid=12345) with "
-            " unknown MAAS version.",
+        self.assertEqual(
+            "Rack controller '...' registered (via eventloop:pid=12345) with unknown MAAS version.",
             logger.output,
         )
 
@@ -1769,9 +1757,8 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertFalse(result)
 
-        self.assertDocTestMatches(
-            "Rack controller REJECTED by the region "
-            "(via eventloop:pid=12345).",
+        self.assertEqual(
+            "Rack controller REJECTED by the region (via eventloop:pid=12345).",
             logger.output,
         )
 
@@ -2677,14 +2664,9 @@ class TestClusterProtocol_ScanNetworks(
             )
 
         # The failure is logged
-        self.assertDocTestMatches(
-            """
-            Failed to scan all networks.
-            Traceback (most recent call last):
-            ...
-            maastesting.factory.TestException#...:
-            """,
-            logger.output,
+        self.assertIn(
+            "Failed to scan all networks.",
+            {err["why"] for err in logger.errors},
         )
 
         # The lock is released
