@@ -117,9 +117,25 @@ func TestServeHTTP(t *testing.T) {
 			OutStatusCode: http.StatusOK,
 			OutBody:       []byte("hello, world!"),
 		},
+		"200_OK_HEAD": {
+			In: &http.Request{
+				Method:     http.MethodHead,
+				RemoteAddr: "127.0.0.1",
+				URL:        validURL,
+			},
+			OutStatusCode: http.StatusOK,
+		},
 		"404_NOT_FOUND": {
 			In: &http.Request{
 				Method:     http.MethodGet,
+				RemoteAddr: "127.0.0.1",
+				URL:        invalidURL,
+			},
+			OutStatusCode: http.StatusNotFound,
+		},
+		"404_NOT_FOUND_HEAD": {
+			In: &http.Request{
+				Method:     http.MethodHead,
 				RemoteAddr: "127.0.0.1",
 				URL:        invalidURL,
 			},

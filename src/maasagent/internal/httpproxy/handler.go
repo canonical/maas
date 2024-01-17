@@ -327,6 +327,8 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resp, cancel, err = client.Put(r)
 	case http.MethodDelete:
 		resp, cancel, err = client.Delete(r)
+	case http.MethodHead:
+		resp, cancel, err = client.Get(r)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
@@ -373,9 +375,13 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-length", strconv.Itoa(int(info.Size())))
 	}
 
-	_, err = io.Copy(w, resp.Body)
-	if err != nil {
-		p.handleErr(w, err)
-		return
+	if r.Method != http.MethodHead {
+		_, err = io.Copy(w, resp.Body)
+		if err != nil {
+			p.handleErr(w, err)
+			return
+		}
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 }
