@@ -26,9 +26,6 @@ environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
   PEBBLE: $SNAP_COMMON/pebble
-  # WARN: remove before release (this is just to trace Pebble issues)
-  PEBBLE_DEBUG: 1
-  GOTRACEBACK: all
 
 plugs:
   test-db-socket:
@@ -78,9 +75,8 @@ parts:
     build-packages:
       - golang-go
     source-type: git
-    # WARN: revert before release (this is just to trace Pebble issues)
-    source: https://github.com/maas/pebble
-    source-branch: 1.5.0-pprof
+    source: https://github.com/canonical/pebble
+    source-tag: v1.7.0
 
   maas:
     plugin: python
