@@ -269,7 +269,7 @@ class BootResourceHandler(Handler):
             resource.complete = resource_set.complete
             if not resource.complete:
                 progress = resource_set.sync_progress
-                if progress > 0.0:
+                if is_import_resources_running() and progress > 0.0:
                     resource.status = "Downloading %3.0f%%" % progress
                     resource.downloading = True
                     resource.icon = "in-progress"
@@ -567,7 +567,7 @@ class BootResourceHandler(Handler):
         resource.can_deploy_to_memory = can_deploy_to_memory
         resource.complete = complete
         if not complete:
-            if progress > 0:
+            if is_import_resources_running() and progress > 0:
                 resource.status = "Downloading %3.0f%%" % progress
                 resource.downloading = True
                 resource.icon = "in-progress"

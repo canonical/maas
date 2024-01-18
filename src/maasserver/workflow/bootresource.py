@@ -224,7 +224,7 @@ class DownloadBootResourceWorkflow:
             heartbeat_timeout=HEARTBEAT_TIMEOUT,
             cancellation_type=ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
             retry_policy=RetryPolicy(
-                maximum_attempts=5,
+                maximum_attempts=max(2, len(input.source_list)),
                 maximum_interval=timedelta(seconds=60),
             ),
         )
@@ -245,7 +245,6 @@ class SyncBootResourcesWorkflow:
                 run_timeout=DOWNLOAD_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                 task_queue=f"{region}:region" if region else REGION_TASK_QUEUE,
-                retry_policy=RetryPolicy(maximum_attempts=5),
             )
 
         # fetch resources from upstream
@@ -262,14 +261,12 @@ class SyncBootResourcesWorkflow:
         endpoints: dict[str, list] = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
             start_to_close_timeout=timedelta(seconds=30),
-            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         regions: frozenset[str] = frozenset(endpoints.keys())
 
         sync_status: dict[str, dict] = await workflow.execute_activity(
             "get-bootresourcefile-sync-status",
             start_to_close_timeout=timedelta(seconds=30),
-            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         if len(regions) < 2:
             workflow.logger.info("Sync complete")
@@ -312,7 +309,6 @@ class DeleteBootResourceWorkflow:
         endpoints = await workflow.execute_activity(
             "get-bootresourcefile-endpoints",
             start_to_close_timeout=timedelta(seconds=30),
-            retry_policy=RetryPolicy(maximum_attempts=5),
         )
         regions = frozenset(endpoints.keys())
         for r in regions:
@@ -322,7 +318,7 @@ class DeleteBootResourceWorkflow:
                 task_queue=f"{r}:region",
                 start_to_close_timeout=DISK_TIMEOUT,
                 schedule_to_close_timeout=DISK_TIMEOUT,
-                retry_policy=RetryPolicy(maximum_attempts=5),
+                retry_policy=RetryPolicy(maximum_attempts=3),
             )
 
 

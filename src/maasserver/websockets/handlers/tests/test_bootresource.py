@@ -56,6 +56,11 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         super().setUp()
         self.region = factory.make_RegionController()
 
+    def patch_is_import_resources_running(self):
+        mock_import = self.patch(bootresource, "is_import_resources_running")
+        mock_import.return_value = True
+        return mock_import
+
     def make_other_resource(
         self, os=None, arch=None, subarch=None, release=None, extra=None
     ):
@@ -645,6 +650,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.assertFalse(resource["complete"])
 
     def test_combined_subarch_resource_calculates_progress(self):
+        self.patch_is_import_resources_running()
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         name = f"ubuntu/{factory.make_name('series')}"

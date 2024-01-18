@@ -13,6 +13,7 @@ __all__ = [
 
 from datetime import timedelta
 import os
+from pathlib import Path
 import shutil
 from subprocess import CalledProcessError, check_call
 from textwrap import dedent
@@ -1250,6 +1251,8 @@ def initialize_image_storage(region: RegionController):
 
     MUST be called with the `startup` lock
     """
+    from provisioningserver.config import ClusterConfiguration
+
     target_dir = get_bootresource_store_path()
     target_dir.mkdir(parents=True, exist_ok=True)
     bootloaders_dir = target_dir / BOOTLOADERS_DIR
@@ -1261,6 +1264,9 @@ def initialize_image_storage(region: RegionController):
     export_images_from_db(region)
 
     expected_files = {bootloaders_dir}
+
+    with ClusterConfiguration.open() as rack_config:
+        expected_files.add(Path(rack_config.tftp_root))
 
     resources = BootResourceFile.objects.filter(
         bootresourcefilesync__region=region

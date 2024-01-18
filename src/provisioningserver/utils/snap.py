@@ -124,6 +124,8 @@ def get_snap_version(environ=None) -> Optional[SnapVersion]:
 def get_snap_mode():
     """Return the snap mode."""
     snap_paths = SnapPaths.from_environ()
+    if snap_paths.common is None:
+        return None
     path = snap_paths.common / "snap_mode"
     if not path.exists():
         return None

@@ -20,6 +20,7 @@ from maasserver.models import (
 )
 from maasserver.models.largefile import LargeFile
 from maasserver.utils.orm import reload_object
+from provisioningserver.config import ClusterConfiguration
 
 
 @pytest.fixture
@@ -40,6 +41,17 @@ def image_store_dir(mocker, maas_data_dir):
     store.mkdir()
     yield store
     shutil.rmtree(store)
+
+
+@pytest.fixture
+def tftp_root(mocker, image_store_dir, tmpdir):
+    tftp_root = Path(image_store_dir) / "tftp_root"
+    tftp_root.mkdir(parents=True)
+    config = Path(tmpdir) / Path(ClusterConfiguration.DEFAULT_FILENAME).name
+    with ClusterConfiguration.open_for_update(config) as cfg:
+        cfg.tftp_root = str(tftp_root)
+    mocker.patch.dict(os.environ, {"MAAS_CLUSTER_CONFIG": str(config)})
+    yield tftp_root
 
 
 def list_files(base_path):
@@ -214,7 +226,9 @@ class TestInitialiseImageStorage:
         initialize_image_storage(controller)
         assert list_files(image_store_dir) == {"bootloaders"}
 
-    def test_remove_extra_files(self, controller, image_store_dir: Path):
+    def test_remove_extra_files(
+        self, controller, image_store_dir: Path, tftp_root: Path
+    ):
         extra_file = image_store_dir / "abcde"
         extra_file.write_text("some content")
         extra_dir = image_store_dir / "somedir"
@@ -225,6 +239,7 @@ class TestInitialiseImageStorage:
         extra_symlink.symlink_to(extra_other_file)
 
         initialize_image_storage(controller)
+        assert tftp_root.exists()
         assert not extra_file.exists()
         assert not extra_dir.exists()
         assert not extra_symlink.exists()
