@@ -3,6 +3,7 @@
 
 """HTTP proxy service for the region controller."""
 
+from contextlib import suppress
 from dataclasses import dataclass
 import os
 from pathlib import Path
@@ -12,7 +13,10 @@ from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.certificates import get_maas_certificate
-from maasserver.listener import PostgresListenerService
+from maasserver.listener import (
+    PostgresListenerService,
+    PostgresListenerUnregistrationError,
+)
 from maasserver.models.config import Config
 from maasserver.regiondservices import certificate_expiration_check
 from maasserver.service_monitor import service_monitor
@@ -56,7 +60,11 @@ class RegionHTTPService(Service):
 
     def stopService(self):
         if self.listener is not None:
-            self.listener.unregister("sys_reverse_proxy", self._consume_event)
+            with suppress(PostgresListenerUnregistrationError):
+                self.listener.unregister(
+                    "sys_reverse_proxy", self._consume_event
+                )
+
         return super().stopService()
 
     @staticmethod

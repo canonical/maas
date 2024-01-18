@@ -8,7 +8,7 @@ from unittest.mock import Mock
 from fixtures import EnvironmentVariable
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver.listener import notify
+from maasserver.listener import notify, PostgresListenerUnregistrationError
 from maasserver.models import Config
 from maasserver.regiondservices import certificate_expiration_check, http
 from maasserver.secrets import SecretManager
@@ -27,19 +27,17 @@ wait_for_reactor = wait_for()
 class TestRegionHTTPService(
     TransactionalHelpersMixin, MAASTransactionServerTestCase
 ):
-    def setUp(self):
-        super().setUp()
-        self.cert = get_sample_cert_with_cacerts()
-
     def create_tls_config(self):
+        cert = get_sample_cert_with_cacerts()
+
         def _create_config_in_db():
             Config.objects.set_config("tls_port", 5443)
             SecretManager().set_composite_secret(
                 "tls",
                 {
-                    "key": self.cert.private_key_pem(),
-                    "cert": self.cert.certificate_pem(),
-                    "cacert": self.cert.ca_certificates_pem(),
+                    "key": cert.private_key_pem(),
+                    "cert": cert.certificate_pem(),
+                    "cacert": cert.ca_certificates_pem(),
                 },
             )
             # manually send a notification to emulate what TLS config does
@@ -86,6 +84,7 @@ class TestRegionHTTPService(
         mock_cert_check.assert_called_once_with()
 
     def test_configure_not_snap(self):
+        cert = get_sample_cert_with_cacerts()
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
         boot_resources_dir = f"{data_path}/boot-resources"
@@ -101,7 +100,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration(self.cert, port=5443))
+        service._configure(http._Configuration(cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
 
@@ -118,6 +117,7 @@ class TestRegionHTTPService(
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
     def test_configure_in_snap(self):
+        cert = get_sample_cert_with_cacerts()
         self.patch(
             os,
             "environ",
@@ -141,7 +141,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration(cert=self.cert, port=5443))
+        service._configure(http._Configuration(cert=cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
         worker_ids = WorkersService.get_worker_ids()
@@ -159,6 +159,7 @@ class TestRegionHTTPService(
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
     def test_configure_https_also_has_http_server(self):
+        cert = get_sample_cert_with_cacerts()
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
         service = http.RegionHTTPService()
@@ -169,7 +170,7 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration(cert=self.cert, port=5443))
+        service._configure(http._Configuration(cert=cert, port=5443))
 
         nginx_config = nginx_conf.read_text()
         self.assertIn("listen 5443 ssl http2;", nginx_config)
@@ -177,20 +178,21 @@ class TestRegionHTTPService(
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
 
     def test_create_cert_files_writes_full_chain(self):
+        cert = get_sample_cert_with_cacerts()
         tempdir = Path(self.make_dir())
         certs_dir = tempdir / "certs"
         certs_dir.mkdir()
         self.patch(http, "get_http_config_dir").return_value = tempdir
 
         service = http.RegionHTTPService()
-        service._create_cert_files(self.cert)
+        service._create_cert_files(cert)
         self.assertEqual(
             (certs_dir / "regiond-proxy.pem").read_text(),
-            self.cert.fullchain_pem(),
+            cert.fullchain_pem(),
         )
         self.assertEqual(
             (certs_dir / "regiond-proxy-key.pem").read_text(),
-            self.cert.private_key_pem(),
+            cert.private_key_pem(),
         )
 
     @wait_for_reactor
@@ -213,6 +215,21 @@ class TestRegionHTTPService(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_unregisters_listener_without_registering(self):
+        listener = Mock()
+        listener.unregister.side_effect = PostgresListenerUnregistrationError(
+            "Channel foo not found"
+        )
+        mock_super_stop = self.patch_autospec(http.Service, "stopService")
+        service = http.RegionHTTPService(postgresListener=listener)
+        yield service.stopService()
+        listener.unregister.assert_called_once_with(
+            "sys_reverse_proxy", service._consume_event
+        )
+        mock_super_stop.assert_called_once_with(service)
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_handler_is_called_on_config_change(self):
         listener = self.make_listener_without_delay()
         capture = []
@@ -232,6 +249,7 @@ class TestRegionHTTPService(
     @wait_for_reactor
     @inlineCallbacks
     def test_data_is_consistent_when_notified(self):
+        cert = get_sample_cert_with_cacerts()
         listener = self.make_listener_without_delay()
         capture = []
 
@@ -257,8 +275,8 @@ class TestRegionHTTPService(
         self.assertEqual(
             tls_secrets,
             {
-                "key": self.cert.private_key_pem(),
-                "cert": self.cert.certificate_pem(),
-                "cacert": self.cert.ca_certificates_pem(),
+                "key": cert.private_key_pem(),
+                "cert": cert.certificate_pem(),
+                "cacert": cert.ca_certificates_pem(),
             },
         )
