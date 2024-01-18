@@ -193,7 +193,7 @@ class RepoDumper(BasicMirrorWriter):
                         base_image._replace(subarch="generic"), compact_item
                     )
 
-    def sync(self, reader, path):
+    def sync(self, reader: UrlMirrorReader, path: str) -> None:
         try:
             super().sync(reader, path)
         except OSError:

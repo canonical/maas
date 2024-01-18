@@ -215,7 +215,7 @@ snap. Instead of building a real snap, though, you can run
     $ make snap-tree
 
 to create an unpacked snap in the ``dev-snap/tree`` directory. That has all the
-contents of the snap, but it's in a plain directory insted of in a squashfs
+contents of the snap, but it's in a plain directory instead of in a squashfs
 image. Using a directory is better for testing, since you can change the files
 in there and not rebuild the snap.
 

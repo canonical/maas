@@ -1077,7 +1077,7 @@ def stop_import_resources():
     """Stops the running import process."""
     running = yield deferToDatabase(transactional(is_import_resources_running))
     if not running:
-        # Nothing to do as its not running.
+        # Nothing to do as it's not running.
         return
 
     # Notify for the stop to occur.

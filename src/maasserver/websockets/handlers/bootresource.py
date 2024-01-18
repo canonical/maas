@@ -3,7 +3,7 @@
 
 """The BootResource handler for the WebSocket connection."""
 
-
+import base64
 from collections import defaultdict
 from datetime import datetime
 from typing import Optional
@@ -93,7 +93,7 @@ class BootResourceHandler(Handler):
             "delete_image",
         ]
 
-    def format_ubuntu_sources(self):
+    def format_ubuntu_sources(self) -> list[dict]:
         """Return formatted Ubuntu sources."""
         sources = []
         for source in self.ubuntu_sources:
@@ -108,9 +108,10 @@ class BootResourceHandler(Handler):
                     "source_type": source_type,
                     "url": source.url,
                     "keyring_filename": source.keyring_filename,
-                    "keyring_data": bytes(source.keyring_data).decode("ascii"),
+                    "keyring_data": base64.b64encode(source.keyring_data),
                 }
             )
+
         return sources
 
     def get_ubuntu_release_selections(self):
@@ -680,7 +681,9 @@ class BootResourceHandler(Handler):
             "other_images": self.format_other_images(),
         }
 
-    def get_bootsource(self, params, from_db=False):
+    def get_bootsource(
+        self, params: dict, from_db: bool = False
+    ) -> BootSource:
         source_type = params.get("source_type", "custom")
         if source_type == "maas.io":
             url = DEFAULT_IMAGES_URL
@@ -691,7 +694,7 @@ class BootResourceHandler(Handler):
             if not url.endswith("/"):
                 url += "/"
             keyring_filename = params.get("keyring_filename", "")
-            keyring_data = params.get("keyring_data", "").encode("utf-8")
+            keyring_data = params.get("keyring_data", b"")
             if keyring_filename == "" and keyring_data == b"":
                 keyring_filename = DEFAULT_KEYRINGS_PATH
         else:
