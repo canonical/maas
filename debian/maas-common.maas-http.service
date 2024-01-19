@@ -12,7 +12,9 @@
 #
 [Unit]
 Description=MAAS HTTP server and reverse proxy server
+Documentation=https://maas.io/docs
 After=network.target
+ConditionPathExists=/var/lib/maas/http/nginx.conf
 
 [Service]
 Type=forking

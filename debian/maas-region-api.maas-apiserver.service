@@ -1,9 +1,6 @@
-[Install]
-WantedBy=multi-user.target
-
 [Unit]
 Description=MAAS Region API
-Documentation=https://maas.io/
+Documentation=https://maas.io/docs
 Requires=network-online.target
 After=network-online.target
 ConditionPathExists=/etc/maas/regiond.conf
@@ -14,5 +11,8 @@ Group=maas
 Restart=always
 RestartSec=10s
 KillMode=mixed
-ExecStart=/bin/sh -c \
-    'exec /usr/sbin/maas-apiserver'
+ExecStart=/usr/sbin/maas-apiserver
+
+[Install]
+WantedBy=multi-user.target
+

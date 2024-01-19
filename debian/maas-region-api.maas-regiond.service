@@ -1,9 +1,6 @@
-[Install]
-WantedBy=multi-user.target
-
 [Unit]
 Description=MAAS Region Controller
-Documentation=https://maas.io/
+Documentation=https://maas.io/docs/
 Requires=network-online.target
 After=network-online.target
 ConditionPathExists=/etc/maas/regiond.conf
@@ -16,8 +13,8 @@ RestartSec=10s
 KillMode=mixed
 Environment="DJANGO_SETTINGS_MODULE=maasserver.djangosettings.settings"
 Environment="prometheus_multiproc_dir=/var/lib/maas/prometheus"
-# Logs go to the journal; read them with:
-#   journalctl -u maas-regiond
-# Logs no longer go to the logfile
-ExecStart=/bin/sh -c \
-    'exec /usr/sbin/regiond'
+ExecStart=/usr/sbin/regiond
+
+[Install]
+WantedBy=multi-user.target
+

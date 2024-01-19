@@ -1,11 +1,9 @@
-[Install]
-WantedBy=multi-user.target
-
 [Unit]
 Description=MAAS Temporal
 Documentation=https://temporal.io
 Wants=network-online.target
 After=network-online.target
+ConditionPathIsDirectory=/var/lib/maas/temporal
 
 [Service]
 User=maas
@@ -18,3 +16,5 @@ ExecStart=/usr/sbin/temporal-server \
     -c "" \
     --allow-no-auth start
 
+[Install]
+WantedBy=multi-user.target

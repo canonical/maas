@@ -10,10 +10,8 @@ ConditionPathExists=/var/lib/maas/dhcpd6-interfaces
 
 [Service]
 # Allow dhcp server to write lease and pid file as 'dhcpd' user
-ExecStartPre=/bin/mkdir -p /run/maas/dhcp
 # The leases files need to be root:dhcpd even when dropping privileges
-ExecStartPre=/bin/mkdir -p /var/lib/maas/dhcp
-# Start the daemon
+ExecStartPre=/bin/mkdir -p /run/maas/dhcp /var/lib/maas/dhcp
 ExecStart=/bin/sh -ec '\
     INTERFACES=$(cat /var/lib/maas/dhcpd6-interfaces); \
     LEASES_FILE=/var/lib/maas/dhcp/dhcpd6.leases; \
