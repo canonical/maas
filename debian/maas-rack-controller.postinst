@@ -5,8 +5,6 @@ set -e
 . /usr/share/debconf/confmodule
 db_version 2.0
 
-RELEASE=`lsb_release -rs` || RELEASE=""
-
 configure_logging() {
     # Give appropriate permissions
     if [ ! -f /var/log/maas/rackd.log ]; then
@@ -16,13 +14,6 @@ configure_logging() {
 }
 
 configure_libdir() {
-    # create var dir
-    if [ ! -d /var/lib/maas/boot-resources ]; then
-        mkdir -p /var/lib/maas/boot-resources
-    fi
-    # Ensure /var/lib/maas/boot-resources has correct ownership
-    chown -R maas:maas /var/lib/maas/boot-resources
-
     # If /var/lib/maas/secret exists, ensure ownership and
     # permissions are correct
     if [ -f /var/lib/maas/secret ]; then

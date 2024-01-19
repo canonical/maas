@@ -314,6 +314,7 @@ Description: MAAS Network Monitor
 
 Package: maas-agent
 Architecture: any
+Pre-Depends: maas-common (=${binary:Version})
 Description: MAAS Agent
  This package provides the MAAS Agent binary that is used by MAAS to
  gradually replace the Rack Controller.

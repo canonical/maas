@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+
+cachedir=/var/cache/maas
+
+ensure_cache_dir() {
+    if [ ! -d $cachedir ]; then
+	install -d -o maas -g maas -m 0755 $cachedir
+    fi
+    chown maas:maas $cachedir
+}
+
+if [ "$1" = "configure" ]; then
+    ensure_cache_dir
+fi
+
+#DEBHELPER#
+
+exit 0
