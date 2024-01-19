@@ -50,6 +50,4 @@ class PaginatedResponse(GenericModel, Generic[T]):
     """
 
     total: int
-    page: int
-    size: int
     items: Sequence[T]

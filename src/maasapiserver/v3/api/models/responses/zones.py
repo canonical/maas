@@ -1,4 +1,8 @@
-from maasapiserver.v3.api.models.responses.base import BaseHal, HalResponse
+from maasapiserver.v3.api.models.responses.base import (
+    BaseHal,
+    HalResponse,
+    PaginatedResponse,
+)
 
 
 class ZoneResponse(HalResponse[BaseHal]):
@@ -6,3 +10,7 @@ class ZoneResponse(HalResponse[BaseHal]):
     id: int
     name: str
     description: str
+
+
+class ZonesListResponse(PaginatedResponse[ZoneResponse]):
+    kind = "ZonesList"
