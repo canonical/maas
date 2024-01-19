@@ -7,7 +7,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -138,11 +140,20 @@ func Run() int {
 	})
 
 	errGroup.Go(func() error {
-		<-httpProxies.Ready()
+		// loop so we may restart upon reconfiguration
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-httpProxies.Ready():
+				log.Info().Msg("Starting HTTP proxy")
 
-		log.Info().Msg("Starting HTTP proxy")
-
-		return httpProxies.Proxies.Listen(ctx)
+				err := httpProxies.Proxies.Listen(ctx)
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
+					return err
+				}
+			}
+		}
 	})
 
 	log.Info().Msg("Service MAAS Agent started")

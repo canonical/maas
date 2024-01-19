@@ -8,10 +8,13 @@ import (
 	"os"
 	"path"
 
+	zlog "github.com/rs/zerolog"
 	"go.temporal.io/sdk/activity"
+	temporallog "go.temporal.io/sdk/log"
 
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/imagecache"
+	maaslog "maas.io/core/src/maasagent/internal/workflow/log"
 )
 
 const (
@@ -35,9 +38,11 @@ type configureHTTPProxyParam struct {
 // for the agent's HTTP proxy, configuring the proxy with the
 // appropriate info from the region
 type HTTPProxyConfigurator struct {
-	Proxies        *httpproxy.ProxyGroup
-	ready          chan struct{}
-	imageCacheSize int64
+	Proxies             *httpproxy.ProxyGroup
+	ready               chan struct{}
+	imageCacheLocation  string
+	proxySocketLocation string
+	imageCacheSize      int64
 }
 
 // NewHTTPProxyConfigurator returns a new HTTPProxy Configurator
@@ -58,7 +63,13 @@ func (p *HTTPProxyConfigurator) SetCacheSize(s int64) {
 
 // ConfigureHTTPProxy is a Temporal activity to configure the HTTP proxy
 func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param configureHTTPProxyParam) error {
-	log := activity.GetLogger(ctx)
+	var log temporallog.Logger
+
+	if activity.IsActivity(ctx) {
+		log = activity.GetLogger(ctx)
+	} else {
+		log = maaslog.NewZerologAdapter(zlog.Nop())
+	}
 
 	var (
 		originOpts []httpproxy.ProxyOption
@@ -123,7 +134,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		return err
 	}
 
-	cache, err := imagecache.NewFSCache(p.imageCacheSize, "")
+	cache, err := imagecache.NewFSCache(p.imageCacheSize, p.imageCacheLocation)
 	if err != nil {
 		return err
 	}
@@ -131,8 +142,15 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 	if nginxActive {
 		log.Debug("Creating Unix Socket HTTP Proxy")
 
+		var sockPath string
+		if p.proxySocketLocation != "" {
+			sockPath = p.proxySocketLocation
+		} else {
+			sockPath = getSocketFilePath()
+		}
+
 		socketOpts := []httpproxy.ProxyOption{
-			httpproxy.WithBindAddr(getSocketFilePath()),
+			httpproxy.WithBindAddr(sockPath),
 			httpproxy.WithBootloaderRegistry(bootloaderRegistry),
 			httpproxy.WithImageCache(cache),
 		}
@@ -167,6 +185,13 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 			httpproxy.WithIPv4(ipv4Opts...),
 			httpproxy.WithIPv6(ipv6Opts...),
 		)
+	}
+
+	if p.Proxies != nil && p.Proxies.Size() > 0 {
+		err = p.Proxies.Teardown(ctx)
+		if err != nil {
+			log.Error(err.Error())
+		}
 	}
 
 	p.Proxies, err = httpproxy.NewProxyGroup(groupOpts...)

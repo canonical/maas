@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -37,10 +38,11 @@ type proxyCommon struct {
 	origins         []*url.URL
 	keepalive       time.Duration
 	port            int
+	sync.Mutex
 }
 
 // ValidateDNSName uses a given resolver to verify a configured name is a valid DNS record
-func (p proxyCommon) ValidateDNSName(ctx context.Context, resolver *net.Resolver, network, name string) error {
+func (p *proxyCommon) ValidateDNSName(ctx context.Context, resolver *net.Resolver, network, name string) error {
 	_, err := resolver.LookupIP(ctx, network, name)
 	return err
 }
@@ -93,7 +95,12 @@ func (p *proxyCommon) GetImageCache() imagecache.Cache {
 
 // Listen creates a net.Listener and begins serving HTTP on it
 func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) error {
+	p.Lock()
+
 	if p.server != nil {
+		// cannot defer unlock because final call will block
+		p.Unlock()
+
 		return ErrProxyAlreadyListening
 	}
 
@@ -121,6 +128,9 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 
 	p.listener, err = net.Listen(network, addr)
 	if err != nil {
+		// cannot defer unlock because final call will block
+		p.Unlock()
+
 		return err
 	}
 
@@ -130,6 +140,9 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 		//nolint:gosec // gosec wants 0600 which is too strict for use with Nginx
 		err = os.Chmod(addr, 0666) // same permissions as MAAS' api sockets
 		if err != nil {
+			// cannot defer unlock because final call will block
+			p.Unlock()
+
 			return err
 		}
 	}
@@ -152,6 +165,9 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 		p.server.SetKeepAlivesEnabled(true)
 	}
 
+	// unlock before the blocking serve call to allow teardown calls
+	p.Unlock()
+
 	log.Info().Msgf("Started %s HTTP proxy", network)
 
 	log.Debug().Msgf("Listening on %s", p.addr)
@@ -161,6 +177,9 @@ func (p *proxyCommon) Listen(ctx context.Context, proxy Proxy, network string) e
 
 // Teardown stops the proxy
 func (p *proxyCommon) Teardown(ctx context.Context) error {
+	p.Lock()
+	defer p.Unlock()
+
 	if p.server == nil {
 		return ErrProxyNotRunning
 	}
@@ -176,7 +195,7 @@ func (p *proxyCommon) Teardown(ctx context.Context) error {
 }
 
 // GetOrigin returns a random origin URL
-func (p proxyCommon) GetOrigin() (*url.URL, error) {
+func (p *proxyCommon) GetOrigin() (*url.URL, error) {
 	idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(p.origins))))
 	if err != nil {
 		return nil, err
@@ -186,7 +205,7 @@ func (p proxyCommon) GetOrigin() (*url.URL, error) {
 }
 
 // GetClient returns a properly configured HTTP client
-func (p proxyCommon) GetClient() *http.Client {
+func (p *proxyCommon) GetClient() *http.Client {
 	transport := http.DefaultTransport
 
 	if p.clientTLS != nil {

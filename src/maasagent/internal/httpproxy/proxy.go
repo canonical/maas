@@ -104,6 +104,16 @@ func (pg *ProxyGroup) Teardown(ctx context.Context) error {
 	return errGroup.Wait()
 }
 
+// Size returns number of proxies this ProxyGroup is managing
+func (pg *ProxyGroup) Size() int {
+	return len(pg.proxies)
+}
+
+// GetProxyAt returns the proxy at the given index
+func (pg *ProxyGroup) GetProxyAt(idx int) Proxy {
+	return pg.proxies[idx]
+}
+
 // WithOrigin adds an origin URL to a given Proxy
 func WithOrigin(ctx context.Context, url string) ProxyOption {
 	return func(p Proxy) error {
