@@ -5,7 +5,7 @@ from requests.models import Response
 from requests.utils import add_dict_to_cookiejar
 from requests_unixsocket import Session
 
-from .settings import api_service_socket_path
+from maasapiserver.settings import api_service_socket_path
 
 
 class APIServerClient:

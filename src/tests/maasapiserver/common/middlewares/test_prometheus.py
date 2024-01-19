@@ -7,12 +7,10 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.api.handlers import APICommon
 from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
-from maasapiserver.common.middlewares.prometheus import (
-    metrics,
-    PrometheusMiddleware,
-)
+from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
 
 
 @pytest.fixture
@@ -25,7 +23,7 @@ def app(
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
     app.add_middleware(transaction_middleware_class, db=db)
-    app.add_api_route("/metrics", metrics, methods=["GET"])
+    APICommon.register(app.router)
 
     @app.get("/{count}")
     async def route(count: int) -> dict[str, int]:

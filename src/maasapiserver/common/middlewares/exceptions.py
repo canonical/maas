@@ -2,13 +2,10 @@ import logging
 from typing import Awaitable, Callable
 
 from fastapi import Request, Response
-from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from starlette import status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
 
-from ..api.models.responses.errors import (
+from maasapiserver.common.api.models.responses.errors import (
     InternalServerErrorResponse,
     ValidationErrorResponse,
 )
@@ -21,12 +18,7 @@ class ExceptionHandlers:
     async def validation_exception_handler(
         cls, request: Request, exc: RequestValidationError
     ):
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=jsonable_encoder(
-                ValidationErrorResponse(details=exc.errors())
-            ),
-        )
+        return ValidationErrorResponse(details=exc.errors())
 
 
 class ExceptionMiddleware(BaseHTTPMiddleware):
@@ -39,7 +31,4 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         except Exception as e:
             logger.exception(e)
-            return JSONResponse(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                content=jsonable_encoder(InternalServerErrorResponse()),
-            )
+            return InternalServerErrorResponse()

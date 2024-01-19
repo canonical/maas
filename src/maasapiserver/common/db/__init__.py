@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from ...settings import DatabaseConfig
+from maasapiserver.settings import DatabaseConfig
 
 
 class Database:

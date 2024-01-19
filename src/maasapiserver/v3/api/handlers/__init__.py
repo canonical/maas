@@ -1,9 +1,12 @@
-from ....common.api.base import API
-from .root import RootHandler
+from maasapiserver.common.api.base import API
+from maasapiserver.v3.api.handlers.root import RootHandler
+from maasapiserver.v3.api.handlers.zones import ZonesHandler
+from maasapiserver.v3.constants import V3_API_PREFIX
 
 APIv3 = API(
-    prefix="/api/v3",
+    prefix=V3_API_PREFIX,
     handlers=[
         RootHandler(),
+        ZonesHandler(),
     ],
 )

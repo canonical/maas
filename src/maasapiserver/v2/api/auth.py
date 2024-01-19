@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, Request, status
 
-from . import services
-from ..models.entities.user import User
-from ..services import ServiceCollectionV2
+from maasapiserver.v2.api import services
+from maasapiserver.v2.models.entities.user import User
+from maasapiserver.v2.services import ServiceCollectionV2
 
 
 async def authenticated_user(

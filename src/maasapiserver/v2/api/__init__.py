@@ -1,8 +1,8 @@
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from ...common.api.db import db_conn
-from ..services import ServiceCollectionV2
+from maasapiserver.common.api.db import db_conn
+from maasapiserver.v2.services import ServiceCollectionV2
 
 
 def services(

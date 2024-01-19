@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from ..entities.machine import Machine
+from maasapiserver.v2.models.entities.machine import Machine
 
 
 class MachineListGroupResponse(BaseModel):

@@ -65,10 +65,25 @@ server {
         proxy_pass http://apiserver/metrics;
     }
 
+    # apiserver swagger endpoint
+    location /MAAS/a/docs {
+        proxy_pass http://apiserver/docs;
+    }
+
+    # apiserver openapi endpoint
+    location /MAAS/a/openapi.json {
+        proxy_pass http://apiserver/openapi.json;
+    }
+
     # block remote access to the machines endpoints for now since it doesn't
     # filter machines by user
     location = /MAAS/a/v2/machines {
         return 404;
+    }
+
+    # block remote access to the v3 endpoints until authentication and authorization is implemented
+    location ^~ /MAAS/a/v3/ {
+        return 403;
     }
 
     location /MAAS/a/ {

@@ -1,7 +1,7 @@
 from typing import Awaitable, Callable
 
 from fastapi import Request, Response
-from prometheus_client import CollectorRegistry, CONTENT_TYPE_LATEST
+from prometheus_client import CollectorRegistry
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.routing import Match
 from starlette.types import ASGIApp
@@ -13,12 +13,6 @@ from provisioningserver.prometheus.utils import (
 )
 from provisioningserver.utils.env import MAAS_UUID
 from provisioningserver.utils.ipaddr import get_machine_default_gateway_ip
-
-
-async def metrics(request: Request) -> Response:
-    """Prometheus metrics endpoint."""
-    content = request.state.prometheus_metrics.generate_latest()
-    return Response(content=content, media_type=CONTENT_TYPE_LATEST)
 
 
 class PrometheusMiddleware(BaseHTTPMiddleware):

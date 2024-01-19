@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from ..db import Database
+from maasapiserver.common.db import Database
 
 
 class TransactionMiddleware(BaseHTTPMiddleware):

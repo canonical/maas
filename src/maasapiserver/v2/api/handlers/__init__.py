@@ -1,7 +1,7 @@
-from ....common.api.base import API
-from .machines import MachineHandler
-from .root import RootHandler
-from .zones import ZoneHandler
+from maasapiserver.common.api.base import API
+from maasapiserver.v2.api.handlers.machines import MachineHandler
+from maasapiserver.v2.api.handlers.root import RootHandler
+from maasapiserver.v2.api.handlers.zones import ZoneHandler
 
 APIv2 = API(
     prefix="/api/v2",

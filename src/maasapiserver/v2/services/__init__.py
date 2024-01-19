@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from .machine import MachineService
-from .user import UserService
-from .zone import ZoneService
+from maasapiserver.v2.services.machine import MachineService
+from maasapiserver.v2.services.user import UserService
+from maasapiserver.v2.services.zone import ZoneService
 
 
 class ServiceCollectionV2:

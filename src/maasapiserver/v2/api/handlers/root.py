@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from ....common.api.base import Handler, handler
+from maasapiserver.common.api.base import Handler, handler
 
 
 class RootGetResponse(BaseModel):
@@ -10,6 +10,6 @@ class RootGetResponse(BaseModel):
 class RootHandler(Handler):
     """Root API handler."""
 
-    @handler(path="/", methods=["GET"])
+    @handler(path="/", methods=["GET"], include_in_schema=False)
     async def get(self) -> RootGetResponse:
         return RootGetResponse()

@@ -4,19 +4,20 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 import uvicorn
 
-from .common.db import Database
-from .common.middlewares.db import (
+from maasapiserver.common.api.handlers import APICommon
+from maasapiserver.common.db import Database
+from maasapiserver.common.middlewares.db import (
     DatabaseMetricsMiddleware,
     TransactionMiddleware,
 )
-from .common.middlewares.exceptions import (
+from maasapiserver.common.middlewares.exceptions import (
     ExceptionHandlers,
     ExceptionMiddleware,
 )
-from .common.middlewares.prometheus import metrics, PrometheusMiddleware
-from .settings import api_service_socket_path, Config, read_config
-from .v2.api.handlers import APIv2
-from .v3.api.handlers import APIv3
+from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
+from maasapiserver.settings import api_service_socket_path, Config, read_config
+from maasapiserver.v2.api.handlers import APIv2
+from maasapiserver.v3.api.handlers import APIv3
 
 
 def create_app(
@@ -33,6 +34,8 @@ def create_app(
     app = FastAPI(
         title="MAASAPIServer",
         name="maasapiserver",
+        # The SwaggerUI page is provided by the APICommon router.
+        docs_url=None,
     )
 
     # The order here is important: the exception middleware must be the first one being executed (i.e. it must be the last
@@ -47,8 +50,7 @@ def create_app(
         RequestValidationError, ExceptionHandlers.validation_exception_handler
     )
 
-    # Register URL handlers
-    app.router.add_api_route("/metrics", metrics, methods=["GET"])
+    APICommon.register(app.router)
     APIv2.register(app.router)
     APIv3.register(app.router)
     return app
