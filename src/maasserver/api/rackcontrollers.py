@@ -227,9 +227,14 @@ class RackControllerHandler(NodeHandler, PowerMixin):
             subarches = [subarch]
             if "subarches" in res.extra:
                 subarches.extend(res.extra["subarches"].split(","))
+            res_name = (
+                res.name
+                if res.bootloader_type is None
+                else f"bootloader/{res.bootloader_type}"
+            )
             images.append(
                 {
-                    "name": res.name,
+                    "name": res_name,
                     "architecture": arch,
                     "subarches": sorted(set(subarches)),
                 }

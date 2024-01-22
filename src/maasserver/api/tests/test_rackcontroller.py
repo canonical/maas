@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from maasserver.api import rackcontrollers
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.models.bmc import Pod
 from maasserver.testing.api import (
     APITestCase,
@@ -94,9 +95,47 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
         ret = json_load_bytes(response.content)
         self.assertEqual({"connected", "images", "status"}, ret.keys())
         image = ret["images"][0]
-        self.assertCountEqual(image["name"], resource.name)
+        self.assertEqual(image["name"], resource.name)
         self.assertCountEqual(
             image["subarches"], ["hwe-p", "hwe-t", "hwe-16.04", "hwe-16.10"]
+        )
+
+    def test_GET_list_boot_images_keeps_legacy_bootloader_names(self):
+        factory.make_RegionController()
+        rack = factory.make_RackController(owner=factory.make_User())
+
+        bootloaders = [
+            ("grub-efi-signed/uefi", "amd64/generic", "uefi"),
+            ("grub-efi/uefi", "arm64/generic", "uefi"),
+            (
+                "grub-ieee1275/open-firmware",
+                "ppc64el/generic",
+                "open-firmware",
+            ),
+            ("pxelinux/pxe", "i386/generic", "pxe"),
+        ]
+
+        for name, arch, btype in bootloaders:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name,
+                bootloader_type=btype,
+                architecture=arch,
+                image_filetype=BOOT_RESOURCE_FILE_TYPE.ARCHIVE_TAR_XZ,
+            )
+        self.become_admin()
+        response = self.client.get(
+            self.get_rack_uri(rack), {"op": "list_boot_images"}
+        )
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            explain_unexpected_response(http.client.OK, response),
+        )
+        ret = json_load_bytes(response.content)
+        self.assertCountEqual(
+            [img["name"] for img in ret["images"]],
+            [f"bootloader/{btype}" for (_, _, btype) in bootloaders],
         )
 
     def test_GET_list_boot_images_denied_if_not_admin(self):
