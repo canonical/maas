@@ -545,17 +545,16 @@ class TestDNSReverseZoneConfig(MAASTestCase):
 
     def test_computes_zone_file_config_file_paths(self):
         domain = factory.make_name("zone")
-        reverse_file_name = [
-            "zone.%d.168.192.in-addr.arpa" % i for i in range(4)
-        ]
+        # in order to merge changes, maasserver.dns.zone_generator.ZoneGenerator will split large subnets
+        # meaning there's a 1:1 zonefile and DNSReverseZoneConfig
+        reverse_file_name = "zone.0.168.192.in-addr.arpa"
         dns_zone_config = DNSReverseZoneConfig(
-            domain, network=IPNetwork("192.168.0.0/22")
+            domain, network=IPNetwork("192.168.0.0/24")
         )
-        for i in range(4):
-            self.assertEqual(
-                os.path.join(get_zone_file_config_dir(), reverse_file_name[i]),
-                dns_zone_config.zone_info[i].target_path,
-            )
+        self.assertEqual(
+            os.path.join(get_zone_file_config_dir(), reverse_file_name),
+            dns_zone_config.zone_info[0].target_path,
+        )
 
     def test_computes_zone_file_config_file_paths_for_small_network(self):
         domain = factory.make_name("zone")
@@ -579,20 +578,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         # A special case is the small subnet (less than 256 hosts for IPv4,
         # less than 16 hosts for IPv6), in which case, we follow RFC2317 with
         # the modern adjustment of using '-' instead of '/'.
-        zn = "%d.0.0.0.0.0.0.0.0.0.0.0.4.0.1.f.1.0.8.a.b.0.1.0.0.2.ip6.arpa"
         expected = [
             # IPv4 networks.
-            # /22 ==> 4 /24 reverse zones
-            (
-                IPNetwork("192.168.0.1/22"),
-                [
-                    DomainInfo(
-                        IPNetwork("192.168.%d.0/24" % i),
-                        "%d.168.192.in-addr.arpa" % i,
-                    )
-                    for i in range(4)
-                ],
-            ),
             # /24 ==> 1 reverse zone
             (
                 IPNetwork("192.168.0.1/24"),
@@ -647,27 +634,6 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                         IPNetwork("2610:8:6800:1::/64"),
                         "1.0.0.0.0.0.8.6.8.0.0.0.0.1.6.2.ip6.arpa",
                     )
-                ],
-            ),
-            # /2 with hex digits ==> 4 /4 reverse zones
-            (
-                IPNetwork("8000::/2"),
-                [
-                    DomainInfo(IPNetwork("8000::/4"), "8.ip6.arpa"),
-                    DomainInfo(IPNetwork("9000::/4"), "9.ip6.arpa"),
-                    DomainInfo(IPNetwork("a000::/4"), "a.ip6.arpa"),
-                    DomainInfo(IPNetwork("b000::/4"), "b.ip6.arpa"),
-                ],
-            ),
-            # /103 ==> 2 /104 reverse zones
-            (
-                IPNetwork("2001:ba8:1f1:400::/103"),
-                [
-                    DomainInfo(
-                        IPNetwork("2001:ba8:1f1:400:0:0:%d00:0000/104" % i),
-                        zn % i,
-                    )
-                    for i in range(2)
                 ],
             ),
             # /125 ==> 1 reverse zone, based on RFC2317
@@ -843,7 +809,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         target_dir = patch_zone_file_config_path(self)
         domain = factory.make_string()
         ns_host_name = factory.make_name("ns")
-        network = IPNetwork("192.168.0.1/22")
+        network = IPNetwork("192.168.0.1/24")
         dynamic_network = IPNetwork("192.168.0.1/28")
         dns_zone_config = DNSReverseZoneConfig(
             domain,
@@ -855,28 +821,24 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             ],
         )
         dns_zone_config.write_config()
-        for sub in range(4):
-            reverse_file_name = "zone.%d.168.192.in-addr.arpa" % sub
-            expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
-                dynamic_network,
-                domain,
-                DomainInfo(
-                    IPNetwork("192.168.%d.0/24" % sub),
-                    "%d.168.192.in-addr.arpa" % sub,
-                ),
-            )
-            expected = ContainsAll(
-                ["30 IN NS %s." % ns_host_name]
-                + [
-                    "$GENERATE %s %s IN PTR %s"
-                    % (iterator_values, reverse_dns, hostname)
-                    for iterator_values, reverse_dns, hostname in expected_GEN_direct
-                ]
-            )
-            self.assertThat(
-                os.path.join(target_dir, reverse_file_name),
-                FileContains(matcher=expected),
-            )
+        reverse_file_name = "zone.0.168.192.in-addr.arpa"
+        expected_GEN_direct = dns_zone_config.get_GENERATE_directives(
+            dynamic_network,
+            domain,
+            DomainInfo(
+                IPNetwork("192.168.0.0/24"),
+                "0.168.192.in-addr.arpa",
+            ),
+        )
+        with open(os.path.join(target_dir, reverse_file_name), "r") as fh:
+            contents = fh.read()
+        needles = [f"30 IN NS {ns_host_name}"] + [
+            f"$GENERATE {iterator_values} {reverse_dns} IN PTR {hostname}"
+            for iterator_values, reverse_dns, hostname in expected_GEN_direct
+        ]
+
+        for needle in needles:
+            self.assertIn(needle, contents)
 
     def test_writes_reverse_dns_zone_config_for_small_network(self):
         target_dir = patch_zone_file_config_path(self)
@@ -1134,97 +1096,6 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 call(("freeze", "0.0.10.in-addr.arpa"), timeout=2),
                 call(("thaw", "0.0.10.in-addr.arpa"), timeout=2),
             ],
-        )
-
-    def test_dynamic_updates_are_only_sent_for_specific_domain_info(self):
-        patch_zone_file_config_path(self)
-        domain = factory.make_string()
-        network = IPNetwork("10.246.64.0/21")
-        subnetwork1 = IPNetwork("10.246.64.0/24")
-        subnetwork2 = IPNetwork("10.246.65.0/24")
-        ip1 = factory.pick_ip_in_network(subnetwork1)
-        ip2 = factory.pick_ip_in_network(subnetwork2)
-        hostname1 = f"{factory.make_string()}.{domain}"
-        hostname2 = f"{factory.make_string()}.{domain}"
-        fwd_updates = [
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname1,
-                rectype="A",
-                answer=ip1,
-            ),
-            DynamicDNSUpdate(
-                operation="INSERT",
-                zone=domain,
-                name=hostname2,
-                rectype="A",
-                answer=ip2,
-            ),
-        ]
-        rev_updates = [
-            DynamicDNSUpdate.as_reverse_record_update(update, network)
-            for update in fwd_updates
-        ]
-        # gets changed to a /24 and any other space in the original
-        # subnet is split into a separate zone for a given /24
-        zone = DNSReverseZoneConfig(
-            domain,
-            serial=random.randint(1, 100),
-            network=network,
-            dynamic_updates=rev_updates,
-        )
-
-        run_command = self.patch(actions, "run_command")
-        zone.write_config()
-        zone.write_config()
-
-        expected_stdin1 = "\n".join(
-            [
-                "server localhost",
-                "zone 64.246.10.in-addr.arpa",
-                f"update add {IPAddress(ip1).reverse_dns} {zone.default_ttl} PTR {hostname1}",
-                f"update add 64.246.10.in-addr.arpa {zone.default_ttl} SOA 64.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-
-        expected_stdin2 = "\n".join(
-            [
-                "server localhost",
-                "zone 65.246.10.in-addr.arpa",
-                f"update add {IPAddress(ip2).reverse_dns} {zone.default_ttl} PTR {hostname2}",
-                f"update add 65.246.10.in-addr.arpa {zone.default_ttl} SOA 65.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-
-        expected_stdin3 = "\n".join(
-            [
-                "server localhost",
-                "zone 71.246.10.in-addr.arpa",
-                f"update add 71.246.10.in-addr.arpa {zone.default_ttl} SOA 71.246.10.in-addr.arpa. nobody.example.com. {zone.serial} 600 1800 604800 {zone.default_ttl}",
-                "send\n",
-            ]
-        )
-
-        run_command.assert_any_call(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin1.encode("ascii"),
-        )
-        run_command.assert_any_call(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin2.encode("ascii"),
-        )
-        run_command.assert_any_call(
-            "nsupdate",
-            "-k",
-            get_nsupdate_key_path(),
-            stdin=expected_stdin3.encode("ascii"),
         )
 
 
