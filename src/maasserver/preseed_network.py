@@ -362,18 +362,19 @@ class InterfaceConfiguration:
 
                     if "dns_nameservers" not in v1_subnet_operation:
                         v1_subnet_operation["dns_nameservers"] = []
-                        v1_subnet_operation[
-                            "dns_search"
-                        ] = self.node_config.default_search_list
                     if "nameservers" not in v2_config:
-                        v2_nameservers[
-                            "search"
-                        ] = self.node_config.default_search_list
                         v2_config["nameservers"] = v2_nameservers
                         if "addresses" not in v2_nameservers:
                             v2_nameservers["addresses"] = []
 
                     if subnet.allow_dns:
+                        v1_subnet_operation[
+                            "dns_search"
+                        ] = self.node_config.default_search_list
+                        v2_nameservers[
+                            "search"
+                        ] = self.node_config.default_search_list
+
                         for ip in StaticIPAddress.objects.filter(
                             interface__node_config__node__in=[
                                 subnet.vlan.primary_rack,
@@ -416,7 +417,8 @@ class InterfaceConfiguration:
                     # Delete if no DNS servers were added.
                     if len(v1_subnet_operation["dns_nameservers"]) == 0:
                         del v1_subnet_operation["dns_nameservers"]
-                        del v1_subnet_operation["dns_search"]
+                        if "dns_search" in v1_subnet_operation:
+                            del v1_subnet_operation["dns_search"]
                     if len(v2_nameservers["addresses"]) == 0:
                         del v2_config["nameservers"]
             if dhcp_type:
@@ -751,7 +753,16 @@ class NodeNetworkConfiguration:
                     if "addresses" not in config:
                         # Skip interfaces with no manual addresses.
                         continue
-                    config.update({"nameservers": v2_default_nameservers})
+
+                    v2_nameservers = v2_default_nameservers.copy()
+                    iface = Interface.objects.get(
+                        node_config__node=self.node, name=ifname
+                    )
+                    for address in iface.ip_addresses.all():
+                        if not address.subnet.allow_dns:
+                            return
+
+                    config.update({"nameservers": v2_nameservers})
 
 
 def compose_curtin_network_config(node, version=1, source_routing=False):

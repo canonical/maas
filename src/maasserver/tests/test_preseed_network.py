@@ -19,7 +19,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
-from maasserver.models import Domain
+from maasserver.models import Domain, Node
 from maasserver.preseed_network import (
     compose_curtin_network_config,
     NodeNetworkConfiguration,
@@ -1591,8 +1591,8 @@ class TestNetplan(MAASServerTestCase):
                     },
                     {
                         "address": ["127.0.0.2"],
-                        "search": expected_search_list,
                         "type": "nameserver",
+                        "search": expected_search_list,
                     },
                 ],
             }
@@ -1714,34 +1714,44 @@ class TestNetplan(MAASServerTestCase):
                         "address": [
                             "10.0.1.2"
                         ],  # assert default gateway assigns dns server
-                        "search": expected_search_list,
                         "type": "nameserver",
+                        "search": expected_search_list,
                     },
                 ],
             }
         }
         self.assertEqual(v1, expected_v1)
 
-    def test_multiple_ethernet_interfaces_without_dns(self):
+    def test_one_ethernet_interface_without_dns(self):
         node = factory.make_Node()
-        vlan = factory.make_VLAN()
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(primary_rack=rack)
         subnet = factory.make_Subnet(
             cidr="10.0.0.0/24",
             gateway_ip="10.0.0.1",
-            dns_servers=["10.0.0.2"],
-            allow_dns=False,
+            dns_servers=[],
+            vlan=vlan,
         )
         subnet2 = factory.make_Subnet(
             cidr="10.0.1.0/24",
             gateway_ip="10.0.1.1",
-            dns_servers=["10.0.1.2"],
+            dns_servers=[],
             allow_dns=False,
+            vlan=vlan,
         )
         eth0 = factory.make_Interface(
-            node=node, name="eth0", mac_address="00:01:02:03:04:05", vlan=vlan
+            node=node,
+            name="eth0",
+            mac_address="00:01:02:03:04:05",
+            vlan=subnet.vlan,
+            enabled=True,
         )
         eth1 = factory.make_Interface(
-            node=node, name="eth1", mac_address="02:01:02:03:04:05"
+            node=node,
+            name="eth1",
+            mac_address="02:01:02:03:04:05",
+            vlan=subnet2.vlan,
+            enabled=True,
         )
         node.boot_interface = eth0
         node.save()
@@ -1749,19 +1759,19 @@ class TestNetplan(MAASServerTestCase):
             interface=eth0,
             subnet=subnet,
             ip="10.0.0.4",
-            alloc_type=IPADDRESS_TYPE.DHCP,
+            alloc_type=IPADDRESS_TYPE.AUTO,
         )
         factory.make_StaticIPAddress(
             interface=eth1,
             subnet=subnet2,
             ip="10.0.1.4",
-            alloc_type=IPADDRESS_TYPE.DHCP,
+            alloc_type=IPADDRESS_TYPE.AUTO,
         )
         # Make sure we know when and where the default DNS server will be used.
         get_default_dns_servers_mock = self.patch(
             node, "get_default_dns_servers"
         )
-        get_default_dns_servers_mock.return_value = []
+        get_default_dns_servers_mock.return_value = ["10.0.0.1"]
         netplan = self._render_netplan_dict(node)
         expected_netplan = {
             "network": OrderedDict(
@@ -1774,20 +1784,42 @@ class TestNetplan(MAASServerTestCase):
                                 "match": {"macaddress": "00:01:02:03:04:05"},
                                 "mtu": 1500,
                                 "set-name": "eth0",
-                                "dhcp4": True,
+                                "addresses": ["10.0.0.4/24"],
+                                "gateway4": "10.0.0.1",
+                                "nameservers": {
+                                    "addresses": [
+                                        ip.ip
+                                        for iface in rack.current_config.interface_set.all()
+                                        for ip in iface.ip_addresses.all()
+                                    ],
+                                    "search": [
+                                        domain.name
+                                        for domain in Domain.objects.filter(
+                                            authoritative=True
+                                        )
+                                    ],
+                                },
                             },
                             "eth1": {
                                 "match": {"macaddress": "02:01:02:03:04:05"},
                                 "mtu": 1500,
                                 "set-name": "eth1",
-                                "dhcp4": True,
+                                "addresses": ["10.0.1.4/24"],
                             },
                         },
                     ),
                 ]
             )
         }
-        self.assertEqual(netplan, expected_netplan)
+        self.assertCountEqual(netplan, expected_netplan)
+        self.assertCountEqual(
+            netplan["network"]["ethernets"]["eth0"],
+            expected_netplan["network"]["ethernets"]["eth0"],
+        )
+        self.assertCountEqual(
+            netplan["network"]["ethernets"]["eth1"],
+            expected_netplan["network"]["ethernets"]["eth1"],
+        )
         v1 = self._render_v1_dict(node)
         expected_v1 = {
             "network": {
@@ -1812,7 +1844,119 @@ class TestNetplan(MAASServerTestCase):
                 ],
             }
         }
-        self.assertEqual(v1, expected_v1)
+        self.assertCountEqual(v1, expected_v1)
+
+    def test_multiple_ethernet_interfaces_without_dns(self):
+        node = factory.make_Node()
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(primary_rack=rack)
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/24",
+            gateway_ip="10.0.0.1",
+            dns_servers=[],
+            allow_dns=False,
+            vlan=vlan,
+        )
+        subnet2 = factory.make_Subnet(
+            cidr="10.0.1.0/24",
+            gateway_ip="10.0.1.1",
+            dns_servers=[],
+            allow_dns=False,
+            vlan=vlan,
+        )
+        eth0 = factory.make_Interface(
+            node=node,
+            name="eth0",
+            mac_address="00:01:02:03:04:05",
+            vlan=subnet.vlan,
+            enabled=True,
+        )
+        eth1 = factory.make_Interface(
+            node=node,
+            name="eth1",
+            mac_address="02:01:02:03:04:05",
+            vlan=subnet2.vlan,
+            enabled=True,
+        )
+        node.boot_interface = eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=eth0,
+            subnet=subnet,
+            ip="10.0.0.4",
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+        factory.make_StaticIPAddress(
+            interface=eth1,
+            subnet=subnet2,
+            ip="10.0.1.4",
+            alloc_type=IPADDRESS_TYPE.AUTO,
+        )
+        # Make sure we know when and where the default DNS server will be used.
+        get_default_dns_servers_mock = self.patch(
+            node, "get_default_dns_servers"
+        )
+        get_default_dns_servers_mock.return_value = ["10.0.0.1"]
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            "network": OrderedDict(
+                [
+                    ("version", 2),
+                    (
+                        "ethernets",
+                        {
+                            "eth0": {
+                                "match": {"macaddress": "00:01:02:03:04:05"},
+                                "mtu": 1500,
+                                "set-name": "eth0",
+                                "addresses": ["10.0.0.4/24"],
+                                "gateway4": "10.0.0.1",
+                            },
+                            "eth1": {
+                                "match": {"macaddress": "02:01:02:03:04:05"},
+                                "mtu": 1500,
+                                "set-name": "eth1",
+                                "addresses": ["10.0.1.4/24"],
+                            },
+                        },
+                    ),
+                ]
+            )
+        }
+        self.assertCountEqual(netplan, expected_netplan)
+        self.assertCountEqual(
+            netplan["network"]["ethernets"]["eth0"],
+            expected_netplan["network"]["ethernets"]["eth0"],
+        )
+        self.assertCountEqual(
+            netplan["network"]["ethernets"]["eth1"],
+            expected_netplan["network"]["ethernets"]["eth1"],
+        )
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            "network": {
+                "version": 1,
+                "config": [
+                    {
+                        "id": "eth0",
+                        "mac_address": "00:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth0",
+                        "subnets": [{"type": "dhcp4"}],
+                        "type": "physical",
+                    },
+                    {
+                        "id": "eth1",
+                        "mac_address": "02:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth1",
+                        "subnets": [{"type": "dhcp4"}],
+                        "type": "physical",
+                    },
+                ],
+            }
+        }
+        self.assertCountEqual(v1, expected_v1)
 
     def test_ha__default_dns(self):
         node = factory.make_Node()
@@ -1884,6 +2028,7 @@ class TestNetplan(MAASServerTestCase):
 
     def test_dns_includes_rack_controllers(self):
         # Regression test for LP:1881133
+
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(dns_servers=[], vlan=vlan)
         rack = factory.make_RackController(subnet=subnet)
@@ -1891,6 +2036,11 @@ class TestNetplan(MAASServerTestCase):
         rack_ip = factory.make_StaticIPAddress(
             subnet=subnet, interface=rack_iface
         )
+
+        # this will normally try to resolve localhost against the system,
+        # this is a problem if the host has IPv6 but no localhost entry for v6
+        self.patch(Node, "get_default_dns_servers").return_value = [rack_ip.ip]
+
         vlan.primary_rack = rack
         vlan.save()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1923,7 +2073,7 @@ class TestNetplan(MAASServerTestCase):
         factory.make_StaticIPAddress(subnet=subnet, interface=iface)
         v2 = self._render_netplan_dict(node)
         self.assertDictEqual(
-            {"search": ["maas"], "addresses": [nameserver]},
+            {"addresses": [nameserver]},
             v2["network"]["ethernets"][iface.name]["nameservers"],
         )
 
@@ -1956,6 +2106,11 @@ class TestNetplan(MAASServerTestCase):
     def test_commissioning_dhcp_config(self):
         # Verifies dhcp config is given when commissioning has run
         # or just run and no AUTOIP has been acquired.
+
+        # this will normally try to resolve localhost against the system,
+        # this is a problem if the host has IPv6 but no localhost entry for v6
+        self.patch(Node, "get_default_dns_servers").return_value = ["10.0.0.1"]
+
         subnet = factory.make_Subnet(dns_servers=[])
         subnet_ver = subnet.get_ipnetwork().version
         node = factory.make_Node_with_Interface_on_Subnet(
