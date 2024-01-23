@@ -20,10 +20,10 @@ ZoneTable = Table(
     "maasserver_zone",
     METADATA,
     Column("id", BigInteger, primary_key=True, unique=True),
+    Column("name", String(256), nullable=False, unique=True),
+    Column("description", Text, nullable=False),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(256), nullable=False),
-    Column("description", Text, nullable=False),
 )
 
 UserTable = Table(

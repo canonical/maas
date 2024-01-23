@@ -2,12 +2,14 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.api.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
@@ -45,6 +47,34 @@ class ZonesHandler(Handler):
                 for zone in zones.items
             ],
             total=zones.total,
+        )
+
+    @handler(
+        path="/zones",
+        methods=["POST"],
+        tags=TAGS,
+        responses={
+            201: {
+                "model": ZoneResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            409: {"model": ConflictBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+    )
+    async def create_zone(
+        self,
+        response: Response,
+        zone_request: ZoneRequest,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        zone = await services.zones.create(zone_request)
+        response.headers["ETag"] = zone.etag()
+        return zone.to_response(
+            self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/zones"
         )
 
     @handler(

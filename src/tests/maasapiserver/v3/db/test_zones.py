@@ -1,9 +1,12 @@
+from datetime import datetime, timezone
 from math import ceil
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.models.exceptions import AlreadyExistsException
 from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.db.zones import ZonesRepository
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.fixtures.factories.zones import create_test_zone
@@ -12,6 +15,36 @@ from tests.maasapiserver.fixtures.factories.zones import create_test_zone
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestZonesRepository:
+    async def test_create(self, db_connection: AsyncConnection) -> None:
+        now = datetime.utcnow()
+        zones_dao = ZonesRepository(db_connection)
+        created_zone = await zones_dao.create(
+            ZoneRequest(name="my_zone", description="my description")
+        )
+        assert created_zone.id > 1
+        assert created_zone.name == "my_zone"
+        assert created_zone.description == "my description"
+        assert created_zone.created.astimezone(timezone.utc) >= now.astimezone(
+            timezone.utc
+        )
+        assert created_zone.updated.astimezone(timezone.utc) >= now.astimezone(
+            timezone.utc
+        )
+
+    async def test_create_duplicated(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        zones_dao = ZonesRepository(db_connection)
+        created_zone = await create_test_zone(fixture)
+
+        with pytest.raises(AlreadyExistsException):
+            await zones_dao.create(
+                ZoneRequest(
+                    name=created_zone.name,
+                    description=created_zone.description,
+                )
+            )
+
     async def test_find_by_id(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
