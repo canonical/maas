@@ -7,15 +7,27 @@
 from operator import xor
 
 from piston3.authentication import OAuthAuthentication, send_oauth_error
-from piston3.oauth import OAuthError
+from piston3.oauth import OAuthError, OAuthMissingParam
 from piston3.utils import rc
 
-from maasserver.exceptions import Unauthorized
+from maasserver.exceptions import MAASAPIBadRequest, Unauthorized
 from maasserver.macaroon_auth import (
     MacaroonAPIAuthentication,
     validate_user_external_auth,
 )
 from maasserver.models.user import SYSTEM_USERS
+
+
+class OAuthBadRequest(MAASAPIBadRequest):
+    """BadRequest error for OAuth signed requests with invalid parameters."""
+
+    def __init__(self, error):
+        super().__init__()
+        self.error = error
+        self.error.message = f"Bad Request: {error.message}"
+
+    def __str__(self):
+        return repr(self.error.message)
 
 
 class OAuthUnauthorized(Unauthorized):
@@ -62,6 +74,8 @@ class MAASAPIAuthentication(OAuthAuthentication):
                 consumer, token, parameters = self.validate_token(request)
             except OAuthError as error:
                 raise OAuthUnauthorized(error)
+            except OAuthMissingParam as error:
+                raise OAuthBadRequest(error)
 
             if consumer and token:
                 user = token.user

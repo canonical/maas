@@ -11,7 +11,11 @@ from django.contrib.auth.models import AnonymousUser
 from piston3 import oauth
 
 from maasserver.api import auth as api_auth
-from maasserver.api.auth import MAASAPIAuthentication, OAuthUnauthorized
+from maasserver.api.auth import (
+    MAASAPIAuthentication,
+    OAuthBadRequest,
+    OAuthUnauthorized,
+)
 from maasserver.middleware import ExternalAuthInfo
 from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
@@ -162,5 +166,16 @@ class TestOAuthUnauthorized(MAASTestCase):
         maas_exception = OAuthUnauthorized(original_exception)
         self.assertIn(
             "Authorization Error: Invalid API key.",
+            str(maas_exception),
+        )
+
+
+class TestOAuthBadRequest(MAASTestCase):
+    def test_exception_unicode_includes_original_failure_message(self):
+        error_msg = factory.make_name("error-message")
+        original_exception = oauth.OAuthMissingParam(error_msg)
+        maas_exception = OAuthBadRequest(original_exception)
+        self.assertIn(
+            f"Bad Request: {error_msg}",
             str(maas_exception),
         )
