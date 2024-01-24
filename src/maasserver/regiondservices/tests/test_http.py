@@ -87,7 +87,7 @@ class TestRegionHTTPService(
         cert = get_sample_cert_with_cacerts()
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
-        boot_resources_dir = f"{data_path}/boot-resources"
+        boot_resources_dir = f"{data_path}/image-storage"
         http.REGIOND_SOCKET_PATH = f"{data_path}/maas-regiond-webapp.sock"
 
         tempdir = self.make_dir()
@@ -128,8 +128,7 @@ class TestRegionHTTPService(
             },
         )
         http.REGIOND_SOCKET_PATH = "/snap/maas/maas-regiond-webapp.sock"
-
-        boot_resources_dir = f"{os.getenv('MAAS_DATA')}/boot-resources"
+        boot_resources_dir = f"{os.getenv('MAAS_DATA')}/image-storage"
 
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"

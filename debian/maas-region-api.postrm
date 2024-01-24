@@ -23,6 +23,10 @@ case "$1" in
         # Remove libgdir related files
         rm -rf /var/lib/maas/media
 
+        # Remove image storage
+        rm -rf /var/lib/maas/boot-resources
+        rm -rf /var/lib/maas/image-storage
+
         # Delete symlink
         if [ -L /etc/squid-deb-proxy/mirror-dstdomain.acl.d/99-maas ]; then
             rm -rf /etc/squid-deb-proxy/mirror-dstdomain.acl.d/99-maas

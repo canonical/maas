@@ -633,7 +633,7 @@ class TestClusterConfiguration(MAASTestCase):
 
     def test_default_tftp_root(self):
         config = ClusterConfiguration({})
-        self.assertTrue(config.tftp_root.endswith("boot-resources/current"))
+        self.assertTrue(config.tftp_root.endswith("tftp_root"))
 
     def test_set_and_get_tftp_root(self):
         config = ClusterConfiguration({})

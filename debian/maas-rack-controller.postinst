@@ -41,6 +41,11 @@ configure_libdir() {
     if [ -S /var/lib/maas/dhcpd.sock ]; then
         chown maas:maas /var/lib/maas/dhcpd.sock
     fi
+
+    if [ -d /var/lib/maas/tftp_root ]; then
+        chown maas:maas /var/lib/maas/tftp_root
+    fi
+
 }
 
 extract_cluster_uuid(){

@@ -40,7 +40,7 @@ class LocalStoreLockException(Exception):
 
 
 def get_bootresource_store_path() -> Path:
-    return Path(get_maas_data_path("boot-resources"))
+    return Path(get_maas_data_path("image-storage"))
 
 
 class MMapedLocalFile(mmap.mmap):

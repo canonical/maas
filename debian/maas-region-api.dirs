@@ -1,5 +1,5 @@
 etc/bind/maas
 var/lib/bind/maas
-var/lib/maas/boot-resources
+var/lib/maas/image-storage
 var/lib/maas/prometheus
 var/lib/maas/temporal

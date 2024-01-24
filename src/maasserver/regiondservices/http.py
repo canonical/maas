@@ -21,6 +21,7 @@ from maasserver.models.config import Config
 from maasserver.regiondservices import certificate_expiration_check
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
+from maasserver.utils.bootresource import get_bootresource_store_path
 from maasserver.utils.threads import deferToDatabase
 from maasserver.workers import WorkersService
 from provisioningserver.certificates import Certificate
@@ -100,7 +101,7 @@ class RegionHTTPService(Service):
             "worker_socket_paths": RegionHTTPService.worker_socket_paths(),
             "apiserver_socket_path": apiserver_socket_path,
             "static_dir": str(get_root_path() / "usr/share/maas"),
-            "boot_resources_dir": get_maas_data_path("boot-resources"),
+            "boot_resources_dir": str(get_bootresource_store_path()),
         }
         rendered = template.substitute(environ).encode()
         target_path = Path(compose_http_config_path("regiond.nginx.conf"))

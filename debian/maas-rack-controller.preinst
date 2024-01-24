@@ -51,6 +51,11 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
     if [ -d /etc/maas/templates/dhcp ]; then
         mv /etc/maas/templates/dhcp /etc/maas/templates/dhcp.maas-old
     fi
+
+    if [ -d /var/lib/maas/boot-resources ]; then
+        rm -rf /var/lib/maas/boot-resources
+    fi
+
 fi
 
 if [ "$1" = "upgrade" ]; then

@@ -26,7 +26,7 @@ def maas_data_dir(mocker, tmpdir):
 
 @pytest.fixture
 def image_store_dir(mocker, maas_data_dir):
-    store = Path(maas_data_dir) / "boot-resources"
+    store = Path(maas_data_dir) / "image-storage"
     store.mkdir()
     yield store
     shutil.rmtree(store)

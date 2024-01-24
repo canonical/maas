@@ -37,7 +37,11 @@ configure_libdir() {
     fi
 
     if [ -d /var/lib/maas/temporal ]; then
-	chown maas:maas /var/lib/maas/temporal
+        chown maas:maas /var/lib/maas/temporal
+    fi
+
+    if [ -d /var/lib/maas/image-storage ]; then
+        chown maas:maas /var/lib/maas/image-storage
     fi
 }
 

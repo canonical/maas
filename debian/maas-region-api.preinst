@@ -42,6 +42,10 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
         rm -rf /var/log/maas/apache2
     fi
 
+    if [ -d /var/lib/maas/boot-resources ]; then
+        rm -rf /var/lib/maas/boot-resources
+    fi
+
 fi
 
 # "$2" is the older version we are upgrading from. If we are upgrading from

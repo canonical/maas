@@ -1254,7 +1254,6 @@ def initialize_image_storage(region: RegionController):
     from provisioningserver.config import ClusterConfiguration
 
     target_dir = get_bootresource_store_path()
-    target_dir.mkdir(parents=True, exist_ok=True)
     bootloaders_dir = target_dir / BOOTLOADERS_DIR
 
     if bootloaders_dir.exists():

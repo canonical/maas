@@ -1,6 +1,6 @@
 etc/bind/maas
 etc/maas
 var/lib/maas
-var/lib/maas/boot-resources
+var/lib/maas/tftp_root
 var/lib/maas/prometheus
 var/log/maas

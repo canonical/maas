@@ -14,6 +14,8 @@ case "$1" in
         # remove var directories provided it will always have files
         # not installed or tracked by packaging
         rm -rf /var/lib/maas/boot-resources
+        rm -rf /var/lib/maas/tftp_root
+        rm -rf /var/cache/maas
 
         # remove files that were created by the rack controller
         rm -rf /var/lib/maas/dhcpd.sock

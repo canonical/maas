@@ -790,7 +790,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         DirectoryString(
             # Don't validate values that are already stored.
             accept_python=True,
-            if_missing=get_maas_data_path("boot-resources/current"),
+            if_missing=get_maas_data_path("tftp_root"),
         ),
     )
 

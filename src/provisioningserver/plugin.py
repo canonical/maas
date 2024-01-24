@@ -236,12 +236,8 @@ class ProvisioningServiceMaker:
             tftp_root = config.tftp_root
             tftp_port = config.tftp_port
 
-        from provisioningserver.boot import (
-            clean_old_boot_resources,
-            install_boot_method_templates,
-        )
+        from provisioningserver.boot import install_boot_method_templates
 
-        clean_old_boot_resources(tftp_root)
         install_boot_method_templates(tftp_root)
 
         from provisioningserver import services

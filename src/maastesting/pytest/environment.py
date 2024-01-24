@@ -27,7 +27,7 @@ def setup_testenv(monkeypatch, tmpdir):
     monkeypatch.setenv("MAAS_ROOT", str(maas_root))
     monkeypatch.setenv("MAAS_DATA", str(maas_data))
 
-    res_store = maas_data.join("boot-resources")
+    res_store = maas_data.join("image-storage")
     res_store.mkdir()
 
     # copy all package files into the run dir

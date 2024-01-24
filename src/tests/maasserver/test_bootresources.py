@@ -36,22 +36,23 @@ def maas_data_dir(mocker, tmpdir):
 
 
 @pytest.fixture
-def image_store_dir(mocker, maas_data_dir):
-    store = Path(maas_data_dir) / "boot-resources"
+def image_store_dir(maas_data_dir):
+    store = Path(maas_data_dir) / "image-storage"
     store.mkdir()
     yield store
     shutil.rmtree(store)
 
 
 @pytest.fixture
-def tftp_root(mocker, image_store_dir, tmpdir):
-    tftp_root = Path(image_store_dir) / "tftp_root"
+def tftp_root(mocker, maas_data_dir, tmpdir):
+    tftp_root = Path(maas_data_dir) / "tftp_root"
     tftp_root.mkdir(parents=True)
     config = Path(tmpdir) / Path(ClusterConfiguration.DEFAULT_FILENAME).name
     with ClusterConfiguration.open_for_update(config) as cfg:
         cfg.tftp_root = str(tftp_root)
     mocker.patch.dict(os.environ, {"MAAS_CLUSTER_CONFIG": str(config)})
     yield tftp_root
+    shutil.rmtree(tftp_root)
 
 
 def list_files(base_path):

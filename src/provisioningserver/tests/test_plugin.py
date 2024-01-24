@@ -74,7 +74,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.useFixture(ClusterConfigurationFixture())
+        tftp_root = self.make_dir()
+        self.useFixture(ClusterConfigurationFixture(tftp_root=tftp_root))
         self.patch(provisioningserver, "services", MultiService())
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")

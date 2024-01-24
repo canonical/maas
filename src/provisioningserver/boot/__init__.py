@@ -9,8 +9,6 @@ from errno import ENOENT
 from functools import lru_cache
 from io import BytesIO
 import os
-from pathlib import Path
-import shutil
 from typing import Dict
 
 import tempita
@@ -25,7 +23,6 @@ from provisioningserver.kernel_opts import (
     KernelParameters,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.path import get_maas_data_path
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import locate_template, tftp
@@ -34,7 +31,6 @@ from provisioningserver.utils.network import (
     find_mac_via_arp,
 )
 from provisioningserver.utils.registry import Registry
-from provisioningserver.utils.snap import get_snap_mode
 from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("bootloaders")
@@ -364,19 +360,6 @@ builtin_boot_methods = [
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)
-
-
-def clean_old_boot_resources(tftp_root: str):
-    if get_snap_mode() not in ["region", "region+rack"]:
-        path = Path(get_maas_data_path("boot-resources"))
-        if path.exists():
-            shutil.rmtree(path)
-
-    # create new TFTP root dir
-    tftp_path = Path(tftp_root)
-    if tftp_path.is_symlink():
-        tftp_path.unlink()
-    tftp_path.mkdir(parents=True, exist_ok=True)
 
 
 def install_boot_method_templates(tftp_root: str):
