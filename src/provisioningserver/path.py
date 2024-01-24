@@ -79,6 +79,14 @@ def get_maas_lock_path() -> Path:
     return path
 
 
+def get_maas_run_path() -> Path:
+    """Return a path for run directory."""
+    path = Path("/run/maas")
+    if name := getenv("SNAP_INSTANCE_NAME"):
+        path = Path(f"/run/snap.{name}")
+    return path
+
+
 def get_path(*path_elements):
     """Return an absolute path based on the `MAAS_PATH` environment variable.
 

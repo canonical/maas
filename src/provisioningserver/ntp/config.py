@@ -7,16 +7,20 @@
 from contextlib import nullcontext
 from functools import partial
 from itertools import dropwhile, groupby
+import os
 from os.path import exists
 import re
 
 from netaddr import AddrFormatError, IPAddress
 
-from provisioningserver.path import get_data_path
+from provisioningserver.path import get_data_path, get_maas_run_path
 from provisioningserver.utils.fs import sudo_write_file
 
 _NTP_CONF_NAME = "chrony/chrony.conf"
 _NTP_MAAS_CONF_NAME = "chrony/maas.conf"
+_NTP_SOCK_NAME = "chrony/chronyd.sock"
+_NTP_PID_NAME = "chrony/chronyd.pid"
+_NTP_DIR_NAME = "chrony"
 
 
 def configure(servers, peers, offset):
@@ -127,6 +131,13 @@ def _render_ntp_maas_conf(servers, peers, offset):
     # be nice to limit this similarly to how we do proxy. (see
     # https://chrony.tuxfamily.org/doc/3.2/chrony.conf.html)
     lines.append("allow")
+
+    if "SNAP" in os.environ:
+        run_dir = get_maas_run_path()
+        lines.append(f"dumpdir {run_dir / _NTP_DIR_NAME}")
+        lines.append(f"pidfile {run_dir / _NTP_PID_NAME}")
+        lines.append(f"bindcmdaddress {run_dir / _NTP_SOCK_NAME}")
+
     lines.append("")  # Add newline at end.
     return "\n".join(lines)
 
