@@ -25,6 +25,10 @@ const (
 var (
 	// ErrNotIP is an error for when the received config is not an IP
 	ErrNotIP = errors.New("the given address is not an IP")
+
+	// ErrNoConfiguredOrigins is an error for when there are no region IPs suitable for this
+	// maas-agent to proxy to
+	ErrNoConfiguredOrigins = errors.New("there are no origins suitable to proxy to")
 )
 
 type configureHTTPProxyParam struct {
@@ -125,6 +129,10 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 				}
 			}
 		}
+	}
+
+	if len(originOpts) == 0 {
+		return ErrNoConfiguredOrigins
 	}
 
 	bootloaderRegistry := imagecache.NewBootloaderRegistry(nil, "")

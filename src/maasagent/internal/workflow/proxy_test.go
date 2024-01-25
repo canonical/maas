@@ -129,6 +129,23 @@ func TestHTTPProxyConfiguratorConfigureHTTPProxy(t *testing.T) {
 				},
 			},
 		},
+		"no-matching-origins": {
+			NumCalls: 1,
+			Params: []configureHTTPProxyParam{
+				{
+					Endpoints: []struct {
+						Endpoint string
+						Subnet   string
+					}{
+						{
+							Endpoint: "http://1.1.1.1:5240/MAAS",
+							Subnet:   "1.1.1.1/32",
+						},
+					},
+				},
+			},
+			Err: ErrNoConfiguredOrigins,
+		},
 	}
 
 	for tname, tcase := range table {
@@ -169,6 +186,12 @@ func TestHTTPProxyConfiguratorConfigureHTTPProxy(t *testing.T) {
 			for i := 0; i < tcase.NumCalls; i++ {
 				err = configurator.ConfigureHTTPProxy(ctx, tcase.Params[i])
 				if err != nil {
+					if tcase.Err != nil {
+						assert.ErrorIs(tt, err, tcase.Err)
+						cancel()
+						return
+					}
+
 					tt.Fatal(err)
 				}
 
