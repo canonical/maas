@@ -22,7 +22,7 @@ class GetRackControllerInput:
     system_id: str
 
 
-class ConfigureWorkerPoolActivity(MAASAPIClient):
+class ConfigureAgentActivity(MAASAPIClient):
     @activity.defn(name="get-rack-controller")
     async def get_rack_controller(self, input: GetRackControllerInput):
         url = f"{self.url}/api/2.0/rackcontrollers/{input.system_id}/"
@@ -35,7 +35,7 @@ class ConfigureWorkerPoolActivity(MAASAPIClient):
 
 
 @dataclass
-class ConfigureWorkerPoolInput:
+class ConfigureAgentInput:
     system_id: str
     task_queue: str
 
@@ -48,11 +48,11 @@ def _format_endpoint(ip: str) -> str:
 
 
 @workflow.defn(name="configure-agent", sandboxed=False)
-class ConfigureWorkerPoolWorkflow:
-    """A ConfigureWorkerPool workflow to setup MAAS Agent workers"""
+class ConfigureAgentWorkflow:
+    """A ConfigureAgent workflow to setup MAAS Agent"""
 
     @workflow.run
-    async def run(self, input: ConfigureWorkerPoolInput) -> None:
+    async def run(self, input: ConfigureAgentInput) -> None:
         region_controllers = await workflow.execute_activity(
             "get-region-controllers",
             start_to_close_timeout=DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT,

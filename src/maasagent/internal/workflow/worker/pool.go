@@ -82,7 +82,7 @@ func NewWorkerPool(systemID string, client client.Client,
 
 	for k, configurator := range pool.configurators {
 		pool.main.RegisterActivityWithOptions(
-			configurator.CreateConfigActivity(),
+			configurator.Configure(),
 			activity.RegisterOptions{
 				Name: fmt.Sprintf("configure-%s", k),
 			},

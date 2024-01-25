@@ -204,8 +204,8 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 	return err
 }
 
-// CreateConfigActivity provides Configurator behaviour for the HTTP proxy
-func (p *HTTPProxyConfigurator) CreateConfigActivity() interface{} {
+// Configure provides Configurator behaviour for the HTTP proxy
+func (p *HTTPProxyConfigurator) Configure() interface{} {
 	return p.ConfigureHTTPProxy
 }
 

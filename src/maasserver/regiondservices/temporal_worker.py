@@ -32,8 +32,8 @@ from maasserver.workflow.bootresource import (
 )
 from maasserver.workflow.commission import CommissionNWorkflow
 from maasserver.workflow.configure import (
-    ConfigureWorkerPoolActivity,
-    ConfigureWorkerPoolWorkflow,
+    ConfigureAgentActivity,
+    ConfigureAgentWorkflow,
 )
 from maasserver.workflow.deploy import DeployNWorkflow
 from maasserver.workflow.power import PowerManyWorkflow
@@ -88,7 +88,7 @@ class TemporalWorkerService(Service):
         user_agent = yield deferToDatabase(get_maas_user_agent)
         maas_id = MAAS_ID.get()
 
-        configure_activity = ConfigureWorkerPoolActivity(
+        configure_activity = ConfigureAgentActivity(
             url=maas_url,
             token=token,
             user_agent=user_agent,
@@ -120,7 +120,7 @@ class TemporalWorkerService(Service):
             Worker(
                 workflows=[
                     # Configuration workflows
-                    ConfigureWorkerPoolWorkflow,
+                    ConfigureAgentWorkflow,
                     # Boot resources workflows
                     CleanupBootResourceWorkflow,
                     DeleteBootResourceWorkflow,
