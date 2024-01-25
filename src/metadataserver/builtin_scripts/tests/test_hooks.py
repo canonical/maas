@@ -3805,6 +3805,140 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             },
         )
 
+    def test_condenses_luns_jbod(self):
+        node = factory.make_Node()
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        expander1 = f"pci-0000:81:00.0-sas-exp0x{factory.make_hex_string(16)}"
+        expander2 = f"pci-0000:81:00.0-sas-exp0x{factory.make_hex_string(16)}"
+        lun1_model = factory.make_name("lun1_model")
+        lun1_size = 1024**3 * random.randint(5, 100)
+        lun1_block_size = random.choice([512, 1024, 4096])
+        lun1_firmware_version = factory.make_name("lun1_firmware_version")
+        lun1_serial = factory.make_name("lun1_serial")
+        lun2_model = factory.make_name("lun2_model")
+        lun2_size = 1024**3 * random.randint(5, 100)
+        lun2_block_size = random.choice([512, 1024, 4096])
+        lun2_firmware_version = factory.make_name("lun2_firmware_version")
+        lun2_serial = factory.make_name("lun2_serial")
+        resources["storage"]["disks"] = [
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": lun1_model,
+                "type": "scsi",
+                "read_only": False,
+                "size": lun1_size,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"{expander1}-phy2-lun-0",
+                "block_size": lun1_block_size,
+                "firmware_version": lun1_firmware_version,
+                "rpm": 0,
+                "serial": lun1_serial,
+                "device_id": "",
+                "partitions": [],
+            },
+            {
+                "id": "sdb",
+                "device": "8:16",
+                "model": lun2_model,
+                "type": "scsi",
+                "read_only": False,
+                "size": lun2_size,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"{expander1}-phy5-lun-0",
+                "block_size": lun2_block_size,
+                "firmware_version": lun2_firmware_version,
+                "rpm": 0,
+                "serial": lun2_serial,
+                "device_id": "",
+                "partitions": [],
+            },
+            {
+                "id": "sdc",
+                "device": "8:112",
+                "model": lun1_model,
+                "type": "scsi",
+                "read_only": False,
+                "size": lun1_size,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"{expander2}-phy2-lun-0",
+                "block_size": lun1_block_size,
+                "firmware_version": lun1_firmware_version,
+                "rpm": 0,
+                "serial": lun1_serial,
+                "device_id": "scsi-LUN1",
+                "partitions": [],
+            },
+            {
+                "id": "sdd",
+                "device": "8:118",
+                "model": lun2_model,
+                "type": "scsi",
+                "read_only": False,
+                "size": lun2_size,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"{expander2}-phy5-lun-0",
+                "block_size": lun2_block_size,
+                "firmware_version": lun2_firmware_version,
+                "rpm": 0,
+                "serial": lun2_serial,
+                "device_id": "scsi-LUN2",
+                "partitions": [],
+            },
+        ]
+
+        _update_node_physical_block_devices(
+            node, resources, create_numa_nodes(node)
+        )
+
+        self.assertEqual(2, node.physicalblockdevice_set.count())
+        sda = node.physicalblockdevice_set.get(name="sda")
+        self.assertEqual(
+            {
+                "model": lun1_model,
+                "serial": lun1_serial,
+                "id_path": "/dev/disk/by-id/scsi-LUN1",
+                "size": lun1_size,
+                "block_size": lun1_block_size,
+                "firmware_version": lun1_firmware_version,
+                "tags": ["multipath"],
+            },
+            {
+                "model": sda.model,
+                "serial": sda.serial,
+                "id_path": sda.id_path,
+                "size": sda.size,
+                "block_size": sda.block_size,
+                "firmware_version": sda.firmware_version,
+                "tags": sda.tags,
+            },
+        )
+        sdb = node.physicalblockdevice_set.get(name="sdb")
+        self.assertEqual(
+            {
+                "model": lun2_model,
+                "serial": lun2_serial,
+                "id_path": "/dev/disk/by-id/scsi-LUN2",
+                "size": lun2_size,
+                "block_size": lun2_block_size,
+                "firmware_version": lun2_firmware_version,
+                "tags": ["multipath"],
+            },
+            {
+                "model": sdb.model,
+                "serial": sdb.serial,
+                "id_path": sdb.id_path,
+                "size": sdb.size,
+                "block_size": sdb.block_size,
+                "firmware_version": sdb.firmware_version,
+                "tags": sdb.tags,
+            },
+        )
+
     def test_no_condense_luns_different_serial(self):
         node = factory.make_Node()
         resources = deepcopy(SAMPLE_LXD_RESOURCES)
