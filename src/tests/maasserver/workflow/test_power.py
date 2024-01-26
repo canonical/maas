@@ -8,8 +8,10 @@ from maasserver.workflow import power as power_workflow
 from maasserver.workflow.power import (
     convert_power_action_to_power_workflow,
     get_temporal_task_queue_for_bmc,
-    PowerManyParam,
-    PowerParam,
+    PowerCycleParam,
+    PowerOffParam,
+    PowerOnParam,
+    PowerQueryParam,
     UnknownPowerActionException,
     UnroutablePowerWorkflowException,
 )
@@ -72,7 +74,12 @@ class TestGetTemporalQueueForMachine:
         assert queue == f"{rack.system_id}@agent"
 
     def test_convert_power_action_to_power_workflow(self, factory, mocker):
-        power_actions = ["power_on", "power_off", "power_query", "power_cycle"]
+        power_actions = {
+            "power_on": PowerOnParam,
+            "power_off": PowerOffParam,
+            "power_query": PowerQueryParam,
+            "power_cycle": PowerCycleParam,
+        }
         machine = factory.make_Machine()
         params = namedtuple("params", ["power_type", "power_parameters"])(
             {}, {}
@@ -83,25 +90,20 @@ class TestGetTemporalQueueForMachine:
         )
         mocked_get_temporal_task_queue_for_bmc.return_value = "agent:vlan-1"
 
-        for power_action in power_actions:
+        for power_action, param in power_actions.items():
             (
                 workfow_type,
                 workflow_param,
             ) = convert_power_action_to_power_workflow(
-                power_action, machine, params
+                power_action.replace("_", "-"), machine, params
             )
 
-            assert workfow_type == "power-many"
-            assert workflow_param == PowerManyParam(
-                action=power_action.replace("_", "-"),
-                params=[
-                    PowerParam(
-                        system_id=machine.system_id,
-                        task_queue="agent:vlan-1",
-                        driver_type=params.power_type,
-                        driver_opts=params.power_parameters,
-                    )
-                ],
+            assert workfow_type == power_action.replace("_", "-")
+            assert workflow_param == power_actions[power_action](
+                system_id=machine.system_id,
+                task_queue="agent:vlan-1",
+                driver_type=params.power_type,
+                driver_opts=params.power_parameters,
             )
 
     def test_convert_power_action_to_power_workflow_fail_unknown(

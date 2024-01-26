@@ -6033,17 +6033,17 @@ class Node(CleanSave, TimestampedModel):
                 d.addCallback(
                     lambda _: deferToDatabase(
                         convert_power_action_to_power_workflow,
-                        power_method_name,
+                        power_method_name.replace("_", "-"),
                         self,
                         power_info,
                     ),
                 )
 
                 def exec_power_workflow(workflow_info):
-                    workflow_name, workflow_params = workflow_info
+                    workflow_name, workflow_param = workflow_info
                     return execute_workflow(
                         workflow_name,
-                        params=workflow_params,
+                        param=workflow_param,
                     )
 
                 d.addCallback(exec_power_workflow)
@@ -6051,8 +6051,6 @@ class Node(CleanSave, TimestampedModel):
                 def _handle_workflow_result(result):
                     if result:
                         # workflow assumes bulk execution, return only result
-                        if type(result) is list:
-                            return result[0]
                         return result
                     else:
                         return {"state": POWER_STATE.UNKNOWN}

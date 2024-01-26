@@ -23,7 +23,7 @@ class CommissionNWorkflow:
             await workflow.execute_child_workflow(
                 "commission",
                 param,
-                id=f"commission-{param.system_id}",
+                id=f"commission:{param.system_id}",
                 task_queue=param.queue,
                 retry_policy=RetryPolicy(maximum_attempts=5),
             )

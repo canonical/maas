@@ -40,7 +40,7 @@ class BootResourceFileManager(Manager):
         if not qs.exists():
             execute_workflow(
                 "delete-bootresource",
-                f"bootresource-del-{rfile.id}",
+                f"bootresource-del:{rfile.id}",
                 ResourceDeleteParam(files=[rfile.sha256]),
             )
         rfile.bootresourcefilesync_set.all().delete()
@@ -56,7 +56,7 @@ class BootResourceFileManager(Manager):
         if to_remove:
             execute_workflow(
                 "delete-bootresource",
-                params=ResourceDeleteParam(files=to_remove),
+                param=ResourceDeleteParam(files=to_remove),
             )
         BootResourceFileSync.objects.filter(file__in=rfile_qs).delete()
 

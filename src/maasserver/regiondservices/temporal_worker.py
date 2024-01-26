@@ -30,13 +30,17 @@ from maasserver.workflow.bootresource import (
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
 )
-from maasserver.workflow.commission import CommissionNWorkflow
 from maasserver.workflow.configure import (
     ConfigureAgentActivity,
     ConfigureAgentWorkflow,
 )
-from maasserver.workflow.deploy import DeployNWorkflow
-from maasserver.workflow.power import PowerManyWorkflow
+from maasserver.workflow.power import (
+    PowerCycleWorkflow,
+    PowerManyWorkflow,
+    PowerOffWorkflow,
+    PowerOnWorkflow,
+    PowerQueryWorkflow,
+)
 from maasserver.workflow.worker import Worker
 from provisioningserver.utils.env import MAAS_ID
 
@@ -128,11 +132,12 @@ class TemporalWorkerService(Service):
                     # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the
                     # other regions if the HA is being used.
                     DownloadBootResourceWorkflow,
-                    SyncBootResourcesWorkflow,
-                    # Lifecycle workflows
-                    DeployNWorkflow,
-                    CommissionNWorkflow,
+                    PowerOnWorkflow,
+                    PowerOffWorkflow,
+                    PowerCycleWorkflow,
+                    PowerQueryWorkflow,
                     PowerManyWorkflow,
+                    SyncBootResourcesWorkflow,
                 ],
                 activities=[
                     # Configuration activities

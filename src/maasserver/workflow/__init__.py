@@ -12,18 +12,6 @@ from twisted.internet.defer import Deferred, succeed
 
 from maasserver.eventloop import services
 from maasserver.regiondservices.temporal_worker import TemporalWorkerService
-from maasserver.workflow.bootresource import (
-    DeleteBootResourceWorkflow,
-    DownloadBootResourceWorkflow,
-    ResourceDeleteParam,
-    ResourceDownloadParam,
-    SyncBootResourcesWorkflow,
-)
-from maasserver.workflow.power import (
-    PowerManyParam,
-    PowerManyWorkflow,
-    PowerParam,
-)
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
 from provisioningserver.utils.twisted import asynchronous, FOREVER
 
@@ -70,7 +58,7 @@ def temporal_wrapper(func):
 async def execute_workflow(
     workflow_name: str,
     workflow_id: Optional[str] = None,
-    params: Optional[Any] = None,
+    param: Optional[Any] = None,
     task_queue: Optional[str] = REGION_TASK_QUEUE,
     **kwargs,
 ) -> Optional[Any]:
@@ -81,7 +69,7 @@ async def execute_workflow(
         kwargs["execution_timeout"] = timedelta(minutes=60)
     result = await temporal_client.execute_workflow(
         workflow_name,
-        params,
+        param,
         id=workflow_id,
         task_queue=task_queue,
         **kwargs,
@@ -98,20 +86,3 @@ async def cancel_workflow(workflow_id: str) -> bool:
         return True
     except RPCError:
         return False
-
-
-__all__ = [
-    "cancel_workflow",
-    "DeleteBootResourceWorkflow",
-    "DownloadBootResourceWorkflow",
-    "execute_workflow",
-    "PowerManyParam",
-    "PowerManyWorkflow",
-    "PowerParam",
-    "REGION_TASK_QUEUE",
-    "ResourceDeleteParam",
-    "ResourceDownloadParam",
-    "run_in_temporal_eventloop",
-    "SyncBootResourcesWorkflow",
-    "temporal_wrapper",
-]

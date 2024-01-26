@@ -6274,7 +6274,7 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
+            "state": "on",
         }
 
         client = Mock()
@@ -6332,7 +6332,7 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
+            "state": "on",
         }
 
         client = Mock()
@@ -10097,7 +10097,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
+            "state": "on",
         }
 
         yield node._power_control_node(d, "power_query", power_info)
@@ -10207,7 +10207,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
+            "state": "on",
         }
 
         yield node._power_control_node(d, "power_query", power_info)
@@ -10277,7 +10277,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": new_power_state
+            "state": new_power_state,
         }
 
         # Mock the confirm power driver check, we check in the test to make
@@ -10375,7 +10375,7 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
 
         self.patch(workflow_module, "temporal_wrapper")
         self.patch(node_module, "execute_workflow").return_value = {
-            "state": "on"
+            "state": "on",
         }
 
         yield node._power_control_node(

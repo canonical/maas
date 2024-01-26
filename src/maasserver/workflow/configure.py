@@ -80,13 +80,12 @@ class ConfigureAgentWorkflow:
                 "task_queue": f"{input.system_id}@agent",
                 "workflows": [
                     "check-ip",
+                ],
+                "activities": [
                     "power-query",
                     "power-cycle",
                     "power-on",
                     "power-off",
-                ],
-                "activities": [
-                    "power",
                 ],
             },
         )
@@ -103,13 +102,12 @@ class ConfigureAgentWorkflow:
                     "task_queue": f"agent:vlan-{vlan_id}",
                     "workflows": [
                         "check-ip",
+                    ],
+                    "activities": [
                         "power-query",
                         "power-cycle",
                         "power-on",
                         "power-off",
-                    ],
-                    "activities": [
-                        "power",
                     ],
                 }
                 for vlan_id in vlan_ids

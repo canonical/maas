@@ -101,13 +101,12 @@ func Run() int {
 
 	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
 		worker.WithAllowedWorkflows(map[string]interface{}{
-			"check-ip":    wf.CheckIP,
+			"check-ip": wf.CheckIP,
+		}), worker.WithAllowedActivities(map[string]interface{}{
 			"power-on":    wf.PowerOn,
 			"power-off":   wf.PowerOff,
-			"power-query": wf.PowerQuery,
 			"power-cycle": wf.PowerCycle,
-		}), worker.WithAllowedActivities(map[string]interface{}{
-			"power": wf.PowerActivity,
+			"power-query": wf.PowerQuery,
 		}),
 		worker.WithControlPlaneTaskQueueName("region"),
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),

@@ -1182,7 +1182,7 @@ def process_lxd_results(node, output, exit_status):
         if new_vlans != old_vlans:
             execute_workflow(
                 "configure-agent",
-                params={
+                param={
                     "system_id": node.system_id,
                     "task_queue": f"{node.system_id}@agent:main",
                 },
