@@ -75,6 +75,11 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 		log = maaslog.NewZerologAdapter(zlog.Nop())
 	}
 
+	if len(param.Endpoints) == 0 {
+		log.Debug("received an empty list of origins from the region")
+		return ErrNoConfiguredOrigins
+	}
+
 	var (
 		originOpts []httpproxy.ProxyOption
 		groupOpts  []httpproxy.ProxyGroupOption
@@ -116,6 +121,8 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 				return ErrNotIP
 			}
 
+			log.Debug(fmt.Sprintf("finding matching endpoints for agent IPs %s", ip))
+
 			for _, endpoint := range param.Endpoints {
 				var subnet *net.IPNet
 
@@ -125,6 +132,7 @@ func (p *HTTPProxyConfigurator) ConfigureHTTPProxy(ctx context.Context, param co
 				}
 
 				if subnet.Contains(ip) {
+					log.Debug(fmt.Sprintf("found matching endpoint %s for agent IP %s", endpoint.Endpoint, ip))
 					originOpts = append(originOpts, httpproxy.WithOrigin(ctx, endpoint.Endpoint))
 				}
 			}
