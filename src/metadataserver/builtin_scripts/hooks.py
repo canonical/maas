@@ -49,7 +49,7 @@ from maasserver.storage_custom import (
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
-from maasserver.workflow import execute_workflow, REGION_TASK_QUEUE
+from maasserver.workflow import REGION_TASK_QUEUE, start_workflow
 from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_SYNC_ACTIONS, HARDWARE_TYPE
 from provisioningserver.events import EVENT_TYPES
@@ -1180,7 +1180,7 @@ def process_lxd_results(node, output, exit_status):
             node.current_config.interface_set.values_list("vlan", flat=True)
         )
         if new_vlans != old_vlans:
-            execute_workflow(
+            start_workflow(
                 "configure-agent",
                 param={
                     "system_id": node.system_id,

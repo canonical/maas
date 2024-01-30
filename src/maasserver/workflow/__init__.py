@@ -54,8 +54,8 @@ def temporal_wrapper(func):
     return wrapper
 
 
-@temporal_wrapper
-async def execute_workflow(
+async def _call_workflow(
+    workflow_fn: Any,
     workflow_name: str,
     workflow_id: Optional[str] = None,
     param: Optional[Any] = None,
@@ -64,10 +64,49 @@ async def execute_workflow(
 ) -> Optional[Any]:
     if not workflow_id:
         workflow_id = str(uuid.uuid4())
-    temporal_client = await get_client_async()
     if "execution_timeout" not in kwargs:
         kwargs["execution_timeout"] = timedelta(minutes=60)
-    result = await temporal_client.execute_workflow(
+    result = await workflow_fn(
+        workflow_name,
+        param,
+        id=workflow_id,
+        task_queue=task_queue,
+        **kwargs,
+    )
+    return result
+
+
+@temporal_wrapper
+async def execute_workflow(
+    workflow_name: str,
+    workflow_id: Optional[str] = None,
+    param: Optional[Any] = None,
+    task_queue: Optional[str] = REGION_TASK_QUEUE,
+    **kwargs,
+) -> Optional[Any]:
+    temporal_client = await get_client_async()
+    result = await _call_workflow(
+        temporal_client.execute_workflow,
+        workflow_name,
+        param,
+        id=workflow_id,
+        task_queue=task_queue,
+        **kwargs,
+    )
+    return result
+
+
+@temporal_wrapper
+async def start_workflow(
+    workflow_name: str,
+    workflow_id: Optional[str] = None,
+    param: Optional[Any] = None,
+    task_queue: Optional[str] = REGION_TASK_QUEUE,
+    **kwargs,
+) -> Optional[Any]:
+    temporal_client = await get_client_async()
+    result = await _call_workflow(
+        temporal_client.start_workflow,
         workflow_name,
         param,
         id=workflow_id,

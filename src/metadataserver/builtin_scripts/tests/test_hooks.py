@@ -3088,46 +3088,46 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_rack_change_triggers_configure_agent_workflow(self):
         rack = factory.make_RackController()
-        mock_execute_workflow = self.patch(hooks_module, "execute_workflow")
+        mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
         process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
-        mock_execute_workflow.assert_called_once()
+        mock_start_workflow.assert_called_once()
 
     def test_rack_no_change_doesnt_trigger_configure_agent_workflow(self):
         rack = factory.make_RackController()
-        mock_execute_workflow = self.patch(hooks_module, "execute_workflow")
+        mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
         process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
         process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
-        mock_execute_workflow.assert_called_once()
+        mock_start_workflow.assert_called_once()
 
     def test_rack_storage_change_doesnt_trigger_configure_agent_workflow(self):
         rack = factory.make_Node()
-        mock_execute_workflow = self.patch(hooks_module, "execute_workflow")
+        mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
         lxd_output["resources"]["storage"] = {}
 
         process_lxd_results(rack, json.dumps(lxd_output).encode(), 0)
-        mock_execute_workflow.assert_not_called()
+        mock_start_workflow.assert_not_called()
 
     def test_non_rack_node_change_doesnt_trigger_configure_agent_workflow(
         self,
     ):
         node = factory.make_Node()
-        mock_execute_workflow = self.patch(hooks_module, "execute_workflow")
+        mock_start_workflow = self.patch(hooks_module, "start_workflow")
 
         lxd_output = make_lxd_output()
         lxd_output["resources"]["network"]["cards"] = {}
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        mock_execute_workflow.assert_not_called()
+        mock_start_workflow.assert_not_called()
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
