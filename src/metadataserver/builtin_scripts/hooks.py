@@ -727,6 +727,32 @@ def _get_matching_block_device(block_devices, serial=None, id_path=None):
     return None
 
 
+_MP_PATH_ID = {
+    "fc": [re.compile(r"^(?P<port>\w+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$")],
+    "vmbus": [re.compile(r"^(?P<guid>\w+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$")],
+    "sas": [
+        re.compile(
+            r"^(?P<sas_addr>0x[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
+        ),
+        re.compile(
+            r"^exp0x[\da-fA-F]+-phy(?P<phy_id>(0x)?[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
+        ),
+        re.compile(
+            r"^phy(?P<phy_id>(0x)?[\da-fA-F]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
+        ),
+    ],
+    "ip": [
+        re.compile(
+            r"^[\.\-\w:]+-iscsi-(?P<target>[\.\-\w:]+)-(?P<lun>lun-(0x)?[\da-fA-F]+)$"
+        )
+    ],
+}
+
+_DEV_PATH = re.compile(
+    r"^(?P<bus>\w+)-(?P<bus_addr>[\da-fA-F:\.]+)-(?P<proto>\w+)-(?P<device>.*)$"
+)
+
+
 def _condense_luns(disks):
     """Condense disks by LUN.
 
@@ -739,46 +765,33 @@ def _condense_luns(disks):
     serial_lun_map = defaultdict(list)
     processed_disks = []
     for disk in disks:
-        # split the device path from the form "key1-value1-key2-value2..." into
-        # a dict
-        tokens = disk.get("device_path", "").split("-")
-        device_path = dict(zip(tokens[::2], tokens[1::2]))
-        # LXD does not currently give a pci_address, it's included in the
-        # device_path. Add it if it isn't there. A USB disk include the
-        # USB device and PCI device the USB controller is connected to.
-        # Ignore USB devices as they are removable which MAAS doesn't
-        # model.
-        if (
-            "pci" in device_path
-            and "usb" not in device_path
-            and "pci_address" not in disk
-        ):
-            disk["pci_address"] = device_path["pci"]
-        if device_path.get("lun") not in ("0", None) and disk.get("serial"):
-            # multipath devices have LUN different from 0
-            serial_lun_map[(disk["serial"], device_path["lun"])].append(disk)
+        dev_match = _DEV_PATH.match(disk.get("device_path", ""))
+        if dev_match is None or dev_match["proto"] == "usb":
+            processed_disks.append(disk)
+            continue
+
+        proto = dev_match["proto"]
+        device = dev_match["device"]
+
+        if dev_match["bus"] == "pci" and "pci_address" not in disk:
+            disk["pci_address"] = dev_match["bus_addr"]
+
+        if disk["serial"] and (rexp_list := _MP_PATH_ID.get(proto)):
+            for r in rexp_list:
+                if m := r.match(device):
+                    serial_lun_map[(disk["serial"], m["lun"])].append(disk)
+                    break
+            else:
+                processed_disks.append(disk)
         else:
             processed_disks.append(disk)
 
     for (serial, lun), paths in serial_lun_map.items():
-        # The first disk is usually the smallest id however doesn't usually
-        # have the device_id associated with it.
-        condensed_disk = paths[0]
-        if len(paths) > 1:
-            # Only tag a disk as multipath if it actually has multiple paths to
-            # it.
+        mpaths = sorted(paths, key=itemgetter("id"))
+        condensed_disk = mpaths[0]
+        if len(mpaths) > 1:
             condensed_disk["maas_multipath"] = True
-        for path in paths[1:]:
-            # Make sure the disk processed has the lowest id. Each path is
-            # given a name variant on a normal id. e.g sda, sdaa, sdab, sdb
-            # sdba, sdbb results in just sda and sdb for two multipath disks.
-            if path["id"] < condensed_disk["id"]:
-                condensed_disk["id"] = path["id"]
-                # The device differs per id, at least on IBM Z. MAAS doesn't
-                # use the device but keep it consistent anyway.
-                condensed_disk["device"] = path["device"]
-            # Only one path is given the device_id. Make sure the disk that
-            # is processed has it for the id_path.
+        for path in mpaths[1:]:
             if not condensed_disk.get("device_id") and path.get("device_id"):
                 condensed_disk["device_id"] = path["device_id"]
         processed_disks.append(condensed_disk)
