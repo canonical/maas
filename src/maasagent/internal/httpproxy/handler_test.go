@@ -18,7 +18,10 @@ type MockResponseWriter struct {
 }
 
 func (m *MockResponseWriter) Write(b []byte) (int, error) {
-	m.Status = http.StatusOK
+	if m.Status == 0 {
+		m.WriteHeader(http.StatusOK)
+	}
+
 	m.Body = b
 
 	return len(b), nil
@@ -57,6 +60,18 @@ func (m MockRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 			Status:     "404 Not Found",
 			StatusCode: http.StatusNotFound,
 			Request:    r,
+		}, nil
+	}
+
+	if _, ok := r.Header["Range"]; ok {
+		// If it's a partial request, make sure the status is correct at least
+		// We could return the right contents as well, but then we'd need to
+		// parts the Range header.
+		return &http.Response{
+			Status:     "206 Partial Content",
+			StatusCode: http.StatusPartialContent,
+			Request:    r,
+			Body:       MockResponseBody{body: body},
 		}, nil
 	}
 
@@ -124,6 +139,18 @@ func TestServeHTTP(t *testing.T) {
 				URL:        validURL,
 			},
 			OutStatusCode: http.StatusOK,
+		},
+		"206_PARTIAL": {
+			In: &http.Request{
+				Method:     http.MethodGet,
+				RemoteAddr: "127.0.0.1",
+				URL:        validURL,
+				Header: http.Header{
+					"Range": {"0-"},
+				},
+			},
+			OutBody:       []byte("hello, world!"),
+			OutStatusCode: http.StatusPartialContent,
 		},
 		"404_NOT_FOUND": {
 			In: &http.Request{

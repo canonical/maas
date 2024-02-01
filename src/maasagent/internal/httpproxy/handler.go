@@ -350,8 +350,6 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	copyHeaders(resp.Header, w.Header())
-
 	defer func() {
 		err = resp.Body.Close()
 		if err != nil {
@@ -359,8 +357,8 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// content-type and content-length needs to be set when coming from cache,
-	// when passed through these should be set from the origin. resp.Body is only ever
+	// When serving from cache, we need to take care of setting all the headers properly.
+	// When passed through these should be set from the origin. resp.Body is only ever
 	// of type *os.File coming from the cache regardless of whether it's added or existing
 	if f, ok := resp.Body.(*os.File); ok {
 		var info fs.FileInfo
@@ -370,18 +368,22 @@ func (p *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.handleErr(w, err)
 			return
 		}
-
+		// Explicity set the content type, so ServeContent doesn't have to guess.
 		w.Header().Set("content-type", "application/octet-stream")
-		w.Header().Set("content-length", strconv.Itoa(int(info.Size())))
-	}
-
-	if r.Method != http.MethodHead {
-		_, err = io.Copy(w, resp.Body)
-		if err != nil {
-			p.handleErr(w, err)
-			return
-		}
+		// ServeContent is used, since we need to support range requests.
+		http.ServeContent(w, r, "", info.ModTime(), f)
 	} else {
-		w.WriteHeader(http.StatusOK)
+		copyHeaders(resp.Header, w.Header())
+
+		if r.Method != http.MethodHead {
+			w.WriteHeader(resp.StatusCode)
+			_, err = io.Copy(w, resp.Body)
+			if err != nil {
+				p.handleErr(w, err)
+				return
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
 	}
 }
