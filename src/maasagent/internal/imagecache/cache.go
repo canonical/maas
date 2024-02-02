@@ -8,10 +8,8 @@ import (
 	"os"
 	"path"
 	"sync"
-	"syscall"
 
 	lru "github.com/hashicorp/golang-lru/v2"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -104,27 +102,6 @@ func NewFSCache(capMax int64, cacheDir string) (*FSCache, error) {
 	return cache, nil
 }
 
-func (c *FSCache) preallocateFile(f *os.File, size int64) error {
-	fd := f.Fd()
-	if fd <= 0 {
-		return fmt.Errorf("invalid file descriptor: %w", os.ErrNotExist)
-	}
-
-	defer func() {
-		_, err := f.Seek(0, io.SeekStart)
-		if err != nil {
-			log.Err(err).Send()
-		}
-	}()
-
-	stat, err := f.Stat()
-	if err != nil {
-		return err
-	}
-
-	return syscall.Fallocate(int(fd), 0, stat.Size(), size)
-}
-
 func (c *FSCache) growIndexIfNeeded() bool {
 	if c.indexSizeCurr+1 > c.indexSizeMax {
 		c.indexSizeMax += DefaultIndexSize
@@ -185,13 +162,6 @@ func (c *FSCache) set(key string, value io.Reader, valueSize int64, resetValueBu
 		}
 	}()
 
-	err = c.preallocateFile(f, valueSize)
-	if err != nil {
-		return nil, fmt.Errorf("failed to allocate space %d for new file %q: %w", valueSize, filePath, err)
-	}
-
-	c.capCurr += valueSize
-
 	_, err = io.Copy(f, value)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write value to %q: %w", filePath, err)
@@ -201,6 +171,8 @@ func (c *FSCache) set(key string, value io.Reader, valueSize int64, resetValueBu
 	if err != nil {
 		return nil, err
 	}
+
+	c.capCurr += valueSize
 
 	if resetValueBuffer {
 		seekVal, ok := value.(io.ReadSeeker)
