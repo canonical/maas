@@ -88,9 +88,9 @@ async def execute_workflow(
     result = await _call_workflow(
         temporal_client.execute_workflow,
         workflow_name,
+        workflow_id,
         param,
-        id=workflow_id,
-        task_queue=task_queue,
+        task_queue,
         **kwargs,
     )
     return result
@@ -108,9 +108,9 @@ async def start_workflow(
     result = await _call_workflow(
         temporal_client.start_workflow,
         workflow_name,
+        workflow_id,
         param,
-        id=workflow_id,
-        task_queue=task_queue,
+        task_queue,
         **kwargs,
     )
     return result
