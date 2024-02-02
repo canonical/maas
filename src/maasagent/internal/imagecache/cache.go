@@ -162,7 +162,7 @@ func (c *FSCache) set(key string, value io.Reader, valueSize int64, resetValueBu
 	//nolint:gosec // gosec wants string literal file arguments only
 	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0600)
 	if err != nil {
-		return nil, fmt.Errorf("failed opening file: %w", err)
+		return nil, fmt.Errorf("failed opening file %q: %w", filePath, err)
 	}
 
 	c.growIndexIfNeeded()
@@ -187,14 +187,14 @@ func (c *FSCache) set(key string, value io.Reader, valueSize int64, resetValueBu
 
 	err = c.preallocateFile(f, valueSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to allocate space for new file: %w", err)
+		return nil, fmt.Errorf("failed to allocate space %d for new file %q: %w", valueSize, filePath, err)
 	}
 
 	c.capCurr += valueSize
 
 	_, err = io.Copy(f, value)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write value: %w", err)
+		return nil, fmt.Errorf("failed to write value to %q: %w", filePath, err)
 	}
 
 	err = f.Sync()
@@ -224,7 +224,7 @@ func (c *FSCache) set(key string, value io.Reader, valueSize int64, resetValueBu
 
 	_, err = f.Seek(0, io.SeekStart)
 	if err != nil {
-		return nil, fmt.Errorf("failed to reset cache file: %w", err)
+		return nil, fmt.Errorf("failed to reset cache file %q: %w", filePath, err)
 	}
 
 	return f, nil

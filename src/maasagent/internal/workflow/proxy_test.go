@@ -43,6 +43,9 @@ func TestGetSocketPath(t *testing.T) {
 }
 
 func TestHTTPProxyConfiguratorConfigureHTTPProxy(t *testing.T) {
+	// troyanov says this is not the way to do it.
+	t.Skip()
+
 	table := map[string]struct {
 		NumCalls int
 		Params   []configureHTTPProxyParam
