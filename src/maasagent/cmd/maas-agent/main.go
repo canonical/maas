@@ -45,7 +45,17 @@ type config struct {
 }
 
 func Run() int {
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	// Use custom ConsoleWriter without TimestampFieldName, because stdout
+	// is captured with systemd-cat
+	// TODO: write directly to the journal
+	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, NoColor: true}
+	consoleWriter.PartsOrder = []string{
+		zerolog.LevelFieldName,
+		zerolog.CallerFieldName,
+		zerolog.MessageFieldName,
+	}
+
+	log.Logger = zerolog.New(consoleWriter).With().Logger()
 
 	cfg, err := getConfig()
 	if err != nil {
