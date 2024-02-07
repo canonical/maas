@@ -3,7 +3,7 @@
 
 """Base power driver."""
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 import sys
 
 from jsonschema import validate
@@ -128,15 +128,18 @@ class PowerDriverBase(metaclass=ABCMeta):
             JSON_POWER_DRIVER_SCHEMA,
         )
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self):
         """Name of the power driver."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def description(self):
         """Description of the power driver."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def settings(self):
         """List of settings for the driver.
 
@@ -145,7 +148,8 @@ class PowerDriverBase(metaclass=ABCMeta):
         to the driver to read these options before performing the operation.
         """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def ip_extractor(self):
         """IP extractor.
 
@@ -153,19 +157,23 @@ class PowerDriverBase(metaclass=ABCMeta):
         the address from the value.
         """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def queryable(self):
         """Whether or not the power driver is queryable."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def chassis(self):
         """Return True if the power driver is for a chassis."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def can_probe(self):
         """Return True if the power driver can be used with add_chassis."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def can_set_boot_order(self):
         """Returns True if the boot order can be remotely set."""
 
@@ -274,7 +282,7 @@ class PowerDriver(PowerDriverBase):
     queryable = True
 
     def __init__(self, clock=reactor):
-        self.clock = reactor
+        self.clock = clock
 
     @abstractmethod
     def power_on(self, system_id, context):
