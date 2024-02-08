@@ -311,6 +311,75 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_register_and_unregister_scaled_up_connections(self):
+        yield deferToDatabase(load_builtin_scripts)
+        pid = random.randint(1, 512)
+        self.patch(os, "getpid").return_value = pid
+        (
+            master,
+            connected,
+            disconnected,
+        ) = self.make_IPCMasterService_with_wrap()
+        rpc_started = self.wrap_async_method(master, "registerWorkerRPC")
+        yield master.startService()
+
+        worker = IPCWorkerService(reactor, socket_path=self.ipc_path)
+        rpc = RegionService(worker)
+        yield worker.startService()
+        yield rpc.startService()
+
+        yield connected.get(timeout=2)
+        yield rpc_started.get(timeout=2)
+
+        rackd = yield deferToDatabase(factory.make_RackController)
+        connid1 = str(uuid.uuid4())
+        connid2 = str(uuid.uuid4())
+        address = factory.make_ipv4_address()
+        port = random.randint(1000, 5000)
+        yield worker.rpcRegisterConnection(
+            connid1, rackd.system_id, address, port
+        )
+        yield worker.rpcRegisterConnection(
+            connid2, rackd.system_id, address, port
+        )
+
+        def getConnection():
+            region = RegionController.objects.get_running_controller()
+            process = RegionControllerProcess.objects.get(
+                region=region, pid=pid
+            )
+            endpoint = RegionControllerProcessEndpoint.objects.get(
+                process=process, address=address, port=port
+            )
+            return RegionRackRPCConnection.objects.filter(
+                endpoint=endpoint, rack_controller=rackd
+            ).first()
+
+        connection = yield deferToDatabase(getConnection)
+        self.assertIsNotNone(connection)
+        self.assertEqual(
+            {connid1: (rackd.system_id, address, port)},
+            master.connections[pid]["rpc"]["connections"],
+        )
+        self.assertEqual(
+            {connid2: (rackd.system_id, address, port)},
+            master.connections[pid]["rpc"]["burst_connections"],
+        )
+
+        yield worker.rpcUnregisterConnection(connid2)
+        connection = yield deferToDatabase(getConnection)
+        self.assertIsNotNone(connection)
+        yield worker.rpcUnregisterConnection(connid1)
+        connection = yield deferToDatabase(getConnection)
+        self.assertIsNone(connection)
+
+        yield rpc.stopService()
+        yield worker.stopService()
+        yield disconnected.get(timeout=2)
+        yield master.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_update_creates_process_when_removed(self):
         yield deferToDatabase(load_builtin_scripts)
         master = self.make_IPCMasterService()
