@@ -22,7 +22,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_TYPE,
-    POWER_STATE,
 )
 from maasserver.exceptions import PodProblem
 from maasserver.models import bmc as bmc_module
@@ -69,6 +68,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
     RequestedMachineInterface,
 )
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
 

@@ -6,7 +6,7 @@
 
 from django.db.models.signals import post_init, post_save, pre_delete, pre_save
 
-from maasserver.enum import NODE_STATUS, POWER_STATE
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     Controller,
     Device,
@@ -20,6 +20,7 @@ from maasserver.models.nodeconfig import create_default_nodeconfig
 from maasserver.models.nodekey import NodeKey
 from maasserver.models.numa import create_default_numanode
 from maasserver.utils.signals import SignalsManager
+from provisioningserver.enum import POWER_STATE
 
 NODE_CLASSES = [
     Node,

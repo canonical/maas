@@ -24,12 +24,7 @@ from twisted.internet.defer import succeed
 import yaml
 
 from maasserver.api import support
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_TYPE,
-    NODE_TYPE_CHOICES,
-    POWER_STATE,
-)
+from maasserver.enum import NODE_STATUS, NODE_TYPE, NODE_TYPE_CHOICES
 from maasserver.exceptions import (
     ClusterUnavailable,
     MAASAPIBadRequest,
@@ -88,6 +83,7 @@ from metadataserver.enum import (
     SIGNAL_STATUS_CHOICES,
 )
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_STATUS_MESSAGES,

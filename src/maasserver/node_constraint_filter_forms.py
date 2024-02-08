@@ -21,8 +21,6 @@ from maasserver.enum import (
     DEPLOYMENT_TARGET_CHOICES,
     NODE_STATUS,
     NODE_STATUS_SHORT_LABEL_CHOICES,
-    POWER_STATE,
-    POWER_STATE_CHOICES,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
 )
@@ -51,6 +49,7 @@ from maasserver.models import (
 )
 from maasserver.models.nodeconfig import NODE_CONFIG_DEFAULT
 from maasserver.utils.forms import set_form_error
+from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
 # Matches the storage constraint from Juju. Format is an optional label,

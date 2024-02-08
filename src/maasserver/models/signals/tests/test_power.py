@@ -9,7 +9,6 @@ from unittest.mock import ANY
 from twisted.internet import defer
 from twisted.internet.task import Clock
 
-from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
 from maasserver.models.node import Node
 from maasserver.models.signals import power
@@ -22,6 +21,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import post_commit_hooks, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.exceptions import UnknownPowerType
 
 wait_for_reactor = wait_for()

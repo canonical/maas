@@ -5,16 +5,12 @@
 
 import random
 
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_TYPE,
-    NODE_TYPE_CHOICES,
-    POWER_STATE,
-)
+from maasserver.enum import NODE_STATUS, NODE_TYPE, NODE_TYPE_CHOICES
 from maasserver.forms.ephemeral import CommissionForm, TestForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.enum import SCRIPT_TYPE
+from provisioningserver.enum import POWER_STATE
 
 
 class TestTestForm(MAASServerTestCase):

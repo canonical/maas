@@ -30,7 +30,6 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
-    POWER_STATE,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUSES_MAP,
 )
@@ -96,6 +95,7 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
 from provisioningserver.certificates import Certificate
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous

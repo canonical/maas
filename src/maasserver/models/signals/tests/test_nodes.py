@@ -10,8 +10,6 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_TYPE,
     NODE_TYPE_CHOICES,
-    POWER_STATE,
-    POWER_STATE_CHOICES,
 )
 from maasserver.models import Node, RackController, StaticIPAddress
 from maasserver.models.nodekey import NodeKey
@@ -21,6 +19,7 @@ from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
+from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 
 
 class TestNodeDeletion(MAASServerTestCase):

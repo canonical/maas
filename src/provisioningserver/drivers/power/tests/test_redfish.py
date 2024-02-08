@@ -28,6 +28,7 @@ from provisioningserver.drivers.power.redfish import (
     RedfishPowerDriver,
     WebClientContextFactory,
 )
+from provisioningserver.enum import POWER_STATE
 
 SAMPLE_HEADERS = {
     b"strict-transport-security": [b"max-age=63072000"],
@@ -644,31 +645,26 @@ class TestRedfishPowerDriver(MAASTestCase):
         mock_power.assert_not_called()
 
     @inlineCallbacks
-    def test_power_query_queries_on(self):
+    def test_power_query(self):
         driver = RedfishPowerDriver()
-        power_change = "On"
         system_id = factory.make_name("system_id")
         context = make_context()
         mock_redfish_request = self.patch(driver, "redfish_request")
-        NODE_POWERED_ON = deepcopy(SAMPLE_JSON_SYSTEM)
-        NODE_POWERED_ON["PowerState"] = "On"
-        mock_redfish_request.side_effect = [
-            (SAMPLE_JSON_SYSTEMS, None),
-            (NODE_POWERED_ON, None),
-        ]
-        power_state = yield driver.power_query(system_id, context)
-        self.assertEqual(power_state, power_change.lower())
+        NODE_POWERED = deepcopy(SAMPLE_JSON_SYSTEM)
 
-    @inlineCallbacks
-    def test_power_query_queries_off(self):
-        driver = RedfishPowerDriver()
-        power_change = "Off"
-        system_id = factory.make_name("system_id")
-        context = make_context()
-        mock_redfish_request = self.patch(driver, "redfish_request")
-        mock_redfish_request.side_effect = [
-            (SAMPLE_JSON_SYSTEMS, None),
-            (SAMPLE_JSON_SYSTEM, None),
+        param_tests = [
+            ("Off", POWER_STATE.OFF),
+            ("On", POWER_STATE.ON),
+            ("Paused", POWER_STATE.ON),
+            ("PoweringOff", POWER_STATE.ON),
+            ("PoweringOn", POWER_STATE.OFF),
+            ("UnexpectedState", POWER_STATE.ERROR),
         ]
-        power_state = yield driver.power_query(system_id, context)
-        self.assertEqual(power_state, power_change.lower())
+        for value, expected in param_tests:
+            NODE_POWERED["PowerState"] = value
+            mock_redfish_request.side_effect = [
+                (SAMPLE_JSON_SYSTEMS, None),
+                (NODE_POWERED, None),
+            ]
+            power_state = yield driver.power_query(system_id, context)
+            self.assertEqual(power_state, expected)

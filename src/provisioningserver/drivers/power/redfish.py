@@ -28,7 +28,12 @@ from provisioningserver.drivers import (
 )
 from provisioningserver.drivers.power import PowerActionError, PowerDriver
 from provisioningserver.drivers.power.utils import WebClientContextFactory
+from provisioningserver.enum import POWER_STATE
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import asynchronous
+
+maaslog = get_maas_logger("drivers.power.redfish")
+
 
 # no trailing slashes
 REDFISH_POWER_CONTROL_ENDPOINT = (
@@ -282,9 +287,41 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     @asynchronous
     @inlineCallbacks
-    def power_query(self, node_id, context):
-        """Power query machine."""
+    def power_query(self, system_id, context: dict) -> str:
+        """Power query machine.
+
+        According to the Redfish schema, the power states can take the following values:
+            Off, On, Paused, PoweringOff, PoweringOn
+
+        MAAS defines its own device-agnostic power states based on the definition of POWER_STATE (enum) class.
+        According to POWER_STATE the next values are allowed:
+            on, off, unknown, error
+
+        power_query queries the power state of the machine and maps the response to the device-agnostic power state
+        defined by MAAS. The mapping between Redfish and MAAS is as follows:
+            Redfish-Off -> MAAS-OFF
+            Redfish-On -> MAAS-ON
+            Redfish-Paused -> MAAS-ON
+            Redfish-PoweringOn -> MAAS-OFF
+            Redfish-PoweringOff -> MAAS-ON
+
+        Reference:
+        https://www.dmtf.org/sites/default/files/standards/documents/DSP2046_2023.3.html#powerstate
+        """
         url, node_id, headers = yield self.process_redfish_context(context)
         uri = join(url, REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
         node_data, _ = yield self.redfish_request(b"GET", uri, headers)
-        return node_data.get("PowerState").lower()
+
+        match node_power_state := node_data.get("PowerState").lower():
+            case "off" | "poweringon":
+                return POWER_STATE.OFF
+            case "on" | "paused" | "poweringoff":
+                return POWER_STATE.ON
+            case _:
+                maaslog.error(
+                    "Redfish returned the unexpected power state '%s' for the BMC card in node %s of system %s.",
+                    node_power_state,
+                    node_id,
+                    system_id,
+                )
+                return POWER_STATE.ERROR

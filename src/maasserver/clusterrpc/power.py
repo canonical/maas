@@ -10,9 +10,9 @@ from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, succeed
 from twisted.protocols.amp import UnhandledCommand
 
-from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.cluster import (
     PowerCycle,

@@ -18,7 +18,7 @@ from twisted.python.failure import Failure
 
 from maasserver import eventloop
 from maasserver.dns.config import get_trusted_networks
-from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, POWER_STATE
+from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, Event, EventType, Node, PackageRepository
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.signals import bootsources
@@ -39,6 +39,7 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.exceptions import NoSuchCluster, NoSuchNode
 from provisioningserver.rpc.region import (
     Authenticate,

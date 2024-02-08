@@ -35,7 +35,6 @@ from maasserver.enum import (
     NODE_STATUS_SHORT_LABEL_CHOICES,
     NODE_TYPE,
     PARTITION_TABLE_TYPE,
-    POWER_STATE,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUS_CHOICES,
 )
@@ -122,6 +121,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,

@@ -24,8 +24,6 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODE_STATUS_SHORT_LABEL_CHOICES,
     NODE_TYPE,
-    POWER_STATE,
-    POWER_STATE_CHOICES,
     SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUS_CHOICES_DICT,
     SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
@@ -98,6 +96,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_FAILED,
 )
+from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
 )

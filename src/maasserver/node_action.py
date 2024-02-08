@@ -30,7 +30,6 @@ from maasserver.enum import (
     NODE_TYPE,
     NODE_TYPE_CHOICES,
     NODE_TYPE_CHOICES_DICT,
-    POWER_STATE,
 )
 from maasserver.exceptions import (
     IPAddressCheckFailed,
@@ -49,6 +48,7 @@ from maasserver.utils.osystems import (
     validate_osystem_and_distro_series,
 )
 from metadataserver.enum import SCRIPT_STATUS
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,

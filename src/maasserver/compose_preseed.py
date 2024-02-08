@@ -12,7 +12,7 @@ from django.urls import reverse
 import yaml
 
 from maasserver.dns.config import get_resource_name_for_subnet
-from maasserver.enum import NODE_STATUS, POWER_STATE, PRESEED_TYPE
+from maasserver.enum import NODE_STATUS, PRESEED_TYPE
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
 from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
@@ -24,6 +24,7 @@ from provisioningserver.drivers.osystem import (
     OperatingSystemRegistry,
     Token,
 )
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from provisioningserver.utils.url import compose_URL
 

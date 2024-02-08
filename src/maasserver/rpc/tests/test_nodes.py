@@ -14,7 +14,7 @@ from unittest.mock import sentinel
 from django.core.exceptions import ValidationError
 
 from maasserver import ntp
-from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, NODE_TYPE, POWER_STATE
+from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, NODE_TYPE
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc.nodes import (
@@ -42,6 +42,7 @@ from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.twisted import always_succeed_with
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.cluster import DescribePowerTypes
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,

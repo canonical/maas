@@ -395,25 +395,6 @@ IPRANGE_TYPE_CHOICES = (
 )
 
 
-class POWER_STATE:
-    # Node is on
-    ON = "on"
-
-    # Node is off
-    OFF = "off"
-
-    # Node is power state is unknown
-    UNKNOWN = "unknown"
-
-    # Error getting the nodes power state
-    ERROR = "error"
-
-
-POWER_STATE_CHOICES = enum_choices(
-    POWER_STATE, transform=cast(Callable[[str], str], str.capitalize)
-)
-
-
 class POWER_WORKFLOW_ACTIONS:
     # Temporal parameter to execute a workflow for powering on
     # a machine

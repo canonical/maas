@@ -5,12 +5,7 @@ from operator import attrgetter
 from django.db import transaction
 import pytest
 
-from maasserver.enum import (
-    NODE_STATUS,
-    NODE_TYPE,
-    POWER_STATE,
-    SIMPLIFIED_NODE_STATUS,
-)
+from maasserver.enum import NODE_STATUS, NODE_TYPE, SIMPLIFIED_NODE_STATUS
 from maasserver.rbac import rbac
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing.factory import factory
@@ -26,6 +21,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_TYPE,
 )
+from provisioningserver.enum import POWER_STATE
 from provisioningserver.testing.certificates import get_sample_cert
 
 

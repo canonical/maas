@@ -24,7 +24,6 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 
-from maasserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from maasserver.exceptions import NoScriptsFound
 from maasserver.forms.parameters import ParametersForm
 from maasserver.models import Config, Event, Script
@@ -42,6 +41,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
+from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from provisioningserver.events import EVENT_TYPES
 
 
