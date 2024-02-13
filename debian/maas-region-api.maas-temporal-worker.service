@@ -1,0 +1,17 @@
+[Unit]
+Description=MAAS Region Temporal Worker
+Documentation=https://maas.io/docs
+Requires=network-online.target
+After=network-online.target maas-temporal.service
+ConditionPathExists=/etc/maas/regiond.conf
+
+[Service]
+User=maas
+Group=maas
+Restart=always
+RestartSec=10s
+KillMode=mixed
+ExecStart=/usr/sbin/maas-temporal-worker
+
+[Install]
+WantedBy=multi-user.target

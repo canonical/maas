@@ -3,10 +3,21 @@ from datetime import timedelta
 from typing import Any
 
 from netaddr import IPAddress
+from sqlalchemy import or_, select
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
-from maasserver.workflow.api_client import MAASAPIClient
+from maasapiserver.common.db.tables import (
+    InterfaceIPAddressTable,
+    InterfaceTable,
+    NodeConfigTable,
+    NodeTable,
+    StaticIPAddressTable,
+    SubnetTable,
+    VlanTable,
+)
+from maasserver.enum import NODE_TYPE
+from maasserver.workflow.activity import ActivityBase
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)
 DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(
@@ -18,20 +29,120 @@ DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(
 
 
 @dataclass
-class GetRackControllerInput:
+class GetRackControllerVLANsInput:
     system_id: str
 
 
-class ConfigureAgentActivity(MAASAPIClient):
-    @activity.defn(name="get-rack-controller")
-    async def get_rack_controller(self, input: GetRackControllerInput):
-        url = f"{self.url}/api/2.0/rackcontrollers/{input.system_id}/"
-        return await self.request_async("GET", url)
+class ConfigureAgentActivity(ActivityBase):
+    @activity.defn(name="get-rack-controller-vlans")
+    async def get_rack_controller_vlans(
+        self, input: GetRackControllerVLANsInput
+    ):
+        async with self.start_transaction() as tx:
+            stmt = (
+                select(
+                    VlanTable.c.id,
+                )
+                .select_from(NodeTable)
+                .join(
+                    NodeConfigTable,
+                    NodeTable.c.current_config_id == NodeConfigTable.c.id,
+                )
+                .join(
+                    InterfaceTable,
+                    NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
+                    isouter=True,
+                )
+                .join(
+                    InterfaceIPAddressTable,
+                    InterfaceTable.c.id
+                    == InterfaceIPAddressTable.c.interface_id,
+                    isouter=True,
+                )
+                .join(
+                    StaticIPAddressTable,
+                    InterfaceIPAddressTable.c.staticipaddress_id
+                    == StaticIPAddressTable.c.id,
+                    isouter=True,
+                )
+                .join(
+                    SubnetTable,
+                    SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
+                    isouter=True,
+                )
+                .join(
+                    VlanTable,
+                    or_(
+                        VlanTable.c.id == SubnetTable.c.vlan_id,
+                        VlanTable.c.id == InterfaceTable.c.vlan_id,
+                    ),
+                )
+                .filter(
+                    NodeTable.c.system_id == input.system_id,
+                    or_(
+                        NodeTable.c.node_type == NODE_TYPE.RACK_CONTROLLER,
+                        NodeTable.c.node_type
+                        == NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ),
+                )
+            )
+            result = (await tx.execute(stmt)).all()
+            if result:
+                return [vlan_id[0] for vlan_id in result]
+            return []
 
-    @activity.defn(name="get-region-controllers")
-    async def get_region_controllers(self) -> dict[str, Any]:
-        url = f"{self.url}/api/2.0/regioncontrollers/"
-        return await self.request_async("GET", url)
+    @activity.defn(name="get-region-controller-endpoints")
+    async def get_region_controller_endpoints(self) -> dict[str, Any]:
+        async with self.start_transaction() as tx:
+            stmt = (
+                select(
+                    SubnetTable.c.cidr,
+                    StaticIPAddressTable.c.ip,
+                )
+                .select_from(NodeTable)
+                .join(
+                    NodeConfigTable,
+                    NodeTable.c.current_config_id == NodeConfigTable.c.id,
+                    isouter=True,
+                )
+                .join(
+                    InterfaceTable,
+                    NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
+                    isouter=True,
+                )
+                .join(
+                    InterfaceIPAddressTable,
+                    InterfaceTable.c.id
+                    == InterfaceIPAddressTable.c.interface_id,
+                    isouter=True,
+                )
+                .join(
+                    StaticIPAddressTable,
+                    InterfaceIPAddressTable.c.staticipaddress_id
+                    == StaticIPAddressTable.c.id,
+                    isouter=True,
+                )
+                .join(
+                    SubnetTable,
+                    SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
+                    isouter=True,
+                )
+                .filter(
+                    or_(
+                        NodeTable.c.node_type == NODE_TYPE.REGION_CONTROLLER,
+                        NodeTable.c.node_type
+                        == NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                    ),
+                )
+            )
+            endpoints = (await tx.execute(stmt)).all()
+            return [
+                {
+                    "subnet": str(endpoint[0]),
+                    "endpoint": _format_endpoint(str(endpoint[1])),
+                }
+                for endpoint in endpoints
+            ]
 
 
 @dataclass
@@ -53,22 +164,17 @@ class ConfigureAgentWorkflow:
 
     @workflow.run
     async def run(self, input: ConfigureAgentInput) -> None:
-        region_controllers = await workflow.execute_activity(
-            "get-region-controllers",
+        endpoints = await workflow.execute_activity(
+            "get-region-controller-endpoints",
             start_to_close_timeout=DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT,
             retry_policy=DEFAULT_CONFIGURE_RETRY_POLICY,
         )
 
-        rack_controller = await workflow.execute_activity(
-            "get-rack-controller",
-            GetRackControllerInput(input.system_id),
+        vlan_ids = await workflow.execute_activity(
+            "get-rack-controller-vlans",
+            GetRackControllerVLANsInput(input.system_id),
             start_to_close_timeout=DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT,
             retry_policy=DEFAULT_CONFIGURE_RETRY_POLICY,
-        )
-
-        interface_set = rack_controller["interface_set"]
-        vlan_ids = set(
-            [n["vlan"]["id"] for n in interface_set if n.get("vlan")]
         )
 
         params = []
@@ -120,17 +226,6 @@ class ConfigureAgentWorkflow:
             task_queue=input.task_queue,
             start_to_close_timeout=timedelta(seconds=30),
         )
-
-        endpoints = [
-            {
-                "endpoint": _format_endpoint(link["ip_address"]),
-                "subnet": link["subnet"]["cidr"],
-            }
-            for region_controller in region_controllers
-            for iface in region_controller["interface_set"]
-            for link in iface["links"]
-            if "ip_address" in link
-        ]
 
         # TODO dynamically determine whether the agent needs to run the proxy
         await workflow.execute_activity(

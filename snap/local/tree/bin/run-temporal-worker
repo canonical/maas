@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# override configs to work in the snap
+export MAAS_PATH="$SNAP"
+export MAAS_ROOT="$SNAP_DATA"
+export MAAS_DATA="$SNAP_COMMON/maas"
+export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
+
+exec "$SNAP/bin/maas-temporal-worker"

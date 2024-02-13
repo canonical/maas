@@ -94,6 +94,14 @@ class TemporalService(AlwaysOnService):
     snap_service_name = "temporal"
 
 
+class TemporalWorkerService(AlwaysOnService):
+    """Monitored Temporal Worker service"""
+
+    name = "temporal-worker"
+    service_name = "maas-temporal-worker"
+    snap_service_name = "temporal-worker"
+
+
 # Global service monitor for regiond. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -103,4 +111,5 @@ service_monitor = ServiceMonitor(
     ProxyService(),
     HTTPService(),
     TemporalService(),
+    TemporalWorkerService(),
 )

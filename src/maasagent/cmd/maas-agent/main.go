@@ -118,7 +118,7 @@ func Run() int {
 			"power-cycle": wf.PowerCycle,
 			"power-query": wf.PowerQuery,
 		}),
-		worker.WithControlPlaneTaskQueueName("region"),
+		worker.WithControlPlaneTaskQueueName("regionV2"),
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigureWorkerPoolWorkflowName("configure-agent"),
 		worker.WithHTTPProxyConfigurator(httpProxies),

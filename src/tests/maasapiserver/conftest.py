@@ -1,5 +1,3 @@
-import pytest
-
 from .fixtures.app import (
     api_app,
     api_client,
@@ -27,12 +25,3 @@ __all__ = [
     "transaction_middleware_class",
     "user_session_id",
 ]
-
-
-def pytest_addoption(parser: pytest.Parser) -> None:
-    parser.addoption(
-        "--sqlalchemy-debug",
-        help="print out SQLALchemy queries",
-        action="store_true",
-        default=False,
-    )

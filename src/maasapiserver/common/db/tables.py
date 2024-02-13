@@ -88,7 +88,7 @@ SubnetTable = Table(
     Column("active_discovery", Boolean, nullable=False),
     Column("managed", Boolean, nullable=False),
     Column("allow_dns", Boolean, nullable=False),
-    Column("disabled_boot_architectures", String(64), nullable=False),
+    Column("disabled_boot_architectures", ARRAY(String(64)), nullable=False),
 )
 
 ResourcePoolTable = Table(

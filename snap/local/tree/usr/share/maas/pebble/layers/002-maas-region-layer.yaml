@@ -33,3 +33,8 @@ services:
     override: replace
     command: sh -c "exec systemd-cat -t maas-temporal $SNAP/bin/run-temporal"
     startup: disabled
+
+  temporal-worker:
+    override: replace
+    command: sh -c "exec systemd-cat -t maas-temporal-worker $SNAP/bin/run-temporal-worker"
+    startup: disabled

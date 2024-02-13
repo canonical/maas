@@ -17,6 +17,15 @@ from maasserver.vault import (
     get_region_vault_client_if_enabled,
 )
 
+from ..maasapiserver.fixtures.db import db, db_connection, fixture, test_config
+
+__all__ = [
+    "db",
+    "db_connection",
+    "fixture",
+    "test_config",
+]
+
 
 @pytest.fixture(autouse=True)
 def clean_globals(clean_globals):

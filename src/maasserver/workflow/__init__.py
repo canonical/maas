@@ -10,20 +10,8 @@ import uuid
 from temporalio.service import RPCError
 from twisted.internet.defer import Deferred, succeed
 
-from maasserver.eventloop import services
-from maasserver.regiondservices.temporal_worker import TemporalWorkerService
 from maasserver.workflow.worker import get_client_async, REGION_TASK_QUEUE
 from provisioningserver.utils.twisted import asynchronous, FOREVER
-
-
-def run_in_temporal_eventloop(fn, *args, **kwargs):
-    temporal_worker = TemporalWorkerService(
-        services.getServiceNamed("temporal-worker")
-    )
-    run = fn(*args, **kwargs)
-    if asyncio.iscoroutine(run):
-        return temporal_worker._loop.create_task(run)
-    return temporal_worker._loop.create_task(asyncio.ensure_future(run))
 
 
 @asynchronous(timeout=FOREVER)
@@ -44,12 +32,8 @@ def temporal_wrapper(func):
                 task = loop.create_task(asyncio.ensure_future(run))
             return Deferred.fromFuture(task)
         except RuntimeError:
-            try:
-                task = run_in_temporal_eventloop(func, *args, **kwargs)
-                return Deferred.fromFuture(task)
-            except KeyError:  # in worker proc
-                ret = asyncio.run(func(*args, **kwargs))
-                return succeed(ret)
+            ret = asyncio.run(func(*args, **kwargs))
+            return succeed(ret)
 
     return wrapper
 

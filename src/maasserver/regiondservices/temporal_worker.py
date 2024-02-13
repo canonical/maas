@@ -30,10 +30,6 @@ from maasserver.workflow.bootresource import (
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
 )
-from maasserver.workflow.configure import (
-    ConfigureAgentActivity,
-    ConfigureAgentWorkflow,
-)
 from maasserver.workflow.power import (
     PowerCycleWorkflow,
     PowerManyWorkflow,
@@ -92,12 +88,6 @@ class TemporalWorkerService(Service):
         user_agent = yield deferToDatabase(get_maas_user_agent)
         maas_id = MAAS_ID.get()
 
-        configure_activity = ConfigureAgentActivity(
-            url=maas_url,
-            token=token,
-            user_agent=user_agent,
-        )
-
         boot_res_activity = BootResourcesActivity(
             url=maas_url,
             token=token,
@@ -123,8 +113,6 @@ class TemporalWorkerService(Service):
             # All regions listen to a shared task queue. The first to pick up a task will execute it.
             Worker(
                 workflows=[
-                    # Configuration workflows
-                    ConfigureAgentWorkflow,
                     # Boot resources workflows
                     CleanupBootResourceWorkflow,
                     DeleteBootResourceWorkflow,
@@ -140,9 +128,6 @@ class TemporalWorkerService(Service):
                     SyncBootResourcesWorkflow,
                 ],
                 activities=[
-                    # Configuration activities
-                    configure_activity.get_rack_controller,
-                    configure_activity.get_region_controllers,
                     # Boot resources activities
                     boot_res_activity.download_bootresourcefile,
                     boot_res_activity.get_bootresourcefile_endpoints,

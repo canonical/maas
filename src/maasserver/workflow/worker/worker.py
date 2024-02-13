@@ -5,6 +5,7 @@
 
 import dataclasses
 import os
+from typing import Any
 
 from google.protobuf.duration_pb2 import Duration
 from temporalio.api.workflowservice.v1 import (
@@ -28,7 +29,7 @@ TEMPORAL_NAMESPACE = "default"
 
 
 @async_retry()
-async def get_client_async():
+async def get_client_async() -> Client:
     maas_id = MAAS_ID.get()
     pid = os.getpid()
     return await Client.connect(
@@ -47,10 +48,10 @@ class Worker:
 
     def __init__(
         self,
-        client=None,
-        task_queue=REGION_TASK_QUEUE,
-        workflows=None,
-        activities=None,
+        client: Client | None = None,
+        task_queue: str = REGION_TASK_QUEUE,
+        workflows: list[Any] | None = None,
+        activities: list[Any] | None = None,
     ):
         self._worker = None
         self._client = client
@@ -61,7 +62,7 @@ class Worker:
         self._workflow_retention.FromJsonString(TEMPORAL_WORKFLOW_RETENTION)
 
     @async_retry()
-    async def _setup_namespace(self):
+    async def _setup_namespace(self) -> None:
         try:
             await self._client.service_client.workflow_service.describe_namespace(
                 DescribeNamespaceRequest(
@@ -79,7 +80,7 @@ class Worker:
             else:
                 raise e
 
-    async def run(self):
+    async def run(self) -> None:
         self._client = self._client or await get_client_async()
         await self._setup_namespace()
         self._worker = TemporalWorker(
@@ -90,6 +91,6 @@ class Worker:
         )
         await self._worker.run()
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._worker:
             await self._worker.shutdown()

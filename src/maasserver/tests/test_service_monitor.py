@@ -31,6 +31,7 @@ class TestGlobalServiceMonitor(MAASTestCase):
                 "reverse_proxy",
                 "syslog_region",
                 "temporal",
+                "temporal-worker",
             },
             service_monitor._services.keys(),
         )
