@@ -4037,6 +4037,54 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             ["sda", "sdb"],
         )
 
+    def test_no_condense_luns_no_serial(self):
+        node = factory.make_Node()
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources["storage"]["disks"] = [
+            {
+                "id": "sde",
+                "device": "8:64",
+                "model": "IPR-0   6DC90500",
+                "type": "scsi",
+                "read_only": False,
+                "size": 283794997248,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": "pci-0001:08:00.0-scsi-0:2:4:0",
+                "block_size": 4096,
+                "rpm": 1,
+                "serial": "IBM_IPR-0_6DC90500000000A0",
+                "device_id": "scsi-1IBM_IPR-0_6DC90500000000A0",
+                "partitions": [],
+            },
+            {
+                "id": "sr9",
+                "device": "11:0",
+                "model": "RMBO0140532",
+                "type": "cdrom",
+                "read_only": False,
+                "size": 0,
+                "removable": True,
+                "numa_node": 0,
+                "device_path": "pci-0001:08:00.0-scsi-0:0:7:0",
+                "block_size": 0,
+                "firmware_version": "RA64",
+                "rpm": 1,
+                "device_id": "",
+                "partitions": [],
+            },
+        ]
+
+        _update_node_physical_block_devices(
+            node, resources, create_numa_nodes(node)
+        )
+
+        # sr9 is not included because it's a cdrom
+        self.assertCountEqual(
+            node.physicalblockdevice_set.values_list("name", flat=True),
+            ["sde"],
+        )
+
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from LXD.
