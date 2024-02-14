@@ -286,7 +286,8 @@ class VirshSSH(pexpect.spawn):
     PROMPT = r"virsh \#"
     PROMPT_SSHKEY = "(?i)are you sure you want to continue connecting"
     PROMPT_PASSWORD = "(?i)(?:password)|(?:passphrase for key)"
-    PROMPT_DENIED = "(?i)permission denied"
+    # Credential problems
+    PROMPT_DENIED = "(?i)permission denied, please try again"
     PROMPT_CLOSED = "(?i)connection closed by remote host"
 
     PROMPTS = [

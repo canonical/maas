@@ -572,7 +572,30 @@ class TestVirshSSH(MAASTestCase):
         self.assertFalse(conn.login(poweraddr=factory.make_name("poweraddr")))
         mock_close.assert_called_once_with()
 
+    def test_pkttyagent_permission_denied(self):
+        # Sometimes pkttyagent can't be executed in the snap. The connection
+        # itself still works, though.
+        # See https://bugs.launchpad.net/maas/+bug/2053033
+        virsh_outputs = [
+            "libvirt:  error : cannot execute binary /usr/bin/pkttyagent: Permission denied",
+            "Welcome to virsh, the virtualization interactive terminal.",
+            "",
+            "Type:  'help' for help with commands",
+            "       'quit' to quit",
+            "",
+            "virsh # ",
+        ]
+        conn = self.configure_virshssh_pexpect(virsh_outputs)
+        self.assertTrue(conn.login(poweraddr=factory.make_name("poweraddr")))
+
     def test_login_invalid(self):
+        virsh_outputs = ["Permission denied, please try again."]
+        conn = self.configure_virshssh_pexpect(virsh_outputs)
+        mock_close = self.patch(conn, "close")
+        self.assertFalse(conn.login(poweraddr=factory.make_name("poweraddr")))
+        mock_close.assert_called_once_with()
+
+    def test_unknown(self):
         virsh_outputs = [factory.make_string()]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, "close")
