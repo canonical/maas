@@ -199,7 +199,9 @@ lint-oapi: openapi.yaml
 # Go fmt
 lint-go: $(BIN_DIR)/golangci-lint
 	@find src -maxdepth 3 -type f -name go.mod -execdir \
-		sh -c "golangci-lint run --timeout=5m $(if $(LINT_AUTOFIX),--fix,) ./..." {} +
+		sh -c "go mod tidy \
+		&& git diff --exit-code -- go.mod go.sum \
+		&& golangci-lint run --timeout=5m $(if $(lint_autofix),--fix,) ./..." {} +
 .PHONY: lint-go
 
 lint-go-fix: LINT_AUTOFIX=true

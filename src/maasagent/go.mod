@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/google/gopacket v1.1.19
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/packetcap/go-pcap v0.0.0-20230509084824-080a85fb093e
 	github.com/rs/zerolog v1.29.1
 	github.com/stretchr/testify v1.8.4
@@ -27,7 +28,6 @@ require (
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
