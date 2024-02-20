@@ -1186,7 +1186,7 @@ def process_lxd_results(node, output, exit_status):
                     "system_id": node.system_id,
                     "task_queue": f"{node.system_id}@agent:main",
                 },
-                task_queue="regionV2",
+                task_queue="region",
                 retry_policy=RetryPolicy(maximum_attempts=1),
                 execution_timeout=timedelta(seconds=120),
             )

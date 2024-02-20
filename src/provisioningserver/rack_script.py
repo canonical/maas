@@ -52,6 +52,9 @@ def run():
                     "MAAS_DATA": os.path.join(
                         os.environ["SNAP_COMMON"], "maas"
                     ),
+                    "MAAS_CACHE": os.path.join(
+                        os.environ["SNAP_COMMON"], "maas", "cache"
+                    ),
                     "MAAS_CLUSTER_CONFIG": os.path.join(
                         os.environ["SNAP_DATA"], "rackd.conf"
                     ),

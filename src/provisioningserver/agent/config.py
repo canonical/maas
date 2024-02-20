@@ -21,11 +21,18 @@ def get_agent_config_path():
 
 
 @dataclass
+class HTTPProxyConfiguration:
+    cache_size: int
+    cache_dir: str
+
+
+@dataclass
 class Configuration:
     maas_uuid: str
     system_id: str
     secret: str
     controllers: list[str]
+    httpproxy: HTTPProxyConfiguration
     log_level: str
 
 

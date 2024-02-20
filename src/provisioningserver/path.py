@@ -71,6 +71,12 @@ def get_maas_data_path(path: str) -> str:
     return str(base_path / path)
 
 
+def get_maas_cache_path(path: str) -> str:
+    """Return a path under the MAAS cache path."""
+    base_path = Path(getenv("MAAS_CACHE", "/var/cache/maas"))
+    return str(base_path / path)
+
+
 def get_maas_lock_path() -> Path:
     """Return a path for lock files."""
     path = Path("/run/lock")

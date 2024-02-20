@@ -42,7 +42,7 @@ async def main() -> None:
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
         TemporalWorker(
-            task_queue="regionV2",
+            task_queue="region",
             workflows=[
                 # Configuration workflows
                 ConfigureAgentWorkflow,

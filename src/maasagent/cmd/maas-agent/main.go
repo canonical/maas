@@ -7,9 +7,7 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,7 +22,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	wf "maas.io/core/src/maasagent/internal/workflow"
+	"maas.io/core/src/maasagent/internal/cache"
+	"maas.io/core/src/maasagent/internal/httpproxy"
+	"maas.io/core/src/maasagent/internal/power"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
 	"maas.io/core/src/maasagent/internal/workflow/worker"
 	"maas.io/core/src/maasagent/pkg/workflow/codec"
@@ -34,14 +34,17 @@ const (
 	TemporalPort = 5271
 )
 
-// config represents a neccessary set of configuration options for MAAS Agent
+// config represents a necessary set of configuration options for MAAS Agent
 type config struct {
-	MAASUUID       string   `yaml:"maas_uuid"`
-	SystemID       string   `yaml:"system_id"`
-	Secret         string   `yaml:"secret"`
-	LogLevel       string   `yaml:"log_level"`
-	Controllers    []string `yaml:"controllers,flow"`
-	ImageCacheSize int64    `yaml:"image_cache_size"`
+	MAASUUID  string `yaml:"maas_uuid"`
+	SystemID  string `yaml:"system_id"`
+	Secret    string `yaml:"secret"`
+	LogLevel  string `yaml:"log_level"`
+	HTTPProxy struct {
+		CacheDir  string `yaml:"cache_dir"`
+		CacheSize int64  `yaml:"cache_size"`
+	} `yaml:"httpproxy"`
+	Controllers []string `yaml:"controllers,flow"`
 }
 
 func Run() int {
@@ -84,7 +87,7 @@ func Run() int {
 	clientBackoff := backoff.NewExponentialBackOff()
 	clientBackoff.MaxElapsedTime = 60 * time.Second
 
-	client, err := backoff.RetryWithData(
+	temporalClient, err := backoff.RetryWithData(
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
@@ -104,24 +107,21 @@ func Run() int {
 		return 1
 	}
 
-	httpProxies := wf.NewHTTPProxyConfigurator()
-	if cfg.ImageCacheSize > 0 {
-		httpProxies.SetCacheSize(cfg.ImageCacheSize)
+	var workerPool worker.WorkerPool
+
+	cache, err := cache.NewFileCache(cfg.HTTPProxy.CacheSize, cfg.HTTPProxy.CacheDir)
+	if err != nil {
+		log.Error().Err(err).Msg("HTTP Proxy cache initialisation error")
+		return 1
 	}
 
-	workerPool := worker.NewWorkerPool(cfg.SystemID, client,
-		worker.WithAllowedWorkflows(map[string]interface{}{
-			"check-ip": wf.CheckIP,
-		}), worker.WithAllowedActivities(map[string]interface{}{
-			"power-on":    wf.PowerOn,
-			"power-off":   wf.PowerOff,
-			"power-cycle": wf.PowerCycle,
-			"power-query": wf.PowerQuery,
-		}),
-		worker.WithControlPlaneTaskQueueName("regionV2"),
+	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
+	httpProxyService := httpproxy.NewHTTPProxyService(getSocketDir(), cache)
+
+	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
-		worker.WithConfigureWorkerPoolWorkflowName("configure-agent"),
-		worker.WithHTTPProxyConfigurator(httpProxies),
+		worker.WithConfigurator(powerService),
+		worker.WithConfigurator(httpProxyService),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()
@@ -136,33 +136,47 @@ func Run() int {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	errGroup, ctx := errgroup.WithContext(ctx)
+	// NOTE: Signal Region Controller that Agent has started.
+	// This should trigger configuration workflows execution.
+	// Region controller will start configuration workflows based on certain
+	// events, however this explicit call from the Agent is used to cover
+	// situations when Agent is (re)started and has a clean state.
+	// Once Region can detect that Agent was reconnected or restarted via
+	// Temporal server API, we should no longer need this.
+	type configureAgentParam struct {
+		SystemID string `json:"system_id"`
+	}
+
+	workflowOptions := client.StartWorkflowOptions{
+		TaskQueue: "region",
+		// If we failed to execute this workflow in 120 seconds, then something bad
+		// happened and we don't want to keep it in a task queue.
+		WorkflowExecutionTimeout: 120 * time.Second,
+	}
+
+	workflowRun, err := temporalClient.ExecuteWorkflow(ctx, workflowOptions,
+		"configure-agent", configureAgentParam{SystemID: cfg.SystemID},
+	)
+
+	if err != nil {
+		log.Err(err).Msg("Failed to execute configure-agent workflow")
+		return 1
+	}
+
+	if err := workflowRun.Get(ctx, nil); err != nil {
+		log.Err(err).Msg("Workflow configure-agent failed")
+		return 1
+	}
+
+	// TODO: consider using returned context
+	errGroup, _ := errgroup.WithContext(ctx)
 
 	errGroup.Go(func() error {
-		err := workerPool.Configure(ctx)
-		if err != nil {
-			log.Error().Err(err).Msg("Temporal worker pool configuration failure")
-			return err
-		}
-
 		return <-workerPool.Error()
 	})
 
 	errGroup.Go(func() error {
-		// loop so we may restart upon reconfiguration
-		for {
-			select {
-			case <-ctx.Done():
-				return nil
-			case <-httpProxies.Ready():
-				log.Info().Msg("Starting HTTP proxy")
-
-				err := httpProxies.Proxies.Listen(ctx)
-				if err != nil && !errors.Is(err, http.ErrServerClosed) {
-					return err
-				}
-			}
-		}
+		return <-httpProxyService.Error()
 	})
 
 	log.Info().Msg("Service MAAS Agent started")
@@ -187,7 +201,7 @@ func Run() int {
 }
 
 // getConfig reads MAAS Agent YAML configuration file
-// TODO: agent.yaml config is generated by rackd, however this behaviour
+// NOTE: agent.yaml config is generated by rackd, however this behaviour
 // should be changed when MAAS Agent will be a standalone service, not managed
 // by the Rack Controller.
 func getConfig() (*config, error) {
@@ -209,6 +223,16 @@ func getConfig() (*config, error) {
 	}
 
 	return cfg, nil
+}
+
+func getSocketDir() string {
+	name := os.Getenv("SNAP_INSTANCE_NAME")
+
+	if name != "" {
+		return fmt.Sprintf("/run/snap.%s", name)
+	}
+
+	return "/run/maas"
 }
 
 func main() {

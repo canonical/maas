@@ -1,245 +1,260 @@
 package httpproxy
 
 import (
-	"context"
-	"crypto/tls"
 	"errors"
+	"io"
+	"io/fs"
+	"math/rand"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"os"
+	"strings"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-	"maas.io/core/src/maasagent/internal/imagecache"
+	"github.com/rs/zerolog/log"
 )
 
-var (
-	// ErrInvalidBindAddr is an error for when the configured address for a proxy to bind to
-	// is invalid
-	ErrInvalidBindAddr = errors.New("the provided proxy address to bind to is invalid")
-	// ErrProxyAlreadyListening is an error for when the Proxy has already been started and is listening
-	ErrProxyAlreadyListening = errors.New("the proxy is already listening")
-	// ErrProxyNotRunning is an error for when something for a running Proxy is accessed on a non-running
-	// Proxy
-	ErrProxyNotRunning = errors.New("the proxy is not currently running")
-	// ErrUnsupportedProxyOption is an error for an option being set on a Proxy that isn't supported
-	ErrUnsupportedProxyOption = errors.New("an unsupported proxy option was given")
-	// ErrInvalidOriginURL is an error for when an invalid origin is provided
-	ErrInvalidOriginURL = errors.New("the given origin URL is invalid")
-)
-
-// ProxyGroupOption is a type for options that apply to ProxyGroups
-type ProxyGroupOption func(*ProxyGroup) error
-
-// ProxyOption is a type for options that apply to Proxies
-type ProxyOption func(Proxy) error
-
-// proxyConstructor is a type for functions that instantiate Proxies
-type proxyConstructor func(...ProxyOption) (Proxy, error)
-
-// ProxyListener is an interface defining methods for Proxy listening
-// behaviour
-type ProxyListener interface {
-	Listen(context.Context) error
-	Teardown(context.Context) error
+// Proxy is a caching reverse HTTP proxy that sends request to a target.
+type Proxy struct {
+	revproxy *httputil.ReverseProxy
+	rewriter *Rewriter
+	cacher   *Cacher
+	targets  []*url.URL
 }
 
-// ProxyClient is an interface defining methods for Proxy client
-// behaviour
-type ProxyClient interface {
-	GetOrigin() (*url.URL, error)
-	GetClient() *http.Client
+// NewProxy returns a new caching reverse HTTP proxy, that caches all
+// HTTP 200 responses from the random pick target.
+func NewProxy(targets []*url.URL, options ...ProxyOption) (*Proxy, error) {
+	if len(targets) == 0 {
+		return nil, errors.New("targets cannot be empty")
+	}
+	// Initialize using single target, but then pick a random one in Rewrite.
+	revproxy := httputil.NewSingleHostReverseProxy(targets[0])
+
+	p := Proxy{revproxy: revproxy, targets: targets}
+
+	for _, opt := range options {
+		opt(&p)
+	}
+
+	return &p, nil
 }
 
-// Proxy is an interface defining behaviour for proxying images
-type Proxy interface {
-	ProxyClient
-	ProxyListener
-	AddOriginURL(context.Context, string) error
-	SetBindAddr(string) error
-	ValidateAddr(string) error
-	SetKeepalive(time.Duration)
-	SetPort(int) error
-	SetServerTLSConfig(*tls.Config)
-	SetUpstreamTLSConfig(*tls.Config)
-	SetHandlerOverride(http.Handler)
-	SetBootloaderRegistry(*imagecache.BootloaderRegistry)
-	GetBootloaderRegistry() *imagecache.BootloaderRegistry
-	SetImageCache(imagecache.Cache)
-	GetImageCache() imagecache.Cache
+// ProxyOption allows to set additional options for the proxy
+type ProxyOption func(*Proxy)
+
+// WithRewriter allows to set URL rewriter middleware
+func WithRewriter(r *Rewriter) ProxyOption {
+	return func(p *Proxy) {
+		p.rewriter = r
+		// At most one of Rewrite or Director may be set. Set Director to nil.
+		p.revproxy.Director = nil
+		p.revproxy.Rewrite = p.rewriteRequest()
+		p.revproxy.ModifyResponse = p.modifyResponse()
+	}
 }
 
-// ProxyGroup is a group of Proxies, this may consist of IPv4, IPv6 and
-// Unix socket proxies
-type ProxyGroup struct {
-	proxies []Proxy
+// WithCacher allows to set caching middleware
+func WithCacher(c *Cacher) ProxyOption {
+	return func(p *Proxy) {
+		p.cacher = c
+	}
 }
 
-// Listen calls each Proxy's Listen() in an errgroup
-func (pg *ProxyGroup) Listen(ctx context.Context) error {
-	errGroup, ctx := errgroup.WithContext(ctx)
-
-	for _, p := range pg.proxies {
-		errGroup.Go(func(proxy Proxy) func() error {
-			return func() error {
-				return proxy.Listen(ctx)
+func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if p.rewriter != nil {
+		for _, rule := range p.rewriter.rules {
+			ok := rule.Rewrite(r)
+			if ok {
+				break
 			}
-		}(p))
+		}
 	}
 
-	return errGroup.Wait()
+	if p.cacher != nil {
+		ok := p.getFromCache(w, r)
+		if ok {
+			return
+		}
+	}
+
+	p.revproxy.ServeHTTP(w, r)
 }
 
-// Teardown tears down each Proxy in an errgroup
-func (pg *ProxyGroup) Teardown(ctx context.Context) error {
-	errGroup, ctx := errgroup.WithContext(ctx)
+func (p *Proxy) getFromCache(w http.ResponseWriter, r *http.Request) bool {
+	var key string
 
-	for _, p := range pg.proxies {
-		errGroup.Go(func(proxy Proxy) func() error {
-			return func() error {
-				return proxy.Teardown(ctx)
+	ok := true
+	for _, rule := range p.cacher.rules {
+		key, ok = rule.getKey(r)
+		if ok {
+			break
+		}
+	}
+
+	if !ok {
+		return false
+	}
+
+	w.Header().Set("x-cache", "MISS")
+
+	var err error
+
+	var reader io.ReadSeekCloser
+
+	reader, err = p.cacher.cache.Get(key)
+	if err != nil {
+		return false
+	}
+
+	modtime := time.Now().UTC()
+	// reader is only ever of type *os.File coming from the cache regardless of
+	// whether it's added or existing.
+	if f, ok := reader.(*os.File); ok {
+		var info fs.FileInfo
+
+		info, err = f.Stat()
+		if err != nil {
+			log.Err(err).Send()
+			return false
+		}
+
+		modtime = info.ModTime()
+	}
+
+	w.Header().Set("x-cache", "HIT")
+	// Explicity set the content type, so ServeContent doesn't have to guess.
+	w.Header().Set("content-type", "application/octet-stream")
+	http.ServeContent(w, r, "", modtime, reader)
+
+	return true
+}
+
+// modifyResponse is a function called by the underlying revproxy before response
+// is returned to the client. It is using io.Pipe and io.TeeReader to cache
+// response while it is being read by the client.
+func (p *Proxy) modifyResponse() func(*http.Response) error {
+	return func(resp *http.Response) error {
+		if p.cacher == nil {
+			return nil
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil
+		}
+
+		var key string
+
+		ok := true
+		for _, rule := range p.cacher.rules {
+			key, ok = rule.getKey(resp.Request)
+			if ok {
+				break
 			}
-		}(p))
-	}
-
-	return errGroup.Wait()
-}
-
-// Size returns number of proxies this ProxyGroup is managing
-func (pg *ProxyGroup) Size() int {
-	return len(pg.proxies)
-}
-
-// GetProxyAt returns the proxy at the given index
-func (pg *ProxyGroup) GetProxyAt(idx int) Proxy {
-	return pg.proxies[idx]
-}
-
-// WithOrigin adds an origin URL to a given Proxy
-func WithOrigin(ctx context.Context, url string) ProxyOption {
-	return func(p Proxy) error {
-		return p.AddOriginURL(ctx, url)
-	}
-}
-
-// WithBindAddr sets the address for a Proxy to bind to
-func WithBindAddr(addr string) ProxyOption {
-	return func(p Proxy) error {
-		return p.SetBindAddr(addr)
-	}
-}
-
-// WithPort sets the port for a Proxy to listen on
-func WithPort(port int) ProxyOption {
-	return func(p Proxy) error {
-		return p.SetPort(port)
-	}
-}
-
-// WithServerTLS creates a *tls.Config with the given cert and key
-// for the Proxy to serve
-func WithServerTLS(certPath, keyPath string) ProxyOption {
-	return func(p Proxy) error {
-		keyPair, err := tls.LoadX509KeyPair(certPath, keyPath)
-		if err != nil {
-			return err
 		}
 
-		config := &tls.Config{
-			Certificates: []tls.Certificate{keyPair},
-			MinVersion:   tls.VersionTLS13,
+		if !ok {
+			return nil
 		}
 
-		p.SetServerTLSConfig(config)
+		pr, pw := io.Pipe()
+
+		go func() {
+			// If there is a pending Set() for the same key, we return an error
+			// so clients are not waiting for a cache write lock and fetch resource
+			// from the upstream.
+			err := p.cacher.cache.Set(key, pr, resp.ContentLength)
+			if err != nil {
+				log.Warn().Err(err).Msg("Failed to cache value")
+				// XXX: can we do anything with this error?
+				_, err := io.Copy(io.Discard, pr)
+				log.Warn().Err(err).Msg("Failed to discard io.Pipe")
+			}
+		}()
+
+		tee := io.TeeReader(resp.Body, pw)
+
+		resp.Body = &closer{tee, pw}
 
 		return nil
 	}
 }
 
-// WithClientTLS creates a *tls.Config with the given cert and key (empty string will disable mutual TLS auth)
-// and set skipping host verification
-func WithClientTLS(certPath, keyPath string, skipVerify bool) ProxyOption {
-	return func(p Proxy) error {
-		keyPair, err := tls.LoadX509KeyPair(certPath, keyPath)
-		if err != nil {
-			return err
-		}
+// rewriteRequest is a modified version of stdlib implementation taken from
+// https://go.dev/src/net/http/httputil/reverseproxy.go
+// The main difference here is that we pick a random target URL where
+// we want to dispatch our request and apply certain rewrite rules.
+func (p *Proxy) rewriteRequest() func(pr *httputil.ProxyRequest) {
+	return func(pr *httputil.ProxyRequest) {
+		rand.Seed(time.Now().Unix())
+		//nolint:gosec // usage of math/rand is ok here
+		target := p.targets[rand.Intn(len(p.targets))]
 
-		config := &tls.Config{
-			Certificates: []tls.Certificate{keyPair},
-			//nolint:gosec // gosec does not allow skipping host verification
-			InsecureSkipVerify: skipVerify,
-			MinVersion:         tls.VersionTLS13,
-		}
+		targetQuery := target.RawQuery
+		pr.Out.URL.Scheme = target.Scheme
+		pr.Out.URL.Host = target.Host
+		pr.Out.URL.Path, pr.Out.URL.RawPath = joinURLPath(target, pr.In.URL)
 
-		p.SetUpstreamTLSConfig(config)
-
-		return nil
-	}
-}
-
-// WithHandler will override the default handler of a Proxy
-func WithHandler(h http.Handler) ProxyOption {
-	return func(p Proxy) error {
-		p.SetHandlerOverride(h)
-
-		return nil
-	}
-}
-
-func WithBootloaderRegistry(registry *imagecache.BootloaderRegistry) ProxyOption {
-	return func(p Proxy) error {
-		p.SetBootloaderRegistry(registry)
-
-		return nil
-	}
-}
-
-func WithImageCache(cache imagecache.Cache) ProxyOption {
-	return func(p Proxy) error {
-		p.SetImageCache(cache)
-
-		return nil
-	}
-}
-
-func withProxy(newProxy proxyConstructor, opts ...ProxyOption) ProxyGroupOption {
-	return func(pg *ProxyGroup) error {
-		proxy, err := newProxy(opts...)
-		if err != nil {
-			return err
-		}
-
-		pg.proxies = append(pg.proxies, proxy)
-
-		return nil
-	}
-}
-
-// WithIPv4 adds an IPv4 Proxy to the ProxyGroup
-func WithIPv4(opts ...ProxyOption) ProxyGroupOption {
-	return withProxy(NewIPv4Proxy, opts...)
-}
-
-// WithIPv6 adds an IPv6 Proxy to the ProxyGroup
-func WithIPv6(opts ...ProxyOption) ProxyGroupOption {
-	return withProxy(NewIPv6Proxy, opts...)
-}
-
-// WithSocket adds an Unix socket Proxy to the ProxyGroup
-func WithSocket(opts ...ProxyOption) ProxyGroupOption {
-	return withProxy(NewSocketProxy, opts...)
-}
-
-// NewProxyGroup creates a ProxyGroup with the given set of options
-func NewProxyGroup(opts ...ProxyGroupOption) (*ProxyGroup, error) {
-	pg := &ProxyGroup{}
-
-	for _, opt := range opts {
-		err := opt(pg)
-		if err != nil {
-			return nil, err
+		if targetQuery == "" || pr.In.URL.RawQuery == "" {
+			pr.Out.URL.RawQuery = targetQuery + pr.In.URL.RawQuery
+		} else {
+			pr.Out.URL.RawQuery = targetQuery + "&" + pr.In.URL.RawQuery
 		}
 	}
+}
 
-	return pg, nil
+// singleJoiningSlash is a modified version of stdlib implementation taken from
+// https://go.dev/src/net/http/httputil/reverseproxy.go
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+
+	return a + b
+}
+
+// joinURLPath is a modified version of stdlib implementation taken from
+// https://go.dev/src/net/http/httputil/reverseproxy.go
+//
+//nolint:nonamedreturns // this is from the standard library
+func joinURLPath(a, b *url.URL) (path, rawpath string) {
+	if a.RawPath == "" && b.RawPath == "" {
+		return singleJoiningSlash(a.Path, b.Path), ""
+	}
+	// Same as singleJoiningSlash, but uses EscapedPath to determine
+	// whether a slash should be added
+	apath := a.EscapedPath()
+	bpath := b.EscapedPath()
+
+	aslash := strings.HasSuffix(apath, "/")
+	bslash := strings.HasPrefix(bpath, "/")
+
+	switch {
+	case aslash && bslash:
+		return a.Path + b.Path[1:], apath + bpath[1:]
+	case !aslash && !bslash:
+		return a.Path + "/" + b.Path, apath + "/" + bpath
+	}
+
+	return a.Path + b.Path, apath + bpath
+}
+
+type closer struct {
+	reader io.Reader
+	closer io.Closer
+}
+
+func (c *closer) Read(data []byte) (int, error) {
+	return c.reader.Read(data)
+}
+
+func (c *closer) Close() error {
+	return c.closer.Close()
 }

@@ -111,7 +111,7 @@ import logging
 import os
 from os import environ
 import os.path
-from shutil import copyfile
+from shutil import copyfile, disk_usage
 import sqlite3
 from threading import RLock
 from time import time
@@ -806,6 +806,13 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         "debug",
         "Enable debug mode for detailed error and log reporting.",
         OneWayStringBool(if_missing=False),
+    )
+
+    # MAAS Agent options
+    httpproxy_cache_size = ConfigurationOption(
+        "httpproxy_cache_size",
+        "The size of a cache used by HTTP proxy",
+        Number(min=1, if_missing=disk_usage("/").total * 0.3),
     )
 
 

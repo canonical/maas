@@ -26,6 +26,7 @@ from testtools.content import text_content
 from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import (
+    MAASCacheFixture,
     MAASDataFixture,
     MAASRootFixture,
     TempDirectory,
@@ -137,6 +138,8 @@ class MAASTestCase(
             self.useFixture(MAASRootFixture())
         if "MAAS_DATA" in os.environ:
             self.useFixture(MAASDataFixture())
+        if "MAAS_CACHE" in os.environ:
+            self.useFixture(MAASCacheFixture())
 
         rand_seed = os.environ.get("MAAS_RAND_SEED")
         random.seed(rand_seed)

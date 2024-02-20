@@ -24,8 +24,11 @@ def setup_testenv(monkeypatch, tmpdir):
     maas_root.mkdir()
     maas_data = tmpdir.join("maas_data")
     maas_data.mkdir()
+    maas_cache = tmpdir.join("maas_cache")
+    maas_cache.mkdir()
     monkeypatch.setenv("MAAS_ROOT", str(maas_root))
     monkeypatch.setenv("MAAS_DATA", str(maas_data))
+    monkeypatch.setenv("MAAS_CACHE", str(maas_cache))
 
     res_store = maas_data.join("image-storage")
     res_store.mkdir()

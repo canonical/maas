@@ -43,7 +43,7 @@ class TestGetTemporalQueueForMachine:
         bmc = factory.make_BMC(ip_address=ip)
         machine = factory.make_Machine(bmc=bmc)
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"agent:vlan-{vlan.id}"
+        assert queue == f"agent:power@vlan-{vlan.id}"
 
     def test_get_temporal_task_queue_for_bmc_machine_with_bmc_without_vlan(
         self, factory, mocker
@@ -71,7 +71,7 @@ class TestGetTemporalQueueForMachine:
         mocked_get_all_clients.return_value = [client]
 
         queue = get_temporal_task_queue_for_bmc(machine)
-        assert queue == f"{rack.system_id}@agent"
+        assert queue == f"{rack.system_id}@agent:power"
 
     def test_convert_power_action_to_power_workflow(self, factory, mocker):
         power_actions = {
@@ -88,7 +88,9 @@ class TestGetTemporalQueueForMachine:
         mocked_get_temporal_task_queue_for_bmc = mocker.patch.object(
             power_workflow, "get_temporal_task_queue_for_bmc"
         )
-        mocked_get_temporal_task_queue_for_bmc.return_value = "agent:vlan-1"
+        mocked_get_temporal_task_queue_for_bmc.return_value = (
+            "agent:power@vlan-1"
+        )
 
         for power_action, param in power_actions.items():
             (
@@ -101,7 +103,7 @@ class TestGetTemporalQueueForMachine:
             assert workfow_type == power_action.replace("_", "-")
             assert workflow_param == power_actions[power_action](
                 system_id=machine.system_id,
-                task_queue="agent:vlan-1",
+                task_queue="agent:power@vlan-1",
                 driver_type=params.power_type,
                 driver_opts=params.power_parameters,
             )
@@ -118,7 +120,9 @@ class TestGetTemporalQueueForMachine:
         mocked_get_temporal_task_queue_for_bmc = mocker.patch.object(
             power_workflow, "get_temporal_task_queue_for_bmc"
         )
-        mocked_get_temporal_task_queue_for_bmc.return_value = "agent:vlan-1"
+        mocked_get_temporal_task_queue_for_bmc.return_value = (
+            "agent:power@vlan-1"
+        )
         with pytest.raises(UnknownPowerActionException):
             convert_power_action_to_power_workflow(
                 power_action, machine, params

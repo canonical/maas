@@ -14,6 +14,7 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.path
 from provisioningserver.path import (
     get_data_path,
+    get_maas_cache_path,
     get_maas_data_path,
     get_path,
     get_tentative_data_path,
@@ -134,4 +135,16 @@ class TestGetMAASDataPath(MAASTestCase):
         del os.environ["MAAS_DATA"]
         self.assertEqual(
             get_maas_data_path("some/path"), "/var/lib/maas/some/path"
+        )
+
+
+class TestGetMAASCachePath(MAASTestCase):
+    def test_get_maas_cache_path_env(self):
+        os.environ["MAAS_CACHE"] = "some/cache/path"
+        self.assertEqual(get_maas_cache_path("foo"), "some/cache/path/foo")
+
+    def test_get_maas_cache_path_no_env(self):
+        del os.environ["MAAS_CACHE"]
+        self.assertEqual(
+            get_maas_cache_path("some/path"), "/var/cache/maas/some/path"
         )

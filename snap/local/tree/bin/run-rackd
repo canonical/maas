@@ -20,9 +20,10 @@ rm -f \
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
+export MAAS_CACHE="$SNAP_COMMON/maas/cache"
 export MAAS_CLUSTER_CONFIG="$SNAP_DATA/rackd.conf"
 export MAAS_AGENT_CONFIG="$SNAP_DATA/agent.yaml"
-export MAAS_AGENT_HTTP_PROXY_SOCKET_PATH="$SNAP_DATA/agent-http-proxy.sock"
+export MAAS_AGENT_HTTPPROXY_SOCKET_PATH="/run/snap.$SNAP_INSTANCE_NAME/agent-httpproxy.sock"
 export MAAS_DNS_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_ZONE_FILE_CONFIG_DIR="$SNAP_DATA/bind"
 export MAAS_PROXY_CONFIG_DIR="$SNAP_DATA/proxy"
@@ -34,5 +35,7 @@ export MAAS_HTTP_CONFIG_DIR="$SNAP_DATA/http"
 export PERL5LIB
 PERLVER=$(perl -MConfig -e 'printf("%d.%d", $Config{"PERL_REVISION"}, $Config{PERL_VERSION});')
 PERL5LIB="$SNAP/usr/share/perl5:$SNAP/usr/share/perl/${PERLVER}:$SNAP/usr/lib/$(uname -m)-linux-gnu/perl/${PERLVER}"
+
+mkdir -p "$MAAS_CACHE"
 
 exec "$SNAP/bin/rackd"

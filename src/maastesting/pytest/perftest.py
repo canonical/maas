@@ -16,7 +16,11 @@ from typing import Any
 
 import pytest
 
-from maastesting.fixtures import MAASDataFixture, MAASRootFixture
+from maastesting.fixtures import (
+    MAASCacheFixture,
+    MAASDataFixture,
+    MAASRootFixture,
+)
 
 DEFAULT_BRANCH = "master"
 
@@ -32,6 +36,13 @@ def maas_root():
 def maas_data():
     if "MAAS_DATA" in os.environ:
         return MAASDataFixture()
+    return None
+
+
+@pytest.fixture(scope="session")
+def maas_cache():
+    if "MAAS_CACHE" in os.environ:
+        return MAASCacheFixture()
     return None
 
 

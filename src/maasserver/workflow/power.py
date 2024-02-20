@@ -260,7 +260,7 @@ def get_temporal_task_queue_for_bmc(machine: Any) -> str:
     # Check if there are any rack controllers that are connected to this VLAN.
     # If such rack controllers exist, use vlan specific task queue.
     if bmc_vlan and bmc_vlan.connected_rack_controllers():
-        return f"agent:vlan-{bmc_vlan.id}"
+        return f"agent:power@vlan-{bmc_vlan.id}"
 
     # Check if there are any rack controllers/agents that have access to
     # the BMC by routing instead of having direct layer 2 access.
@@ -270,7 +270,7 @@ def get_temporal_task_queue_for_bmc(machine: Any) -> str:
         with_connection=True
     )
     if racks:
-        return f"{racks[0].system_id}@agent"
+        return f"{racks[0].system_id}@agent:power"
 
     raise UnroutablePowerWorkflowException(
         f"Error determining BMC task queue for machine {machine.system_id}"

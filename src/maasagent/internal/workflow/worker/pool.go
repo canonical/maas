@@ -1,66 +1,59 @@
 package worker
 
 import (
-	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
-
-	wf "maas.io/core/src/maasagent/internal/workflow"
-)
-
-const (
-	defaultConfigureWorkerPoolWorkflowName = "configure-agent"
-	defaultConfigureWorkerPoolActivityName = "configure-worker-pool"
-	defaultControlPlaneTaskQueueName       = "control-plane"
 )
 
 var (
+	// Override defaultWorkerConstructor using WithWorkerConstructor for tests.
 	defaultWorkerConstructor = worker.New
 )
+
+// Configurator is an interface that wraps configuration methods.
+// Configure will be registered as a Temporal workflow for service configuration.
+type Configurator interface {
+	// Configure is an entrypoint. It is registered as a Temporal workflow.
+	Configure(ctx workflow.Context, systemID string) error
+	ConfiguratorName() string
+}
 
 type workerConstructor func(client.Client, string, worker.Options) worker.Worker
 
 // WorkerPool contains a collection of Temporal Workers that can be configured
-// at runtime by main worker
+// at runtime by executing workflows on the main worker.
+// WithConfigurator can be used to provide additional configuration workflows
+// that will be attached to the main worker.
 type WorkerPool struct {
 	fatal  chan error
 	client client.Client
 	// worker for control plane
-	main                            worker.Worker
-	workerConstructor               workerConstructor
-	workers                         map[string]worker.Worker
-	configurators                   map[string]wf.Configurator
-	allowedWorkflows                map[string]interface{}
-	allowedActivities               map[string]interface{}
-	systemID                        string
-	taskQueue                       string
-	configureWorkerPoolActivityName string
-	configureWorkerPoolWorkflowName string
-	controlPlaneTaskQueueName       string
-	mutex                           sync.Mutex
+	main              worker.Worker
+	workerConstructor workerConstructor
+	workers           map[string][]worker.Worker
+	configurators     map[string]func(workflow.Context, string) error
+	systemID          string
+	taskQueue         string
+	mutex             sync.Mutex
 }
 
 // NewWorkerPool returns WorkerPool that has a main worker polling
 // Temporal Task Queue named after systemID@main
+// Main worker will execute any configurator workflow provided
 func NewWorkerPool(systemID string, client client.Client,
 	options ...WorkerPoolOption) *WorkerPool {
 	pool := &WorkerPool{
-		systemID:                        systemID,
-		taskQueue:                       fmt.Sprintf("%s@main", systemID),
-		client:                          client,
-		workers:                         make(map[string]worker.Worker),
-		configurators:                   make(map[string]wf.Configurator),
-		configureWorkerPoolActivityName: defaultConfigureWorkerPoolActivityName,
-		configureWorkerPoolWorkflowName: defaultConfigureWorkerPoolWorkflowName,
-		controlPlaneTaskQueueName:       defaultControlPlaneTaskQueueName,
-		workerConstructor:               defaultWorkerConstructor,
+		systemID:          systemID,
+		taskQueue:         fmt.Sprintf("%s@main", systemID),
+		client:            client,
+		workers:           make(map[string][]worker.Worker),
+		configurators:     make(map[string]func(workflow.Context, string) error),
+		workerConstructor: defaultWorkerConstructor,
 	}
 
 	for _, opt := range options {
@@ -69,22 +62,18 @@ func NewWorkerPool(systemID string, client client.Client,
 
 	// main worker is responsible for configuring workers in the pool
 	pool.main = pool.workerConstructor(client, pool.taskQueue, worker.Options{
-		DisableRegistrationAliasing: true,
-		OnFatalError:                func(err error) { pool.fatal <- err },
+		DisableRegistrationAliasing:            true,
+		MaxConcurrentWorkflowTaskPollers:       2,
+		MaxConcurrentWorkflowTaskExecutionSize: 2,
+		// Used to catch runtime errors from main
+		OnFatalError: func(err error) { pool.fatal <- err },
 	})
 
-	pool.main.RegisterActivityWithOptions(
-		pool.configure,
-		activity.RegisterOptions{
-			Name: pool.configureWorkerPoolActivityName,
-		},
-	)
-
 	for k, configurator := range pool.configurators {
-		pool.main.RegisterActivityWithOptions(
-			configurator.Configure(),
-			activity.RegisterOptions{
-				Name: fmt.Sprintf("configure-%s", k),
+		pool.main.RegisterWorkflowWithOptions(
+			configurator,
+			workflow.RegisterOptions{
+				Name: k,
 			},
 		)
 	}
@@ -101,46 +90,59 @@ func (p *WorkerPool) Error() chan error {
 	return p.fatal
 }
 
+// AddWorker adds new worker to the worker pool with registered workflows
+// and activities. This method allows you to create several workers
+// listening on the same task queue (because this is a valid case).
+// However that might be not desired in certain scenarios.
+// Named group can be used to track workers registered for specific use cases.
+// If there is a need to remove workers, usage of a group might be handy,
+// because RemoveWorkers method is doing removal of all workers inside the group.
+func (p *WorkerPool) AddWorker(group, taskQueue string,
+	workflows, activities map[string]interface{}, opts worker.Options) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	opts.OnFatalError = func(err error) { p.fatal <- err }
+	opts.DisableRegistrationAliasing = true
+
+	w := p.workerConstructor(p.client, taskQueue, opts)
+
+	for name, fn := range workflows {
+		w.RegisterWorkflowWithOptions(fn, workflow.RegisterOptions{Name: name})
+	}
+
+	for name, fn := range activities {
+		w.RegisterActivityWithOptions(fn, activity.RegisterOptions{Name: name})
+	}
+
+	if err := w.Start(); err != nil {
+		w = nil
+		return err
+	}
+
+	p.workers[group] = append(p.workers[group], w)
+
+	return nil
+}
+
+// RemoveWorkers stops all the workers of a certain group and
+// removes them from the pool.
+func (p *WorkerPool) RemoveWorkers(group string) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	workers, ok := p.workers[group]
+	if ok {
+		for _, w := range workers {
+			w.Stop()
+		}
+
+		delete(p.workers, group)
+	}
+}
+
 // WorkerPoolOption allows to set additional WorkerPool options
 type WorkerPoolOption func(*WorkerPool)
-
-// WithConfigureWorkerPoolWorkflowName sets custom configureWorkerPoolWorkflowName
-// (default: "configure-worker-pool")
-func WithConfigureWorkerPoolWorkflowName(s string) WorkerPoolOption {
-	return func(p *WorkerPool) {
-		p.configureWorkerPoolWorkflowName = s
-	}
-}
-
-// WithConfigureWorkerPoolActivityName sets custom configureWorkerPoolActivityName
-// (default: "configure-worker-pool")
-func WithConfigureWorkerPoolActivityName(s string) WorkerPoolOption {
-	return func(p *WorkerPool) {
-		p.configureWorkerPoolActivityName = s
-	}
-}
-
-// WithControlPlaneTaskQueueName sets custom controlPlaneTaskQueueName
-// (default: "control-plane")
-func WithControlPlaneTaskQueueName(s string) WorkerPoolOption {
-	return func(p *WorkerPool) {
-		p.controlPlaneTaskQueueName = s
-	}
-}
-
-// WithAllowedWorkflows sets workflows allowed to be registered
-func WithAllowedWorkflows(workflows map[string]interface{}) WorkerPoolOption {
-	return func(p *WorkerPool) {
-		p.allowedWorkflows = workflows
-	}
-}
-
-// WithAllowedActivities sets activities allowed to be registered
-func WithAllowedActivities(activities map[string]interface{}) WorkerPoolOption {
-	return func(p *WorkerPool) {
-		p.allowedActivities = activities
-	}
-}
 
 // WithMainWorkerTaskQueueSuffix sets main worker Task Queue suffix
 // Main TaskQueue has format: {systemID}@{suffix}
@@ -160,124 +162,9 @@ func WithWorkerConstructor(fn workerConstructor) WorkerPoolOption {
 	}
 }
 
-// WithHTTPProxyConfigurator sets the Configurator for HTTP proxies
-func WithHTTPProxyConfigurator(httpProxyConfigurator *wf.HTTPProxyConfigurator) WorkerPoolOption {
+// WithConfigurator adds Configurator that will be registered as a workflow
+func WithConfigurator(configurator Configurator) WorkerPoolOption {
 	return func(p *WorkerPool) {
-		p.configurators["http-proxy"] = httpProxyConfigurator
+		p.configurators[configurator.ConfiguratorName()] = configurator.Configure
 	}
-}
-
-// configureWorkerPoolParam is a parameter that should be provided to the
-// `configure-worker-pool` workflow
-type configureWorkerPoolParam struct {
-	SystemID string `json:"system_id"`
-	// TaskQueue should usually be {systemID}@main
-	TaskQueue string `json:"task_queue"`
-}
-
-// Configure calls `configure-worker-pool` workflow to be executed.
-// This workflow will configure WorkerPool with a proper set of workers.
-func (p *WorkerPool) Configure(ctx context.Context) error {
-	workflowOptions := client.StartWorkflowOptions{
-		TaskQueue: p.controlPlaneTaskQueueName,
-		// If we failed to execute this workflow in 120 seconds, then something bad
-		// happened and we don't want to keep it in a task queue.
-		WorkflowExecutionTimeout: 120 * time.Second,
-	}
-
-	workflowRun, err := p.client.ExecuteWorkflow(ctx, workflowOptions,
-		p.configureWorkerPoolWorkflowName, configureWorkerPoolParam{
-			SystemID:  p.systemID,
-			TaskQueue: p.taskQueue,
-		})
-	if err != nil {
-		return err
-	}
-
-	return workflowRun.Get(ctx, nil)
-}
-
-type configureParam struct {
-	TaskQueue  string   `json:"task_queue"`
-	Workflows  []string `json:"workflows"`
-	Activities []string `json:"activities"`
-}
-
-// configure adds requested amount of workers to the WorkerPool
-// and each worker registers workflows and activities
-func (p *WorkerPool) configure(params []configureParam) error {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	// There is no support for incremental changes.
-	// Each configuration is applied on a clean state.
-	p.cleanup()
-
-	for _, param := range params {
-		w := p.workerConstructor(p.client, param.TaskQueue, worker.Options{
-			DisableRegistrationAliasing: true,
-			OnFatalError:                func(err error) { p.fatal <- err },
-		})
-
-		if err := register("workflow", param.Workflows, p.allowedWorkflows,
-			func(name string, fn interface{}) {
-				w.RegisterWorkflowWithOptions(fn, workflow.RegisterOptions{Name: name})
-			}); err != nil {
-			p.cleanup()
-
-			return err
-		}
-
-		if err := register("activity", param.Activities, p.allowedActivities,
-			func(name string, fn interface{}) {
-				w.RegisterActivityWithOptions(fn, activity.RegisterOptions{Name: name})
-			}); err != nil {
-			p.cleanup()
-
-			return err
-		}
-
-		if err := w.Start(); err != nil {
-			p.cleanup()
-
-			return failedToStartWorkerError(err)
-		}
-
-		p.workers[param.TaskQueue] = w
-	}
-
-	return nil
-}
-
-func register(t string, s []string, allowed map[string]interface{},
-	reg func(string, interface{})) error {
-	for _, val := range s {
-		fn, ok := allowed[val]
-		if ok {
-			reg(val, fn)
-			continue
-		}
-
-		return temporal.NewNonRetryableApplicationError(
-			fmt.Sprintf("failed registering %s. %q is not allowed", t, val),
-			fmt.Sprintf("%sNotAllowed", t),
-			nil,
-		)
-	}
-
-	return nil
-}
-
-// cleanup stops all workers and removes them from the pool
-func (p *WorkerPool) cleanup() {
-	for k, v := range p.workers {
-		v.Stop()
-		delete(p.workers, k)
-	}
-}
-
-// failedToStartWorkerError returns a non retryable error
-func failedToStartWorkerError(err error) error {
-	return temporal.NewNonRetryableApplicationError("failed to start worker",
-		"failedToStartWorker", err)
 }

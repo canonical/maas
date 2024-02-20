@@ -301,3 +301,15 @@ class MAASDataFixture(fixtures.Fixture):
         self.path = self.useFixture(TempDirectory()).join("maas-data")
         os.mkdir(self.path)
         self.useFixture(EnvironmentVariable("MAAS_DATA", self.path))
+
+
+class MAASCacheFixture(fixtures.Fixture):
+    """Create a `MAAS_CACHE` directory in a temporary location.
+
+    Also updates `MAAS_CACHE` in the environment to point to this new location.
+    """
+
+    def _setUp(self):
+        self.path = self.useFixture(TempDirectory()).join("maas-cache")
+        os.mkdir(self.path)
+        self.useFixture(EnvironmentVariable("MAAS_CACHE", self.path))

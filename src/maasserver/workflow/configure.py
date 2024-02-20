@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import Any, List
 
 from netaddr import IPAddress
 from sqlalchemy import or_, select
@@ -31,6 +31,16 @@ DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(
 @dataclass
 class GetRackControllerVLANsInput:
     system_id: str
+
+
+@dataclass
+class GetRackControllerVLANsResult:
+    vlans: List[int]
+
+
+@dataclass
+class GetRegionControllerEndpointsResult:
+    endpoints: List[str]
 
 
 class ConfigureAgentActivity(ActivityBase):
@@ -88,8 +98,10 @@ class ConfigureAgentActivity(ActivityBase):
             )
             result = (await tx.execute(stmt)).all()
             if result:
-                return [vlan_id[0] for vlan_id in result]
-            return []
+                return GetRackControllerVLANsResult(
+                    [vlan_id[0] for vlan_id in result]
+                )
+            return GetRackControllerVLANsResult([])
 
     @activity.defn(name="get-region-controller-endpoints")
     async def get_region_controller_endpoints(self) -> dict[str, Any]:
@@ -131,19 +143,14 @@ class ConfigureAgentActivity(ActivityBase):
                 )
             )
             endpoints = (await tx.execute(stmt)).all()
-            return [
-                {
-                    "subnet": str(endpoint[0]),
-                    "endpoint": _format_endpoint(str(endpoint[1])),
-                }
-                for endpoint in endpoints
-            ]
+            return GetRegionControllerEndpointsResult(
+                [_format_endpoint(str(endpoint[1])) for endpoint in endpoints]
+            )
 
 
 @dataclass
-class ConfigureAgentInput:
+class ConfigureAgentParam:
     system_id: str
-    task_queue: str
 
 
 def _format_endpoint(ip: str) -> str:
@@ -153,81 +160,30 @@ def _format_endpoint(ip: str) -> str:
     return f"http://[{ip}]:5240/MAAS/"
 
 
+# NOTE: Once Region can detect that Agent was reconnected or restarted
+# via Temporal server API, we should no longer need this workflow
+# and Region should execute per-service workflow for configuration.
 @workflow.defn(name="configure-agent", sandboxed=False)
 class ConfigureAgentWorkflow:
     """A ConfigureAgent workflow to setup MAAS Agent"""
 
     @workflow.run
-    async def run(self, input: ConfigureAgentInput) -> None:
-        endpoints = await workflow.execute_activity(
-            "get-region-controller-endpoints",
-            start_to_close_timeout=DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT,
-            retry_policy=DEFAULT_CONFIGURE_RETRY_POLICY,
+    async def run(self, param: ConfigureAgentParam) -> None:
+        # Agent registers workflows for configuring it's services
+        # during Temporal worker pool initialization using WithConfigurator.
+        # Make sure that used workflow names are in sync with the Agent.
+        await workflow.execute_child_workflow(
+            "configure-power-service",
+            param.system_id,
+            id=f"configure-power-service:{param.system_id}",
+            task_queue=f"{param.system_id}@agent:main",
+            retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
-        vlan_ids = await workflow.execute_activity(
-            "get-rack-controller-vlans",
-            GetRackControllerVLANsInput(input.system_id),
-            start_to_close_timeout=DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT,
-            retry_policy=DEFAULT_CONFIGURE_RETRY_POLICY,
-        )
-
-        params = []
-        # add worker for {systemID}@agent
-        # this is a unicast task queue picked only by the agent running on
-        # machine identified by systemID
-        params.append(
-            {
-                "task_queue": f"{input.system_id}@agent",
-                "workflows": [
-                    "check-ip",
-                ],
-                "activities": [
-                    "power-query",
-                    "power-cycle",
-                    "power-on",
-                    "power-off",
-                ],
-            },
-        )
-
-        # for each VLAN add anycast workers agent:vlan-{vlan_id}
-        # this is an anycast task queue polled by multiple agents
-        # that can reach a certain VLAN
-        #
-        # If you need to extend workflows/activities that should be
-        # registered, ensure they are allowed by the worker pool (MAAS Agent)
-        params.extend(
-            [
-                {
-                    "task_queue": f"agent:vlan-{vlan_id}",
-                    "workflows": [
-                        "check-ip",
-                    ],
-                    "activities": [
-                        "power-query",
-                        "power-cycle",
-                        "power-on",
-                        "power-off",
-                    ],
-                }
-                for vlan_id in vlan_ids
-            ],
-        )
-
-        await workflow.execute_activity(
-            "configure-worker-pool",
-            params,
-            task_queue=input.task_queue,
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-
-        # TODO dynamically determine whether the agent needs to run the proxy
-        await workflow.execute_activity(
-            "configure-http-proxy",
-            {
-                "endpoints": endpoints,
-            },
-            task_queue=input.task_queue,
-            start_to_close_timeout=timedelta(seconds=30),
+        await workflow.execute_child_workflow(
+            "configure-httpproxy-service",
+            param.system_id,
+            id=f"configure-httpproxy-service:{param.system_id}",
+            task_queue=f"{param.system_id}@agent:main",
+            retry_policy=RetryPolicy(maximum_attempts=1),
         )

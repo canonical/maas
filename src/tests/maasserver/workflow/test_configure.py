@@ -7,6 +7,8 @@ from maasapiserver.common.db.tables import VlanTable
 from maasserver.workflow.configure import (
     ConfigureAgentActivity,
     GetRackControllerVLANsInput,
+    GetRackControllerVLANsResult,
+    GetRegionControllerEndpointsResult,
 )
 from tests.fixtures.factories.interface import create_test_interface_entry
 from tests.fixtures.factories.node import (
@@ -36,7 +38,7 @@ class TestConfigureAgentActivity:
         result = await configure_activities.get_rack_controller_vlans(
             GetRackControllerVLANsInput(system_id="abc")
         )
-        assert result == []
+        assert result == GetRackControllerVLANsResult([])
 
     async def test_get_rack_controller_vlans_valid_system_id(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -62,7 +64,7 @@ class TestConfigureAgentActivity:
             .filter(VlanTable.c.id == subnet["vlan_id"])
         )
         [vlan] = (await db_connection.execute(vlan_stmt)).one_or_none()
-        assert result == [vlan]
+        assert result == GetRackControllerVLANsResult([vlan])
 
     async def test_get_rack_controller_vlans_region_and_rack_controller(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -90,7 +92,7 @@ class TestConfigureAgentActivity:
             .filter(VlanTable.c.id == subnet["vlan_id"])
         )
         [vlan] = (await db_connection.execute(vlan_stmt)).one_or_none()
-        assert result == [vlan]
+        assert result == GetRackControllerVLANsResult([vlan])
 
     async def test_get_rack_controller_vlans_multiple_vlans(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -118,7 +120,9 @@ class TestConfigureAgentActivity:
         result = await configure_activities.get_rack_controller_vlans(
             GetRackControllerVLANsInput(system_id=rack_controller["system_id"])
         )
-        assert result == [vlan1["id"], vlan2["id"]]
+        assert result == GetRackControllerVLANsResult(
+            [vlan1["id"], vlan2["id"]]
+        )
 
     async def test_get_region_controller_endpoints_no_region_controller(
         self, db: Database, db_connection: AsyncConnection
@@ -128,7 +132,7 @@ class TestConfigureAgentActivity:
         )
 
         result = await configure_activities.get_region_controller_endpoints()
-        assert result == []
+        assert result == GetRegionControllerEndpointsResult([])
 
     async def test_get_region_controller_endpoints_one_region_controller(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -149,12 +153,7 @@ class TestConfigureAgentActivity:
         if ip["ip"].version == 6:
             endpoint = f"http://[{ip['ip']}]:5240/MAAS/"
 
-        assert result == [
-            {
-                "subnet": str(subnet["cidr"]),
-                "endpoint": endpoint,
-            }
-        ]
+        assert result == GetRegionControllerEndpointsResult([endpoint])
 
     async def test_get_region_controller_endpoints_missing_links(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -178,12 +177,7 @@ class TestConfigureAgentActivity:
         if ip["ip"].version == 6:
             endpoint = f"http://[{ip['ip']}]:5240/MAAS/"
 
-        assert result == [
-            {
-                "subnet": str(subnet["cidr"]),
-                "endpoint": endpoint,
-            }
-        ]
+        assert result == GetRegionControllerEndpointsResult([endpoint])
 
     async def test_get_region_controller_endpoints_two_region_controllers(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
@@ -217,13 +211,6 @@ class TestConfigureAgentActivity:
         if ip2["ip"].version == 6:
             endpoint2 = f"http://[{ip2['ip']}]:5240/MAAS/"
 
-        assert result == [
-            {
-                "subnet": str(subnet1["cidr"]),
-                "endpoint": endpoint1,
-            },
-            {
-                "subnet": str(subnet2["cidr"]),
-                "endpoint": endpoint2,
-            },
-        ]
+        assert result == GetRegionControllerEndpointsResult(
+            [endpoint1, endpoint2]
+        )

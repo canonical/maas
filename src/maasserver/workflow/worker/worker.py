@@ -21,7 +21,7 @@ from maasserver.utils.asynchronous import async_retry
 from maasserver.workflow.codec.encryptor import EncryptionCodec
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
-REGION_TASK_QUEUE = "region"
+REGION_TASK_QUEUE = "region-internal"
 TEMPORAL_HOST = "localhost"
 TEMPORAL_PORT = 5271
 TEMPORAL_WORKFLOW_RETENTION = "259200s"  # tctl's default retention in seconds

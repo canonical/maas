@@ -6,8 +6,8 @@ upstream maas-regions {
 }
 {{endif}}
 
-upstream maas-agent {
-    server unix:{{maas_agent_socket_path}};
+upstream maas-agent-httpproxy {
+    server unix:{{maas_agent_httpproxy_socket_path}};
 }
 
 server {
@@ -37,7 +37,7 @@ server {
     location /images/ {
         auth_request /log;
 
-        proxy_pass http://maas-agent/images/;
+        proxy_pass http://maas-agent-httpproxy/images/;
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Original-Remote-IP $remote_addr;
     }

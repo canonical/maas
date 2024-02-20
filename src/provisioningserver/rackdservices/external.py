@@ -34,6 +34,7 @@ from provisioningserver.dns.actions import (
 )
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.ntp.config import configure_rack
+from provisioningserver.path import get_maas_cache_path
 from provisioningserver.proxy import config as proxy_config
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.region import (
@@ -419,6 +420,7 @@ class RackAgent(RackOnlyExternalService):
         with ClusterConfiguration.open() as config:
             controllers = [urlparse(url).hostname for url in config.maas_url]
             debug_enabled = config.debug
+            httpproxy_cache_size = config.httpproxy_cache_size
 
         return agent_config.Configuration(
             maas_uuid=MAAS_UUID.get(),
@@ -426,6 +428,10 @@ class RackAgent(RackOnlyExternalService):
             secret=MAAS_SHARED_SECRET.get(),
             controllers=controllers,
             log_level="debug" if debug_enabled else "info",
+            httpproxy=agent_config.HTTPProxyConfiguration(
+                cache_size=httpproxy_cache_size,
+                cache_dir=get_maas_cache_path("httpproxy"),
+            ),
         )
 
     def _applyConfiguration(
