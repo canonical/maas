@@ -156,6 +156,35 @@ class TestConfigureAgentActivity:
             }
         ]
 
+    async def test_get_region_controller_endpoints_missing_links(
+        self, db: Database, db_connection: AsyncConnection, fixture: Fixture
+    ):
+        subnet = await create_test_subnet_entry(fixture)
+        region_controller = await create_test_region_controller_entry(fixture)
+        ip = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[ip]
+        )
+        await create_test_interface_entry(
+            fixture, node=region_controller, ips=[]
+        )
+        configure_activities = ConfigureAgentActivity(
+            db, connection=db_connection
+        )
+
+        result = await configure_activities.get_region_controller_endpoints()
+
+        endpoint = f"http://{ip['ip']}:5240/MAAS/"
+        if ip["ip"].version == 6:
+            endpoint = f"http://[{ip['ip']}]:5240/MAAS/"
+
+        assert result == [
+            {
+                "subnet": str(subnet["cidr"]),
+                "endpoint": endpoint,
+            }
+        ]
+
     async def test_get_region_controller_endpoints_two_region_controllers(
         self, db: Database, db_connection: AsyncConnection, fixture: Fixture
     ):

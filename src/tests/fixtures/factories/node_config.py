@@ -41,5 +41,6 @@ async def create_test_node_config_entry(
             )
         )
         await fixture.conn.execute(stmt)
+        node["current_config_id"] = created_config["id"]
 
     return created_config

@@ -103,29 +103,24 @@ class ConfigureAgentActivity(ActivityBase):
                 .join(
                     NodeConfigTable,
                     NodeTable.c.current_config_id == NodeConfigTable.c.id,
-                    isouter=True,
                 )
                 .join(
                     InterfaceTable,
                     NodeConfigTable.c.id == InterfaceTable.c.node_config_id,
-                    isouter=True,
                 )
                 .join(
                     InterfaceIPAddressTable,
                     InterfaceTable.c.id
                     == InterfaceIPAddressTable.c.interface_id,
-                    isouter=True,
                 )
                 .join(
                     StaticIPAddressTable,
                     InterfaceIPAddressTable.c.staticipaddress_id
                     == StaticIPAddressTable.c.id,
-                    isouter=True,
                 )
                 .join(
                     SubnetTable,
                     SubnetTable.c.id == StaticIPAddressTable.c.subnet_id,
-                    isouter=True,
                 )
                 .filter(
                     or_(
