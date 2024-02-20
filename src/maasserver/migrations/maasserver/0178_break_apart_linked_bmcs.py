@@ -5,14 +5,10 @@ import re
 from django.db import migrations
 import petname
 
-from provisioningserver.drivers.power.registry import PowerDriverRegistry
-
 
 def get_none_chassis_power_types():
     """Return the power_types that are not chassis."""
-    return [
-        ptype for ptype, driver in PowerDriverRegistry if not driver.chassis
-    ]
+    return ["amt", "ipmi", "manual", "openbmc", "webhook", "wedge"]
 
 
 def generate_bmc_name(existing_names):
