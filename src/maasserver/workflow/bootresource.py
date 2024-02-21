@@ -24,6 +24,7 @@ HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 DISK_TIMEOUT = timedelta(minutes=15)
 DOWNLOAD_TIMEOUT = timedelta(hours=2)
 MAX_SOURCES = 5
+CHUNK_SIZE = 5 * (2**20)  # 5 MB
 
 
 @dataclass
@@ -141,7 +142,7 @@ class BootResourcesActivity(MAASAPIClient):
             ) as response, lfile.astore(autocommit=False) as store:
                 response.raise_for_status()
                 last_update = datetime.now()
-                async for data, _ in response.content.iter_chunks():
+                async for data in response.content.iter_chunked(CHUNK_SIZE):
                     activity.heartbeat()
                     dt_now = datetime.now()
                     if dt_now > (last_update + REPORT_INTERVAL):
