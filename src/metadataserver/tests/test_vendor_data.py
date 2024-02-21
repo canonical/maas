@@ -463,8 +463,8 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
                     "runcmd",
                     [
                         "apt autoremove --purge --yes lxd lxd-client lxcfs",
-                        "snap install lxd --channel=5.19/stable",
-                        "snap refresh lxd --channel=5.19/stable",
+                        "snap install lxd --channel=5.21/stable",
+                        "snap refresh lxd --channel=5.21/stable",
                         "lxd init --auto --network-address=[::]",
                         "lxc project create maas",
                         "lxc config trust add /root/lxd.crt --restricted --projects maas",
