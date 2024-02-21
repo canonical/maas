@@ -36,6 +36,30 @@ class TestGlobalServiceMonitor(MAASTestCase):
             service_monitor._services.keys(),
         )
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updateServiceState(self):
+        for service_name in service_monitor._services.keys():
+            (
+                previous_active_state,
+                previous_process_state,
+            ) = yield service_monitor.getServiceState(service_name)
+            new_active_state = SERVICE_STATE.ON
+            new_process_state = "running"
+            if previous_active_state == new_active_state:
+                new_active_state = SERVICE_STATE.OFF
+            if previous_process_state == new_process_state:
+                new_process_state = "dead"
+            service_monitor._updateServiceState(
+                service_name, new_active_state, new_process_state
+            )
+            (
+                actual_active_state,
+                actual_process_state,
+            ) = yield service_monitor.getServiceState(service_name)
+            self.assertEqual(actual_active_state, new_active_state)
+            self.assertEqual(actual_process_state, new_process_state)
+
 
 class TestProxyService(MAASTransactionServerTestCase):
     def setUp(self):
