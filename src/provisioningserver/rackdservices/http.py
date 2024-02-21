@@ -25,7 +25,11 @@ from twisted.web.static import NoRangeStaticProducer
 from provisioningserver import services
 from provisioningserver.events import EVENT_TYPES, send_node_event_ip_address
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.path import get_maas_run_path, get_tentative_data_path
+from provisioningserver.path import (
+    get_maas_data_path,
+    get_maas_run_path,
+    get_tentative_data_path,
+)
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
@@ -182,6 +186,7 @@ class RackHTTPService(TimerService):
                     "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
                     "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
+                    "boot_resources_dir": get_maas_data_path("image-storage"),
                 }
             )
         except NameError as error:
