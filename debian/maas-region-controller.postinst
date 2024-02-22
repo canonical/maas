@@ -205,6 +205,8 @@ deb-systemd-helper enable 'maas-apiserver.service' >/dev/null || true
 deb-systemd-invoke restart 'maas-apiserver.service' >/dev/null || true
 deb-systemd-helper enable 'maas-temporal.service' >/dev/null || true
 deb-systemd-invoke restart 'maas-temporal.service' >/dev/null || true
+deb-systemd-helper enable 'maas-temporal-worker.service' >/dev/null || true
+deb-systemd-invoke restart 'maas-temporal-worker.service' >/dev/null || true
 
 if [ -f /lib/systemd/system/maas-rackd.service ]; then
     deb-systemd-invoke restart 'maas-rackd.service' >/dev/null || true
