@@ -630,3 +630,43 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         )
 
         yield master.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_updateConnections(self):
+        yield deferToDatabase(load_builtin_scripts)
+        master = self.make_IPCMasterService()
+        yield master.startService()
+
+        pid = random.randint(1, 512)
+        port = random.randint(1, 512)
+        ip = factory.make_ip_address()
+        yield master.registerWorker(pid, MagicMock())
+        yield master.registerWorkerRPC(pid, port)
+
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+
+        for _ in range(2):
+            yield master.registerWorkerRPCConnection(
+                pid,
+                random.randint(1, 512),
+                rack_controller.system_id,
+                ip,
+                random.randint(1, 512),
+            )
+
+        for pid, conn in master.connections.items():
+            process = yield deferToDatabase(master._getProcessObjFor, pid)
+            rpc_conns = conn["rpc"]["connections"].copy()
+            rpc_conns.pop(random.choice(list(rpc_conns.keys())))
+            yield deferToDatabase(
+                master._updateConnections, process, rpc_conns
+            )
+
+        def _get_conn_count():
+            return RegionRackRPCConnection.objects.filter(
+                rack_controller=rack_controller
+            ).count()
+
+        count = yield deferToDatabase(_get_conn_count)
+        self.assertEqual(count, 1)
