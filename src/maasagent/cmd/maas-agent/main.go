@@ -232,7 +232,7 @@ func getSocketDir() string {
 		return fmt.Sprintf("/run/snap.%s", name)
 	}
 
-	return "/run/maas"
+	return "/run/maas/agent"
 }
 
 func main() {

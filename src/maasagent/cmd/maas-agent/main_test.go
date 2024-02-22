@@ -20,7 +20,7 @@ func TestGetSocketDir(t *testing.T) {
 		"deb": {
 			in: func(t *testing.T) {
 				t.Setenv("SNAP_INSTANCE_NAME", "")
-			}, out: "/run/maas",
+			}, out: "/run/maas/agent",
 		},
 	}
 

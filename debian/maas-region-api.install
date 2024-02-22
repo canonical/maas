@@ -5,7 +5,7 @@ debian/tmp/usr/share/maas/web/static
 package-files/usr/share/maas/maas-http.conf usr/share/maas/
 
 # Install new preseed files
-package-files/etc/maas/preseeds /etc/maas
+package-files/etc/maas/preseeds etc/maas
 
 # Install driver configuration file
 package-files/etc/maas/drivers.yaml etc/maas
@@ -18,4 +18,4 @@ debian/extras/maas_remote_syslog_compress etc/cron.d
 
 # Install API application
 debian/tmp/usr/lib/python3*/dist-packages/maasapiserver
-usr/bin/maas-apiserver /usr/sbin
+usr/bin/maas-apiserver usr/sbin

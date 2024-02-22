@@ -7,9 +7,9 @@ then
     # Stop the dhcpd instance that came with the isc-dhcp-server package.
     # We run our own dhcpd instances.
     deb-systemd-invoke stop 'isc-dhcp-server.service' >/dev/null || true
-    deb-systemd-helper disble 'isc-dhcp-server.service'>/dev/null || true
+    deb-systemd-helper disable 'isc-dhcp-server.service'>/dev/null || true
     deb-systemd-invoke stop 'isc-dhcp-server6.service' >/dev/null || true
-    deb-systemd-helper disble 'isc-dhcp-server6.service' >/dev/null || true
+    deb-systemd-helper disable 'isc-dhcp-server6.service' >/dev/null || true
 
     dhcpd_prof="/etc/apparmor.d/usr.sbin.dhcpd"
     if [ -f "${dhcpd_prof}" ] && command -v apparmor_parser >/dev/null 2>&1
@@ -17,19 +17,9 @@ then
        apparmor_parser --replace --write-cache --skip-read-cache "${dhcpd_prof}" || true
     fi
 
-    # Starting from 1.9, these config files are no longer stored in
-    # /etc/maas, but are stored in /var/lib/maas. Note that these
-    # are created automatically by MAAS. On upgrades, however, these
-    # need to be moved to not break DHCP.
-    if [ -f /etc/maas/dhcpd.conf ]; then
-        mv /etc/maas/dhcpd.conf /var/lib/maas/
-    fi
-    if [ -f /etc/maas/dhcpd6.conf ]; then
-        mv /etc/maas/dhcpd6.conf /var/lib/maas/
-    fi
-
     # Ensure ownership is correct
-    chown root:dhcpd /var/lib/maas/dhcp
+    install -d -o root -g dhcpd /var/lib/maas/dhcp
+    install -d -o root -g root /run/maas/dhcp
 fi
 
 #DEBHELPER#

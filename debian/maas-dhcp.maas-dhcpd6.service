@@ -5,13 +5,13 @@ Wants=network-online.target
 After=network-online.target
 After=time-sync.target
 BindsTo=maas-rackd.service
+ConditionPathExists=/run/maas/dhcpd
 ConditionPathExists=/var/lib/maas/dhcpd6.conf
 ConditionPathExists=/var/lib/maas/dhcpd6-interfaces
 
 [Service]
 # Allow dhcp server to write lease and pid file as 'dhcpd' user
 # The leases files need to be root:dhcpd even when dropping privileges
-ExecStartPre=/bin/mkdir -p /run/maas/dhcp /var/lib/maas/dhcp
 ExecStart=/bin/sh -ec '\
     INTERFACES=$(cat /var/lib/maas/dhcpd6-interfaces); \
     LEASES_FILE=/var/lib/maas/dhcp/dhcpd6.leases; \

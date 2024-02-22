@@ -16,7 +16,7 @@ import (
 
 const (
 	httpProxyServiceWorkerPoolGroup = "httpproxy-service"
-	socketFileName                  = "agent-httpproxy.sock"
+	socketFileName                  = "httpproxy.sock"
 )
 
 var (
