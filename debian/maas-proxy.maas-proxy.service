@@ -8,7 +8,6 @@ ConditionPathExists=/var/lib/maas/maas-proxy.conf
 Type=forking
 PIDFile=/run/squid.pid
 Restart=always
-ExecStartPre=/bin/mkdir /run/maas/proxy
 ExecStartPre=/bin/sh -ec '\
     . /usr/share/maas/maas-proxy-common.sh; \
     pre_start'
