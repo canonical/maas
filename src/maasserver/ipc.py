@@ -515,7 +515,7 @@ class IPCMasterService(service.Service):
                 ).values_list("id", flat=True)
             )
             for _, (ident, host, port) in connections.items():
-                db_conn = self._registerConnection(
+                db_conn, _ = self._registerConnection(
                     process, ident, host, port, force_save=False
                 )
                 previous_connection_ids.discard(db_conn.id)
