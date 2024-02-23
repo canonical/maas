@@ -127,6 +127,11 @@ func (s *HTTPProxyService) Configure(ctx tworkflow.Context, systemID string) err
 		return err
 	}
 
+	//nolint:gosec // we know what we are doing here and we need 0660
+	if err := os.Chmod(s.socketPath, 0660); err != nil {
+		return err
+	}
+
 	// XXX: While httpproxy-service service is consumed through socket via NGINX
 	// there is nothing bad about not setting the timeout on the listener/server/
 
