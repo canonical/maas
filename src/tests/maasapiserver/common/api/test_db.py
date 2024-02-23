@@ -3,7 +3,16 @@ from typing import AsyncIterator
 from fastapi import Depends, FastAPI
 from httpx import AsyncClient
 import pytest
-from sqlalchemy import Column, insert, Integer, MetaData, select, Table
+from sqlalchemy import (
+    Column,
+    insert,
+    Integer,
+    MetaData,
+    select,
+    Table,
+    Text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.api.base import API, Handler, handler
@@ -19,6 +28,7 @@ TestTable = Table(
     "testing",
     METADATA,
     Column("id", Integer, primary_key=True),
+    Column("name", Text),
 )
 
 
@@ -35,7 +45,7 @@ async def insert_app(
         async def success(
             self, conn: AsyncConnection = Depends(db_conn)
         ) -> None:
-            await conn.execute(insert(TestTable).values(id=42))
+            await conn.execute(insert(TestTable).values(id=42, name="default"))
 
         @handler(path="/failure", methods=["GET"])
         async def fail(self, conn: AsyncConnection = Depends(db_conn)) -> None:
@@ -79,3 +89,32 @@ class TestDBSession:
         async with db_connection.begin():
             ids = await db_connection.scalars(select(TestTable.c.id))
         assert list(ids) == []
+
+    async def test_isolation_level(
+        self,
+        insert_client: AsyncClient,
+        db: Database,
+        db_connection: AsyncConnection,
+    ) -> None:
+        response = await insert_client.get("/insert/success")
+        assert response.status_code == 200
+
+        second_db_connection = await db.engine.connect()
+
+        async with db_connection.begin():
+            async with second_db_connection.begin():
+                assert (
+                    await db_connection.execute(
+                        select(TestTable.c.name).where(TestTable.c.id == 42)
+                    )
+                ).first().name == "default"
+                await second_db_connection.execute(
+                    update(TestTable)
+                    .where(TestTable.c.id == 42)
+                    .values(name="new value")
+                )
+            assert (
+                await db_connection.execute(
+                    select(TestTable.c.name).where(TestTable.c.id == 42)
+                )
+            ).first().name == "default"
