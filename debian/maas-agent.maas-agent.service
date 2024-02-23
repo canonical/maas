@@ -4,6 +4,7 @@ Documentation=https://maas.io/docs
 Wants=network-online.target
 After=maas-rackd.service
 BindsTo=maas-rackd.service
+ConditionPathExists=/etc/maas/agent.yaml
 
 [Service]
 User=maas

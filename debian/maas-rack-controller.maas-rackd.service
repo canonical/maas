@@ -3,6 +3,7 @@ Description=MAAS Rack Controller
 Documentation=https://maas.io/docs
 Requires=network-online.target
 After=network-online.target
+ConditionPathIsDirectory=/var/lib/maas/
 
 [Service]
 User=maas
