@@ -19,7 +19,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
-	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
 	"maas.io/core/src/maasagent/internal/cache"
@@ -168,34 +167,27 @@ func Run() int {
 		return 1
 	}
 
-	// TODO: consider using returned context
-	errGroup, _ := errgroup.WithContext(ctx)
+	fatal := make(chan error)
 
-	errGroup.Go(func() error {
-		return <-workerPool.Error()
-	})
+	go func() {
+		fatal <- workerPool.Error()
+	}()
 
-	errGroup.Go(func() error {
-		return <-httpProxyService.Error()
-	})
+	go func() {
+		fatal <- httpProxyService.Error()
+	}()
 
 	log.Info().Msg("Service MAAS Agent started")
 
-	sigC := make(chan os.Signal, 2)
+	sigs := make(chan os.Signal, 2)
 
-	signal.Notify(sigC, syscall.SIGTERM, syscall.SIGINT)
-
-	groupErrors := make(chan error)
-
-	go func() {
-		groupErrors <- errGroup.Wait()
-	}()
+	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGHUP)
 
 	select {
-	case err := <-groupErrors:
-		log.Err(err).Msg("a service failed to execute")
+	case err := <-fatal:
+		log.Err(err).Msg("Service failure")
 		return 1
-	case <-sigC:
+	case <-sigs:
 		return 0
 	}
 }

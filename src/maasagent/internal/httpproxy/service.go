@@ -145,6 +145,6 @@ func (s *HTTPProxyService) Configure(ctx tworkflow.Context, systemID string) err
 	return nil
 }
 
-func (s *HTTPProxyService) Error() chan error {
-	return s.fatal
+func (s *HTTPProxyService) Error() error {
+	return <-s.fatal
 }

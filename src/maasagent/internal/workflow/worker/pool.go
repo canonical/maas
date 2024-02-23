@@ -86,8 +86,8 @@ func (p *WorkerPool) Start() error {
 	return p.main.Start()
 }
 
-func (p *WorkerPool) Error() chan error {
-	return p.fatal
+func (p *WorkerPool) Error() error {
+	return <-p.fatal
 }
 
 // AddWorker adds new worker to the worker pool with registered workflows
