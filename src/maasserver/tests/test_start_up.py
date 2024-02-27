@@ -7,6 +7,8 @@ from unittest.mock import call, MagicMock
 
 from maasserver import deprecations, eventloop, locks, start_up, vault
 from maasserver.config import RegionConfiguration
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
+from maasserver.models import Interface, StaticIPAddress
 from maasserver.models.config import Config
 from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.node import RegionController
@@ -313,6 +315,38 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up(master=True)
 
         migrate_mock.assert_not_called()
+
+    def test_start_up_cleanup_expired_ip_addresses(self):
+        # When a host not managed by MAAS requests an IP to the MAAS DHCP server, the rack will notify the region about the
+        # event.
+        # If the mac_address if the DHCP lease is unknown, the region
+        # - creates an interface with type 'unknown'
+        # - creates a StaticIPAddress(alloc_type=IPADDRESS_TYPE.DISCOVERED)
+        # - attaches the ip address to the interface
+        unknown_interface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.UNKNOWN,
+            name="eth0",
+        )
+
+        # We already set the IP to None for testing purposes.
+        ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=None,
+            interface=unknown_interface,
+        )
+
+        # Create also some other interfaces with IP addresses so to check that they are not deleted by the cleanup procedure.
+        for _ in range(5):
+            interface = factory.make_Interface()
+            factory.make_StaticIPAddress(interface=interface)
+
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+
+        assert not Interface.objects.filter(id=unknown_interface.id).exists()
+        assert not StaticIPAddress.objects.filter(id=ip.id).exists()
+        assert StaticIPAddress.objects.all().count() == 5
+        assert Interface.objects.all().count() == 5
 
 
 class TestVaultMigrateDbCredentials(MAASServerTestCase):
