@@ -3,7 +3,6 @@
 
 """Start-up utilities for the MAAS server."""
 
-
 import logging
 
 from django.db.utils import DatabaseError
@@ -15,9 +14,11 @@ from maasserver.deprecations import (
     log_deprecations,
     sync_deprecation_notifications,
 )
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import (
     Config,
     ControllerInfo,
+    Interface,
     Notification,
     RegionController,
 )
@@ -101,6 +102,22 @@ def migrate_db_credentials_if_necessary(client: VaultClient) -> None:
         # By that moment config should be saved successfully
         client.delete(delete_path)
         logger.info("Deleted DB credentials from vault")
+
+
+def _cleanup_expired_discovered_ip_addresses() -> None:
+    """
+    This startup cleanup is needed for the following reasons:
+    - Major cleanup for https://bugs.launchpad.net/maas/+bug/2049508
+    - In case we missed some DHCP notifications related to discovered IP addresses, we clean up all the resources here.
+    """
+
+    # Delete all the dummy interfaces and IP addresses that have expired.
+    # The related DNS records will be deleted when the django post_delete signal is handled.
+    Interface.objects.filter(
+        type=INTERFACE_TYPE.UNKNOWN,
+        ip_addresses__ip__isnull=True,
+        ip_addresses__alloc_type=IPADDRESS_TYPE.DISCOVERED,
+    ).delete()
 
 
 @asynchronous(timeout=FOREVER)
@@ -195,6 +212,9 @@ def inner_start_up(master=False):
     # Only perform the following if the master process for the
     # region controller.
     if master:
+        # Cleanup in case we missed some DHCP notifications related to discovered ip addresses
+        _cleanup_expired_discovered_ip_addresses()
+
         # Migrate DB credentials to Vault and set the flag if Vault client is configured
         client = get_region_vault_client()
         if client is not None:
