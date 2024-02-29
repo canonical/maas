@@ -26,6 +26,17 @@ ZoneTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
 )
 
+DefaultResourceTable = Table(
+    "maasserver_defaultresource",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column(
+        "zone_id", BigInteger, ForeignKey("maasserver_zone.id"), nullable=False
+    ),
+)
+
 UserTable = Table(
     "auth_user",
     METADATA,
@@ -593,4 +604,26 @@ FabricTable = Table(
     Column("name", String(256), nullable=True),
     Column("class_type", String(256), nullable=True),
     Column("description", Text, nullable=False),
+)
+
+VmClusterTable = Table(
+    "maasserver_vmcluster",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("name", Text, nullable=False, unique=True),
+    Column("project", Text, nullable=False, unique=False),
+    Column(
+        "pool_id",
+        BigInteger,
+        ForeignKey("maasserver_resourcepool.id"),
+        nullable=True,
+    ),
+    Column(
+        "zone_id",
+        BigInteger,
+        ForeignKey("maasserver_zone.id"),
+        nullable=True,
+    ),
 )

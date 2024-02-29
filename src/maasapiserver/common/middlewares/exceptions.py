@@ -6,13 +6,17 @@ from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestResponse,
     ConflictResponse,
     InternalServerErrorResponse,
+    PreconditionFailedResponse,
     ValidationErrorResponse,
 )
 from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
+    BadRequestException,
     BaseExceptionDetail,
+    PreconditionFailedException,
 )
 
 logger = logging.getLogger(__name__)
@@ -42,6 +46,12 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except AlreadyExistsException as e:
             logger.debug(e)
             return ConflictResponse(details=e.details)
+        except BadRequestException as e:
+            logger.debug(e)
+            return BadRequestResponse(e.details)
+        except PreconditionFailedException as e:
+            logger.debug(e)
+            return PreconditionFailedResponse(e.details)
         except Exception as e:
             logger.exception(e)
             return InternalServerErrorResponse()

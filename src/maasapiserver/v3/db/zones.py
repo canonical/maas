@@ -1,14 +1,17 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from sqlalchemy import desc, insert, select, Select
+from sqlalchemy import delete, desc, insert, select, Select
 from sqlalchemy.sql.functions import count
+from sqlalchemy.sql.operators import eq
 
-from maasapiserver.common.db.tables import ZoneTable
+from maasapiserver.common.db.tables import DefaultResourceTable, ZoneTable
+from maasapiserver.common.models.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BaseExceptionDetail,
-    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
@@ -22,7 +25,7 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
         check_integrity_stmt = (
             select(ZoneTable.c.id)
             .select_from(ZoneTable)
-            .where(ZoneTable.c.name == request.name)
+            .where(eq(ZoneTable.c.name, request.name))
             .limit(1)
         )
         existing_entity = (
@@ -59,8 +62,17 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
         zone = result.one()
         return Zone(**zone._asdict())
 
-    async def find_by_id(self, id: int) -> Optional[Zone]:
-        stmt = self._select_all_statement().filter(ZoneTable.c.id == id)
+    async def find_by_id(self, id: int) -> Zone | None:
+        stmt = self._select_all_statement().filter(eq(ZoneTable.c.id, id))
+
+        result = await self.connection.execute(stmt)
+        zone = result.first()
+        if not zone:
+            return None
+        return Zone(**zone._asdict())
+
+    async def find_by_name(self, name: str) -> Zone | None:
+        stmt = self._select_all_statement().filter(eq(ZoneTable.c.name, name))
 
         result = await self.connection.execute(stmt)
         zone = result.first()
@@ -87,22 +99,22 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             items=[Zone(**row._asdict()) for row in result.all()], total=total
         )
 
-    async def update(self, id: str, request: ZoneRequest) -> Zone:
-        pass
+    async def update(self, id: int, request: ZoneRequest) -> Zone:
+        raise Exception("Not implemented yet.")
 
-    async def delete(self) -> None:
-        pass
+    async def delete(self, id: int) -> None:
+        stmt = delete(ZoneTable).where(eq(ZoneTable.c.id, id))
+        await self.connection.execute(stmt)
 
-    async def _raise_if_already_existing(self, request: ZoneRequest):
-        check_integrity_stmt = (
-            select(ZoneTable.c.id)
-            .select_from(ZoneTable)
-            .where(ZoneTable.c.name == request.name)
-            .limit(1)
+    async def get_default_zone(self) -> Zone:
+        stmt = self._select_all_statement().join(
+            DefaultResourceTable,
+            eq(DefaultResourceTable.c.zone_id, ZoneTable.c.id),
         )
-        existing_entity = await self.connection.execute(check_integrity_stmt)
-        if existing_entity:
-            AlreadyExistsException()
+        result = await self.connection.execute(stmt)
+        # By design the default zone is always present.
+        zone = result.first()
+        return Zone(**zone._asdict())
 
     def _select_all_statement(self) -> Select[Any]:
         return select(

@@ -15,6 +15,19 @@ class ErrorBodyResponse(BaseModel):
     details: Optional[list[BaseExceptionDetail]] = None
 
 
+class BadRequestBodyResponse(ErrorBodyResponse):
+    code = status.HTTP_400_BAD_REQUEST
+    message = "Bad request."
+
+
+class BadRequestResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(BadRequestBodyResponse(details=details)),
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+
 class NotFoundBodyResponse(ErrorBodyResponse):
     code = status.HTTP_404_NOT_FOUND
     message = "Entity not found."
@@ -38,6 +51,21 @@ class ConflictResponse(JSONResponse):
         super().__init__(
             content=jsonable_encoder(ConflictBodyResponse(details=details)),
             status_code=status.HTTP_409_CONFLICT,
+        )
+
+
+class PreconditionFailedBodyResponse(ErrorBodyResponse):
+    code = status.HTTP_412_PRECONDITION_FAILED
+    message = "A precondition has failed."
+
+
+class PreconditionFailedResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                PreconditionFailedBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_412_PRECONDITION_FAILED,
         )
 
 

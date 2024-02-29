@@ -1,7 +1,11 @@
-from fastapi import Depends, Response
+from typing import Union
+
+from fastapi import Depends, Header, Response
+from starlette import status
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    BadRequestBodyResponse,
     ConflictBodyResponse,
     NotFoundBodyResponse,
     NotFoundResponse,
@@ -34,6 +38,7 @@ class ZonesHandler(Handler):
             422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
+        status_code=200,
     )
     async def list_zones(
         self,
@@ -64,6 +69,7 @@ class ZonesHandler(Handler):
             422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
+        status_code=201,
     )
     async def create_zone(
         self,
@@ -92,6 +98,7 @@ class ZonesHandler(Handler):
             422: {"model": ValidationErrorBodyResponse},
         },
         response_model_exclude_none=True,
+        status_code=200,
     )
     async def get_zone(
         self,
@@ -107,3 +114,27 @@ class ZonesHandler(Handler):
         return zone.to_response(
             self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/zones"
         )
+
+    # TODO: ensure authorization
+    @handler(
+        path="/zones/{zone_id}",
+        methods=["DELETE"],
+        description="Deletes a zone. All the resources belonging to this zone will be moved to the default zone.",
+        tags=TAGS,
+        responses={
+            204: {},
+            400: {"model": BadRequestBodyResponse},
+            404: {"model": NotFoundBodyResponse},
+        },
+        status_code=204,
+    )
+    async def delete_zone(
+        self,
+        zone_id: int,
+        etag_if_match: Union[str, None] = Header(
+            alias="if-match", default=None
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        await services.zones.delete(zone_id, etag_if_match)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)

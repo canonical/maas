@@ -33,9 +33,10 @@ async def generate_node_system_id(db_connection: AsyncConnection):
     )
 
 
-async def create_test_node_entry(
+async def _create_test_node_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    node_type: NODE_TYPE,
+    **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
@@ -72,6 +73,7 @@ async def create_test_node_entry(
         "register_vmhost": False,
         "last_applied_storage_layout": "flat",
         "enable_hw_sync": False,
+        "node_type": node_type,
     }
     node.update(extra_details)
     [created_node] = await fixture.create(
@@ -81,30 +83,20 @@ async def create_test_node_entry(
     return created_node
 
 
-async def _create_typed_test_node_entry(
-    fixture: Fixture,
-    node_type: int,
-    **extra_details: dict[str, Any],
-) -> dict[str, Any]:
-    node = {"node_type": node_type}
-    node.update(extra_details)
-    return await create_test_node_entry(fixture, **node)
-
-
 async def create_test_machine_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
-    return await _create_typed_test_node_entry(
+    return await _create_test_node_entry(
         fixture, NODE_TYPE.MACHINE, **extra_details
     )
 
 
 async def create_test_device_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
-    return await _create_typed_test_node_entry(
+    return await _create_test_node_entry(
         fixture, NODE_TYPE.DEVICE, **extra_details
     )
 
@@ -113,7 +105,7 @@ async def create_test_rack_controller_entry(
     fixture: Fixture,
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
-    return await _create_typed_test_node_entry(
+    return await _create_test_node_entry(
         fixture, NODE_TYPE.RACK_CONTROLLER, **extra_details
     )
 
@@ -122,7 +114,7 @@ async def create_test_region_controller_entry(
     fixture: Fixture,
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
-    return await _create_typed_test_node_entry(
+    return await _create_test_node_entry(
         fixture, NODE_TYPE.REGION_CONTROLLER, **extra_details
     )
 
@@ -131,6 +123,6 @@ async def create_test_rack_and_region_controller_entry(
     fixture: Fixture,
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
-    return await _create_typed_test_node_entry(
+    return await _create_test_node_entry(
         fixture, NODE_TYPE.REGION_AND_RACK_CONTROLLER, **extra_details
     )

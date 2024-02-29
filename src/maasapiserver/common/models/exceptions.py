@@ -1,7 +1,5 @@
 from pydantic import BaseModel
 
-UNIQUE_CONSTRAINT_VIOLATION_TYPE = "UniqueConstraintViolation"
-
 
 class BaseExceptionDetail(BaseModel):
     type: str
@@ -20,3 +18,15 @@ class AlreadyExistsException(BaseException):
             "An instance with the same unique attributes already exists.",
             details,
         )
+
+
+class BadRequestException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail]):
+        super().__init__(
+            "Invalid request. Please check the provided data.", details
+        )
+
+
+class PreconditionFailedException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail]):
+        super().__init__("A precondition has failed.", details)

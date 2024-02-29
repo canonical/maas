@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from os.path import abspath
 import random
 import string
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Iterator, Type, TypeVar
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -81,6 +81,9 @@ async def db_connection(
             await conn.close()
 
 
+T = TypeVar("T")
+
+
 class Fixture:
     """Helper for creating test fixtures."""
 
@@ -110,6 +113,16 @@ class Fixture:
             .order_by(table_cls.c.id)
         )
         return [row._asdict() for row in result]
+
+    async def get_typed(
+        self,
+        table: str,
+        type_result: Type[T],
+        *filters: ColumnOperators,
+    ) -> list[T]:
+        return [
+            type_result(**row) for row in (await self.get(table, *filters))
+        ]
 
     def random_string(self, length: int = 10) -> str:
         return "".join(random.choices(string.ascii_letters, k=length))

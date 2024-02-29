@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generic, Optional, TypeVar
+from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -20,7 +20,7 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def find_by_id(self, id: str) -> Optional[T]:
+    async def find_by_id(self, id: int) -> T | None:
         pass
 
     @abstractmethod
@@ -28,9 +28,12 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def update(self, id: str, request: K) -> T:
+    async def update(self, id: int, request: K) -> T:
         pass
 
     @abstractmethod
-    async def delete(self) -> None:
+    async def delete(self, id: int) -> None:
+        """
+        If no resource with such `id` is found, silently ignore it and return `None` in any case.
+        """
         pass
