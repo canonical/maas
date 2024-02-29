@@ -22,6 +22,7 @@ from fixtures import LoggerFixture
 from netaddr import IPAddress, IPNetwork
 from testscenarios import multiply_scenarios
 from twisted.internet import defer
+from twisted.internet.defer import succeed
 from twisted.internet.error import ConnectionDone
 import yaml
 
@@ -7273,44 +7274,40 @@ class TestNodeManagerGetNodesRBAC(MAASServerTestCase):
 
 
 class TestNodeErase(MAASServerTestCase):
-    def test_release_or_erase_erases_when_enabled(self):
+    def test_start_releasing_erases_when_enabled(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         Config.objects.set_config("enable_disk_erasing_on_release", True)
-        erase_mock = self.patch_autospec(node, "start_disk_erasing")
         release_mock = self.patch_autospec(node, "release")
-        node.release_or_erase(owner)
-        erase_mock.assert_called_once_with(
-            owner, None, secure_erase=None, quick_erase=None
-        )
+        self.patch(node, "_start").return_value = succeed(None)
+        node.start_releasing(owner)
         release_mock.assert_not_called()
 
-    def test_release_or_erase_erases_when_disabled_and_erase_param(self):
+    def test_start_releasing_erases_when_disabled_and_erase_param(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         Config.objects.set_config("enable_disk_erasing_on_release", False)
-        erase_mock = self.patch_autospec(node, "start_disk_erasing")
         release_mock = self.patch_autospec(node, "release")
+        self.patch(node, "_start").return_value = succeed(None)
         secure_erase = factory.pick_bool()
         quick_erase = factory.pick_bool()
-        node.release_or_erase(
-            owner,
-            erase=True,
-            secure_erase=secure_erase,
-            quick_erase=quick_erase,
-        )
-        erase_mock.assert_called_once_with(
-            owner, None, secure_erase=secure_erase, quick_erase=quick_erase
+        node.start_releasing(
+            user=owner,
+            scripts=["wipe-disks"],
+            script_input={
+                "secure_erase": secure_erase,
+                "quick_erase": quick_erase,
+            },
         )
         release_mock.assert_not_called()
 
-    def test_release_or_erase_releases_when_disabled(self):
+    def test_start_releasing_releases_when_disabled(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         Config.objects.set_config("enable_disk_erasing_on_release", False)
         erase_mock = self.patch_autospec(node, "start_disk_erasing")
         release_mock = self.patch_autospec(node, "release")
-        node.release_or_erase(owner)
+        node.start_releasing(owner)
         release_mock.assert_called_once_with(owner, None)
         erase_mock.assert_not_called()
 

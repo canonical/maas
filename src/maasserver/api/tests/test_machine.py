@@ -1683,17 +1683,16 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.become_admin()
         comment = factory.make_name("comment")
-        machine_release = self.patch(node_module.Machine, "release_or_erase")
+        machine_release = self.patch(node_module.Machine, "start_releasing")
         self.client.post(
             self.get_machine_uri(machine),
             {"op": "release", "comment": comment},
         )
         machine_release.assert_called_once_with(
-            self.user,
-            comment,
-            erase=False,
-            quick_erase=False,
-            secure_erase=False,
+            user=self.user,
+            comment=comment,
+            scripts=[],
+            script_input={},
             force=False,
         )
 
@@ -1707,7 +1706,7 @@ class TestMachineAPI(APITestCase.ForUser):
         self.become_admin()
         secure_erase = factory.pick_bool()
         quick_erase = factory.pick_bool()
-        machine_release = self.patch(node_module.Machine, "release_or_erase")
+        machine_release = self.patch(node_module.Machine, "start_releasing")
         self.client.post(
             self.get_machine_uri(machine),
             {
@@ -1718,11 +1717,15 @@ class TestMachineAPI(APITestCase.ForUser):
             },
         )
         machine_release.assert_called_once_with(
-            self.user,
-            "",
-            erase=True,
-            quick_erase=quick_erase,
-            secure_erase=secure_erase,
+            user=self.user,
+            comment="",
+            scripts=["wipe-disks"],
+            script_input={
+                "wipe-disks": {
+                    "secure_erase": secure_erase,
+                    "quick_erase": quick_erase,
+                }
+            },
             force=False,
         )
 
@@ -1735,16 +1738,15 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.become_admin()
         force = factory.pick_bool()
-        machine_release = self.patch(node_module.Machine, "release_or_erase")
+        machine_release = self.patch(node_module.Machine, "start_releasing")
         self.client.post(
             self.get_machine_uri(machine), {"op": "release", "force": force}
         )
         machine_release.assert_called_once_with(
-            self.user,
-            "",
-            erase=False,
-            quick_erase=False,
-            secure_erase=False,
+            user=self.user,
+            comment="",
+            scripts=[],
+            script_input={},
             force=force,
         )
 
@@ -1756,14 +1758,13 @@ class TestMachineAPI(APITestCase.ForUser):
             power_state=POWER_STATE.OFF,
         )
         self.become_admin()
-        machine_release = self.patch(node_module.Machine, "release_or_erase")
+        machine_release = self.patch(node_module.Machine, "start_releasing")
         self.client.post(self.get_machine_uri(machine), {"op": "release"})
         machine_release.assert_called_once_with(
-            self.user,
-            "",
-            erase=False,
-            quick_erase=False,
-            secure_erase=False,
+            user=self.user,
+            comment="",
+            scripts=[],
+            script_input={},
             force=False,
         )
 

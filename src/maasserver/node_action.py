@@ -728,11 +728,22 @@ class Release(NodeAction):
         if not form.is_valid():
             raise NodeActionError(form.errors)
         try:
-            self.node.release_or_erase(
-                self.user,
-                erase=form.cleaned_data["erase"],
-                secure_erase=form.cleaned_data["secure_erase"],
-                quick_erase=form.cleaned_data["quick_erase"],
+            scripts = []
+            params = {}
+            if form.cleaned_data["erase"]:
+                scripts.append("wipe-disks")
+                params["wipe-disks"] = {}
+                params["wipe-disks"]["secure_erase"] = form.cleaned_data[
+                    "secure_erase"
+                ]
+                params["wipe-disks"]["quick_erase"] = form.cleaned_data[
+                    "quick_erase"
+                ]
+            params = params | form.get_script_param_dict(scripts)
+            self.node.start_releasing(
+                user=self.user,
+                scripts=scripts,
+                script_input=params,
             )
         except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)

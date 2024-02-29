@@ -519,6 +519,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.READY,
         NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.RELEASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
@@ -531,6 +532,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.DISK_ERASING,
+        NODE_STATUS.RELEASING,
         NODE_STATUS.ENTERING_RESCUE_MODE,
         NODE_STATUS.RESCUE_MODE,
         NODE_STATUS.TESTING,
@@ -789,6 +791,13 @@ class VersionIndexHandler(MetadataViewHandler):
         self._store_results(
             node, node.current_release_script_set, request, status
         )
+
+        if status == SIGNAL_STATUS.OK:
+            node.release()
+
+        if status == SIGNAL_STATUS.FAILED:
+            node.mark_failed(comment="Failed to release machine.")
+
         return None
 
     @operation(idempotent=False)

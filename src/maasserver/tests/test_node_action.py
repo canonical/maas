@@ -1555,15 +1555,19 @@ class TestReleaseAction(MAASServerTestCase):
             owner=user,
             power_parameters=params,
         )
-        node_release_or_erase = self.patch_autospec(node, "release_or_erase")
+        node_start_releasing = self.patch_autospec(node, "start_releasing")
 
         with post_commit_hooks:
             Release(node, user, request).execute(
                 erase=True, secure_erase=True, quick_erase=True
             )
 
-        node_release_or_erase.assert_called_once_with(
-            user, erase=True, secure_erase=True, quick_erase=True
+        node_start_releasing.assert_called_once_with(
+            user=user,
+            scripts=["wipe-disks"],
+            script_input={
+                "wipe-disks": {"secure_erase": True, "quick_erase": True}
+            },
         )
 
 

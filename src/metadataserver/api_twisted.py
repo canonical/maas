@@ -503,6 +503,12 @@ class StatusWorkerService(TimerService):
                         comment="Failed to erase disks.", commit=False
                     )
                     save_node = True
+            elif node.status == NODE_STATUS.RELEASING:
+                if failed:
+                    node.mark_failed(
+                        comment="Failed to release machine.", commit=False
+                    )
+                    save_node = True
             # Deallocate the node if we enter any terminal state.
             if node.node_type == NODE_TYPE.MACHINE and node.status in [
                 NODE_STATUS.READY,

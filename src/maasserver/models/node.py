@@ -19,6 +19,7 @@ from itertools import chain, count
 import json
 import logging
 from operator import attrgetter
+import os
 import random
 import re
 import socket
@@ -174,7 +175,11 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_STATUS_RUNNING_OR_PENDING,
 )
-from metadataserver.user_data import generate_user_data_for_status
+from metadataserver.user_data import (
+    generate_user_data,
+    generate_user_data_for_status,
+)
+from metadataserver.user_data.snippets import get_userdata_template_dir
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
@@ -3623,6 +3628,144 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status])
             )
 
+    def start_releasing(
+        self, user, comment=None, scripts=None, script_input=None, force=False
+    ):
+        """Start the release process for the machine."""
+        from maasserver.models import ScriptSet
+
+        if scripts is None:
+            scripts = []
+
+        self.maybe_delete_pods(not force)
+
+        config = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "default_osystem",
+                "default_distro_series",
+                "disk_erase_with_secure_erase",
+                "disk_erase_with_quick_erase",
+                "enable_disk_erasing_on_release",
+            ]
+        )
+
+        if config.get("enable_disk_erasing_on_release"):
+            scripts.append("wipe-disks")
+
+        if not scripts:
+            self.release(user, comment)
+            return
+
+        self.current_release_script_set = (
+            ScriptSet.objects.create_release_script_set(
+                self, scripts=scripts, script_input=script_input
+            )
+        )
+        self.save()
+
+        template_file = os.path.join(
+            get_userdata_template_dir(), "script_runner.template"
+        )
+        user_data = generate_user_data(self, template_file)
+
+        failed_status = NODE_STATUS.FAILED_RELEASING
+        # Before machine release scripts were introduced there was Erase Disk
+        # functionality. We want to maintain backward compatible statuses
+        # to be reported when only "wipe-disk" script is executed.
+        if len(scripts) == 1 and "wipe-disks" in scripts:
+            self._register_request_event(
+                user,
+                EVENT_TYPES.REQUEST_NODE_ERASE_DISK,
+                action="start disk erasing",
+                comment=comment,
+            )
+            old_status = self.update_status(NODE_STATUS.DISK_ERASING)
+            failed_status = NODE_STATUS.FAILED_DISK_ERASING
+        else:
+            self._register_request_event(
+                user,
+                EVENT_TYPES.REQUEST_NODE_RELEASE,
+                action="start node releasing",
+                comment=comment,
+            )
+
+            old_status = self.update_status(NODE_STATUS.RELEASING)
+
+        self.save()
+
+        try:
+            # Node.start() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            starting = self._start(
+                user,
+                user_data,
+                old_status,
+                allow_power_cycle=True,
+                config=config,
+            )
+        except Exception as error:
+            # We always mark the node as failed here, although we could
+            # potentially move it back to the state it was in previously. For
+            # now, though, this is safer, since it marks the node as needing
+            # attention.
+            self.update_status(failed_status)
+            self.save()
+            maaslog.error(
+                f"{self.hostname}: Could not start node for release: {error}"
+            )
+            # Let the exception bubble up, since the UI or API will have to
+            # deal with it.
+            raise
+        else:
+            # Don't permit naive mocking of start(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(starting, Deferred) or starting is None
+
+            if starting is None:
+                starting = post_commit()
+                # MAAS cannot start the node itself.
+                is_starting = False
+            else:
+                # MAAS can direct the node to start.
+                is_starting = True
+
+            @asynchronous
+            def async_start(is_starting, hostname):
+                if is_starting:
+                    maaslog.info(f"{hostname}: Release started")
+                else:
+                    maaslog.warning(
+                        f"{hostname}: Could not start node for release; it "
+                        "must be started manually",
+                    )
+
+            starting.addCallback(
+                callOut,
+                async_start,
+                is_starting,
+                self.hostname,
+            )
+
+            # If there's an error, reset the node's status.
+            starting.addErrback(
+                callOutToDatabase,
+                Node._set_status,
+                self.system_id,
+                status=failed_status,
+            )
+
+            def eb_start(failure, hostname):
+                maaslog.error(
+                    f"{hostname}: Could not start node for "
+                    f"releasing: {failure.getErrorMessage()}",
+                )
+                return failure  # Propagate.
+
+            return starting.addErrback(eb_start, self.hostname)
+
     def release(self, user=None, comment=None):
         self._register_request_event(
             user,
@@ -3757,31 +3900,6 @@ class Node(CleanSave, TimestampedModel):
             Event.objects.create_node_event(self, EVENT_TYPES.RELEASED)
             # Remove all set owner data.
             OwnerData.objects.filter(node=self).delete()
-
-    def release_or_erase(
-        self,
-        user,
-        comment=None,
-        erase=False,
-        secure_erase=None,
-        quick_erase=None,
-        force=False,
-    ):
-        """Either release the node or erase the node then release it, depending
-        on settings and parameters."""
-        self.maybe_delete_pods(not force)
-        erase_on_release = Config.objects.get_config(
-            "enable_disk_erasing_on_release"
-        )
-        if erase or erase_on_release:
-            self.start_disk_erasing(
-                user,
-                comment,
-                secure_erase=secure_erase,
-                quick_erase=quick_erase,
-            )
-        else:
-            self.release(user, comment)
 
     def maybe_delete_pods(self, dry_run: bool):
         """Check if any pods are associated with this Node.

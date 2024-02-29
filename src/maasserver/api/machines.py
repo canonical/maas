@@ -973,12 +973,23 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             # postcondition is achieved, so call this success.
             pass
         elif machine.status in RELEASABLE_STATUSES:
-            machine.release_or_erase(
-                request.user,
-                form.cleaned_data["comment"],
-                erase=form.cleaned_data["erase"],
-                secure_erase=form.cleaned_data["secure_erase"],
-                quick_erase=form.cleaned_data["quick_erase"],
+            scripts = form.cleaned_data["scripts"]
+
+            params = {}
+            if form.cleaned_data["erase"]:
+                params["wipe-disks"] = {}
+                params["wipe-disks"]["secure_erase"] = form.cleaned_data[
+                    "secure_erase"
+                ]
+                params["wipe-disks"]["quick_erase"] = form.cleaned_data[
+                    "quick_erase"
+                ]
+            params = params | form.get_script_param_dict(scripts)
+            machine.start_releasing(
+                user=request.user,
+                comment=form.cleaned_data["comment"],
+                scripts=scripts,
+                script_input=params,
                 force=form.cleaned_data["force"],
             )
         else:
@@ -2225,7 +2236,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 # Nothing to do.
                 pass
             elif machine.status in RELEASABLE_STATUSES:
-                machine.release_or_erase(request.user, comment)
+                machine.start_releasing(
+                    user=request.user,
+                    comment=comment,
+                )
                 released_ids.append(machine.system_id)
             else:
                 failed.append(
