@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count
 
 from maasserver.enum import NODE_TYPE
+from maasserver.models.defaultresource import DefaultResource
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -102,7 +103,7 @@ class TestZoneHandlerDelete(MAASServerTestCase):
             handler.delete({"id": zone.id})
 
     def test_delete_default_zone_fails(self):
-        zone = Zone.objects.get_default_zone()
+        zone = DefaultResource.objects.get_default_zone()
         user = factory.make_admin()
         handler = ZoneHandler(user, {}, None)
         self.assertRaises(ValidationError, handler.delete, {"id": zone.id})

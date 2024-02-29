@@ -6,7 +6,7 @@
 from django import forms
 
 from maasserver.forms import MAASModelForm
-from maasserver.models import ResourcePool, VMCluster, Zone
+from maasserver.models import DefaultResource, ResourcePool, VMCluster, Zone
 
 
 class UpdateVMClusterForm(MAASModelForm):
@@ -27,7 +27,7 @@ class UpdateVMClusterForm(MAASModelForm):
     zone = forms.ModelChoiceField(
         label="Physical zone",
         required=False,
-        initial=Zone.objects.get_default_zone,
+        initial=DefaultResource.objects.get_default_zone,
         queryset=Zone.objects.all(),
         to_field_name="name",
     )

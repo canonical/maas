@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.conf import settings
 import django.core.validators
 from django.db import migrations, models
@@ -5,6 +7,7 @@ import django.db.models.deletion
 
 import maasserver.fields
 import maasserver.migrations.fields
+from maasserver.models import Zone
 import maasserver.models.bootresource
 import maasserver.models.cleansave
 import maasserver.models.fabric
@@ -17,6 +20,21 @@ import maasserver.models.sslkey
 import maasserver.models.subnet
 import maasserver.utils.dns
 import metadataserver.fields
+
+
+def get_default_zone():
+    default_zone_name = "default"
+    now = datetime.now()
+
+    zone, _ = Zone.objects.get_or_create(
+        name=default_zone_name,
+        defaults={
+            "name": default_zone_name,
+            "created": now,
+            "updated": now,
+        },
+    )
+    return zone.id
 
 
 class Migration(migrations.Migration):
@@ -1873,7 +1891,7 @@ class Migration(migrations.Migration):
             name="zone",
             field=models.ForeignKey(
                 on_delete=django.db.models.deletion.SET_DEFAULT,
-                default=maasserver.models.node.get_default_zone,
+                default=get_default_zone,
                 verbose_name="Physical zone",
                 to="maasserver.Zone",
             ),

@@ -151,6 +151,7 @@ from maasserver.models import (
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bootresource import LINUX_OSYSTEMS
+from maasserver.models.defaultresource import DefaultResource
 from maasserver.models.node import RegionController
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
@@ -1011,7 +1012,7 @@ class DeviceForm(NodeForm):
     zone = forms.ModelChoiceField(
         label="Physical zone",
         required=False,
-        initial=Zone.objects.get_default_zone,
+        initial=DefaultResource.objects.get_default_zone,
         queryset=Zone.objects.all(),
         to_field_name="name",
     )
@@ -1067,7 +1068,7 @@ class ControllerForm(MAASModelForm, WithPowerTypeMixin):
     zone = forms.ModelChoiceField(
         label="Physical zone",
         required=False,
-        initial=Zone.objects.get_default_zone,
+        initial=DefaultResource.objects.get_default_zone,
         queryset=Zone.objects.all(),
         to_field_name="name",
     )
@@ -1114,7 +1115,7 @@ class AdminNodeForm(NodeForm):
     zone = forms.ModelChoiceField(
         label="Physical zone",
         required=False,
-        initial=Zone.objects.get_default_zone,
+        initial=DefaultResource.objects.get_default_zone,
         queryset=Zone.objects.all(),
         to_field_name="name",
     )
@@ -2093,7 +2094,7 @@ class BulkNodeSetZoneForm(Form):
         self.fields["zone"] = forms.ModelChoiceField(
             label="Physical zone",
             required=True,
-            initial=Zone.objects.get_default_zone(),
+            initial=DefaultResource.objects.get_default_zone(),
             queryset=Zone.objects.all(),
             to_field_name="name",
         )

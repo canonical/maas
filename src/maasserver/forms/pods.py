@@ -38,6 +38,7 @@ from maasserver.exceptions import PodProblem
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
+    DefaultResource,
     Domain,
     Interface,
     Machine,
@@ -121,7 +122,7 @@ class PodForm(MAASModelForm):
     zone = forms.ModelChoiceField(
         label="Physical zone",
         required=False,
-        initial=Zone.objects.get_default_zone,
+        initial=DefaultResource.objects.get_default_zone,
         queryset=Zone.objects.all(),
         to_field_name="name",
     )
@@ -456,7 +457,7 @@ class ComposeMachineForm(forms.Form):
         self.fields["zone"] = ModelChoiceField(
             required=False, queryset=Zone.objects.all()
         )
-        self.initial["zone"] = Zone.objects.get_default_zone()
+        self.initial["zone"] = DefaultResource.objects.get_default_zone()
         self.fields["pool"] = ModelChoiceField(
             required=False, queryset=ResourcePool.objects.all()
         )

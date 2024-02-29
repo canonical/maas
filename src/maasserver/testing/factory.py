@@ -51,6 +51,7 @@ from maasserver.models import (
     BootSourceSelection,
     CacheSet,
     Config,
+    DefaultResource,
     Device,
     DHCPSnippet,
     Discovery,
@@ -427,7 +428,7 @@ class Factory(maastesting.factory.Factory):
         if status is None:
             status = NODE_STATUS.DEFAULT
         if zone is None:
-            zone = Zone.objects.get_default_zone()
+            zone = DefaultResource.objects.get_default_zone()
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
         if power_state_updated is undefined:
@@ -3165,7 +3166,7 @@ class Factory(maastesting.factory.Factory):
         if project is None:
             project = self.make_name("project")
         if zone is None:
-            zone = Zone.objects.get_default_zone()
+            zone = DefaultResource.objects.get_default_zone()
 
         cluster = VMCluster.objects.create(
             name=name,

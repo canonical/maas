@@ -3,41 +3,13 @@
 
 """Physical zone objects."""
 
-
-import datetime
-
 from django.core.exceptions import ValidationError
-from django.db.models import CharField, Manager, TextField
+from django.db.models import CharField, TextField
 
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-
-# Name of the special, default zone.  This zone can be neither deleted nor
-# renamed.
-DEFAULT_ZONE_NAME = "default"
-
-
-class ZoneManager(Manager):
-    """Manager for :class:`Zone` model.
-
-    Don't import or instantiate this directly; access as `<Class>.objects` on
-    the model class it manages.
-    """
-
-    def get_default_zone(self):
-        """Return the default zone."""
-        now = datetime.datetime.now()
-        zone, _ = self.get_or_create(
-            name=DEFAULT_ZONE_NAME,
-            defaults={
-                "name": DEFAULT_ZONE_NAME,
-                "created": now,
-                "updated": now,
-            },
-        )
-        return zone
 
 
 class Zone(CleanSave, TimestampedModel):
@@ -53,8 +25,6 @@ class Zone(CleanSave, TimestampedModel):
         verbose_name_plural = "Physical zones"
         ordering = ["name"]
 
-    objects = ZoneManager()
-
     name = CharField(
         max_length=256,
         unique=True,
@@ -67,12 +37,11 @@ class Zone(CleanSave, TimestampedModel):
     def __str__(self):
         return self.name
 
-    def is_default(self):
-        """Is this the default zone?"""
-        return self.name == DEFAULT_ZONE_NAME
-
     def delete(self):
-        if self.is_default():
+        # Avoid circular import
+        from maasserver.models.defaultresource import DefaultResource
+
+        if DefaultResource.objects.get_default_zone().id == self.id:
             raise ValidationError(
                 "This zone is the default zone, it cannot be deleted."
             )

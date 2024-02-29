@@ -5,7 +5,8 @@
 
 
 from maasserver.forms import ZoneForm
-from maasserver.models import Zone
+from maasserver.models.defaultresource import DefaultResource
+from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -41,7 +42,7 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(zone, Zone.objects.get(name=new_name))
 
     def test_update_default_zone_description_works(self):
-        zone = Zone.objects.get_default_zone()
+        zone = DefaultResource.objects.get_default_zone()
         new_description = factory.make_string()
         form = ZoneForm(data={"description": new_description}, instance=zone)
         self.assertTrue(form.is_valid(), form._errors)
@@ -50,7 +51,7 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(new_description, zone.description)
 
     def test_allows_renaming_default_zone(self):
-        zone = Zone.objects.get_default_zone()
+        zone = DefaultResource.objects.get_default_zone()
         form = ZoneForm(
             data={"name": factory.make_name("zone")}, instance=zone
         )

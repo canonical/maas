@@ -110,6 +110,7 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cacheset import CacheSet
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
+from maasserver.models.defaultresource import DefaultResource
 from maasserver.models.domain import Domain
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
@@ -864,7 +865,7 @@ def get_default_domain():
 
 def get_default_zone():
     """Return the ID of the default zone."""
-    return Zone.objects.get_default_zone().id
+    return DefaultResource.objects.get_default_zone().id
 
 
 # Statuses for which it makes sense to release a node.

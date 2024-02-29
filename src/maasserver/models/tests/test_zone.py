@@ -5,7 +5,8 @@
 
 
 from maasserver.enum import NODE_TYPE
-from maasserver.models.zone import DEFAULT_ZONE_NAME, Zone
+from maasserver.models.defaultresource import DefaultResource
+from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -14,15 +15,28 @@ from maasserver.utils.orm import reload_object
 class TestZoneManager(MAASServerTestCase):
     """Tests for `Zone` manager."""
 
+    DEFAULT_ZONE_NAME = "default"
+
     def test_get_default_zone_returns_default_zone(self):
         self.assertEqual(
-            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name
+            self.DEFAULT_ZONE_NAME,
+            DefaultResource.objects.get_default_zone().name,
         )
 
     def test_get_default_zone_ignores_other_zones(self):
         factory.make_Zone()
         self.assertEqual(
-            DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name
+            self.DEFAULT_ZONE_NAME,
+            DefaultResource.objects.get_default_zone().name,
+        )
+
+    def test_get_renamed_default_zone(self):
+        default_zone = Zone.objects.get(name=self.DEFAULT_ZONE_NAME)
+        default_zone.name = "myzone"
+        default_zone.save()
+
+        self.assertEqual(
+            "myzone", DefaultResource.objects.get_default_zone().name
         )
 
 
@@ -63,13 +77,7 @@ class TestZone(MAASServerTestCase):
         self.assertIsNone(reload_object(zone))
         node = reload_object(node)
         self.assertIsNotNone(node)
-        self.assertEqual(Zone.objects.get_default_zone(), node.zone)
-
-    def test_is_default_returns_True_for_default_zone(self):
-        self.assertTrue(Zone.objects.get_default_zone().is_default())
-
-    def test_is_default_returns_False_for_normal_zone(self):
-        self.assertFalse(factory.make_Zone().is_default())
+        self.assertEqual(DefaultResource.objects.get_default_zone(), node.zone)
 
     def test_nodes_only_set(self):
         """zone.node_only_set has only type node."""

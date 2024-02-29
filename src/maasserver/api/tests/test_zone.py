@@ -10,7 +10,7 @@ import json
 from django.conf import settings
 from django.urls import reverse
 
-from maasserver.models import Zone
+from maasserver.models.defaultresource import DefaultResource
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
@@ -81,7 +81,7 @@ class TestZoneAPI(APITestCase.ForUser):
 
     def test_PUT_rejects_change_of_default_zone_name(self):
         self.become_admin()
-        zone = Zone.objects.get_default_zone()
+        zone = DefaultResource.objects.get_default_zone()
         new_name = factory.make_name("zone")
         response = self.client.put(get_zone_uri(zone), {"name": new_name})
         self.assertEqual(http.client.OK, response.status_code)
@@ -112,10 +112,10 @@ class TestZoneAPI(APITestCase.ForUser):
     def test_DELETE_rejects_deletion_of_default_zone(self):
         self.become_admin()
         response = self.client.delete(
-            get_zone_uri(Zone.objects.get_default_zone())
+            get_zone_uri(DefaultResource.objects.get_default_zone())
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
-        self.assertIsNotNone(Zone.objects.get_default_zone())
+        self.assertIsNotNone(DefaultResource.objects.get_default_zone())
 
     def test_DELETE_requires_admin(self):
         zone = factory.make_Zone()
@@ -124,7 +124,7 @@ class TestZoneAPI(APITestCase.ForUser):
 
     def test_DELETE_cannot_delete_default_zone(self):
         self.become_admin()
-        zone = Zone.objects.get_default_zone()
+        zone = DefaultResource.objects.get_default_zone()
 
         response = self.client.delete(get_zone_uri(zone))
 
@@ -140,7 +140,7 @@ class TestZoneAPI(APITestCase.ForUser):
         )
 
     def test_DELETE_sets_foreign_keys_to_default(self):
-        default_zone = Zone.objects.get_default_zone()
+        default_zone = DefaultResource.objects.get_default_zone()
         self.become_admin()
         zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
