@@ -2566,12 +2566,34 @@ class TestSafeGetaddrinfo(MAASTestCase):
             (AF_INET6, socket.SOCK_STREAM, IPPROTO_TCP, "", ("::", 53, 0, 0))
         ]
         mock_resolver = Mock()
-        mock_resolver.lookupIPV6Address = lambda _: (
-            [Record_AAAA(address="::")],
-            [],
-            [],
+        mock_resolver.lookupIPV6Address = lambda _: succeed(
+            (
+                [Record_AAAA(address="::")],
+                [],
+                [],
+            )
         )
         get_resolver = self.patch(network_module, "getResolver")
         get_resolver.return_value = mock_resolver
         result = safe_getaddrinfo("::", 53, family=AF_INET6, proto=IPPROTO_TCP)
+        self.assertCountEqual(expected, result)
+
+    def test_safe_get_addrinfo_uses_resolver_for_v6_with_hostname(self):
+        expected = [
+            (AF_INET6, socket.SOCK_STREAM, IPPROTO_TCP, "", ("::1", 53, 0, 0))
+        ]
+        mock_resolver = Mock()
+        mock_resolver.lookupIPV6Address = lambda _: succeed(
+            (
+                [Record_AAAA(address="::1")],
+                [],
+                [],
+            )
+        )
+        get_resolver = self.patch(network_module, "getResolver")
+        get_resolver.return_value = mock_resolver
+        # tests that _v6_lookup works in a synchronous context
+        result = safe_getaddrinfo(
+            "example.com", 53, family=AF_INET6, proto=IPPROTO_TCP
+        )
         self.assertCountEqual(expected, result)
