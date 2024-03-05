@@ -66,8 +66,8 @@ STATIC_ROOT = os.path.join(
 
 DATABASES = {
     "default": {
-        # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        # 'postgresql', 'mysql', 'sqlite3' etc.
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": "maas",
         # For PostgreSQL, a "hostname" starting with a slash indicates a
         # Unix socket directory.

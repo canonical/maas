@@ -83,7 +83,7 @@ def _get_default_db_config(config: RegionConfiguration) -> dict:
     application_name = f"maas-regiond-{maas_id}"
 
     return {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": database_name,
         "USER": database_user,
         "PASSWORD": database_pass,

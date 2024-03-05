@@ -39,7 +39,7 @@ def get_sqlalchemy_django_connection():
 
     django_db = settings.DATABASES[django_connection.alias]
     assert (
-        django_db["ENGINE"] == "django.db.backends.postgresql_psycopg2"
+        django_db["ENGINE"] == "django.db.backends.postgresql"
     ), f"{django_db['ENGINE']} is not supported"
 
     pool = SharedDjangoPool()

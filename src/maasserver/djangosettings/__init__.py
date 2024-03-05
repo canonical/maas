@@ -45,7 +45,7 @@ def fix_up_databases(databases):
 
     for _, database in databases.items():
         engine = database.get("ENGINE")
-        if engine == "django.db.backends.postgresql_psycopg2":
+        if engine == "django.db.backends.postgresql":
             options = database.setdefault("OPTIONS", {})
             # Explicitly set the transaction isolation level. MAAS needs a
             # particular transaction isolation level, and it enforces it.
