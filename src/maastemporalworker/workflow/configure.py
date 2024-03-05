@@ -17,7 +17,7 @@ from maasapiserver.common.db.tables import (
     VlanTable,
 )
 from maasserver.enum import NODE_TYPE
-from maasserver.workflow.activity import ActivityBase
+from maastemporalworker.workflow.activity import ActivityBase
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)
 DEFAULT_CONFIGURE_RETRY_POLICY = RetryPolicy(

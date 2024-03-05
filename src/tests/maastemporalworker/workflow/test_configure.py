@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.db import Database
 from maasapiserver.common.db.tables import VlanTable
-from maasserver.workflow.configure import (
+from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
     GetRackControllerVLANsInput,
     GetRackControllerVLANsResult,

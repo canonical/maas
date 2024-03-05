@@ -4,12 +4,12 @@ import signal
 
 from maasapiserver.common.db import Database
 from maasapiserver.settings import read_config
-from maasserver.workflow.commission import CommissionNWorkflow
-from maasserver.workflow.configure import (
+from maastemporalworker.workflow.commission import CommissionNWorkflow
+from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
     ConfigureAgentWorkflow,
 )
-from maasserver.workflow.deploy import DeployNWorkflow
+from maastemporalworker.workflow.deploy import DeployNWorkflow
 from maasserver.workflow.worker import Worker as TemporalWorker
 
 log = getLogger()
