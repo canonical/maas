@@ -9,7 +9,7 @@ VENV := .ve
 # This uses an explicit empty check (rather than ?=) since Jenkins defines
 # variables for parameters even when not passed.
 ifeq ($(MAAS_PPA),)
-	MAAS_PPA = ppa:maas-committers/latest-deps
+	MAAS_PPA = ppa:maas/3.5-next
 endif
 
 export PATH := $(PWD)/$(BIN_DIR):$(PATH)
