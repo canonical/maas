@@ -627,3 +627,27 @@ VmClusterTable = Table(
         nullable=True,
     ),
 )
+
+ConfigTable = Table(
+    "maasserver_config",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("name", String(255), nullable=False, unique=True),
+    Column("value", JSONB, nullable=True),
+)
+
+SecretTable = Table(
+    "maasserver_secret",
+    METADATA,
+    Column("path", Text, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("value", JSONB, nullable=False),
+)
+
+VaultSecretTable = Table(
+    "maasserver_vaultsecret",
+    METADATA,
+    Column("path", Text, primary_key=True, unique=True),
+    Column("deleted", Boolean, nullable=False),
+)

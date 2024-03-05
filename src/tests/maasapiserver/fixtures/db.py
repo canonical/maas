@@ -107,11 +107,13 @@ class Fixture:
     ) -> list[dict[str, Any]]:
         """Take a peak what is in there"""
         table_cls = METADATA.tables[table]
-        result = await self.conn.execute(
-            table_cls.select()
-            .where(*filters)  # type: ignore[arg-type]
-            .order_by(table_cls.c.id)
-        )
+        stmt = table_cls.select().where(*filters)  # type: ignore[arg-type]
+
+        # Provide sorting only if the table has an `id` column.
+        if "id" in table:
+            stmt = stmt.order_by(table_cls.c.id)
+
+        result = await self.conn.execute(stmt)
         return [row._asdict() for row in result]
 
     async def get_typed(
