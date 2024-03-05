@@ -454,3 +454,7 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 		src/maasagent/build/ \
 		$(SNAP_UNPACKED_DIR)/usr/sbin/
 .PHONY: snap-tree-sync
+
+# Used by maas-release-tools to check variable value
+print-%:
+	@echo $* = $($*)
