@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
+-- Dumped from database version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6894,6 +6894,37 @@ CREATE TABLE public.maasserver_controllerinfo (
 
 
 --
+-- Name: maasserver_defaultresource; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_defaultresource (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    zone_id bigint NOT NULL
+);
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_defaultresource_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_defaultresource_id_seq OWNED BY public.maasserver_defaultresource.id;
+
+
+--
 -- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -10389,6 +10420,13 @@ ALTER TABLE ONLY public.maasserver_config ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: maasserver_defaultresource id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_defaultresource_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_dhcpsnippet id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -11416,6 +11454,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 466	Can change boot resource file sync	117	change_bootresourcefilesync
 467	Can delete boot resource file sync	117	delete_bootresourcefilesync
 468	Can view boot resource file sync	117	view_bootresourcefilesync
+469	Can add default resource	118	add_defaultresource
+470	Can change default resource	118	change_defaultresource
+471	Can delete default resource	118	delete_defaultresource
+472	Can view default resource	118	view_defaultresource
 \.
 
 
@@ -11565,6 +11607,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 115	maasserver	script
 116	maasserver	scriptresult
 117	maasserver	bootresourcefilesync
+118	maasserver	defaultresource
 \.
 
 
@@ -11944,6 +11987,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
 370	maasserver	0314_bootresourcefile_sha256_index	2023-11-02 03:30:47.980664+00
 371	maasserver	0315_add_current_release_script_set_to_node_model	2023-11-28 13:29:59.274246+00
+372	maasserver	0316_add_defaultresource_table	2024-03-06 03:31:14.227521+00
+373	maasserver	0317_migrate_defaultresource_zone	2024-03-06 03:31:14.238827+00
 \.
 
 
@@ -12065,6 +12110,15 @@ COPY public.maasserver_config (id, name, value) FROM stdin;
 --
 
 COPY public.maasserver_controllerinfo (created, updated, node_id, version, install_type, snap_cohort, snap_revision, snap_update_revision, update_origin, update_version, update_first_reported, vault_configured) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_defaultresource; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
+1	2024-03-06 03:31:14.232149+00	2024-03-06 03:31:14.232149+00	1
 \.
 
 
@@ -13033,7 +13087,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 468, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 472, true);
 
 
 --
@@ -13061,14 +13115,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 371, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 373, true);
 
 
 --
@@ -13160,6 +13214,13 @@ SELECT pg_catalog.setval('public.maasserver_cacheset_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_config_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_defaultresource_id_seq', 1, true);
 
 
 --
@@ -14061,6 +14122,14 @@ ALTER TABLE ONLY public.maasserver_config
 
 ALTER TABLE ONLY public.maasserver_controllerinfo
     ADD CONSTRAINT maasserver_controllerinfo_pkey PRIMARY KEY (node_id);
+
+
+--
+-- Name: maasserver_defaultresource maasserver_defaultresource_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource
+    ADD CONSTRAINT maasserver_defaultresource_pkey PRIMARY KEY (id);
 
 
 --
@@ -15748,6 +15817,13 @@ CREATE INDEX maasserver_config_name_ad989064_like ON public.maasserver_config US
 
 
 --
+-- Name: maasserver_defaultresource_zone_id_29a5153a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_defaultresource_zone_id_29a5153a ON public.maasserver_defaultresource USING btree (zone_id);
+
+
+--
 -- Name: maasserver_dhcpsnippet_iprange_id_6a257e4d; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -17193,11 +17269,11 @@ ALTER TABLE ONLY public.maasserver_bmc
 
 
 --
--- Name: maasserver_bmc maasserver_bmc_zone_id_774ea0de_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bmc maasserver_bmc_zone_id_774ea0de_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_bmc
-    ADD CONSTRAINT maasserver_bmc_zone_id_774ea0de_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_bmc_zone_id_774ea0de_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17278,6 +17354,14 @@ ALTER TABLE ONLY public.maasserver_bootsourceselection
 
 ALTER TABLE ONLY public.maasserver_controllerinfo
     ADD CONSTRAINT maasserver_controllerinfo_node_id_e38255a5_fk FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_defaultresource maasserver_defaultre_zone_id_29a5153a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource
+    ADD CONSTRAINT maasserver_defaultre_zone_id_29a5153a_fk_maasserve FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17545,11 +17629,11 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
--- Name: maasserver_node maasserver_node_zone_id_97213f69_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_node maasserver_node_zone_id_97213f69_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_zone_id_97213f69_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_node_zone_id_97213f69_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18001,11 +18085,11 @@ ALTER TABLE ONLY public.maasserver_vmcluster
 
 
 --
--- Name: maasserver_vmcluster maasserver_vmcluster_zone_id_07623572_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_vmcluster maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_vmcluster
-    ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
