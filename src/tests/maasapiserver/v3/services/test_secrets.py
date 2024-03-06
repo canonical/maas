@@ -17,8 +17,9 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 @pytest.fixture(autouse=True)
 def prepare():
+    # Always reset the SecretsServiceFactory cache
+    SecretsServiceFactory.clear()
     yield
-    # Clear the factory service cache
     SecretsServiceFactory.clear()
 
 

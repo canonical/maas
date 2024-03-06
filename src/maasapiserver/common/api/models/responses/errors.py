@@ -28,6 +28,21 @@ class BadRequestResponse(JSONResponse):
         )
 
 
+class UnauthorizedBodyResponse(ErrorBodyResponse):
+    code = status.HTTP_401_UNAUTHORIZED
+    message = "Unauthorized."
+
+
+class UnauthorizedResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                UnauthorizedBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+
 class NotFoundBodyResponse(ErrorBodyResponse):
     code = status.HTTP_404_NOT_FOUND
     message = "Entity not found."
@@ -94,4 +109,19 @@ class InternalServerErrorResponse(JSONResponse):
         super().__init__(
             content=jsonable_encoder(InternalServerErrorBodyResponse()),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+class ServiceUnavailableErrorBodyResponse(ErrorBodyResponse):
+    code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "The service is not available. Please check the server logs for more details."
+
+
+class ServiceUnavailableErrorResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(
+                ServiceUnavailableErrorBodyResponse(details=details)
+            ),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )

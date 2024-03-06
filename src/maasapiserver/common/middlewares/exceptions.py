@@ -9,14 +9,18 @@ from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictResponse,
     InternalServerErrorResponse,
+    NotFoundResponse,
     PreconditionFailedResponse,
+    UnauthorizedResponse,
     ValidationErrorResponse,
 )
 from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
+    NotFoundException,
     PreconditionFailedException,
+    UnauthorizedException,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,6 +53,12 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except BadRequestException as e:
             logger.debug(e)
             return BadRequestResponse(e.details)
+        except UnauthorizedException as e:
+            logger.debug(e)
+            return UnauthorizedResponse(e.details)
+        except NotFoundException as e:
+            logger.debug(e)
+            return NotFoundResponse()
         except PreconditionFailedException as e:
             logger.debug(e)
             return PreconditionFailedResponse(e.details)

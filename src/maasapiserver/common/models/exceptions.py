@@ -7,13 +7,15 @@ class BaseExceptionDetail(BaseModel):
 
 
 class BaseException(Exception):
-    def __init__(self, message: str, details: list[BaseExceptionDetail]):
+    def __init__(
+        self, message: str, details: list[BaseExceptionDetail] | None = None
+    ):
         super().__init__(message)
         self.details = details
 
 
 class AlreadyExistsException(BaseException):
-    def __init__(self, details: list[BaseExceptionDetail]):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__(
             "An instance with the same unique attributes already exists.",
             details,
@@ -21,12 +23,27 @@ class AlreadyExistsException(BaseException):
 
 
 class BadRequestException(BaseException):
-    def __init__(self, details: list[BaseExceptionDetail]):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__(
             "Invalid request. Please check the provided data.", details
         )
 
 
+class NotFoundException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("The requested resource was not found.", details)
+
+
+class UnauthorizedException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("Not authenticated.", details)
+
+
 class PreconditionFailedException(BaseException):
-    def __init__(self, details: list[BaseExceptionDetail]):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("A precondition has failed.", details)
+
+
+class ServiceUnavailableException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("The service is not available.", details)
