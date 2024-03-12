@@ -24,6 +24,7 @@ __all__ = [
 from copy import deepcopy
 from json import dumps, loads
 import re
+import urllib
 
 from django import forms
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -601,6 +602,44 @@ class IPListFormField(forms.CharField):
                         "space-separated IP addresses" % ip
                     )
             return " ".join(ips)
+
+
+class IPPortListFormField(IPListFormField):
+    def __init__(self, default_port=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._default_port = default_port
+
+    def clean(self, value):
+        if value is None:
+            return None
+        else:
+            ip_ports = re.split(self.separators, value)
+            ip_ports = [
+                ip_port.strip() for ip_port in ip_ports if ip_ports != ""
+            ]
+            result = []
+            for ip_port in ip_ports:
+                if "." in ip_port or ("[" == ip_port[0] and "]:" in ip_port):
+                    sock_addr = urllib.parse.urlsplit("//" + ip_port)
+                    ip = sock_addr.hostname
+                    port = (
+                        int(sock_addr.port)
+                        if sock_addr.port
+                        else self._default_port
+                    )
+                else:
+                    ip = ip_port
+                    port = self._default_port
+                try:
+                    GenericIPAddressField().clean(ip, model_instance=None)
+                    IntegerField().clean(port, model_instance=None)
+                except ValidationError:
+                    raise ValidationError(
+                        f"Invalid IP and port combination: {ip_port};"
+                        f"please provide a list of space-separated IP addresses {'and port' if not self._default_port else ''}"
+                    )
+                result.append((ip, port))
+        return result
 
 
 class HostListFormField(forms.CharField):

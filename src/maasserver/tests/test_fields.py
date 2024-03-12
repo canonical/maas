@@ -20,6 +20,7 @@ from maasserver.fields import (
     EditableBinaryField,
     HostListFormField,
     IPListFormField,
+    IPPortListFormField,
     JSONObjectField,
     LargeObjectField,
     LargeObjectFile,
@@ -578,6 +579,54 @@ class TestIPListFormField(MAASTestCase):
     def test_separators_dont_conflict_with_ipv6_address(self):
         self.assertIsNone(
             re.search(IPListFormField.separators, factory.make_ipv6_address())
+        )
+
+
+class TestIPPortListFormField(MAASTestCase):
+    def test_accepts_ipv4_with_port(self):
+        ips = [factory.make_ip_address(ipv6=False) for _ in range(5)]
+        ip_ports = [f"{ip}:80" for ip in ips]
+        input = ",".join(ip_ports)
+        self.assertEqual(
+            [(ip, 80) for ip in ips], IPPortListFormField().clean(input)
+        )
+
+    def test_accepts_ipv4_without_port(self):
+        ips = [factory.make_ip_address(ipv6=False) for _ in range(5)]
+        input = ",".join(ips)
+        self.assertEqual(
+            [(ip, 80) for ip in ips],
+            IPPortListFormField(default_port=80).clean(input),
+        )
+
+    def test_accepts_ipv6_with_port(self):
+        ips = [factory.make_ip_address(ipv6=True) for _ in range(5)]
+        ip_ports = [f"[{ip}]:80" for ip in ips]
+        input = ",".join(ip_ports)
+        self.assertEqual(
+            [(ip, 80) for ip in ips], IPPortListFormField().clean(input)
+        )
+
+    def test_accepts_ipv6_without_port(self):
+        ips = [factory.make_ip_address(ipv6=True) for _ in range(5)]
+        input = ",".join(ips)
+        self.assertEqual(
+            [(ip, 80) for ip in ips],
+            IPPortListFormField(default_port=80).clean(input),
+        )
+
+    def test_rejects_invalid_ip(self):
+        ip_ports = [
+            f"{factory.make_ip_address(ipv6=False)}:80" for _ in range(4)
+        ]
+        invalid = f"{factory.make_name()}:80"
+        ip_ports.append(invalid)
+        input = ",".join(ip_ports)
+        error = self.assertRaises(
+            ValidationError, IPPortListFormField().clean, input
+        )
+        self.assertIn(
+            f"Invalid IP and port combination: {invalid}", error.message
         )
 
 
