@@ -776,7 +776,7 @@ def _condense_luns(disks):
         if dev_match["bus"] == "pci" and "pci_address" not in disk:
             disk["pci_address"] = dev_match["bus_addr"]
 
-        if disk["serial"] and (rexp_list := _MP_PATH_ID.get(proto)):
+        if disk.get("serial") and (rexp_list := _MP_PATH_ID.get(proto)):
             for r in rexp_list:
                 if m := r.match(device):
                     serial_lun_map[(disk["serial"], m["lun"])].append(disk)
