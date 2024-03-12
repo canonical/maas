@@ -6,7 +6,12 @@ __all__ = [
 ]
 
 
-from django.db.models import GenericIPAddressField, Manager, ManyToManyField
+from django.db.models import (
+    GenericIPAddressField,
+    IntegerField,
+    Manager,
+    ManyToManyField,
+)
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.domain import Domain
@@ -31,4 +36,10 @@ class ForwardDNSServer(CleanSave, TimestampedModel):
         null=False, default=None, editable=False, unique=True
     )
 
+    port = IntegerField(null=False, default=53)
+
     domains = ManyToManyField(Domain)
+
+    @property
+    def ip_and_port(self):
+        return f"{self.ip_address}:{self.port}"

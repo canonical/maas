@@ -601,7 +601,7 @@ class TestDNSConfig(MAASTestCase):
     def test_write_config_with_forwarded_zones(self):
         name = factory.make_name("domain")
         ip = factory.make_ip_address()
-        forwarded_zones = [(name, [ip])]
+        forwarded_zones = [(name, [(ip, None)])]
         target_dir = patch_dns_config_path(self)
         DNSConfig(forwarded_zones=forwarded_zones).write_config()
         config_path = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
@@ -611,12 +611,36 @@ class TestDNSConfig(MAASTestCase):
             type forward;
             forward only;
             forwarders {{
-                {ip};
+                {ip} port 53;
             }};
         }};
         """
         )
         config = read_isc_file(config_path)
+        expected = parse_isc_string(expected_content)
+        self.assertEqual(expected[f'zone "{name}"'], config[f'zone "{name}"'])
+
+    def test_write_config_with_forwarded_zones_with_custom_port(self):
+        name = factory.make_name("domain")
+        ip = factory.make_ip_address()
+        port = 5353
+        forwarded_zones = [(name, [(ip, port)])]
+        target_dir = patch_dns_config_path(self)
+        DNSConfig(forwarded_zones=forwarded_zones).write_config()
+        config_path = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        expected_content = dedent(
+            f"""
+        zone "{name}" {{
+            type forward;
+            forward only;
+            forwarders {{
+                {ip} port {port};
+            }};
+        }};
+        """
+        )
+        config = read_isc_file(config_path)
+        print(config)
         expected = parse_isc_string(expected_content)
         self.assertEqual(expected[f'zone "{name}"'], config[f'zone "{name}"'])
 

@@ -21,7 +21,7 @@ zone "{{forwarded_zone[0]}}" {
     forward only;
     forwarders {
     {{for forward_server in forwarded_zone[1]}}
-        {{forward_server}};
+        {{forward_server[0]}} port {{ forward_server[1] if forward_server[1] else 53 }};
     {{endfor}}
     };
 };
