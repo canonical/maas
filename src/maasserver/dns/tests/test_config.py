@@ -95,7 +95,10 @@ class TestDNSUtilities(MAASServerTestCase):
         )
         self.assertCountEqual(
             fwd_zones,
-            [(name1, [fwd_srvr1.ip_address]), (name2, [fwd_srvr2.ip_address])],
+            [
+                (name1, [(fwd_srvr1.ip_address, fwd_srvr1.port)]),
+                (name2, [(fwd_srvr2.ip_address, fwd_srvr2.port)]),
+            ],
         )
 
 

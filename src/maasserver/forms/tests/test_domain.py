@@ -104,6 +104,30 @@ class TestDomainForm(MAASServerTestCase):
                 for fwd_dns_srvr in domain.forward_dns_servers
             ],
         )
+        for fwd_dns_srvr in domain.forward_dns_servers:
+            self.assertEqual(fwd_dns_srvr.port, 53)
+
+    def test_can_create_forward_dns_server_with_port(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [
+            f"{factory.make_ip_address(ipv6=False)}:5353" for _ in range(0, 2)
+        ]
+        form = DomainForm(
+            {
+                "name": name,
+                "authoritative": False,
+                "forward_dns_servers": "  ".join(forward_dns_servers),
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        domain = form.save()
+        self.assertEqual(
+            forward_dns_servers,
+            [
+                fwd_dns_srvr.ip_and_port
+                for fwd_dns_srvr in domain.forward_dns_servers
+            ],
+        )
 
     def test_validate_authority(self):
         name = factory.make_name("domain")

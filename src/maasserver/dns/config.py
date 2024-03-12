@@ -60,7 +60,7 @@ def forward_domains_to_forwarded_zones(forward_domains):
         (
             domain.name,
             [
-                fwd_dns_srvr.ip_address
+                (fwd_dns_srvr.ip_address, fwd_dns_srvr.port)
                 for fwd_dns_srvr in domain.forward_dns_servers
             ],
         )
