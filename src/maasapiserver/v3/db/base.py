@@ -28,7 +28,7 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def update(self, id: int, request: K) -> T:
+    async def update(self, resource: T) -> T:
         pass
 
     @abstractmethod

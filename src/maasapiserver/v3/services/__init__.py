@@ -4,6 +4,7 @@ from maasapiserver.v3.services.auth import AuthService
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.configurations import ConfigurationsService
 from maasapiserver.v3.services.nodes import NodesService
+from maasapiserver.v3.services.resource_pools import ResourcePoolsService
 from maasapiserver.v3.services.secrets import (
     SecretsService,
     SecretsServiceFactory,
@@ -22,6 +23,7 @@ class ServiceCollectionV3:
     zones: ZonesService
     secrets: SecretsService
     configurations: ConfigurationsService
+    resource_pools: ResourcePoolsService
     auth: AuthService
 
     @classmethod
@@ -48,4 +50,5 @@ class ServiceCollectionV3:
             vmcluster_service=services.vmclusters,
             bmc_service=services.bmc,
         )
+        services.resource_pools = ResourcePoolsService(connection=connection)
         return services

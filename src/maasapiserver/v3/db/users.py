@@ -32,7 +32,7 @@ class UsersRepository(BaseRepository[User, UserRequest]):
     ) -> ListResult[User]:
         raise Exception("Not implemented yet.")
 
-    async def update(self, id: int, request: UserRequest) -> User:
+    async def update(self, resource: User) -> User:
         raise Exception("Not implemented yet.")
 
     async def delete(self, id: int) -> None:

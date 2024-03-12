@@ -99,7 +99,7 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             items=[Zone(**row._asdict()) for row in result.all()], total=total
         )
 
-    async def update(self, id: int, request: ZoneRequest) -> Zone:
+    async def update(self, resource: Zone) -> Zone:
         raise Exception("Not implemented yet.")
 
     async def delete(self, id: int) -> None:

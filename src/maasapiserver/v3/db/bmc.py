@@ -21,7 +21,7 @@ class BmcRepository(BaseRepository[Bmc, BmcRequest]):
     ) -> ListResult[Bmc]:
         raise Exception("Not implemented yet.")
 
-    async def update(self, id: int, request: BmcRequest) -> Bmc:
+    async def update(self, resource: Bmc) -> Bmc:
         raise Exception("Not implemented yet.")
 
     async def delete(self, id: int) -> None:
