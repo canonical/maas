@@ -225,7 +225,7 @@ class DownloadBootResourceWorkflow:
             heartbeat_timeout=HEARTBEAT_TIMEOUT,
             cancellation_type=ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
             retry_policy=RetryPolicy(
-                maximum_attempts=max(2, len(input.source_list)),
+                maximum_attempts=0,  # No maximum attempts
                 maximum_interval=timedelta(seconds=60),
             ),
         )
