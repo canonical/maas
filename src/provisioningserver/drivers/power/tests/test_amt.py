@@ -75,7 +75,6 @@ def make_context():
         "power_address": factory.make_name("power_address"),
         "ip_address": factory.make_ipv4_address(),
         "power_pass": factory.make_name("power_pass"),
-        "boot_mode": factory.make_name("boot_mode"),
     }
 
 
@@ -245,10 +244,9 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
-        amttool_boot_mode = factory.make_name("amttool_boot_mode")
         stdin = factory.make_name("stdin").encode("utf-8")
         cmd = choice(["power-cycle", "powerup"])
-        command = "amttool", ip_address, cmd, amttool_boot_mode
+        command = "amttool", ip_address, cmd, "pxe"
         _run_mock = self.patch(amt_power_driver, "_run")
         _run_mock.return_value = b"output"
 
@@ -256,7 +254,6 @@ class TestAMTPowerDriver(MAASTestCase):
             cmd,
             ip_address,
             power_pass,
-            amttool_boot_mode=amttool_boot_mode,
             stdin=stdin,
         )
 
@@ -440,20 +437,16 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
-        amttool_boot_mode = factory.make_name("amttool_boot_mode")
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, "_issue_amttool_command"
         )
 
-        amt_power_driver.amttool_restart(
-            ip_address, power_pass, amttool_boot_mode
-        )
+        amt_power_driver.amttool_restart(ip_address, power_pass)
 
         _issue_amttool_command_mock.assert_called_once_with(
             "power_cycle",
             ip_address,
             power_pass,
-            amttool_boot_mode=amttool_boot_mode,
             stdin=b"yes",
         )
 
@@ -461,7 +454,6 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
-        amttool_boot_mode = factory.make_name("amttool_boot_mode")
         _issue_amttool_command_mock = self.patch(
             amt_power_driver, "_issue_amttool_command"
         )
@@ -470,15 +462,12 @@ class TestAMTPowerDriver(MAASTestCase):
         )
         amttool_query_state_mock.return_value = "on"
 
-        amt_power_driver.amttool_power_on(
-            ip_address, power_pass, amttool_boot_mode
-        )
+        amt_power_driver.amttool_power_on(ip_address, power_pass)
 
         _issue_amttool_command_mock.assert_called_once_with(
             "powerup",
             ip_address,
             power_pass,
-            amttool_boot_mode=amttool_boot_mode,
             stdin=b"yes",
         )
         amttool_query_state_mock.assert_called_once_with(
@@ -489,7 +478,6 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
-        amttool_boot_mode = factory.make_name("amttool_boot_mode")
         self.patch(amt_power_driver, "_issue_amttool_command")
         amttool_query_state_mock = self.patch(
             amt_power_driver, "amttool_query_state"
@@ -501,7 +489,6 @@ class TestAMTPowerDriver(MAASTestCase):
             amt_power_driver.amttool_power_on,
             ip_address,
             power_pass,
-            amttool_boot_mode,
         )
 
     def test_amttool_power_off_powers_off(self):
@@ -787,17 +774,6 @@ class TestAMTPowerDriver(MAASTestCase):
                 factory.make_name("power_pass"),
             )
 
-    def test_get_amttool_boot_mode_local_boot(self):
-        amt_power_driver = AMTPowerDriver()
-        result = amt_power_driver._get_amttool_boot_mode("local")
-        self.assertEqual(result, "")
-
-    def test_get_ammtool_boot_mode_pxe_booting(self):
-        amt_power_driver = AMTPowerDriver()
-        boot_mode = factory.make_name("boot_mode")
-        result = amt_power_driver._get_amttool_boot_mode(boot_mode)
-        self.assertEqual(result, boot_mode)
-
     def test_get_ip_address_returns_ip_address(self):
         amt_power_driver = AMTPowerDriver()
         power_address = factory.make_name("power_address")
@@ -841,7 +817,6 @@ class TestAMTPowerDriver(MAASTestCase):
         amttool_restart_mock.assert_called_once_with(
             context["ip_address"],
             context["power_pass"],
-            context["boot_mode"],
         )
 
     def test_power_on_powers_on_with_amttool_when_already_off(self):
@@ -870,7 +845,6 @@ class TestAMTPowerDriver(MAASTestCase):
         amttool_power_on_mock.assert_called_once_with(
             context["ip_address"],
             context["power_pass"],
-            context["boot_mode"],
         )
 
     def test_power_on_powers_on_with_wsman_when_already_on(self):

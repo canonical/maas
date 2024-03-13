@@ -1579,17 +1579,6 @@ class TestNode(MAASServerTestCase):
         params = node.get_effective_power_parameters()
         self.assertEqual("qemu://localhost/system", params["power_address"])
 
-    def test_get_effective_power_parameters_sets_local_boot_mode(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, power_type="amt")
-        params = node.get_effective_power_parameters()
-        self.assertEqual("local", params["boot_mode"])
-
-    def test_get_effective_power_parameters_sets_pxe_boot_mode(self):
-        status = factory.pick_enum(NODE_STATUS, but_not=[NODE_STATUS.DEPLOYED])
-        node = factory.make_Node(status=status, power_type="amt")
-        params = node.get_effective_power_parameters()
-        self.assertEqual("pxe", params["boot_mode"])
-
     def test_get_effective_power_info_is_False_for_unset_power_type(self):
         node = factory.make_Node(power_type=None)
         self.assertEqual(

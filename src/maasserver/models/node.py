@@ -3134,17 +3134,6 @@ class Node(CleanSave, TimestampedModel):
         if self.bmc is not None and self.bmc.power_type == "ipmi":
             power_params.setdefault("power_off_mode", "")
 
-        # boot_mode is something that tells the template whether this is
-        # a PXE boot or a local HD boot.
-        if self.bmc is not None and self.bmc.power_type == "amt":
-            if (
-                self.status == NODE_STATUS.DEPLOYED
-                or self.node_type != NODE_TYPE.MACHINE
-            ):
-                power_params["boot_mode"] = "local"
-            else:
-                power_params["boot_mode"] = "pxe"
-
         return power_params
 
     def get_effective_power_info(self):
