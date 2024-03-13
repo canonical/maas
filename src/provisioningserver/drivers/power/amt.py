@@ -178,13 +178,12 @@ class AMTPowerDriver(PowerDriver):
         cmd: str,
         ip_address: str,
         power_pass: str,
-        amttool_boot_mode=None,
         stdin=None,
     ) -> bytes:
         """Perform a command using amttool."""
         command = ("amttool", ip_address, cmd)
         if cmd in ("power-cycle", "powerup"):
-            command += (amttool_boot_mode,)
+            command += ("pxe",)
         return self._run(command, power_pass, stdin=stdin)
 
     def _issue_wsman_command(
@@ -304,17 +303,16 @@ class AMTPowerDriver(PowerDriver):
                     "Got unknown power state from node: %s" % state
                 )
 
-    def amttool_restart(self, ip_address, power_pass, amttool_boot_mode):
+    def amttool_restart(self, ip_address, power_pass):
         """Restart the node via amttool."""
         self._issue_amttool_command(
             "power_cycle",
             ip_address,
             power_pass,
-            amttool_boot_mode=amttool_boot_mode,
             stdin=b"yes",
         )
 
-    def amttool_power_on(self, ip_address, power_pass, amttool_boot_mode):
+    def amttool_power_on(self, ip_address, power_pass):
         """Power on the node via amttool."""
         # Try several times.  Power commands often fail the first time.
         for _ in range(10):
@@ -323,7 +321,6 @@ class AMTPowerDriver(PowerDriver):
                 "powerup",
                 ip_address,
                 power_pass,
-                amttool_boot_mode=amttool_boot_mode,
                 stdin=b"yes",
             )
             if self.amttool_query_state(ip_address, power_pass) == "on":
@@ -413,16 +410,6 @@ class AMTPowerDriver(PowerDriver):
                 else:
                     return "amttool"
 
-    def _get_amttool_boot_mode(self, boot_mode):
-        """Set amttool boot mode."""
-        # boot_mode tells us whether we're pxe booting or local booting.
-        # For local booting, the argument to amttool must be empty
-        # (NOT 'hd', it doesn't work!).
-        if boot_mode == "local":
-            return ""
-        else:
-            return boot_mode
-
     def _get_wsman_command(self, *args):
         base_path = snap.SnapPaths.from_environ().snap or "/"
         return (
@@ -455,15 +442,10 @@ class AMTPowerDriver(PowerDriver):
         power_pass = context.get("power_pass")
         amt_command = self._get_amt_command(ip_address, power_pass)
         if amt_command == "amttool":
-            amttool_boot_mode = self._get_amttool_boot_mode(
-                context.get("boot_mode")
-            )
             if self.amttool_query_state(ip_address, power_pass) == "on":
-                self.amttool_restart(ip_address, power_pass, amttool_boot_mode)
+                self.amttool_restart(ip_address, power_pass)
             else:
-                self.amttool_power_on(
-                    ip_address, power_pass, amttool_boot_mode
-                )
+                self.amttool_power_on(ip_address, power_pass)
         elif amt_command == "wsman":
             if self.wsman_query_state(ip_address, power_pass) == "on":
                 self.wsman_power_on(ip_address, power_pass, restart=True)
