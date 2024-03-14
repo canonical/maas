@@ -314,6 +314,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             [b"http://localhost:5248/images", file_name.strip(b"/")]
         )
         resp = yield self._cache_proxy.request(b"GET", url)
+        if resp.code != 200:
+            return BytesReader(bytes())
         body = yield readBody(resp)
         return BytesReader(body)
 

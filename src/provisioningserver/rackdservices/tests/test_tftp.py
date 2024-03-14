@@ -663,6 +663,27 @@ class TestTFTPBackend(MAASTestCase):
             f"http://localhost:5248/images/grub/{filename}".encode("utf-8"),
         )
 
+    @inlineCallbacks
+    def test_get_cache_reader_404(self):
+        params_okay = {
+            name.decode("ascii"): factory.make_name("value")
+            for name, _ in GetBootConfig.arguments
+        }
+        client = Mock()
+        client.localIdent = params_okay["system_id"]
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+        backend = TFTPBackend(self.make_dir(), client_service)
+        backend._cache_proxy = Mock()
+        filename = factory.make_name()
+
+        mock_result = Mock()
+        mock_result.code = 404
+
+        backend._cache_proxy.request.return_value = mock_result
+        result = yield backend.get_cache_reader(f"/grub/{filename}")
+        self.assertEqual(result.read(0), b"")
+
 
 class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):
