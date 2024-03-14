@@ -5,8 +5,10 @@ from datetime import datetime, timedelta
 import random
 from typing import Coroutine, Sequence
 
+from aiohttp.client_exceptions import ClientError
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
+from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ActivityCancellationType
 
 from maasserver.utils.bootresource import (
@@ -147,15 +149,7 @@ class BootResourcesActivity(MAASAPIClient):
                     if dt_now > (last_update + REPORT_INTERVAL):
                         await self.report_progress(param.rfile_ids, lfile.size)
                         last_update = dt_now
-                    try:
-                        store.write(data)
-                    except (
-                        IOError,
-                        LocalStoreInvalidHash,
-                        LocalStoreWriteBeyondEOF,
-                    ) as ex:
-                        activity.logger.warn(f"Download failed {str(ex)}")
-                        raise
+                    store.write(data)
 
             activity.logger.debug("Download done, doing checksum")
             activity.heartbeat()
@@ -170,10 +164,18 @@ class BootResourcesActivity(MAASAPIClient):
                 await self.report_progress(param.rfile_ids, lfile.size)
                 return True
             else:
-                activity.logger.warn("Download failed, invalid checksum")
                 await self.report_progress(param.rfile_ids, 0)
                 lfile.unlink()
-                return False
+                raise ApplicationError("Invalid checksum")
+        except (
+            IOError,
+            ClientError,
+            LocalStoreInvalidHash,
+            LocalStoreWriteBeyondEOF,
+        ) as ex:
+            raise ApplicationError(
+                str(ex), type=ex.__class__.__name__
+            ) from None
         finally:
             lfile.release_lock()
 
