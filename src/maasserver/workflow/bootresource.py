@@ -242,7 +242,7 @@ class SyncBootResourcesWorkflow:
             return workflow.execute_child_workflow(
                 "download-bootresource",
                 res,
-                id=f"bootresource-download:{region or 'upstream'}:{res.sha256[:12]}",
+                id=f"download-bootresource:{region or 'upstream'}:{res.sha256[:12]}",
                 execution_timeout=DOWNLOAD_TIMEOUT,
                 run_timeout=DOWNLOAD_TIMEOUT,
                 id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
