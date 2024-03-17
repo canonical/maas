@@ -7478,7 +7478,8 @@ CREATE TABLE public.maasserver_forwarddnsserver (
     id bigint NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    ip_address inet NOT NULL
+    ip_address inet NOT NULL,
+    port integer NOT NULL
 );
 
 
@@ -11989,6 +11990,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 371	maasserver	0315_add_current_release_script_set_to_node_model	2023-11-28 13:29:59.274246+00
 372	maasserver	0316_add_defaultresource_table	2024-03-06 03:31:14.227521+00
 373	maasserver	0317_migrate_defaultresource_zone	2024-03-06 03:31:14.238827+00
+374	maasserver	0318_add_port_to_forward_dns_servers	2024-03-17 03:30:45.589405+00
 \.
 
 
@@ -12224,7 +12226,7 @@ COPY public.maasserver_filesystemgroup (id, created, updated, uuid, group_type, 
 -- Data for Name: maasserver_forwarddnsserver; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_forwarddnsserver (id, created, updated, ip_address) FROM stdin;
+COPY public.maasserver_forwarddnsserver (id, created, updated, ip_address, port) FROM stdin;
 \.
 
 
@@ -13122,7 +13124,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 373, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 374, true);
 
 
 --
