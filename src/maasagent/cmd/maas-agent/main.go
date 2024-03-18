@@ -115,7 +115,7 @@ func Run() int {
 	}
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
-	httpProxyService := httpproxy.NewHTTPProxyService(getSocketDir(), cache)
+	httpProxyService := httpproxy.NewHTTPProxyService(getRunDir(), cache)
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
@@ -217,14 +217,14 @@ func getConfig() (*config, error) {
 	return cfg, nil
 }
 
-func getSocketDir() string {
+func getRunDir() string {
 	name := os.Getenv("SNAP_INSTANCE_NAME")
 
 	if name != "" {
 		return fmt.Sprintf("/run/snap.%s", name)
 	}
 
-	return "/run/maas/agent"
+	return "/run/maas"
 }
 
 func main() {

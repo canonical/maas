@@ -133,7 +133,7 @@ func (s *HTTPProxyService) Configure(ctx tworkflow.Context, systemID string) err
 	}
 
 	// XXX: While httpproxy-service service is consumed through socket via NGINX
-	// there is nothing bad about not setting the timeout on the listener/server/
+	// there is nothing bad about not setting the timeout on the listener/server
 
 	//nolint:gosec // this is okay in the current situation
 	go func() { s.fatal <- http.Serve(s.listener, s.proxy) }()

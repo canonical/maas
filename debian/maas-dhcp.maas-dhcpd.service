@@ -5,13 +5,13 @@ Wants=network-online.target
 After=network-online.target
 After=time-sync.target
 BindsTo=maas-rackd.service
-ConditionPathExists=/run/maas/dhcp
 ConditionPathExists=/var/lib/maas/dhcpd.conf
 ConditionPathExists=/var/lib/maas/dhcpd-interfaces
 
 [Service]
 # Allow dhcp server to write lease and pid file as 'dhcpd' user
 # The leases files need to be root:dhcpd even when dropping privileges
+ExecStartPre=/bin/mkdir -p /run/maas-dhcp
 ExecStart=/bin/sh -ec '\
     INTERFACES=$(cat /var/lib/maas/dhcpd-interfaces); \
     LEASES_FILE=/var/lib/maas/dhcp/dhcpd.leases; \
@@ -19,7 +19,7 @@ ExecStart=/bin/sh -ec '\
     /usr/sbin/maas-dhcp-helper clean $LEASES_FILE; \
     chown root:dhcpd /var/lib/maas/dhcp $LEASES_FILE; \
     chmod 775 /var/lib/maas/dhcp ; chmod 664 $LEASES_FILE; \
-    exec dhcpd -user dhcpd -group dhcpd -f -q -4 -pf /run/maas/dhcp/dhcpd.pid \
+    exec dhcpd -user dhcpd -group dhcpd -f -q -4 -pf /run/maas-dhcp/dhcpd.pid \
         -cf /var/lib/maas/dhcpd.conf -lf $LEASES_FILE $INTERFACES'
 # Require dhcpd stop in 8 seconds, if not kill it with 'mixed' mode.
 TimeoutStopSec=8

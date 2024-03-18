@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetSocketDir(t *testing.T) {
+func TestGetRunDir(t *testing.T) {
 	testcases := map[string]struct {
 		in  func(t *testing.T)
 		out string
@@ -20,7 +20,7 @@ func TestGetSocketDir(t *testing.T) {
 		"deb": {
 			in: func(t *testing.T) {
 				t.Setenv("SNAP_INSTANCE_NAME", "")
-			}, out: "/run/maas/agent",
+			}, out: "/run/maas",
 		},
 	}
 
@@ -29,7 +29,7 @@ func TestGetSocketDir(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			tc.in(t)
-			res := getSocketDir()
+			res := getRunDir()
 			assert.Equal(t, tc.out, res)
 		})
 	}

@@ -16,6 +16,7 @@ Environment="prometheus_multiproc_dir=/var/lib/maas/prometheus"
 # Prevent maas-dhcpd and maas-dhcpd6 from starting until maas-rackd
 # has regenerated the configurations and told the services to start.
 ExecStartPre=/bin/rm -f /var/lib/maas/dhcpd.sock /var/lib/maas/dhcpd.conf /var/lib/maas/dhcpd6.conf
+ExecStartPre=/bin/mkdir -p /run/maas
 ExecStart=/usr/sbin/rackd
 
 [Install]

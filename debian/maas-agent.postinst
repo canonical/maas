@@ -2,19 +2,17 @@
 set -e
 
 cachedir=/var/cache/maas
-agent_rundir=/run/maas/agent
 
 ensure_dir() {
     target_dir="$1"
     if [ ! -d "$target_dir" ]; then
-	install -d -o maas -g maas -m 0755 "$target_dir"
+        install -d -o maas -g maas -m 0755 "$target_dir"
     fi
     chown maas:maas "$target_dir"
 }
 
 if [ "$1" = "configure" ]; then
     ensure_dir $cachedir
-    ensure_dir $agent_rundir
 fi
 
 #DEBHELPER#
