@@ -1,4 +1,3 @@
-run/maas
 var/lib/maas
 var/lib/maas/http
 var/lib/maas/prometheus

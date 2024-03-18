@@ -10,7 +10,7 @@ if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
    fi
    if [ "$1" = "purge" ]; then
       rm -rf /var/lib/maas/dhcp
-      rm -rf /run/maas/dhcp
+      rm -rf /run/maas-dhcp
    fi
 fi
 

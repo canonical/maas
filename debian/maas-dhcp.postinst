@@ -19,7 +19,6 @@ then
 
     # Ensure ownership is correct
     install -d -o root -g dhcpd /var/lib/maas/dhcp
-    install -d -o root -g root /run/maas/dhcp
 fi
 
 #DEBHELPER#
