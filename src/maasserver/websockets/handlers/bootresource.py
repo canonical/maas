@@ -694,7 +694,7 @@ class BootResourceHandler(Handler):
             if not url.endswith("/"):
                 url += "/"
             keyring_filename = params.get("keyring_filename", "")
-            keyring_data = params.get("keyring_data", b"")
+            keyring_data = base64.b64decode(params.get("keyring_data", ""))
             if keyring_filename == "" and keyring_data == b"":
                 keyring_filename = DEFAULT_KEYRINGS_PATH
         else:
