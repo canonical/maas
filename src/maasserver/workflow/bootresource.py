@@ -97,13 +97,21 @@ class BootResourcesActivity(MAASAPIClient):
     async def get_bootresourcefile_endpoints(self) -> dict[str, list]:
         url = f"{self.url}/api/2.0/regioncontrollers/"
         regions = await self.request_async("GET", url)
-        return {
-            r["system_id"]: [
-                compose_URL("http://:5240/MAAS/boot-resources/", src)
-                for src in r["ip_addresses"]
-            ]
-            for r in regions
-        }
+        regions_endpoints = {}
+        for region in regions:
+            # https://bugs.launchpad.net/maas/+bug/2058037
+            if region["ip_addresses"]:
+                regions_endpoints[region["system_id"]] = [
+                    compose_URL("http://:5240/MAAS/boot-resources/", src)
+                    for src in region["ip_addresses"]
+                ]
+            else:
+                raise ApplicationError(
+                    f"Could not retrieve the IP addresses of the region controller '{region['system_id']}' from the API. This "
+                    f"activity will be retried until we have the IP for all the region controllers.",
+                    non_retryable=False,
+                )
+        return regions_endpoints
 
     @activity.defn(name="download-bootresourcefile")
     async def download_bootresourcefile(
