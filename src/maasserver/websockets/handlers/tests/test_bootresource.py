@@ -1,6 +1,6 @@
 # Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+import base64
 import datetime
 import random
 from unittest.mock import ANY
@@ -1172,10 +1172,10 @@ class TestBootResourceFetch(MAASServerTestCase):
             query="",
             fragment="",
         )
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         expected_source = {
             "url": url,
-            "keyring_data": keyring_data,
+            "keyring_data": base64.b64decode(keyring_data),
             "selections": [],
         }
         error = self.assertRaises(
@@ -1201,10 +1201,10 @@ class TestBootResourceFetch(MAASServerTestCase):
         )
         mock_download.return_value = BootImageMapping()
         url = "http://example.com"
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         expected_source = {
             "url": url + "/",
-            "keyring_data": keyring_data,
+            "keyring_data": base64.b64decode(keyring_data),
             "selections": [],
         }
         self.assertRaises(
@@ -1226,7 +1226,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         exc = factory.make_exception()
         mock_download.side_effect = exc
         url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         error = self.assertRaises(
             HandlerError,
             handler.fetch,
@@ -1251,7 +1251,7 @@ class TestBootResourceFetch(MAASServerTestCase):
 
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         error = self.assertRaises(
             HandlerError,
             handler.fetch,
@@ -1262,7 +1262,7 @@ class TestBootResourceFetch(MAASServerTestCase):
     def test_raises_error_on_invalid_field(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         self.assertRaises(
             HandlerValidationError,
             handler.fetch,
@@ -1295,7 +1295,7 @@ class TestBootResourceFetch(MAASServerTestCase):
 
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
@@ -1342,7 +1342,7 @@ class TestBootResourceFetch(MAASServerTestCase):
 
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
@@ -1387,7 +1387,7 @@ class TestBootResourceFetch(MAASServerTestCase):
 
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
-        keyring_data = b"aGVsbG8gd29ybGQ="
+        keyring_data = "aGVsbG8gd29ybGQ="
         observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
