@@ -2,14 +2,13 @@ import asyncio
 from asyncio import gather
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
-import random
 from typing import Coroutine, Sequence
 
 from aiohttp.client_exceptions import ClientError
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
-from temporalio.workflow import ActivityCancellationType
+from temporalio.workflow import ActivityCancellationType, random
 
 from maasserver.utils.bootresource import (
     get_bootresource_store_path,
@@ -282,6 +281,9 @@ class SyncBootResourcesWorkflow:
             workflow.logger.info("Sync complete")
             return
 
+        # Use a random generator from the temporal sdk in order to keep the workflow deterministic.
+        random_generator = random()
+
         sync_jobs: list[Coroutine] = []
         for res in input.resources:
             missing: set[str] = set()
@@ -298,9 +300,12 @@ class SyncBootResourcesWorkflow:
                 for reg in sources
                 for ep in endpoints[reg]
             ]
+            # In order to balance the workload on the regions we randomize the order of the source_list.
             new_res = replace(
                 res,
-                source_list=random.sample(eps, min(len(eps), MAX_SOURCES)),
+                source_list=random_generator.sample(
+                    eps, min(len(eps), MAX_SOURCES)
+                ),
             )
             for region in missing:
                 sync_jobs.append(_schedule(new_res, region))
