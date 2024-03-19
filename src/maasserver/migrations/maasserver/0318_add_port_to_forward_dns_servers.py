@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("maasserver", "0317_migrate_defaultresource_zone"),
+        ("maasserver", "0304_interface_params_no_autoconf"),
     ]
 
     operations = [
