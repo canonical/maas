@@ -373,21 +373,29 @@ class TestGetConfig(MAASServerTestCase):
         local_ip = factory.make_ip_address()
         remote_ip = factory.make_ip_address()
         node = self.make_node_with_extra(
-            status=NODE_STATUS.DEPLOYED, netboot=False, ephemeral_deploy=True
+            status=NODE_STATUS.DEPLOYED,
+            netboot=False,
+            ephemeral_deploy=True,
+            boot_cluster_ip=local_ip,
+            osystem="centos",
+            distro_series="8",
         )
-        node.boot_cluster_ip = local_ip
-        node.osystem = "centos"
-        node.distro_series = "8"
-        node.architecture = "amd64/generic"
-        node.save()
+        arch = node.architecture.split("/")[0]
         mac = node.get_boot_interface().mac_address
         self.patch_autospec(boot_module, "event_log_pxe_request")
+        factory.make_default_ubuntu_release_bootable(arch=arch)
+        factory.make_usable_boot_resource(
+            name="centos/8",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        )
+
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
         self.assertEqual(config["osystem"], "centos")
         self.assertEqual(config["release"], "8")
-        self.assertEqual(config["arch"], "amd64")
+        self.assertEqual(config["arch"], arch)
         self.assertEqual(config["subarch"], "generic")
         self.assertEqual(
             config["kernel_osystem"],
@@ -398,6 +406,9 @@ class TestGetConfig(MAASServerTestCase):
             Config.objects.get_config(name="commissioning_distro_series"),
         )
         self.assertEqual(config["purpose"], "xinstall")
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["kernel"])
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["initrd"])
+        self.assertIn(f"/centos/{arch}/generic/8", config["xinstall_path"])
 
     # See https://github.com/canonical/cloud-init/issues/4418 for more details
     def test_preseed_url_not_using_domain_names_for_custom_ephemeral_deployments(
@@ -1656,6 +1667,53 @@ class TestGetBootFilenames(MAASServerTestCase):
                 boot_resource_set,
                 boot_resource_set.files.get(
                     filetype=BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE
+                ),
+            ),
+            rootfs,
+        )
+
+    def test_custom_deployment(self):
+        architecture = make_usable_architecture(self)
+        arch = architecture.split("/")[0]
+        custom_res = factory.make_usable_boot_resource(
+            name="centos/8",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        )
+        custom_rset = custom_res.sets.first()
+        kernel, initrd, _, rootfs = get_boot_filenames(
+            arch,
+            "generic",
+            "centos",
+            "8",
+        )
+
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
+                ),
+            ),
+            kernel,
+        )
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
+                ),
+            ),
+            initrd,
+        )
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
                 ),
             ),
             rootfs,
