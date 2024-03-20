@@ -14,7 +14,9 @@ from django.db.models import (
     IntegerField,
     JSONField,
     Manager,
+    OuterRef,
     Prefetch,
+    Subquery,
     Sum,
 )
 
@@ -200,6 +202,7 @@ class BootResourceManager(Manager):
         UPD: because of 3.4 transition from "subarches" to "platforms",
         expect some confusion ahead.
         """
+        from maasserver.models.bootresourcefile import BootResourceFile
         from maasserver.utils.osystems import (
             get_release_version_from_string,
             parse_subarch_kernel_string,
@@ -210,9 +213,17 @@ class BootResourceManager(Manager):
         if not architecture:
             architecture = ""
 
+        # In order to calculate the sum of the bootresourcefilesync we have to FULL OUTER JOIN the tables and the rows are
+        # duplicated: this is why we need a subquery to calculate the total files size.
+        subquery = (
+            BootResourceFile.objects.filter(resource_set_id=OuterRef("pk"))
+            .values("resource_set_id")
+            .annotate(group_size=Sum("size"))
+            .values("group_size")[:1]
+        )
         sets_prefetch = BootResourceSet.objects.annotate(
             files_count=Count("files__id", distinct=True),
-            files_size=Sum("files__size"),
+            files_size=Subquery(subquery),
             sync_size=Sum("files__bootresourcefilesync__size"),
         )
         sets_prefetch = sets_prefetch.prefetch_related("files")
@@ -571,15 +582,24 @@ class BootResource(CleanSave, TimestampedModel):
     def get_latest_complete_set(self):
         """Return latest `BootResourceSet` where all `BootResouceFile`'s
         are complete."""
+        from maasserver.models.bootresourcefile import BootResourceFile
         from maasserver.models.node import RegionController
 
         if (
             not hasattr(self, "_prefetched_objects_cache")
             or "sets" not in self._prefetched_objects_cache
         ):
+            # In order to calculate the sum of the bootresourcefilesync we have to FULL OUTER JOIN the tables and the rows are
+            # duplicated: this is why we need a subquery to calculate the total files size.
+            subquery = (
+                BootResourceFile.objects.filter(resource_set_id=OuterRef("pk"))
+                .values("resource_set_id")
+                .annotate(group_size=Sum("size"))
+                .values("group_size")[:1]
+            )
             resource_sets = self.sets.order_by("-id").annotate(
                 files_count=Count("files__id", distinct=True),
-                files_size=Sum("files__size"),
+                files_size=Subquery(subquery),
                 sync_size=Sum("files__bootresourcefilesync__size"),
             )
         else:

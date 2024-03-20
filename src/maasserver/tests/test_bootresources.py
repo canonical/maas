@@ -715,6 +715,91 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             logger.output,
         )
 
+    def test_get_latest_complete_set_not_in_sync_between_regions(self):
+        self.patch(bootresources.Event.objects, "create_region_event")
+        name, architecture, product = make_product()
+        second_region = factory.make_RegionController()
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
+            kflavor="generic",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource,
+            version=product["version_name"],
+        )
+        factory.make_boot_resource_file_with_content(
+            resource_set,
+            filename=product["ftype"],
+            filetype=product["ftype"],
+            synced=[
+                (self.region, -1),
+                (second_region, 0),
+            ],  # Not in sync between regions
+        )
+        self.assertIsNone(resource.get_latest_complete_set())
+
+    def test_get_latest_complete_set_has_completed(self):
+        self.patch(bootresources.Event.objects, "create_region_event")
+        name, architecture, product = make_product()
+        second_region = factory.make_RegionController()
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
+            kflavor="generic",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource,
+            version=product["version_name"],
+        )
+        factory.make_boot_resource_file_with_content(
+            resource_set,
+            filename=product["ftype"],
+            filetype=product["ftype"],
+            synced=[
+                (self.region, -1),
+                (second_region, -1),
+            ],  # In Sync between regions
+        )
+        self.assertEqual(resource_set, resource.get_latest_complete_set())
+
+    def test_get_latest_complete_multiple_sets_incomplete(self):
+        self.patch(bootresources.Event.objects, "create_region_event")
+        name, architecture, product = make_product()
+        second_region = factory.make_RegionController()
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name,
+            architecture=architecture,
+            kflavor="generic",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource,
+            version=product["version_name"],
+        )
+        incomplete_resource_set = factory.make_BootResourceSet(
+            resource,
+            version="alpha",
+        )
+        factory.make_boot_resource_file_with_content(
+            resource_set,
+            filename=product["ftype"],
+            filetype=product["ftype"],
+            synced=[
+                (self.region, -1),
+                (second_region, -1),
+            ],  # This is the latest completed
+        )
+        factory.make_boot_resource_file_with_content(
+            incomplete_resource_set,
+            filename=product["ftype"],
+            filetype=product["ftype"],
+            synced=[(self.region, 0)],  # Not in sync yet
+        )
+        self.assertEqual(resource_set, resource.get_latest_complete_set())
+
     def test_insert_doesnt_print_error_when_first_import(self):
         name, architecture, product = make_product()
         with transaction.atomic():
