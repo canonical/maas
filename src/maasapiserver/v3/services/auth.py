@@ -10,9 +10,9 @@ from maasapiserver.common.models.exceptions import (
     UnauthorizedException,
 )
 from maasapiserver.common.services._base import Service
+from maasapiserver.v3.auth.jwt import JWT, UserRole
 from maasapiserver.v3.services.secrets import SecretNotFound, SecretsService
 from maasapiserver.v3.services.users import UsersService
-from maasapiserver.v3.utils.jwt import JWT, UserRole
 
 
 class AuthService(Service):
@@ -53,6 +53,10 @@ class AuthService(Service):
         )
         jwt_key = await self._get_or_create_cached_jwt_key()
         return JWT.create(jwt_key, user.username, roles)
+
+    async def decode_and_verify_token(self, token: str) -> JWT:
+        jwt_key = await self._get_or_create_cached_jwt_key()
+        return JWT.decode(jwt_key, token)
 
     async def _get_or_create_cached_jwt_key(self) -> str:
         """This private method fetches the jwt key from the database if the key was not loaded yet. If the key does not exist,

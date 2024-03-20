@@ -39,6 +39,11 @@ class UnauthorizedException(BaseException):
         super().__init__("Not authenticated.", details)
 
 
+class ForbiddenException(BaseException):
+    def __init__(self, details: list[BaseExceptionDetail] | None = None):
+        super().__init__("Forbidden.", details)
+
+
 class PreconditionFailedException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("A precondition has failed.", details)

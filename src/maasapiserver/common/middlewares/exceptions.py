@@ -1,16 +1,19 @@
 import logging
 from typing import Awaitable, Callable
 
-from fastapi import Request, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictResponse,
+    ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
     PreconditionFailedResponse,
+    ServiceUnavailableErrorResponse,
     UnauthorizedResponse,
     ValidationErrorResponse,
 )
@@ -18,8 +21,10 @@ from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
+    ForbiddenException,
     NotFoundException,
     PreconditionFailedException,
+    ServiceUnavailableException,
     UnauthorizedException,
 )
 
@@ -56,12 +61,18 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except UnauthorizedException as e:
             logger.debug(e)
             return UnauthorizedResponse(e.details)
+        except ForbiddenException as e:
+            logger.debug(e)
+            return ForbiddenResponse(e.details)
         except NotFoundException as e:
             logger.debug(e)
             return NotFoundResponse()
         except PreconditionFailedException as e:
             logger.debug(e)
             return PreconditionFailedResponse(e.details)
+        except ServiceUnavailableException as e:
+            logger.error(e)
+            return ServiceUnavailableErrorResponse(e.details)
         except Exception as e:
             logger.exception(e)
             return InternalServerErrorResponse()

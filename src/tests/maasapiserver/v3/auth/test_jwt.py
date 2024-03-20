@@ -3,10 +3,10 @@ from typing import Sequence
 
 import pytest
 
-from maasapiserver.v3.utils.jwt import InvalidToken, JWT, UserRole
+from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 
 
-class TestUserModel:
+class TestJWT:
     @pytest.mark.parametrize(
         "key, subject, roles",
         [

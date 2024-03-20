@@ -43,6 +43,19 @@ class UnauthorizedResponse(JSONResponse):
         )
 
 
+class ForbiddenBodyResponse(ErrorBodyResponse):
+    code = status.HTTP_403_FORBIDDEN
+    message = "Forbidden."
+
+
+class ForbiddenResponse(JSONResponse):
+    def __init__(self, details: Optional[list[BaseExceptionDetail]]):
+        super().__init__(
+            content=jsonable_encoder(ForbiddenBodyResponse(details=details)),
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+
+
 class NotFoundBodyResponse(ErrorBodyResponse):
     code = status.HTTP_404_NOT_FOUND
     message = "Entity not found."

@@ -1,12 +1,10 @@
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncConnection
+from starlette.requests import Request
 
-from maasapiserver.common.api.db import db_conn
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
-async def services(
-    db_conn: AsyncConnection = Depends(db_conn),
+def services(
+    request: Request,
 ) -> ServiceCollectionV3:
     """Dependency to return the services collection."""
-    return await ServiceCollectionV3.produce(db_conn)
+    return request.state.services

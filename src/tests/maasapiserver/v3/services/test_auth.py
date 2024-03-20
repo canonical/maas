@@ -1,10 +1,12 @@
 import datetime
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.models.exceptions import UnauthorizedException
+from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services import AuthService, SecretsService, UsersService
 from maasapiserver.v3.services.secrets import SecretNotFound
@@ -21,18 +23,20 @@ def prepare():
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestAuthService:
-    def _build_test_user(self) -> User:
-        return User(
-            id=1,
-            username="myusername",
-            password="pbkdf2_sha256$260000$f1nMJPH4Z5Wc8QxkTsZ1p6$ylZBpgGE3FNlP2zOU21cYiLtvxwtkglsPKUETtXhzDw=",  # hash('test')
-            is_superuser=False,
-            first_name="first",
-            last_name="last",
-            is_staff=False,
-            is_active=True,
-            date_joined=datetime.datetime.utcnow(),
-        )
+    def _build_test_user(self, **extra_details: Any) -> User:
+        data = {
+            "id": 1,
+            "username": "myusername",
+            "password": "pbkdf2_sha256$260000$f1nMJPH4Z5Wc8QxkTsZ1p6$ylZBpgGE3FNlP2zOU21cYiLtvxwtkglsPKUETtXhzDw=",  # hash('test')
+            "is_superuser": False,
+            "first_name": "first",
+            "last_name": "last",
+            "is_staff": False,
+            "is_active": True,
+            "date_joined": datetime.datetime.utcnow(),
+        }
+        data.update(extra_details)
+        return User(**data)
 
     async def test_login(self, db_connection: AsyncConnection) -> None:
         user = self._build_test_user()
@@ -47,9 +51,26 @@ class TestAuthService:
             users_service=users_service_mock,
         )
         token = await auth_service.login(user.username, "test")
-        print(token.encoded)
         assert len(token.encoded) > 0
         assert token.subject == user.username
+        assert token.roles == [UserRole.USER]
+
+    async def test_login_admin(self, db_connection: AsyncConnection) -> None:
+        admin = self._build_test_user(is_superuser=True)
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+
+        users_service_mock = Mock(UsersService)
+        users_service_mock.get = AsyncMock(return_value=admin)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        token = await auth_service.login(admin.username, "test")
+        assert len(token.encoded) > 0
+        assert token.subject == admin.username
+        assert token.roles == [UserRole.USER, UserRole.ADMIN]
 
     async def test_login_unauthorized(
         self, db_connection: AsyncConnection
@@ -129,3 +150,63 @@ class TestAuthService:
             AuthService.MAAS_V3_JWT_KEY_SECRET_PATH
         )
         secrets_service_mock.set_simple_secret.assert_called_once()
+
+    async def test_decode_and_verify_token(
+        self, db_connection: AsyncConnection
+    ):
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        users_service_mock = Mock(UsersService)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        jwt = JWT.create("123", "sub", [UserRole.ADMIN])
+        decoded_jwt = await auth_service.decode_and_verify_token(jwt.encoded)
+        assert jwt.issuer == decoded_jwt.issuer
+        assert decoded_jwt.subject == "sub"
+        assert decoded_jwt.roles == [UserRole.ADMIN]
+
+    @pytest.mark.parametrize(
+        "key, invalid_token",
+        [
+            ("123", ""),
+            # malformed
+            ("123", "eyJhbGciOi"),
+            # Expired
+            (
+                "123",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYSIsImlzcyI6Ik1BQVMiLCJpYXQiOjE3MDk3MjAzMTUsImV4cCI6MTcwOTcyMDkxNSwiYXVkIjoiYXBpIiwicm9sZXMiOltdfQ.DH7XiHnNokJ1dRJK8IZ0YItqZKihV7qzxfA8Mi0WpfI",
+            ),
+        ],
+    )
+    async def test_decode_and_verify_token_invalid(
+        self, key: str, invalid_token: str, db_connection: AsyncConnection
+    ):
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value=key)
+        users_service_mock = Mock(UsersService)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        with pytest.raises(InvalidToken):
+            await auth_service.decode_and_verify_token(invalid_token)
+
+    async def test_decode_and_verify_token_signed_with_another_key(
+        self, db_connection: AsyncConnection
+    ):
+        # signed with another key
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+        users_service_mock = Mock(UsersService)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        token = JWT.create("not_the_same_key", "test", []).encoded
+        with pytest.raises(InvalidToken):
+            await auth_service.decode_and_verify_token(token)

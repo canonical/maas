@@ -115,7 +115,6 @@ class ZonesHandler(Handler):
             self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/zones"
         )
 
-    # TODO: ensure authorization
     @handler(
         path="/zones/{zone_id}",
         methods=["DELETE"],

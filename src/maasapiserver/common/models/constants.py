@@ -4,6 +4,9 @@
 UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE = (
     "UnexistingUserOrInvalidCredentialsViolation"
 )
+INVALID_TOKEN_VIOLATION_TYPE = "InvalidTokenViolation"
+MISSING_PERMISSIONS_VIOLATION_TYPE = "MissingPermissionViolation"
+NOT_AUTHENTICATED_VIOLATION_TYPE = "NotAuthenticatedViolation"
 
 # Generic
 UNIQUE_CONSTRAINT_VIOLATION_TYPE = "UniqueConstraintViolation"

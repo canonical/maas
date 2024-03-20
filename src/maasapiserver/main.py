@@ -18,6 +18,12 @@ from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
 from maasapiserver.settings import api_service_socket_path, Config, read_config
 from maasapiserver.v2.api.handlers import APIv2
 from maasapiserver.v3.api.handlers import APIv3
+from maasapiserver.v3.middlewares.auth import (
+    AuthenticationProvidersCache,
+    LocalAuthenticationProvider,
+    V3AuthenticationMiddleware,
+)
+from maasapiserver.v3.middlewares.services import ServicesMiddleware
 
 
 def create_app(
@@ -42,6 +48,15 @@ def create_app(
     # middleware added here)
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
+
+    app.add_middleware(
+        V3AuthenticationMiddleware,
+        providers_cache=AuthenticationProvidersCache(
+            [LocalAuthenticationProvider()]
+        ),
+    )
+
+    app.add_middleware(ServicesMiddleware)
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
 

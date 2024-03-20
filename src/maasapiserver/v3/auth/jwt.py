@@ -6,7 +6,7 @@ from typing import Any, cast, Sequence
 
 from jose import jwt, JWTError
 
-from maasapiserver.v3.utils.time import utc_from_timestamp
+from maasapiserver.v3.auth.time import utc_from_timestamp
 
 
 class InvalidToken(Exception):
