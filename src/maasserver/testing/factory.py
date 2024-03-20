@@ -2490,10 +2490,10 @@ class Factory(maastesting.factory.Factory):
         )
 
         if synced:
-            for st in synced:
-                sync_size = rfile.size if st[1] < 0 else st[1]
+            for region_controller, size in synced:
+                sync_size = rfile.size if size < 0 else size
                 rfile.bootresourcefilesync_set.create(
-                    region=st[0], size=sync_size
+                    region=region_controller, size=sync_size
                 )
 
         return rfile
