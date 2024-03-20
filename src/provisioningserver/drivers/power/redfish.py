@@ -61,7 +61,7 @@ class RedfishPowerDriverBase(PowerDriver):
                 b"User-Agent": [b"MAAS"],
                 b"Accept": [b"application/json"],
                 b"Authorization": [b"Basic " + authorization],
-                b"Content-Type": [b"application/json; charset=utf-8"],
+                b"Content-Type": [b"application/json"],
             }
         )
 

@@ -202,7 +202,7 @@ class TestRedfishPowerDriver(MAASTestCase):
             b"User-Agent": [b"MAAS"],
             b"Accept": [b"application/json"],
             b"Authorization": [b"Basic " + authorization],
-            b"Content-Type": [b"application/json; charset=utf-8"],
+            b"Content-Type": [b"application/json"],
         }
         driver = RedfishPowerDriver()
         headers = driver.make_auth_headers(power_user, power_pass)
