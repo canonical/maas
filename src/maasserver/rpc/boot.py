@@ -92,6 +92,60 @@ def event_log_pxe_request(machine, purpose):
     )
 
 
+def _get_files_map(osystem, oseries, arch, subarch, exclude=None):
+    exclude = exclude or []
+    try:
+        boot_resource = BootResource.objects.get(
+            architecture=f"{arch}/{subarch}",
+            name=f"{osystem}/{oseries}",
+        )
+        bset = boot_resource.get_latest_complete_set()
+        return {
+            bfile.filetype: "/".join(
+                [
+                    bfile.sha256,
+                    osystem,
+                    arch,
+                    subarch,
+                    oseries,
+                    bset.label,
+                    bfile.filename,
+                ]
+            )
+            for bfile in bset.files.all()
+            if bfile.filetype not in exclude
+        }
+    except ObjectDoesNotExist:
+        return {}
+
+
+def _xlate_generic_subarch(
+    arch,
+    subarch,
+    kernel_osystem,
+    kernel_release,
+    commissioning_osystem,
+    commissioning_distro_series,
+):
+    # MAAS doesn't store in the BootResource table what subarch is the
+    # generic subarch so lookup what the generic subarch maps to.
+    try:
+        return get_working_kernel(
+            subarch,
+            None,
+            f"{arch}/{subarch}",
+            kernel_osystem,
+            kernel_release,
+            commissioning_osystem=commissioning_osystem,
+            commissioning_distro_series=commissioning_distro_series,
+        )
+    except ValidationError:
+        # It's possible that no kernel's exist at all for this arch,
+        # subarch, osystem, series combination. In that case just fallback
+        # to 'generic'.
+        return "generic"
+
+
 def get_boot_filenames(
     arch,
     subarch,
@@ -103,59 +157,30 @@ def get_boot_filenames(
     """Return the filenames of the kernel, initrd, and boot_dtb for the boot
     resource."""
     if subarch == "generic":
-        # MAAS doesn't store in the BootResource table what subarch is the
-        # generic subarch so lookup what the generic subarch maps to.
-        try:
-            boot_resource_subarch = get_working_kernel(
-                subarch,
-                None,
-                f"{arch}/{subarch}",
-                osystem,
-                series,
-                commissioning_osystem=commissioning_osystem,
-                commissioning_distro_series=commissioning_distro_series,
-            )
-        except ValidationError:
-            # It's possible that no kernel's exist at all for this arch,
-            # subarch, osystem, series combination. In that case just fallback
-            # to 'generic'.
-            boot_resource_subarch = "generic"
-    else:
-        boot_resource_subarch = subarch
-
-    try:
-        # Get the filename for the kernel, initrd, and boot_dtb the rack should
-        # use when booting.
-        boot_resource = BootResource.objects.get(
-            architecture=f"{arch}/{boot_resource_subarch}",
-            name=f"{osystem}/{series}",
+        kernel_subarch = _xlate_generic_subarch(
+            arch,
+            subarch,
+            osystem,
+            series,
+            commissioning_osystem,
+            commissioning_distro_series,
         )
-        boot_resource_set = boot_resource.get_latest_complete_set()
-        boot_resource_files = {
-            bfile.filetype: "/".join(
-                [
-                    bfile.sha256,
-                    osystem,
-                    arch,
-                    boot_resource_subarch,
-                    series,
-                    boot_resource_set.label,
-                    bfile.filename,
-                ]
-            )
-            for bfile in boot_resource_set.files.all()
-        }
-    except ObjectDoesNotExist:
+    else:
+        kernel_subarch = subarch
+
+    res_files = _get_files_map(osystem, series, arch, kernel_subarch)
+    if not res_files and subarch != kernel_subarch:
+        res_files = _get_files_map(osystem, series, arch, subarch)
+
+    if not res_files:
         # If a filename can not be found return None to allow the rack to
         # figure out what todo.
         return None, None, None, None
-    kernel = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, None)
-    initrd = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, None)
-    boot_dtb = boot_resource_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, None)
-    if len(boot_resource_files) > 0:
-        rootfs = next(iter(boot_resource_files.values()))
-    else:
-        rootfs = None
+
+    kernel = res_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, None)
+    initrd = res_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, None)
+    boot_dtb = res_files.pop(BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, None)
+    rootfs = next(iter(res_files.values()), None)
     return kernel, initrd, boot_dtb, rootfs
 
 
@@ -698,6 +723,15 @@ def get_config(
     boot_purpose = get_final_boot_purpose(machine, arch, purpose)
 
     kernel_osystem, kernel_release = osystem, series
+
+    kernel, initrd, boot_dtb, rootfs = get_boot_filenames(
+        arch,
+        subarch,
+        osystem,
+        series,
+        commissioning_osystem=configs["commissioning_osystem"],
+        commissioning_distro_series=configs["commissioning_distro_series"],
+    )
     # For custom image ephemeral deployments we use the default (ubuntu) commissioning os/distro kernel
     if (
         machine is not None
@@ -708,16 +742,9 @@ def get_config(
             configs["commissioning_osystem"],
             configs["commissioning_distro_series"],
         )
-
-    # FIXME alexsander-souza: check the ephemeral deployment case
-    kernel, initrd, boot_dtb, rootfs = get_boot_filenames(
-        arch,
-        subarch,
-        osystem,
-        series,
-        commissioning_osystem=configs["commissioning_osystem"],
-        commissioning_distro_series=configs["commissioning_distro_series"],
-    )
+        kernel, initrd, boot_dtb, _ = get_boot_filenames(
+            arch, subarch, kernel_osystem, kernel_release
+        )
 
     # Return the params to the rack controller. Include the system_id only
     # if the machine was known.
