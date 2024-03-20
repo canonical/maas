@@ -11991,6 +11991,10 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 372	maasserver	0316_add_defaultresource_table	2024-03-06 03:31:14.227521+00
 373	maasserver	0317_migrate_defaultresource_zone	2024-03-06 03:31:14.238827+00
 374	maasserver	0318_add_port_to_forward_dns_servers	2024-03-17 03:30:45.589405+00
+375	maasserver	0319_merge_0304_and_0318	2024-03-20 10:17:51.582553+00
+376	maasserver	0320_current_script_set_foreign_keys_drop_indexes	2024-03-20 10:17:51.918962+00
+377	maasserver	0321_current_script_set_foreign_keys_cleanup	2024-03-20 10:17:51.927243+00
+378	maasserver	0322_current_script_set_foreign_keys_readd	2024-03-20 10:17:52.193804+00
 \.
 
 
@@ -13124,7 +13128,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 374, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 378, true);
 
 
 --
@@ -17591,11 +17595,35 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_node maasserver_node_current_commissionin_9ae2ec39_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_commissionin_9ae2ec39_fk_maasserve FOREIGN KEY (current_commissioning_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_installation_a6e40738_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_installation_a6e40738_fk_maasserve FOREIGN KEY (current_installation_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_node maasserver_node_current_release_scri_1c3d13f5_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_current_release_scri_1c3d13f5_fk_maasserve FOREIGN KEY (current_release_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_testing_scri_4636f4f9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_testing_scri_4636f4f9_fk_maasserve FOREIGN KEY (current_testing_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
