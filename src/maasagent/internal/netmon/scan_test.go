@@ -76,6 +76,7 @@ func TestGetIPHwAddressPair(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			packet := gopacket.NewPacket(tc.in, layers.LayerTypeEthernet, gopacket.Default)
 
 			res := getIPHwAddressPair(packet)

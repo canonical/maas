@@ -58,6 +58,7 @@ func Run() int {
 
 	g.Go(func() error {
 		encoder := json.NewEncoder(os.Stdout)
+
 		for {
 			select {
 			case <-sigC:

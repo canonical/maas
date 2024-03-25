@@ -41,6 +41,7 @@ func TestVLANUnmarshal(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			res := &VLAN{}
 
 			err := res.UnmarshalBinary(tc.in)
@@ -159,6 +160,7 @@ func TestEthernetFrameExtractVLAN(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			eth := &EthernetFrame{}
 
 			err := eth.UnmarshalBinary(tc.in)
@@ -228,7 +230,9 @@ func TestEthernetFrameExtractARP(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			eth := &EthernetFrame{}
+
 			err := eth.UnmarshalBinary(tc.in)
 			if err != nil {
 				t.Fatal(err)

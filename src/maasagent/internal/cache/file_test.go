@@ -316,6 +316,7 @@ func TestFileCacheGet(t *testing.T) {
 
 				if tc.err == nil {
 					assert.NotNil(t, data)
+
 					result := make([]byte, len(v))
 					_, err := data.Read(result)
 					assert.NoError(t, err)

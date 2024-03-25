@@ -29,6 +29,7 @@ func TestGetRunDir(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			tc.in(t)
+
 			res := getRunDir()
 			assert.Equal(t, tc.out, res)
 		})

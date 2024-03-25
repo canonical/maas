@@ -46,6 +46,7 @@ func TestFmtPowerOpts(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			res := fmtPowerOpts(tc.in)
 			assert.ElementsMatch(t, tc.out, res)
 		})

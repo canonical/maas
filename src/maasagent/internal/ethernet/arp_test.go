@@ -72,10 +72,12 @@ func TestUnmarshal(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			res := &ARPPacket{}
 
 			err := res.UnmarshalBinary(tc.in)
 			assert.ErrorIs(t, err, tc.err)
+
 			if err == nil {
 				assert.Equal(t, tc.out, res)
 			}

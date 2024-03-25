@@ -214,10 +214,12 @@ func TestUpdateBindings(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			packet := testARPPacket()
 			if tc.in.p != nil {
 				tc.in.p(packet)
 			}
+
 			svc := NewService("lo")
 			if tc.in.bindingsFixture != nil {
 				svc.bindings = tc.in.bindingsFixture
@@ -330,6 +332,7 @@ func TestServiceHandlePacket(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
+
 			svc := NewService("")
 			res, err := svc.handlePacket(tc.in)
 			assert.ErrorIs(t, err, tc.err)
