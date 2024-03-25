@@ -148,6 +148,7 @@ def get_default_config():
         "windows_kms_host": None,
         # Session timeout length (s)
         "session_length": 1209600,
+        "auto_vlan_creation": True,
     }
 
 

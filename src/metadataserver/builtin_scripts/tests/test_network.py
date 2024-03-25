@@ -10,6 +10,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import Event, EventType
+from maasserver.models.config import Config
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
     BondInterface,
@@ -85,6 +86,35 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.update_interfaces(node, data)
         eth0 = node.current_config.interface_set.get(name="eth0")
         self.assertEqual(eth0.numa_node, node.default_numanode)
+
+    def test_dont_create_default_vlan_for_deployed_machines(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        self.assertIsNone(eth0.vlan)
+
+    def test_dont_create_default_vlan_if_disabled(self):
+        Config.objects.set_config(name="auto_vlan_creation", value=False)
+        node = factory.make_Machine(status=NODE_STATUS.NEW)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        self.assertIsNone(eth0.vlan)
 
     def test_all_new_physical_interfaces_no_links(self):
         controller = self.create_empty_controller()
