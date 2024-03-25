@@ -1068,6 +1068,20 @@ CONFIG_ITEMS = {
             "max_value": 1209600,
         },
     },
+    "auto_vlan_creation": {
+        "default": True,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Automatically create VLANs and Fabrics for interfaces",
+            "required": False,
+            "help_text": (
+                "Enables the creation of a default VLAN and Fabric for "
+                "discovered network interfaces when MAAS cannot connect it "
+                "to an existing one. When disabled, the interface is left "
+                "disconnected in these cases."
+            ),
+        },
+    },
 }
 
 
