@@ -1,7 +1,7 @@
 from django.db.models.expressions import RawSQL
 from netaddr import IPAddress, IPNetwork
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
@@ -506,13 +506,26 @@ def update_parent_vlans(node, interface, parent_nics, update_ip_addresses):
                 parent_nic.save()
 
 
+def auto_vlan_creation(node) -> bool:
+    if node.is_controller:
+        # Always create controller's vlans
+        return True
+
+    if node.status == NODE_STATUS.DEPLOYED:
+        # don't create empty vlan/fabric for interfaces discovered by HW sync,
+        # they cannot be used.
+        return False
+
+    return Config.objects.get_config("auto_vlan_creation", True)
+
+
 def guess_vlan_for_interface(node, links):
     # Make sure that the VLAN on the interface is correct. When
     # links exists on this interface we place it into the correct
     # VLAN. If it cannot be determined and its a new interface it
     # gets placed on its own fabric.
     new_vlan = get_interface_vlan_from_links(node, links)
-    if new_vlan is None:
+    if new_vlan is None and auto_vlan_creation(node):
         # If the default VLAN on the default fabric has no interfaces
         # associated with it, the first interface will be placed there
         # (rather than creating a new fabric).
