@@ -35,6 +35,7 @@ def evaluate_tag(
         auth=MAASOAuth(*credentials),
         dispatcher=MAASDispatcher(autodetect_proxies=False),
         base_url=maas_url,
+        insecure=True,
     )
     process_node_tags(
         rack_id=system_id,
