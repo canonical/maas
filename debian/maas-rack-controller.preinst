@@ -56,6 +56,10 @@ if [ "$1" = "install" ] || [ "$1" = "upgrade" ]; then
         rm -rf /var/lib/maas/boot-resources
     fi
 
+    if [ -d /run/maas ]; then
+      rm -rf /run/maas
+    fi
+
 fi
 
 if [ "$1" = "upgrade" ]; then
