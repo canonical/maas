@@ -24,6 +24,8 @@ case "$1" in
         rm -rf /var/lib/maas/dhcpd6.conf
         rm -rf /var/lib/maas/dhcpd6-interfaces
 
+        rm -rf /run/maas
+
         # Remove authbind
         MAAS_UID="`id -u maas`"
         if [ -f "/etc/authbind/byuid/$MAAS_UID" ]; then
