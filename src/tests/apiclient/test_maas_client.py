@@ -265,12 +265,15 @@ class FakeDispatcher:
     def __init__(self, result=None):
         self.result = result
 
-    def dispatch_query(self, request_url, headers, method=None, data=None):
+    def dispatch_query(
+        self, request_url, headers, method=None, data=None, insecure=False
+    ):
         self.last_call = {
             "request_url": request_url,
             "headers": headers,
             "method": method,
             "data": data,
+            "insecure": insecure,
         }
         return self.result
 

@@ -13,12 +13,32 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import ssl
 
 from oauthlib import oauth1
 
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
 from apiclient.utils import urlencode
+
+
+class PostHTTPRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Post data on redirect unlike urrlib2.HTTPRedirectHandler."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        m = req.get_method()
+        if (code in (301, 302, 303, 307) and m in ("GET", "HEAD")
+            or code in (301, 302, 303) and m == "POST"):
+            newurl = newurl.replace(' ', '%20')
+            CONTENT_HEADERS = ("content-length", "content-type")
+            newheaders = dict((k, v) for k, v in req.headers.items()
+                              if k.lower() not in CONTENT_HEADERS)
+            return urllib.request.Request(newurl,
+                           data=req.data,
+                           headers=newheaders,
+                           origin_req_host=req.origin_req_host,
+                           unverifiable=True)
+        else:
+            raise urllib.request.HTTPError(req.get_full_url(), code, msg, headers, fp)
 
 
 class MAASOAuth:
@@ -84,7 +104,7 @@ class MAASDispatcher:
     def __init__(self, autodetect_proxies=True):
         self.autodetect_proxies = autodetect_proxies
 
-    def dispatch_query(self, request_url, headers, method="GET", data=None):
+    def dispatch_query(self, request_url, headers, method="GET", data=None, insecure=False):
         """Synchronously dispatch an OAuth-signed request to L{request_url}.
 
         :param request_url: The URL to which the request is to be sent.
@@ -94,6 +114,7 @@ class MAASDispatcher:
             An AssertionError is raised if trying to pass data for a GET.
         :param data: The data to send, if any.
         :type data: A byte string.
+        :param insecure: Skip HTTPS certificate verification
 
         :return: A open file-like object that contains the response.
         """
@@ -114,6 +135,9 @@ class MAASDispatcher:
         req = RequestWithMethod(request_url, data, headers, method=method)
         # Retry the request maximum of 3 times.
         handlers = []
+        if insecure:
+            handlers.append(PostHTTPRedirectHandler())
+            handlers.append(urllib.request.HTTPSHandler(context=ssl._create_unverified_context()))
         if not self.autodetect_proxies:
             handlers.append(urllib.request.ProxyHandler({}))
         for try_count in range(3):
@@ -163,7 +187,7 @@ class MAASClient:
     is equivalent to `"nodes/%s" % node_id`.
     """
 
-    def __init__(self, auth, dispatcher, base_url):
+    def __init__(self, auth, dispatcher, base_url, insecure=False):
         """Intialise the client.
 
         :param auth: A `MAASOAuth` to sign requests.
@@ -171,10 +195,12 @@ class MAASClient:
             base class.
         :param base_url: The base URL for the MAAS server, e.g.
             http://my.maas.com:5240/
+        :param insecure: Skip HTTPS certificate verification
         """
         self.dispatcher = dispatcher
         self.auth = auth
         self.url = base_url
+        self.insecure = insecure
 
     def _make_url(self, path):
         """Compose an absolute URL to `path`.
@@ -268,7 +294,7 @@ class MAASClient:
             kwargs["op"] = op
         url, headers = self._formulate_get(path, kwargs)
         return self.dispatcher.dispatch_query(
-            url, method="GET", headers=headers
+            url, method="GET", headers=headers, insecure=self.insecure
         )
 
     def post(self, path, op="update", as_json=False, **kwargs):
@@ -284,14 +310,14 @@ class MAASClient:
             path, kwargs, as_json=as_json
         )
         return self.dispatcher.dispatch_query(
-            url, method="POST", headers=headers, data=body
+            url, method="POST", headers=headers, data=body, insecure=self.insecure
         )
 
     def put(self, path, **kwargs):
         """Dispatch a PUT on the resource at `path`."""
         url, headers, body = self._formulate_change(path, kwargs)
         return self.dispatcher.dispatch_query(
-            url, method="PUT", headers=headers, data=body
+            url, method="PUT", headers=headers, data=body, insecure=self.insecure
         )
 
     def delete(self, path):
@@ -300,5 +326,5 @@ class MAASClient:
         # The body will be empty, but it must be passed.  Otherwise, the
         # request will hang while trying to read a response (bug 1313556).
         return self.dispatcher.dispatch_query(
-            url, method="DELETE", headers=headers, data=body
+            url, method="DELETE", headers=headers, data=body, insecure=self.insecure
         )
