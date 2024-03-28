@@ -17,6 +17,7 @@ import time
 from netaddr import IPNetwork, IPSet
 from netaddr.core import AddrFormatError
 
+from provisioningserver.utils import sudo
 from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.script import ActionScriptError
 from provisioningserver.utils.shell import (
@@ -200,7 +201,7 @@ def get_nmap_arguments(args: NmapParameters):
     :param args.slow: If True, will throttle scanning to 9 packets per second.
     :return: list
     """
-    nmap_args = ["sudo", "--non-interactive", "nmap", "-e", args.interface]
+    nmap_args = sudo(["nmap", "-e", args.interface])
     if args.slow is True:
         # If we're doing a slow scan, use a packets-per-second limit.
         # A rate limit of 9 PPS tends to scan a /24 in about one minute.

@@ -387,9 +387,10 @@ class RegionEventLoop:
             "requires": [],
         },
         "active-discovery": {
-            "only_on_master": True,
+            "only_on_master": False,
+            "import_service": True,  # run on worker #1
             "factory": make_ActiveDiscoveryService,
-            "requires": ["postgres-listener-master"],
+            "requires": ["postgres-listener-worker"],
         },
         "reverse-dns": {
             "only_on_master": True,
