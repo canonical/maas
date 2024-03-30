@@ -25,7 +25,6 @@ package-repositories:
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
-  LD_LIBRARY_PATH: $LD_LIBRARY_PATH:$SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/blas
   PEBBLE: $SNAP_COMMON/pebble
 
 plugs:
@@ -195,6 +194,7 @@ parts:
       lib/python3.*/site-packages/usr/sbin/*: usr/sbin/
       lib/python3.*/site-packages/usr/share/*: usr/share/
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
+      usr/lib/*-linux-gnu/blas/*: usr/lib/
     stage:
       - bin
       - -bin/activate*
