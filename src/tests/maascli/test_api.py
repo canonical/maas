@@ -21,7 +21,7 @@ from maascli.actions.boot_resources_create import BootResourcesCreateAction
 from maascli.actions.sshkeys_import import SSHKeysImportAction
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
-from maascli.parser import ArgumentParser
+from maascli.parser import ArgumentParser, get_deepest_subparser
 from maascli.testing.config import make_configs, make_profile
 from maascli.utils import handler_command_name, safe_name
 from maastesting.factory import factory
@@ -67,6 +67,48 @@ class TestRegisterAPICommands(MAASTestCase):
                     (profile_name, handler_name, action_name)
                 )
                 self.assertIsInstance(options.execute, api.Action)
+
+    def test_parser_includes_data_arg(self):
+        profile = self.make_profile()
+        profile_name = list(profile.keys())[0]
+        parser = ArgumentParser()
+        api.register_api_commands(parser)
+        # the first resource should have an action with a data param
+        resource = list(profile.values())[0]["description"]["resources"][0]
+        handler_name = handler_command_name(resource["name"])
+        # get the action with a data param
+        action = next(
+            x for x in resource["auth"]["actions"] if "data" in x["name"]
+        )
+        action_name = safe_name(action["name"])
+        subparser = get_deepest_subparser(
+            parser, [profile_name, handler_name, action_name]
+        )
+        positional_action_names = [
+            x.dest for x in subparser._get_positional_actions()
+        ]
+        self.assertIn("data", positional_action_names)
+
+    def test_parser_omits_data_arg(self):
+        profile = self.make_profile()
+        profile_name = list(profile.keys())[0]
+        parser = ArgumentParser()
+        api.register_api_commands(parser)
+        # the first resource should have an action with a data param
+        resource = list(profile.values())[0]["description"]["resources"][0]
+        handler_name = handler_command_name(resource["name"])
+        # get the action without a data param
+        action = next(
+            x for x in resource["auth"]["actions"] if "data" not in x["name"]
+        )
+        action_name = safe_name(action["name"])
+        subparser = get_deepest_subparser(
+            parser, [profile_name, handler_name, action_name]
+        )
+        positional_action_names = [
+            x.dest for x in subparser._get_positional_actions()
+        ]
+        self.assertNotIn("data", positional_action_names)
 
 
 class TestFunctions(MAASTestCase):

@@ -100,9 +100,6 @@ class Action(Command):
 
     def __init__(self, parser):
         super().__init__(parser)
-        for param in self.handler["params"]:
-            parser.add_argument(param)
-        parser.add_argument("data", type=self.name_value_pair, nargs="*")
         parser.add_argument(
             "-d",
             "--debug",
@@ -417,6 +414,13 @@ def register_actions(profile, handler, parser):
             nargs=0,
             help="Show this help message and exit.",
         )
+        for param in handler["params"]:
+            action_parser.add_argument(param)
+        # check if the action requires any extra parameters in the form of key=value pairs
+        if ":param" in help_body:
+            action_parser.add_argument(
+                "data", type=Action.name_value_pair, nargs="*"
+            )
         action_parser.set_defaults(execute=action_class(action_parser))
 
 
