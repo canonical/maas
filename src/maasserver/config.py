@@ -45,12 +45,12 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         ),
     )
 
-    # TODO: This should be considered a fallback scenario
+    # This should be considered a fallback scenario as
     # MAAS should automatically find reachable IP address and use it.
-    membership_address = ConfigurationOption(
-        "membership_address",
+    broadcast_address = ConfigurationOption(
+        "broadcast_address",
         "IPv4 address used for communication between Region controllers",
-        UnicodeString(if_missing="127.0.0.1", accept_python=False),
+        UnicodeString(if_missing="", accept_python=False),
     )
 
     # Database options.

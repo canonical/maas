@@ -5,6 +5,9 @@
 
 import os
 from pathlib import Path
+import socket
+import subprocess
+from urllib.parse import urlparse
 
 from django.conf import settings
 from django.db import connection as django_connection
@@ -14,9 +17,12 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver.config import RegionConfiguration
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.fs import atomic_write, snap
+
+maaslog = get_maas_logger()
 
 
 class RegionTemporalService(Service):
@@ -46,9 +52,17 @@ class RegionTemporalService(Service):
         application_name = f"maas-temporal-{maas_id}"
         connection_attributes["application_name"] = application_name
 
-        # TODO: This should be considered a fallback scenario
         with RegionConfiguration.open() as config:
-            broadcast_address = config.membership_address
+            broadcast_address = config.broadcast_address
+
+        if not broadcast_address:
+            try:
+                broadcast_address = self.get_broadcast_address(config.maas_url)
+            except Exception as e:
+                maaslog.error(
+                    f"Failed to identify broadcast address due to: {e}"
+                    f"Please consider setting it manually using regiond.conf"
+                )
 
         environ = {
             "database": dbconf["NAME"],
@@ -81,3 +95,13 @@ class RegionTemporalService(Service):
             yield service_monitor.restartService("temporal")
         else:
             yield service_monitor.reloadService("temporal")
+
+    def get_broadcast_address(self, maas_url):
+        parsed = urlparse(maas_url)
+        maas_ip = socket.gethostbyname(parsed.hostname)
+
+        output = subprocess.getoutput(f"ip route get {maas_ip}")
+        # root@maas:~# ip route get 10.0.0.37
+        # local 10.0.0.37 dev lo src 10.0.0.37 uid 0
+        # cache <local>
+        return output.split("src ")[1].split()[0]
