@@ -6,7 +6,8 @@ mkdir -p \
       "$SNAP_COMMON/maas" \
       "$SNAP_COMMON/pebble/layers" \
       "$SNAP_DATA/preseeds" \
-      "$SNAP_DATA/root"
+      "$SNAP_DATA/root" \
+      "$SNAP_DATA/certificates"
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"

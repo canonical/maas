@@ -15,6 +15,7 @@ from typing import NamedTuple, Optional, Tuple
 from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
+from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
 
 # inspired by https://github.com/hynek/pem
@@ -38,7 +39,9 @@ class Certificate(NamedTuple):
     ca_certs: Tuple[crypto.X509]
 
     @classmethod
-    def from_pem(cls, *materials: str, ca_certs_material: str = ""):
+    def from_pem(
+        cls, *materials: str, ca_certs_material: str = ""
+    ) -> "Certificate":
         """Return a Certificate from PEM encoded material.
 
         The `materials` items are concatened and they are expected to contain a
@@ -65,6 +68,23 @@ class Certificate(NamedTuple):
         return cls(key, cert, ca_certs)
 
     @classmethod
+    def _build_base_certificate(
+        cls,
+        key: crypto.PKey,
+        version: crypto.x509.Version,
+        cn: str,
+        validity: timedelta,
+    ) -> crypto.X509:
+        cert = crypto.X509()
+        cert.set_version(version.value)
+        cert.get_subject().CN = cn[:64]
+        cert.set_serial_number(random.randint(0, (1 << 128) - 1))
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(int(validity.total_seconds()))
+        cert.set_pubkey(key)
+        return cert
+
+    @classmethod
     def generate(
         cls,
         cn: str,
@@ -72,7 +92,7 @@ class Certificate(NamedTuple):
         organizational_unit_name: Optional[str] = None,
         key_bits: int = 4096,
         validity: timedelta = timedelta(days=3650),
-    ):
+    ) -> "Certificate":
         """Low-level method for generating an X509 certificate.
 
         This should only be used in test and in cases where you don't have
@@ -85,18 +105,60 @@ class Certificate(NamedTuple):
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
 
-        cert = crypto.X509()
-        cert.get_subject().CN = cn[:64]
+        cert = cls._build_base_certificate(
+            key, crypto.x509.Version.v1, cn, validity
+        )
         if organization_name:
             cert.get_issuer().organizationName = organization_name[:64]
         if organizational_unit_name:
             cert.get_issuer().organizationalUnitName = (
                 organizational_unit_name[:64]
             )
-        cert.set_serial_number(random.randint(0, (1 << 128) - 1))
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(int(validity.total_seconds()))
-        cert.set_pubkey(key)
+
+        cert.sign(key, "sha512")
+        return cls(key, cert, ())
+
+    @classmethod
+    def generate_self_signed_v3(
+        cls,
+        cn: str,
+        organization_name: Optional[str] = None,
+        organizational_unit_name: Optional[str] = None,
+        key_bits: int = 4096,
+        validity: timedelta = timedelta(days=3650),
+        subject_alternative_name: bytes | None = None,
+    ) -> "Certificate":
+        """Low-level method for generating a self-signed certificate X509 v3 certificate.
+
+        This should only be used in test and in cases where you don't have
+        access to the database. Use maasserver.utils.certificate.generate_self_signed_v3_certificate() instead.
+        """
+        key = crypto.PKey()
+        key.generate_key(crypto.TYPE_RSA, key_bits)
+
+        cert = cls._build_base_certificate(
+            key, crypto.x509.Version.v3, cn, validity
+        )
+        if organization_name:
+            cert.get_issuer().organizationName = organization_name[:64]
+        if organizational_unit_name:
+            cert.get_issuer().organizationalUnitName = (
+                organizational_unit_name[:64]
+            )
+        cert.set_issuer(cert.get_subject())
+
+        # This is a must for self-signed certificates.
+        cert.add_extensions(
+            [crypto.X509Extension(b"basicConstraints", True, b"CA:TRUE")]
+        )
+        if subject_alternative_name:
+            cert.add_extensions(
+                [
+                    crypto.X509Extension(
+                        b"subjectAltName", False, subject_alternative_name
+                    )
+                ]
+            )
         cert.sign(key, "sha512")
         return cls(key, cert, ())
 
@@ -187,6 +249,45 @@ class Certificate(NamedTuple):
             crypto.load_certificate(crypto.FILETYPE_PEM, material)
             for material in CERTS_RE.findall(ca_certs_material)
         )
+
+
+def _get_cluster_certificates_path() -> Path:
+    maas_root = os.getenv("MAAS_ROOT", "/var/lib/maas")
+    return Path(maas_root) / "certificates"
+
+
+def get_maas_cluster_cert_paths() -> tuple[str, str] | None:
+    """Return a 2-tuple with certificate and private key paths for the cluster certificates."""
+
+    cert_dir = _get_cluster_certificates_path()
+    private_key = cert_dir / "cluster.key"
+    certificate = cert_dir / "cluster.pem"
+    if not private_key.exists() or not certificate.exists():
+        return None
+    return str(certificate), str(private_key)
+
+
+def store_maas_cluster_cert_tuple(
+    private_key: bytes, certificate: bytes
+) -> None:
+    """
+    Stores the private key and the certificate on the disk.
+    """
+
+    cert_dir = _get_cluster_certificates_path()
+    atomic_write(
+        private_key,
+        cert_dir / "cluster.key",
+        overwrite=True,
+        mode=0o600,
+    )
+
+    atomic_write(
+        certificate,
+        cert_dir / "cluster.pem",
+        overwrite=True,
+        mode=0o644,
+    )
 
 
 def get_maas_cert_tuple():

@@ -73,6 +73,10 @@ class RegisterRackController(amp.Command):
     ]
     response = [
         (b"system_id", amp.Unicode()),
+        # `encrypted_cluster_certificate` contains the encrypted self-signed certificate together with its own private key.
+        # It is a json string {"key": "", "cert": ""} and the encryption key is the MAAS_SECRET already known to the racks when
+        # it was installed by the user.
+        (b"encrypted_cluster_certificate", amp.Unicode(optional=True)),
         (b"beacon_support", amp.Boolean(optional=True)),
         (b"version", amp.Unicode(optional=True)),
         (b"uuid", amp.Unicode(optional=True)),

@@ -2,9 +2,8 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the region's RPC implementation."""
-
-
 from collections import defaultdict
+import json
 import random
 import re
 from unittest import skip
@@ -40,6 +39,7 @@ from maasserver.rpc.regionservice import (
     RegionService,
 )
 from maasserver.rpc.testing.doubles import HandshakingRegionServer
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
@@ -63,7 +63,9 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.security import fernet_decrypt_psk
 from provisioningserver.utils import events
+from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.version import get_running_version
 
 wait_for_reactor = wait_for()
@@ -274,6 +276,16 @@ class TestRegionServer(MAASTransactionServerTestCase):
             RegionController.objects, "get_running_controller"
         ).return_value = region
 
+        MAAS_SECRET.set(factory.make_bytes())
+
+        def setup_cluster_certificates():
+            secret_manger = SecretManager()
+            secret_manger.set_composite_secret(
+                "cluster-certificate", {"key": "key", "cert": "cert"}
+            )
+
+        yield deferToDatabase(transactional(setup_cluster_certificates))
+
     @wait_for_reactor
     @inlineCallbacks
     def test_register_returns_system_id_and_uuid(self):
@@ -333,6 +345,30 @@ class TestRegionServer(MAASTransactionServerTestCase):
             },
         )
         self.assertEqual(response["version"], str(get_running_version()))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_returns_cluster_certificates(self):
+        yield self.installFakeRegion()
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = self.make_Region()
+        protocol.transport = MagicMock()
+        response = yield call_responder(
+            protocol,
+            RegisterRackController,
+            {
+                "system_id": rack_controller.system_id,
+                "hostname": rack_controller.hostname,
+                "interfaces": {},
+                "version": "2.3.0",
+            },
+        )
+        self.assertEqual(
+            json.loads(
+                fernet_decrypt_psk(response["encrypted_cluster_certificate"])
+            ),
+            {"key": "key", "cert": "cert"},
+        )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -408,8 +444,23 @@ class TestRegionServer(MAASTransactionServerTestCase):
             port=random.randint(1, 400),
         )
         protocol.transport.getHost.return_value = host
+
+        def _mock_defer_to_database(*args, **kwargs):
+            # This is the call to register the rack controller on the database
+            if "system_id" in kwargs:
+                return rack_controller
+            else:
+                # This is the call to retrieve the cluster certificates from the database
+                return b'{"key": "key", "cert": "cert"}'
+
+        self.patch(
+            regionservice,
+            "deferToDatabase",
+            MagicMock(side_effect=_mock_defer_to_database),
+        )
         mock_deferToDatabase = self.patch(regionservice, "deferToDatabase")
-        mock_deferToDatabase.side_effect = [succeed(rack_controller)]
+        mock_deferToDatabase.side_effect = _mock_defer_to_database
+
         yield call_responder(
             protocol,
             RegisterRackController,

@@ -25,7 +25,9 @@ from maasserver.models import (
 )
 from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.domain import dns_kms_setting_changed
+from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils import synchronised
+from maasserver.utils.certificates import generate_self_signed_v3_certificate
 from maasserver.utils.orm import (
     get_psycopg2_exception,
     transactional,
@@ -38,6 +40,11 @@ from maasserver.vault import (
     VaultClient,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
+from provisioningserver.certificates import (
+    Certificate,
+    get_maas_cluster_cert_paths,
+    store_maas_cluster_cert_tuple,
+)
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.env import (
@@ -119,6 +126,37 @@ def _cleanup_expired_discovered_ip_addresses() -> None:
         ip_addresses__ip__isnull=True,
         ip_addresses__alloc_type=IPADDRESS_TYPE.DISCOVERED,
     ).delete()
+
+
+def _create_cluster_certificate_if_necessary(
+    client: VaultClient | None = None,
+) -> None:
+    # Use the vault if configured.
+    secret_manager = SecretManager(client)
+    # The PK/certificate are not on the disk yet
+    if not get_maas_cluster_cert_paths():
+        # Create the PK/certificate if they don't exist yet. Store the files on the disk as well.
+        try:
+            raw_certificate = secret_manager.get_composite_secret(
+                "cluster-certificate"
+            )
+            certificate = Certificate.from_pem(
+                raw_certificate["key"],
+                raw_certificate["cert"],
+            )
+        except SecretNotFound:
+            # If there are no PK/certificate at all, generate them.
+            certificate = generate_self_signed_v3_certificate("maas", b"DNS:*")
+            secrets = {
+                "key": certificate.private_key_pem(),
+                "cert": certificate.certificate_pem(),
+            }
+            secret_manager.set_composite_secret("cluster-certificate", secrets)
+        # Store the PK and the certificate to the disk
+        store_maas_cluster_cert_tuple(
+            private_key=certificate.private_key_pem().encode(),
+            certificate=certificate.certificate_pem().encode(),
+        )
 
 
 @asynchronous(timeout=FOREVER)
@@ -220,6 +258,8 @@ def inner_start_up(master=False):
         client = get_region_vault_client()
         if client is not None:
             migrate_db_credentials_if_necessary(client)
+
+        _create_cluster_certificate_if_necessary(client)
 
         ControllerInfo.objects.filter(node_id=node.id).update(
             vault_configured=bool(client)

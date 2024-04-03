@@ -1,5 +1,6 @@
 var/lib/maas
 var/lib/maas/http
 var/lib/maas/prometheus
+var/lib/maas/certificates
 var/log/maas
 var/log/maas/http

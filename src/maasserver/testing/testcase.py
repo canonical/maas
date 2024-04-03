@@ -162,6 +162,8 @@ class MAASServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.setUpFixtures()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
+        if maas_root := os.getenv("MAAS_ROOT"):
+            os.mkdir(f"{maas_root}/certificates")
 
     def beginTransaction(self):
         """Begin new transaction using Django's `atomic`."""
@@ -201,6 +203,8 @@ class MAASTransactionServerTestCase(MAASRegionTestCaseBase, MAASTestCase):
         self.setUpFixtures()
         if maas_data := os.getenv("MAAS_DATA"):
             os.mkdir(f"{maas_data}/image-storage")
+        if maas_root := os.getenv("MAAS_ROOT"):
+            os.mkdir(f"{maas_root}/certificates")
 
 
 class SerializationFailureTestCase(

@@ -4,6 +4,7 @@
 from pathlib import Path
 import random
 from unittest.mock import call, MagicMock
+from uuid import uuid4
 
 from maasserver import deprecations, eventloop, locks, start_up, vault
 from maasserver.config import RegionConfiguration
@@ -14,8 +15,11 @@ from maasserver.models.controllerinfo import ControllerInfo
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
-from maasserver.secrets import SecretManager
-from maasserver.start_up import migrate_db_credentials_if_necessary
+from maasserver.secrets import SecretManager, SecretNotFound
+from maasserver.start_up import (
+    _create_cluster_certificate_if_necessary,
+    migrate_db_credentials_if_necessary,
+)
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
@@ -24,9 +28,14 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.testing.vault import FakeVaultClient
+from maasserver.utils.certificates import generate_self_signed_v3_certificate
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting import get_testing_timeout
+from provisioningserver.certificates import (
+    Certificate,
+    get_maas_cluster_cert_paths,
+)
 from provisioningserver.config import ConfigurationFile
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.security import to_hex
@@ -41,7 +50,6 @@ from provisioningserver.utils.testing import MAASIDFixture, MAASUUIDFixture
 
 
 class TestStartUp(MAASTransactionServerTestCase):
-
     """Tests for the `start_up` function.
 
     The actual work happens in `inner_start_up` and `test_start_up`; the tests
@@ -137,6 +145,9 @@ class TestInnerStartUp(MAASServerTestCase):
         temp_dir = Path(self.make_dir())
         self.patch(MAAS_SHARED_SECRET, "_path", lambda: temp_dir / "secret")
         MAAS_SECRET.set(factory.make_bytes())
+        self.create_cluster_certificate_mock = self.patch(
+            start_up, "_create_cluster_certificate_if_necessary"
+        )
 
     def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:
@@ -164,6 +175,7 @@ class TestInnerStartUp(MAASServerTestCase):
         Config.objects.set_config(
             "commissioning_distro_series", random.choice(["precise", "trusty"])
         )
+
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         ubuntu = UbuntuOS()
@@ -277,6 +289,7 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test_sets_vault_flag_disabled(self):
         self.patch(start_up, "get_region_vault_client").return_value = None
+
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
 
@@ -315,6 +328,16 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up(master=True)
 
         migrate_mock.assert_not_called()
+
+    def test_cluster_certificate_is_called_if_master(self):
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+        self.create_cluster_certificate_mock.assert_called_once()
+
+    def test_cluster_certificate_is_not_called_if_not_master(self):
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.create_cluster_certificate_mock.assert_not_called()
 
     def test_start_up_cleanup_expired_ip_addresses(self):
         # When a host not managed by MAAS requests an IP to the MAAS DHCP server, the rack will notify the region about the
@@ -485,3 +508,52 @@ class TestVaultMigrateDbCredentials(MAASServerTestCase):
             self.assertEqual("", config.database_user)
             self.assertEqual("", config.database_pass)
         client.delete.assert_not_called()
+
+
+class TestCreateClusterCertificate(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        MAAS_SECRET.set(factory.make_bytes())
+        self.useFixture(MAASUUIDFixture(str(uuid4())))
+
+    def test_create_and_store_certificates(self):
+        # No certificates on the disk
+        self.assertIsNone(get_maas_cluster_cert_paths())
+        secret_manager = SecretManager()
+        # No certificates on the database
+        self.assertRaises(
+            SecretNotFound,
+            secret_manager.get_composite_secret,
+            "cluster-certificate",
+        )
+
+        _create_cluster_certificate_if_necessary()
+        self.assertIsNotNone(get_maas_cluster_cert_paths())
+        certificate_secret = secret_manager.get_composite_secret(
+            "cluster-certificate"
+        )
+        certificate = Certificate.from_pem(
+            certificate_secret["key"],
+            certificate_secret["cert"],
+        )
+
+        self.assertIsNotNone(certificate.private_key_pem())
+        self.assertIsNotNone(certificate.certificate_pem())
+
+    def test_fetch_certificates_from_db(self):
+        # No certificates on the disk
+        self.assertIsNone(get_maas_cluster_cert_paths())
+
+        # store the certificates on the database
+        secret_manager = SecretManager()
+        certificate = generate_self_signed_v3_certificate("maas")
+        secrets = {
+            "key": certificate.private_key_pem(),
+            "cert": certificate.certificate_pem(),
+        }
+        secret_manager.set_composite_secret("cluster-certificate", secrets)
+
+        _create_cluster_certificate_if_necessary()
+
+        # The certificates are stored on the disk
+        self.assertIsNotNone(get_maas_cluster_cert_paths())

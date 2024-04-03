@@ -3,7 +3,6 @@
 
 """RPC implementation for clusters."""
 
-
 from functools import partial
 import json
 from operator import itemgetter
@@ -34,6 +33,11 @@ from zope.interface import implementer
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from provisioningserver import concurrency
+from provisioningserver.certificates import (
+    Certificate,
+    get_maas_cluster_cert_paths,
+    store_maas_cluster_cert_tuple,
+)
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
@@ -68,7 +72,7 @@ from provisioningserver.rpc.power import (
     maybe_change_power_state,
 )
 from provisioningserver.rpc.tags import evaluate_tag
-from provisioningserver.security import calculate_digest
+from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
 from provisioningserver.utils.env import (
@@ -948,6 +952,36 @@ class ClusterClient(Cluster):
                 "Rack controller '%s' registered (via %s) with %s."
                 % (self.localIdent, self.eventloop, version_log)
             )
+            # The rack does not have any certificate stored yet on the disk.
+            # We might not have the 'encrypted_cluster_certificate' in two cases:
+            # 1) we are running some unit tests. We don't want to decrypt the keys in every test as it's expensive.
+            # 2) the region is not running a version that supports it.
+            # In both cases we log it as a warning. When the region will upgrade to a version that supports it, the rack will
+            # disconnect and reconnect again fetching the certificate properly.
+            encrypted_cluster_certificate = data.get(
+                "encrypted_cluster_certificate", None
+            )
+            if not encrypted_cluster_certificate:
+                log.warn(
+                    "No 'encrypted_cluster_certificate' in the RegisterRackController rpc response. The services relying "
+                    "on such certificate are degraded."
+                )
+            if (
+                not get_maas_cluster_cert_paths()
+                and encrypted_cluster_certificate
+            ):
+                decoded_secret = json.loads(
+                    fernet_decrypt_psk(encrypted_cluster_certificate)
+                )
+                certificate = Certificate.from_pem(
+                    decoded_secret["key"],
+                    decoded_secret["cert"],
+                )
+                store_maas_cluster_cert_tuple(
+                    private_key=certificate.private_key_pem().encode(),
+                    certificate=certificate.certificate_pem().encode(),
+                )
+
             # If the region supports beacons, full registration of rack
             # interfaces will not have occurred yet. The networks monitoring
             # service is responsible for updating the interfaces

@@ -2,11 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
-
-
 from collections import defaultdict
 import copy
 from datetime import datetime
+import json
 from os import urandom
 import random
 from socket import AF_INET, AF_INET6
@@ -50,6 +49,7 @@ from maasserver.rpc.nodes import (
     request_node_info_by_mac_address,
 )
 from maasserver.rpc.services import update_services
+from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.security import get_shared_secret
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -61,7 +61,7 @@ from provisioningserver.prometheus.metrics import (
 from provisioningserver.rpc import cluster, common, exceptions, region
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.security import calculate_digest
+from provisioningserver.security import calculate_digest, fernet_encrypt_psk
 from provisioningserver.utils.events import EventGroup
 from provisioningserver.utils.network import resolves_to_loopback_address
 from provisioningserver.utils.twisted import (
@@ -730,7 +730,35 @@ class RegionServer(Region):
             raise exceptions.CannotRegisterRackController(msg)
         else:
             # Done registering the rack controller and connection.
+            def get_cluster_certificate() -> bytes | None:
+                try:
+                    secret_manager = SecretManager()
+                    raw_certificate_secret = (
+                        secret_manager.get_composite_secret(
+                            "cluster-certificate"
+                        )
+                    )
+                    return fernet_encrypt_psk(
+                        json.dumps(raw_certificate_secret)
+                    )
+                # This should happen only in some tests. We don't want to encrypt the certificate in every test that uses RPC:
+                # this computation would be very expensive and would be pleonastic outside the dedicated unit tests for
+                # this functionality.
+                except SecretNotFound:
+                    log.warn(
+                        "The 'cluster-certificate' secret was not found. This should never happen outside the test suite."
+                    )
+                    return None
+
+            encrypted_certificate = yield deferToDatabase(
+                get_cluster_certificate
+            )
             return {
+                "encrypted_cluster_certificate": encrypted_certificate.decode(
+                    "utf-8"
+                )
+                if encrypted_certificate
+                else None,
                 "system_id": self.ident,
                 "uuid": GLOBAL_LABELS["maas_uuid"],
             }
