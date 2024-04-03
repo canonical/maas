@@ -1,7 +1,7 @@
 # Copyright 2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import Mock
+from unittest.mock import Mock, PropertyMock
 
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.internet.endpoints import TCP6ClientEndpoint
@@ -317,6 +317,17 @@ class TestConnectionPool(MAASTestCase):
         cp = ConnectionPool(Clock(), Mock())
         cp.disconnect(connection)
         connection.transport.loseConnection.assert_called_once_with()
+
+    def test_drop_connection_if_connection_already_dropped(self):
+        connection = Mock()
+        type(connection).transport = PropertyMock(return_value=None)
+        cp = ConnectionPool(Clock(), Mock())
+        try:
+            cp.disconnect(connection)
+        except Exception:
+            self.fail(
+                "The connection was already dropped and the disconnect function raised an unexpected exception."
+            )
 
     @inlineCallbacks
     def test_add_connection_adds_the_staged_connection(self):

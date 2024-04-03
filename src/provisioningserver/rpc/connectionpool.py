@@ -135,7 +135,8 @@ class ConnectionPool:
         return conn
 
     def disconnect(self, connection):
-        return connection.transport.loseConnection()
+        if connection.transport:
+            return connection.transport.loseConnection()
 
     @inlineCallbacks
     def add_connection(self, eventloop, connection):
