@@ -44,6 +44,9 @@ case "$1" in
 
         # Remove sock file
         rm -f /var/lib/maas/maas-regiond.sock
+
+        # Remove Temporal configurations
+        rm -rf /var/lib/maas/temporal
         ;;
 esac
 
