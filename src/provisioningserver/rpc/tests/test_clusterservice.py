@@ -1,9 +1,9 @@
 # Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
 from hashlib import sha256
 from hmac import HMAC
 import json
+import os
 from pathlib import Path
 import random
 import socket
@@ -38,6 +38,10 @@ from maastesting.twisted import (
     TwistedLoggerFixture,
 )
 from provisioningserver import concurrency
+from provisioningserver.certificates import (
+    Certificate,
+    get_maas_cluster_cert_paths,
+)
 from provisioningserver.dhcp.testing.config import (
     DHCPConfigNameResolutionDisabled,
     fix_shared_networks_failover,
@@ -86,6 +90,7 @@ from provisioningserver.rpc.testing.doubles import (
     FakeBusyConnectionToRegion,
     FakeConnection,
 )
+from provisioningserver.security import fernet_encrypt_psk
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
@@ -1284,7 +1289,7 @@ class TestClusterClientServiceIntervals(MAASTestCase):
         )
 
 
-class TestClusterClient(MAASTestCase):
+class TestClusterClientBase(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
@@ -1306,6 +1311,51 @@ class TestClusterClient(MAASTestCase):
         )
         client.service.startService()
         return client
+
+
+class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
+    @inlineCallbacks
+    def test_cluster_certificates_are_stored(self):
+        maas_data = os.getenv("MAAS_ROOT")
+        certs_dir = f"{maas_data}/certificates"
+        os.mkdir(certs_dir)
+
+        client = self.make_running_client()
+
+        certificate = Certificate.generate_self_signed_v3("maas")
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with(
+            {
+                "system_id": "...",
+                "encrypted_cluster_certificate": fernet_encrypt_psk(
+                    json.dumps(
+                        {
+                            "cert": certificate.certificate_pem(),
+                            "key": certificate.private_key_pem(),
+                        }
+                    )
+                ),
+            }
+        )
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+        self.assertEqual(
+            get_maas_cluster_cert_paths(),
+            (
+                f"{certs_dir}/cluster.pem",
+                f"{certs_dir}/cluster.key",
+            ),
+        )
+
+
+class TestClusterClient(TestClusterClientBase):
+    def setUp(self):
+        super().setUp()
+        # Simulate that the rack already has the cluster certificates
+        self.patch(
+            clusterservice, "get_maas_cluster_cert_paths"
+        ).return_value = ("/test", "/test")
 
     def patch_authenticate_for_success(self, client):
         authenticate = self.patch_autospec(client, "authenticateRegion")
@@ -1653,7 +1703,7 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
 
-        self.assertEqual(
+        self.assertIn(
             "Rack controller '...' registered (via eventloop:pid=12345) with MAAS version 2.3.0.",
             logger.output,
         )
@@ -1672,7 +1722,7 @@ class TestClusterClient(MAASTestCase):
         result = yield client.registerRackWithRegion()
         self.assertTrue(result)
 
-        self.assertEqual(
+        self.assertIn(
             "Rack controller '...' registered (via eventloop:pid=12345) with unknown MAAS version.",
             logger.output,
         )

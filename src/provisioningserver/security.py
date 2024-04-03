@@ -57,7 +57,7 @@ _fernet_lock = Lock()
 DEFAULT_ITERATION_COUNT = 100000
 
 
-def _get_or_create_fernet_psk():
+def _get_or_create_fernet_psk() -> bytes:
     """Gets or creates a pre-shared key to be used with the Fernet algorithm.
 
     The pre-shared key is cached in a global to prevent the expense of
@@ -96,11 +96,10 @@ def _get_or_create_fernet_psk():
     return key
 
 
-def _get_fernet_context():
+def _get_fernet_context() -> Fernet:
     """Returns a Fernet context based on the MAAS secret."""
     key = _get_or_create_fernet_psk()
-    f = Fernet(key)
-    return f
+    return Fernet(key)
 
 
 def fernet_encrypt_psk(message, raw=False):

@@ -21,6 +21,7 @@ case "$1" in
         rm -f /var/lib/maas/maas_id
         rm -rf /var/lib/maas/rsyslog
         rm -f /var/lib/maas/rsyslog.conf
+        rm -rf /var/lib/maas/certificates
         rm -rf /var/lib/maas/http
         rm -f /run/lock/maas:*
 esac
