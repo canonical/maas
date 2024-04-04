@@ -17,6 +17,7 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver.config import RegionConfiguration
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
+from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.env import MAAS_ID
@@ -33,6 +34,9 @@ class RegionTemporalService(Service):
     def _configure(self):
         """Update the Temporal configuration for the Temporal service."""
         template = load_template("temporal", "production.yaml.template")
+        dynamic_template = load_template(
+            "temporal", "production-dynamic.yaml.template"
+        )
 
         # Can't use the public attribute since it hits
         # maasserver.utils.orm.DisabledDatabaseConnection
@@ -64,17 +68,6 @@ class RegionTemporalService(Service):
                     f"Please consider setting it manually using regiond.conf"
                 )
 
-        environ = {
-            "database": dbconf["NAME"],
-            "user": dbconf.get("USER", ""),
-            "password": dbconf.get("PASSWORD", ""),
-            "address": f"{host}:{dbconf['PORT']}",
-            "connect_attributes": connection_attributes,
-            "broadcast_address": broadcast_address,
-        }
-
-        rendered = template.substitute(environ).encode()
-
         temporal_config_dir = Path(
             os.environ.get(
                 "MAAS_TEMPORAL_CONFIG_DIR", get_maas_data_path("temporal")
@@ -82,9 +75,36 @@ class RegionTemporalService(Service):
         )
         temporal_config_dir.mkdir(parents=True, exist_ok=True)
 
+        cert_file, key_file, cacert_file = get_maas_cluster_cert_paths()
+
+        environ = {
+            "database": dbconf["NAME"],
+            "user": dbconf.get("USER", ""),
+            "password": dbconf.get("PASSWORD", ""),
+            "address": f"{host}:{dbconf['PORT']}",
+            "connect_attributes": connection_attributes,
+            "broadcast_address": broadcast_address,
+            "config_dir": str(temporal_config_dir),
+            "cert_file": cert_file,
+            "key_file": key_file,
+            "cacert_file": cacert_file,
+        }
+
+        rendered_template = template.substitute(environ).encode()
+        rendered_dynamic_template = dynamic_template.substitute(
+            environ
+        ).encode()
+
         atomic_write(
-            rendered,
+            rendered_template,
             temporal_config_dir / "production.yaml",
+            overwrite=True,
+            mode=0o600,
+        )
+
+        atomic_write(
+            rendered_dynamic_template,
+            temporal_config_dir / "production-dynamic.yaml",
             overwrite=True,
             mode=0o600,
         )

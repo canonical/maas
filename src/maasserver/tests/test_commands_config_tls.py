@@ -100,7 +100,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
     def test_config_tls_enable_with_cacert(self):
         sample_cert = get_sample_cert_with_cacerts()
         cert_path, key_path = sample_cert.tempfiles()
-        cacert_path = Path(self.make_dir()) / "cacert.pem"
+        cacert_path = Path(self.make_dir()) / "cacerts.pem"
         cacert_path.write_text(sample_cert.ca_certificates_pem())
 
         call_command(
