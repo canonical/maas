@@ -31,6 +31,44 @@ class CertificateError(Exception):
     """Error handling certificates and keys."""
 
 
+class CertificateRequest(NamedTuple):
+    key: crypto.PKey
+    csr: crypto.X509Req
+
+    @classmethod
+    def generate(
+        cls,
+        cn: str,
+        organization_name: Optional[str] = None,
+        organizational_unit_name: Optional[str] = None,
+        key_bits: int = 4096,
+        subject_alternative_name: bytes | None = None,
+    ):
+        key = crypto.PKey()
+        key.generate_key(crypto.TYPE_RSA, key_bits)
+
+        csr = crypto.X509Req()
+        csr.get_subject().CN = cn[:64]
+        if organization_name:
+            csr.get_subject().organizationName = organization_name[:64]
+        if organizational_unit_name:
+            csr.get_subject().organizationalUnitName = (
+                organizational_unit_name[:64]
+            )
+        csr.set_pubkey(key)
+
+        if subject_alternative_name:
+            csr.add_extensions(
+                [
+                    crypto.X509Extension(
+                        b"subjectAltName", False, subject_alternative_name
+                    )
+                ]
+            )
+        csr.sign(key, "sha512")
+        return cls(key, csr)
+
+
 class Certificate(NamedTuple):
     """A self-signed X509 certificate with an associated key."""
 
@@ -72,12 +110,10 @@ class Certificate(NamedTuple):
         cls,
         key: crypto.PKey,
         version: crypto.x509.Version,
-        cn: str,
         validity: timedelta,
     ) -> crypto.X509:
         cert = crypto.X509()
         cert.set_version(version.value)
-        cert.get_subject().CN = cn[:64]
         cert.set_serial_number(random.randint(0, (1 << 128) - 1))
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(int(validity.total_seconds()))
@@ -106,8 +142,9 @@ class Certificate(NamedTuple):
         key.generate_key(crypto.TYPE_RSA, key_bits)
 
         cert = cls._build_base_certificate(
-            key, crypto.x509.Version.v1, cn, validity
+            key, crypto.x509.Version.v1, validity
         )
+        cert.get_subject().CN = cn[:64]
         if organization_name:
             cert.get_issuer().organizationName = organization_name[:64]
         if organizational_unit_name:
@@ -119,26 +156,26 @@ class Certificate(NamedTuple):
         return cls(key, cert, ())
 
     @classmethod
-    def generate_self_signed_v3(
+    def generate_ca_certificate(
         cls,
         cn: str,
         organization_name: Optional[str] = None,
         organizational_unit_name: Optional[str] = None,
         key_bits: int = 4096,
         validity: timedelta = timedelta(days=3650),
-        subject_alternative_name: bytes | None = None,
     ) -> "Certificate":
-        """Low-level method for generating a self-signed certificate X509 v3 certificate.
+        """Low-level method for generating a root X509 certificate.
 
         This should only be used in test and in cases where you don't have
-        access to the database. Use maasserver.utils.certificate.generate_self_signed_v3_certificate() instead.
+        access to the database. Use maasserver.utils.certificate.generate_ca_certificate() instead.
         """
         key = crypto.PKey()
         key.generate_key(crypto.TYPE_RSA, key_bits)
 
         cert = cls._build_base_certificate(
-            key, crypto.x509.Version.v3, cn, validity
+            key, crypto.x509.Version.v3, validity
         )
+        cert.get_subject().CN = cn[:64]
         if organization_name:
             cert.get_issuer().organizationName = organization_name[:64]
         if organizational_unit_name:
@@ -151,16 +188,37 @@ class Certificate(NamedTuple):
         cert.add_extensions(
             [crypto.X509Extension(b"basicConstraints", True, b"CA:TRUE")]
         )
-        if subject_alternative_name:
-            cert.add_extensions(
-                [
-                    crypto.X509Extension(
-                        b"subjectAltName", False, subject_alternative_name
-                    )
-                ]
-            )
         cert.sign(key, "sha512")
         return cls(key, cert, ())
+
+    def sign_certificate_request(
+        self,
+        certificate_request: CertificateRequest,
+        validity: timedelta = timedelta(days=3650),
+    ) -> "Certificate":
+        """
+        Sign a certificate request with the CA's private key.
+
+        This method signs the provided certificate request with the Certificate Authority (CA)'s
+        private key and returns the signed certificate.
+
+        Parameters:
+            certificate_request (CertificateRequest): The certificate request to sign.
+            validity (timedelta): The validity period for the signed certificate. Default is 10 years.
+
+        Returns:
+            Certificate: The signed certificate.
+        """
+        cert = Certificate._build_base_certificate(
+            certificate_request.key, crypto.x509.Version.v3, validity
+        )
+        cert.set_issuer(self.cert.get_subject())
+        cert.set_subject(certificate_request.csr.get_subject())
+        cert.add_extensions(certificate_request.csr.get_extensions())
+        cert.sign(self.key, "sha512")
+        return Certificate(
+            key=certificate_request.key, cert=cert, ca_certs=(self.cert,)
+        )
 
     def cn(self) -> str:
         """Return the certificate CN."""
@@ -256,19 +314,24 @@ def _get_cluster_certificates_path() -> Path:
     return Path(maas_root) / "certificates"
 
 
-def get_maas_cluster_cert_paths() -> tuple[str, str] | None:
+def get_maas_cluster_cert_paths() -> tuple[str, str, str] | None:
     """Return a 2-tuple with certificate and private key paths for the cluster certificates."""
 
     cert_dir = _get_cluster_certificates_path()
     private_key = cert_dir / "cluster.key"
     certificate = cert_dir / "cluster.pem"
-    if not private_key.exists() or not certificate.exists():
+    cacerts = cert_dir / "cacerts.pem"
+    if (
+        not private_key.exists()
+        or not certificate.exists()
+        or not cacerts.exists()
+    ):
         return None
-    return str(certificate), str(private_key)
+    return str(certificate), str(private_key), str(cacerts)
 
 
 def store_maas_cluster_cert_tuple(
-    private_key: bytes, certificate: bytes
+    private_key: bytes, certificate: bytes, cacerts: bytes
 ) -> None:
     """
     Stores the private key and the certificate on the disk.
@@ -285,6 +348,13 @@ def store_maas_cluster_cert_tuple(
     atomic_write(
         certificate,
         cert_dir / "cluster.pem",
+        overwrite=True,
+        mode=0o644,
+    )
+
+    atomic_write(
+        cacerts,
+        cert_dir / "cacerts.pem",
         overwrite=True,
         mode=0o644,
     )

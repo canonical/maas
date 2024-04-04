@@ -976,10 +976,12 @@ class ClusterClient(Cluster):
                 certificate = Certificate.from_pem(
                     decoded_secret["key"],
                     decoded_secret["cert"],
+                    ca_certs_material=decoded_secret["cacerts"],
                 )
                 store_maas_cluster_cert_tuple(
                     private_key=certificate.private_key_pem().encode(),
                     certificate=certificate.certificate_pem().encode(),
+                    cacerts=certificate.ca_certificates_pem().encode(),
                 )
 
             # If the region supports beacons, full registration of rack

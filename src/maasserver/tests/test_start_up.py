@@ -28,7 +28,10 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.testing.vault import FakeVaultClient
-from maasserver.utils.certificates import generate_self_signed_v3_certificate
+from maasserver.utils.certificates import (
+    generate_ca_certificate,
+    generate_signed_certificate,
+)
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.vault import UnknownSecretPath, VaultError
 from maastesting import get_testing_timeout
@@ -524,11 +527,28 @@ class TestCreateClusterCertificate(MAASServerTestCase):
         self.assertRaises(
             SecretNotFound,
             secret_manager.get_composite_secret,
+            "maas-ca-certificate",
+        )
+        self.assertRaises(
+            SecretNotFound,
+            secret_manager.get_composite_secret,
             "cluster-certificate",
         )
 
         _create_cluster_certificate_if_necessary()
         self.assertIsNotNone(get_maas_cluster_cert_paths())
+
+        maasca_secret = secret_manager.get_composite_secret(
+            "maas-ca-certificate"
+        )
+        maasca = Certificate.from_pem(
+            maasca_secret["key"],
+            maasca_secret["cert"],
+        )
+
+        self.assertIsNotNone(maasca.private_key_pem())
+        self.assertIsNotNone(maasca.certificate_pem())
+
         certificate_secret = secret_manager.get_composite_secret(
             "cluster-certificate"
         )
@@ -539,6 +559,7 @@ class TestCreateClusterCertificate(MAASServerTestCase):
 
         self.assertIsNotNone(certificate.private_key_pem())
         self.assertIsNotNone(certificate.certificate_pem())
+        self.assertIsNotNone(certificate.ca_certificates_pem())
 
     def test_fetch_certificates_from_db(self):
         # No certificates on the disk
@@ -546,10 +567,18 @@ class TestCreateClusterCertificate(MAASServerTestCase):
 
         # store the certificates on the database
         secret_manager = SecretManager()
-        certificate = generate_self_signed_v3_certificate("maas")
+        maasca = generate_ca_certificate("maasca")
         secrets = {
-            "key": certificate.private_key_pem(),
-            "cert": certificate.certificate_pem(),
+            "key": maasca.private_key_pem(),
+            "cert": maasca.certificate_pem(),
+        }
+        secret_manager.set_composite_secret("maas-ca-certificate", secrets)
+
+        cluster_certificate = generate_signed_certificate(maasca, "cluster")
+        secrets = {
+            "key": cluster_certificate.private_key_pem(),
+            "cert": cluster_certificate.certificate_pem(),
+            "cacerts": cluster_certificate.ca_certificates_pem(),
         }
         secret_manager.set_composite_secret("cluster-certificate", secrets)
 

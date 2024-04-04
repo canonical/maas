@@ -1,5 +1,5 @@
 from maasserver.models import Config
-from provisioningserver.certificates import Certificate
+from provisioningserver.certificates import Certificate, CertificateRequest
 from provisioningserver.utils.env import MAAS_UUID
 
 
@@ -38,24 +38,58 @@ def generate_certificate(cn) -> Certificate:
     )
 
 
-def generate_self_signed_v3_certificate(
-    cn: str, subject_alternative_name: bytes | None = None
-) -> Certificate:
-    """Generate an X509 V3 self signed certificate with an RSA private key.
-
-    Set O and OU so that we can identify that a certificate was
-    created from this MAAS deployment.
+def generate_ca_certificate(cn: str) -> Certificate:
     """
-    # Set O and OU so that we can identify that a certificate was
-    # created from this MAAS deployment.
+    Generate an X509 MAAS CA certificate with an RSA private key.
+
+    Set Organization (O) and Organizational Unit (OU) fields to identify
+    that a certificate was created from this MAAS deployment.
+
+    Parameters:
+        cn (str): Common Name (CN) for the subject of the certificate.
+
+    Returns:
+        Certificate: The generated X509 MAAS CA certificate with an RSA private key.
+
+    Raises:
+        AssertionError: If the MAAS_UUID is not configured.
+    """
     maas_uuid = MAAS_UUID.get()
     assert maas_uuid is not None, "MAAS_UUID not configured, ensure it is set."
-    return Certificate.generate_self_signed_v3(
+    return Certificate.generate_ca_certificate(
+        cn,
+        organization_name="MAAS",
+        organizational_unit_name=maas_uuid,
+    )
+
+
+def generate_signed_certificate(
+    ca: Certificate, cn: str, subject_alternative_name: bytes | None = None
+) -> Certificate:
+    """
+    Generate an X509 V3 certificate with an RSA private key signed with the root CA certificate provided.
+
+    Parameters:
+        ca (Certificate): The Certificate Authority (CA) certificate used to sign the generated certificate.
+        cn (str): Common Name (CN) for the subject of the certificate.
+        subject_alternative_name (bytes | None): Subject Alternative Name (SAN) for the certificate,
+                                                  can be None if not needed.
+
+    Returns:
+        Certificate: The generated X509 V3 certificate signed with the root CA's private key.
+
+    Raises:
+        AssertionError: If the MAAS_UUID is not configured.
+    """
+    maas_uuid = MAAS_UUID.get()
+    assert maas_uuid is not None, "MAAS_UUID not configured, ensure it is set."
+    certificate_request = CertificateRequest.generate(
         cn,
         organization_name="MAAS",
         organizational_unit_name=maas_uuid,
         subject_alternative_name=subject_alternative_name,
     )
+    return ca.sign_certificate_request(certificate_request)
 
 
 def certificate_generated_by_this_maas(certificate: Certificate):

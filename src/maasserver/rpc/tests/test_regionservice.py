@@ -281,7 +281,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
         def setup_cluster_certificates():
             secret_manger = SecretManager()
             secret_manger.set_composite_secret(
-                "cluster-certificate", {"key": "key", "cert": "cert"}
+                "cluster-certificate",
+                {"key": "key", "cert": "cert", "cacerts": "cacerts"},
             )
 
         yield deferToDatabase(transactional(setup_cluster_certificates))
@@ -367,7 +368,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             json.loads(
                 fernet_decrypt_psk(response["encrypted_cluster_certificate"])
             ),
-            {"key": "key", "cert": "cert"},
+            {"key": "key", "cert": "cert", "cacerts": "cacerts"},
         )
 
     @wait_for_reactor
