@@ -27,7 +27,10 @@ from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils import synchronised
-from maasserver.utils.certificates import generate_self_signed_v3_certificate
+from maasserver.utils.certificates import (
+    generate_ca_certificate,
+    generate_signed_certificate,
+)
 from maasserver.utils.orm import (
     get_psycopg2_exception,
     transactional,
@@ -128,34 +131,59 @@ def _cleanup_expired_discovered_ip_addresses() -> None:
     ).delete()
 
 
+def _get_certificate_from_database(
+    secret_manager: SecretManager, secret_name: str
+) -> Certificate | None:
+    try:
+        raw_certificate = secret_manager.get_composite_secret(secret_name)
+        return Certificate.from_pem(
+            raw_certificate["key"],
+            raw_certificate["cert"],
+            ca_certs_material=raw_certificate.get("cacerts", ""),
+        )
+    except SecretNotFound:
+        return None
+
+
 def _create_cluster_certificate_if_necessary(
     client: VaultClient | None = None,
 ) -> None:
     # Use the vault if configured.
     secret_manager = SecretManager(client)
-    # The PK/certificate are not on the disk yet
+
+    # The PK/certificate for the maas CA are not in the db yet
+    maas_ca = _get_certificate_from_database(
+        secret_manager, "maas-ca-certificate"
+    )
+    if not maas_ca:
+        maas_ca = generate_ca_certificate("maas-ca")
+        secrets = {
+            "key": maas_ca.private_key_pem(),
+            "cert": maas_ca.certificate_pem(),
+        }
+        secret_manager.set_composite_secret("maas-ca-certificate", secrets)
+
+    # The PK/certificate for the cluster are not in the db yet
+    cluster_certificate = _get_certificate_from_database(
+        secret_manager, "cluster-certificate"
+    )
+    if not cluster_certificate:
+        cluster_certificate = generate_signed_certificate(
+            maas_ca, "maas-cluster", b"DNS:maas"
+        )
+        secrets = {
+            "key": cluster_certificate.private_key_pem(),
+            "cert": cluster_certificate.certificate_pem(),
+            "cacerts": cluster_certificate.ca_certificates_pem(),
+        }
+        secret_manager.set_composite_secret("cluster-certificate", secrets)
+
+    # If the certificates are not on the disk yet store them.
     if not get_maas_cluster_cert_paths():
-        # Create the PK/certificate if they don't exist yet. Store the files on the disk as well.
-        try:
-            raw_certificate = secret_manager.get_composite_secret(
-                "cluster-certificate"
-            )
-            certificate = Certificate.from_pem(
-                raw_certificate["key"],
-                raw_certificate["cert"],
-            )
-        except SecretNotFound:
-            # If there are no PK/certificate at all, generate them.
-            certificate = generate_self_signed_v3_certificate("maas", b"DNS:*")
-            secrets = {
-                "key": certificate.private_key_pem(),
-                "cert": certificate.certificate_pem(),
-            }
-            secret_manager.set_composite_secret("cluster-certificate", secrets)
-        # Store the PK and the certificate to the disk
         store_maas_cluster_cert_tuple(
-            private_key=certificate.private_key_pem().encode(),
-            certificate=certificate.certificate_pem().encode(),
+            private_key=cluster_certificate.private_key_pem().encode(),
+            certificate=cluster_certificate.certificate_pem().encode(),
+            cacerts=cluster_certificate.ca_certificates_pem().encode(),
         )
 
 

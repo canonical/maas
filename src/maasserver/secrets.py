@@ -59,6 +59,7 @@ GLOBAL_SECRETS = frozenset(
         "macaroon-key",
         "omapi-key",
         "rpc-shared",
+        "maas-ca-certificate",
         "cluster-certificate",
         "tls",
         "vcenter-password",

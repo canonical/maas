@@ -40,6 +40,7 @@ from maastesting.twisted import (
 from provisioningserver import concurrency
 from provisioningserver.certificates import (
     Certificate,
+    CertificateRequest,
     get_maas_cluster_cert_paths,
 )
 from provisioningserver.dhcp.testing.config import (
@@ -1322,7 +1323,10 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
 
         client = self.make_running_client()
 
-        certificate = Certificate.generate_self_signed_v3("maas")
+        maasca = Certificate.generate_ca_certificate("maas")
+        certificate_request = CertificateRequest.generate("request")
+        certificate = maasca.sign_certificate_request(certificate_request)
+
         callRemote = self.patch_autospec(client, "callRemote")
         callRemote.side_effect = always_succeed_with(
             {
@@ -1332,6 +1336,7 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
                         {
                             "cert": certificate.certificate_pem(),
                             "key": certificate.private_key_pem(),
+                            "cacerts": certificate.ca_certificates_pem(),
                         }
                     )
                 ),
@@ -1345,6 +1350,7 @@ class TestClusterClientClusterCertificatesAreStored(TestClusterClientBase):
             (
                 f"{certs_dir}/cluster.pem",
                 f"{certs_dir}/cluster.key",
+                f"{certs_dir}/cacerts.pem",
             ),
         )
 

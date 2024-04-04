@@ -1,3 +1,4 @@
+from unittest.mock import Mock
 from uuid import uuid4
 
 from OpenSSL import crypto
@@ -8,8 +9,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 import maasserver.utils.certificates as certificates
 from maasserver.utils.certificates import (
     certificate_generated_by_this_maas,
+    generate_ca_certificate,
     generate_certificate,
-    generate_self_signed_v3_certificate,
     get_maas_client_cn,
 )
 from provisioningserver.certificates import Certificate
@@ -48,18 +49,30 @@ class TestGenerateCertificate(MAASServerTestCase):
         )
 
 
-class TestGenerateSelfSignedCertificate(MAASServerTestCase):
-    def test_generate_self_signed_certificate(self):
+class TestGenerateCACertificate(MAASServerTestCase):
+    def test_generate_ca_certificate(self):
         mock_cert = self.patch_autospec(certificates, "Certificate")
         maas_uuid = str(uuid4())
         self.useFixture(MAASUUIDFixture(maas_uuid))
-        generate_self_signed_v3_certificate("maas", b"DNS:*")
-        mock_cert.generate_self_signed_v3.assert_called_once_with(
+        generate_ca_certificate("maas")
+        mock_cert.generate_ca_certificate.assert_called_once_with(
             "maas",
             organization_name="MAAS",
             organizational_unit_name=maas_uuid,
-            subject_alternative_name=b"DNS:*",
         )
+
+
+class TestGenerateSignedCertificate(MAASServerTestCase):
+    def test_generate_ca_certificate(self):
+        mock_cert_request = self.patch_autospec(
+            certificates, "CertificateRequest"
+        )
+        maas_uuid = str(uuid4())
+        self.useFixture(MAASUUIDFixture(maas_uuid))
+        ca = Mock()
+        certificates.generate_signed_certificate(ca, "maas")
+        mock_cert_request.generate.assert_called_once()
+        ca.sign_certificate_request.assert_called_once()
 
 
 class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):

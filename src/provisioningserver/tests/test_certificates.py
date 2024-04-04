@@ -11,11 +11,32 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.certificates import (
     Certificate,
     CertificateError,
+    CertificateRequest,
     get_maas_cert_tuple,
     get_maas_cluster_cert_paths,
     store_maas_cluster_cert_tuple,
 )
 from provisioningserver.testing.certificates import get_sample_cert
+
+
+class TestCertificateRequest(MAASTestCase):
+    def test_certificate_request(self):
+        request = CertificateRequest.generate(
+            "maas", "organization", "organization_unit", 2048, b"DNS:*"
+        )
+        self.assertIsInstance(request.csr, crypto.X509Req)
+        self.assertIsInstance(request.key, crypto.PKey)
+
+        self.assertEqual(request.csr.get_subject().CN, "maas")
+        self.assertEqual(request.csr.get_subject().O, "organization")
+        self.assertEqual(request.csr.get_subject().OU, "organization_unit")
+
+        self.assertEqual(len(request.csr.get_extensions()), 1)
+        subject_alt_name_extension = request.csr.get_extensions()[0]
+        self.assertEqual(
+            subject_alt_name_extension.get_short_name(), b"subjectAltName"
+        )
+        self.assertEqual(subject_alt_name_extension.get_critical(), False)
 
 
 class TestCertificate(MAASTestCase):
@@ -212,13 +233,12 @@ class TestCertificate(MAASTestCase):
             cert.not_before(),
         )
 
-    def test_generate_self_signed_v3(self):
-        cert = Certificate.generate_self_signed_v3(
+    def test_generate_ca_certificate(self):
+        cert = Certificate.generate_ca_certificate(
             "maas",
             organization_name="test",
             organizational_unit_name="unit",
             validity=timedelta(days=100),
-            subject_alternative_name=b"DNS:*",
         )
 
         self.assertIsInstance(cert.cert, crypto.X509)
@@ -246,7 +266,7 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(
             x509certificate.get_version(), crypto.x509.Version.v3.value
         )
-        self.assertEqual(x509certificate.get_extension_count(), 2)
+        self.assertEqual(x509certificate.get_extension_count(), 1)
 
         # Extensions are kept in order
         basic_constraints_extension = x509certificate.get_extension(0)
@@ -255,11 +275,52 @@ class TestCertificate(MAASTestCase):
         )
         self.assertEqual(basic_constraints_extension.get_critical(), True)
 
-        subject_alt_name_extension = x509certificate.get_extension(1)
-        self.assertEqual(
-            subject_alt_name_extension.get_short_name(), b"subjectAltName"
+    def test_sign_certificate(self):
+        certificate_request = CertificateRequest.generate(
+            "maas", "organization", "organization_unit", 2048, b"DNS:*"
         )
-        self.assertEqual(subject_alt_name_extension.get_critical(), False)
+        ca = Certificate.generate_ca_certificate(
+            "maas",
+            organization_name="test",
+            organizational_unit_name="unit",
+            validity=timedelta(days=100),
+        )
+
+        signed_certificate = ca.sign_certificate_request(certificate_request)
+
+        self.assertIsInstance(signed_certificate.cert, crypto.X509)
+        self.assertIsInstance(signed_certificate.key, crypto.PKey)
+        self.assertEqual(len(signed_certificate.ca_certs), 1)
+        self.assertEqual(signed_certificate.cert.get_subject().CN, "maas")
+        self.assertEqual(signed_certificate.key, certificate_request.key)
+        self.assertLessEqual(
+            datetime.utcnow() + timedelta(days=-1),
+            signed_certificate.not_before(),
+        )
+        self.assertGreater(
+            signed_certificate.expiration(),
+            signed_certificate.not_before(),
+        )
+        self.assertEqual(
+            len(certificate_request.csr.get_extensions()),
+            signed_certificate.cert.get_extension_count(),
+        )
+        self.assertEqual(
+            certificate_request.csr.get_extensions()[0].get_short_name(),
+            signed_certificate.cert.get_extension(0).get_short_name(),
+        )
+        self.assertEqual(
+            signed_certificate.cert.get_issuer(), ca.cert.get_subject()
+        )
+
+        # check that the signed certificate is valid
+        store = crypto.X509Store()
+        store.add_cert(ca.cert)
+        context = crypto.X509StoreContext(store, signed_certificate.cert)
+        try:
+            context.verify_certificate()
+        except crypto.X509StoreContextError:
+            self.fail("Failed to verify the signed certificate.")
 
 
 class TestClusterCertificates(MAASTestCase):
@@ -279,11 +340,13 @@ class TestClusterCertificates(MAASTestCase):
         certs_dir.mkdir(parents=True)
         (certs_dir / "cluster.pem").touch()
         (certs_dir / "cluster.key").touch()
+        (certs_dir / "cacerts.pem").touch()
         self.assertEqual(
             get_maas_cluster_cert_paths(),
             (
                 f"{certs_dir}/cluster.pem",
                 f"{certs_dir}/cluster.key",
+                f"{certs_dir}/cacerts.pem",
             ),
         )
 
@@ -291,10 +354,17 @@ class TestClusterCertificates(MAASTestCase):
         certs_dir = self.tempdir / "certificates"
         certs_dir.mkdir(parents=True)
         self.useFixture(EnvironmentVariable("MAAS_ROOT", str(self.tempdir)))
-        store_maas_cluster_cert_tuple(b"private_key", b"certificate")
-        certificate_path, private_key_path = get_maas_cluster_cert_paths()
+        store_maas_cluster_cert_tuple(
+            b"private_key", b"certificate", b"cacerts"
+        )
+        (
+            certificate_path,
+            private_key_path,
+            cacerts_path,
+        ) = get_maas_cluster_cert_paths()
         self.assertEqual(Path(certificate_path).lstat().st_mode & 0o777, 0o644)
         self.assertEqual(Path(private_key_path).lstat().st_mode & 0o777, 0o600)
+        self.assertEqual(Path(cacerts_path).lstat().st_mode & 0o777, 0o644)
 
 
 class TestGetMAASCertTuple(MAASTestCase):
