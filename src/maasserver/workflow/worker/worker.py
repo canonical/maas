@@ -12,13 +12,14 @@ from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceRequest,
     RegisterNamespaceRequest,
 )
-from temporalio.client import Client
+from temporalio.client import Client, TLSConfig
 import temporalio.converter
 from temporalio.service import RPCError, RPCStatusCode
 from temporalio.worker import Worker as TemporalWorker
 
 from maasserver.utils.asynchronous import async_retry
 from maasserver.workflow.codec.encryptor import EncryptionCodec
+from provisioningserver.certificates import get_maas_cluster_cert_paths
 from provisioningserver.utils.env import MAAS_ID, MAAS_SHARED_SECRET
 
 REGION_TASK_QUEUE = "region-internal"
@@ -32,12 +33,27 @@ TEMPORAL_NAMESPACE = "default"
 async def get_client_async() -> Client:
     maas_id = MAAS_ID.get()
     pid = os.getpid()
+    cert_file, key_file, cacert_file = get_maas_cluster_cert_paths()
+
+    with open(cert_file, "rb") as f:
+        cert = f.read()
+    with open(key_file, "rb") as f:
+        key = f.read()
+    with open(cacert_file, "rb") as f:
+        cacert = f.read()
+
     return await Client.connect(
         f"{TEMPORAL_HOST}:{TEMPORAL_PORT}",
         identity=f"{maas_id}@region:{pid}",
         data_converter=dataclasses.replace(
             temporalio.converter.default(),
             payload_codec=EncryptionCodec(MAAS_SHARED_SECRET.get().encode()),
+        ),
+        tls=TLSConfig(
+            domain="maas",
+            server_root_ca_cert=cacert,
+            client_cert=cert,
+            client_private_key=key,
         ),
     )
 

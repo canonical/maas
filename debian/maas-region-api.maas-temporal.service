@@ -9,7 +9,8 @@ ConditionPathIsDirectory=/var/lib/maas/temporal
 User=maas
 Group=maas
 KillMode=mixed
-# XXX: usage of --allow-no-auth is temporary for experimental Temporal support
+
+# --allow-no-auth flag to allow noopAuthorizer
 ExecStart=/usr/sbin/temporal-server \
     -e production \
     -r "/var/lib/maas/temporal/" \

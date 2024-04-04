@@ -35,3 +35,33 @@ func TestGetRunDir(t *testing.T) {
 		})
 	}
 }
+
+func TestCertificatesDir(t *testing.T) {
+	testcases := map[string]struct {
+		in  func(t *testing.T)
+		out string
+	}{
+		"snap": {
+			in: func(t *testing.T) {
+				t.Setenv("SNAP_DATA", "/var/snap/maas/x1")
+			},
+			out: "/var/snap/maas/x1/certificates",
+		},
+		"deb": {
+			in: func(t *testing.T) {
+				t.Setenv("SNAP_DATA", "")
+			}, out: "/var/lib/maas/certificates",
+		},
+	}
+
+	for name, tc := range testcases {
+		tc := tc
+
+		t.Run(name, func(t *testing.T) {
+			tc.in(t)
+
+			res := getCertificatesDir()
+			assert.Equal(t, tc.out, res)
+		})
+	}
+}

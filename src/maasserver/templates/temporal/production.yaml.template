@@ -1,6 +1,6 @@
 log:
   stdout: true
-  level: info
+  level: warn
 
 persistence:
   defaultStore: default
@@ -48,6 +48,40 @@ global:
   pprof:
     # disable pprof
     port: 0
+  tls:
+    refreshInterval: 0s
+    internode:
+      # This server section configures the TLS certificate that internal temporal
+      # cluster nodes (history, matching, and internal-frontend) present to other
+      # clients within the Temporal Cluster.
+      server:
+        requireClientAuth: true
+        certFile: {{ cert_file }}
+        keyFile: {{ key_file }}
+        clientCaFiles:
+          - {{ cacert_file }}
+      # This client section is used to configure the TLS clients within
+      # the Temporal Cluster that connect to an Internode (history, matching, or
+      # internal-frontend)
+      client:
+        serverName: maas
+        disableHostVerification: false
+        rootCaFiles:
+          - {{ cacert_file }}
+    frontend:
+      # This server section configures the TLS certificate that the Frontend
+      # server presents to external clients.
+      server:
+        requireClientAuth: true
+        certFile: {{ cert_file }}
+        keyFile: {{ key_file }}
+        clientCaFiles:
+          - {{ cacert_file }}
+      client:
+        serverName: maas
+        disableHostVerification: false
+        rootCaFiles:
+          - {{ cacert_file }}
   metrics:
     prometheus:
       framework: "tally"
@@ -92,3 +126,6 @@ clusterMetadata:
       rpcName: "frontend"
       rpcAddress: "localhost:7233"
 
+dynamicConfigClient:
+  filepath: "{{ config_dir }}/production-dynamic.yaml"
+  pollInterval: "60s"

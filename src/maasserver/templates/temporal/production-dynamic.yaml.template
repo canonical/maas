@@ -1,0 +1,4 @@
+# EnableRingpopTLS controls whether to use TLS for ringpop, using the same "internode" TLS
+# config as the other services.
+system.enableRingpopTLS:
+  - value: true

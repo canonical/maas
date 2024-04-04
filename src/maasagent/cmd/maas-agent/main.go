@@ -7,6 +7,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"os"
 	"os/signal"
@@ -86,6 +88,22 @@ func Run() int {
 	clientBackoff := backoff.NewExponentialBackOff()
 	clientBackoff.MaxElapsedTime = 60 * time.Second
 
+	certsDir := getCertificatesDir()
+
+	cert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/cluster.pem", certsDir), fmt.Sprintf("%s/cluster.key", certsDir))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed loading client cert and key")
+	}
+
+	ca := x509.NewCertPool()
+
+	b, err := os.ReadFile(fmt.Sprintf("%s/cacerts.pem", certsDir))
+	if err != nil {
+		log.Error().Err(err).Msg("Failed reading CA")
+	} else if !ca.AppendCertsFromPEM(b) {
+		log.Error().Err(err).Msg("CA PEM file is invalid")
+	}
+
 	temporalClient, err := backoff.RetryWithData(
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
@@ -97,6 +115,14 @@ func Run() int {
 					converter.GetDefaultDataConverter(),
 					codec,
 				),
+				ConnectionOptions: client.ConnectionOptions{
+					TLS: &tls.Config{
+						MinVersion:   tls.VersionTLS12,
+						Certificates: []tls.Certificate{cert},
+						RootCAs:      ca,
+						ServerName:   "maas",
+					},
+				},
 			})
 		}, clientBackoff,
 	)
@@ -225,6 +251,16 @@ func getRunDir() string {
 	}
 
 	return "/run/maas"
+}
+
+func getCertificatesDir() string {
+	dataDir := os.Getenv("SNAP_DATA")
+
+	if dataDir != "" {
+		return fmt.Sprintf("%s/certificates", dataDir)
+	}
+
+	return "/var/lib/maas/certificates"
 }
 
 func main() {
