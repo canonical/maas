@@ -137,6 +137,15 @@ class TestMachinesAPI(APITestCase.ForUser):
             [(machine1.system_id, vm1.id), (machine2.system_id, None)],
         )
 
+    def test_GET_includes_error_description(self):
+        factory.make_Node(
+            status=NODE_STATUS.BROKEN,
+            ephemeral_deploy=True,
+            error_description="my error",
+        )
+        parsed_result = self.get_json()
+        self.assertEquals(parsed_result[0]["error_description"], "my error")
+
     def test_POST_creates_machine(self):
         # The API allows a non-admin logged-in user to create a Machine.
         hostname = factory.make_name("host")

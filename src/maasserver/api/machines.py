@@ -143,6 +143,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "osystem",
     "distro_series",
     "ephemeral_deploy",
+    "error_description",
     "netboot",
     "power_type",
     "power_state",

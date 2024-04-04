@@ -368,6 +368,18 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         assert parsed_result["ephemeral_deploy"] is True
 
+    def test_GET_returns_error_description(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.BROKEN,
+            ephemeral_deploy=True,
+            error_description="my error",
+        )
+        response = self.client.get(self.get_machine_uri(machine))
+
+        assert http.client.OK == response.status_code
+        parsed_result = json_load_bytes(response.content)
+        assert parsed_result["error_description"] == "my error"
+
     def test_GET_returns_status_message_with_most_recent_event(self):
         """Makes sure the most recent event from this machine is shown in the
         status_message attribute."""
