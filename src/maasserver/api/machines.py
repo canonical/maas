@@ -852,21 +852,19 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                     NODE_STATUS_CHOICES_DICT[machine.status]
                 )
             )
-        if not machine.distro_series and not series:
+
+        if not series:
             series = Config.objects.get_config("default_distro_series")
         Form = get_machine_edit_form(request.user)
         form = Form(instance=machine, data={})
-        if series is not None:
-            form.set_distro_series(series=series)
+        form.set_distro_series(series=series)
         if license_key is not None:
             form.set_license_key(license_key=license_key)
         if hwe_kernel is not None:
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
-        if options.install_rackd:
-            form.set_install_rackd(install_rackd=options.install_rackd)
+        form.set_install_rackd(install_rackd=options.install_rackd)
         form.set_ephemeral_deploy(ephemeral_deploy=ephemeral_deploy)
-        if options.enable_hw_sync:
-            form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)
+        form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)
         if form.is_valid():
             form.save()
         else:
