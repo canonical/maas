@@ -1427,6 +1427,111 @@ class TestMachineAPI(APITestCase.ForUser):
         machine.refresh_from_db()
         self.assertTrue(machine.enable_hw_sync)
 
+    def test_POST_multiple_deploy_override_options_ephemeral_deploy(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "ephemeral_deploy": True},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertTrue(response_info["ephemeral_deploy"])
+
+        response = self.client.post(
+            self.get_machine_uri(machine), {"op": "deploy"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertFalse(response_info["ephemeral_deploy"])
+
+    def test_POST_multiple_deploy_override_options_hw_sync(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "enable_hw_sync": True},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertTrue(response_info["enable_hw_sync"])
+
+        response = self.client.post(
+            self.get_machine_uri(machine), {"op": "deploy"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertFalse(response_info["enable_hw_sync"])
+
+    def test_POST_multiple_deploy_override_options_distro_series(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        _, releases = make_usable_osystem(self)
+        default_distro_series = Config.objects.get_config(
+            "default_distro_series"
+        )
+        distro_series = (
+            releases[0]
+            if releases[0] != default_distro_series
+            else releases[1]
+        )
+
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+        )
+
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "distro_series": distro_series},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertEqual(response_info["distro_series"], distro_series)
+
+        response = self.client.post(
+            self.get_machine_uri(machine), {"op": "deploy"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        response_info = json_load_bytes(response.content)
+        self.assertEqual(response_info["distro_series"], default_distro_series)
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, "_stop")
         owned_statuses = [NODE_STATUS.RESERVED, NODE_STATUS.ALLOCATED]
