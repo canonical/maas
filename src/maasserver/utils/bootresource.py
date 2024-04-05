@@ -270,7 +270,7 @@ class LocalBootResourceFile:
 
     @property
     def lock_file(self) -> Path:
-        return get_maas_lock_path() / f"bootres_{self.sha256}.lock"
+        return get_maas_lock_path() / f"maas:bootres_{self.sha256}.lock"
 
     def acquire_lock(self, try_lock: bool = False) -> bool:
         if self._lock_fd is None:
