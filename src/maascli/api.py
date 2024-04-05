@@ -122,8 +122,11 @@ class Action(Command):
         uri = self.uri.format(**vars(options))
 
         # Bundle things up ready to throw over the wire.
+        data = None
+        if hasattr(options, "data"):
+            data = options.data
         uri, body, headers = self.prepare_payload(
-            self.op, self.method, uri, options.data
+            self.op, self.method, uri, data
         )
 
         # Headers are returned as a list, but they must be a dict for
@@ -241,7 +244,7 @@ class Action(Command):
             with opener() as fd:
                 return fd.read()
 
-        if method in ("GET", "DELETE"):
+        if method in ("GET", "DELETE") and data is not None:
             query.extend(
                 (name, slurp(value) if callable(value) else value)
                 for name, value in data
