@@ -187,3 +187,7 @@ class TestLocalBootResourceFile:
         f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
         assert f.acquire_lock(try_lock=True)
         f.release_lock()
+
+    def test_lock_path(self, image_store_dir: Path, file_sha256: str):
+        f = LocalBootResourceFile(sha256=file_sha256, total_size=FILE_SIZE)
+        assert f.lock_file.name.startswith("maas:bootres_")
