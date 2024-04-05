@@ -4,6 +4,7 @@ Documentation=https://maas.io/docs
 Requires=network-online.target
 After=network-online.target
 ConditionPathExists=/etc/maas/regiond.conf
+ConditionPathExists=/var/lib/maas/apiserver-http.sock
 
 [Service]
 User=maas
