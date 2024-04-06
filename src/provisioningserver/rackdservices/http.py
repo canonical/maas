@@ -177,7 +177,7 @@ class RackHTTPService(TimerService):
         root_prefix = get_root_path()
         httpproxy_socket_path = os.getenv(
             "MAAS_AGENT_HTTPPROXY_SOCKET_PATH",
-            str(get_maas_run_path() / "agent" / "httpproxy.sock"),
+            str(get_maas_run_path() / "httpproxy.sock"),
         )
         try:
             rendered = template.substitute(
