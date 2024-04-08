@@ -589,6 +589,10 @@ class BootResourceStore(ObjectStore):
             BootResourceFile.objects.filter(id__in=req.rfile_ids).delete()
         self._content_to_finalize.clear()
 
+    def _get_http_proxy(self) -> str | None:
+        cfg = Config.objects.get_configs(["enable_http_proxy", "http_proxy"])
+        return cfg["http_proxy"] if cfg["enable_http_proxy"] else None
+
     def finalize(self, notify: Deferred | None = None):
         """Perform the finalization of data into the filesystem.
 
@@ -643,6 +647,7 @@ class BootResourceStore(ObjectStore):
                 if len(self._content_to_finalize) > 0:
                     sync_req = SyncRequestParam(
                         resources=[*self._content_to_finalize.values()],
+                        http_proxy=self._get_http_proxy(),
                     )
                     execute_workflow(
                         "sync-bootresources",
