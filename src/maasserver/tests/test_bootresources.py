@@ -983,6 +983,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             testcase.patch(store, "resource_cleaner")
             testcase.patch(store, "execute_workflow")
             testcase.patch(store, "resource_set_cleaner")
+            testcase.patch(store, "_get_http_proxy")
             return store
 
         notify = Deferred()
@@ -1002,6 +1003,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             testcase.patch(store, "resource_cleaner")
             testcase.patch(bootresources, "execute_workflow")
             testcase.patch(store, "resource_set_cleaner")
+            testcase.patch(store, "_get_http_proxy")
             return store
 
         notify = Deferred()

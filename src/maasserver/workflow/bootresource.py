@@ -36,11 +36,13 @@ class ResourceDownloadParam:
     size: int = 0
     force: bool = False
     extract_paths: list[str] = field(default_factory=list)
+    http_proxy: str | None = None
 
 
 @dataclass
 class SyncRequestParam:
     resources: Sequence[ResourceDownloadParam]
+    http_proxy: str | None = None
 
 
 @dataclass
@@ -146,7 +148,10 @@ class BootResourcesActivity(MAASAPIClient):
                 return True
 
             async with self.session.get(
-                url, verify_ssl=False, chunked=True
+                url,
+                verify_ssl=False,
+                chunked=True,
+                proxy=param.http_proxy,
             ) as response, lfile.astore(autocommit=False) as store:
                 response.raise_for_status()
                 last_update = datetime.now()
@@ -258,7 +263,11 @@ class SyncBootResourcesWorkflow:
 
         # fetch resources from upstream
         upstream_jobs = [
-            _schedule(res) for res in input.resources if res.source_list
+            _schedule(
+                replace(res, http_proxy=input.http_proxy),
+            )
+            for res in input.resources
+            if res.source_list
         ]
         if upstream_jobs:
             workflow.logger.info(
