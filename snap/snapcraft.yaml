@@ -243,7 +243,7 @@ parts:
 
   snap-preload:
     plugin: make
-    source: https://github.com/maas/snap-preload
+    source: https://github.com/canonical/snap-preload
     source-type: git
 
 hooks:
