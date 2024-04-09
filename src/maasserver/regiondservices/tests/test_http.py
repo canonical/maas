@@ -5,7 +5,6 @@ import os
 from pathlib import Path
 from unittest.mock import Mock
 
-from fixtures import EnvironmentVariable
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.listener import notify, PostgresListenerUnregistrationError
@@ -47,7 +46,7 @@ class TestRegionHTTPService(
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_configure_and_reload_not_snap(self):
+    def test_configure_and_reload(self):
         service = http.RegionHTTPService()
         mock_reloadService = self.patch(http.service_monitor, "reloadService")
         mock_configure = self.patch(service, "_configure")
@@ -60,27 +59,6 @@ class TestRegionHTTPService(
         yield service.stopService()
         mock_configure.assert_called_once()
         mock_reloadService.assert_called_once_with("reverse_proxy")
-        mock_cert_check.assert_called_once_with()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_configure_and_reload_in_snap(self):
-        self.useFixture(EnvironmentVariable("SNAP", "/snap/maas/current"))
-        service = http.RegionHTTPService()
-        mock_restartService = self.patch(
-            http.service_monitor, "restartService"
-        )
-        mock_configure = self.patch(service, "_configure")
-        mock_cert_check = self.patch(
-            certificate_expiration_check, "check_tls_certificate"
-        )
-
-        yield from self.create_tls_config()
-        yield service.startService()
-
-        yield service.stopService()
-        mock_configure.assert_called_once()
-        mock_restartService.assert_called_once_with("reverse_proxy")
         mock_cert_check.assert_called_once_with()
 
     def test_configure_not_snap(self):

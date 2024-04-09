@@ -31,7 +31,7 @@ from provisioningserver.rackdservices.http import (
     compose_http_config_path,
     get_http_config_dir,
 )
-from provisioningserver.utils.fs import atomic_write, get_root_path, snap
+from provisioningserver.utils.fs import atomic_write, get_root_path
 
 log = LegacyLogger()
 
@@ -130,10 +130,7 @@ class RegionHTTPService(Service):
 
     @inlineCallbacks
     def _reload_service(self):
-        if snap.running_in_snap():
-            yield service_monitor.restartService("reverse_proxy")
-        else:
-            yield service_monitor.reloadService("reverse_proxy")
+        yield service_monitor.reloadService("reverse_proxy")
         yield deferToDatabase(
             certificate_expiration_check.check_tls_certificate
         )
