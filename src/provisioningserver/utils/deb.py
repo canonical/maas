@@ -14,6 +14,22 @@ maaslog = get_maas_logger("deb")
 
 MAAS_PACKAGES = ("maas-region-api", "maas-rack-controller")
 
+APT_PKG = None
+
+
+def get_apt_pkg():
+    """Return the initalized apt_pkg."""
+    global APT_PKG
+    # Make sure that .init() is only called after initial import.
+    # init() can be slow, and cause memory leaks if called multiple
+    # times.
+    if APT_PKG is None:
+        import apt_pkg
+
+        apt_pkg.init()
+        APT_PKG = apt_pkg
+    return APT_PKG
+
 
 @dataclasses.dataclass
 class DebVersion:
@@ -44,9 +60,7 @@ def get_deb_versions_info(apt_pkg=None) -> Optional[DebVersionsInfo]:
     """Return versions information for Debian-based MAAS."""
 
     if apt_pkg is None:
-        import apt_pkg
-
-        apt_pkg.init()
+        apt_pkg = get_apt_pkg()
 
     try:
         cache = apt_pkg.Cache(None)
