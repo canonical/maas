@@ -2454,10 +2454,10 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
-    def test_returns_release_scripts_when_releasing(self):
+    def _test_release_scripts_are_returned(self, node_status: NODE_STATUS):
         start_time = floor(time.time())
         node = factory.make_Node(
-            status=NODE_STATUS.RELEASING, with_empty_script_sets=True
+            status=node_status, with_empty_script_sets=True
         )
 
         script = factory.make_Script(script_type=SCRIPT_TYPE.RELEASE)
@@ -2508,6 +2508,12 @@ class TestMAASScripts(MAASServerTestCase):
             },
             meta_data,
         )
+
+    def test_returns_release_scripts_when_releasing(self):
+        self._test_release_scripts_are_returned(NODE_STATUS.RELEASING)
+
+    def test_returns_release_scripts_when_erasing_disks(self):
+        self._test_release_scripts_are_returned(NODE_STATUS.DISK_ERASING)
 
 
 class TestMAASScriptsProperties(MAASServerTestCase):

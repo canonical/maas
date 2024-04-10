@@ -1466,7 +1466,10 @@ class MAASScriptsHandler(OperationsHandler):
                         meta_data, key=itemgetter("name", "script_result_id")
                     )
 
-            if node.status == NODE_STATUS.RELEASING:
+            if (
+                node.status == NODE_STATUS.RELEASING
+                or node.status == NODE_STATUS.DISK_ERASING
+            ):
                 meta_data = self._add_script_set_to_tar(
                     node.current_release_script_set,
                     tar,
