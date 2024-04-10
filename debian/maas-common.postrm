@@ -24,6 +24,8 @@ case "$1" in
         rm -rf /var/lib/maas/certificates
         rm -rf /var/lib/maas/http
         rm -f /run/lock/maas:*
+        # clean-up /etc/maas/certificates
+        rm -rf /etc/maas/certificates
 esac
 
 rm -f /etc/rsyslog.d/99-maas.conf
