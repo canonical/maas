@@ -35,6 +35,9 @@ case "$1" in
         # Remove rackd.conf file
         rm -rf /etc/maas/rackd.conf
 
+        # Remove agent.yaml file
+        rm -rf /etc/maas/agent.yaml
+
         # Deleting old config files if they exist
         if [ -f /etc/maas/pserv.yaml.maas-old ]; then
             rm -rf /etc/maas/pserv.yaml.maas-old
