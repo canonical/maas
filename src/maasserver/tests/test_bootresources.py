@@ -1002,8 +1002,10 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             store._content_to_finalize = {1: sentinel.content}
             testcase.patch(store, "resource_cleaner")
             testcase.patch(bootresources, "execute_workflow")
+            testcase.patch(bootresources, "discard_persistent_error")
             testcase.patch(store, "resource_set_cleaner")
             testcase.patch(store, "_get_http_proxy")
+            testcase.patch(store, "calc_storage_size")
             return store
 
         notify = Deferred()

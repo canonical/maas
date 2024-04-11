@@ -83,6 +83,7 @@ from maasserver.utils.bootresource import (
     BOOTLOADERS_DIR,
     get_bootresource_store_path,
 )
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.dblocks import DatabaseLockNotHeld
 from maasserver.utils.orm import (
     get_one,
@@ -99,6 +100,7 @@ from maasserver.workflow import (
 from maasserver.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
+    SpaceRequirementParam,
     SyncRequestParam,
 )
 from provisioningserver.auth import get_maas_user_gpghome
@@ -593,6 +595,15 @@ class BootResourceStore(ObjectStore):
         cfg = Config.objects.get_configs(["enable_http_proxy", "http_proxy"])
         return cfg["http_proxy"] if cfg["enable_http_proxy"] else None
 
+    def calc_storage_size(self) -> int:
+        """Calculate the required disk space to store all resources."""
+        return sum(
+            BootResourceFile.objects.distinct("sha256").values_list(
+                "size", flat=True
+            ),
+            start=100 * 2**20,  # space to uncompress the bootloaders
+        )
+
     def finalize(self, notify: Deferred | None = None):
         """Perform the finalization of data into the filesystem.
 
@@ -647,6 +658,9 @@ class BootResourceStore(ObjectStore):
                 if len(self._content_to_finalize) > 0:
                     sync_req = SyncRequestParam(
                         resources=[*self._content_to_finalize.values()],
+                        requirement=SpaceRequirementParam(
+                            total_resources_size=self.calc_storage_size()
+                        ),
                         http_proxy=self._get_http_proxy(),
                     )
                     execute_workflow(
@@ -658,14 +672,23 @@ class BootResourceStore(ObjectStore):
                         run_timeout=DOWNLOAD_TIMEOUT,
                         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
                     )
-            except WorkflowFailureError:
+            except WorkflowFailureError as ex:
                 if not self._cancel_finalize:
-                    raise
+                    log.warn(
+                        f"Failed to synchronise boot resources: {ex.cause}"
+                    )
+                    register_persistent_error(
+                        COMPONENT.REGION_IMAGE_SYNC,
+                        f"Failed to synchronise boot resources: {ex.cause}",
+                        dismissable=False,
+                    )
+                    return
                 log.info("Boot Resources synchronisation aborted")
                 return
             finally:
                 self._content_to_finalize.clear()
             self.resource_set_cleaner()
+            discard_persistent_error(COMPONENT.REGION_IMAGE_SYNC)
             log.info("Boot Resources synchronisation has completed")
 
     def cancel_finalize(self, notify=None):
@@ -958,8 +981,6 @@ def _import_resources_internal(notify=None):
     # Ensure that boot sources exist.
     ensure_boot_source_definition()
 
-    # TODO migrate files from DB
-
     # Cache the boot sources before import.
     cache_boot_sources()
 
@@ -1194,10 +1215,42 @@ class ImportResourcesProgressService(TimerService):
         return BootResource.objects.all().exists()
 
 
-def export_images_from_db(region: RegionController):
+def _get_available_space(target_dir: Path) -> int:
+    _, _, free = shutil.disk_usage(target_dir)
+    return free
+
+
+def _get_db_images_size() -> int:
+    return sum(
+        BootResourceFile.objects.filter(largefile__isnull=False)
+        .distinct("sha256")
+        .values_list("size", flat=True)
+    )
+
+
+def export_images_from_db(region: RegionController, target_dir: Path):
     from maasserver.models import LargeFile
 
-    log.info("Exporting image files to disk")
+    required = _get_db_images_size()
+    avail = _get_available_space(target_dir)
+
+    if required > avail:
+        msg = dedent(
+            f"""\
+                Failed to export boot-resources from the database.
+                <br>Not enough disk space at '{target_dir}' on controller '{region.system_id}',
+                 missing {human_readable_bytes(required - avail)}.
+            """
+        )
+        register_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT, msg)
+        maaslog.error("Failed to export boot-resources from the database")
+        return
+    elif required == 0:
+        # nothing to do
+        discard_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT)
+        return
+
+    maaslog.info("Exporting image files to disk")
 
     largefile_ids_to_delete = set()
     oids_to_delete = set()
@@ -1210,7 +1263,7 @@ def export_images_from_db(region: RegionController):
             lfile = file.local_file()
 
             def msg(message: str):
-                log.msg(f"{file.filename}: {message}")
+                maaslog.info(f"{file.filename}: {message}")
 
             def set_sync_status():
                 file.bootresourcefilesync_set.update_or_create(
@@ -1250,6 +1303,9 @@ def export_images_from_db(region: RegionController):
             for oid in oids_to_delete:
                 cursor.execute("SELECT lo_unlink(%s)", [oid])
 
+    # clear any error status
+    discard_persistent_error(COMPONENT.REGION_IMAGE_DB_EXPORT)
+
 
 def initialize_image_storage(region: RegionController):
     """Initialize the image storage
@@ -1265,7 +1321,7 @@ def initialize_image_storage(region: RegionController):
         shutil.rmtree(bootloaders_dir)
     bootloaders_dir.mkdir()
 
-    export_images_from_db(region)
+    export_images_from_db(region, target_dir)
 
     expected_files = {bootloaders_dir}
 
