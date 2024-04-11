@@ -830,7 +830,6 @@ class VersionIndexHandler(MetadataViewHandler):
         """
         node = get_queried_node(request, for_mac=mac)
         status = get_mandatory_param(request.POST, "status", String)
-        target_status = None
 
         # These statuses are acceptable for commissioning, disk erasing,
         # entering rescue mode and deploying.
