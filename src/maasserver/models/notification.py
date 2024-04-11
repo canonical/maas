@@ -45,14 +45,28 @@ class NotificationManager(Manager):
     """Manager for `Notification` class."""
 
     def _create_for_user(
-        self, category, message, user, *, context=None, ident=None
+        self,
+        category,
+        message,
+        user,
+        *,
+        context=None,
+        ident=None,
+        dismissable=True,
     ):
         """Create a notification for a specific user."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, user, False, False, ident, message, context
+            category,
+            user,
+            False,
+            False,
+            ident,
+            message,
+            context,
+            dismissable=dismissable,
         )
         notification.save()
 
@@ -64,14 +78,27 @@ class NotificationManager(Manager):
     create_info_for_user = _create(_create_for_user, "info")
 
     def _create_for_users(
-        self, category, message, *, context=None, ident=None
+        self,
+        category,
+        message,
+        *,
+        context=None,
+        ident=None,
+        dismissable=True,
     ):
         """Create a notification for all users and admins."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, None, True, True, ident, message, context
+            category,
+            None,
+            True,
+            True,
+            ident,
+            message,
+            context,
+            dismissable=dismissable,
         )
         notification.save()
 
@@ -83,14 +110,27 @@ class NotificationManager(Manager):
     create_info_for_users = _create(_create_for_users, "info")
 
     def _create_for_admins(
-        self, category, message, *, context=None, ident=None
+        self,
+        category,
+        message,
+        *,
+        context=None,
+        ident=None,
+        dismissable=True,
     ):
         """Create a notification for all admins, but not users."""
         if ident is not None:
             self.filter(ident=ident).update(ident=None)
 
         notification = self._create(
-            category, None, False, True, ident, message, context
+            category,
+            None,
+            False,
+            True,
+            ident,
+            message,
+            context,
+            dismissable,
         )
         notification.save()
 
@@ -101,7 +141,17 @@ class NotificationManager(Manager):
     create_success_for_admins = _create(_create_for_admins, "success")
     create_info_for_admins = _create(_create_for_admins, "info")
 
-    def _create(self, category, user, users, admins, ident, message, context):
+    def _create(
+        self,
+        category,
+        user,
+        users,
+        admins,
+        ident,
+        message,
+        context,
+        dismissable,
+    ):
         return self.model(
             category=category,
             ident=ident,
@@ -110,6 +160,7 @@ class NotificationManager(Manager):
             users=users,
             admins=admins,
             context=({} if context is None else context),
+            dismissable=dismissable,
         )
 
     def find_for_user(self, user):

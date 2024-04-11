@@ -1,7 +1,11 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
 from asyncio import gather
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+import shutil
 from typing import Coroutine, Sequence
 
 from aiohttp.client_exceptions import ClientError
@@ -16,6 +20,7 @@ from maasserver.utils.bootresource import (
     LocalStoreInvalidHash,
     LocalStoreWriteBeyondEOF,
 )
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.workflow.api_client import MAASAPIClient
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
 from provisioningserver.utils.url import compose_URL
@@ -40,8 +45,27 @@ class ResourceDownloadParam:
 
 
 @dataclass
+class SpaceRequirementParam:
+    # If not None, the minimum free space (bytes) required for new resources
+    min_free_space: int | None = None
+
+    # If not None, represents the total space (bytes) required for synchronizing
+    # all images, including those that might have been already synchronized
+    # previously. Hence each region has to subtract the size of the images they
+    # already have when they perform the check.
+    total_resources_size: int | None = None
+
+    def __post_init__(self):
+        if all([self.min_free_space, self.total_resources_size]):
+            raise ValueError(
+                "Only one of 'min_free_space' and 'total_resources_size' can be specified."
+            )
+
+
+@dataclass
 class SyncRequestParam:
     resources: Sequence[ResourceDownloadParam]
+    requirement: SpaceRequirementParam
     http_proxy: str | None = None
 
 
@@ -60,7 +84,7 @@ class BootResourceImportCancelled(Exception):
 
 
 class BootResourcesActivity(MAASAPIClient):
-    def __init__(self, url: str, token: str, user_agent: str, region_id: str):
+    def __init__(self, url: str, token, user_agent: str, region_id: str):
         super().__init__(url, token, user_agent=user_agent)
         self.region_id = region_id
 
@@ -84,6 +108,24 @@ class BootResourcesActivity(MAASAPIClient):
                 "size": size,
             },
         )
+
+    @activity.defn(name="check-disk-space")
+    async def check_disk_space(self, param: SpaceRequirementParam) -> bool:
+        target_dir = get_bootresource_store_path()
+        _, _, free = shutil.disk_usage(target_dir)
+        if param.total_resources_size:
+            free += sum(file.stat().st_size for file in target_dir.rglob("*"))
+            required = param.total_resources_size
+        else:
+            required = param.min_free_space
+        if free > required:
+            return True
+        else:
+            activity.logger.error(
+                f"Not enough disk space at controller '{self.region_id}', needs "
+                f"{human_readable_bytes(required)} to store all resources."
+            )
+            return False
 
     @activity.defn(name="get-bootresourcefile-sync-status")
     async def get_bootresourcefile_sync_status(
@@ -179,8 +221,19 @@ class BootResourcesActivity(MAASAPIClient):
                 await self.report_progress(param.rfile_ids, 0)
                 lfile.unlink()
                 raise ApplicationError("Invalid checksum")
+        except IOError as ex:
+            # if we run out of disk space, stop this download.
+            # let the user fix the issue and restart it manually later
+            if ex.errno == 28:
+                lfile.unlink()
+                await self.report_progress(param.rfile_ids, 0)
+                activity.logger.error(ex.strerror)
+                return False
+
+            raise ApplicationError(
+                ex.strerror, type=ex.__class__.__name__
+            ) from None
         except (
-            IOError,
             ClientError,
             LocalStoreInvalidHash,
             LocalStoreWriteBeyondEOF,
@@ -244,13 +297,45 @@ class DownloadBootResourceWorkflow:
         )
 
 
+@workflow.defn(name="check-bootresources-storage", sandboxed=False)
+class CheckBootResourcesStorageWorkflow:
+    """Check the BootResource Storage on this controller"""
+
+    @workflow.run
+    async def run(self, input: SpaceRequirementParam) -> None:
+        return await workflow.execute_activity(
+            "check-disk-space",
+            input,
+            start_to_close_timeout=DISK_TIMEOUT,
+            heartbeat_timeout=HEARTBEAT_TIMEOUT,
+            cancellation_type=ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+        )
+
+
 @workflow.defn(name="sync-bootresources", sandboxed=False)
 class SyncBootResourcesWorkflow:
     """Execute Boot Resource synchronization from external sources"""
 
     @workflow.run
     async def run(self, input: SyncRequestParam) -> None:
-        def _schedule(res: ResourceDownloadParam, region: str | None = None):
+        def _schedule_disk_check(
+            res: SpaceRequirementParam,
+            region: str,
+        ):
+            return workflow.execute_child_workflow(
+                "check-bootresources-storage",
+                res,
+                id=f"check-bootresources-storage:{region}",
+                execution_timeout=DISK_TIMEOUT,
+                run_timeout=DISK_TIMEOUT,
+                id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+                task_queue=f"{region}:region",
+            )
+
+        def _schedule_download(
+            res: ResourceDownloadParam,
+            region: str | None = None,
+        ):
             return workflow.execute_child_workflow(
                 "download-bootresource",
                 res,
@@ -261,11 +346,28 @@ class SyncBootResourcesWorkflow:
                 task_queue=f"{region}:region" if region else REGION_TASK_QUEUE,
             )
 
-        # fetch resources from upstream
-        upstream_jobs = [
-            _schedule(
-                replace(res, http_proxy=input.http_proxy),
+        # get regions and endpoints
+        endpoints: dict[str, list] = await workflow.execute_activity(
+            "get-bootresourcefile-endpoints",
+            start_to_close_timeout=timedelta(seconds=30),
+        )
+        regions: frozenset[str] = frozenset(endpoints.keys())
+
+        # check disk space
+        check_space_jobs = [
+            _schedule_disk_check(input.requirement, region)
+            for region in regions
+        ]
+        has_space: list[bool] = await gather(*check_space_jobs)
+        if not all(has_space):
+            raise ApplicationError(
+                "some region controllers don't have enough disk space",
+                non_retryable=True,
             )
+
+        # download resources that must be fetched from upstream
+        upstream_jobs = [
+            _schedule_download(replace(res, http_proxy=input.http_proxy))
             for res in input.resources
             if res.source_list
         ]
@@ -273,22 +375,22 @@ class SyncBootResourcesWorkflow:
             workflow.logger.info(
                 f"Syncing {len(upstream_jobs)} resources from upstream"
             )
-            await gather(*upstream_jobs)
+            downloaded: list[bool] = await gather(*upstream_jobs)
+            if not all(downloaded):
+                raise ApplicationError(
+                    "some files could not be downloaded, aborting",
+                    non_retryable=True,
+                )
+
+        if len(regions) < 2:
+            workflow.logger.info("Sync complete")
+            return
 
         # distribute files inside cluster
-        endpoints: dict[str, list] = await workflow.execute_activity(
-            "get-bootresourcefile-endpoints",
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-        regions: frozenset[str] = frozenset(endpoints.keys())
-
         sync_status: dict[str, dict] = await workflow.execute_activity(
             "get-bootresourcefile-sync-status",
             start_to_close_timeout=timedelta(seconds=30),
         )
-        if len(regions) < 2:
-            workflow.logger.info("Sync complete")
-            return
 
         # Use a random generator from the temporal sdk in order to keep the workflow deterministic.
         random_generator = random()
@@ -317,9 +419,15 @@ class SyncBootResourcesWorkflow:
                 ),
             )
             for region in missing:
-                sync_jobs.append(_schedule(new_res, region))
+                sync_jobs.append(_schedule_download(new_res, region))
         if sync_jobs:
-            await gather(*sync_jobs)
+            synced: list[bool] = await gather(*sync_jobs)
+            if not all(synced):
+                raise ApplicationError(
+                    "some files could not be synced, aborting",
+                    non_retryable=True,
+                )
+
         workflow.logger.info("Sync complete")
 
 

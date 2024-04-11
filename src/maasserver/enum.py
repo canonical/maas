@@ -42,6 +42,8 @@ class COMPONENT:
     IMPORT_PXE_FILES = "maas-import-pxe-files script"
     RACK_CONTROLLERS = "clusters"
     REGION_IMAGE_IMPORT = "Image importer"
+    REGION_IMAGE_SYNC = "Image synchronization"
+    REGION_IMAGE_DB_EXPORT = "bootresources_export_from_db"
 
 
 class NODE_STATUS:

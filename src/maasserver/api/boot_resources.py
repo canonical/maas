@@ -48,6 +48,7 @@ from maasserver.workflow import execute_workflow
 from maasserver.workflow.bootresource import (
     DOWNLOAD_TIMEOUT,
     ResourceDownloadParam,
+    SpaceRequirementParam,
     SyncRequestParam,
 )
 from maasserver.workflow.worker.worker import REGION_TASK_QUEUE
@@ -141,7 +142,8 @@ def filestore_add_file(rfile: BootResourceFile):
                 sha256=rfile.sha256,
                 total_size=rfile.size,
             )
-        ]
+        ],
+        requirement=SpaceRequirementParam(min_free_space=rfile.size),
     )
     return execute_workflow(
         "sync-bootresources",

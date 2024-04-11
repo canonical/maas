@@ -25,6 +25,7 @@ from maasserver.utils.threads import deferToDatabase
 from maasserver.worker_user import get_worker_user
 from maasserver.workflow.bootresource import (
     BootResourcesActivity,
+    CheckBootResourcesStorageWorkflow,
     CleanupBootResourceWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
@@ -101,6 +102,7 @@ class TemporalWorkerService(Service):
                 task_queue=f"{maas_id}:region",
                 workflows=[
                     # Boot resources workflows
+                    CheckBootResourcesStorageWorkflow,
                     DownloadBootResourceWorkflow,
                 ],
                 activities=[
@@ -108,6 +110,7 @@ class TemporalWorkerService(Service):
                     boot_res_activity.cleanup_bootresources,
                     boot_res_activity.delete_bootresourcefile,
                     boot_res_activity.download_bootresourcefile,
+                    boot_res_activity.check_disk_space,
                 ],
             ),
             # All regions listen to a shared task queue. The first to pick up a task will execute it.
@@ -115,6 +118,7 @@ class TemporalWorkerService(Service):
                 workflows=[
                     # Boot resources workflows
                     CleanupBootResourceWorkflow,
+                    CheckBootResourcesStorageWorkflow,
                     DeleteBootResourceWorkflow,
                     # DownloadBootResourceWorkflow is run by the region that executes SyncBootResourcesWorkflow to download
                     # the image on its own storage. Then, DownloadBootResourceWorkflow is scheduled on the task queues of the

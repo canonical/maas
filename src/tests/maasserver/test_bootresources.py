@@ -140,7 +140,7 @@ class TestExportImagesFromDB:
             filename="boot-kernel",
             content=content2,
         )
-        export_images_from_db(controller)
+        export_images_from_db(controller, image_store_dir)
         assert list_files(image_store_dir) == {
             sha256(content1).hexdigest(),
             sha256(content2).hexdigest(),
@@ -168,7 +168,7 @@ class TestExportImagesFromDB:
             filename="boot-initrd",
             content=content,
         )
-        export_images_from_db(controller)
+        export_images_from_db(controller, image_store_dir)
         assert image.read_bytes() == content
 
     def test_remove_largfile(self, controller, image_store_dir, factory):
@@ -188,7 +188,7 @@ class TestExportImagesFromDB:
             content=b"some content",
         )
         largefile = resource_file.largefile
-        export_images_from_db(controller)
+        export_images_from_db(controller, image_store_dir)
 
         assert reload_object(largefile) is None
         # largeobject also gets deleted
@@ -217,7 +217,7 @@ class TestExportImagesFromDB:
 
         resource_file = image_store_dir / sha256
         resource_file.touch()
-        export_images_from_db(controller)
+        export_images_from_db(controller, image_store_dir)
         assert resource_file.exists()
 
 

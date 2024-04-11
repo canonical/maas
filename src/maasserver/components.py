@@ -32,7 +32,7 @@ def discard_persistent_error(component):
 
 
 @transactional
-def register_persistent_error(component, error_message):
+def register_persistent_error(component, error_message, dismissable=True):
     """Register a persistent error for `component`.
 
     :param component: An enum value of :class:`COMPONENT`.
@@ -42,7 +42,9 @@ def register_persistent_error(component, error_message):
         notification = Notification.objects.get(ident=component)
     except Notification.DoesNotExist:
         notification = Notification.objects.create_error_for_admins(
-            error_message, ident=component
+            error_message,
+            ident=component,
+            dismissable=dismissable,
         )
     else:
         if notification.message != error_message:
