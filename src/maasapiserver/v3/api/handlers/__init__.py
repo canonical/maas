@@ -1,5 +1,6 @@
 from maasapiserver.common.api.base import API
 from maasapiserver.v3.api.handlers.auth import AuthHandler
+from maasapiserver.v3.api.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.handlers.resource_pools import ResourcePoolHandler
 from maasapiserver.v3.api.handlers.root import RootHandler
 from maasapiserver.v3.api.handlers.zones import ZonesHandler
@@ -12,5 +13,6 @@ APIv3 = API(
         ZonesHandler(),
         ResourcePoolHandler(),
         AuthHandler(),
+        MachinesHandler(),
     ],
 )

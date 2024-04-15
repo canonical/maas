@@ -74,6 +74,8 @@ async def _create_test_node_entry(
         "last_applied_storage_layout": "flat",
         "enable_hw_sync": False,
         "node_type": node_type,
+        "architecture": "",
+        "hwe_kernel": "",
     }
     node.update(extra_details)
     [created_node] = await fixture.create(
