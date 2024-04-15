@@ -26,7 +26,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.asyncio
-@pytest.mark.useFixtures("maasdb")
+@pytest.mark.usefixtures("maasdb")
 class TestConfigureAgentActivity:
     async def test_get_rack_contorller_vlans_no_rack_controller(
         self, db: Database, db_connection: AsyncConnection
