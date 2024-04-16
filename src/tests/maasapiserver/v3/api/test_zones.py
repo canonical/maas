@@ -14,116 +14,72 @@ from maasapiserver.v3.api.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
 )
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.api.base import (
     ApiCommonTests,
-    ApiEndpointsRoles,
     EndpointDetails,
+    PaginatedEndpointTestConfig,
 )
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
-@pytest.mark.asyncio
 class TestZonesApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> ApiEndpointsRoles:
-        return ApiEndpointsRoles(
-            unauthenticated_endpoints=[],
-            user_endpoints=[
-                EndpointDetails(
-                    method="GET",
-                    path="/api/v3/zones",
-                ),
-                EndpointDetails(
-                    method="GET",
-                    path="/api/v3/zones/1",
-                ),
-            ],
-            admin_endpoints=[
-                EndpointDetails(
-                    method="POST",
-                    path="/api/v3/zones",
-                ),
-                EndpointDetails(method="DELETE", path="/api/v3/zones/1"),
-            ],
-        )
-
-    def _assert_zone_in_list(
-        self, zone: Zone, zones_response: ZonesListResponse
-    ) -> None:
-        zone_response = next(
-            filter(
-                lambda zone_response: zone.id == zone_response.id,
-                zones_response.items,
+    def get_endpoints_configuration(self) -> list[EndpointDetails]:
+        def _assert_zone_in_list(
+            zone: Zone, zones_response: ZonesListResponse
+        ) -> None:
+            zone_response = next(
+                filter(
+                    lambda zone_response: zone.id == zone_response.id,
+                    zones_response.items,
+                )
             )
-        )
-        assert zone.id == zone_response.id
-        assert zone.name == zone_response.name
-        assert zone.description == zone_response.description
+            assert zone.id == zone_response.id
+            assert zone.name == zone_response.name
+            assert zone.description == zone_response.description
 
-    # GET /zones
-    # We don't have a test that checks for empty list because it's impossible: there is always at least one "default" zone
-    # created at startup by the migration scripts.
-    @pytest.mark.parametrize("zones_size", range(1, 3))
-    async def test_list_default_200(
-        self,
-        zones_size: int,
-        authenticated_user_api_client_v3: AsyncClient,
-        fixture: Fixture,
-    ) -> None:
-        # The "default" zone with id=1 is created at startup with the migrations. By consequence, we create zones_size-1 zones
-        # here.
-        created_zones = [
-            (await create_test_zone(fixture, name=str(i), description=str(i)))
-            for i in range(0, zones_size - 1)
+        async def create_pagination_test_resources(
+            fixture: Fixture, size: int
+        ) -> list[Zone]:
+            if size > 1:
+                # remove one because we have to consider the default zone
+                return [
+                    (
+                        await create_test_zone(
+                            fixture, name=str(i), description=str(i)
+                        )
+                    )
+                    for i in range(0, size - 1)
+                ]
+            return []
+
+        return [
+            EndpointDetails(
+                method="GET",
+                path="/api/v3/zones",
+                user_role=UserRole.USER,
+                pagination_config=PaginatedEndpointTestConfig(
+                    response_type=ZonesListResponse,
+                    assert_routine=_assert_zone_in_list,
+                    create_resources_routine=create_pagination_test_resources,
+                    size_parameters=list(range(1, 10)),
+                ),
+            ),
+            EndpointDetails(
+                method="GET", path="/api/v3/zones/1", user_role=UserRole.USER
+            ),
+            EndpointDetails(
+                method="POST", path="/api/v3/zones", user_role=UserRole.ADMIN
+            ),
+            EndpointDetails(
+                method="DELETE",
+                path="/api/v3/zones/1",
+                user_role=UserRole.ADMIN,
+            ),
         ]
-        response = await authenticated_user_api_client_v3.get("/api/v3/zones")
-        assert response.status_code == 200
-
-        zones_response = ZonesListResponse(**response.json())
-        assert zones_response.kind == "ZonesList"
-        assert zones_response.total == zones_size
-        assert len(zones_response.items) == zones_size
-        for zone in created_zones:
-            self._assert_zone_in_list(zone, zones_response)
-
-    async def test_list_parameters_200(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
-    ) -> None:
-        # The "default" zone with id=1 is created at startup with the migrations. By consequence, we create zones_size-1 zones
-        # here.
-        for i in range(0, 9):
-            await create_test_zone(fixture, name=str(i), description=str(i))
-
-        for page in range(1, 6):
-            response = await authenticated_user_api_client_v3.get(
-                f"/api/v3/zones?page={page}&size=2"
-            )
-            assert response.status_code == 200
-            zones_response = ZonesListResponse(**response.json())
-            assert zones_response.kind == "ZonesList"
-            assert zones_response.total == 10
-            assert len(zones_response.items) == 2
-
-    @pytest.mark.parametrize(
-        "page,size", [(1, 0), (0, 1), (-1, -1), (1, 1001)]
-    )
-    async def test_list_422(
-        self,
-        page: int,
-        size: int,
-        authenticated_user_api_client_v3: AsyncClient,
-    ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"/api/v3/zones?page={page}&size={size}"
-        )
-        assert response.status_code == 422
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.kind == "Error"
-        assert error_response.code == 422
 
     # GET /zones/{zone_id}
     async def test_get_default(

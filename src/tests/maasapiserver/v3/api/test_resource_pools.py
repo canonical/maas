@@ -13,6 +13,7 @@ from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolResponse,
     ResourcePoolsListResponse,
 )
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.models.resource_pools import ResourcePool
 from tests.fixtures.factories.resource_pools import (
@@ -22,113 +23,69 @@ from tests.fixtures.factories.resource_pools import (
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.api.base import (
     ApiCommonTests,
-    ApiEndpointsRoles,
     EndpointDetails,
+    PaginatedEndpointTestConfig,
 )
 
 
 class TestResourcePoolApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> ApiEndpointsRoles:
-        return ApiEndpointsRoles(
-            unauthenticated_endpoints=[],
-            user_endpoints=[
-                EndpointDetails(
-                    method="GET",
-                    path="/api/v3/resource_pools",
-                ),
-                EndpointDetails(
-                    method="GET",
-                    path="/api/v3/resource_pools/1",
-                ),
-            ],
-            admin_endpoints=[
-                EndpointDetails(
-                    method="POST",
-                    path="/api/v3/resource_pools",
-                ),
-                EndpointDetails(
-                    method="PATCH", path="/api/v3/resource_pools/1"
-                ),
-            ],
-        )
-
-    def _assert_resource_pools_in_list(
-        self,
-        resource_pools: ResourcePool,
-        resource_pools_response: ResourcePoolsListResponse,
-    ) -> None:
-        resource_pools_response = next(
-            filter(
-                lambda resource_pools_response: resource_pools.id
-                == resource_pools_response.id,
-                resource_pools_response.items,
+    def get_endpoints_configuration(self) -> list[EndpointDetails]:
+        def _assert_resource_pools_in_list(
+            resource_pools: ResourcePool,
+            resource_pools_response: ResourcePoolsListResponse,
+        ) -> None:
+            resource_pools_response = next(
+                filter(
+                    lambda resource_pools_response: resource_pools.id
+                    == resource_pools_response.id,
+                    resource_pools_response.items,
+                )
             )
-        )
-        assert resource_pools.id == resource_pools_response.id
-        assert resource_pools.name == resource_pools_response.name
-        assert (
-            resource_pools.description == resource_pools_response.description
-        )
-
-    @pytest.mark.parametrize("resource_pools_size", range(1, 3))
-    async def test_list(
-        self,
-        resource_pools_size: int,
-        authenticated_user_api_client_v3: AsyncClient,
-        fixture: Fixture,
-    ) -> None:
-        created_resource_pools = await create_n_test_resource_pools(
-            fixture, size=resource_pools_size
-        )
-        response = await authenticated_user_api_client_v3.get(
-            "/api/v3/resource_pools"
-        )
-        assert response.status_code == 200
-
-        resource_pools_response = ResourcePoolsListResponse(**response.json())
-        assert resource_pools_response.kind == "ResourcePoolList"
-        # Increment as the default resource pool is included in the count.
-        assert resource_pools_response.total == resource_pools_size + 1
-        assert len(resource_pools_response.items) == resource_pools_size + 1
-        for resource_pools in created_resource_pools:
-            self._assert_resource_pools_in_list(
-                resource_pools, resource_pools_response
+            assert resource_pools.id == resource_pools_response.id
+            assert resource_pools.name == resource_pools_response.name
+            assert (
+                resource_pools.description
+                == resource_pools_response.description
             )
 
-    async def test_parametrised_list(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
-    ) -> None:
-        await create_n_test_resource_pools(fixture, size=9)
+        async def create_pagination_test_resources(
+            fixture: Fixture, size: int
+        ) -> list[ResourcePool]:
+            if size > 1:
+                # remove one because we have to consider the default resource pool
+                return await create_n_test_resource_pools(
+                    fixture, size=size - 1
+                )
+            return []
 
-        for page in range(1, 6):
-            response = await authenticated_user_api_client_v3.get(
-                f"/api/v3/resource_pools?page={page}&size=2"
-            )
-            assert response.status_code == 200
-            resource_pools_response = ResourcePoolsListResponse(
-                **response.json()
-            )
-            assert resource_pools_response.kind == "ResourcePoolList"
-            assert resource_pools_response.total == 10
-            assert len(resource_pools_response.items) == 2
-
-    @pytest.mark.parametrize(
-        "page,size", [(1, 0), (0, 1), (-1, -1), (1, 1001)]
-    )
-    async def test_invalid_list(
-        self,
-        page: int,
-        size: int,
-        authenticated_user_api_client_v3: AsyncClient,
-    ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"/api/v3/resource_pools?page={page}&size={size}"
-        )
-        assert response.status_code == 422
-
-        error_response = ErrorBodyResponse(**response.json())
-        assert error_response.kind == "Error"
-        assert error_response.code == 422
+        return [
+            EndpointDetails(
+                method="GET",
+                path="/api/v3/resource_pools",
+                user_role=UserRole.USER,
+                pagination_config=PaginatedEndpointTestConfig(
+                    response_type=ResourcePoolsListResponse,
+                    assert_routine=_assert_resource_pools_in_list,
+                    create_resources_routine=create_pagination_test_resources,
+                    size_parameters=list(range(1, 10)),
+                ),
+            ),
+            EndpointDetails(
+                method="GET",
+                path="/api/v3/resource_pools/1",
+                user_role=UserRole.USER,
+            ),
+            EndpointDetails(
+                method="POST",
+                path="/api/v3/resource_pools",
+                user_role=UserRole.ADMIN,
+            ),
+            EndpointDetails(
+                method="PATCH",
+                path="/api/v3/resource_pools/1",
+                user_role=UserRole.ADMIN,
+            ),
+        ]
 
     async def test_get(
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
