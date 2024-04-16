@@ -20,11 +20,38 @@ from tests.fixtures.factories.resource_pools import (
     create_test_resource_pool,
 )
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasapiserver.v3.api.base import (
+    ApiCommonTests,
+    ApiEndpointsRoles,
+    EndpointDetails,
+)
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
-@pytest.mark.asyncio
-class TestResourcePoolApi:
+class TestResourcePoolApi(ApiCommonTests):
+    def get_endpoints_configuration(self) -> ApiEndpointsRoles:
+        return ApiEndpointsRoles(
+            unauthenticated_endpoints=[],
+            user_endpoints=[
+                EndpointDetails(
+                    method="GET",
+                    path="/api/v3/resource_pools",
+                ),
+                EndpointDetails(
+                    method="GET",
+                    path="/api/v3/resource_pools/1",
+                ),
+            ],
+            admin_endpoints=[
+                EndpointDetails(
+                    method="POST",
+                    path="/api/v3/resource_pools",
+                ),
+                EndpointDetails(
+                    method="PATCH", path="/api/v3/resource_pools/1"
+                ),
+            ],
+        )
+
     def _assert_resource_pools_in_list(
         self,
         resource_pools: ResourcePool,
@@ -47,13 +74,15 @@ class TestResourcePoolApi:
     async def test_list(
         self,
         resource_pools_size: int,
-        api_client: AsyncClient,
+        authenticated_user_api_client_v3: AsyncClient,
         fixture: Fixture,
     ) -> None:
         created_resource_pools = await create_n_test_resource_pools(
             fixture, size=resource_pools_size
         )
-        response = await api_client.get("/api/v3/resource_pools")
+        response = await authenticated_user_api_client_v3.get(
+            "/api/v3/resource_pools"
+        )
         assert response.status_code == 200
 
         resource_pools_response = ResourcePoolsListResponse(**response.json())
@@ -67,12 +96,12 @@ class TestResourcePoolApi:
             )
 
     async def test_parametrised_list(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         await create_n_test_resource_pools(fixture, size=9)
 
         for page in range(1, 6):
-            response = await api_client.get(
+            response = await authenticated_user_api_client_v3.get(
                 f"/api/v3/resource_pools?page={page}&size=2"
             )
             assert response.status_code == 200
@@ -87,9 +116,12 @@ class TestResourcePoolApi:
         "page,size", [(1, 0), (0, 1), (-1, -1), (1, 1001)]
     )
     async def test_invalid_list(
-        self, page: int, size: int, api_client: AsyncClient
+        self,
+        page: int,
+        size: int,
+        authenticated_user_api_client_v3: AsyncClient,
     ) -> None:
-        response = await api_client.get(
+        response = await authenticated_user_api_client_v3.get(
             f"/api/v3/resource_pools?page={page}&size={size}"
         )
         assert response.status_code == 422
@@ -99,10 +131,10 @@ class TestResourcePoolApi:
         assert error_response.code == 422
 
     async def test_get(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         created_resource_pools = await create_test_resource_pool(fixture)
-        response = await api_client.get(
+        response = await authenticated_user_api_client_v3.get(
             f"/api/v3/resource_pools/{created_resource_pools.id}"
         )
         assert response.status_code == 200
@@ -124,9 +156,14 @@ class TestResourcePoolApi:
 
     @pytest.mark.parametrize("id,error", [("100", 404), ("xyz", 422)])
     async def test_get_invalid(
-        self, api_client: AsyncClient, id: str, error: int
+        self,
+        authenticated_user_api_client_v3: AsyncClient,
+        id: str,
+        error: int,
     ) -> None:
-        response = await api_client.get(f"/api/v3/resource_pools/{id}")
+        response = await authenticated_user_api_client_v3.get(
+            f"/api/v3/resource_pools/{id}"
+        )
         assert response.status_code == error
         assert "ETag" not in response.headers
 
@@ -134,11 +171,14 @@ class TestResourcePoolApi:
         assert error_response.kind == "Error"
         assert error_response.code == error
 
-    async def test_create(self, api_client: AsyncClient) -> None:
+    async def test_create(
+        self,
+        authenticated_admin_api_client_v3: AsyncClient,
+    ) -> None:
         resource_pool_request = ResourcePoolRequest(
             name="new_resource pool", description="new_pool_description"
         )
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/resource_pools",
             json=jsonable_encoder(resource_pool_request),
         )
@@ -168,11 +208,11 @@ class TestResourcePoolApi:
     )
     async def test_create_invalid(
         self,
-        api_client: AsyncClient,
+        authenticated_admin_api_client_v3: AsyncClient,
         error_code: int,
         request_data: dict[str, str],
     ) -> None:
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/resource_pools", json=request_data
         )
         assert response.status_code == error_code
@@ -183,14 +223,14 @@ class TestResourcePoolApi:
 
     async def test_patch(
         self,
-        api_client: AsyncClient,
+        authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
     ) -> None:
         resource_pool = await create_test_resource_pool(fixture=fixture)
         patch_resource_pool_request = ResourcePoolPatchRequest(
             name="newname", description="new description"
         )
-        response = await api_client.patch(
+        response = await authenticated_admin_api_client_v3.patch(
             f"/api/v3/resource_pools/{resource_pool.id}",
             json=jsonable_encoder(patch_resource_pool_request),
         )
@@ -213,7 +253,7 @@ class TestResourcePoolApi:
         patch_resource_pool_request2 = ResourcePoolPatchRequest(
             description="new description"
         )
-        response = await api_client.patch(
+        response = await authenticated_admin_api_client_v3.patch(
             f"/api/v3/resource_pools/{resource_pool.id}",
             json=jsonable_encoder(
                 patch_resource_pool_request2, exclude_none=True
@@ -237,13 +277,13 @@ class TestResourcePoolApi:
 
     async def test_patch_unexisting(
         self,
-        api_client: AsyncClient,
+        authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
     ) -> None:
         patch_resource_pool_request = ResourcePoolPatchRequest(
             name="newname", description="new description"
         )
-        response = await api_client.patch(
+        response = await authenticated_admin_api_client_v3.patch(
             "/api/v3/resource_pools/1000",
             json=jsonable_encoder(patch_resource_pool_request),
         )
@@ -264,12 +304,12 @@ class TestResourcePoolApi:
     )
     async def test_patch_invalid(
         self,
-        api_client: AsyncClient,
+        authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
         error_code: int,
         request_data: dict[str, str],
     ) -> None:
-        response = await api_client.patch(
+        response = await authenticated_admin_api_client_v3.patch(
             "/api/v3/resource_pools/0", json=request_data
         )
         assert response.status_code == error_code

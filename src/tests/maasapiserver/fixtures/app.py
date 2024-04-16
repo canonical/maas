@@ -3,15 +3,16 @@ from typing import AsyncIterator, Iterator
 
 from django.core import signing
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import AsyncClient, Headers
 import pytest
 
 from maasapiserver.common.db import Database
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
 from maasapiserver.v2.models.entities.user import User
-
-from .db import Fixture
+from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from tests.fixtures.factories.user import create_test_user
+from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.fixture
@@ -88,4 +89,42 @@ async def authenticated_api_client(
     """Authenticated client for the API."""
     async with AsyncClient(app=api_app, base_url="http://test") as client:
         client.cookies.set("sessionid", user_session_id)
+        yield client
+
+
+@pytest.fixture
+async def authenticated_admin_api_client_v3(
+    api_app: FastAPI, fixture: Fixture
+) -> AsyncIterator[AsyncClient]:
+    """Authenticated admin client for the V3 API."""
+    params = {"is_superuser": True, "username": "admin"}
+    created_user = await create_test_user(fixture, **params)
+    async with AsyncClient(app=api_app, base_url="http://test") as client:
+        response = await client.post(
+            "/api/v3/auth/login",
+            data={"username": created_user.username, "password": "test"},
+        )
+        token_response = AccessTokenResponse(**response.json())
+        client.headers = Headers(
+            {"Authorization": "bearer " + token_response.access_token}
+        )
+        yield client
+
+
+@pytest.fixture
+async def authenticated_user_api_client_v3(
+    api_app: FastAPI, fixture: Fixture
+) -> AsyncIterator[AsyncClient]:
+    """Authenticated user client for the V3 API."""
+    params = {"is_superuser": False, "username": "user"}
+    created_user = await create_test_user(fixture, **params)
+    async with AsyncClient(app=api_app, base_url="http://test") as client:
+        response = await client.post(
+            "/api/v3/auth/login",
+            data={"username": created_user.username, "password": "test"},
+        )
+        token_response = AccessTokenResponse(**response.json())
+        client.headers = Headers(
+            {"Authorization": "bearer " + token_response.access_token}
+        )
         yield client

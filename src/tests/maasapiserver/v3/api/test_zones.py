@@ -18,11 +18,38 @@ from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasapiserver.v3.api.base import (
+    ApiCommonTests,
+    ApiEndpointsRoles,
+    EndpointDetails,
+)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
-class TestZonesApi:
+class TestZonesApi(ApiCommonTests):
+    def get_endpoints_configuration(self) -> ApiEndpointsRoles:
+        return ApiEndpointsRoles(
+            unauthenticated_endpoints=[],
+            user_endpoints=[
+                EndpointDetails(
+                    method="GET",
+                    path="/api/v3/zones",
+                ),
+                EndpointDetails(
+                    method="GET",
+                    path="/api/v3/zones/1",
+                ),
+            ],
+            admin_endpoints=[
+                EndpointDetails(
+                    method="POST",
+                    path="/api/v3/zones",
+                ),
+                EndpointDetails(method="DELETE", path="/api/v3/zones/1"),
+            ],
+        )
+
     def _assert_zone_in_list(
         self, zone: Zone, zones_response: ZonesListResponse
     ) -> None:
@@ -41,7 +68,10 @@ class TestZonesApi:
     # created at startup by the migration scripts.
     @pytest.mark.parametrize("zones_size", range(1, 3))
     async def test_list_default_200(
-        self, zones_size: int, api_client: AsyncClient, fixture: Fixture
+        self,
+        zones_size: int,
+        authenticated_user_api_client_v3: AsyncClient,
+        fixture: Fixture,
     ) -> None:
         # The "default" zone with id=1 is created at startup with the migrations. By consequence, we create zones_size-1 zones
         # here.
@@ -49,7 +79,7 @@ class TestZonesApi:
             (await create_test_zone(fixture, name=str(i), description=str(i)))
             for i in range(0, zones_size - 1)
         ]
-        response = await api_client.get("/api/v3/zones")
+        response = await authenticated_user_api_client_v3.get("/api/v3/zones")
         assert response.status_code == 200
 
         zones_response = ZonesListResponse(**response.json())
@@ -60,7 +90,7 @@ class TestZonesApi:
             self._assert_zone_in_list(zone, zones_response)
 
     async def test_list_parameters_200(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         # The "default" zone with id=1 is created at startup with the migrations. By consequence, we create zones_size-1 zones
         # here.
@@ -68,7 +98,7 @@ class TestZonesApi:
             await create_test_zone(fixture, name=str(i), description=str(i))
 
         for page in range(1, 6):
-            response = await api_client.get(
+            response = await authenticated_user_api_client_v3.get(
                 f"/api/v3/zones?page={page}&size=2"
             )
             assert response.status_code == 200
@@ -81,9 +111,12 @@ class TestZonesApi:
         "page,size", [(1, 0), (0, 1), (-1, -1), (1, 1001)]
     )
     async def test_list_422(
-        self, page: int, size: int, api_client: AsyncClient
+        self,
+        page: int,
+        size: int,
+        authenticated_user_api_client_v3: AsyncClient,
     ) -> None:
-        response = await api_client.get(
+        response = await authenticated_user_api_client_v3.get(
             f"/api/v3/zones?page={page}&size={size}"
         )
         assert response.status_code == 422
@@ -94,10 +127,12 @@ class TestZonesApi:
 
     # GET /zones/{zone_id}
     async def test_get_default(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         # A "default" zone should be created at startup by the migration scripts.
-        response = await api_client.get("/api/v3/zones/1")
+        response = await authenticated_user_api_client_v3.get(
+            "/api/v3/zones/1"
+        )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         zone_response = ZoneResponse(**response.json())
@@ -106,10 +141,12 @@ class TestZonesApi:
 
     # GET /zone/{ID}
     async def test_get_200(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         created_zone = await create_test_zone(fixture)
-        response = await api_client.get(f"/api/v3/zones/{created_zone.id}")
+        response = await authenticated_user_api_client_v3.get(
+            f"/api/v3/zones/{created_zone.id}"
+        )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
@@ -127,9 +164,11 @@ class TestZonesApi:
         }
 
     async def test_get_400(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
-        response = await api_client.get("/api/v3/zones/100")
+        response = await authenticated_user_api_client_v3.get(
+            "/api/v3/zones/100"
+        )
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -138,9 +177,11 @@ class TestZonesApi:
         assert error_response.code == 404
 
     async def test_get_422(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
-        response = await api_client.get("/api/v3/zones/xyz")
+        response = await authenticated_user_api_client_v3.get(
+            "/api/v3/zones/xyz"
+        )
         assert response.status_code == 422
         assert "ETag" not in response.headers
 
@@ -149,9 +190,11 @@ class TestZonesApi:
         assert error_response.code == 422
 
     # POST /zones
-    async def test_post_201(self, api_client: AsyncClient) -> None:
+    async def test_post_201(
+        self, authenticated_admin_api_client_v3: AsyncClient
+    ) -> None:
         zone_request = ZoneRequest(name="myzone", description="my description")
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
@@ -166,24 +209,26 @@ class TestZonesApi:
         )
 
     async def test_post_default_parameters(
-        self, api_client: AsyncClient
+        self, authenticated_admin_api_client_v3: AsyncClient
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
         zone_response = ZoneResponse(**response.json())
         assert zone_response.description == ""
 
-    async def test_post_409(self, api_client: AsyncClient) -> None:
+    async def test_post_409(
+        self, authenticated_admin_api_client_v3: AsyncClient
+    ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
 
-        response = await api_client.post(
+        response = await authenticated_admin_api_client_v3.post(
             "/api/v3/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 409
@@ -204,9 +249,13 @@ class TestZonesApi:
         ],
     )
     async def test_post_422(
-        self, api_client: AsyncClient, zone_request: dict[str, str]
+        self,
+        authenticated_admin_api_client_v3: AsyncClient,
+        zone_request: dict[str, str],
     ) -> None:
-        response = await api_client.post("/api/v3/zones", json=zone_request)
+        response = await authenticated_admin_api_client_v3.post(
+            "/api/v3/zones", json=zone_request
+        )
         assert response.status_code == 422
 
         error_response = ErrorBodyResponse(**response.json())
@@ -215,16 +264,20 @@ class TestZonesApi:
 
     # DELETE /zones/{id}
     async def test_delete_unexisting_resource(
-        self, api_client: AsyncClient
+        self, authenticated_admin_api_client_v3: AsyncClient
     ) -> None:
-        response = await api_client.delete("/api/v3/zones/100")
+        response = await authenticated_admin_api_client_v3.delete(
+            "/api/v3/zones/100"
+        )
         assert response.status_code == 204
 
     async def test_delete_existing_resource(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_admin_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         created_zone = await create_test_zone(fixture)
-        response = await api_client.delete(f"/api/v3/zones/{created_zone.id}")
+        response = await authenticated_admin_api_client_v3.delete(
+            f"/api/v3/zones/{created_zone.id}"
+        )
         assert response.status_code == 204
 
         zones = await fixture.get(
@@ -233,9 +286,11 @@ class TestZonesApi:
         assert zones == []
 
     async def test_delete_default_zone(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_admin_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
-        response = await api_client.delete("/api/v3/zones/1")
+        response = await authenticated_admin_api_client_v3.delete(
+            "/api/v3/zones/1"
+        )
         error_response = ErrorBodyResponse(**response.json())
         assert response.status_code == 400
         assert error_response.code == 400
@@ -246,10 +301,10 @@ class TestZonesApi:
         )
 
     async def test_delete_with_etag(
-        self, api_client: AsyncClient, fixture: Fixture
+        self, authenticated_admin_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         created_zone = await create_test_zone(fixture)
-        failed_response = await api_client.delete(
+        failed_response = await authenticated_admin_api_client_v3.delete(
             f"/api/v3/zones/{created_zone.id}", headers={"if-match": "blabla"}
         )
         assert failed_response.status_code == 412
@@ -260,7 +315,7 @@ class TestZonesApi:
             error_response.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
-        response = await api_client.delete(
+        response = await authenticated_admin_api_client_v3.delete(
             f"/api/v3/zones/{created_zone.id}",
             headers={"if-match": created_zone.etag()},
         )

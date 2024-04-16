@@ -9,11 +9,28 @@ from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasapiserver.v3.api.base import (
+    ApiCommonTests,
+    ApiEndpointsRoles,
+    EndpointDetails,
+)
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
-class TestMachinesApi:
+class TestMachinesApi(ApiCommonTests):
+    def get_endpoints_configuration(self) -> ApiEndpointsRoles:
+        return ApiEndpointsRoles(
+            unauthenticated_endpoints=[],
+            user_endpoints=[
+                EndpointDetails(
+                    method="GET",
+                    path="/api/v3/machines",
+                ),
+            ],
+            admin_endpoints=[],
+        )
+
     def _assert_machine_in_list(
         self, machine: Machine, machines_response: MachinesListResponse
     ) -> None:
@@ -32,7 +49,7 @@ class TestMachinesApi:
     @pytest.mark.parametrize("machines_size", range(0, 10))
     async def test_list_parameters_200(
         self,
-        api_client: AsyncClient,
+        authenticated_user_api_client_v3: AsyncClient,
         fixture: Fixture,
         machines_size: int,
     ) -> None:
@@ -47,7 +64,9 @@ class TestMachinesApi:
             for i in range(0, machines_size)
         ]
 
-        response = await api_client.get("/api/v3/machines")
+        response = await authenticated_user_api_client_v3.get(
+            "/api/v3/machines"
+        )
         assert response.status_code == 200
 
         machines_response = MachinesListResponse(**response.json())
@@ -58,7 +77,7 @@ class TestMachinesApi:
             self._assert_machine_in_list(machine, machines_response)
 
         for page in range(1, machines_size // 2):
-            response = await api_client.get(
+            response = await authenticated_user_api_client_v3.get(
                 f"/api/v3/machines?page={page}&size=2"
             )
             assert response.status_code == 200
@@ -75,9 +94,12 @@ class TestMachinesApi:
         "page,size", [(1, 0), (0, 1), (-1, -1), (1, 1001)]
     )
     async def test_list_422(
-        self, page: int, size: int, api_client: AsyncClient
+        self,
+        page: int,
+        size: int,
+        authenticated_user_api_client_v3: AsyncClient,
     ) -> None:
-        response = await api_client.get(
+        response = await authenticated_user_api_client_v3.get(
             f"/api/v3/machines?page={page}&size={size}"
         )
         assert response.status_code == 422

@@ -7,6 +7,8 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.responses.machines import MachinesListResponse
+from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
@@ -28,6 +30,9 @@ class MachinesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
     )
     async def list_machines(
         self,

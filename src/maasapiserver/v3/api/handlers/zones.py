@@ -18,6 +18,8 @@ from maasapiserver.v3.api.models.responses.zones import (
     ZoneResponse,
     ZonesListResponse,
 )
+from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
@@ -39,6 +41,9 @@ class ZonesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
     )
     async def list_zones(
         self,
@@ -70,6 +75,9 @@ class ZonesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=201,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def create_zone(
         self,
@@ -99,6 +107,9 @@ class ZonesHandler(Handler):
         },
         response_model_exclude_none=True,
         status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
     )
     async def get_zone(
         self,
@@ -126,6 +137,9 @@ class ZonesHandler(Handler):
             404: {"model": NotFoundBodyResponse},
         },
         status_code=204,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def delete_zone(
         self,

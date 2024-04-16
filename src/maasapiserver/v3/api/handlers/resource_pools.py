@@ -17,6 +17,8 @@ from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolResponse,
     ResourcePoolsListResponse,
 )
+from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
@@ -38,6 +40,9 @@ class ResourcePoolHandler(Handler):
         },
         status_code=200,
         response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
     )
     async def list_resource_pools(
         self,
@@ -71,6 +76,9 @@ class ResourcePoolHandler(Handler):
         },
         status_code=201,
         response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def create_resource_pool(
         self,
@@ -102,6 +110,9 @@ class ResourcePoolHandler(Handler):
         },
         status_code=200,
         response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
     )
     async def get_resource_pool(
         self,
@@ -134,6 +145,9 @@ class ResourcePoolHandler(Handler):
         },
         status_code=200,
         response_model_exclude_none=True,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
     )
     async def patch_resource_pool(
         self,
