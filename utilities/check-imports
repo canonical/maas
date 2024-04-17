@@ -298,12 +298,14 @@ RegionControllerRule = Rule(
     Allow("formencode|formencode.**"),
     Allow("google.protobuf|google.protobuf.**"),  # for Temporal
     Allow("hvac|hvac.**"),
+    Allow("jose|jose.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
     Allow("maasapiserver|maasapiserver.**"),
     Allow("maascli.init.**"),
     Allow("maascli.utils.parse_docstring"),
     Allow("maasserver|maasserver.**"),
+    Allow("maastemporalworker.workflow.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("markupsafe|markupsafe.**"),
     Allow("metadataserver|metadataserver.**"),
@@ -330,6 +332,21 @@ RegionControllerRule = Rule(
     Allow(StandardLibraries),
 )
 
+RegionControllerWorker = files("src/maastemporalworker/**/*.py")
+
+RegionControllerWorkerRule = Rule(
+    Allow("aiofiles|aiofiles.**"),
+    Allow("aiohttp|aiohttp.**"),
+    Allow("jose|jose.**"),
+    Allow("maasapiserver.**"),
+    Allow("maasserver.enum.**"),
+    Allow("maasserver.workflow.**"),
+    Allow("maastemporalworker.**"),
+    Allow("netaddr|netaddr.**"),
+    Allow("sqlalchemy|sqlalchemy.**"),
+    Allow("temporalio|temporalio.**"),
+    Allow(StandardLibraries),
+)
 
 Tests = files(
     "src/**/test_*.py",
@@ -505,6 +522,13 @@ checks = [
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
+    ),
+    #
+    # Temporal Worker
+    #
+    (
+        RegionControllerWorker,
+        RegionControllerWorkerRule,
     ),
     #
     # TESTING HELPERS
