@@ -7,6 +7,7 @@ from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.machines import MachinesRepository
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
+from tests.fixtures.factories.node import create_test_region_controller_entry
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -49,3 +50,21 @@ class TestMachinesRepository:
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 assert machine in machines_result.items
+
+    async def test_list_only_machines_nodes_are_returned(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+
+        await create_test_region_controller_entry(fixture)
+        machines_repository = MachinesRepository(db_connection)
+        await create_test_machine(
+            fixture, description="machine", bmc=bmc, user=user
+        )
+
+        machines_result = await machines_repository.list(
+            PaginationParams(size=10, page=1)
+        )
+        assert machines_result.total == 1
+        assert len(machines_result.items) == 1

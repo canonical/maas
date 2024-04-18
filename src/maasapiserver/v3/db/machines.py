@@ -16,6 +16,7 @@ from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.machines import Machine
+from maasserver.enum import NODE_TYPE
 
 
 class MachinesRepository(BaseRepository[Machine, MachineRequest]):
@@ -28,7 +29,11 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
     async def list(
         self, pagination_params: PaginationParams
     ) -> ListResult[Machine]:
-        total_stmt = select(count()).select_from(NodeTable)
+        total_stmt = (
+            select(count())
+            .select_from(NodeTable)
+            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
+        )
         total = (await self.connection.execute(total_stmt)).scalar()
 
         stmt = (
@@ -87,4 +92,5 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
             .join(
                 BMCTable, eq(BMCTable.c.id, NodeTable.c.bmc_id), isouter=True
             )
+            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
         )
