@@ -12,6 +12,7 @@ from maasserver.utils.certificates import (
     generate_ca_certificate,
     generate_certificate,
     get_maas_client_cn,
+    get_ssl_certificate,
 )
 from provisioningserver.certificates import Certificate
 from provisioningserver.utils.testing import MAASUUIDFixture
@@ -98,3 +99,23 @@ class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):
         self._issuer.organizationalUnitName = "not-this-maas"
 
         self.assertFalse(certificate_generated_by_this_maas(self._cert))
+
+
+class TestGetSLLCertificate(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+
+    def test_get_certificate_http(self):
+        (cert, fingerprint) = get_ssl_certificate("http://not.a.site")
+        self.assertIsNone(cert)
+        self.assertEqual("", fingerprint)
+
+    def test_get_certificate(self):
+        # fingerprint will eventually change due to certs changing
+        (cert, _) = get_ssl_certificate("https://launchpad.net")
+        self.assertEqual("launchpad.net", cert.get_subject().CN)
+        self.assertEqual(
+            "R3",
+            cert.get_issuer().CN,
+        )
+        self.assertEqual("Let's Encrypt", cert.get_issuer().O)
