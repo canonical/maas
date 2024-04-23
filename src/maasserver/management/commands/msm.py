@@ -8,8 +8,8 @@ from datetime import datetime
 from ssl import CertificateError
 from urllib.parse import urlparse
 
-from django.core.management.base import BaseCommand
-from jose import jwt
+from django.core.management.base import BaseCommand, CommandError
+from jose import ExpiredSignatureError, JOSEError, jwt
 
 from maascli.init import prompt_yes_no
 from maasserver.msm import msm_enrol, msm_status, msm_withdraw
@@ -23,10 +23,10 @@ class Command(BaseCommand):
     WITHDRAW_COMMAND = "withdraw"
 
     def _withdraw(self, options):
-        msm_withdraw(options["enrolment_token"])
+        msm_withdraw()
 
     def _status(self, options):
-        msm_status(options["enrolment_token"])
+        msm_status()
 
     def _enrol(self, options):
         # We don't know exactly what to expect from these claims, so don't verify them
@@ -37,12 +37,17 @@ class Command(BaseCommand):
             "verify_iss": False,
         }
         enrolment_token = options["enrolment_token"]
-        decoded = jwt.decode(
-            enrolment_token,
-            "",
-            algorithms=["HS256"],
-            options=decode_opts,
-        )
+        try:
+            decoded = jwt.decode(
+                enrolment_token,
+                "",
+                algorithms=["HS256"],
+                options=decode_opts,
+            )
+        except ExpiredSignatureError:
+            raise CommandError("Enrolment token is expired.")
+        except JOSEError:
+            raise CommandError("Invalid enrolment token.")
         # strip the path
         enrolment_url = decoded["enrolment-url"]
         parsed = urlparse(enrolment_url)
@@ -82,34 +87,16 @@ class Command(BaseCommand):
             ),
         )
 
-        status_subparser = subparsers.add_parser(
+        subparsers.add_parser(
             self.STATUS_COMMAND,
             help="Check the status of enrolment with a Site Manager instance.",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
-        status_subparser.add_argument(
-            "enrolment_token",
-            metavar="enrolment-token",
-            help=(
-                "A token to authenticate with the MAAS Site Manager. "
-                "It can be generated in the settings/tokens page of the "
-                "MAAS Site Manager"
-            ),
-        )
 
-        withdraw_subparser = subparsers.add_parser(
+        subparsers.add_parser(
             self.WITHDRAW_COMMAND,
             help="Withdraw an enrolment request with a Site Manager instance.",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        )
-        withdraw_subparser.add_argument(
-            "enrolment_token",
-            metavar="enrolment-token",
-            help=(
-                "A token to authenticate with the MAAS Site Manager. "
-                "It can be generated in the settings/tokens page of the "
-                "MAAS Site Manager"
-            ),
         )
 
     def handle(self, *args, **options):

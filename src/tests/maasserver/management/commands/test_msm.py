@@ -1,4 +1,4 @@
-from jose.exceptions import ExpiredSignatureError
+from django.core.management.base import CommandError
 import pytest
 
 import maasserver.management
@@ -79,5 +79,11 @@ class TestMSM:
 
     def test_enrol_expired_token(self, mocker, msm_mock):
         opts = self._configure_kwargs()
-        with pytest.raises(ExpiredSignatureError):
+        with pytest.raises(CommandError, match="Enrolment token is expired"):
+            Command().handle(**opts)
+
+    def test_bogus_token(self, mocker, msm_mock):
+        opts = self._configure_kwargs()
+        opts["enrolment_token"] = "not.a.token"
+        with pytest.raises(CommandError, match="Invalid enrolment token"):
             Command().handle(**opts)
