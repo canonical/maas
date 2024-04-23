@@ -1,0 +1,40 @@
+---
+title: Deploy Workflow (Bulk DB Operations)
+---
+flowchart TD
+    A[1 or more ready machines] -->|User selects machines for deployment| B(Input deploy parameters)
+    B--> C{Validate inputs and permissions}
+    C-->|Invalid| D[error end]
+    C-->|Valid| E{Set Deploy Parameters}
+    E-->|Conflict| F[error end]
+    E-->|Success| G(DeployN Workflow Starts)
+    G-->H(Fetch all power parameters)
+    H--> I(DeployWorkflow execution starts for each machine)
+    I-->J(Power on/cycle)
+    J-->K{Wait for DHCP Lease}
+    K-->|Timeout| J
+    K-->|Success| L{Wait for boot assets}
+    L-->|Timeout| J
+    L-->|Success| M{Is Ephemeral Deployment?}
+    M-->|Yes| U
+    M-->|No| N{Wait for curtin start}
+    N-->|Timeout| J
+    N-->|Success| O{Wait for curtin finish}
+    O-->|Timeout| J
+    O-->|Success| P{Can set boot order?}
+    P-->|Yes| Q(Set Boot Order to disk)
+    P-->|No| R(Power Cycle)
+    Q-->U
+    R-->S{Wait for DHCP Lease}
+    S-->|Timeout| R
+    S-->|Success| T{Wait for TFTP ACK}
+    T-->|Timeout| R
+    T-->|Success| U{Wait for cloud-init start}
+    U-->|Timeout| R
+    U-->|Success| V{Wait for cloud-init finish}
+    V-->|Timeout| R
+    V-->|Success| W{Deploy workflow finishes}
+    W-->|Error| X(Set Node status 'deployment failed')
+    W-->|Success| Y(Set Node status 'deployed')
+    X-->Z[end]
+    Y-->Z
