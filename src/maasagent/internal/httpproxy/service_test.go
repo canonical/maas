@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/rs/zerolog"
@@ -77,4 +78,33 @@ func TestConfigurationWorkflow(t *testing.T) {
 			assert.Equal(t, []byte("hello world"), body)
 		})
 	}
+}
+
+func TestConfigurationWorkflowWithUnreachableEndpoint(t *testing.T) {
+	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache())
+
+	nonExistingEndpoint, err := url.Parse("http://maas.invalid:5240")
+	assert.NoError(t, err)
+
+	wfTestSuite := testsuite.WorkflowTestSuite{}
+
+	logger := log.NewZerologAdapter(zerolog.Nop())
+
+	wfTestSuite.SetLogger(logger)
+
+	env := wfTestSuite.NewTestWorkflowEnvironment()
+
+	env.RegisterActivityWithOptions(getRegionEndpointsActivity, activity.RegisterOptions{
+		Name: "get-region-controller-endpoints",
+	})
+
+	env.OnActivity("get-region-controller-endpoints", mock.Anything,
+		mock.Anything).Return(
+		getRegionEndpointsResult{Endpoints: []string{
+			nonExistingEndpoint.String(),
+		}}, nil)
+
+	env.ExecuteWorkflow(svc.Configure, t.Name())
+	assert.Error(t, env.GetWorkflowError())
+	assert.ErrorContains(t, env.GetWorkflowError(), "targets cannot be empty")
 }
