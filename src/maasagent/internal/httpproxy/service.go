@@ -105,29 +105,66 @@ func (s *HTTPProxyService) Configure(ctx tworkflow.Context, systemID string) err
 
 	var endpointsResult getRegionEndpointsResult
 
-	err := tworkflow.ExecuteActivity(
+	if err := tworkflow.ExecuteActivity(
 		tworkflow.WithActivityOptions(ctx,
 			tworkflow.ActivityOptions{
 				TaskQueue:              "region",
 				ScheduleToCloseTimeout: 60 * time.Second,
 			}),
 		"get-region-controller-endpoints").
-		Get(ctx, &endpointsResult)
-	if err != nil {
+		Get(ctx, &endpointsResult); err != nil {
 		return err
 	}
 
-	var u *url.URL
+	var targets []*url.URL
 
-	targets := make([]*url.URL, len(endpointsResult.Endpoints))
-	for i := 0; i < len(targets); i++ {
-		u, err = url.Parse(endpointsResult.Endpoints[i])
+	counter := len(endpointsResult.Endpoints)
+
+	for _, endpoint := range endpointsResult.Endpoints {
+		u, err := url.Parse(endpoint)
+		// Normally this error should not happen, as we should always receive
+		// valid endpoint from the Region Controller
 		if err != nil {
-			return err
+			log.Warn("Invalid endpoint", tag.Builder().
+				KV("endpoint", endpoint).
+				KV("error", err))
 		}
 
-		targets[i] = u
+		tworkflow.Go(ctx, func(_ tworkflow.Context) {
+			defer func() {
+				counter--
+			}()
+			// We might receive endpoints that we cannot reach, so before applying
+			// proxy settings we need to check which are actually reachable.
+			// Temporal has deadlock detection functionality and normally you should
+			// not do any I/O inside the workflow, but keeping blocking I/O under
+			// 1 second should work. Also we know what we are doing here and this
+			// workflow will never be executed on a different worker.
+			conn, err := net.DialTimeout("tcp", u.Host, 500*time.Millisecond)
+			if err != nil {
+				return
+			}
+
+			// Because only one coroutine runs at a time in a workflow it is safe
+			// to append items to a slice.
+			// https://community.temporal.io/t/is-workflow-go-safe-for-concurrency/6722
+			targets = append(targets, u)
+
+			err = conn.Close()
+			if err != nil {
+				// We cannot do anything here and this is not critical, but not good.
+				// So we just log it as a Warning.
+				log.Warn("Failed to close connection", tag.Builder().KV("error", err))
+			}
+		})
 	}
+
+	// Wait for workflow Goroutines to complete. Await blocks until the condition
+	// function returns true. The function is evaluated on every workflow state change.
+	//nolint:errcheck // nothing to check here
+	_ = tworkflow.Await(ctx, func() bool { return counter == 0 })
+
+	var err error
 
 	s.proxy, err = NewProxy(targets,
 		WithRewriter(NewRewriter(rewriteRules)),
