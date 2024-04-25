@@ -226,7 +226,6 @@ class DomainConfigBase:
                     uid=os.getuid(),
                     gid=os.getgid(),
                 )
-        pass
 
 
 class DNSForwardZoneConfig(DomainConfigBase):
