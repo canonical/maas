@@ -34,6 +34,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import get_one, reload_object
 from maastesting.testcase import MAASTestCase
+from metadataserver.builtin_scripts import hooks
 from metadataserver.builtin_scripts import network as network_module
 from metadataserver.builtin_scripts.network import (
     _hardware_sync_network_device_notify,
@@ -66,19 +67,21 @@ class UpdateInterfacesMixin:
         data,
         passes=None,
     ):
-        from metadataserver.builtin_scripts.hooks import process_lxd_results
-
         data = data.render(include_extra=node.is_controller)
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
             passes = random.randint(1, 2)
         for _ in range(passes):
-            process_lxd_results(node, json.dumps(data).encode(), 0)
+            hooks.process_lxd_results(node, json.dumps(data).encode(), 0)
         return passes
 
 
 class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
+    def setUp(self):
+        super().setUp()
+        self.patch(hooks, "start_workflow")
+
     def test_create_interface_default_numanode(self):
         node = factory.make_Machine()
         data = FakeCommissioningData()
@@ -2422,6 +2425,10 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin
 ):
+    def setUp(self):
+        super().setUp()
+        self.patch(hooks, "start_workflow")
+
     def test_seen_on_second_controller(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
@@ -2716,6 +2723,10 @@ class BaseUpdateInterfacesAcquire(UpdateInterfacesMixin):
 class TestUpdateInterfacesAcquiredNonDeployedNode(
     MAASServerTestCase, BaseUpdateInterfacesAcquire
 ):
+    def setUp(self):
+        super().setUp()
+        self.patch(hooks, "start_workflow")
+
     def create_empty_node(self):
         return factory.make_Machine(
             status=factory.pick_choice(
@@ -2744,6 +2755,10 @@ class TestUpdateInterfacesAcquiredNonDeployedNode(
 class TestUpdateInterfacesAcquiredDeployedNode(
     MAASServerTestCase, BaseUpdateInterfacesAcquire
 ):
+    def setUp(self):
+        super().setUp()
+        self.patch(hooks, "start_workflow")
+
     def create_empty_node(self):
         return factory.make_Machine(status=NODE_STATUS.DEPLOYED)
 

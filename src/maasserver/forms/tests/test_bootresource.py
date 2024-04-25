@@ -10,7 +10,12 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm, get_uploaded_filename
-from maasserver.models import BootResource, BootResourceFile, Config
+from maasserver.models import (
+    BootResource,
+    BootResourceFile,
+    bootresourcefile,
+    Config,
+)
 from maasserver.models.signals import bootsources
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -30,6 +35,7 @@ class TestBootResourceForm(MAASServerTestCase):
         bootsources.signals.disable()
         self.region = factory.make_RegionController()
         MAAS_ID.set(self.region.system_id)
+        self.patch(bootresourcefile, "execute_workflow")
 
     def pick_filetype(self):
         filetypes = {

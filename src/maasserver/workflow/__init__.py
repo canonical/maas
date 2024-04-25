@@ -24,7 +24,7 @@ def temporal_wrapper(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             run = func(*args, **kwargs)
             if asyncio.iscoroutine(run):
                 task = loop.create_task(run)

@@ -42,6 +42,7 @@ from maasserver.import_images.product_mapping import ProductMapping
 from maasserver.listener import PostgresListenerService
 from maasserver.models import (
     BootResource,
+    bootresourcefile,
     BootResourceFile,
     BootResourceSet,
     BootSource,
@@ -527,6 +528,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         super().setUp()
         self.region = factory.make_RegionController()
         MAAS_ID.set(self.region.system_id)
+        self.patch(bootresourcefile, "execute_workflow")
 
     def test_insert_does_nothing_if_file_already_synced(self):
         _, _, product = make_product()

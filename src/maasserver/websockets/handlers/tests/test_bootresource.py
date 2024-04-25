@@ -18,7 +18,12 @@ from maasserver.import_images.testing.factory import (
     make_image_spec,
     set_resource,
 )
-from maasserver.models import BootResource, BootSourceSelection, Config
+from maasserver.models import (
+    BootResource,
+    bootresourcefile,
+    BootSourceSelection,
+    Config,
+)
 from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.testing.factory import factory
@@ -1414,6 +1419,10 @@ class TestBootResourceFetch(MAASServerTestCase):
 
 
 class TestBootResourceDeleteImage(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(bootresourcefile, "execute_workflow")
+
     def test_asserts_is_admin(self):
         owner = factory.make_User()
         handler = BootResourceHandler(owner, {}, None)
