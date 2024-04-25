@@ -23,6 +23,7 @@ from maasserver.region_controller import (
     RegionControllerService,
 )
 from maasserver.secrets import SecretManager
+from maasserver.service_monitor import service_monitor
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -325,6 +326,28 @@ class TestRegionControllerService(MAASServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_process_waits_for_in_progress_update_for_dns_failure_restart(
+        self,
+    ):
+        service = self.make_service(sentinel.listener, sentinel.dbtasks)
+        service.needsDNSUpdate = True
+        mock_kill_service = self.patch(service_monitor, "killService")
+        self.patch(region_controller, "dns_update_all_zones")
+
+        def set_in_progress(*args):
+            service._dns_update_in_progress = True
+
+        self.patch(
+            region_controller, "_clear_dynamic_dns_update"
+        ).side_effect = set_in_progress
+        mock_dns_check_serial = self.patch(region_controller, "_checkSerial")
+        mock_dns_check_serial.side_effect = fail(DNSReloadError())
+        service.startProcessing()
+        yield service.processingDefer
+        mock_kill_service.assert_not_called()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_process_updates_proxy_logs_failure(self):
         service = self.make_service(sentinel.listener, sentinel.dbtasks)
         service.needsProxyUpdate = True
@@ -482,6 +505,38 @@ class TestRegionControllerService(MAASServerTestCase):
         # Error should not be raised.
         with self.assertRaises(DNSReloadError):
             yield service._checkSerial((formatted_serial, True, dns_names))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_check_serial_returns_early_if_newer_serial_exists(self):
+        service = self.make_service(sentinel.listern, sentinel.dbtasks)
+        first_serial = random.randint(1, 1000)
+        second_serial = first_serial + 1
+        formatted_first_serial = f"{first_serial:10d}"
+        formatted_second_serial = f"{second_serial:10d}"
+        dns_names = [factory.make_name("domain") for _ in range(3)]
+        mock_lookup = self.patch(service.dnsResolver, "lookupAuthority")
+        mock_lookup.side_effect = [
+            # First pass no results.
+            succeed(([], [], [])),
+            succeed(([], [], [])),
+            succeed(([], [], [])),
+            # First domain valid result.
+            succeed(([self.make_soa_result(first_serial)], [], [])),
+            succeed(([], [], [])),
+            succeed(([], [], [])),
+            # Second domain wrong serial.
+            succeed(([self.make_soa_result(first_serial)], [], [])),
+            succeed(([], [], [])),
+            # Third domain correct serial.
+            succeed(([], [], [])),
+            succeed(([self.make_soa_result(second_serial)], [], [])),
+            # Second domain correct serial.
+            succeed(([self.make_soa_result(second_serial)], [], [])),
+        ]
+        d = service._checkSerial((formatted_first_serial, True, dns_names))
+        service._dns_latest_serial = formatted_second_serial
+        yield d
 
     def test_getRBACClient_returns_None_when_no_url(self):
         service = self.make_service(sentinel.listener, sentinel.dbtasks)

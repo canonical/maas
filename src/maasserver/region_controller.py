@@ -329,10 +329,6 @@ class RegionControllerService(Service):
             return None
         serial, reloaded, domain_names = result
 
-        # check that there is not a newer serial we should query instead
-        if self._dns_latest_serial and self._dns_latest_serial > serial:
-            return result
-
         if not reloaded:
             raise DNSReloadError(
                 "Failed to reload DNS; timeout or rdnc command failed."
@@ -340,6 +336,10 @@ class RegionControllerService(Service):
         not_matching_domains = set(domain_names)
         loop = 0
         while len(not_matching_domains) > 0 and loop != 30:
+            # check that there is not a newer serial we should query instead
+            if self._dns_latest_serial and self._dns_latest_serial > serial:
+                return result
+
             for domain in list(not_matching_domains):
                 try:
                     answers, _, _ = yield self.dnsResolver.lookupAuthority(
@@ -401,7 +401,7 @@ class RegionControllerService(Service):
     def _onDNSReloadFailure(self, failure):
         """Force kill and restart bind9."""
         failure.trap(DNSReloadError)
-        if not self.retryOnFailure:
+        if not self.retryOnFailure or self._dns_update_in_progress:
             return failure
         log.err(failure, "Failed configuring DNS; killing and restarting")
         d = service_monitor.killService("bind9")
