@@ -109,3 +109,13 @@ async def cancel_workflow(workflow_id: str) -> bool:
         return True
     except RPCError:
         return False
+
+
+@temporal_wrapper
+async def query_workflow(workflow_id: str, query_id: str) -> Any:
+    temporal_client = await get_client_async()
+    hdl = temporal_client.get_workflow_handle(workflow_id=workflow_id)
+    try:
+        return await hdl.query(query_id)
+    except RPCError:
+        return None

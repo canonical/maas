@@ -14,6 +14,7 @@ from jose import ExpiredSignatureError, JOSEError, jwt
 from maascli.init import prompt_yes_no
 from maasserver.msm import msm_enrol, msm_status, msm_withdraw
 from maasserver.utils.certificates import get_ssl_certificate
+from maasserver.utils.orm import with_connection
 
 
 class Command(BaseCommand):
@@ -26,8 +27,9 @@ class Command(BaseCommand):
         msm_withdraw()
 
     def _status(self, options):
-        msm_status()
+        print(msm_status())
 
+    @with_connection
     def _enrol(self, options):
         # We don't know exactly what to expect from these claims, so don't verify them
         decode_opts = {
@@ -55,7 +57,12 @@ class Command(BaseCommand):
         msg = get_cert_verify_msg(base_url)
         if not prompt_yes_no(msg):
             return
-        msm_enrol(options["enrolment_token"], metainfo=options["config_file"])
+        try:
+            msm_enrol(
+                options["enrolment_token"], metainfo=options["config_file"]
+            )
+        except Exception as ex:
+            raise CommandError(str(ex)) from None
 
     def add_arguments(self, parser):
         subparsers = parser.add_subparsers(dest="command")

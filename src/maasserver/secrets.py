@@ -54,13 +54,14 @@ MODEL_SECRETS = {
 
 GLOBAL_SECRETS = frozenset(
     [
+        "cluster-certificate",
         "external-auth",
         "ipmi-k_g-key",
+        "maas-ca-certificate",
         "macaroon-key",
+        "msm-connector",
         "omapi-key",
         "rpc-shared",
-        "maas-ca-certificate",
-        "cluster-certificate",
         "tls",
         "vcenter-password",
     ]
