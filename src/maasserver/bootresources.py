@@ -1272,13 +1272,12 @@ def export_images_from_db(region: RegionController, target_dir: Path):
                 )
 
             total_size = file.largefile.total_size
-            if file.largefile.size != total_size:
-                msg(f"skipping, size is {file.largefile.size} of {total_size}")
-                oids_to_delete.add(file.largefile.content.oid)
-                continue
-
             if lfile.valid:
                 msg("skipping, file already present")
+                set_sync_status()
+            elif file.largefile.size != total_size:
+                # we need to download this again
+                msg(f"ignoring, size is {file.largefile.size} of {total_size}")
             else:
                 lfile.unlink()
                 msg("writing")
@@ -1287,10 +1286,9 @@ def export_images_from_db(region: RegionController, target_dir: Path):
                     lfile.store() as dfd,
                 ):
                     shutil.copyfileobj(sfd, dfd)
-                    oids_to_delete.add(file.largefile.content.oid)
+                set_sync_status()
 
-            set_sync_status()
-
+            oids_to_delete.add(file.largefile.content.oid)
             largefile_ids_to_delete.add(file.largefile_id)
             # need to unset it because the post-delete signal will otherwise
             # try to delete the largefile object, which is already handled

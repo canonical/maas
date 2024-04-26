@@ -196,6 +196,34 @@ class TestExportImagesFromDB:
             cursor.execute("SELECT loid FROM pg_largeobject")
             assert cursor.fetchall() == []
 
+    def test_partial_largfile(self, controller, image_store_dir, factory):
+        resource = factory.make_BootResource(
+            name="ubuntu/jammy",
+            architecture="s390x/generic",
+        )
+        resource_set = factory.make_BootResourceSet(
+            resource=resource,
+            version="20230901",
+            label="stable",
+        )
+        resource_file = make_boot_resource_file_with_content_largefile(
+            factory,
+            resource_set=resource_set,
+            filename="boot-initrd",
+            content=b"some content",
+        )
+        largefile = resource_file.largefile
+        largefile.size = 0
+        largefile.save()
+
+        export_images_from_db(controller, image_store_dir)
+
+        assert reload_object(largefile) is None
+        # largeobject also gets deleted
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT loid FROM pg_largeobject")
+            assert cursor.fetchall() == []
+
     def test_no_largefile_ignore(self, controller, image_store_dir, factory):
         resource = factory.make_BootResource(
             name="ubuntu/jammy",
