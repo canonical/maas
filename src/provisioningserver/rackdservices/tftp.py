@@ -315,6 +315,16 @@ class TFTPBackend(FilesystemSynchronousBackend):
         )
         resp = yield self._cache_proxy.request(b"GET", url)
         if resp.code != 200:
+            # legacy BIOS mode is expecting to get `TFTP file not found error`
+            # for any `pxelinux.cfg/` that do not exist.
+            if str(file_name, encoding="utf-8").startswith("pxelinux.cfg"):
+                raise FileNotFound(file_name)
+            # However for anything else (at least for GRUB) things like
+            # - command.lst
+            # - fs.lst
+            # - crypto.lst
+            # - terminal.lst
+            # Are expected to be 0-sized with no error.
             return BytesReader(bytes())
         body = yield readBody(resp)
         return BytesReader(body)

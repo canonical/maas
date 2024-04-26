@@ -684,6 +684,23 @@ class TestTFTPBackend(MAASTestCase):
         result = yield backend.get_cache_reader(f"/grub/{filename}")
         self.assertEqual(result.read(0), b"")
 
+    @inlineCallbacks
+    def test_get_cache_reader_file_not_found_for_pxelinuxcfg(self):
+        params_okay = {
+            name.decode("ascii"): factory.make_name("value")
+            for name, _ in GetBootConfig.arguments
+        }
+        client = Mock()
+        client.localIdent = params_okay["system_id"]
+        client_service = Mock()
+        client_service.getClientNow.return_value = succeed(client)
+        backend = TFTPBackend(self.make_dir(), client_service)
+        backend._cache_proxy = Mock()
+        filename = "pxelinux.cfg/0D0001BE"
+
+        with self.assertRaisesRegex(FileNotFound, rf"{filename}"):
+            yield backend.get_cache_reader(f"{filename}")
+
 
 class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):
