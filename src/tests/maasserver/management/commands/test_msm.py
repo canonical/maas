@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+import io
 
 from django.core.management.base import CommandError
 import pytest
@@ -28,6 +29,20 @@ SAMPLE_JWT_PAYLOAD = {
     "enrolment-url": "https://msm/site/v1/enroll",
 }
 
+YAML_CONFIG = """
+metadata:
+  latitude: 40.05275079137782
+  longitude: -107.17401328725524
+  note: 'super awesome site'
+  country: US
+  city: Town
+  state: AK
+  address: 123 Fake St.
+  postal_code: '80205'
+  timezone: US/Denver
+alias: test_machine
+"""
+
 
 @pytest.fixture
 def msm_mock(mocker):
@@ -43,7 +58,9 @@ class TestMSM:
         return {
             "command": command,
             "enrolment_token": token,
-            "config_file": "",
+            "config_file": io.TextIOWrapper(
+                io.BytesIO(YAML_CONFIG.encode("utf-8")), encoding="utf-8"
+            ),
         }
 
     def test_enrol_no(self, mocker, msm_mock):
@@ -59,7 +76,7 @@ class TestMSM:
         opts = self._configure_kwargs()
         msm.Command().handle(**opts)
         msm_mock.assert_called_once_with(
-            opts["enrolment_token"], metainfo=opts["config_file"]
+            opts["enrolment_token"], metainfo=YAML_CONFIG
         )
 
     def test_enrol_expired_token(self, msm_mock):
@@ -71,4 +88,52 @@ class TestMSM:
         opts = self._configure_kwargs()
         opts["enrolment_token"] = "not.a.token"
         with pytest.raises(CommandError, match="Invalid enrolment token"):
+            msm.Command().handle(**opts)
+
+    def test_enrol_extra_field(self, mocker, msm_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=False)
+        opts = self._configure_kwargs()
+        new_cfg = YAML_CONFIG + "extra: 'field'"
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(new_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(CommandError, match="Invalid config file"):
+            msm.Command().handle(**opts)
+
+    def test_enrol_config_missing_header(self, mocker, msm_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=False)
+        opts = self._configure_kwargs()
+        # remove the first line from the config file
+        bad_cfg = "\n".join(YAML_CONFIG.split("\n")[2:])
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(bad_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(CommandError, match="Invalid config file"):
+            msm.Command().handle(**opts)
+
+    def test_enrol_bad_config_format(self, mocker, msm_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=False)
+        opts = self._configure_kwargs()
+        # remove the value from the last entry in the config file
+        bad_cfg = ":".join(YAML_CONFIG.split(":")[:-1]) + ":"
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(bad_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(CommandError, match="Invalid config file"):
+            msm.Command().handle(**opts)
+
+    def test_enrol_wrong_config_type(self, mocker, msm_mock):
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        mocker.patch.object(msm, "prompt_yes_no", return_value=False)
+        opts = self._configure_kwargs()
+        bad_cfg = YAML_CONFIG.replace(
+            "40.05275079137782", "'40.05275079137782'"
+        )
+        opts["config_file"] = io.TextIOWrapper(
+            io.BytesIO(bad_cfg.encode("utf-8")), encoding="utf-8"
+        )
+        with pytest.raises(CommandError, match="Invalid config file"):
             msm.Command().handle(**opts)

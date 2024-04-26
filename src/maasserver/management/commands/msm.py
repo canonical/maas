@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 
 from django.core.management.base import BaseCommand, CommandError
 from jose import ExpiredSignatureError, JOSEError, jwt
+from jsonschema import validate, ValidationError
+import yaml
 
 from maascli.init import prompt_yes_no
 from maasserver.msm import msm_enrol, msm_status, msm_withdraw
@@ -22,6 +24,29 @@ class Command(BaseCommand):
     ENROL_COMMAND = "enrol"
     STATUS_COMMAND = "status"
     WITHDRAW_COMMAND = "withdraw"
+    CFG_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "metadata": {
+                "type": "object",
+                "properties": {
+                    "latitude": {"type": "number"},
+                    "longitude": {"type": "number"},
+                    "country": {"type": "string"},
+                    "note": {"type": "string"},
+                    "city": {"type": "string"},
+                    "state": {"type": "string"},
+                    "address": {"type": "string"},
+                    "postal_code": {"type": "string"},
+                    "timezone": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+            "alias": {"type": "string"},
+        },
+        "required": ["metadata"],
+        "additionalProperties": False,
+    }
 
     def _withdraw(self, options):
         msm_withdraw()
@@ -39,6 +64,8 @@ class Command(BaseCommand):
             "verify_iss": False,
         }
         enrolment_token = options["enrolment_token"]
+        config = options["config_file"].read()
+        options["config_file"].close()
         try:
             decoded = jwt.decode(
                 enrolment_token,
@@ -50,6 +77,16 @@ class Command(BaseCommand):
             raise CommandError("Enrolment token is expired.")
         except JOSEError:
             raise CommandError("Invalid enrolment token.")
+        # validate the yaml config
+        try:
+            cfg = yaml.safe_load(config)
+            validate(cfg, self.CFG_SCHEMA)
+        except ValidationError as e:
+            raise CommandError(f"Invalid config file: {e.message}")
+        except yaml.error.MarkedYAMLError as e:
+            raise CommandError(
+                f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
+            )
         # strip the path
         enrolment_url = decoded["enrolment-url"]
         parsed = urlparse(enrolment_url)
@@ -58,9 +95,7 @@ class Command(BaseCommand):
         if not prompt_yes_no(msg):
             return
         try:
-            msm_enrol(
-                options["enrolment_token"], metainfo=options["config_file"]
-            )
+            msm_enrol(options["enrolment_token"], metainfo=config)
         except Exception as ex:
             raise CommandError(str(ex)) from None
 
