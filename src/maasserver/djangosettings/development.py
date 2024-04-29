@@ -109,7 +109,10 @@ if prevent_migrations:
 else:
     MIGRATION_MODULES["maastesting"] = "maastesting.migrations"
 
-PASSWORD_HASHERS = ("django.contrib.auth.hashers.MD5PasswordHasher",)
+PASSWORD_HASHERS = (
+    "django.contrib.auth.hashers.MD5PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+)
 
 # This tells django-nose to load the given Nose plugins.
 NOSE_PLUGINS = [
