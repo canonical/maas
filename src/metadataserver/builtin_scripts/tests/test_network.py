@@ -87,7 +87,9 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         eth0 = node.current_config.interface_set.get(name="eth0")
         self.assertEqual(eth0.numa_node, node.default_numanode)
 
-    def test_dont_create_default_vlan_for_deployed_machines(self):
+    def test_dont_create_default_vlan_for_missing_links_deployed_machines(
+        self,
+    ):
         node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
         data = FakeCommissioningData()
         data_eth0 = data.create_physical_network(
@@ -100,6 +102,174 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="eth0", node_config=node.current_config
         )
         self.assertIsNone(eth0.vlan)
+
+    def test_vlan_interfaces_with_known_link_deployed_machine(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        vlan123 = factory.make_VLAN(vid=123)
+        vlan456 = factory.make_VLAN(vid=456, fabric=vlan123.fabric)
+        factory.make_Subnet(cidr="10.10.10.0/24", vlan=vlan123)
+        factory.make_Subnet(cidr="10.10.20.0/24", vlan=vlan456)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        vlan_network123 = data.create_vlan_network(
+            "eth0.123", parent=data_eth0, vid=123
+        )
+        vlan_network123.addresses = [LXDAddress("10.10.10.10", 24)]
+        vlan_network456 = data.create_vlan_network(
+            "eth0.456", parent=data_eth0, vid=456
+        )
+        vlan_network456.addresses = [LXDAddress("10.10.20.10", 24)]
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        eth0_vlan123 = Interface.objects.get(
+            name="eth0.123", node_config=node.current_config
+        )
+        eth0_vlan456 = Interface.objects.get(
+            name="eth0.456", node_config=node.current_config
+        )
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan123.type)
+        self.assertEqual(123, eth0_vlan123.vlan.vid)
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan456.type)
+        self.assertEqual(456, eth0_vlan456.vlan.vid)
+        self.assertEqual(
+            eth0_vlan123.vlan.fabric_id, eth0_vlan456.vlan.fabric_id
+        )
+        self.assertIsNotNone(eth0.vlan_id)
+        self.assertNotIn(
+            eth0.vlan_id, [eth0_vlan456.vlan_id, eth0_vlan123.vlan_id]
+        )
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan123.vlan.fabric_id)
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan456.vlan.fabric_id)
+
+    def test_vlan_interfaces_with_new_known_link_deployed_machine(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        vlan456 = factory.make_VLAN(vid=456)
+        factory.make_Subnet(cidr="10.10.20.0/24", vlan=vlan456)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        vlan_network123 = data.create_vlan_network(
+            "eth0.123", parent=data_eth0, vid=123
+        )
+        vlan_network123.addresses = [LXDAddress("10.10.10.10", 24)]
+        vlan_network456 = data.create_vlan_network(
+            "eth0.456", parent=data_eth0, vid=456
+        )
+        vlan_network456.addresses = [LXDAddress("10.10.20.10", 24)]
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        eth0_vlan123 = Interface.objects.get(
+            name="eth0.123", node_config=node.current_config
+        )
+        eth0_vlan456 = Interface.objects.get(
+            name="eth0.456", node_config=node.current_config
+        )
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan123.type)
+        self.assertEqual(123, eth0_vlan123.vlan.vid)
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan456.type)
+        self.assertEqual(456, eth0_vlan456.vlan.vid)
+        self.assertEqual(
+            eth0_vlan123.vlan.fabric_id, eth0_vlan456.vlan.fabric_id
+        )
+        self.assertIsNotNone(eth0.vlan_id)
+        self.assertNotIn(
+            eth0.vlan_id, [eth0_vlan456.vlan_id, eth0_vlan123.vlan_id]
+        )
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan123.vlan.fabric_id)
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan456.vlan.fabric_id)
+
+    def test_vlan_interfaces_with_new_unknown_link_deployed_machine(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        vlan123 = factory.make_VLAN(vid=123)
+        factory.make_Subnet(cidr="10.10.10.0/24", vlan=vlan123)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        vlan_network123 = data.create_vlan_network(
+            "eth0.123", parent=data_eth0, vid=123
+        )
+        vlan_network123.addresses = [LXDAddress("10.10.10.10", 24)]
+        vlan_network456 = data.create_vlan_network(
+            "eth0.456", parent=data_eth0, vid=456
+        )
+        vlan_network456.addresses = [LXDAddress("10.10.20.10", 24)]
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        eth0_vlan123 = Interface.objects.get(
+            name="eth0.123", node_config=node.current_config
+        )
+        eth0_vlan456 = Interface.objects.get(
+            name="eth0.456", node_config=node.current_config
+        )
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan123.type)
+        self.assertEqual(123, eth0_vlan123.vlan.vid)
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan456.type)
+        self.assertEqual(456, eth0_vlan456.vlan.vid)
+        self.assertEqual(
+            eth0_vlan123.vlan.fabric_id, eth0_vlan456.vlan.fabric_id
+        )
+        self.assertIsNotNone(eth0.vlan_id)
+        self.assertNotIn(
+            eth0.vlan_id, [eth0_vlan456.vlan_id, eth0_vlan123.vlan_id]
+        )
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan123.vlan.fabric_id)
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan456.vlan.fabric_id)
+
+    def test_vlan_interfaces_with_unknown_link_deployed_machine(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        data = FakeCommissioningData()
+        data_eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        data_eth0.state = "up"
+        vlan_network123 = data.create_vlan_network(
+            "eth0.123", parent=data_eth0, vid=123
+        )
+        vlan_network123.addresses = [LXDAddress("10.10.10.10", 24)]
+        vlan_network456 = data.create_vlan_network(
+            "eth0.456", parent=data_eth0, vid=456
+        )
+        vlan_network456.addresses = [LXDAddress("10.10.20.10", 24)]
+        self.update_interfaces(node, data)
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=node.current_config
+        )
+        eth0_vlan123 = Interface.objects.get(
+            name="eth0.123", node_config=node.current_config
+        )
+        eth0_vlan456 = Interface.objects.get(
+            name="eth0.456", node_config=node.current_config
+        )
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan123.type)
+        self.assertEqual(123, eth0_vlan123.vlan.vid)
+        self.assertEqual(INTERFACE_TYPE.VLAN, eth0_vlan456.type)
+        self.assertEqual(456, eth0_vlan456.vlan.vid)
+        self.assertEqual(
+            eth0_vlan123.vlan.fabric_id, eth0_vlan456.vlan.fabric_id
+        )
+        self.assertIsNotNone(eth0.vlan_id)
+        self.assertNotIn(
+            eth0.vlan_id, [eth0_vlan456.vlan_id, eth0_vlan123.vlan_id]
+        )
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan123.vlan.fabric_id)
+        self.assertEqual(eth0.vlan.fabric_id, eth0_vlan456.vlan.fabric_id)
 
     def test_dont_create_default_vlan_if_disabled(self):
         Config.objects.set_config(name="auto_vlan_creation", value=False)
@@ -138,9 +308,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual("11:11:11:11:11:11", eth0.mac_address)
         self.assertTrue(eth0.enabled)
         self.assertTrue(eth0.link_connected)
-        self.assertEqual(
-            Fabric.objects.get_default_fabric().get_default_vlan(), eth0.vlan
-        )
+        self.assertIsNone(eth0.vlan)
         self.assertEqual([], list(eth0.parents.all()))
         eth1 = PhysicalInterface.objects.get(
             name="eth1", node_config=controller.current_config
@@ -547,10 +715,9 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="eth0", node_config=controller.current_config
         )
 
-        default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertEqual(INTERFACE_TYPE.PHYSICAL, eth0.type)
         self.assertEqual("11:11:11:11:11:11", eth0.mac_address)
-        self.assertEqual(default_vlan, eth0.vlan)
+        self.assertIsNone(eth0.vlan)
         self.assertTrue(eth0.enabled)
 
         eth0_addresses = list(eth0.ip_addresses.all())
@@ -1103,12 +1270,12 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             maaslog.method_calls,
             [
                 call.error(
-                    f"Interface 'eth0' on controller '{controller.hostname}' "
-                    f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
-                ),
-                call.error(
                     f"VLAN interface '{vlan_interface.name}' reports VLAN {vid_on_fabric} "
                     f"but links are on VLAN {other_vlan.vid}"
+                ),
+                call.error(
+                    f"Interface 'eth0' on controller '{controller.hostname}' "
+                    f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
                 ),
             ]
             * passes,
@@ -1270,12 +1437,12 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             maaslog.method_calls,
             [
                 call.error(
-                    f"Interface 'eth0' on controller '{controller.hostname}' "
-                    f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
-                ),
-                call.error(
                     f"VLAN interface '{vlan_interface.name}' reports VLAN {other_vlan.vid} "
                     f"but links are on VLAN {new_vlan.vid}"
+                ),
+                call.error(
+                    f"Interface 'eth0' on controller '{controller.hostname}' "
+                    f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
                 ),
             ]
             * passes,
@@ -2224,17 +2391,11 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
         self.update_interfaces(controller, data)
 
-        eth0 = get_one(
-            PhysicalInterface.objects.filter(
-                node_config=controller.current_config, name="eth0"
-            )
-        )
         eth1 = get_one(
             PhysicalInterface.objects.filter(
                 node_config=controller.current_config, name="eth1"
             )
         )
-        self.assertIsNotNone(eth0.vlan)
         self.assertIsNone(eth1.vlan)
 
     def test_subnet_seen_on_second_controller_does_not_create_fabric(self):

@@ -13,7 +13,7 @@ from maasserver.models.interface import (
 )
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
-from maasserver.models.vlan import VLAN
+from maasserver.models.vlan import DEFAULT_VID, VLAN
 from maasserver.utils.orm import transactional
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
@@ -266,7 +266,7 @@ def update_physical_interface(
         if hints is not None:
             new_vlan = guess_vlan_from_hints(node, name, hints)
         if new_vlan is None:
-            new_vlan = guess_vlan_for_interface(node, links)
+            new_vlan = guess_vlan_for_interface(node, interface, links)
         if new_vlan is not None:
             interface.vlan = new_vlan
             update_fields.add("vlan")
@@ -362,16 +362,19 @@ def update_vlan_interface(node, name, network, links):
     parent_nic = Interface.objects.get(
         node_config=node.current_config, name=parent_name
     )
+    parent_fabric = None
+    if parent_nic.vlan is not None:
+        parent_fabric = parent_nic.vlan.fabric
     links_vlan = get_interface_vlan_from_links(links)
+    interface = VLANInterface.objects.filter(
+        node_config=node.current_config,
+        name=name,
+        parents__id=parent_nic.id,
+        vlan__vid=vid,
+    ).first()
     if links_vlan:
         vlan = links_vlan
-        if parent_nic.vlan.fabric_id != vlan.fabric_id:
-            # XXX: We should surface this error to the API and UI, since
-            # it's something the user needs to fix.
-            maaslog.error(
-                f"Interface '{parent_nic.name}' on controller '{node.hostname}' "
-                f"is not on the same fabric as VLAN interface '{name}'."
-            )
+        parent_fabric = vlan.fabric
         if links_vlan.vid != vid:
             maaslog.error(
                 f"VLAN interface '{name}' reports VLAN {vid} "
@@ -379,41 +382,31 @@ def update_vlan_interface(node, name, network, links):
             )
     else:
         vlan = None
+        if interface is not None and interface.vlan is not None:
+            vlan = interface.vlan
+            parent_fabric = vlan.fabric
+        elif parent_fabric is None:
+            maaslog.info(
+                f"Unable to detect fabric VLAN Interface '{name}', using default"
+            )
+            parent_fabric = Fabric.objects.get_default_fabric()
+
+    if parent_nic.vlan_id is None:
+        parent_vlan, _ = VLAN.objects.get_or_create(
+            fabric=parent_fabric,
+            vid=DEFAULT_VID,
+        )
+        parent_nic.vlan = parent_vlan
+        parent_nic.save()
 
     from metadataserver.builtin_scripts.hooks import HARDWARE_SYNC_ACTIONS
 
-    interface = VLANInterface.objects.filter(
-        node_config=node.current_config,
-        name=name,
-        parents__id=parent_nic.id,
-        vlan__vid=vid,
-    ).first()
-    if interface is None:
-        if vlan is None:
-            # Since no suitable VLAN is found, create a new one in the same
-            # fabric as the parent interface.
-            if parent_nic.vlan:
-                vlan, _ = VLAN.objects.get_or_create(
-                    fabric=parent_nic.vlan.fabric, vid=vid
-                )
-            elif network["addresses"]:  # use IP address to find VLAN
-                address = network["addresses"][0]["address"]
-                try:
-                    subnet = Subnet.objects.get_subnet_for_ip(address)
-                except Subnet.DoesNotExist:
-                    pass
-                else:
-                    vlan, _ = VLAN.objects.get_or_create(
-                        fabric=subnet.vlan.fabric, vid=vid
-                    )
-            if vlan is None:
-                maaslog.error(
-                    f"Unable to detect fabric VLAN Interface '{name}', using default"
-                )
-                vlan, _ = VLAN.objects.get_or_create(
-                    fabric=Fabric.objects.get_default_fabric(), vid=vid
-                )
+    if vlan is None:
+        # Since no suitable VLAN is found, create a new one in the same
+        # fabric as the parent interface.
+        vlan, _ = VLAN.objects.get_or_create(fabric=parent_fabric, vid=vid)
 
+    if interface is None:
         interface, created = VLANInterface.objects.get_or_create(
             node_config=node.current_config,
             name=name,
@@ -433,6 +426,14 @@ def update_vlan_interface(node, name, network, links):
         interface.save()
         _hardware_sync_network_device_notify(
             node, interface, HARDWARE_SYNC_ACTIONS.UPDATED
+        )
+
+    if parent_nic.vlan.fabric_id != vlan.fabric_id:
+        # XXX: We should surface this error to the API and UI, since
+        # it's something the user needs to fix.
+        maaslog.error(
+            f"Interface '{parent_nic.name}' on controller '{node.hostname}' "
+            f"is not on the same fabric as VLAN interface '{name}'."
         )
 
     update_links(node, interface, links, force_vlan=True)
@@ -507,10 +508,6 @@ def update_parent_vlans(node, interface, parent_nics, update_ip_addresses):
 
 
 def auto_vlan_creation(node) -> bool:
-    if node.is_controller:
-        # Always create controller's vlans
-        return True
-
     if node.status == NODE_STATUS.DEPLOYED:
         # don't create empty vlan/fabric for interfaces discovered by HW sync,
         # they cannot be used.
@@ -519,25 +516,26 @@ def auto_vlan_creation(node) -> bool:
     return Config.objects.get_config("auto_vlan_creation", True)
 
 
-def guess_vlan_for_interface(node, links):
+def guess_vlan_for_interface(node, interface, links):
     # Make sure that the VLAN on the interface is correct. When
     # links exists on this interface we place it into the correct
     # VLAN. If it cannot be determined and its a new interface it
     # gets placed on its own fabric.
     new_vlan = get_interface_vlan_from_links(links)
-    if new_vlan is None and auto_vlan_creation(node):
-        # If the default VLAN on the default fabric has no interfaces
-        # associated with it, the first interface will be placed there
-        # (rather than creating a new fabric).
-        default_vlan = VLAN.objects.get_default_vlan()
-        interfaces_on_default_vlan = Interface.objects.filter(
-            vlan=default_vlan
-        ).exists()
-        if not interfaces_on_default_vlan:
-            new_vlan = default_vlan
-        else:
-            new_fabric = Fabric.objects.create()
-            new_vlan = new_fabric.get_default_vlan()
+    if new_vlan is None:
+        if links:
+            update_links(node, interface, links)
+            new_vlan = get_interface_vlan_from_links(links)
+        elif auto_vlan_creation(node):
+            default_vlan = VLAN.objects.get_default_vlan()
+            interfaces_on_default_vlan = Interface.objects.filter(
+                vlan=default_vlan
+            ).exists()
+            if not interfaces_on_default_vlan:
+                new_vlan = default_vlan
+            else:
+                new_fabric = Fabric.objects.create()
+                new_vlan = new_fabric.get_default_vlan()
     return new_vlan
 
 
@@ -636,8 +634,15 @@ def update_links(
     if use_interface_vlan and interface.vlan is not None:
         vlan = interface.vlan
     elif links:
-        fabric = Fabric.objects.create()
-        vlan = fabric.get_default_vlan()
+        default_vlan = VLAN.objects.get_default_vlan()
+        interfaces_on_default_vlan = Interface.objects.filter(
+            vlan=default_vlan
+        ).exists()
+        if not interfaces_on_default_vlan:
+            vlan = default_vlan
+        else:
+            new_fabric = Fabric.objects.create()
+            vlan = new_fabric.get_default_vlan()
         interface.vlan = vlan
         interface.save()
 
