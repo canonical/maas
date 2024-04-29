@@ -20,6 +20,7 @@ from django.db.models.deletion import Collector
 from django.db.models.query import QuerySet
 from fixtures import LoggerFixture
 from netaddr import IPAddress, IPNetwork
+from temporalio.client import WorkflowFailureError
 from testscenarios import multiply_scenarios
 from twisted.internet import defer
 from twisted.internet.defer import succeed
@@ -6346,6 +6347,158 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
             )
 
         yield deferToDatabase(_assert_node_status_updated)
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_failure_error_msg(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet,
+            bmc=bmc,
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        self.patch(workflow_module, "temporal_wrapper")
+        exception = WorkflowFailureError(cause=BaseException("error"))
+
+        test = self.patch(node_module, "execute_workflow")
+        test.side_effect = exception
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.patch(node_module, "getAllClients").return_value = [client]
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        try:
+            yield node._power_control_node(
+                defer.succeed(None), "power_cycle", power_info
+            )
+        except Exception as e:
+            self.assertEqual(str(e), "error")
+        else:
+            raise AssertionError("No exception was raised")
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_failure_error_msg_exception(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet,
+            bmc=bmc,
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        self.patch(workflow_module, "temporal_wrapper")
+        exception = BaseException("error")
+
+        test = self.patch(node_module, "execute_workflow")
+        test.side_effect = exception
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.patch(node_module, "getAllClients").return_value = [client]
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        try:
+            yield node._power_control_node(
+                defer.succeed(None), "power_cycle", power_info
+            )
+        except BaseException as e:
+            self.assertEqual(str(e), "error")
+        else:
+            raise AssertionError("No exception was raised")
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_failure_error_msg_temporal_error(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet,
+            bmc=bmc,
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        self.patch(workflow_module, "temporal_wrapper")
+        exception = WorkflowFailureError(
+            cause=WorkflowFailureError(cause=BaseException("error"))
+        )
+
+        test = self.patch(node_module, "execute_workflow")
+        test.side_effect = exception
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.patch(node_module, "getAllClients").return_value = [client]
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        try:
+            yield node._power_control_node(
+                defer.succeed(None), "power_cycle", power_info
+            )
+        except Exception as e:
+            self.assertEqual(str(e), "error")
+        else:
+            raise AssertionError("No exception was raised")
 
 
 class TestDecomposeMachineMixin:

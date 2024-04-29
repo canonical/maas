@@ -60,6 +60,7 @@ from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import IPAddress, IPNetwork
 import petname
+from temporalio.client import WorkflowFailureError
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -6146,12 +6147,18 @@ class Node(CleanSave, TimestampedModel):
                     ),
                 )
 
+                @inlineCallbacks
                 def exec_power_workflow(workflow_info):
                     workflow_name, workflow_param = workflow_info
-                    return execute_workflow(
-                        workflow_name,
-                        param=workflow_param,
-                    )
+                    try:
+                        res = yield execute_workflow(
+                            workflow_name,
+                            param=workflow_param,
+                        )
+                        returnValue(res)
+                    except WorkflowFailureError as e:
+                        cause = getattr(e.cause, "cause", e.cause)
+                        raise PowerActionFail(cause)
 
                 d.addCallback(exec_power_workflow)
 
