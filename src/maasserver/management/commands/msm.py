@@ -4,6 +4,7 @@
 """Commands for managing enrolment with a Site Manager instance."""
 
 import argparse
+from contextlib import closing
 from datetime import datetime
 from ssl import CertificateError
 from urllib.parse import urlparse
@@ -64,8 +65,10 @@ class Command(BaseCommand):
             "verify_iss": False,
         }
         enrolment_token = options["enrolment_token"]
-        config = options["config_file"].read()
-        options["config_file"].close()
+        config = ""
+        if options["config_file"] is not None:
+            with closing(options["config_file"]) as cfg_file:
+                config = cfg_file.read()
         try:
             decoded = jwt.decode(
                 enrolment_token,
@@ -78,15 +81,16 @@ class Command(BaseCommand):
         except JOSEError:
             raise CommandError("Invalid enrolment token.")
         # validate the yaml config
-        try:
-            cfg = yaml.safe_load(config)
-            validate(cfg, self.CFG_SCHEMA)
-        except ValidationError as e:
-            raise CommandError(f"Invalid config file: {e.message}")
-        except yaml.error.MarkedYAMLError as e:
-            raise CommandError(
-                f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
-            )
+        if config:
+            try:
+                cfg = yaml.safe_load(config)
+                validate(cfg, self.CFG_SCHEMA)
+            except ValidationError as e:
+                raise CommandError(f"Invalid config file: {e.message}")
+            except yaml.error.MarkedYAMLError as e:
+                raise CommandError(
+                    f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
+                )
         # strip the path
         enrolment_url = decoded["enrolment-url"]
         parsed = urlparse(enrolment_url)

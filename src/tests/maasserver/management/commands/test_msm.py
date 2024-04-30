@@ -90,6 +90,14 @@ class TestMSM:
         with pytest.raises(CommandError, match="Invalid enrolment token"):
             msm.Command().handle(**opts)
 
+    def test_enrol_no_config(self, mocker, msm_mock):
+        mocker.patch.object(msm, "prompt_yes_no", return_value=True)
+        mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
+        opts = self._configure_kwargs()
+        opts["config_file"] = None
+        msm.Command().handle(**opts)
+        msm_mock.assert_called_once_with(opts["enrolment_token"], metainfo="")
+
     def test_enrol_extra_field(self, mocker, msm_mock):
         mocker.patch.object(msm.jwt, "decode", return_value=SAMPLE_JWT_PAYLOAD)
         mocker.patch.object(msm, "prompt_yes_no", return_value=False)
