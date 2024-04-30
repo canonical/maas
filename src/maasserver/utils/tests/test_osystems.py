@@ -76,14 +76,15 @@ class TestOsystems(MAASServerTestCase):
 
         self.assertEqual("ubuntu", ubuntu.name)
         self.assertEqual("Ubuntu", ubuntu.title)
-        self.assertEqual("focal", ubuntu.default_commissioning_release)
-        self.assertEqual("focal", ubuntu.default_release)
-        self.assertEqual(["focal"], list(ubuntu.releases.keys()))
+        self.assertEqual("jammy", ubuntu.default_commissioning_release)
+        self.assertEqual("jammy", ubuntu.default_release)
+        self.assertEqual(["jammy"], list(ubuntu.releases.keys()))
         self.assertEqual(
-            'Ubuntu 20.04 LTS "Focal Fossa"', ubuntu.releases["focal"].title
+            'Ubuntu 22.04 LTS "Jammy Jellyfish"',
+            ubuntu.releases["jammy"].title,
         )
-        self.assertTrue(ubuntu.releases["focal"].can_commission)
-        self.assertFalse(ubuntu.releases["focal"].requires_license_key)
+        self.assertTrue(ubuntu.releases["jammy"].can_commission)
+        self.assertFalse(ubuntu.releases["jammy"].requires_license_key)
 
     def test_list_osystem_choices_includes_default(self):
         self.assertEqual(
@@ -385,7 +386,7 @@ class TestOsystems(MAASServerTestCase):
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
         )
         self.assertEqual(
-            [("focal", 'Ubuntu 20.04 LTS "Focal Fossa"')],
+            [("jammy", 'Ubuntu 22.04 LTS "Jammy Jellyfish"')],
             list_commissioning_choices(list_all_usable_osystems()),
         )
 

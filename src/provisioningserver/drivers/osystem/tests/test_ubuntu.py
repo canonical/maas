@@ -16,7 +16,7 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 class TestUbuntuOS(MAASTestCase):
     def get_lts_release(self):
         # return UbuntuDistroInfo().lts()
-        return "focal"
+        return "jammy"
 
     def get_release_title(self, release):
         info = UbuntuDistroInfo()
@@ -50,7 +50,7 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_lts_release(self):
         # Canary so we know when the lts changes
         osystem = UbuntuOS()
-        self.assertEqual("focal", osystem.get_lts_release())
+        self.assertEqual("jammy", osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()
