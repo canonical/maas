@@ -37,9 +37,7 @@ class UbuntuOS(OperatingSystem):
 
     def get_lts_release(self):
         """Return the latest Ubuntu LTS release."""
-        # XXX ltrager 2020-07-28 - Lock the latest LTS release to Focal so
-        # we can fully test the next LTS before it becomes the default
-        return "focal"
+        return "jammy"
 
     def get_default_release(self):
         """Gets the default release to use when a release is not

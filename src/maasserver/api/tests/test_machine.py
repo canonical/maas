@@ -472,7 +472,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 {
                     "distro_series": [
                         "'%s' is not a valid distro_series.  "
-                        "It should be one of: '', 'ubuntu/focal'."
+                        "It should be one of: '', 'ubuntu/jammy'."
                         % invalid_distro_series
                     ]
                 },
@@ -1377,7 +1377,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "distro_series": "ubuntu/focal"},
+            {"op": "deploy", "distro_series": "ubuntu/jammy"},
         )
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
@@ -1396,7 +1396,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.post(
             self.get_machine_uri(machine),
-            {"op": "deploy", "distro_series": "ubuntu/focal"},
+            {"op": "deploy", "distro_series": "ubuntu/jammy"},
         )
         self.assertEqual(http.client.OK, response.status_code)
         machine.refresh_from_db()
@@ -1413,7 +1413,7 @@ class TestMachineAPI(APITestCase.ForUser):
             architecture=make_usable_architecture(self),
         )
         osystem, releases = make_usable_osystem(
-            self, osystem_name="ubuntu", releases=["focal"]
+            self, osystem_name="ubuntu", releases=["jammy"]
         )
         response = self.client.post(
             self.get_machine_uri(machine),

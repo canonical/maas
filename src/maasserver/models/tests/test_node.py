@@ -8933,7 +8933,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         admin = factory.make_admin()
         with transaction.atomic():
             factory.make_usable_boot_resource(
-                name="ubuntu/focal",
+                name="ubuntu/jammy",
                 architecture="amd64/generic",
             )
             factory.make_custom_boot_resource(

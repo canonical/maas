@@ -108,12 +108,12 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertEqual({"focal"}, by_release.keys())
-        focal = by_release["focal"]
-        self.assertEqual(focal.release, "focal")
-        self.assertEqual(focal.arches, [arch, "amd64"])
-        self.assertEqual(focal.subarches, ["*"])
-        self.assertEqual(focal.labels, ["*"])
+        self.assertEqual({"jammy"}, by_release.keys())
+        jammy = by_release["jammy"]
+        self.assertEqual(jammy.release, "jammy")
+        self.assertEqual(jammy.arches, [arch, "amd64"])
+        self.assertEqual(jammy.subarches, ["*"])
+        self.assertEqual(jammy.labels, ["*"])
 
     def test_ensure_boot_source_definition_updates_default_source_snap(self):
         BootSource.objects.all().delete()
@@ -156,12 +156,12 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertEqual({"focal"}, by_release.keys())
-        focal = by_release["focal"]
-        self.assertEqual(focal.release, "focal")
-        self.assertEqual(focal.arches, ["amd64"])
-        self.assertEqual(focal.subarches, ["*"])
-        self.assertEqual(focal.labels, ["*"])
+        self.assertEqual({"jammy"}, by_release.keys())
+        jammy = by_release["jammy"]
+        self.assertEqual(jammy.release, "jammy")
+        self.assertEqual(jammy.arches, ["amd64"])
+        self.assertEqual(jammy.subarches, ["*"])
+        self.assertEqual(jammy.labels, ["*"])
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
         sources = [factory.make_BootSource() for _ in range(3)]
