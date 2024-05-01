@@ -44,6 +44,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
+    _device_diff,
     _hardware_sync_block_device_notify,
     _hardware_sync_cpu_notify,
     _hardware_sync_memory_notify,
@@ -60,6 +61,7 @@ from metadataserver.builtin_scripts.hooks import (
     parse_interfaces,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
+    update_node_devices,
     update_node_fruid_metadata,
     update_node_network_information,
 )
@@ -4086,6 +4088,42 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
 
+class TestDeviceDiff(MAASServerTestCase):
+    def test_device_has_not_changed(self):
+        old = factory.make_NodeDevice()
+        new = {"vendor": old.vendor_name, "product": old.product_name}
+        result = _device_diff(
+            old,
+            new,
+            old.hardware_type,
+            old.numa_node,
+            old.physical_blockdevice,
+            old.physical_interface,
+            old.commissioning_driver,
+            {},
+        )
+        self.assertFalse(result)
+
+    def test_device_has_changed(self):
+        old = factory.make_NodeDevice()
+        factory.make_NodeDeviceVPD(node_device=old)
+        new = {"vendor": factory.make_name(), "product": factory.make_name()}
+        new_numa_node = factory.make_NUMANode()
+        new_block_device = factory.make_BlockDevice()
+        new_interface = factory.make_Interface()
+        result = _device_diff(
+            old,
+            new,
+            HARDWARE_TYPE.NODE,
+            new_numa_node,
+            new_block_device,
+            new_interface,
+            old.commissioning_driver,
+            {factory.make_name(): factory.make_name()},
+        )
+        self.assertTrue(result)
+
+
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from LXD.
 
@@ -4966,6 +5004,191 @@ class TestUpdateBootInterface(MAASServerTestCase):
         self.assertIsNone(self.node.boot_interface)
 
         self.assertIn("kernel-cmdline failed with status: 1", logger.output)
+
+
+class TestUpdateNodeDevices(MAASServerTestCase):
+    def test_update_node_devices_does_not_create_hwsync_event_if_nothing_changes(
+        self,
+    ):
+        node = factory.make_Node()
+        numa = factory.make_NUMANode(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            physical_blockdevice=block_device,
+            hardware_type=HARDWARE_TYPE.STORAGE,
+            numa_node=numa,
+            bus=NODE_DEVICE_BUS.PCIE,
+        )
+
+        mock_hardware_sync_notify = self.patch(
+            hooks_module, "_hardware_sync_notify"
+        )
+
+        data = {
+            "storage": {
+                "disks": [
+                    {
+                        "id": block_device.name,
+                        "pci_address": node_device.pci_address,
+                    }
+                ]
+            },
+            "pci": {
+                "devices": [
+                    {
+                        "vendor_id": node_device.vendor_id,
+                        "product_id": node_device.product_id,
+                        "vendor": node_device.vendor_name,
+                        "product": node_device.product_name,
+                        "pci_address": node_device.pci_address,
+                        "driver": node_device.commissioning_driver,
+                    }
+                ]
+            },
+        }
+
+        update_node_devices(
+            node,
+            data,
+            [numa],
+            storage_devices={node_device.pci_address: block_device},
+        )
+
+        mock_hardware_sync_notify.assert_not_called()
+
+    def test_update_node_devices_creates_hwsync_event_when_device_added(self):
+        node = factory.make_Node()
+        numa = factory.make_NUMANode(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+
+        mock_hardware_sync_notify = self.patch(
+            hooks_module, "_hardware_sync_notify"
+        )
+
+        pci_address = "0000:23:00.0"
+        data = {
+            "storage": {
+                "disks": [
+                    {
+                        "id": block_device.name,
+                        "pci_address": pci_address,
+                    }
+                ]
+            },
+            "pci": {
+                "devices": [
+                    {
+                        "vendor_id": 8086,
+                        "product_id": 8086,
+                        "vendor": factory.make_name(),
+                        "product": factory.make_name(),
+                        "pci_address": pci_address,
+                        "driver": factory.make_name(),
+                    }
+                ]
+            },
+        }
+
+        update_node_devices(
+            node, data, [numa], storage_devices={pci_address: block_device}
+        )
+        mock_hardware_sync_notify.assert_called_once_with(
+            "NODE_HARDWARE_SYNC_PCI_DEVICE",
+            node,
+            0,
+            "added",
+            device_type="pci device",
+        )
+
+    def test_update_node_devices_creates_hwsync_event_when_device_updated(
+        self,
+    ):
+        node = factory.make_Node()
+        numa = factory.make_NUMANode(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            physical_blockdevice=block_device,
+            hardware_type=HARDWARE_TYPE.STORAGE,
+            numa_node=numa,
+            bus=NODE_DEVICE_BUS.PCIE,
+        )
+        data = {
+            "storage": {
+                "disks": [
+                    {
+                        "id": block_device.name,
+                        "pci_address": node_device.pci_address,
+                    }
+                ]
+            },
+            "pci": {
+                "devices": [
+                    {
+                        "vendor_id": node_device.vendor_id,
+                        "product_id": node_device.product_id,
+                        "vendor": factory.make_name(),
+                        "product": node_device.product_name,
+                        "pci_address": node_device.pci_address,
+                        "driver": node_device.commissioning_driver,
+                    }
+                ]
+            },
+        }
+
+        mock_hardware_sync_notify = self.patch(
+            hooks_module, "_hardware_sync_notify"
+        )
+
+        update_node_devices(
+            node,
+            data,
+            [numa],
+            storage_devices={node_device.pci_address: block_device},
+        )
+        mock_hardware_sync_notify.assert_called_once_with(
+            "NODE_HARDWARE_SYNC_PCI_DEVICE",
+            node,
+            node_device.device_number,
+            "updated",
+            device_type="pci device",
+        )
+
+    def test_update_node_devices_creates_hwsync_event_when_device_removed(
+        self,
+    ):
+        node = factory.make_Node()
+        numa = factory.make_NUMANode(node=node)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            physical_blockdevice=block_device,
+            hardware_type=HARDWARE_TYPE.STORAGE,
+            numa_node=numa,
+            bus=NODE_DEVICE_BUS.PCIE,
+        )
+
+        mock_hardware_sync_notify = self.patch(
+            hooks_module, "_hardware_sync_notify"
+        )
+
+        data = {}
+
+        update_node_devices(
+            node,
+            data,
+            [numa],
+            storage_devices={node_device.pci_address: block_device},
+        )
+
+        mock_hardware_sync_notify.assert_called_once_with(
+            "NODE_HARDWARE_SYNC_PCI_DEVICE",
+            node,
+            node_device.device_number,
+            "removed",
+            device_type="pci device",
+        )
 
 
 class TestHardwareSyncNotify(MAASServerTestCase):

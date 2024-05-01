@@ -14,6 +14,7 @@ import logging
 import operator
 from operator import itemgetter
 import re
+from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -368,6 +369,34 @@ def _process_system_information(node, system_data):
         node.tags.add(tag)
 
 
+def _device_diff(
+    old: NodeDevice,
+    new: dict[str, Any],
+    new_hardware_type: HARDWARE_TYPE,
+    numa_node: int,
+    physical_blockdevice: PhysicalBlockDevice,
+    physical_interface: PhysicalInterface,
+    commissioning_driver: str,
+    device_vpd: dict[str, Any],
+) -> bool:
+    if not old:
+        return True
+
+    diff = not (
+        old.hardware_type == new_hardware_type
+        and old.numa_node == numa_node
+        and old.physical_blockdevice == physical_blockdevice
+        and old.physical_interface == physical_interface
+        and old.vendor_name == new.get("vendor")
+        and old.product_name == new.get("product")
+        and old.commissioning_driver == commissioning_driver
+    )
+
+    for vpd in NodeDeviceVPD.objects.filter(node_device=old):
+        diff = diff or (device_vpd.get(vpd.key) != vpd.value)
+    return diff
+
+
 def _add_or_update_node_device(
     node,
     numa_nodes,
@@ -404,18 +433,29 @@ def _add_or_update_node_device(
 
     if key in old_devices:
         node_device = old_devices.pop(key)
-        node_device.hardware_type = hardware_type
-        node_device.numa_node = numa_node
-        node_device.physical_block_device = storage_device
-        node_device.physical_interface = network_device
-        node_device.vendor_name = device.get("vendor")
-        node_device.product_name = device.get("product")
-        node_device.commissioning_driver = commissioning_driver
-        node_device.save()
-        _add_node_device_vpd(node_device, device_vpd)
-        _hardware_sync_node_device_notify(
-            node, node_device, HARDWARE_SYNC_ACTIONS.UPDATED
-        )
+
+        if _device_diff(
+            node_device,
+            device,
+            hardware_type,
+            numa_node,
+            storage_device,
+            network_device,
+            commissioning_driver,
+            device_vpd,
+        ):
+            node_device.hardware_type = hardware_type
+            node_device.numa_node = numa_node
+            node_device.physical_block_device = storage_device
+            node_device.physical_interface = network_device
+            node_device.vendor_name = device.get("vendor")
+            node_device.product_name = device.get("product")
+            node_device.commissioning_driver = commissioning_driver
+            node_device.save()
+            _add_node_device_vpd(node_device, device_vpd)
+            _hardware_sync_node_device_notify(
+                node, node_device, HARDWARE_SYNC_ACTIONS.UPDATED
+            )
     else:
         pci_address = device.get("pci_address")
         create_args = {
@@ -609,6 +649,7 @@ def _process_lxd_resources(node, data):
     resources = data["resources"]
     update_deployment_resources = node.status == NODE_STATUS.DEPLOYED
     # Update CPU details.
+    old_cpu_count = node.cpu_count
     node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = parse_lxd_cpuinfo(
         resources
     )
@@ -619,7 +660,8 @@ def _process_lxd_resources(node, data):
         resources.get("memory", {}), numa_nodes
     )
 
-    _hardware_sync_memory_notify(node, old_memory)
+    if old_memory != node.memory:
+        _hardware_sync_memory_notify(node, old_memory)
 
     # Create or update NUMA nodes. This must be kept as a dictionary as not all
     # systems maintain linear continuity. e.g the PPC64 machine in our CI uses
@@ -657,7 +699,7 @@ def _process_lxd_resources(node, data):
         )
 
         # in the case of hardware sync for a cpu, a new one is added if this value has been updated
-        if not created:
+        if created and old_cpu_count > 0:
             _hardware_sync_cpu_notify(
                 node, cpu_model, HARDWARE_SYNC_ACTIONS.ADDED
             )
