@@ -5592,7 +5592,7 @@ class Node(CleanSave, TimestampedModel):
         # Every node in a real system has a rack controller, but many tests do
         # not.  To keep this unit-testable, only check for address family
         # compatibility when there is a rack controller.  If we don't have a
-        # rack controller, the deploy will be rejected in any case.
+        # rack controller, the deployment will be rejected in any case.
         boot_primary_rack_controller = self.get_boot_primary_rack_controller()
         if boot_primary_rack_controller is not None:
             subnets = Subnet.objects.filter(
@@ -5677,7 +5677,7 @@ class Node(CleanSave, TimestampedModel):
 
         Second entry is a fallback to the old way pre-MAAS 2.0 where only
         the rack controller that owned the node could power it on. Here we
-        providing the primary and secondary rack controllers that are managing
+        provide the primary and secondary rack controllers that are managing
         the VLAN that this node PXE boots from.
         """
         if self.bmc is None:
@@ -5740,12 +5740,12 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def _start(
         self,
-        user,
-        user_data=None,
+        user: User,
+        user_data: bytes | None = None,
         old_status=None,
-        allow_power_cycle=False,
+        allow_power_cycle: bool = False,
         config=None,
-    ):
+    ) -> Deferred | None:
         """Request on given user's behalf that the node be started up.
 
         :param user: Requesting user.
@@ -5762,7 +5762,7 @@ class Node(CleanSave, TimestampedModel):
             start this node.
 
         :return: a `Deferred` which contains the post-commit tasks that are
-            required to run to start the node. This is already registed as a
+            required to run to start the node. This is already registered as a
             post-commit hook; it should not be added a second time. If it has
             not been possible to start the node because the power controller
             does not support it, `None` will be returned. The node must be

@@ -6,12 +6,13 @@
 
 from datetime import timedelta
 
+from django.db.models import F, Max, Q, Window
 from django.http import HttpResponse, HttpResponseNotFound
 import prometheus_client
 from twisted.application.internet import TimerService
 
 from maasserver.enum import SERVICE_STATUS
-from maasserver.models import Config
+from maasserver.models import Config, Event
 from maasserver.models.node import RackController
 from maasserver.models.service import Service
 from maasserver.stats import (
@@ -25,6 +26,7 @@ from maasserver.stats import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.utils import (
     create_metrics,
@@ -93,6 +95,11 @@ STATS_DEFINITIONS = [
         "Gauge",
         "maas_machines_total_storage",
         "Amount of combined storage for all machines",
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_machines_avg_deployment_time",
+        "Average time in seconds of the last successful deployment of all machines",
     ),
     MetricDefinition("Gauge", "maas_kvm_pods", "Number of KVM pods"),
     MetricDefinition(
@@ -173,7 +180,7 @@ def prometheus_stats_handler(request):
     )
 
 
-def update_prometheus_stats(metrics: PrometheusMetrics):
+def update_prometheus_stats(metrics: PrometheusMetrics) -> PrometheusMetrics:
     """Update metrics in a PrometheusMetrics based on database values."""
     stats = get_maas_stats()
     architectures = get_machines_by_architecture()
@@ -223,6 +230,65 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
                     "service": service.name,
                 },
             )
+
+    # Gather the time in seconds of the last successful deployment from all
+    # machines in MAAS. Metric specifications:
+    #   - a machine is not included in the average if that machine is being
+    #     deployed
+    #   - a machine is not included in the calculation if the last deployment
+    #     failed
+    #   - if there are no machines with successful deployment time, the metrics
+    #     will take NaN as value
+    deployment_start_event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
+    deployment_end_event = EVENT_TYPES.DEPLOYED
+    deployment_events = (
+        Event.objects.filter(
+            Q(type__name=deployment_end_event)
+            | Q(type__name=deployment_start_event),
+            node__system_id=F("node_system_id"),
+        )
+        .annotate(
+            start_time=Window(
+                expression=Max(
+                    "created", filter=Q(type__name=deployment_start_event)
+                ),
+                partition_by=[F("node_system_id")],
+            ),
+            end_time=Window(
+                expression=Max(
+                    "created", filter=Q(type__name=deployment_end_event)
+                ),
+                partition_by=[F("node_system_id")],
+            ),
+        )
+        .values(
+            system_id=F("node_system_id"),
+            deployment_time=F("end_time") - F("start_time"),
+        )
+        .distinct("system_id")
+    )
+    total_deployment_time = 0
+    count_deployed_machines = 0
+    for deployment_event in deployment_events:
+        deployment_time = deployment_event["deployment_time"]
+        is_first_deployment = deployment_time is None
+        is_deployment_complete = (
+            False if is_first_deployment else deployment_time > timedelta(0)
+        )
+        if is_deployment_complete:
+            total_deployment_time += deployment_time.total_seconds()
+            count_deployed_machines += 1
+    if count_deployed_machines != 0:
+        avg_deployment_time = round(
+            total_deployment_time / count_deployed_machines, 1
+        )
+    else:
+        avg_deployment_time = float("nan")
+    metrics.update(
+        "maas_machines_avg_deployment_time",
+        "set",
+        value=avg_deployment_time,
+    )
 
     # Gather all stats for vm_hosts
     metrics.update("maas_kvm_pods", "set", value=vm_hosts["vm_hosts"])

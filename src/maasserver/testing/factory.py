@@ -2311,6 +2311,7 @@ class Factory(maastesting.factory.Factory):
         user_agent=None,
         action=None,
         description=None,
+        created=None,
     ):
         if type is None:
             type = self.make_EventType()
@@ -2333,6 +2334,8 @@ class Factory(maastesting.factory.Factory):
             action = self.make_name("action")
         if description is None:
             description = self.make_name("desc")
+        if created is None:
+            created = datetime.now()
         return Event.objects.create(
             type=type,
             node=node,
@@ -2345,6 +2348,7 @@ class Factory(maastesting.factory.Factory):
             user_agent=user_agent,
             action=action,
             description=description,
+            created=created,
         )
 
     def make_boot_file(

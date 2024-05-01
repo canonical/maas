@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from datetime import datetime
 import http.client
 from unittest import mock
 
@@ -27,6 +28,7 @@ from maasserver.testing.testcase import (
 from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.utils.twisted import asynchronous
 
@@ -60,9 +62,15 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_net_vlans",
             "maas_net_subnets_v4",
             "maas_net_subnets_v6",
+            "maas_net_subnet_ip_count",
+            "maas_net_subnet_ip_dynamic",
+            "maas_net_subnet_ip_reserved",
+            "maas_net_subnet_ip_static",
+            "maas_service_availability",
             "maas_machines_total_mem",
             "maas_machines_total_cpu",
             "maas_machines_total_storage",
+            "maas_machines_avg_deployment_time",
             "maas_service_availability",
             "maas_kvm_pods",
             "maas_kvm_machines",
@@ -235,6 +243,109 @@ class TestPrometheus(MAASServerTestCase):
         )
         self.assertIn(
             'maas_net_subnet_ip_static{cidr="1.2.0.0/16"} 3.0', output
+        )
+
+    def test_machine_avg_deployment_time_metric(self):
+        """Test the average time of the last successful deployment of the
+        machine in MAAS.
+        """
+        node_1 = factory.make_Node()
+        node_2 = factory.make_Node()
+        event_request_deployment = factory.make_EventType(
+            EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
+        )
+        event_deployed = factory.make_EventType(EVENT_TYPES.DEPLOYED)
+        metrics = create_metrics(
+            STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry()
+        )
+
+        # status: node_1 has never been deployed
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time NaN",
+            output,
+        )
+
+        # status: node_1 starts its deployment for the first time (deployment
+        # event never registered before)
+        factory.make_Event(
+            event_request_deployment,
+            node_1,
+            created=datetime.fromisoformat("2024-04-12T14:05:25"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time NaN",
+            output,
+        )
+
+        # status: node_1 finishes deployment
+        factory.make_Event(
+            event_deployed,
+            node_1,
+            created=datetime.fromisoformat("2024-04-12T14:10:37"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time 312.0",
+            output,
+        )
+
+        # status: node_1 starts deployment for the second time (current
+        # deployment event belongs to the previous deployment)
+        factory.make_Event(
+            event_request_deployment,
+            node_1,
+            created=datetime.fromisoformat("2024-05-15T10:17:21"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time NaN",
+            output,
+        )
+
+        # status: node_1 finishes deployment for the second time
+        factory.make_Event(
+            event_deployed,
+            node_1,
+            created=datetime.fromisoformat("2024-05-15T10:20:25"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time 184.0",
+            output,
+        )
+
+        # status: node_2 starts its deployment for the first time
+        factory.make_Event(
+            event_request_deployment,
+            node_2,
+            created=datetime.fromisoformat("2024-05-15T10:25:40"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time 184.0",
+            output,
+        )
+        # status: node_2 finishes its deployment for the first time
+        # The result is the average time of the deployments of node_1 and
+        # node_2
+        factory.make_Event(
+            event_deployed,
+            node_2,
+            created=datetime.fromisoformat("2024-05-15T10:30:41"),
+        )
+        update_prometheus_stats(metrics)
+        output = metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            "maas_machines_avg_deployment_time 242.5",
+            output,
         )
 
 
