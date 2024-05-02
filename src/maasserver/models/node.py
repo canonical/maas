@@ -245,6 +245,14 @@ GatewayDefinition = namedtuple(
 )
 
 
+# Timeout before marking a node as failing to exit rescue mode.
+# This is a temporary fix until we write a workflow for exiting
+# rescue mode. The timeout is to prevent race conditions, where
+# Node.update_power_state() may be called during the power cycle
+# when the machine is powered off.
+EXIT_RESCUE_MODE_TIMEOUT = 60 * 5  # 5 minutes
+
+
 def get_bios_boot_from_bmc(bmc):
     """Get the machine boot method from the BMC.
 
@@ -4102,13 +4110,16 @@ class Node(CleanSave, TimestampedModel):
         self.error_description = ""
         self.save()
 
-    def update_power_state(self, power_state):
+    def update_power_state(self, power_state, when=None):
         """Update a node's power state"""
         # Avoid circular imports.
         from maasserver.models.event import Event
 
         self.power_state = power_state
         self.power_state_updated = now()
+        # The code for transitioning to a different status doesn't really belong
+        # to this method. It should be replaced with temporal workflow, where
+        # the workflow is responsible for setting the correct status.
         mark_ready = (
             self.status == NODE_STATUS.RELEASING
             and power_state == POWER_STATE.OFF
@@ -4118,6 +4129,28 @@ class Node(CleanSave, TimestampedModel):
             self.status_expires = None
             self._finalize_release()
         if self.status == NODE_STATUS.EXITING_RESCUE_MODE:
+            if when is None:
+                when = now()
+            # This code can be called at any time after the start of exiting
+            # rescue mode, including before the machine has been turned off
+            # or during the power cycle. To avoid any race conditions where
+            # the machine would be marked as failing to exit rescue mode,
+            # we make sure that some time as passed since the start of exiting
+            # rescue mode before we mark the operation as failed.
+            stop_rescue_event = (
+                Event.objects.filter(
+                    node=self,
+                    type__name=EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE,
+                )
+                .order_by("-created")
+                .first()
+            )
+            reached_stop_rescue_timeout = (
+                stop_rescue_event.created
+                + timedelta(seconds=EXIT_RESCUE_MODE_TIMEOUT)
+                < when
+            )
+
             if self.previous_status == NODE_STATUS.DEPLOYED:
                 if power_state == POWER_STATE.ON:
                     # Create a status message for EXITED_RESCUE_MODE.
@@ -4125,7 +4158,7 @@ class Node(CleanSave, TimestampedModel):
                         self, EVENT_TYPES.EXITED_RESCUE_MODE
                     )
                     self.update_status(self.previous_status)
-                else:
+                elif reached_stop_rescue_timeout:
                     # Create a status message for FAILED_EXITING_RESCUE_MODE.
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE
@@ -4139,7 +4172,7 @@ class Node(CleanSave, TimestampedModel):
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.EXITED_RESCUE_MODE
                     )
-                else:
+                elif reached_stop_rescue_timeout:
                     # Create a status message for FAILED_EXITING_RESCUE_MODE.
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE

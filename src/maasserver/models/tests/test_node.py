@@ -98,6 +98,7 @@ import maasserver.models.interface as interface_module
 from maasserver.models.node import (
     DEFAULT_BIOS_BOOT_METHOD,
     DefaultGateways,
+    EXIT_RESCUE_MODE_TIMEOUT,
     GatewayDefinition,
     generate_node_system_id,
     PowerInfo,
@@ -4561,36 +4562,87 @@ class TestNode(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
-    def test_update_power_state_fails_exiting_rescue_mode_for_ready(self):
+    def test_update_power_state_fails_exiting_rescue_mode_for_ready_after_timeout(
+        self,
+    ):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.READY,
         )
-        node.update_power_state(POWER_STATE.ON)
+        after_timeout = datetime.utcnow() + timedelta(
+            seconds=EXIT_RESCUE_MODE_TIMEOUT
+        )
+        node.update_power_state(POWER_STATE.ON, when=after_timeout)
         self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
 
-    def test_update_power_state_fails_exiting_rescue_mode_for_broken(self):
+    def test_update_power_state_fails_exiting_rescue_mode_for_ready_before_timeout(
+        self,
+    ):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.READY,
+        )
+        before_timeout = node.created
+        node.update_power_state(POWER_STATE.ON, when=before_timeout)
+        self.assertEqual(NODE_STATUS.EXITING_RESCUE_MODE, node.status)
+
+    def test_update_power_state_fails_exiting_rescue_mode_for_broken_after_timeout(
+        self,
+    ):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.BROKEN,
         )
-        node.update_power_state(POWER_STATE.ON)
+        after_timeout = datetime.utcnow() + timedelta(
+            seconds=EXIT_RESCUE_MODE_TIMEOUT
+        )
+        node.update_power_state(POWER_STATE.ON, when=after_timeout)
         self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
 
-    def test_update_power_state_fails_exiting_rescue_mode_for_deployed(self):
+    def test_update_power_state_fails_exiting_rescue_mode_for_broken_before_timeout(
+        self,
+    ):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.BROKEN,
+        )
+        before_timeout = node.created
+        node.update_power_state(POWER_STATE.ON, when=before_timeout)
+        self.assertEqual(NODE_STATUS.EXITING_RESCUE_MODE, node.status)
+
+    def test_update_power_state_fails_exiting_rescue_mode_for_deployed_after_timeout(
+        self,
+    ):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.DEPLOYED,
         )
-        node.update_power_state(POWER_STATE.OFF)
+        after_timeout = datetime.utcnow() + timedelta(
+            seconds=EXIT_RESCUE_MODE_TIMEOUT
+        )
+        node.update_power_state(POWER_STATE.OFF, when=after_timeout)
         self.assertEqual(NODE_STATUS.FAILED_EXITING_RESCUE_MODE, node.status)
+
+    def test_update_power_state_fails_exiting_rescue_mode_for_deployed_before_timeout(
+        self,
+    ):
+        node = factory.make_Node(
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        before_timeout = node.created
+        node.update_power_state(POWER_STATE.OFF, when=before_timeout)
+        self.assertEqual(NODE_STATUS.EXITING_RESCUE_MODE, node.status)
 
     def test_update_power_state_fails_exiting_rescue_mode_status_msg(self):
         node = factory.make_Node(
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.DEPLOYED,
         )
-        node.update_power_state(POWER_STATE.OFF)
+        after_timeout = datetime.utcnow() + timedelta(
+            seconds=EXIT_RESCUE_MODE_TIMEOUT
+        )
+        node.update_power_state(POWER_STATE.OFF, when=after_timeout)
         event = Event.objects.last()
         self.assertEqual(
             event.type.name, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE
@@ -4602,7 +4654,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED,
         )
         node.update_power_state(POWER_STATE.ON)
-        event = Event.objects.get(node=node)
+        event = Event.objects.filter(node=node).order_by("-created").first()
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertEqual(event.type.name, EVENT_TYPES.EXITED_RESCUE_MODE)
 
@@ -4612,7 +4664,7 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.READY,
         )
         node.update_power_state(POWER_STATE.OFF)
-        event = Event.objects.get(node=node)
+        event = Event.objects.filter(node=node).order_by("-created").first()
         self.assertEqual(NODE_STATUS.READY, node.status)
         self.assertEqual(event.type.name, EVENT_TYPES.EXITED_RESCUE_MODE)
 

@@ -146,6 +146,7 @@ from metadataserver.fields import Bin
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.enum import POWER_STATE
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.security import to_hex
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
@@ -457,6 +458,13 @@ class Factory(maastesting.factory.Factory):
             parent=parent,
             **kwargs,
         )
+        node.save()
+        if status == NODE_STATUS.EXITING_RESCUE_MODE:
+            node._register_request_event(
+                user=None,
+                type_name=EVENT_TYPES.REQUEST_NODE_STOP_RESCUE_MODE,
+                action="stop rescue mode",
+            )
         if bmc is None and power_type:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.
