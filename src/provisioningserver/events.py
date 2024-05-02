@@ -252,25 +252,25 @@ EVENT_DETAILS = {
         description="Node exiting rescue mode failure", level=ERROR
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_BMC: EventDetail(
-        description="Node BMC hardware sync state change", level=AUDIT
+        description="Node BMC hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE: EventDetail(
-        description="Node Block Device hardware sync state change", level=AUDIT
+        description="Node Block Device hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_CPU: EventDetail(
-        description="Node CPU hardware sync state change", level=AUDIT
+        description="Node CPU hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE: EventDetail(
-        description="Node Interface hardware sync state change", level=AUDIT
+        description="Node Interface hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY: EventDetail(
-        description="Node Memory hardware sync state change", level=AUDIT
+        description="Node Memory hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_PCI_DEVICE: EventDetail(
-        description="Node PCI Device hardware sync state change", level=AUDIT
+        description="Node PCI Device hardware sync state change", level=INFO
     ),
     EVENT_TYPES.NODE_HARDWARE_SYNC_USB_DEVICE: EventDetail(
-        description="Node USB Device hardware sync state chage", level=AUDIT
+        description="Node USB Device hardware sync state chage", level=INFO
     ),
     EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
         description="User starting node commissioning", level=DEBUG
