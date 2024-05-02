@@ -345,6 +345,7 @@ RegionControllerWorkerRule = Rule(
     Allow("netaddr|netaddr.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("temporalio|temporalio.**"),
+    Allow("yaml"),
     Allow(StandardLibraries),
 )
 

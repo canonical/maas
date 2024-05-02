@@ -43,7 +43,6 @@ class Command(BaseCommand):
                 },
                 "additionalProperties": False,
             },
-            "alias": {"type": "string"},
         },
         "required": ["metadata"],
         "additionalProperties": False,

@@ -40,7 +40,6 @@ metadata:
   address: 123 Fake St.
   postal_code: '80205'
   timezone: US/Denver
-alias: test_machine
 """
 
 

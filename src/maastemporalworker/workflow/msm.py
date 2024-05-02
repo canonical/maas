@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ApplicationError
+import yaml
 
 from maasapiserver.common.db import Database
 from maastemporalworker.workflow.activity import ActivityBase
@@ -73,7 +74,7 @@ class MSMConnectorActivity(ActivityBase):
         data = {
             "name": input.site_name,
             "url": input.site_url,
-            **({"metadata": input.metainfo} if input.metainfo else {}),
+            **(yaml.safe_load(input.metainfo) if input.metainfo else {}),
         }
 
         async with self._session.post(

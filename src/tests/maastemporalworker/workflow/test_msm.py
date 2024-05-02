@@ -106,7 +106,9 @@ class TestMSMActivities:
         self._mock_post(mocker, mocked_session, True, 202, "")
 
         env = ActivityEnvironment()
-        meta = yaml.safe_dump({"latitude": 0.0, "longitude": 0.0})
+        meta = yaml.safe_dump(
+            {"metadata": {"latitude": 0.0, "longitude": 0.0}}
+        )
         param = replace(enrol_param, metainfo=meta)
         ok = await env.run(msm_act.send_enrol, param)
 
