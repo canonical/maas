@@ -417,6 +417,18 @@ def get_quirks_kernel_opts(
     return None
 
 
+def update_boot_interface_vlan(machine: Node, local_ip: str):
+    subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
+    boot_vlan = getattr(machine.boot_interface, "vlan", None)
+    if subnet and subnet.vlan != boot_vlan:
+        # This might choose the wrong interface, but we don't
+        # have enough information to decide which interface is
+        # the boot one.
+        machine.boot_interface = machine.current_config.interface_set.filter(
+            vlan=subnet.vlan
+        ).first()
+
+
 @synchronous
 @transactional
 def get_config(
@@ -500,50 +512,47 @@ def get_config(
         if machine.bios_boot_method != bios_boot_method:
             machine.bios_boot_method = bios_boot_method
 
-        try:
-            machine.boot_interface = machine.current_config.interface_set.get(
-                type=INTERFACE_TYPE.PHYSICAL, mac_address=mac
-            )
-        except ObjectDoesNotExist:
-            # MAC is unknown or wasn't sent. Determine the boot_interface using
-            # the boot_cluster_ip.
-            subnet = Subnet.objects.get_best_subnet_for_ip(local_ip)
-            boot_vlan = getattr(machine.boot_interface, "vlan", None)
-            if subnet and subnet.vlan != boot_vlan:
-                # This might choose the wrong interface, but we don't
-                # have enough information to decide which interface is
-                # the boot one.
-                machine.boot_interface = (
-                    machine.current_config.interface_set.filter(
-                        vlan=subnet.vlan
-                    ).first()
-                )
+        if not mac:
+            # MAC was not sent. Determine the boot_interface using the boot_cluster_ip.
+            update_boot_interface_vlan(machine, local_ip)
         else:
-            # Update the VLAN of the boot interface to be the same VLAN for the
-            # interface on the rack controller that the machine communicated
-            # with, unless the VLAN is being relayed.
-            rack_interface = (
-                rack_controller.current_config.interface_set.filter(
-                    ip_addresses__ip=local_ip
+            try:
+                machine.boot_interface = (
+                    machine.current_config.interface_set.get(
+                        type=INTERFACE_TYPE.PHYSICAL,
+                        mac_address=normalise_macaddress(mac),
+                    )
                 )
-                .select_related("vlan")
-                .first()
-            )
-            if (
-                rack_interface is not None
-                and machine.boot_interface.vlan_id != rack_interface.vlan_id
-            ):
-                # Rack controller and machine is not on the same VLAN, with
-                # DHCP relay this is possible. Lets ensure that the VLAN on the
-                # interface is setup to relay through the identified VLAN.
-                if not VLAN.objects.filter(
-                    id=machine.boot_interface.vlan_id,
-                    relay_vlan=rack_interface.vlan_id,
-                ).exists():
-                    # DHCP relay is not being performed for that VLAN. Set the
-                    # VLAN to the VLAN of the rack controller.
-                    machine.boot_interface.vlan = rack_interface.vlan
-                    machine.boot_interface.save()
+            except ObjectDoesNotExist:
+                # MAC is unknown. Determine the boot_interface using the boot_cluster_ip.
+                update_boot_interface_vlan(machine, local_ip)
+            else:
+                # Update the VLAN of the boot interface to be the same VLAN for the
+                # interface on the rack controller that the machine communicated
+                # with, unless the VLAN is being relayed.
+                rack_interface = (
+                    rack_controller.current_config.interface_set.filter(
+                        ip_addresses__ip=local_ip
+                    )
+                    .select_related("vlan")
+                    .first()
+                )
+                if (
+                    rack_interface is not None
+                    and machine.boot_interface.vlan_id
+                    != rack_interface.vlan_id
+                ):
+                    # Rack controller and machine is not on the same VLAN, with
+                    # DHCP relay this is possible. Lets ensure that the VLAN on the
+                    # interface is setup to relay through the identified VLAN.
+                    if not VLAN.objects.filter(
+                        id=machine.boot_interface.vlan_id,
+                        relay_vlan=rack_interface.vlan_id,
+                    ).exists():
+                        # DHCP relay is not being performed for that VLAN. Set the
+                        # VLAN to the VLAN of the rack controller.
+                        machine.boot_interface.vlan = rack_interface.vlan
+                        machine.boot_interface.save()
 
         # Reset the machine's status_expires whenever the boot_config is called
         # on a known machine. This allows a machine to take up to the maximum

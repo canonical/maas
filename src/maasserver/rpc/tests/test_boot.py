@@ -23,6 +23,7 @@ from maasserver.models import (
     BootResourceSet,
     Config,
     Event,
+    Machine,
 )
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
@@ -1294,6 +1295,100 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
         self.assertEqual("hwe-22.04", observed_config["subarch"])
+
+    def test_machine_boots_from_another_vlan_and_gets_updated_when_mac_is_unknown(
+        self,
+    ):
+        make_usable_architecture(self)
+
+        vlan_10 = factory.make_VLAN(vid=10)
+        subnet_10 = factory.make_Subnet(cidr="10.0.0.0/24", vlan=vlan_10)
+
+        vlan_20 = factory.make_VLAN(vid=20)
+        subnet_20 = factory.make_Subnet(cidr="20.0.0.0/24", vlan=vlan_20)
+
+        rack = factory.make_rack_with_interfaces(
+            eth0=[subnet_10.cidr],
+            eth1=[subnet_20.cidr],
+        )
+
+        # The machine is configured to use the subnet_10
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, subnet=subnet_10
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine, subnet=subnet_20
+        )
+
+        # But actually the machine boots from the other subnet
+        local_ip = (
+            rack.current_config.interface_set.filter(vlan=vlan_20)
+            .first()
+            .ip_addresses.first()
+            .ip
+        )
+        remote_ip = factory.pick_ip_in_Subnet(subnet_20)
+
+        get_config(
+            rack.system_id,
+            local_ip,
+            remote_ip,
+            hardware_uuid=machine.hardware_uuid,
+            mac=None,
+        )
+
+        reloaded_machine = Machine.objects.filter(
+            system_id=machine.system_id
+        ).first()
+
+        # The second NIC is the new boot interface
+        self.assertEqual(reloaded_machine.boot_interface.vlan.id, vlan_20.id)
+
+    def test_machine_boots_from_another_vlan_and_gets_updated(self):
+        vlan_10 = factory.make_VLAN(vid=10)
+        subnet_10 = factory.make_Subnet(cidr="10.0.0.0/24", vlan=vlan_10)
+
+        vlan_20 = factory.make_VLAN(vid=20)
+        subnet_20 = factory.make_Subnet(cidr="20.0.0.0/24", vlan=vlan_20)
+
+        rack = factory.make_rack_with_interfaces(
+            eth0=[subnet_10.cidr],
+            eth1=[subnet_20.cidr],
+        )
+
+        # The machine is configured to use the subnet_10
+        machine = factory.make_Machine_with_Interface_on_Subnet(
+            status=NODE_STATUS.DEPLOYING, subnet=subnet_10
+        )
+
+        # But actually the machine boots from the other subnet
+        local_ip = (
+            rack.current_config.interface_set.filter(vlan=vlan_20)
+            .first()
+            .ip_addresses.first()
+            .ip
+        )
+        remote_ip = factory.pick_ip_in_Subnet(subnet_20)
+
+        # The MAC address coming from the rack is always in the format XX-XX-XX-XX-XX-XX
+        unformatted_mac_address = machine.boot_interface.mac_address.replace(
+            ":", "-"
+        )
+
+        get_config(
+            rack.system_id,
+            local_ip,
+            remote_ip,
+            mac=unformatted_mac_address,
+            query_count=50,
+        )
+
+        reloaded_machine = Machine.objects.filter(
+            system_id=machine.system_id
+        ).first()
+
+        # Expect that the boot interface vlan is moved to the same rack controller's vlan
+        self.assertEqual(reloaded_machine.boot_interface.vlan.id, vlan_20.id)
 
     def test_commissioning_node_uses_min_hwe_kernel_reports_missing(self):
         factory.make_BootSourceCache(
