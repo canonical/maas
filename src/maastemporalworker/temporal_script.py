@@ -72,6 +72,7 @@ async def main() -> None:
                 msm_activity.send_enrol,
                 msm_activity.check_enrol,
                 msm_activity.set_enrol,
+                msm_activity.get_heartbeat_data,
                 msm_activity.send_heartbeat,
             ],
         ),

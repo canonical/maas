@@ -4,6 +4,9 @@
 """
 MAAS Site Manager Connector service
 """
+import asyncio
+from typing import Any
+
 from jose import jwt
 from jose.exceptions import JWTClaimsError
 from temporalio.common import WorkflowIDReusePolicy
@@ -11,7 +14,8 @@ from temporalio.common import WorkflowIDReusePolicy
 from maasserver.models.config import Config
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import with_connection
-from maasserver.workflow import cancel_workflow, query_workflow, start_workflow
+from maasserver.workflow import cancel_workflow, start_workflow
+from maasserver.workflow.worker.worker import get_client_async
 from maastemporalworker.workflow.msm import MSM_SECRET, MSMEnrolParam
 from provisioningserver.logger import get_maas_logger
 
@@ -53,12 +57,6 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> None:
     if not url:
         raise MSMException("missing 'enrolment-url' claim")
 
-    current, _ = msm_status()
-    if current is not None:
-        raise MSMException(
-            "this site is already enroled to a Site Manager instance"
-        )
-
     param = MSMEnrolParam(
         site_name=configs["maas_name"],
         site_url=configs["maas_url"].rstrip("/").removesuffix("/MAAS"),
@@ -83,18 +81,30 @@ def msm_withdraw() -> None:
     # raise MSMException("not implemented")
 
 
-@with_connection
-def msm_status() -> tuple[str | None, bool]:
-    """Get MSM connection status.
+async def _query_workflow():
+    temporal_client = await get_client_async()
+    hdl = temporal_client.get_workflow_handle(
+        workflow_id="msm-heartbeat:region"
+    )
+    try:
+        running = await hdl.query("is-running")
+        desc = await hdl.describe()
+        start = desc.start_time
+        return running, start
+    except Exception:
+        return None, None
 
-    Returns:
-        tuple[str | None, bool]: a tuple of MSM URL and whether a connection is
-        currently established. When MAAS is not enroled to MSM, it returns
-        `(None, False)`
-    """
+
+@with_connection
+def msm_status() -> dict[str, Any]:
+    """Get MSM connection status."""
     msm_creds = SecretManager().get_composite_secret(MSM_SECRET, default=None)
     if not msm_creds:
-        return (None, False)
+        return {}
 
-    running = query_workflow("msm-heartbeat:region", "is-running")
-    return msm_creds["url"], bool(running)
+    running, start = asyncio.run(_query_workflow())
+    return {
+        "sm-url": msm_creds["url"],
+        "running": bool(running),
+        "start-time": start.isoformat() if start else None,
+    }

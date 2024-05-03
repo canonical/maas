@@ -18,13 +18,19 @@ import yaml
 
 from maasapiserver.common.db import Database
 from maasapiserver.v3.services.secrets import LocalSecretsStorageService
+from maasserver.enum import NODE_STATUS
 from maastemporalworker.workflow.msm import (
+    MachineStatsByStatus,
     MSM_SECRET,
     MSMConnectorActivity,
     MSMConnectorParam,
     MSMEnrolParam,
     MSMEnrolSiteWorkflow,
+    MSMHeartbeatParam,
+    MSMHeartbeatWorkflow,
 )
+from tests.fixtures.factories.node import create_test_machine_entry
+from tests.maasapiserver.fixtures.db import Fixture
 
 _MAAS_SITE_NAME = "maas-site"
 _MAAS_URL = "http://maas.local/"
@@ -60,16 +66,38 @@ def enrol_param() -> MSMEnrolParam:
     )
 
 
+@pytest.fixture
+def hb_param() -> MSMHeartbeatParam:
+    return MSMHeartbeatParam(
+        site_name=_MAAS_SITE_NAME,
+        site_url=_MAAS_URL,
+        sm_url=_MSM_DETAIL_URL,
+        jwt=_JWT_ACCESS,
+        status=MachineStatsByStatus(
+            allocated=1,
+            deployed=2,
+        ),
+    )
+
+
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
 class TestMSMActivities:
     def _mock_post(
-        self, mocker, mocked_session, ok: bool, status: int, reason: str
+        self,
+        mocker,
+        mocked_session,
+        ok: bool,
+        status: int,
+        reason: str,
+        body: dict[str, Any] | None = None,
     ) -> Mock:
         mock_response = mocker.create_autospec(ClientResponse)
         type(mock_response).ok = PropertyMock(return_value=ok)
         type(mock_response).status = PropertyMock(return_value=status)
         type(mock_response).reason = PropertyMock(return_value=reason)
+        if body:
+            mock_response.json.return_value = body
         mocked_session.post.return_value.__aenter__.return_value = (
             mock_response
         )
@@ -169,6 +197,72 @@ class TestMSMActivities:
         cred = await secrets.get_composite_secret(f"global/{MSM_SECRET}")
         assert cred["url"] == _MSM_DETAIL_URL
         assert cred["jwt"] == _JWT_ACCESS
+
+    async def test_get_heartbeat_data(self, msm_act, fixture: Fixture):
+        for st in [
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.DEPLOYED,
+            NODE_STATUS.READY,
+            NODE_STATUS.TESTING,
+            NODE_STATUS.FAILED_COMMISSIONING,
+            NODE_STATUS.FAILED_DEPLOYMENT,
+            NODE_STATUS.FAILED_DISK_ERASING,
+            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
+            NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
+            NODE_STATUS.FAILED_RELEASING,
+            NODE_STATUS.FAILED_TESTING,
+        ]:
+            await create_test_machine_entry(fixture, status=st)
+        env = ActivityEnvironment()
+        data = await env.run(msm_act.get_heartbeat_data)
+        assert data.allocated == 1
+        assert data.deployed == 1
+        assert data.ready == 1
+        assert data.error == 7
+        assert data.other == 1
+
+    async def test_get_heartbeat_data_empty(self, msm_act):
+        env = ActivityEnvironment()
+        data = await env.run(msm_act.get_heartbeat_data)
+        assert data.allocated == 0
+        assert data.deployed == 0
+        assert data.ready == 0
+        assert data.error == 0
+        assert data.other == 0
+
+    async def test_send_heartbeat(self, mocker, msm_act, hb_param):
+        mocked_session = msm_act._session
+        self._mock_post(
+            mocker,
+            mocked_session,
+            True,
+            200,
+            "",
+            body={
+                "heartbeat_interval_seconds": 300,
+            },
+        )
+
+        env = ActivityEnvironment()
+        intval = await env.run(msm_act.send_heartbeat, hb_param)
+
+        assert intval == 300
+        mocked_session.post.assert_called_once()
+        args = mocked_session.post.call_args.args
+        kwargs = mocked_session.post.call_args.kwargs
+        assert args[0] == _MSM_DETAIL_URL
+        assert kwargs["headers"]["Authorization"] is not None
+        assert kwargs["json"]["name"] == _MAAS_SITE_NAME
+        assert kwargs["json"]["url"] == _MAAS_URL
+        assert "machines_by_status" in kwargs["json"]
+
+    async def test_send_heartbeat_cancel(self, mocker, msm_act, hb_param):
+        mocked_session = msm_act._session
+        self._mock_post(mocker, mocked_session, True, 401, "")
+
+        env = ActivityEnvironment()
+        intval = await env.run(msm_act.send_heartbeat, hb_param)
+        assert intval == -1
 
 
 class TestMSMEnrolWorkflow:
@@ -290,3 +384,38 @@ class TestMSMEnrolWorkflow:
         assert len(calls["msm-send-enrol"]) == 1
         assert len(calls["msm-check-enrol"]) == POLL_CALL_COUNT
         assert len(calls["msm-set-enrol"]) == 0
+
+
+class TestMSMHeartbeatWorkflow:
+    async def test_heartbeat(self, hb_param):
+        calls = defaultdict(list)
+
+        @activity.defn(name="msm-get-heartbeat-data")
+        async def get_heartbeat_data() -> MachineStatsByStatus:
+            calls["msm-get-heartbeat-data"].append(True)
+            return MachineStatsByStatus(allocated=1, deployed=1)
+
+        @activity.defn(name="msm-send-heartbeat")
+        async def send_heartbeat(input: MSMHeartbeatParam) -> int:
+            calls["msm-send-heartbeat"].append(True)
+            return -1
+
+        async with await WorkflowEnvironment.start_time_skipping() as env:
+            async with Worker(
+                env.client,
+                task_queue="abcd:region",
+                workflows=[MSMHeartbeatWorkflow],
+                activities=[
+                    get_heartbeat_data,
+                    send_heartbeat,
+                ],
+            ) as worker:
+                await env.client.execute_workflow(
+                    MSMHeartbeatWorkflow.run,
+                    hb_param,
+                    id=f"workflow-{uuid.uuid4()}",
+                    task_queue=worker.task_queue,
+                )
+
+        assert len(calls["msm-get-heartbeat-data"]) == 1
+        assert len(calls["msm-send-heartbeat"]) == 1

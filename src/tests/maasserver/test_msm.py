@@ -114,41 +114,29 @@ class TestMSMEnrol:
         with pytest.raises(MSMException):
             msm_enrol(encoded)
 
-    def test_already_enroled(
-        self, mocker, msm_enrol_payload, jwt_key, msm_site
-    ):
-        mocker.patch("maasserver.msm.start_workflow")
-        mocked_msm_status = mocker.patch("maasserver.msm.msm_status")
-        mocked_msm_status.return_value = (msm_site, False)
-        encoded = jwt.encode(
-            msm_enrol_payload, jwt_key, algorithm=TOKEN_ALGORITHM
-        )
-        with pytest.raises(MSMException):
-            msm_enrol(encoded)
-
 
 @pytest.mark.usefixtures("maasdb")
 class TestMSMStatus:
     def test_not_enroled(self, mocker):
-        mocked_query = mocker.patch("maasserver.msm.query_workflow")
-        mocked_query.return_value = False
-        site, running = msm_status()
+        mocked_query = mocker.patch("maasserver.msm._query_workflow")
+        mocked_query.return_value = False, None
+        st = msm_status()
         mocked_query.assert_not_called()
-        assert site is None
-        assert not running
+        assert "sm-url" not in st
+        assert "running" not in st
 
     def test_enroled_not_connected(self, mocker, msm_access):
-        mocked_query = mocker.patch("maasserver.msm.query_workflow")
-        mocked_query.return_value = False
-        site, running = msm_status()
+        mocked_query = mocker.patch("maasserver.msm._query_workflow")
+        mocked_query.return_value = False, None
+        st = msm_status()
         mocked_query.assert_called_once()
-        assert site is not None
-        assert not running
+        assert "sm-url" in st
+        assert not st["running"]
 
     def test_enroled_connected(self, mocker, msm_access):
-        mocked_query = mocker.patch("maasserver.msm.query_workflow")
-        mocked_query.return_value = True
-        site, running = msm_status()
+        mocked_query = mocker.patch("maasserver.msm._query_workflow")
+        mocked_query.return_value = True, datetime.now()
+        st = msm_status()
         mocked_query.assert_called_once()
-        assert site is not None
-        assert running
+        assert "sm-url" in st
+        assert st["running"]

@@ -5,18 +5,25 @@
 MAAS Site Manager Connector workflows
 """
 
-from dataclasses import dataclass
+import asyncio
+import dataclasses
 from datetime import timedelta
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession, ClientTimeout
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.sql.functions import count
+from sqlalchemy.sql.operators import eq
 from temporalio import activity, workflow
-from temporalio.common import RetryPolicy
+from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
+from temporalio.workflow import ParentClosePolicy
 import yaml
 
 from maasapiserver.common.db import Database
+from maasapiserver.common.db.tables import NodeTable
+from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maastemporalworker.workflow.activity import ActivityBase
 
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
@@ -25,7 +32,7 @@ MSM_POLL_INTERVAL = timedelta(minutes=1)
 MSM_SECRET = "msm-connector"
 
 
-@dataclass
+@dataclasses.dataclass
 class MSMEnrolParam:
     site_name: str
     site_url: str
@@ -34,16 +41,30 @@ class MSMEnrolParam:
     metainfo: str | None = None
 
 
-@dataclass
+@dataclasses.dataclass
 class MSMConnectorParam:
     url: str
     jwt: str
 
 
-@dataclass
+@dataclasses.dataclass
+class MachineStatsByStatus:
+    """Machine counts by status."""
+
+    allocated: int = 0
+    deployed: int = 0
+    ready: int = 0
+    error: int = 0
+    other: int = 0
+
+
+@dataclasses.dataclass
 class MSMHeartbeatParam:
+    sm_url: str
     jwt: str
-    interval: int
+    site_name: str
+    site_url: str
+    status: MachineStatsByStatus | None = None
 
 
 class MSMConnectorActivity(ActivityBase):
@@ -139,6 +160,45 @@ class MSMConnectorActivity(ActivityBase):
                 f"global/{MSM_SECRET}", {"url": input.url, "jwt": input.jwt}
             )
 
+    @activity.defn(name="msm-get-heartbeat-data")
+    async def get_heartbeat_data(self) -> MachineStatsByStatus:
+        """Get heartbeat data from MAAS DB
+
+        Returns:
+            MachineStatsByStatus: machine counters
+        """
+        ret = MachineStatsByStatus()
+        stmt = (
+            select(NodeTable.c.status, count(NodeTable.c.id).label("total"))
+            .select_from(NodeTable)
+            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
+            .group_by(NodeTable.c.status)
+        )
+        async with self.start_transaction() as tx:
+            result = await tx.execute(stmt)
+            for row in result.all():
+                match row.status:
+                    case NODE_STATUS.ALLOCATED:
+                        ret.allocated += row.total
+                    case NODE_STATUS.DEPLOYED:
+                        ret.deployed += row.total
+                    case NODE_STATUS.READY:
+                        ret.ready += row.total
+                    case (
+                        NODE_STATUS.FAILED_COMMISSIONING
+                        | NODE_STATUS.FAILED_DEPLOYMENT
+                        | NODE_STATUS.FAILED_DISK_ERASING
+                        | NODE_STATUS.FAILED_ENTERING_RESCUE_MODE
+                        | NODE_STATUS.FAILED_EXITING_RESCUE_MODE
+                        | NODE_STATUS.FAILED_RELEASING
+                        | NODE_STATUS.FAILED_TESTING
+                    ):
+                        ret.error += row.total
+                    case _:
+                        ret.other += row.total
+
+        return ret
+
     @activity.defn(name="msm-send-heartbeat")
     async def send_heartbeat(self, input: MSMHeartbeatParam) -> int:
         """Send heartbeat data to MSM.
@@ -149,7 +209,31 @@ class MSMConnectorActivity(ActivityBase):
         Returns:
             int: interval for the next update
         """
-        return 0
+        headers = {
+            "Authorization": f"bearer {input.jwt}",
+        }
+        data = {
+            "name": input.site_name,
+            "url": input.site_url,
+            "machines_by_status": dataclasses.asdict(input.status),
+        }
+
+        async with self._session.post(
+            input.sm_url, json=data, headers=headers
+        ) as response:
+            match response.status:
+                case 200:
+                    data = await response.json()
+                    return int(data["heartbeat_interval_seconds"])
+                case 401 | 404:
+                    activity.logger.error(
+                        "Enrolment cancelled by MSM, aborting"
+                    )
+                    return -1
+                case _:
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}"
+                    )
 
 
 @workflow.defn(name="msm-enrol-site", sandboxed=False)
@@ -204,9 +288,21 @@ class MSMEnrolSiteWorkflow:
             param,
             start_to_close_timeout=MSM_TIMEOUT,
         )
-        self._pending = False
 
-        # TODO schedule heartbeat
+        await workflow.start_child_workflow(
+            "msm-heartbeat",
+            MSMHeartbeatParam(
+                sm_url=new_url,
+                jwt=new_jwt,
+                site_name=input.site_name,
+                site_url=input.site_url,
+            ),
+            id="msm-heartbeat:region",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            parent_close_policy=ParentClosePolicy.ABANDON,
+        )
+
+        self._pending = False
 
     @workflow.query(name="is-pending")
     def is_pending(self) -> bool:
@@ -230,6 +326,9 @@ class MSMWithdrawWorkflow:
 class MSMHeartbeatWorkflow:
     """Send periodic heartbeats to MSM."""
 
+    def __init__(self) -> None:
+        self._running = False
+
     @workflow.run
     async def run(self, input: MSMHeartbeatParam) -> None:
         """Run workflow.
@@ -237,8 +336,27 @@ class MSMHeartbeatWorkflow:
         Args:
             input (MSMHeartbeatParam): Heartbeat data
         """
+        self._running = True
+        next_update = 0
+        while next_update >= 0:
+            data = await workflow.execute_activity(
+                "msm-get-heartbeat-data",
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+            next_update = await workflow.execute_activity(
+                "msm-send-heartbeat",
+                dataclasses.replace(input, status=data),
+                start_to_close_timeout=MSM_TIMEOUT,
+                retry_policy=RetryPolicy(
+                    backoff_coefficient=1.0,
+                    initial_interval=timedelta(seconds=next_update),
+                ),
+            )
+            workflow.logger.debug(f"next refresh in {next_update} seconds")
+            if next_update > 0:
+                await asyncio.sleep(next_update)
+        self._running = False
 
     @workflow.query(name="is-running")
     def is_running(self) -> bool:
-        # FIXME
-        return True
+        return self._running
