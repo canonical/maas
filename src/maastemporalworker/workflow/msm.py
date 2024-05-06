@@ -157,7 +157,11 @@ class MSMConnectorActivity(ActivityBase):
             # TODO add Vault support
             repo = SecretsRepository(tx)
             await repo.create_or_update(
-                f"global/{MSM_SECRET}", {"url": input.url, "jwt": input.jwt}
+                f"global/{MSM_SECRET}",
+                {
+                    "url": input.url,
+                    "jwt": input.jwt,
+                },
             )
 
     @activity.defn(name="msm-get-heartbeat-data")
@@ -262,6 +266,16 @@ class MSMEnrolSiteWorkflow:
             workflow.logger.error(f"failed to enrol to {input.url}, aborting")
             return
 
+        param = MSMConnectorParam(
+            url=input.url,
+            jwt=input.jwt,
+        )
+        await workflow.execute_activity(
+            "msm-set-enrol",
+            param,
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+
         new_jwt = await workflow.execute_activity(
             "msm-check-enrol",
             input,
@@ -279,10 +293,8 @@ class MSMEnrolSiteWorkflow:
         new_url = (
             urlparse(input.url)._replace(path="/site/v1/details").geturl()
         )
-        param = MSMConnectorParam(
-            url=new_url,
-            jwt=new_jwt,
-        )
+        param.url = new_url
+        param.jwt = new_jwt
         await workflow.execute_activity(
             "msm-set-enrol",
             param,

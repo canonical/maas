@@ -765,6 +765,7 @@ ALL_HANDLERS = {
     "fabric",
     "general",
     "iprange",
+    "maassitemanager",
     "machine",
     "nodedevice",
     "noderesult",

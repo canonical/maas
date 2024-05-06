@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 from jose import jwt
 import pytest
 
+from maasserver.enum import MSM_STATUS
 from maasserver.models import Config
 from maasserver.msm import (
     ACCESS,
@@ -79,6 +80,7 @@ def msm_access(factory, maasdb, msm_site, jwt_key):
     secret = {
         "url": urlparse(msm_site)._replace(path="/site/v1/details").geturl(),
         "jwt": jwt.encode(payload, jwt_key, algorithm=TOKEN_ALGORITHM),
+        "started": issued.strftime("%a %d %b %Y, %I:%M%p"),
     }
 
     SecretManager().set_composite_secret("msm-connector", secret)
@@ -114,6 +116,22 @@ class TestMSMEnrol:
         with pytest.raises(MSMException):
             msm_enrol(encoded)
 
+    def test_already_enroled(
+        self, mocker, msm_enrol_payload, jwt_key, msm_site
+    ):
+        mocker.patch("maasserver.msm.start_workflow")
+        mocked_msm_status = mocker.patch("maasserver.msm.msm_status")
+        mocked_msm_status.return_value = {
+            "sm-url": "",
+            "running": MSM_STATUS.PENDING,
+            "start-time": "",
+        }
+        encoded = jwt.encode(
+            msm_enrol_payload, jwt_key, algorithm=TOKEN_ALGORITHM
+        )
+        with pytest.raises(MSMException):
+            msm_enrol(encoded)
+
 
 @pytest.mark.usefixtures("maasdb")
 class TestMSMStatus:
@@ -124,19 +142,28 @@ class TestMSMStatus:
         mocked_query.assert_not_called()
         assert "sm-url" not in st
         assert "running" not in st
+        assert "start-time" not in st
 
     def test_enroled_not_connected(self, mocker, msm_access):
         mocked_query = mocker.patch("maasserver.msm._query_workflow")
-        mocked_query.return_value = False, None
+        start = datetime.now()
+        mocked_query.return_value = False, start
+        mocked_pending = mocker.patch("maasserver.msm._query_pending")
+        mocked_pending.return_value = False, None
         st = msm_status()
         mocked_query.assert_called_once()
         assert "sm-url" in st
-        assert not st["running"]
+        assert st["running"] == MSM_STATUS.NOT_CONNECTED
+        assert st["start-time"] == start.isoformat()
 
     def test_enroled_connected(self, mocker, msm_access):
         mocked_query = mocker.patch("maasserver.msm._query_workflow")
-        mocked_query.return_value = True, datetime.now()
+        start = datetime.now()
+        mocked_query.return_value = True, start
+        mocked_pending = mocker.patch("maasserver.msm._query_pending")
+        mocked_pending.return_value = False, None
         st = msm_status()
         mocked_query.assert_called_once()
         assert "sm-url" in st
-        assert st["running"]
+        assert st["running"] == MSM_STATUS.CONNECTED
+        assert st["start-time"] == start.isoformat()

@@ -15,6 +15,7 @@ from jsonschema import validate, ValidationError
 import yaml
 
 from maascli.init import prompt_yes_no
+from maasserver.enum import MSM_STATUS
 from maasserver.msm import msm_enrol, msm_status, msm_withdraw
 from maasserver.utils.certificates import get_ssl_certificate
 from maasserver.utils.orm import with_connection
@@ -52,7 +53,25 @@ class Command(BaseCommand):
         msm_withdraw()
 
     def _status(self, options):
-        print(msm_status())
+        status = msm_status()
+        if not status:
+            print("No enrolment is in progress")
+            return
+        host = urlparse(status["sm-url"]).hostname
+        match status["running"]:
+            case MSM_STATUS.PENDING:
+                print(
+                    f"Enrolment with {host} is pending approval as of {status['start-time']}"
+                )
+            case MSM_STATUS.CONNECTED:
+                print(f"Enroled with {host} as of {status['start-time']}")
+            case MSM_STATUS.NOT_CONNECTED:
+                print(
+                    f"This MAAS has been enroled with {host} but is no longer connected"
+                )
+            case _:
+                # something is wrong
+                print("Could not determine the status of enrolment")
 
     @with_connection
     def _enrol(self, options):
@@ -98,9 +117,14 @@ class Command(BaseCommand):
         if not prompt_yes_no(msg):
             return
         try:
-            msm_enrol(options["enrolment_token"], metainfo=config)
+            name = msm_enrol(options["enrolment_token"], metainfo=config)
         except Exception as ex:
             raise CommandError(str(ex)) from None
+        print(
+            f"An enrolment request for {name} has been sent to "
+            f"{parsed.hostname} successfully. Enrolment approval is pending "
+            "and must be granted via the MAAS Site Manager UI."
+        )
 
     def add_arguments(self, parser):
         subparsers = parser.add_subparsers(dest="command")

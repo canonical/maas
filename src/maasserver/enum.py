@@ -899,3 +899,9 @@ NODE_DEVICE_BUS_CHOICES = (
     (NODE_DEVICE_BUS.PCIE, "PCIE"),
     (NODE_DEVICE_BUS.USB, "USB"),
 )
+
+
+class MSM_STATUS:
+    NOT_CONNECTED = "not_connected"
+    PENDING = "pending"
+    CONNECTED = "connected"

@@ -383,7 +383,7 @@ class TestMSMEnrolWorkflow:
 
         assert len(calls["msm-send-enrol"]) == 1
         assert len(calls["msm-check-enrol"]) == POLL_CALL_COUNT
-        assert len(calls["msm-set-enrol"]) == 0
+        assert len(calls["msm-set-enrol"]) == 1
 
 
 class TestMSMHeartbeatWorkflow:
