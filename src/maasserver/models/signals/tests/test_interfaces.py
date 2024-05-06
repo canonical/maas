@@ -187,12 +187,65 @@ class TestInterfaceVLANUpdateNotController(MAASServerTestCase):
         self.assertIsNotNone(reload_object(discovered_ip))
 
 
+class TestInterfaceVLANUpdateMachine(MAASServerTestCase):
+    def test_doesnt_move_subnets_to_fabric_when_machine_changes_vlan_in_another_fabric(
+        self,
+    ):
+        fabric_10 = factory.make_Fabric()
+        vlan_10 = factory.make_VLAN(vid=10, fabric=fabric_10)
+        subnet_10 = factory.make_Subnet(cidr="10.0.0.0/24", vlan=vlan_10)
+
+        fabric_20 = factory.make_Fabric()
+        vlan_20 = factory.make_VLAN(vid=20, fabric=fabric_20)
+
+        machine = factory.make_Machine()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine, subnet=subnet_10
+        )
+        factory.make_StaticIPAddress(subnet=subnet_10, interface=interface)
+
+        interface.vlan = vlan_20
+        interface.save()
+
+        # The subnet_10 is not moved to the fabric_20.
+        self.assertEqual(fabric_10, reload_object(subnet_10).vlan.fabric)
+        # The IPs are cleared.
+        self.assertEqual(
+            0,
+            reload_object(machine)
+            .current_config.interface_set.first()
+            .ip_addresses.count(),
+        )
+
+
 class TestInterfaceVLANUpdateController(MAASServerTestCase):
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),
         ("region-rack", {"maker": factory.make_RegionRackController}),
     )
+
+    def test_subnets_are_moved_to_fabric_when_controller_changes_vlan_in_another_fabric(
+        self,
+    ):
+        fabric_10 = factory.make_Fabric()
+        vlan_10 = factory.make_VLAN(vid=10, fabric=fabric_10)
+        subnet_10 = factory.make_Subnet(cidr="10.0.0.0/24", vlan=vlan_10)
+
+        fabric_20 = factory.make_Fabric()
+        vlan_20 = factory.make_VLAN(vid=20, fabric=fabric_20)
+
+        node = self.maker()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, subnet=subnet_10
+        )
+        factory.make_StaticIPAddress(subnet=subnet_10, interface=interface)
+
+        interface.vlan = vlan_20
+        interface.save()
+
+        # The subnet_10 moved to the fabric of the vlan_20
+        self.assertEqual(fabric_20, reload_object(subnet_10).vlan.fabric)
 
     def test_moves_link_subnets_to_same_vlan(self):
         node = self.maker()
