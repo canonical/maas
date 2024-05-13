@@ -19,9 +19,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/netip"
+	"strconv"
 	"time"
 
 	pcap "github.com/packetcap/go-pcap"
@@ -120,8 +120,10 @@ func (s *Service) updateBindings(pkt *ethernet.ARPPacket, vid *uint16, timestamp
 		})
 	}
 
+	prefix := strconv.Itoa(vidLabel) + "_"
+
 	for _, discoveredBinding := range discoveredBindings {
-		key := fmt.Sprintf("%d_%s", vidLabel, discoveredBinding.IP.String())
+		key := prefix + discoveredBinding.IP.String()
 
 		binding, ok := s.bindings[key]
 		if !ok {
