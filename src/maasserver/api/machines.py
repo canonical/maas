@@ -733,7 +733,9 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         the metadata service.
 
         @param (string) "distro_series" [required=false] If present, this
-        parameter specifies the OS release the machine will use.
+        parameter specifies the OS release the machine will use. For example
+        valid values to deploy Jammy Jellyfish are ``ubuntu/jammy``, ``jammy`` and
+        ``ubuntu/22.04``, ``22.04``.
         @param-example "distro_series"
             ubuntu/jammy
 

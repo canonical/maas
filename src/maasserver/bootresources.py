@@ -258,9 +258,17 @@ class BootResourceStore(ObjectStore):
 
         name = f"{os}/{series}"
 
+        version = product.get("version")
+        if version:
+            alias = f"{os}/{version}"
+        else:
+            # Bootloaders do not have an alias
+            alias = None
+
         resource, _ = BootResource.objects.get_or_create(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
+            alias=alias,
             architecture=architecture,
         )
         resource.kflavor = kflavor

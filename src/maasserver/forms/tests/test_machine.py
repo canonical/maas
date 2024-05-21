@@ -6,7 +6,7 @@ from crochet import TimeoutError
 
 from maasserver import forms
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import BOOT_RESOURCE_TYPE, NODE_STATUS
 from maasserver.forms import (
     AdminMachineForm,
     AdminMachineWithMACAddressesForm,
@@ -215,6 +215,53 @@ class TestMachineForm(MAASServerTestCase):
         form.set_distro_series(release)
         form.save()
         self.assertEqual(release + "6", node.distro_series)
+
+    def test_set_distro_series_accepts_short_alias_series(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
+        release = factory.make_name("release")
+        alias = factory.make_name("alias")
+        make_usable_osystem(
+            self,
+            releases=[release],
+            aliases=[alias],
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+        )
+        form = MachineForm(
+            data={
+                "hostname": factory.make_name("host"),
+                "architecture": make_usable_architecture(self),
+            },
+            instance=node,
+        )
+        form.set_distro_series(alias)
+        form.save()
+        self.assertEqual(release, node.distro_series)
+
+    def test_set_distro_series_accepts_full_alias_series(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        node = factory.make_Node(owner=user)
+        release = "jammy"
+        alias = "22.04"
+        make_usable_osystem(
+            self,
+            osystem_name="ubuntu",
+            releases=[release],
+            aliases=[alias],
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+        )
+        form = MachineForm(
+            data={
+                "hostname": factory.make_name("host"),
+                "architecture": make_usable_architecture(self),
+            },
+            instance=node,
+        )
+        form.set_distro_series(f"ubuntu/{alias}")
+        form.save()
+        self.assertEqual(release, node.distro_series)
 
     def test_set_distro_series_doesnt_allow_short_ubuntu_series(self):
         user = factory.make_User()

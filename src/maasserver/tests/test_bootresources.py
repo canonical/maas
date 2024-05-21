@@ -132,6 +132,7 @@ def make_product(ftype=None, kflavor=None, subarch=None, platform=None):
         "release": factory.make_name("release"),
         "kflavor": kflavor,
         "subarches": subarches,
+        "version": factory.make_name("alias"),
         "version_name": factory.make_name("version"),
         "label": factory.make_name("label"),
         "ftype": ftype,
@@ -170,6 +171,10 @@ def make_boot_resource_group(
     return resource, resource_set, rfile
 
 
+def make_alias_from_product(product: dict[str, str]) -> str:
+    return f"{product['os']}/{product['version']}"
+
+
 def make_boot_resource_group_from_product(product):
     """Make boot resource that contains one set and one file, using the
     information from the given product.
@@ -181,7 +186,10 @@ def make_boot_resource_group_from_product(product):
     name = "{}/{}".format(product["os"], product["release"])
     architecture = "{}/{}".format(product["arch"], product["subarch"])
     resource = factory.make_BootResource(
-        rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=architecture
+        rtype=BOOT_RESOURCE_TYPE.SYNCED,
+        name=name,
+        alias=make_alias_from_product(product),
+        architecture=architecture,
     )
     resource_set = factory.make_BootResourceSet(
         resource, version=product["version_name"]
@@ -253,6 +261,7 @@ class TestBootResourceStore(MAASServerTestCase):
         self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
         self.assertEqual(name, resource.name)
         self.assertEqual(architecture, resource.architecture)
+        self.assertEqual(make_alias_from_product(product), resource.alias)
         self.assertEqual(product["kflavor"], resource.kflavor)
         self.assertEqual(product["subarches"], resource.extra["subarches"])
         self.assertEqual(product["platform"], resource.extra["platform"])
@@ -267,6 +276,7 @@ class TestBootResourceStore(MAASServerTestCase):
         expected = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
+            alias=make_alias_from_product(product),
             architecture=architecture,
         )
         store = BootResourceStore()
@@ -285,6 +295,7 @@ class TestBootResourceStore(MAASServerTestCase):
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
+            alias=make_alias_from_product(product),
             architecture=architecture,
         )
         store = BootResourceStore()
@@ -618,6 +629,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
+                alias=make_alias_from_product(product),
                 architecture=architecture,
             )
             resource_set = factory.make_BootResourceSet(
@@ -663,6 +675,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
+                alias=make_alias_from_product(product),
                 architecture=architecture,
             )
             resource_set = factory.make_BootResourceSet(
@@ -690,6 +703,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
+                alias=make_alias_from_product(product),
                 architecture=architecture,
                 kflavor="generic",
             )
@@ -808,6 +822,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
+                alias=make_alias_from_product(product),
                 architecture=architecture,
             )
         product["sha256"] = factory.make_string(size=64)

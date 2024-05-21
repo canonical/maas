@@ -57,6 +57,7 @@ class OSReleaseArchitecture:
 class OSRelease:
     name: str
     title: str
+    alias: str | None = None
     can_commission: bool = False
     requires_license_key: bool = False
     architectures: Dict[str, OSReleaseArchitecture] = dataclasses.field(
@@ -87,6 +88,11 @@ def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
         else:
             os_name = "custom"
             release_name = br.name
+
+        if br.alias and "/" in br.alias:
+            _, alias_name = br.alias.split("/")
+        else:
+            alias_name = br.alias
 
         osystem = OperatingSystemRegistry.get_item(os_name)
         if osystem is not None:
@@ -129,6 +135,7 @@ def list_all_usable_osystems() -> Dict[str, OperatingSystem]:
             osystems[os_name].releases[release_name] = OSRelease(
                 name=release_name,
                 title=release_title,
+                alias=alias_name,
                 can_commission=can_commission,
                 requires_license_key=requires_license_key,
             )

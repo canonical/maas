@@ -151,3 +151,17 @@ class TestUbuntuOS(MAASTestCase):
         self.assertEqual(
             osystem.get_release_title(release), self.get_release_title(release)
         )
+
+    def test_get_release_version(self):
+        osystem = UbuntuOS()
+        tests = [
+            ("warty", "4.10"),
+            ("xenial", "16.04"),
+            ("bionic", "18.04"),
+            ("mantic", "23.10"),
+            ("unknown", None),
+        ]
+        for release, expected_version in tests:
+            self.assertEqual(
+                osystem.get_release_version(release), expected_version
+            )

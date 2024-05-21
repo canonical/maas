@@ -558,22 +558,38 @@ def clean_distro_series_field(form, field, os_field):
     return release
 
 
-def find_osystem_and_release_from_release_name(name):
+def find_osystem_and_release_from_release_name_or_alias(name: str):
     """Return os and release for the given release name."""
     osystems = list_all_usable_osystems()
     possible_short_names = []
+
+    if "/" in name:
+        osystem_name, release_name_or_alias = name.split("/")
+    else:
+        osystem_name = None
+        release_name_or_alias = name
+
     for osystem in osystems.values():
+        if osystem_name and osystem_name != osystem.name:
+            continue
         for release in osystem.releases.values():
-            if release.name == name:
+            # Match by name or by alias. For example, in order to select Jammy Jellyfish the user can specify both `jammy` and
+            # `22.04`
+            if (
+                release.name == release_name_or_alias
+                or release.alias == release_name_or_alias
+            ):
                 return osystem, release
-            elif osystem.name == name:
+            elif osystem.name == release_name_or_alias:
                 # If the given release matches the osystem name add it to
                 # our list of possibilities. This allows a user to specify
                 # Ubuntu and get the latest release available.
                 possible_short_names.append(
                     {"osystem": osystem, "release": release}
                 )
-            elif osystem.name != "ubuntu" and release.name.startswith(name):
+            elif osystem.name != "ubuntu" and release.name.startswith(
+                release_name_or_alias
+            ):
                 # Check if the given name is a shortened version of a known
                 # name, e.g. centos7 for centos70.  We don't allow short names
                 # for Ubuntu releases
@@ -918,9 +934,10 @@ class MachineForm(NodeForm):
         self.data["osystem"] = ""
         self.data["distro_series"] = ""
         if series is not None and series != "":
-            osystem, release = find_osystem_and_release_from_release_name(
-                series
-            )
+            (
+                osystem,
+                release,
+            ) = find_osystem_and_release_from_release_name_or_alias(series)
             if osystem is not None:
                 key_required = get_release_requires_key(release)
                 self.data["osystem"] = osystem.name

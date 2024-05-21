@@ -68,14 +68,7 @@ class UbuntuOS(OperatingSystem):
         """Returns the distro series row information from python-distro-info."""
         info = self.ubuntu_distro_info
         for row in info._avail(info._date):
-            # LP: #1711191 - distro-info 0.16+ no longer returns dictionaries
-            # or lists, and it now returns objects instead. In this case, we
-            # return either the object or the dictionary so get_release_title
-            # handles the formating correctly.
-            row_dict = row
-            if not isinstance(row, dict):
-                row_dict = row.__dict__
-            if row_dict["series"] == release:
+            if row.series == release:
                 return row
         return None
 
@@ -88,3 +81,9 @@ class UbuntuOS(OperatingSystem):
 
     def get_image_filetypes(self) -> dict[str, str]:
         return self._get_image_filetypes(tgz=True, squashfs=True)
+
+    def get_release_version(self, release) -> str | None:
+        if release not in self.ubuntu_distro_info.all:
+            return None
+        version = self.ubuntu_distro_info.version(release)
+        return version.replace(" LTS", "")

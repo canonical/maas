@@ -2396,6 +2396,7 @@ class Factory(maastesting.factory.Factory):
         self,
         rtype=None,
         name=None,
+        alias=None,
         architecture=None,
         extra=None,
         kflavor=None,
@@ -2417,6 +2418,14 @@ class Factory(maastesting.factory.Factory):
                 os = self.make_name("os")
                 series = self.make_name("series")
                 name = f"{os}/{series}"
+
+        if alias is None and rtype != BOOT_RESOURCE_TYPE.UPLOADED:
+            if "/" in name:
+                version = self.make_name("version")
+                alias = f"{name.split('/')[1]}/{version}"
+            else:
+                alias = name
+
         subarch = None
         if architecture is None:
             arch = self.make_name("arch")
@@ -2444,6 +2453,7 @@ class Factory(maastesting.factory.Factory):
         result = BootResource.objects.create(
             rtype=rtype,
             name=name,
+            alias=alias,
             architecture=architecture,
             kflavor=kflavor,
             bootloader_type=bootloader_type,
@@ -2535,6 +2545,7 @@ class Factory(maastesting.factory.Factory):
         self,
         rtype=None,
         name=None,
+        alias=None,
         architecture=None,
         extra=None,
         version=None,
@@ -2552,6 +2563,7 @@ class Factory(maastesting.factory.Factory):
         resource = self.make_BootResource(
             rtype=rtype,
             name=name,
+            alias=alias,
             architecture=architecture,
             extra=extra,
             kflavor=kflavor,
@@ -2703,7 +2715,8 @@ class Factory(maastesting.factory.Factory):
         )
         default_name = f"{default_osystem}/{default_series}"
         release = get_release_from_distro_info(default_series)
-        architecture = "{}/hwe-{}".format(arch, release["version"].split()[0])
+        alias = release["version"].split()[0]
+        architecture = "{}/hwe-{}".format(arch, alias)
         try:
             return BootResource.objects.get(
                 name=default_name,
@@ -2714,6 +2727,7 @@ class Factory(maastesting.factory.Factory):
             with transaction.atomic():
                 return self.make_usable_boot_resource(
                     name=default_name,
+                    alias=alias,
                     architecture=architecture,
                     kflavor="generic",
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,

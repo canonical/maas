@@ -491,6 +491,8 @@ class BootResource(CleanSave, TimestampedModel):
     :ivar name: Name of the `BootResource`. If its BOOT_RESOURCE_TYPE.UPLOADED
         then `name` is used to reference this image. If its
         BOOT_RESOURCE_TYPE.SYCNED, then its in the format of os/series.
+    :ivar alias: The alias of the `BootResource` name. For example, `20.04` is
+        the alias for `focal`. Bootloaders and custom images DO NOT have an alias.
     :ivar architecture: Architecture of the `BootResource`. It must be in
         the format arch/subarch.
     :ivar extra: Extra information about the file. This is only used
@@ -498,13 +500,15 @@ class BootResource(CleanSave, TimestampedModel):
     """
 
     class Meta:
-        unique_together = (("name", "architecture"),)
+        unique_together = (("name", "architecture", "alias"),)
 
     objects = BootResourceManager()
 
     rtype = IntegerField(choices=BOOT_RESOURCE_TYPE_CHOICES, editable=False)
 
     name = CharField(max_length=255, blank=False)
+
+    alias = CharField(max_length=255, blank=True, null=True)
 
     base_image = CharField(max_length=255, blank=True)
 
@@ -528,7 +532,7 @@ class BootResource(CleanSave, TimestampedModel):
 
     def __str__(self):
         return (
-            f"<BootResource name={self.name}, arch={self.architecture}, "
+            f"<BootResource name={self.name}, alias={self.alias}, arch={self.architecture}, "
             f"kflavor={self.kflavor}, base={self.base_image} "
             f"rtype={self.rtype}>"
         )
