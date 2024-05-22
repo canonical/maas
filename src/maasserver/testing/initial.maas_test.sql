@@ -6576,7 +6576,8 @@ CREATE TABLE public.maasserver_bootresource (
     kflavor character varying(32),
     bootloader_type character varying(32),
     rolling boolean NOT NULL,
-    base_image character varying(255) NOT NULL
+    base_image character varying(255) NOT NULL,
+    alias character varying(255)
 );
 
 
@@ -11995,6 +11996,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 376	maasserver	0320_current_script_set_foreign_keys_drop_indexes	2024-03-20 10:17:51.918962+00
 377	maasserver	0321_current_script_set_foreign_keys_cleanup	2024-03-20 10:17:51.927243+00
 378	maasserver	0322_current_script_set_foreign_keys_readd	2024-03-20 10:17:52.193804+00
+379	maasserver	0323_add_bootresource_alias_column	2024-05-22 03:30:53.729029+00
 \.
 
 
@@ -12043,7 +12045,7 @@ COPY public.maasserver_bmcroutablerackcontrollerrelationship (id, created, updat
 -- Data for Name: maasserver_bootresource; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootresource (id, created, updated, rtype, name, architecture, extra, kflavor, bootloader_type, rolling, base_image) FROM stdin;
+COPY public.maasserver_bootresource (id, created, updated, rtype, name, architecture, extra, kflavor, bootloader_type, rolling, base_image, alias) FROM stdin;
 \.
 
 
@@ -13128,7 +13130,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 378, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 379, true);
 
 
 --
@@ -13995,11 +13997,11 @@ ALTER TABLE ONLY public.maasserver_bmcroutablerackcontrollerrelationship
 
 
 --
--- Name: maasserver_bootresource maasserver_bootresource_name_architecture_57af8656_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bootresource maasserver_bootresource_name_architecture_alias_888a3de7_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_bootresource
-    ADD CONSTRAINT maasserver_bootresource_name_architecture_57af8656_uniq UNIQUE (name, architecture);
+    ADD CONSTRAINT maasserver_bootresource_name_architecture_alias_888a3de7_uniq UNIQUE (name, architecture, alias);
 
 
 --
