@@ -29,6 +29,7 @@ import netifaces
 from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.interfaces import IResolver
 from twisted.names.client import getResolver
+from twisted.names.dns import AAAA
 from twisted.names.error import (
     AuthoritativeDomainError,
     DNSQueryTimeoutError,
@@ -772,8 +773,15 @@ def safe_getaddrinfo(
         resolver = getResolver()
         answers = yield resolver.lookupIPV6Address(hostname)
         return [
-            (AF_INET6, sock_type, proto, "", (ans._address, port, 0, 0))
+            (
+                AF_INET6,
+                sock_type,
+                proto,
+                "",
+                (ans.payload._address, port, 0, 0),
+            )
             for ans in answers[0]
+            if ans.type == AAAA
         ]
 
     try:
