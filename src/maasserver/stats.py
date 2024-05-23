@@ -23,6 +23,7 @@ from maasserver.certificates import get_maas_certificate
 from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
+    MSM_STATUS,
     NODE_STATUS,
     NODE_TYPE,
 )
@@ -45,6 +46,7 @@ from maasserver.models import (
 )
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.models.virtualmachine import get_vm_host_used_resources
+from maasserver.msm import msm_status
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
@@ -466,6 +468,17 @@ def get_tags_stats():
     )
 
 
+def get_msm_stats():
+    status = msm_status()
+    if not status:
+        return {
+            "connected": False,
+        }
+    return {
+        "connected": status["running"] == MSM_STATUS.CONNECTED,
+    }
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -521,6 +534,8 @@ def get_maas_stats():
         "tags": get_tags_stats(),
         # ansible installs?
         "ansible": get_ansible_stats(),
+        # enroled in Site Manager?
+        "site_manager_enrolment": get_msm_stats(),
     }
 
 

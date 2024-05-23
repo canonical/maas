@@ -488,6 +488,9 @@ class TestMAASStats(MAASServerTestCase):
             "ansible": {
                 "ansible_installs": 0,
             },
+            "site_manager_enrolment": {
+                "connected": False,
+            },
         }
 
         self.assertEqual(stats, expected)
@@ -681,6 +684,9 @@ class TestMAASStats(MAASServerTestCase):
             },
             "ansible": {
                 "ansible_installs": 0,
+            },
+            "site_manager_enrolment": {
+                "connected": False,
             },
         }
         self.assertEqual(get_maas_stats(), expected)
