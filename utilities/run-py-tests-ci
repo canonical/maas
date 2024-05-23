@@ -7,18 +7,21 @@
 
 set -o pipefail
 
+MAX_PROCESSES=${MAAS_MAX_TEST_PROCESSES:-4}
+
 MAAS_RAND_SEED="$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')"
 PYTHONHASHSEED="$(shuf -i 0-4294967295 -n 1)"
 export MAAS_RAND_SEED PYTHONHASHSEED
 
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
+echo "MAX_PROCESSES=${MAX_PROCESSES}"
 
-bin/test.parallel --emit-subunit | \
+bin/test.parallel --emit-subunit --subprocesses="${MAX_PROCESSES}" | \
     bin/subunit-1to2 | \
     bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
     bin/subunit2pyunit --no-passthrough
 res1=$?
-bin/pytest -n auto --maxprocesses=6 --dist=loadscope --junit-xml=junit-pytest.xml
+bin/pytest -n auto --maxprocesses="${MAX_PROCESSES}" --dist=loadscope --junit-xml=junit-pytest.xml
 res2=$?
 exit $((res1 + res2))
