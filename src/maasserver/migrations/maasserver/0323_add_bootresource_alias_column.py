@@ -2,26 +2,6 @@
 
 from django.db import migrations, models
 
-from maasserver.enum import BOOT_RESOURCE_TYPE
-from provisioningserver.drivers.osystem import UbuntuOS
-
-
-def populate_distro_aliases(apps, schema_editor):
-    """Add the alias to all the BootResources that support it"""
-    BootResource = apps.get_model("maasserver", "BootResource")
-
-    # Bootloaders and custom images have alias=None
-    for br in BootResource.objects.filter(bootloader_type=None).exclude(
-        rtype=BOOT_RESOURCE_TYPE.UPLOADED
-    ):
-        if br.name.startswith("ubuntu/"):
-            os, codename = br.name.split("/")
-            br.alias = f"{os}/{UbuntuOS().get_release_version(codename)}"
-        else:
-            # All the non-ubuntu images have alias=name
-            br.alias = br.name
-        br.save()
-
 
 class Migration(migrations.Migration):
     dependencies = [
@@ -34,7 +14,6 @@ class Migration(migrations.Migration):
             name="alias",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
-        migrations.RunPython(populate_distro_aliases),
         migrations.AlterUniqueTogether(
             name="bootresource",
             unique_together={("name", "architecture", "alias")},
