@@ -11997,6 +11997,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 377	maasserver	0321_current_script_set_foreign_keys_cleanup	2024-03-20 10:17:51.927243+00
 378	maasserver	0322_current_script_set_foreign_keys_readd	2024-03-20 10:17:52.193804+00
 379	maasserver	0323_add_bootresource_alias_column	2024-05-22 03:30:53.729029+00
+380	maasserver	0324_populate_distro_alias	2024-05-24 03:30:57.883427+00
 \.
 
 
@@ -13130,7 +13131,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 379, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 380, true);
 
 
 --
