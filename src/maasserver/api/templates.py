@@ -35,7 +35,7 @@ class APITemplateRenderer:
     # the dictionary supplied by the given APIDocstringParser
     def apply_template(self, path, doc_string_parser):
         # Load the given template
-        template = tempita.Template.from_filename(path)
+        template = tempita.Template.from_filename(path, encoding="utf-8")
 
         d = doc_string_parser.get_dict()
 
