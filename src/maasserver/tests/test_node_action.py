@@ -389,7 +389,7 @@ class TestCommissionAction(MAASServerTestCase):
             action.execute(
                 testing_scripts=testing_scripts, script_input=script_input
             )
-        script_sets = ScriptSet.objects.all()
+        script_sets = ScriptSet.objects.all().order_by("id")
         node = reload_object(node)
         self.assertEqual(2, len(script_sets))
         self.assertEqual(
