@@ -227,8 +227,9 @@ class MSMConnectorActivity(ActivityBase):
         ) as response:
             match response.status:
                 case 200:
-                    data = await response.json()
-                    return int(data["heartbeat_interval_seconds"])
+                    return int(
+                        response.headers["MSM-Heartbeat-Interval-Seconds"]
+                    )
                 case 401 | 404:
                     activity.logger.error(
                         "Enrolment cancelled by MSM, aborting"

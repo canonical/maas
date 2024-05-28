@@ -91,6 +91,7 @@ class TestMSMActivities:
         status: int,
         reason: str,
         body: dict[str, Any] | None = None,
+        headers: dict[str, Any] | None = None,
     ) -> Mock:
         mock_response = mocker.create_autospec(ClientResponse)
         type(mock_response).ok = PropertyMock(return_value=ok)
@@ -98,6 +99,8 @@ class TestMSMActivities:
         type(mock_response).reason = PropertyMock(return_value=reason)
         if body:
             mock_response.json.return_value = body
+        if headers:
+            type(mock_response).headers = PropertyMock(return_value=headers)
         mocked_session.post.return_value.__aenter__.return_value = (
             mock_response
         )
@@ -238,8 +241,8 @@ class TestMSMActivities:
             True,
             200,
             "",
-            body={
-                "heartbeat_interval_seconds": 300,
+            headers={
+                "MSM-Heartbeat-Interval-Seconds": 300,
             },
         )
 
