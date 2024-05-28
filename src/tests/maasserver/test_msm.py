@@ -91,6 +91,7 @@ def msm_access(factory, maasdb, msm_site, jwt_key):
 class TestMSMEnrol:
     def test_enroll(self, mocker, maas_site, msm_enrol_payload, jwt_key):
         mocked_start_workflow = mocker.patch("maasserver.msm.start_workflow")
+        mocker.patch("maasserver.msm._query_enrolment_error", return_value={})
         encoded = jwt.encode(
             msm_enrol_payload, jwt_key, algorithm=TOKEN_ALGORITHM
         )

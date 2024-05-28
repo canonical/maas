@@ -8,6 +8,7 @@ MAAS Site Manager Connector workflows
 import asyncio
 import dataclasses
 from datetime import timedelta
+from typing import Any
 from urllib.parse import urlparse
 
 from aiohttp import ClientSession, ClientTimeout
@@ -79,7 +80,9 @@ class MSMConnectorActivity(ActivityBase):
         return ClientSession(trust_env=True, timeout=timeout)
 
     @activity.defn(name="msm-send-enrol")
-    async def send_enrol(self, input: MSMEnrolParam) -> bool:
+    async def send_enrol(
+        self, input: MSMEnrolParam
+    ) -> tuple[bool, dict[str, Any] | None]:
         """Send enrolment request.
 
         Args:
@@ -103,12 +106,16 @@ class MSMConnectorActivity(ActivityBase):
         ) as response:
             match response.status:
                 case 404:
-                    activity.logger.error(
-                        "Enrolment cancelled by MSM, aborting"
+                    activity.logger.error("Enrolment URL not found, aborting")
+                    return (
+                        False,
+                        {
+                            "status": response.status,
+                            "reason": response.reason,
+                        },
                     )
-                    return False
                 case 202:
-                    return True
+                    return (True, None)
                 case _:
                     raise ApplicationError(
                         f"got unexpected return code: HTTP {response.status}"
@@ -247,6 +254,7 @@ class MSMEnrolSiteWorkflow:
 
     def __init__(self) -> None:
         self._pending = False
+        self._enrolment_error = None
 
     @workflow.run
     async def run(self, input: MSMEnrolParam) -> None:
@@ -257,15 +265,21 @@ class MSMEnrolSiteWorkflow:
         """
         workflow.logger.info(f"enrolling to {input.url}")
         self._pending = True
-
-        if not await workflow.execute_activity(
+        (sent, error) = await workflow.execute_activity(
             "msm-send-enrol",
             input,
             start_to_close_timeout=MSM_TIMEOUT,
-        ):
+        )
+        if not sent:
             self._pending = False
+            self._enrolment_error = error
             workflow.logger.error(f"failed to enrol to {input.url}, aborting")
             return
+        else:
+            # important we set this to {} instead of None so
+            # the CLI command knows when the request was sent
+            # without error
+            self._enrolment_error = {}
 
         param = MSMConnectorParam(
             url=input.url,
@@ -320,6 +334,10 @@ class MSMEnrolSiteWorkflow:
     @workflow.query(name="is-pending")
     def is_pending(self) -> bool:
         return self._pending
+
+    @workflow.query(name="enrolment-error")
+    def enrolment_error(self) -> dict[str, Any] | None:
+        return self._enrolment_error
 
 
 @workflow.defn(name="msm-withdraw", sandboxed=False)

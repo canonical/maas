@@ -5,6 +5,7 @@
 MAAS Site Manager Connector service
 """
 import asyncio
+import time
 from typing import Any
 
 from jose import jwt
@@ -86,6 +87,20 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
         id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
     )
     maaslog.info(f"enroling MAAS to Site Manager ({url})")
+    error = asyncio.run(_query_enrolment_error())
+    timeout = time.time() + 3
+    while error is None:
+        time.sleep(0.1)
+        error = asyncio.run(_query_enrolment_error())
+        if time.time() > timeout:
+            raise MSMException(
+                "Could not verify that the enrolment request was sent successfully"
+            )
+    if error:
+        raise MSMException(
+            "Failed to enrol with MAAS Site Manager. "
+            f"Got response: HTTP {error['status']}: {error['reason']}"
+        )
     return configs["maas_name"]
 
 
@@ -121,6 +136,17 @@ async def _query_pending():
         return pending, start
     except Exception:
         return None, None
+
+
+async def _query_enrolment_error():
+    temporal_client = await get_client_async()
+    hdl = temporal_client.get_workflow_handle(
+        workflow_id="msm-enrol-site:region"
+    )
+    try:
+        return await hdl.query("enrolment-error")
+    except Exception:
+        return {}
 
 
 @with_connection

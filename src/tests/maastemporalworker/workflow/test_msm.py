@@ -120,9 +120,10 @@ class TestMSMActivities:
         self._mock_post(mocker, mocked_session, True, 202, "")
 
         env = ActivityEnvironment()
-        ok = await env.run(msm_act.send_enrol, enrol_param)
+        ok, err = await env.run(msm_act.send_enrol, enrol_param)
 
         assert ok
+        assert err is None
         mocked_session.post.assert_called_once()
         args = mocked_session.post.call_args.args
         kwargs = mocked_session.post.call_args.kwargs
@@ -141,9 +142,10 @@ class TestMSMActivities:
             {"metadata": {"latitude": 0.0, "longitude": 0.0}}
         )
         param = replace(enrol_param, metainfo=meta)
-        ok = await env.run(msm_act.send_enrol, param)
+        ok, err = await env.run(msm_act.send_enrol, param)
 
         assert ok
+        assert err is None
         mocked_session.post.assert_called_once()
         kwargs = mocked_session.post.call_args.kwargs
         assert "metadata" in kwargs["json"]
@@ -153,8 +155,9 @@ class TestMSMActivities:
         self._mock_post(mocker, mocked_session, False, 404, "Some error")
 
         env = ActivityEnvironment()
-        ok = await env.run(msm_act.send_enrol, enrol_param)
+        ok, err = await env.run(msm_act.send_enrol, enrol_param)
         assert not ok
+        assert err == {"status": 404, "reason": "Some error"}
 
     async def test_check_enroll_pending(self, mocker, msm_act, enrol_param):
         mocked_session = msm_act._session
@@ -276,7 +279,7 @@ class TestMSMEnrolWorkflow:
         @activity.defn(name="msm-send-enrol")
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
-            return True
+            return True, None
 
         @activity.defn(name="msm-check-enrol")
         async def check_enrol(input: MSMEnrolParam) -> str:
@@ -320,7 +323,7 @@ class TestMSMEnrolWorkflow:
         @activity.defn(name="msm-send-enrol")
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
-            return False
+            return False, {"status": 401, "reason": "Unauthorized"}
 
         @activity.defn(name="msm-check-enrol")
         async def check_enrol(input: MSMEnrolParam) -> str:
@@ -353,7 +356,7 @@ class TestMSMEnrolWorkflow:
         @activity.defn(name="msm-send-enrol")
         async def send_enrol(input: MSMEnrolParam) -> bool:
             calls["msm-send-enrol"].append(replace(input))
-            return True
+            return True, None
 
         @activity.defn(name="msm-check-enrol")
         async def check_enrol(input: MSMEnrolParam) -> str:
