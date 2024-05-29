@@ -3,21 +3,22 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p \
+      "/run/snap.$SNAP_INSTANCE_NAME" \
       "$SNAP_COMMON/maas" \
       "$SNAP_COMMON/pebble/layers" \
       "$SNAP_DATA/preseeds" \
       "$SNAP_DATA/root" \
       "$SNAP_DATA/certificates"
+
 if [ ! -d "$SNAP_COMMON/log" ]; then
     mkdir -m 775 "$SNAP_COMMON/log"
     chown snap_daemon "$SNAP_COMMON/log"
 fi
 
-# Early builds of 3.5 had $PEBBLE in $SNAP_DATA
-rm -rf "$SNAP_DATA/pebble"
-
 # Image storage
+# TODO: remove in 4.0
 rm -rf "$SNAP_COMMON/maas/boot-resources"
+
 mkdir -p \
     "$SNAP_COMMON/maas/image-storage" \
     "$SNAP_COMMON/maas/tftp_root"
