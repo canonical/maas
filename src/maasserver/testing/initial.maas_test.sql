@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.9 (Ubuntu 14.9-0ubuntu0.22.04.1)
+-- Dumped from database version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6894,6 +6894,37 @@ CREATE TABLE public.maasserver_controllerinfo (
 
 
 --
+-- Name: maasserver_defaultresource; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_defaultresource (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    zone_id bigint NOT NULL
+);
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_defaultresource_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_defaultresource_id_seq OWNED BY public.maasserver_defaultresource.id;
+
+
+--
 -- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -7447,7 +7478,8 @@ CREATE TABLE public.maasserver_forwarddnsserver (
     id bigint NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    ip_address inet NOT NULL
+    ip_address inet NOT NULL,
+    port integer NOT NULL
 );
 
 
@@ -10389,6 +10421,13 @@ ALTER TABLE ONLY public.maasserver_config ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: maasserver_defaultresource id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource ALTER COLUMN id SET DEFAULT nextval('public.maasserver_defaultresource_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_dhcpsnippet id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -11416,6 +11455,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 466	Can change boot resource file sync	117	change_bootresourcefilesync
 467	Can delete boot resource file sync	117	delete_bootresourcefilesync
 468	Can view boot resource file sync	117	view_bootresourcefilesync
+469	Can add default resource	118	add_defaultresource
+470	Can change default resource	118	change_defaultresource
+471	Can delete default resource	118	delete_defaultresource
+472	Can view default resource	118	view_defaultresource
 \.
 
 
@@ -11565,6 +11608,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 115	maasserver	script
 116	maasserver	scriptresult
 117	maasserver	bootresourcefilesync
+118	maasserver	defaultresource
 \.
 
 
@@ -11944,6 +11988,16 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 369	maasserver	0313_add_superuser_flag_to_existing_sysuser	2023-10-24 14:17:19.969776+00
 370	maasserver	0314_bootresourcefile_sha256_index	2023-11-02 03:30:47.980664+00
 371	maasserver	0315_add_current_release_script_set_to_node_model	2023-11-28 13:29:59.274246+00
+372	maasserver	0318_add_port_to_forward_dns_servers	2024-05-29 09:10:07.472091+00
+373	maasserver	0316_add_defaultresource_table	2024-05-29 09:10:07.764488+00
+374	maasserver	0317_migrate_defaultresource_zone	2024-05-29 09:10:07.825135+00
+375	maasserver	0319_merge_0304_and_0318	2024-05-29 09:10:07.826764+00
+376	maasserver	0320_current_script_set_foreign_keys_drop_indexes	2024-05-29 09:10:08.174942+00
+377	maasserver	0321_current_script_set_foreign_keys_cleanup	2024-05-29 09:10:08.236265+00
+378	maasserver	0322_current_script_set_foreign_keys_readd	2024-05-29 09:10:08.488098+00
+379	maasserver	0325_foreign_key_drop	2024-05-29 09:10:09.141443+00
+380	maasserver	0326_foreign_key_cleanup	2024-05-29 09:10:09.578042+00
+381	maasserver	0327_foreign_key_readd	2024-05-29 09:10:10.533367+00
 \.
 
 
@@ -12069,6 +12123,15 @@ COPY public.maasserver_controllerinfo (created, updated, node_id, version, insta
 
 
 --
+-- Data for Name: maasserver_defaultresource; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_defaultresource (id, created, updated, zone_id) FROM stdin;
+1	2024-05-29 09:10:07.822011+00	2024-05-29 09:10:07.822011+00	1
+\.
+
+
+--
 -- Data for Name: maasserver_dhcpsnippet; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -12170,7 +12233,7 @@ COPY public.maasserver_filesystemgroup (id, created, updated, uuid, group_type, 
 -- Data for Name: maasserver_forwarddnsserver; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_forwarddnsserver (id, created, updated, ip_address) FROM stdin;
+COPY public.maasserver_forwarddnsserver (id, created, updated, ip_address, port) FROM stdin;
 \.
 
 
@@ -13033,7 +13096,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 468, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 472, true);
 
 
 --
@@ -13061,14 +13124,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 117, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 371, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 381, true);
 
 
 --
@@ -13160,6 +13223,13 @@ SELECT pg_catalog.setval('public.maasserver_cacheset_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_config_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_defaultresource_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_defaultresource_id_seq', 1, true);
 
 
 --
@@ -14064,6 +14134,14 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 
 --
+-- Name: maasserver_defaultresource maasserver_defaultresource_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource
+    ADD CONSTRAINT maasserver_defaultresource_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14376,11 +14454,11 @@ ALTER TABLE ONLY public.maasserver_neighbour
 
 
 --
--- Name: maasserver_node maasserver_node_dns_process_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_node maasserver_node_dns_process_id_22d3b862_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_dns_process_id_key UNIQUE (dns_process_id);
+    ADD CONSTRAINT maasserver_node_dns_process_id_22d3b862_uniq UNIQUE (dns_process_id);
 
 
 --
@@ -15745,6 +15823,13 @@ CREATE INDEX maasserver_bootsourceselection_boot_source_id_b911aa0f ON public.ma
 --
 
 CREATE INDEX maasserver_config_name_ad989064_like ON public.maasserver_config USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: maasserver_defaultresource_zone_id_29a5153a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_defaultresource_zone_id_29a5153a ON public.maasserver_defaultresource USING btree (zone_id);
 
 
 --
@@ -17177,6 +17262,14 @@ ALTER TABLE ONLY public.maasserver_blockdevice
 
 
 --
+-- Name: maasserver_bmc maasserver_bmc_default_storage_pool_5f48762b_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_bmc
+    ADD CONSTRAINT maasserver_bmc_default_storage_pool_5f48762b_fk_maasserve FOREIGN KEY (default_storage_pool_id) REFERENCES public.maasserver_podstoragepool(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_bmc maasserver_bmc_ip_address_id_79362d14_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17193,11 +17286,11 @@ ALTER TABLE ONLY public.maasserver_bmc
 
 
 --
--- Name: maasserver_bmc maasserver_bmc_zone_id_774ea0de_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_bmc maasserver_bmc_zone_id_774ea0de_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_bmc
-    ADD CONSTRAINT maasserver_bmc_zone_id_774ea0de_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_bmc_zone_id_774ea0de_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17281,6 +17374,14 @@ ALTER TABLE ONLY public.maasserver_controllerinfo
 
 
 --
+-- Name: maasserver_defaultresource maasserver_defaultre_zone_id_29a5153a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_defaultresource
+    ADD CONSTRAINT maasserver_defaultre_zone_id_29a5153a_fk_maasserve FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_dhcpsnippet maasserver_dhcpsnippet_iprange_id_6a257e4d_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17321,11 +17422,27 @@ ALTER TABLE ONLY public.maasserver_dnsdata
 
 
 --
+-- Name: maasserver_dnsresource_ip_addresses maasserver_dnsresour_dnsresource_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses
+    ADD CONSTRAINT maasserver_dnsresour_dnsresource_id_fk_maasserve FOREIGN KEY (dnsresource_id) REFERENCES public.maasserver_dnsresource(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_dnsresource maasserver_dnsresour_domain_id_c5abb245_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_dnsresource
     ADD CONSTRAINT maasserver_dnsresour_domain_id_c5abb245_fk_maasserve FOREIGN KEY (domain_id) REFERENCES public.maasserver_domain(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_dnsresource_ip_addresses maasserver_dnsresour_staticipaddress_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_dnsresource_ip_addresses
+    ADD CONSTRAINT maasserver_dnsresour_staticipaddress_id_fk_maasserve FOREIGN KEY (staticipaddress_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17409,11 +17526,27 @@ ALTER TABLE ONLY public.maasserver_forwarddnsserver_domains
 
 
 --
+-- Name: maasserver_forwarddnsserver_domains maasserver_forwarddn_forwarddnsserver_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_forwarddnsserver_domains
+    ADD CONSTRAINT maasserver_forwarddn_forwarddnsserver_id_fk_maasserve FOREIGN KEY (forwarddnsserver_id) REFERENCES public.maasserver_forwarddnsserver(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_globaldefault maasserver_globaldef_domain_id_11c3ee74_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_globaldefault
     ADD CONSTRAINT maasserver_globaldef_domain_id_11c3ee74_fk_maasserve FOREIGN KEY (domain_id) REFERENCES public.maasserver_domain(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_interface_ip_addresses maasserver_interface_interface_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface_ip_addresses
+    ADD CONSTRAINT maasserver_interface_interface_id_fk_maasserve FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17430,6 +17563,14 @@ ALTER TABLE ONLY public.maasserver_interface
 
 ALTER TABLE ONLY public.maasserver_interface
     ADD CONSTRAINT maasserver_interface_numa_node_id_6e790407_fk FOREIGN KEY (numa_node_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_interface_ip_addresses maasserver_interface_staticipaddress_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface_ip_addresses
+    ADD CONSTRAINT maasserver_interface_staticipaddress_id_fk_maasserve FOREIGN KEY (staticipaddress_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17505,6 +17646,38 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_node maasserver_node_boot_interface_id_fad48090_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_boot_interface_id_fad48090_fk_maasserve FOREIGN KEY (boot_interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_commissionin_9ae2ec39_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_commissionin_9ae2ec39_fk_maasserve FOREIGN KEY (current_commissioning_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_config_id_d9cbacad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_config_id_d9cbacad_fk_maasserve FOREIGN KEY (current_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_installation_a6e40738_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_installation_a6e40738_fk_maasserve FOREIGN KEY (current_installation_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_node maasserver_node_current_release_scri_1c3d13f5_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17513,11 +17686,51 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_node maasserver_node_current_testing_scri_4636f4f9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_testing_scri_4636f4f9_fk_maasserve FOREIGN KEY (current_testing_script_set_id) REFERENCES public.maasserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_dns_process_id_22d3b862_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_dns_process_id_22d3b862_fk_maasserve FOREIGN KEY (dns_process_id) REFERENCES public.maasserver_regioncontrollerprocess(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_node maasserver_node_domain_id_7b592cbf_fk_maasserver_domain_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_domain_id_7b592cbf_fk_maasserver_domain_id FOREIGN KEY (domain_id) REFERENCES public.maasserver_domain(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_gateway_link_ipv4_id_620a3c36_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_gateway_link_ipv4_id_620a3c36_fk_maasserve FOREIGN KEY (gateway_link_ipv4_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_gateway_link_ipv6_id_b8542fea_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_gateway_link_ipv6_id_b8542fea_fk_maasserve FOREIGN KEY (gateway_link_ipv6_id) REFERENCES public.maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_managing_process_id_0f9f8640_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_managing_process_id_0f9f8640_fk_maasserve FOREIGN KEY (managing_process_id) REFERENCES public.maasserver_regioncontrollerprocess(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17545,11 +17758,27 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
--- Name: maasserver_node maasserver_node_zone_id_97213f69_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_node_tags maasserver_node_tags_node_id_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node_tags
+    ADD CONSTRAINT maasserver_node_tags_node_id_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node_tags maasserver_node_tags_tag_id_fk_maasserver_tag_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node_tags
+    ADD CONSTRAINT maasserver_node_tags_tag_id_fk_maasserver_tag_id FOREIGN KEY (tag_id) REFERENCES public.maasserver_tag(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_zone_id_97213f69_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_zone_id_97213f69_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_node_zone_id_97213f69_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -17721,6 +17950,22 @@ ALTER TABLE ONLY public.maasserver_physicalblockdevice
 
 
 --
+-- Name: maasserver_podhints_nodes maasserver_podhints__node_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints__node_id_fk_maasserve FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints__podhints_id_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints__podhints_id_fk_maasserve FOREIGN KEY (podhints_id) REFERENCES public.maasserver_podhints(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_podhints maasserver_podhints_cluster_id_b526f79f_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17881,6 +18126,22 @@ ALTER TABLE ONLY public.maasserver_staticipaddress
 
 
 --
+-- Name: maasserver_staticroute maasserver_staticrou_destination_id_4d1b294b_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_staticroute
+    ADD CONSTRAINT maasserver_staticrou_destination_id_4d1b294b_fk_maasserve FOREIGN KEY (destination_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_staticroute maasserver_staticrou_source_id_3321277a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_staticroute
+    ADD CONSTRAINT maasserver_staticrou_source_id_3321277a_fk_maasserve FOREIGN KEY (source_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_subnet maasserver_subnet_vlan_id_d4e96e9a_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17937,6 +18198,30 @@ ALTER TABLE ONLY public.maasserver_virtualblockdevice
 
 
 --
+-- Name: maasserver_virtualmachinedisk maasserver_virtualma_backing_pool_id_2fe2f82c_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachinedisk
+    ADD CONSTRAINT maasserver_virtualma_backing_pool_id_2fe2f82c_fk_maasserve FOREIGN KEY (backing_pool_id) REFERENCES public.maasserver_podstoragepool(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_virtualmachinedisk maasserver_virtualma_vm_id_a5308b7c_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachinedisk
+    ADD CONSTRAINT maasserver_virtualma_vm_id_a5308b7c_fk_maasserve FOREIGN KEY (vm_id) REFERENCES public.maasserver_virtualmachine(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_virtualmachineinterface maasserver_virtualma_vm_id_a6acb3e9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface
+    ADD CONSTRAINT maasserver_virtualma_vm_id_a6acb3e9_fk_maasserve FOREIGN KEY (vm_id) REFERENCES public.maasserver_virtualmachine(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_virtualmachine maasserver_virtualmachine_bmc_id_e2b4f381_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -17977,11 +18262,27 @@ ALTER TABLE ONLY public.maasserver_vlan
 
 
 --
+-- Name: maasserver_vlan maasserver_vlan_primary_rack_id_016c2af3_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_vlan
+    ADD CONSTRAINT maasserver_vlan_primary_rack_id_016c2af3_fk_maasserver_node_id FOREIGN KEY (primary_rack_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_vlan maasserver_vlan_relay_vlan_id_c026b672_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_vlan
     ADD CONSTRAINT maasserver_vlan_relay_vlan_id_c026b672_fk FOREIGN KEY (relay_vlan_id) REFERENCES public.maasserver_vlan(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_vlan maasserver_vlan_secondary_rack_id_3b97d19a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_vlan
+    ADD CONSTRAINT maasserver_vlan_secondary_rack_id_3b97d19a_fk_maasserve FOREIGN KEY (secondary_rack_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -18001,11 +18302,11 @@ ALTER TABLE ONLY public.maasserver_vmcluster
 
 
 --
--- Name: maasserver_vmcluster maasserver_vmcluster_zone_id_07623572_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_vmcluster maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_vmcluster
-    ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
