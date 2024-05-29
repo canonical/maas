@@ -156,6 +156,11 @@ STATS_DEFINITIONS = [
         "maas_vmcluster_vms",
         "Number of machines in a cluster",
     ),
+    MetricDefinition(
+        "Gauge",
+        "site_manager_connection",
+        "Whether this MAAS is connected to a Site Manager",
+    ),
 ]
 
 _METRICS = {}
@@ -210,6 +215,13 @@ def update_prometheus_stats(metrics: PrometheusMetrics) -> PrometheusMetrics:
     # Gather overall amount of machine resources
     for resource, value in stats["machine_stats"].items():
         metrics.update(f"maas_machines_{resource}", "set", value=value)
+
+    # Are we enroled with a Site Manager?
+    metrics.update(
+        "site_manager_connection",
+        "set",
+        value=int(stats["site_manager_connection"]["connected"]),
+    )
 
     # Gather status of the services from all the rack controllers
     service_status_to_int_mapping = {

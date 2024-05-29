@@ -535,7 +535,7 @@ def get_maas_stats():
         # ansible installs?
         "ansible": get_ansible_stats(),
         # enroled in Site Manager?
-        "site_manager_enrolment": get_msm_stats(),
+        "site_manager_connection": get_msm_stats(),
     }
 
 

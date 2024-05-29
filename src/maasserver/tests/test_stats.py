@@ -488,7 +488,7 @@ class TestMAASStats(MAASServerTestCase):
             "ansible": {
                 "ansible_installs": 0,
             },
-            "site_manager_enrolment": {
+            "site_manager_connection": {
                 "connected": False,
             },
         }
@@ -685,7 +685,7 @@ class TestMAASStats(MAASServerTestCase):
             "ansible": {
                 "ansible_installs": 0,
             },
-            "site_manager_enrolment": {
+            "site_manager_connection": {
                 "connected": False,
             },
         }

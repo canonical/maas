@@ -85,6 +85,7 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_vmcluster_projects",
             "maas_vmcluster_hosts",
             "maas_vmcluster_vms",
+            "site_manager_connection",
         )
         for metric in metrics:
             self.assertIn(f"TYPE {metric} gauge", content)
@@ -113,6 +114,7 @@ class TestPrometheus(MAASServerTestCase):
             "nodes": {"machines": 0},
             "network_stats": {"spaces": 0},
             "machine_stats": {"total_cpu": 0},
+            "site_manager_connection": {"connected": False},
         }
         mock = self.patch(stats, "get_maas_stats")
         mock.return_value = values
