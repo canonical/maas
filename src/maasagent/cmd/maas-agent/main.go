@@ -140,8 +140,20 @@ func Run() int {
 		return 1
 	}
 
+	runDir := getRunDir()
+
+	_, err = os.Stat(runDir)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(runDir, os.ModeDir|0755)
+	}
+
+	if err != nil {
+		log.Error().Err(err).Send()
+		return 1
+	}
+
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
-	httpProxyService := httpproxy.NewHTTPProxyService(getRunDir(), cache)
+	httpProxyService := httpproxy.NewHTTPProxyService(runDir, cache)
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
