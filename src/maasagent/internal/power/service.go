@@ -61,7 +61,11 @@ func (s *PowerService) ConfiguratorName() string {
 
 // Configure represents a Temporal workflow that is capable for configuring
 // Agent Power management service.
-func (s *PowerService) Configure(ctx tworkflow.Context, systemID string) error {
+func (s *PowerService) Configure() interface{} {
+	return s.configure
+}
+
+func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	log := tworkflow.GetLogger(ctx)
 
 	// Because we don't support partial updates, we always start configuration

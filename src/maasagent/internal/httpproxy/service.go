@@ -86,7 +86,11 @@ type getRegionEndpointsResult struct {
 
 // Configure represents a Temporal workflow that is capable for configuring
 // Agent HTTP proxy service.
-func (s *HTTPProxyService) Configure(ctx tworkflow.Context, systemID string) error {
+func (s *HTTPProxyService) Configure() interface{} {
+	return s.configure
+}
+
+func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) error {
 	log := tworkflow.GetLogger(ctx)
 
 	// We will close existing listener without graceful shutdown, because it

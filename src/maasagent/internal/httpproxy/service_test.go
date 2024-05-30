@@ -73,7 +73,7 @@ func TestConfigurationWorkflow(t *testing.T) {
 				mock.Anything).Return(
 				getRegionEndpointsResult{Endpoints: []string{upstream.URL}}, nil)
 
-			env.ExecuteWorkflow(svc.Configure, t.Name())
+			env.ExecuteWorkflow(svc.Configure(), t.Name())
 			assert.NoError(t, env.GetWorkflowError())
 
 			httpc := http.Client{
@@ -119,7 +119,7 @@ func TestConfigurationWorkflowWithUnreachableEndpoint(t *testing.T) {
 			nonExistingEndpoint.String(),
 		}}, nil)
 
-	env.ExecuteWorkflow(svc.Configure, t.Name())
+	env.ExecuteWorkflow(svc.Configure(), t.Name())
 	assert.Error(t, env.GetWorkflowError())
 	assert.ErrorContains(t, env.GetWorkflowError(), "targets cannot be empty")
 }

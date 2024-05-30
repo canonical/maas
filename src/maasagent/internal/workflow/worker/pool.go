@@ -34,7 +34,7 @@ var (
 // Configure will be registered as a Temporal workflow for service configuration.
 type Configurator interface {
 	// Configure is an entrypoint. It is registered as a Temporal workflow.
-	Configure(ctx workflow.Context, systemID string) error
+	Configure() interface{}
 	ConfiguratorName() string
 }
 
@@ -51,7 +51,7 @@ type WorkerPool struct {
 	main              worker.Worker
 	workerConstructor workerConstructor
 	workers           map[string][]worker.Worker
-	configurators     map[string]func(workflow.Context, string) error
+	configurators     map[string]interface{}
 	systemID          string
 	taskQueue         string
 	mutex             sync.Mutex
@@ -67,7 +67,7 @@ func NewWorkerPool(systemID string, client client.Client,
 		taskQueue:         fmt.Sprintf("%s@main", systemID),
 		client:            client,
 		workers:           make(map[string][]worker.Worker),
-		configurators:     make(map[string]func(workflow.Context, string) error),
+		configurators:     make(map[string]interface{}),
 		workerConstructor: defaultWorkerConstructor,
 	}
 
@@ -180,6 +180,6 @@ func WithWorkerConstructor(fn workerConstructor) WorkerPoolOption {
 // WithConfigurator adds Configurator that will be registered as a workflow
 func WithConfigurator(configurator Configurator) WorkerPoolOption {
 	return func(p *WorkerPool) {
-		p.configurators[configurator.ConfiguratorName()] = configurator.Configure
+		p.configurators[configurator.ConfiguratorName()] = configurator.Configure()
 	}
 }
