@@ -98,7 +98,9 @@ class cmd_login(Command):
         if options.cacerts is not None:
             cacerts = options.cacerts.read()
             try:
-                crypto.load_certificate(crypto.FILETYPE_PEM, cacerts)
+                crypto.load_certificate(
+                    crypto.FILETYPE_PEM, cacerts.encode("utf-8")
+                )
             except crypto.Error:
                 raise CommandError("Invalid PEM material")
 
