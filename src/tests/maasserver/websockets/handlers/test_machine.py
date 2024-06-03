@@ -241,6 +241,69 @@ class TestMachineHandler:
             item["id"] for item in list_results["groups"][0]["items"]
         }
 
+    def test_secret_power_params_only_viewable_with_admin_read_permission(
+        self,
+    ):
+        user, session = factory.make_User_with_session()
+        admin, admin_session = factory.make_admin_with_session()
+
+        power_address = factory.make_ip_address()
+        power_id = factory.make_name("power_id")
+        power_pass = factory.make_name("power_pass")
+        sanitised_power_params = {
+            "power_address": power_address,
+            "power_id": power_id,
+        }
+        full_power_params = sanitised_power_params | {"power_pass": power_pass}
+        node = factory.make_Node(
+            owner=None, power_parameters=full_power_params
+        )
+
+        handler = MachineHandler(
+            admin, {}, None, session_id=admin_session.session_key
+        )
+        node_data = handler.get({"system_id": node.system_id})
+        assert node_data["power_parameters"] == full_power_params
+
+        handler = MachineHandler(
+            user, {}, None, session_id=session.session_key
+        )
+        node_data = handler.get({"system_id": node.system_id})
+        assert node_data["power_parameters"] == sanitised_power_params
+
+    def test_secret_power_params_only_viewable_with_admin_read_permission_rbac(
+        self, enable_rbac
+    ):
+        user, session = factory.make_User_with_session()
+        other_user, other_user_session = factory.make_User_with_session()
+        pool = factory.make_ResourcePool()
+        enable_rbac.add_pool(pool)
+        enable_rbac.allow(user.username, pool, "view")
+        enable_rbac.allow(user.username, pool, "admin-machines")
+        enable_rbac.allow(other_user.username, pool, "view")
+
+        power_address = factory.make_ip_address()
+        power_id = factory.make_name("power_id")
+        power_pass = factory.make_name("power_pass")
+        sanitised_power_params = {
+            "power_address": power_address,
+            "power_id": power_id,
+        }
+        full_power_params = sanitised_power_params | {"power_pass": power_pass}
+        node = factory.make_Node(pool=pool, power_parameters=full_power_params)
+
+        handler = MachineHandler(
+            user, {}, None, session_id=session.session_key
+        )
+        node_data = handler.get({"system_id": node.system_id})
+        assert node_data["power_parameters"] == full_power_params
+
+        handler = MachineHandler(
+            other_user, {}, None, session_id=other_user_session.session_key
+        )
+        node_data = handler.get({"system_id": node.system_id})
+        assert node_data["power_parameters"] == sanitised_power_params
+
 
 @pytest.mark.usefixtures("maasdb")
 class TestMachineHandlerNewSchema:
