@@ -640,7 +640,7 @@ class TestTFTPBackend(MAASTestCase):
             client, GetBootConfig, **params_okay
         )
 
-    def test_get_cache_reader(self):
+    def test_get_cache_reader_200(self):
         params_okay = {
             name.decode("ascii"): factory.make_name("value")
             for name, _ in GetBootConfig.arguments
@@ -655,6 +655,11 @@ class TestTFTPBackend(MAASTestCase):
         backend._cache_proxy = Mock()
 
         filename = factory.make_name()
+
+        mock_result = Mock()
+        mock_result.code = 200
+
+        backend._cache_proxy.request.return_value = mock_result
 
         backend.get_cache_reader(f"/grub/{filename}")
 
@@ -681,11 +686,11 @@ class TestTFTPBackend(MAASTestCase):
         mock_result.code = 404
 
         backend._cache_proxy.request.return_value = mock_result
-        result = yield backend.get_cache_reader(f"/grub/{filename}")
-        self.assertEqual(result.read(0), b"")
+        with self.assertRaisesRegex(FileNotFound, rf"{filename}"):
+            yield backend.get_cache_reader(f"{filename}")
 
     @inlineCallbacks
-    def test_get_cache_reader_file_not_found_for_pxelinuxcfg(self):
+    def test_get_cache_reader_zero_size(self):
         params_okay = {
             name.decode("ascii"): factory.make_name("value")
             for name, _ in GetBootConfig.arguments
@@ -696,10 +701,10 @@ class TestTFTPBackend(MAASTestCase):
         client_service.getClientNow.return_value = succeed(client)
         backend = TFTPBackend(self.make_dir(), client_service)
         backend._cache_proxy = Mock()
-        filename = "pxelinux.cfg/0D0001BE"
+        filename = "/grub/x86_64-efi/command.lst"
 
-        with self.assertRaisesRegex(FileNotFound, rf"{filename}"):
-            yield backend.get_cache_reader(f"{filename}")
+        result = yield backend.get_cache_reader(f"/grub/{filename}")
+        self.assertEqual(result.read(0), b"")
 
 
 class TestTFTPService(MAASTestCase):
