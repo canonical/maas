@@ -96,6 +96,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS,
     SCRIPT_STATUS_FAILED,
 )
+from provisioningserver.drivers.power.registry import sanitise_power_parameters
 from provisioningserver.enum import POWER_STATE, POWER_STATE_CHOICES
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
@@ -458,9 +459,17 @@ class NodeHandler(TimestampedModelHandler):
                 data["hwe_kernel"] = make_hwe_kernel_ui_text(obj.hwe_kernel)
 
                 data["power_type"] = obj.power_type
-                data["power_parameters"] = self.dehydrate_power_parameters(
+
+                power_parameters = self.dehydrate_power_parameters(
                     obj.get_power_parameters()
                 )
+                if self.user.has_perm(NodePermission.admin_read, obj):
+                    data["power_parameters"] = power_parameters
+                else:
+                    data["power_parameters"], _ = sanitise_power_parameters(
+                        obj.power_type, power_parameters
+                    )
+
                 data["power_bmc_node_count"] = (
                     obj.bmc.node_set.count() if (obj.bmc is not None) else 0
                 )
