@@ -71,9 +71,22 @@ class SubnetForm(MAASModelForm):
                 "underlying VLAN.",
             )
         # The default value for 'allow_dns' is True.
-        cleaned_data["allow_dns"] = self.data.get("allow_dns", True)
+        truthy_values = {"true", "t", "1"}
+        # gomaasclient is using github.com/google/go-querystring/query to form
+        # query string and boolean values are encoded in lowercase, hence
+        # we need to support:
+        # - allow_dns=true
+        # and Django defaults for BooleanField
+        # - allow_dns=True
+        # - allow_dns=1
+        # - allow_dns=t
+        cleaned_data["allow_dns"] = (
+            str(self.data.get("allow_dns", True)).lower() in truthy_values
+        )
         # The default value for 'allow_proxy' is True.
-        cleaned_data["allow_proxy"] = self.data.get("allow_proxy", True)
+        cleaned_data["allow_proxy"] = (
+            str(self.data.get("allow_proxy", True)).lower() in truthy_values
+        )
         # The default value for 'managed' is True.
         if "managed" not in self.data:
             cleaned_data["managed"] = True

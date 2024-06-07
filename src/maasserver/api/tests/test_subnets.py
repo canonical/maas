@@ -7,6 +7,7 @@ import json
 import random
 
 from django.conf import settings
+from django.http import QueryDict
 from django.urls import reverse
 
 from maasserver.enum import (
@@ -514,18 +515,50 @@ class TestSubnetAPI(APITestCase.ForUser):
             self.client.put(uri, {"allow_dns": "0"}).content.decode("utf-8")
         )["allow_dns"]
         self.assertEqual(allow_dns_str_0, False)
+
         allow_dns_str_1 = json.loads(
             self.client.put(uri, {"allow_dns": "1"}).content.decode("utf-8")
         )["allow_dns"]
         self.assertEqual(allow_dns_str_1, True)
+
         allow_dns_int_0 = json.loads(
             self.client.put(uri, {"allow_dns": 0}).content.decode("utf-8")
         )["allow_dns"]
         self.assertEqual(allow_dns_int_0, False)
+
         allow_dns_int_1 = json.loads(
             self.client.put(uri, {"allow_dns": 1}).content.decode("utf-8")
         )["allow_dns"]
         self.assertEqual(allow_dns_int_1, True)
+
+        allow_dns_false = json.loads(
+            self.client.put(uri, QueryDict("allow_dns=false&")).content.decode(
+                "utf-8"
+            )
+        )["allow_dns"]
+        self.assertEqual(allow_dns_false, False)
+
+        allow_dns_true = json.loads(
+            self.client.put(uri, QueryDict("allow_dns=true&")).content.decode(
+                "utf-8"
+            )
+        )["allow_dns"]
+        self.assertEqual(allow_dns_true, True)
+
+        allow_dns_false = json.loads(
+            self.client.put(uri, QueryDict("allow_dns=false")).content.decode(
+                "utf-8"
+            )
+        )["allow_dns"]
+        self.assertEqual(allow_dns_false, False)
+
+        allow_dns_true = json.loads(
+            self.client.put(uri, QueryDict("allow_dns=true")).content.decode(
+                "utf-8"
+            )
+        )["allow_dns"]
+        self.assertEqual(allow_dns_true, True)
+
         final_state_allow_dns = json.loads(
             self.client.put(
                 uri, {"allow_dns": initial_state_allow_dns}
@@ -537,18 +570,50 @@ class TestSubnetAPI(APITestCase.ForUser):
             self.client.put(uri, {"allow_proxy": "0"}).content.decode("utf-8")
         )["allow_proxy"]
         self.assertEqual(allow_proxy_str_0, False)
+
         allow_proxy_str_1 = json.loads(
             self.client.put(uri, {"allow_proxy": "1"}).content.decode("utf-8")
         )["allow_proxy"]
         self.assertEqual(allow_proxy_str_1, True)
+
+        allow_proxy_false = json.loads(
+            self.client.put(
+                uri, QueryDict("allow_proxy=false&")
+            ).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_false, False)
+
+        allow_proxy_true = json.loads(
+            self.client.put(
+                uri, QueryDict("allow_proxy=true&")
+            ).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_true, True)
+
+        allow_proxy_false = json.loads(
+            self.client.put(
+                uri, QueryDict("allow_proxy=false")
+            ).content.decode("utf-8")
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_false, False)
+
+        allow_proxy_true = json.loads(
+            self.client.put(uri, QueryDict("allow_proxy=true")).content.decode(
+                "utf-8"
+            )
+        )["allow_proxy"]
+        self.assertEqual(allow_proxy_true, True)
+
         allow_proxy_int_0 = json.loads(
             self.client.put(uri, {"allow_proxy": 0}).content.decode("utf-8")
         )["allow_proxy"]
         self.assertEqual(allow_proxy_int_0, False)
+
         allow_proxy_int_1 = json.loads(
             self.client.put(uri, {"allow_proxy": 1}).content.decode("utf-8")
         )["allow_proxy"]
         self.assertEqual(allow_proxy_int_1, True)
+
         final_state_allow_proxy = json.loads(
             self.client.put(
                 uri, {"allow_proxy": initial_state_allow_proxy}
