@@ -618,6 +618,7 @@ class VersionIndexHandler(MetadataViewHandler):
                     script_result.status = SCRIPT_STATUS.RUNNING
                     script_result.save(update_fields=["status"])
         if node.enable_hw_sync:
+            node.refresh_from_db()
             node.last_sync = datetime.now()
             node.save()
 
