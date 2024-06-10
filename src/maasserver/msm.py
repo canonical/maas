@@ -20,6 +20,7 @@ from maasserver.workflow import cancel_workflow, start_workflow
 from maasserver.workflow.worker.worker import get_client_async
 from maastemporalworker.workflow.msm import MSM_SECRET, MSMEnrolParam
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.env import MAAS_UUID
 
 _TASK_QUEUE = "region"
 
@@ -76,6 +77,7 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
         site_url=configs["maas_url"].rstrip("/").removesuffix("/MAAS"),
         url=url,
         jwt=encoded,
+        cluster_uuid=MAAS_UUID.get(),
         metainfo=metainfo,
     )
 

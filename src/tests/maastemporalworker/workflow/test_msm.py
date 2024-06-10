@@ -38,6 +38,7 @@ _MSM_ENROL_URL = "http://msm.local/site/v1/enrol"
 _MSM_DETAIL_URL = "http://msm.local/site/v1/details"
 _JWT_ENROL = "headers.claims.signature"
 _JWT_ACCESS = "headers.new-claims.signature"
+_CLUSTER_UUID = "abc-def"
 
 
 @pytest.fixture
@@ -63,6 +64,7 @@ def enrol_param() -> MSMEnrolParam:
         site_url=_MAAS_URL,
         url=_MSM_ENROL_URL,
         jwt=_JWT_ENROL,
+        cluster_uuid=_CLUSTER_UUID,
     )
 
 

@@ -39,6 +39,7 @@ class MSMEnrolParam:
     site_url: str
     url: str
     jwt: str
+    cluster_uuid: str
     metainfo: str | None = None
 
 
@@ -98,6 +99,7 @@ class MSMConnectorActivity(ActivityBase):
         data = {
             "name": input.site_name,
             "url": input.site_url,
+            "cluster_uuid": input.cluster_uuid,
             **(yaml.safe_load(input.metainfo) if input.metainfo else {}),
         }
 
