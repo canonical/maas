@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import AsyncIterator, Iterator
 
+from aioresponses import aioresponses
 from django.core import signing
 from fastapi import FastAPI
 from httpx import AsyncClient, Headers
@@ -128,3 +129,9 @@ async def authenticated_user_api_client_v3(
             {"Authorization": "bearer " + token_response.access_token}
         )
         yield client
+
+
+@pytest.fixture
+def mock_aioresponse():
+    with aioresponses() as m:
+        yield m

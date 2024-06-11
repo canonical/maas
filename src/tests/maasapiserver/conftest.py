@@ -5,6 +5,7 @@ from .fixtures.app import (
     authenticated_api_client,
     authenticated_user,
     authenticated_user_api_client_v3,
+    mock_aioresponse,
     user_session_id,
 )
 from .fixtures.db import (
@@ -26,6 +27,7 @@ __all__ = [
     "db",
     "db_connection",
     "fixture",
+    "mock_aioresponse",
     "transaction_middleware_class",
     "user_session_id",
 ]
