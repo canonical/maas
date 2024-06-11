@@ -42,10 +42,11 @@ import (
 )
 
 const (
-	TemporalPort = 5271
+	defaultTemporalPort = 5271
 )
 
 // config represents a necessary set of configuration options for MAAS Agent
+// TODO: change to 'kebab-case' to follow the same syntax as Juju
 type config struct {
 	MAASUUID  string `yaml:"maas_uuid"`
 	SystemID  string `yaml:"system_id"`
@@ -58,7 +59,9 @@ type config struct {
 	Controllers []string `yaml:"controllers,flow"`
 }
 
-func Run() int {
+// setupLogger sets the global logger with the provided logLevel.
+// If logLevel provided is unknown, then INFO will be used.
+func setupLogger(logLevel string) {
 	// Use custom ConsoleWriter without TimestampFieldName, because stdout
 	// is captured with systemd-cat
 	// TODO: write directly to the journal
@@ -68,58 +71,69 @@ func Run() int {
 		zerolog.CallerFieldName,
 		zerolog.MessageFieldName,
 	}
-
 	log.Logger = zerolog.New(consoleWriter).With().Logger()
 
-	cfg, err := getConfig()
-	if err != nil {
-		log.Error().Err(err).Send()
-		return 1
+	ll, err := zerolog.ParseLevel(logLevel)
+	if err != nil || ll == zerolog.NoLevel {
+		ll = zerolog.InfoLevel
 	}
 
-	// Encryption Codec required for Temporal Workflow's payload encoding
-	codec, err := codec.NewEncryptionCodec([]byte(cfg.Secret))
-	if err != nil {
-		log.Error().Err(err).Msg("Encryption codec setup failed")
-		return 1
-	}
+	zerolog.SetGlobalLevel(ll)
 
-	var logLevel zerolog.Level
+	log.Info().Msg(fmt.Sprintf("Logger is configured with log level %q", ll.String()))
+}
 
-	logLevel, err = zerolog.ParseLevel(cfg.LogLevel)
-	if err != nil || logLevel == zerolog.NoLevel {
-		logLevel = zerolog.InfoLevel
-	}
-
-	zerolog.SetGlobalLevel(logLevel)
-
-	log.Info().Msg(fmt.Sprintf("Logger is configured with log level %q", logLevel.String()))
-
-	clientBackoff := backoff.NewExponentialBackOff()
-	clientBackoff.MaxElapsedTime = 60 * time.Second
-
+// getClusterCert returns certificate and CA that are used by the Agent to setup
+// mTLS. This certificate is used by Temporal Client for mTLS (when client
+// communicates with Temporal Server) and can be used by any other service where
+// secure communication to the Region Controller or other Agent is required.
+func getClusterCert() (tls.Certificate, *x509.CertPool, error) {
 	certsDir := getCertificatesDir()
 
-	cert, err := tls.LoadX509KeyPair(fmt.Sprintf("%s/cluster.pem", certsDir), fmt.Sprintf("%s/cluster.key", certsDir))
+	cert, err := tls.LoadX509KeyPair(
+		filepath.Join(filepath.Clean(certsDir), "cluster.pem"),
+		filepath.Join(filepath.Clean(certsDir), "cluster.key"),
+	)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed loading client cert and key")
+		return cert, nil, err
 	}
 
 	ca := x509.NewCertPool()
 
-	b, err := os.ReadFile(fmt.Sprintf("%s/cacerts.pem", certsDir))
+	b, err := os.ReadFile(filepath.Join(filepath.Clean(certsDir), "cacerts.pem"))
 	if err != nil {
-		log.Error().Err(err).Msg("Failed reading CA")
-	} else if !ca.AppendCertsFromPEM(b) {
-		log.Error().Err(err).Msg("CA PEM file is invalid")
+		return cert, nil, err
 	}
 
-	temporalClient, err := backoff.RetryWithData(
+	if !ca.AppendCertsFromPEM(b) {
+		return cert, nil, fmt.Errorf("cannot append certs to CA: %w", err)
+	}
+
+	return cert, ca, nil
+}
+
+// getTemporalClient returns Temporal Client that is used to communicate
+// to MAAS Temporal server (running next to the Region Controller).
+//
+// secret is used for EncryptionCodec (AES) to encrypt input/output (payloads)
+// cert, ca are used to setup mTLS
+func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
+	ca *x509.CertPool, endpoints []string) (client.Client, error) {
+	// Encryption Codec required for Temporal Workflow's payload encoding
+	codec, err := codec.NewEncryptionCodec([]byte(secret))
+	if err != nil {
+		return nil, fmt.Errorf("failed setting up encryption codec: %w", err)
+	}
+
+	retry := backoff.NewExponentialBackOff()
+	retry.MaxElapsedTime = 60 * time.Second
+
+	return backoff.RetryWithData(
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
-				HostPort: fmt.Sprintf("%s:%d", cfg.Controllers[0], TemporalPort),
-				Identity: fmt.Sprintf("%s@agent:%d", cfg.SystemID, os.Getpid()),
+				HostPort: fmt.Sprintf("%s:%d", endpoints[0], defaultTemporalPort),
+				Identity: fmt.Sprintf("%s@agent:%d", systemID, os.Getpid()),
 				Logger:   wflog.NewZerologAdapter(log.Logger),
 				DataConverter: converter.NewCodecDataConverter(
 					converter.GetDefaultDataConverter(),
@@ -130,13 +144,94 @@ func Run() int {
 						MinVersion:   tls.VersionTLS12,
 						Certificates: []tls.Certificate{cert},
 						RootCAs:      ca,
-						ServerName:   "maas",
+						// NOTE: this should be configurable.
+						// Right now it is hardcoded because we use MAAS self-signed
+						// certificate for mTLS. But that needs to be refactored once
+						// we start supporting custom certificates for mTLS.
+						ServerName: "maas",
 					},
 				},
 			})
-		}, clientBackoff,
+		}, retry,
 	)
+}
 
+// getConfig reads MAAS Agent YAML configuration file
+// NOTE: agent.yaml config is generated by rackd, however this behaviour
+// should be changed when MAAS Agent will be a standalone service, not managed
+// by the Rack Controller.
+func getConfig() (*config, error) {
+	fname := os.Getenv("MAAS_AGENT_CONFIG")
+	if fname == "" {
+		fname = "/etc/maas/agent.yaml"
+	}
+
+	data, err := os.ReadFile(filepath.Clean(fname))
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %w", err)
+	}
+
+	cfg := &config{}
+
+	err = yaml.Unmarshal([]byte(data), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("configuration error: %w", err)
+	}
+
+	return cfg, nil
+}
+
+func getOrCreateDir(path string) (string, error) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(path, os.ModeDir|0755)
+	}
+
+	return path, fmt.Errorf("failed getting dir %q: %w", path, err)
+}
+
+// getRunDir returns directory that stores volatile runtime data.
+func getRunDir() string {
+	if name := os.Getenv("SNAP_INSTANCE_NAME"); name != "" {
+		return fmt.Sprintf("/run/snap.%s", name)
+	}
+
+	return "/run/maas"
+}
+
+// getCertificatesDir returns directory that contains MAAS certificates.
+func getCertificatesDir() string {
+	dataDir := os.Getenv("SNAP_DATA")
+
+	if dataDir != "" {
+		return filepath.Join(filepath.Clean(dataDir), "certificates")
+	}
+
+	return "/var/lib/maas/certificates"
+}
+
+func Run() int {
+	cfg, err := getConfig()
+	if err != nil {
+		fmt.Printf("Failed starting MAAS Agent: %s", err)
+		return 1
+	}
+
+	runDir, err := getOrCreateDir(getRunDir())
+	if err != nil {
+		log.Error().Err(err).Send()
+		return 1
+	}
+
+	setupLogger(cfg.LogLevel)
+
+	cert, ca, err := getClusterCert()
+	if err != nil {
+		log.Error().Err(err).Msg("Cannot fetch cluster certificate")
+		return 1
+	}
+
+	temporalClient, err := getTemporalClient(cfg.SystemID, []byte(cfg.Secret), cert, ca, cfg.Controllers)
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal client error")
 		return 1
@@ -147,18 +242,6 @@ func Run() int {
 	cache, err := cache.NewFileCache(cfg.HTTPProxy.CacheSize, cfg.HTTPProxy.CacheDir)
 	if err != nil {
 		log.Error().Err(err).Msg("HTTP Proxy cache initialisation error")
-		return 1
-	}
-
-	runDir := getRunDir()
-
-	_, err = os.Stat(runDir)
-	if os.IsNotExist(err) {
-		err = os.Mkdir(runDir, os.ModeDir|0755)
-	}
-
-	if err != nil {
-		log.Error().Err(err).Send()
 		return 1
 	}
 
@@ -197,7 +280,7 @@ func Run() int {
 	workflowOptions := client.StartWorkflowOptions{
 		TaskQueue: "region",
 		// If we failed to execute this workflow in 120 seconds, then something bad
-		// happened and we don't want to keep it in a task queue.
+		// happened and we don't want to keep it in a task queue (will be cancelled)
 		WorkflowExecutionTimeout: 120 * time.Second,
 	}
 
@@ -238,51 +321,6 @@ func Run() int {
 	case <-sigs:
 		return 0
 	}
-}
-
-// getConfig reads MAAS Agent YAML configuration file
-// NOTE: agent.yaml config is generated by rackd, however this behaviour
-// should be changed when MAAS Agent will be a standalone service, not managed
-// by the Rack Controller.
-func getConfig() (*config, error) {
-	fname := os.Getenv("MAAS_AGENT_CONFIG")
-	if fname == "" {
-		fname = "/etc/maas/agent.yaml"
-	}
-
-	data, err := os.ReadFile(filepath.Clean(fname))
-	if err != nil {
-		return nil, fmt.Errorf("configuration error: %w", err)
-	}
-
-	cfg := &config{}
-
-	err = yaml.Unmarshal([]byte(data), cfg)
-	if err != nil {
-		return nil, fmt.Errorf("configuration error: %w", err)
-	}
-
-	return cfg, nil
-}
-
-func getRunDir() string {
-	name := os.Getenv("SNAP_INSTANCE_NAME")
-
-	if name != "" {
-		return fmt.Sprintf("/run/snap.%s", name)
-	}
-
-	return "/run/maas"
-}
-
-func getCertificatesDir() string {
-	dataDir := os.Getenv("SNAP_DATA")
-
-	if dataDir != "" {
-		return fmt.Sprintf("%s/certificates", dataDir)
-	}
-
-	return "/var/lib/maas/certificates"
 }
 
 func main() {
