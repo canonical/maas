@@ -10,6 +10,7 @@ from maasserver.websockets.base import Handler
 class MAASSiteManagerHandler(Handler):
     class Meta:
         allowed_methods = ["status"]
+        handler_name = "msm"
 
     def status(self, params):
         """Get the status of enrolment"""
