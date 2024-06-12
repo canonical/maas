@@ -29,6 +29,7 @@ from maastemporalworker.workflow.activity import ActivityBase
 
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
 MSM_TIMEOUT = timedelta(minutes=15)
+MSM_REFRESH_RETRY_INTERVAL = timedelta(minutes=1)
 MSM_POLL_INTERVAL = timedelta(minutes=1)
 MSM_SECRET = "msm-connector"
 
@@ -47,6 +48,8 @@ class MSMEnrolParam:
 class MSMConnectorParam:
     url: str
     jwt: str
+    rotation_interval_minutes: int = 0
+    jwt_refresh_url: str = ""
 
 
 @dataclasses.dataclass
@@ -66,7 +69,17 @@ class MSMHeartbeatParam:
     jwt: str
     site_name: str
     site_url: str
+    rotation_interval_minutes: int
+    jwt_refresh_url: str
     status: MachineStatsByStatus | None = None
+
+
+@dataclasses.dataclass
+class MSMTokenRefreshParam:
+    sm_url: str
+    jwt: str
+    jwt_refresh_url: str
+    rotation_interval_minutes: int
 
 
 class MSMConnectorActivity(ActivityBase):
@@ -124,14 +137,18 @@ class MSMConnectorActivity(ActivityBase):
                     )
 
     @activity.defn(name="msm-check-enrol")
-    async def check_enrol(self, input: MSMEnrolParam) -> str | None:
+    async def check_enrol(
+        self, input: MSMEnrolParam
+    ) -> tuple[str | None, int]:
         """Check the enrolment status.
 
         Args:
             input (MSMEnrolParam): Enrolment parameters
 
         Returns:
-            str: a new JWT if the enrolment was completed
+            tuple[str,int]:
+                - a new JWT if the enrolment was completed
+                - the token refresh interval in minutes
         """
         headers = {
             "Authorization": f"bearer {input.jwt}",
@@ -142,12 +159,15 @@ class MSMConnectorActivity(ActivityBase):
                     raise ApplicationError("waiting for MSM enrolment")
                 case 200:
                     data = await response.json()
-                    return data["access_token"]
+                    return (
+                        data["access_token"],
+                        data["rotation_interval_minutes"],
+                    )
                 case 404:
                     activity.logger.error(
                         "Enrolment cancelled by MSM, aborting"
                     )
-                    return None
+                    return (None, -1)
                 case _:
                     raise ApplicationError(
                         f"got unexpected return code: HTTP {response.status}"
@@ -170,8 +190,24 @@ class MSMConnectorActivity(ActivityBase):
                 {
                     "url": input.url,
                     "jwt": input.jwt,
+                    "rotation_interval_minutes": input.rotation_interval_minutes,
+                    "jwt_refresh_url": input.jwt_refresh_url,
                 },
             )
+
+    @activity.defn(name="msm-get-enrol")
+    async def get_enrol(self) -> dict[str, Any]:
+        """Get enrolment data in the DB.
+
+        Args:
+            input (MSMConnectorParam): MSM connection data
+        """
+        from maasapiserver.v3.db.secrets import SecretsRepository
+
+        async with self.start_transaction() as tx:
+            repo = SecretsRepository(tx)
+            secret = await repo.get(f"global/{MSM_SECRET}")
+        return secret.value
 
     @activity.defn(name="msm-get-heartbeat-data")
     async def get_heartbeat_data(self) -> MachineStatsByStatus:
@@ -249,6 +285,42 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
+    @activity.defn(name="msm-get-token-refresh")
+    async def refresh_token(
+        self, input: MSMTokenRefreshParam
+    ) -> tuple[str | None, int]:
+        """Refresh the JWT.
+
+        Args:
+            input (MSMTokenRefreshParam): includes the current JWT and refresh URL
+
+        Returns:
+            tuple[str | None, int]: the new JWT and rotation interval if
+            successful. None, -1 if not
+        """
+        headers = {
+            "Authorization": f"bearer {input.jwt}",
+        }
+        async with self._session.get(
+            input.jwt_refresh_url, headers=headers
+        ) as response:
+            match response.status:
+                case 200:
+                    data = await response.json()
+                    return (
+                        data["access_token"],
+                        data["rotation_interval_minutes"],
+                    )
+                case 401 | 404:
+                    activity.logger.error(
+                        "Enrolment cancelled by MSM, aborting"
+                    )
+                    return (None, -1)
+                case _:
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}"
+                    )
+
 
 @workflow.defn(name="msm-enrol-site", sandboxed=False)
 class MSMEnrolSiteWorkflow:
@@ -293,7 +365,7 @@ class MSMEnrolSiteWorkflow:
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
-        new_jwt = await workflow.execute_activity(
+        (new_jwt, rotation_interval_minutes) = await workflow.execute_activity(
             "msm-check-enrol",
             input,
             start_to_close_timeout=MSM_TIMEOUT,
@@ -310,8 +382,16 @@ class MSMEnrolSiteWorkflow:
         new_url = (
             urlparse(input.url)._replace(path="/site/v1/details").geturl()
         )
+        refresh_url = (
+            urlparse(input.url)
+            ._replace(path="/site/v1/enrol/refresh")
+            .geturl()
+        )
         param.url = new_url
         param.jwt = new_jwt
+        param.rotation_interval_minutes = rotation_interval_minutes
+        param.jwt_refresh_url = refresh_url
+
         await workflow.execute_activity(
             "msm-set-enrol",
             param,
@@ -325,8 +405,22 @@ class MSMEnrolSiteWorkflow:
                 jwt=new_jwt,
                 site_name=input.site_name,
                 site_url=input.site_url,
+                rotation_interval_minutes=rotation_interval_minutes,
+                jwt_refresh_url=refresh_url,
             ),
             id="msm-heartbeat:region",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            parent_close_policy=ParentClosePolicy.ABANDON,
+        )
+        await workflow.start_child_workflow(
+            "msm-token-refresh",
+            MSMTokenRefreshParam(
+                sm_url=new_url,
+                jwt=new_jwt,
+                jwt_refresh_url=refresh_url,
+                rotation_interval_minutes=rotation_interval_minutes,
+            ),
+            id="msm-token-refresh:region",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
             parent_close_policy=ParentClosePolicy.ABANDON,
         )
@@ -372,13 +466,17 @@ class MSMHeartbeatWorkflow:
         self._running = True
         next_update = 0
         while next_update >= 0:
+            secret = await workflow.execute_activity(
+                "msm-get-enrol",
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
             data = await workflow.execute_activity(
                 "msm-get-heartbeat-data",
                 start_to_close_timeout=MSM_TIMEOUT,
             )
             next_update = await workflow.execute_activity(
                 "msm-send-heartbeat",
-                dataclasses.replace(input, status=data),
+                dataclasses.replace(input, status=data, jwt=secret["jwt"]),
                 start_to_close_timeout=MSM_TIMEOUT,
                 retry_policy=RetryPolicy(
                     backoff_coefficient=1.0,
@@ -393,3 +491,42 @@ class MSMHeartbeatWorkflow:
     @workflow.query(name="is-running")
     def is_running(self) -> bool:
         return self._running
+
+
+@workflow.defn(name="msm-token-refresh", sandboxed=False)
+class MSMTokenRefreshWorkflow:
+    """Retrieve a new JWT from MSM."""
+
+    @workflow.run
+    async def run(self, input: MSMTokenRefreshParam) -> None:
+        next_refresh = input.rotation_interval_minutes * 60
+        while next_refresh >= 0:
+            if next_refresh > 0:
+                await asyncio.sleep(next_refresh)
+            (
+                new_token,
+                rotation_interval_minutes,
+            ) = await workflow.execute_activity(
+                "msm-get-token-refresh",
+                input,
+                start_to_close_timeout=MSM_TIMEOUT,
+                retry_policy=RetryPolicy(
+                    backoff_coefficient=1.0,
+                    initial_interval=MSM_REFRESH_RETRY_INTERVAL,
+                ),
+            )
+            if new_token is None:
+                break
+            input.jwt = new_token
+            next_refresh = rotation_interval_minutes * 60
+            param = MSMConnectorParam(
+                url=input.sm_url,
+                jwt=new_token,
+                rotation_interval_minutes=rotation_interval_minutes,
+                jwt_refresh_url=input.jwt_refresh_url,
+            )
+            await workflow.execute_activity(
+                "msm-set-enrol",
+                param,
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
