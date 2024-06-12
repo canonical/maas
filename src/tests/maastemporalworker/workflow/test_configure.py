@@ -45,7 +45,7 @@ class TestConfigureAgentActivity:
     ):
         subnet = await create_test_subnet_entry(fixture)
         rack_controller = await create_test_rack_controller_entry(fixture)
-        ip = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
         await create_test_interface_entry(
             fixture, node=rack_controller, ips=[ip]
         )
@@ -73,7 +73,7 @@ class TestConfigureAgentActivity:
         rack_controller = await create_test_rack_and_region_controller_entry(
             fixture
         )
-        ip = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
         await create_test_interface_entry(
             fixture, node=rack_controller, ips=[ip]
         )
@@ -106,8 +106,12 @@ class TestConfigureAgentActivity:
             fixture, node=rack_controller
         )
         rack_controller["current_config_id"] = current_node_config["id"]
-        ip1 = await create_test_staticipaddress_entry(fixture, subnet=subnet1)
-        ip2 = await create_test_staticipaddress_entry(fixture, subnet=subnet2)
+        [ip1] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet1
+        )
+        [ip2] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet2
+        )
         await create_test_interface_entry(
             fixture, node=rack_controller, ips=[ip1]
         )
@@ -139,7 +143,7 @@ class TestConfigureAgentActivity:
     ):
         subnet = await create_test_subnet_entry(fixture)
         region_controller = await create_test_region_controller_entry(fixture)
-        ip = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
         await create_test_interface_entry(
             fixture, node=region_controller, ips=[ip]
         )
@@ -160,7 +164,7 @@ class TestConfigureAgentActivity:
     ):
         subnet = await create_test_subnet_entry(fixture)
         region_controller = await create_test_region_controller_entry(fixture)
-        ip = await create_test_staticipaddress_entry(fixture, subnet=subnet)
+        [ip] = await create_test_staticipaddress_entry(fixture, subnet=subnet)
         await create_test_interface_entry(
             fixture, node=region_controller, ips=[ip]
         )
@@ -189,8 +193,12 @@ class TestConfigureAgentActivity:
             fixture, node=region_controller
         )
         region_controller["current_config_id"] = current_node_config["id"]
-        ip1 = await create_test_staticipaddress_entry(fixture, subnet=subnet1)
-        ip2 = await create_test_staticipaddress_entry(fixture, subnet=subnet2)
+        [ip1] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet1
+        )
+        [ip2] = await create_test_staticipaddress_entry(
+            fixture, subnet=subnet2
+        )
         await create_test_interface_entry(
             fixture, node=region_controller, ips=[ip1]
         )

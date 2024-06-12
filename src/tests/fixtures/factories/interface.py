@@ -1,8 +1,14 @@
 from datetime import datetime
 from typing import Any
 
+from maasapiserver.v3.models.interfaces import Interface, Link
 from maastesting.factory import factory
 from tests.fixtures.factories.node_config import create_test_node_config_entry
+from tests.fixtures.factories.staticipaddress import (
+    create_test_staticipaddress_entry,
+)
+from tests.fixtures.factories.subnet import create_test_subnet_entry
+from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -23,12 +29,34 @@ async def create_test_interface_ip_addresses_entry(
     return created_record
 
 
+async def create_test_interface(
+    fixture: Fixture,
+    node: dict[str | Any] | None = None,
+    ip_count: int = 4,
+    **extra_details: dict[str, Any],
+) -> Interface:
+    vlan = await create_test_vlan_entry(fixture)
+    subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
+    ips = []
+    for _ in range(ip_count):
+        ips.extend(
+            await create_test_staticipaddress_entry(
+                fixture=fixture, subnet=subnet, **extra_details
+            )
+        )
+
+    return await create_test_interface_entry(
+        fixture=fixture, node=node, ips=ips, vlan=vlan, **extra_details
+    )
+
+
 async def create_test_interface_entry(
     fixture: Fixture,
     node: dict[str, Any] | None = None,
     ips: list[dict[str, Any]] | None = None,
+    vlan: dict[str, Any] | None = None,
     **extra_details: dict[str, Any],
-) -> dict[str, Any]:
+) -> Interface:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
     interface = {
@@ -45,22 +73,27 @@ async def create_test_interface_entry(
         "interface_speed": 1024,
         "link_speed": 1024,
         "sriov_max_vf": 4,
-        "link_connected": len(ips) > 0,
+        "link_connected": bool(ips) and len(ips) > 0,
     }
     interface.update(extra_details)
 
     if node:
-        config_id = node.get("current_config_id")
-        if config_id:
+        if config_id := node.get("current_config_id"):
             interface["node_config_id"] = config_id
         else:
             config = await create_test_node_config_entry(fixture, node=node)
             interface["node_config_id"] = config["id"]
 
+    if vlan:
+        interface["vlan_id"] = vlan["id"]
+
     [created_interface] = await fixture.create(
         "maasserver_interface",
         [interface],
     )
+
+    # TODO
+    # created_interface["effective_mtu"] = int(vlan["mtu"]) if vlan else 0
 
     if ips:
         for ip in ips:
@@ -68,4 +101,21 @@ async def create_test_interface_entry(
                 fixture, created_interface["id"], ip["id"]
             )
 
-    return created_interface
+    if ips:
+        created_interface["links"] = sorted(
+            [
+                Link(
+                    **{
+                        "id": ip["id"],
+                        "ip_type": ip["alloc_type"],
+                        "ip_address": ip["ip"],
+                        "ip_subnet": ip["subnet_id"],
+                    }
+                )
+                for ip in ips
+            ],
+            key=lambda link: link.id,
+            reverse=True,
+        )
+
+    return Interface(**created_interface)

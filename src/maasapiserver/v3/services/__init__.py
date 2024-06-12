@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasapiserver.v3.services.auth import AuthService
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.configurations import ConfigurationsService
+from maasapiserver.v3.services.interfaces import InterfacesService
 from maasapiserver.v3.services.machines import MachinesService
 from maasapiserver.v3.services.nodes import NodesService
 from maasapiserver.v3.services.resource_pools import ResourcePoolsService
@@ -27,6 +28,7 @@ class ServiceCollectionV3:
     resource_pools: ResourcePoolsService
     auth: AuthService
     machines: MachinesService
+    interfaces: InterfacesService
 
     @classmethod
     async def produce(
@@ -54,4 +56,5 @@ class ServiceCollectionV3:
         )
         services.resource_pools = ResourcePoolsService(connection=connection)
         services.machines = MachinesService(connection=connection)
+        services.interfaces = InterfacesService(connection=connection)
         return services

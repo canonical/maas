@@ -13,8 +13,9 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_staticipaddress_entry(
     fixture: Fixture,
     subnet: dict[str, Any] | None = None,
-    **extra_details: dict[str, Any]
-) -> dict[str, Any]:
+    **extra_details: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """We return a list, as DHCP ips need to create discovered ips also."""
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
     staticipaddress = {
@@ -24,6 +25,7 @@ async def create_test_staticipaddress_entry(
         "lease_time": 600,
     }
     staticipaddress.update(extra_details)
+    discovered_ip: Any | None = None
 
     if subnet:
         staticipaddress["subnet_id"] = subnet["id"]
@@ -51,9 +53,34 @@ async def create_test_staticipaddress_entry(
             ip = ip + 1
         staticipaddress["ip"] = str(ip)
 
-    [created_staticipaddress] = await fixture.create(
+        if staticipaddress["alloc_type"] == IPADDRESS_TYPE.DHCP:
+            # create a new discovered ip if one does not exist on the subnet
+            stmt = (
+                select(StaticIPAddressTable)
+                .where(
+                    StaticIPAddressTable.c.subnet_id
+                    == staticipaddress["subnet_id"],
+                    StaticIPAddressTable.c.alloc_type
+                    == IPADDRESS_TYPE.DISCOVERED,
+                )
+                .distinct(StaticIPAddressTable.c.subnet_id)
+            )
+            if not (await fixture.conn.execute(stmt)).first():
+                [discovered_ip] = await create_test_staticipaddress_entry(
+                    fixture,
+                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                    ip=staticipaddress["ip"],
+                    subnet_id=staticipaddress["subnet_id"],
+                )
+            staticipaddress["ip"] = None
+
+    created_staticipaddresses = await fixture.create(
         "maasserver_staticipaddress",
         [staticipaddress],
     )
 
-    return created_staticipaddress
+    # let the test know about the discovered ip
+    if discovered_ip:
+        created_staticipaddresses.append(discovered_ip)
+
+    return created_staticipaddresses

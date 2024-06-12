@@ -9,7 +9,10 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_machine(
-    fixture: Fixture, bmc: Bmc, user: User, **extra_details: Any
+    fixture: Fixture,
+    bmc: Bmc,
+    user: User,
+    **extra_details: Any,
 ) -> Machine:
     created_machine = await create_test_machine_entry(
         fixture,
