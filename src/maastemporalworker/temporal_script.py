@@ -42,7 +42,7 @@ async def _stop_temporal_workers(workers: list[TemporalWorker]) -> None:
 async def main() -> None:
     # TODO check that Temporal is active
     log.info("starting region temporal-worker process")
-    config = read_config()
+    config = await read_config()
     log.debug("connecting to MAAS DB")
     db = Database(config.db, echo=config.debug_queries)
     log.debug("connecting to Temporal server")

@@ -1,4 +1,7 @@
+from asyncio import Future
 from pathlib import Path
+
+import pytest
 
 import maasapiserver.settings
 from maasapiserver.settings import (
@@ -53,7 +56,8 @@ class TestDatabaseConfig:
 
 
 class TestGetDefaultDBConfig:
-    def test_local(self):
+    @pytest.mark.asyncio
+    async def test_local(self):
         region_config = RegionConfiguration(
             {
                 "database_name": "maasdb",
@@ -63,14 +67,15 @@ class TestGetDefaultDBConfig:
                 "database_port": 12345,
             }
         )
-        config = _get_default_db_config(region_config)
+        config = await _get_default_db_config(region_config)
         assert config.name == "maasdb"
         assert config.host == "host"
         assert config.username == "user"
         assert config.password == "pass"
         assert config.port == 12345
 
-    def test_vault(self, mocker):
+    @pytest.mark.asyncio
+    async def test_vault(self, mocker):
         MAAS_ID.set("asdf")
         region_config = RegionConfiguration(
             {
@@ -79,15 +84,19 @@ class TestGetDefaultDBConfig:
             }
         )
         mock_client = mocker.patch.object(
-            maasapiserver.settings, "get_region_vault_client"
+            maasapiserver.settings, "get_region_vault_manager"
         ).return_value
-        mock_client.get.return_value = {
-            "name": "maasdb",
-            "user": "user",
-            "pass": "pass",
-        }
+        return_value = Future()
+        return_value.set_result(
+            {
+                "name": "maasdb",
+                "user": "user",
+                "pass": "pass",
+            }
+        )
+        mock_client.get.return_value = return_value
 
-        config = _get_default_db_config(region_config)
+        config = await _get_default_db_config(region_config)
         assert config.name == "maasdb"
         assert config.host == "host"
         assert config.username == "user"

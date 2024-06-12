@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 
@@ -98,8 +99,10 @@ def create_app(
 
 
 def run(app_config: Config | None = None):
+    loop = asyncio.new_event_loop()
+
     if app_config is None:
-        app_config = read_config()
+        app_config = loop.run_until_complete(read_config())
 
     logging.basicConfig(
         level=logging.DEBUG if app_config.debug else logging.INFO
@@ -107,9 +110,9 @@ def run(app_config: Config | None = None):
 
     server_config = uvicorn.Config(
         create_app(config=app_config),
-        loop="asyncio",
+        loop=loop,
         proxy_headers=True,
         uds=api_service_socket_path(),
     )
     server = uvicorn.Server(server_config)
-    server.run()
+    loop.run_until_complete(server.serve())
