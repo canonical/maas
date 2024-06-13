@@ -6,11 +6,15 @@ from typing import List
 from maasserver.enum import NODE_STATUS
 from maasserver.models import ControllerInfo, RackController, Tag
 from maasserver.testing.commissioning import FakeCommissioningData
+from metadataserver.builtin_scripts import hooks
 from metadataserver.builtin_scripts.hooks import process_lxd_results
 from provisioningserver.utils import version
 
 from .common import range_one
 from .script import make_scripts
+
+# Patch the start_workflow function
+hooks.start_workflow = lambda *args, **kwargs: None
 
 
 def make_rackcontroller_infos(count: int, hostname_prefix: str):
