@@ -187,7 +187,11 @@ func getOrCreateDir(path string) (string, error) {
 		err = os.Mkdir(path, os.ModeDir|0755)
 	}
 
-	return path, fmt.Errorf("failed getting dir %q: %w", path, err)
+	if err != nil {
+		return path, fmt.Errorf("failed getting dir %q: %w", path, err)
+	}
+
+	return path, nil
 }
 
 // getRunDir returns directory that stores volatile runtime data.
