@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from maasapiserver.v3.api.models.responses.base import (
     BaseHal,
@@ -30,13 +31,13 @@ class MachineResponse(HalResponse[BaseHal]):
     id: int
     system_id: str
     description: str
-    owner: str
+    owner: Optional[str]
     cpu_speed_MHz: int
     memory_MiB: int
     osystem: str
-    architecture: str
+    architecture: Optional[str]
     distro_series: str
-    hwe_kernel: str
+    hwe_kernel: Optional[str]
     locked: bool
     cpu_count: int
     status: MachineStatusEnum

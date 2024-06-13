@@ -1,3 +1,5 @@
+from typing import Optional
+
 from maasapiserver.v3.api.models.responses.base import BaseHal, BaseHref
 from maasapiserver.v3.api.models.responses.machines import (
     MachineResponse,
@@ -10,13 +12,13 @@ from maasapiserver.v3.models.base import MaasTimestampedBaseModel
 class Machine(MaasTimestampedBaseModel):
     system_id: str
     description: str
-    owner: str
+    owner: Optional[str]
     cpu_speed: int
     memory: int
     osystem: str
-    architecture: str
+    architecture: Optional[str]
     distro_series: str
-    hwe_kernel: str
+    hwe_kernel: Optional[str]
     locked: bool
     cpu_count: int
     status: MachineStatusEnum
