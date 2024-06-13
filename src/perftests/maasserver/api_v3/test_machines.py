@@ -26,6 +26,7 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
 
     # This should test the APIv3 calls that are used to load
     # the machine listing page on the initial page load.
+    response = None
     with perf.record("test_perf_list_machines_APIv3_endpoint"):
         # Extracted from a clean load of labmaas with empty local
         # storage
@@ -34,7 +35,10 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
             "size": 50,
         }
 
-        api_client.get("machines", headers=headers, data=params)
+        response = api_client.get("machines", headers=headers, params=params)
+
+    assert response.ok
+    assert len(response.json()["items"]) == 50
 
 
 @pytest.mark.allow_transactions
@@ -53,6 +57,7 @@ def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
     # APIv3 without any pagination.
     machine_count = Machine.objects.all().count()
     machine_pages = math.ceil(machine_count / MAX_PAGE_SIZE)
+    responses = [None] * machine_pages
     with perf.record("test_perf_list_machines_APIv3_endpoint_all"):
         # Extracted from a clean load of labmaas with empty local
         # storage
@@ -61,4 +66,10 @@ def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
                 "page": page,
                 "size": MAX_PAGE_SIZE,
             }
-            api_client.get("machines", headers=headers, data=params)
+            response = api_client.get(
+                "machines", headers=headers, params=params
+            )
+            responses[page - 1] = response
+
+    assert all([r.ok for r in responses])
+    assert sum([len(r.json()["items"]) for r in responses]) == machine_count
