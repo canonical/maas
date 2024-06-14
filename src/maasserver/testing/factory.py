@@ -1338,7 +1338,7 @@ class Factory(maastesting.factory.Factory):
         completed_intro=True,
         is_local=None,
         groups=(),
-    ):
+    ) -> User:
         if username is None:
             username = self.make_username()
         if email is None:
@@ -1450,7 +1450,7 @@ class Factory(maastesting.factory.Factory):
         description="",
         disabled_boot_architectures=None,
         **kwargs,
-    ):
+    ) -> Subnet:
         if name is None:
             name = factory.make_name("name")
         space = self._maybe_make_Space(space)
@@ -1685,7 +1685,7 @@ class Factory(maastesting.factory.Factory):
         secondary_rack=None,
         relay_vlan=None,
         mtu=1500,
-    ):
+    ) -> VLAN:
         assert vid != 0, "VID=0 VLANs are auto-created"
         if name is RANDOM:
             name = factory.make_name()

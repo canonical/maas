@@ -289,7 +289,7 @@ class Handler(metaclass=HandlerMetaclass):
         return data
 
     def full_hydrate(self, obj, data):
-        """Convert the given dictionary to a object."""
+        """Convert the given dictionary to an object."""
         allowed_fields = self._meta.fields
         exclude_fields = self._meta.exclude
         non_changeable_fields = self._meta.non_changeable
@@ -324,7 +324,7 @@ class Handler(metaclass=HandlerMetaclass):
                     field_name += "_id"
                 setattr(obj, field_name, value)
 
-        # Return the hydrated object once its done the final hydrate.
+        # Return the hydrated object once the final hydrate is done.
         return self.hydrate(obj, data)
 
     def hydrate(self, obj, data):

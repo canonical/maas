@@ -27,7 +27,7 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
     )
 
 
-def get_QueryDict(params, mutable=True):
+def get_QueryDict(params: dict, mutable: bool = True) -> QueryDict:
     """Convert `params` to a `QueryDict`."""
     query_dict = QueryDict("", mutable=mutable)
     for k, v in params.items():

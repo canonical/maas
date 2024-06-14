@@ -58,7 +58,6 @@ __all__ = [
     "NUMANode",
     "NUMANodeHugepages",
     "OwnerData",
-    "Secret",
     "PackageRepository",
     "Partition",
     "PartitionTable",
@@ -76,11 +75,13 @@ __all__ = [
     "RegionControllerProcess",
     "RegionControllerProcessEndpoint",
     "RegionRackRPCConnection",
+    "ReservedIP",
     "ResourcePool",
     "RootKey",
     "Script",
     "ScriptResult",
     "ScriptSet",
+    "Secret",
     "Service",
     "signals",
     "Space",
@@ -196,6 +197,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
     RegionControllerProcessEndpoint,
 )
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
+from maasserver.models.reservedip import ReservedIP
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.rootkey import RootKey
 from maasserver.models.script import Script

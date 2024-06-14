@@ -398,7 +398,7 @@ Changing the schema
 Once you've made a model change (i.e. a change to a file in
 ``src/<application>/models/*.py``) you have to run Django's `makemigrations`_
 command to create a migration file that will be stored in
-``src/<application>/migrations/builtin/``.
+``src/<application>/migrations/<application>/``.
 
 Note that if you want to add a new model class you'll need to import it
 in ``src/<application>/models/__init__.py``
@@ -410,10 +410,10 @@ Generate the migration script with::
     $ ./bin/maas-region makemigrations --name description_of_the_change maasserver
 
 This will generate a migration module named
-``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
+``src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py``.
 Don't forget to add that file to the project with::
 
-    $ git add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
+    $ git add src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py
 
 To apply that migration, run::
 
@@ -436,12 +436,12 @@ changes to the ``maasserver`` application, run::
     $ ./bin/maas-region makemigrations --empty --name description_of_the_change maasserver
 
 This will generate a migration module named
-``src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py``.
+``src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py``.
 You will need to edit that file and fill the ``operations`` list with the
 options that need to be performed. Again, don't forget to add that file to the
 project::
 
-    $ git add src/maasserver/migrations/builtin/<auto_number>_description_of_the_change.py
+    $ git add src/maasserver/migrations/maasserver/<auto_number>_description_of_the_change.py
 
 Once the operations have been added, apply that migration with::
 
