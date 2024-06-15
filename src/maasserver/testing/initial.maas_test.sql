@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.11 (Ubuntu 14.11-0ubuntu0.22.04.1)
+-- Dumped from database version 14.12 (Ubuntu 14.12-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.12 (Ubuntu 14.12-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8701,6 +8701,41 @@ ALTER SEQUENCE public.maasserver_regionrackrpcconnection_id_seq OWNED BY public.
 
 
 --
+-- Name: maasserver_reservedip; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_reservedip (
+    id bigint NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    ip inet NOT NULL,
+    mac_address text,
+    comment character varying(255),
+    subnet_id bigint NOT NULL,
+    vlan_id bigint NOT NULL
+);
+
+
+--
+-- Name: maasserver_reservedip_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_reservedip_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_reservedip_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_reservedip_id_seq OWNED BY public.maasserver_reservedip.id;
+
+
+--
 -- Name: maasserver_resourcepool; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10779,6 +10814,13 @@ ALTER TABLE ONLY public.maasserver_regionrackrpcconnection ALTER COLUMN id SET D
 
 
 --
+-- Name: maasserver_reservedip id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip ALTER COLUMN id SET DEFAULT nextval('public.maasserver_reservedip_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_resourcepool id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -11460,6 +11502,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 470	Can change default resource	118	change_defaultresource
 471	Can delete default resource	118	delete_defaultresource
 472	Can view default resource	118	view_defaultresource
+473	Can add Reserved IP	119	add_reservedip
+474	Can change Reserved IP	119	change_reservedip
+475	Can delete Reserved IP	119	delete_reservedip
+476	Can view Reserved IP	119	view_reservedip
 \.
 
 
@@ -11610,6 +11656,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 116	maasserver	scriptresult
 117	maasserver	bootresourcefilesync
 118	maasserver	defaultresource
+119	maasserver	reservedip
 \.
 
 
@@ -12002,6 +12049,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 382	maasserver	0326_foreign_key_cleanup	2024-05-28 12:00:15.576421+00
 383	maasserver	0327_foreign_key_readd	2024-05-28 12:00:16.543243+00
 384	maasserver	0328_merge_0327_and_0324	2024-05-28 19:46:08.641012+00
+385	maasserver	0329_add_reserved_ip_model	2024-06-15 03:30:52.566813+00
 \.
 
 
@@ -12545,6 +12593,14 @@ COPY public.maasserver_regioncontrollerprocessendpoint (id, created, updated, ad
 --
 
 COPY public.maasserver_regionrackrpcconnection (id, created, updated, endpoint_id, rack_controller_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_reservedip; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_reservedip (id, created, updated, ip, mac_address, comment, subnet_id, vlan_id) FROM stdin;
 \.
 
 
@@ -13100,7 +13156,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 472, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 476, true);
 
 
 --
@@ -13128,14 +13184,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 118, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 384, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 385, true);
 
 
 --
@@ -13584,6 +13640,13 @@ SELECT pg_catalog.setval('public.maasserver_regioncontrollerprocessendpoint_id_s
 --
 
 SELECT pg_catalog.setval('public.maasserver_regionrackrpcconnection_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_reservedip_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_reservedip_id_seq', 1, false);
 
 
 --
@@ -14847,6 +14910,30 @@ ALTER TABLE ONLY public.maasserver_regionrackrpcconnection
 
 ALTER TABLE ONLY public.maasserver_regionrackrpcconnection
     ADD CONSTRAINT maasserver_regionrackrpcconnection_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_reservedip maasserver_reservedip_ip_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip
+    ADD CONSTRAINT maasserver_reservedip_ip_key UNIQUE (ip);
+
+
+--
+-- Name: maasserver_reservedip maasserver_reservedip_mac_address_vlan_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip
+    ADD CONSTRAINT maasserver_reservedip_mac_address_vlan_uniq UNIQUE (mac_address, vlan_id);
+
+
+--
+-- Name: maasserver_reservedip maasserver_reservedip_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip
+    ADD CONSTRAINT maasserver_reservedip_pkey PRIMARY KEY (id);
 
 
 --
@@ -16460,6 +16547,20 @@ CREATE INDEX maasserver_regionrackrpcconnection_rack_controller_id_7f5b60af ON p
 
 
 --
+-- Name: maasserver_reservedip_subnet_id_548dd59f; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_reservedip_subnet_id_548dd59f ON public.maasserver_reservedip USING btree (subnet_id);
+
+
+--
+-- Name: maasserver_reservedip_vlan_id_e7f9f1cb; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_reservedip_vlan_id_e7f9f1cb ON public.maasserver_reservedip USING btree (vlan_id);
+
+
+--
 -- Name: maasserver_resourcepool_name_dc5d41eb_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -18031,6 +18132,22 @@ ALTER TABLE ONLY public.maasserver_regionrackrpcconnection
 
 ALTER TABLE ONLY public.maasserver_regionrackrpcconnection
     ADD CONSTRAINT maasserver_regionrackrpcconnection_endpoint_id_9e6814b4_fk FOREIGN KEY (endpoint_id) REFERENCES public.maasserver_regioncontrollerprocessendpoint(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_reservedip maasserver_reservedi_subnet_id_548dd59f_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip
+    ADD CONSTRAINT maasserver_reservedi_subnet_id_548dd59f_fk_maasserve FOREIGN KEY (subnet_id) REFERENCES public.maasserver_subnet(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_reservedip maasserver_reservedip_vlan_id_e7f9f1cb_fk_maasserver_vlan_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_reservedip
+    ADD CONSTRAINT maasserver_reservedip_vlan_id_e7f9f1cb_fk_maasserver_vlan_id FOREIGN KEY (vlan_id) REFERENCES public.maasserver_vlan(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
