@@ -26,6 +26,8 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
 
     # This should test the APIv3 calls that are used to load
     # the machine listing page on the initial page load.
+    machine_count = Machine.objects.all().count()
+    expected_items = machine_count if machine_count < 50 else 50
     response = None
     with perf.record("test_perf_list_machines_APIv3_endpoint"):
         # Extracted from a clean load of labmaas with empty local
@@ -38,7 +40,7 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
         response = api_client.get("machines", headers=headers, params=params)
 
     assert response.ok
-    assert len(response.json()["items"]) == 50
+    assert len(response.json()["items"]) == expected_items
 
 
 @pytest.mark.allow_transactions
