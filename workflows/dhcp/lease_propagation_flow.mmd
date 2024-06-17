@@ -1,0 +1,17 @@
+---
+title: Lease Propagation Workflow
+---
+flowchart TD
+    A[maas-agent receives a lease] --> B(queue lease in memory)
+    C[regiond starts] --> D(begin long execution of lease workflow)
+    D --> E(wait for signal with lease data)
+    B --> F(3 second interval)
+    F --> G(send signal with lease data)
+    G --> E
+    E --> H(create or update lease data in DB)
+    H --> I{success?}
+    I -->|yes| J{events growing large?}
+    I -->|no| H
+    J -->|yes| K(continue as new)
+    J -->|no| E
+    K --> E
