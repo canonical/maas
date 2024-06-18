@@ -15,6 +15,8 @@ from maasapiserver.common.vault.manager import AsyncVaultManager
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from provisioningserver.path import get_maas_data_path
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class DatabaseConfig:

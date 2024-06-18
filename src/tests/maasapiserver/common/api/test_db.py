@@ -52,7 +52,7 @@ async def insert_app(
             await conn.execute(insert(TestTable).values(id=42))
             raise MyException("boom")
 
-    api_app = create_app(config=test_config, db=db)
+    api_app = await create_app(config=test_config, db=db)
     api = API(prefix="/insert", handlers=[InsertHandler()])
     api.register(api_app.router)
 

@@ -17,11 +17,11 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.fixture
-def api_app(
+async def api_app(
     test_config: Config, transaction_middleware_class: type, db: Database
 ) -> Iterator[FastAPI]:
     """The API application."""
-    yield create_app(
+    yield await create_app(
         config=test_config,
         transaction_middleware_class=transaction_middleware_class,
         db=db,
