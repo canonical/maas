@@ -1,9 +1,15 @@
 import abc
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
+from maasapiserver.common.vault.api.models.exceptions import (
+    VaultNotFoundException,
+)
+from maasapiserver.common.vault.manager import AsyncVaultManager
 from maasapiserver.v3.services import ConfigurationsService
 from maasapiserver.v3.services.secrets import (
     LocalSecretsStorageService,
@@ -125,19 +131,40 @@ class SecretsServiceTestSuite:
             await vault_service.get_composite_secret(self.DEFAULT_PATH)
 
 
-@pytest.mark.asyncio
 class TestLocalSecretStorageService(SecretsServiceTestSuite):
     def get_vault_service(self, connection) -> SecretsService:
         return LocalSecretsStorageService(connection)
 
 
-@pytest.mark.skip(
-    reason="To be implemented with https://warthogs.atlassian.net/browse/MAASENG-2803"
-)
+class AsyncVaultManagerMock(AsyncVaultManager):
+    def __init__(self):
+        super().__init__(
+            Mock(AsyncVaultApiClient), "role_id", "secret_id", "base_path"
+        )
+        self.storage = {}
+
+    async def set(self, path: str, value: dict[str, Any]) -> None:
+        self.storage[self._build_path_key(path)] = value
+
+    async def get(self, path: str) -> dict[str, Any]:
+        key = self._build_path_key(path)
+        if key not in self.storage:
+            raise VaultNotFoundException("Not found")
+        return self.storage[key]
+
+    async def delete(self, path: str) -> None:
+        del self.storage[self._build_path_key(path)]
+
+    def _build_path_key(self, path: str):
+        return f"/v1/{self._secrets_mount}/data/{path}"
+
+
 @pytest.mark.asyncio
 class TestVaultSecretService(SecretsServiceTestSuite):
     def get_vault_service(self, connection) -> SecretsService:
-        return VaultSecretsService(connection=connection)
+        return VaultSecretsService(
+            connection=connection, vault_manager=AsyncVaultManagerMock()
+        )
 
 
 @pytest.mark.asyncio

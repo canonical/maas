@@ -4,6 +4,11 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
+from maasapiserver.common.vault.api.models.exceptions import (
+    VaultNotFoundException,
+)
+from maasapiserver.common.vault.manager import AsyncVaultManager
+from maasapiserver.settings import get_region_vault_manager
 from maasapiserver.v3.db.secrets import SecretsRepository
 from maasapiserver.v3.services.configurations import ConfigurationsService
 
@@ -105,23 +110,33 @@ class LocalSecretsStorageService(SecretsService):
 
 
 class VaultSecretsService(SecretsService):
-    """TODO: https://warthogs.atlassian.net/browse/MAASENG-2803 Just a placeholder at the moment"""
+    def __init__(
+        self, connection: AsyncConnection, vault_manager: AsyncVaultManager
+    ):
+        super().__init__(connection)
+        self.vault_manager = vault_manager
 
     async def set_composite_secret(
         self, path: str, value: dict[str, Any]
     ) -> None:
-        raise Exception("Not implemented yet.")
+        await self.vault_manager.set(path, value)
 
     async def set_simple_secret(self, path: str, value: Any) -> None:
-        raise Exception("Not implemented yet.")
+        await self.vault_manager.set(path, {self.SIMPLE_SECRET_KEY: value})
 
     async def delete(self, path: str) -> None:
-        raise Exception("Not implemented yet.")
+        await self.vault_manager.delete(path)
 
     async def get_composite_secret(
         self, path: str, default: Any = UNSET
     ) -> Any:
-        raise Exception("Not implemented yet.")
+        try:
+            secret = await self.vault_manager.get(path)
+        except VaultNotFoundException:
+            if default is UNSET:
+                raise SecretNotFound(path)
+            return default
+        return secret
 
 
 class SecretsServiceFactory:
@@ -155,7 +170,10 @@ class SecretsServiceFactory:
             result = await config_service.get(cls.VAULT_CONFIG_NAME)
             cls.IS_VAULT_ENABLED = result if result else False
         if cls.IS_VAULT_ENABLED:
-            return VaultSecretsService(connection=connection)
+            vault_manager = get_region_vault_manager()
+            return VaultSecretsService(
+                connection=connection, vault_manager=vault_manager
+            )
         return LocalSecretsStorageService(connection=connection)
 
     @classmethod
