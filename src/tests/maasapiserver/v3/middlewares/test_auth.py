@@ -11,9 +11,11 @@ from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.common.models.exceptions import UnauthorizedException
+from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
 from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
     LocalAuthenticationProvider,
@@ -40,7 +42,7 @@ def auth_app(
     app.add_middleware(transaction_middleware_class, db=db)
     app.add_middleware(ExceptionMiddleware)
 
-    @app.get("/api/v3/users/{username}/token")
+    @app.get("/MAAS/a/v3/users/{username}/token")
     async def get_token(
         request: Request, username: str
     ) -> AccessTokenResponse:
@@ -54,7 +56,7 @@ def auth_app(
             ).encoded,
         )
 
-    @app.get("/api/v3/users/{username}/invalid_token")
+    @app.get("/MAAS/a/v3/users/{username}/invalid_token")
     async def get_invalid_token(
         request: Request, username: str
     ) -> AccessTokenResponse:
@@ -65,7 +67,7 @@ def auth_app(
             ).encoded,
         )
 
-    @app.get("/api/v3/users/me")
+    @app.get("/MAAS/a/v3/users/me")
     async def get_me(request: Request) -> Any:
         # V3 endpoints have authenticated_user == None if no bearer tokens was provided
         if request.state.authenticated_user:
@@ -75,7 +77,7 @@ def auth_app(
             )
         return Response(content="authenticated_user is None", status_code=401)
 
-    @app.get("/api/v2")
+    @app.get(V2_API_PREFIX)
     async def get_v2(request: Request) -> Response:
         # Other endpoints should not have authenticated_user at all.
         if hasattr(request.state, "authenticated_user"):
@@ -94,17 +96,18 @@ async def auth_client(auth_app: FastAPI) -> AsyncIterator[AsyncClient]:
 class TestV3AuthenticationMiddleware:
     async def test_authenticated_user(self, auth_client: AsyncClient) -> None:
         # v2 endpoints should not have the authenticated_user in the request context
-        v2_response = await auth_client.get("/api/v2")
+        v2_response = await auth_client.get(V2_API_PREFIX)
         assert v2_response.status_code == 200
 
         # v3 endpoints should have the authenticated_user in the request context if the request was not authenticated
-        v3_response = await auth_client.get("/api/v3/users/me")
+        v3_response = await auth_client.get(f"{V3_API_PREFIX}/users/me")
         assert v3_response.text == "authenticated_user is None"
         assert v3_response.status_code == 401
 
         # v3 requests with malformed bearer tokens should 400
         v3_response = await auth_client.get(
-            "/api/v3/users/me", headers={"Authorization": "bearer xyz"}
+            f"{V3_API_PREFIX}/users/me",
+            headers={"Authorization": "bearer xyz"},
         )
         assert v3_response.status_code == 400
         error_response = ErrorBodyResponse(**v3_response.json())
@@ -112,11 +115,11 @@ class TestV3AuthenticationMiddleware:
 
         # v3 requests with invalid bearer tokens should 401
         invalid_token_response = await auth_client.get(
-            "/api/v3/users/test/invalid_token"
+            f"{V3_API_PREFIX}/users/test/invalid_token"
         )
         invalid_token = AccessTokenResponse(**invalid_token_response.json())
         invalid_token_v3_response = await auth_client.get(
-            "/api/v3/users/me",
+            f"{V3_API_PREFIX}/users/me",
             headers={"Authorization": "bearer " + invalid_token.access_token},
         )
         assert invalid_token_v3_response.status_code == 401
@@ -124,10 +127,12 @@ class TestV3AuthenticationMiddleware:
         assert error_response.kind == "Error"
 
         # valid token
-        token_response = await auth_client.get("/api/v3/users/test/token")
+        token_response = await auth_client.get(
+            f"{V3_API_PREFIX}/users/test/token"
+        )
         token_response = AccessTokenResponse(**token_response.json())
         authenticated_v3_response = await auth_client.get(
-            "/api/v3/users/me",
+            f"{V3_API_PREFIX}/users/me",
             headers={"Authorization": "bearer " + token_response.access_token},
         )
         assert authenticated_v3_response.status_code == 200

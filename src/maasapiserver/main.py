@@ -1,14 +1,13 @@
 import asyncio
 from functools import partial
 import logging
-import re
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.openapi.utils import get_openapi
 import uvicorn
 
 from maasapiserver.common.api.handlers import APICommon
+from maasapiserver.common.constants import API_PREFIX
 from maasapiserver.common.db import Database
 from maasapiserver.common.listeners.postgres import (
     PostgresListenersTaskFactory,
@@ -66,6 +65,7 @@ async def create_app(
     app = FastAPI(
         title="MAASAPIServer",
         name="maasapiserver",
+        openapi_url=f"{API_PREFIX}/openapi.json",
         # The SwaggerUI page is provided by the APICommon router.
         docs_url=None,
     )
@@ -104,29 +104,6 @@ async def create_app(
             listeners=[VaultMigrationPostgresListener()],
         ),
     )
-
-    def custom_openapi():
-        """
-        The maasapiserver is always running behing a nginx proxy that is rewriting the requests paths.
-        For this reason, we have to patch the openapi schema in the same way.
-        """
-        openapi_schema = get_openapi(
-            title="MAAS API V3",
-            version="0.0.1",
-            routes=app.routes,
-        )
-
-        # Replace ^/api/ with /MAAS/a/ exactly like in src/maasserver/templates/http/regiond.nginx.conf.template.
-        # TODO: https://warthogs.atlassian.net/browse/MAASENG-3221 add an integration test for this
-        patched_paths = {
-            re.sub(r"^/api/", "/MAAS/a/", key): value
-            for key, value in openapi_schema["paths"].items()
-        }
-        openapi_schema["paths"] = patched_paths
-        app.openapi_schema = openapi_schema
-        return app.openapi_schema
-
-    app.openapi = custom_openapi
 
     return app
 

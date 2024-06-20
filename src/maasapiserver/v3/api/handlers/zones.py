@@ -20,7 +20,7 @@ from maasapiserver.v3.api.models.responses.zones import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
@@ -53,7 +53,7 @@ class ZonesHandler(Handler):
         zones = await services.zones.list(pagination_params)
         return ZonesListResponse(
             items=[
-                zone.to_response(f"{EXTERNAL_V3_API_PREFIX}/zones")
+                zone.to_response(f"{V3_API_PREFIX}/zones")
                 for zone in zones.items
             ],
             total=zones.total,
@@ -87,9 +87,7 @@ class ZonesHandler(Handler):
     ) -> Response:
         zone = await services.zones.create(zone_request)
         response.headers["ETag"] = zone.etag()
-        return zone.to_response(
-            self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/zones"
-        )
+        return zone.to_response(self_base_hyperlink=f"{V3_API_PREFIX}/zones")
 
     @handler(
         path="/zones/{zone_id}",
@@ -122,9 +120,7 @@ class ZonesHandler(Handler):
             return NotFoundResponse()
 
         response.headers["ETag"] = zone.etag()
-        return zone.to_response(
-            self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/zones"
-        )
+        return zone.to_response(self_base_hyperlink=f"{V3_API_PREFIX}/zones")
 
     @handler(
         path="/zones/{zone_id}",

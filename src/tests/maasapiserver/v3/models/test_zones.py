@@ -1,5 +1,6 @@
 import datetime
 
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.zones import Zone
 
 
@@ -14,11 +15,11 @@ class TestZonesModel:
             updated=now,
         )
 
-        response = zone.to_response("/api/v3/")
+        response = zone.to_response(f"{V3_API_PREFIX}/")
         assert zone.id == response.id
         assert zone.name == response.name
         assert zone.description == response.description
-        assert response.hal_links.self.href == "/api/v3/1"
+        assert response.hal_links.self.href == f"{V3_API_PREFIX}/1"
 
     def test_etag(self) -> None:
         now = datetime.datetime.fromtimestamp(1705671128)

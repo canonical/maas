@@ -4,6 +4,7 @@ import pytest
 from maasapiserver.v3.api.models.responses.interfaces import (
     InterfaceListResponse,
 )
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.interfaces import Interface
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.interface import create_test_interface
@@ -63,7 +64,7 @@ class TestInterfaceApi:
             for i in range(0, size)
         ]
 
-        path = f"/api/v3/machines/{machine['id']}/interfaces"
+        path = f"{V3_API_PREFIX}/machines/{machine['id']}/interfaces"
         response = await authenticated_user_api_client_v3.get(path)
         assert response.status_code == 200
 

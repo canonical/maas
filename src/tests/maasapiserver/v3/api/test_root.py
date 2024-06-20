@@ -6,6 +6,6 @@ import pytest
 @pytest.mark.asyncio
 class TestRootApi:
     async def test_get(self, api_client: AsyncClient) -> None:
-        response = await api_client.get("/api/v3/")
+        response = await api_client.get("/MAAS/a/v3/")
         assert response.status_code == 200
         assert response.json() == {}

@@ -1,8 +1,5 @@
-from maasapiserver.settings import api_prefix_path
+from maasapiserver.common.constants import API_PREFIX
 
-V3_API_PREFIX = "/api/v3"
-# The "/api" suffix is added by the nginx proxy. This means that the external client are making requests to "/MAAS/a/v3" and the
-# nginx proxy rewrites the path to "/api/v3"
-EXTERNAL_V3_API_PREFIX = api_prefix_path() + "/v3"
+V3_API_PREFIX = f"{API_PREFIX}/v3"
 
 DEFAULT_ZONE_NAME = "default"

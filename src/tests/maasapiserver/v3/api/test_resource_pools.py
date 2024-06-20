@@ -14,7 +14,7 @@ from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolsListResponse,
 )
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.resource_pools import ResourcePool
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
@@ -61,7 +61,7 @@ class TestResourcePoolApi(ApiCommonTests):
         return [
             EndpointDetails(
                 method="GET",
-                path="/api/v3/resource_pools",
+                path=f"{V3_API_PREFIX}/resource_pools",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig(
                     response_type=ResourcePoolsListResponse,
@@ -72,17 +72,17 @@ class TestResourcePoolApi(ApiCommonTests):
             ),
             EndpointDetails(
                 method="GET",
-                path="/api/v3/resource_pools/1",
+                path=f"{V3_API_PREFIX}/resource_pools/1",
                 user_role=UserRole.USER,
             ),
             EndpointDetails(
                 method="POST",
-                path="/api/v3/resource_pools",
+                path=f"{V3_API_PREFIX}/resource_pools",
                 user_role=UserRole.ADMIN,
             ),
             EndpointDetails(
                 method="PATCH",
-                path="/api/v3/resource_pools/1",
+                path=f"{V3_API_PREFIX}/resource_pools/1",
                 user_role=UserRole.ADMIN,
             ),
         ]
@@ -92,7 +92,7 @@ class TestResourcePoolApi(ApiCommonTests):
     ) -> None:
         created_resource_pools = await create_test_resource_pool(fixture)
         response = await authenticated_user_api_client_v3.get(
-            f"/api/v3/resource_pools/{created_resource_pools.id}"
+            f"{V3_API_PREFIX}/resource_pools/{created_resource_pools.id}"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
@@ -106,7 +106,7 @@ class TestResourcePoolApi(ApiCommonTests):
             "_embedded": None,
             "_links": {
                 "self": {
-                    "href": f"{EXTERNAL_V3_API_PREFIX}/resource_pools/{created_resource_pools.id}"
+                    "href": f"{V3_API_PREFIX}/resource_pools/{created_resource_pools.id}"
                 }
             },
         }
@@ -119,7 +119,7 @@ class TestResourcePoolApi(ApiCommonTests):
         error: int,
     ) -> None:
         response = await authenticated_user_api_client_v3.get(
-            f"/api/v3/resource_pools/{id}"
+            f"{V3_API_PREFIX}/resource_pools/{id}"
         )
         assert response.status_code == error
         assert "ETag" not in response.headers
@@ -136,7 +136,7 @@ class TestResourcePoolApi(ApiCommonTests):
             name="new_resource pool", description="new_pool_description"
         )
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/resource_pools",
+            f"{V3_API_PREFIX}/resource_pools",
             json=jsonable_encoder(resource_pool_request),
         )
         assert response.status_code == 201
@@ -150,7 +150,7 @@ class TestResourcePoolApi(ApiCommonTests):
         )
         assert (
             resource_pools_response.hal_links.self.href
-            == f"{EXTERNAL_V3_API_PREFIX}/resource_pools/{resource_pools_response.id}"
+            == f"{V3_API_PREFIX}/resource_pools/{resource_pools_response.id}"
         )
 
     @pytest.mark.parametrize(
@@ -170,7 +170,7 @@ class TestResourcePoolApi(ApiCommonTests):
         request_data: dict[str, str],
     ) -> None:
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/resource_pools", json=request_data
+            f"{V3_API_PREFIX}/resource_pools", json=request_data
         )
         assert response.status_code == error_code
 
@@ -188,7 +188,7 @@ class TestResourcePoolApi(ApiCommonTests):
             name="newname", description="new description"
         )
         response = await authenticated_admin_api_client_v3.patch(
-            f"/api/v3/resource_pools/{resource_pool.id}",
+            f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
             json=jsonable_encoder(patch_resource_pool_request),
         )
         assert response.status_code == 200
@@ -211,7 +211,7 @@ class TestResourcePoolApi(ApiCommonTests):
             description="new description"
         )
         response = await authenticated_admin_api_client_v3.patch(
-            f"/api/v3/resource_pools/{resource_pool.id}",
+            f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
             json=jsonable_encoder(
                 patch_resource_pool_request2, exclude_none=True
             ),
@@ -241,7 +241,7 @@ class TestResourcePoolApi(ApiCommonTests):
             name="newname", description="new description"
         )
         response = await authenticated_admin_api_client_v3.patch(
-            "/api/v3/resource_pools/1000",
+            f"{V3_API_PREFIX}/resource_pools/1000",
             json=jsonable_encoder(patch_resource_pool_request),
         )
         assert response.status_code == 404
@@ -267,6 +267,6 @@ class TestResourcePoolApi(ApiCommonTests):
         request_data: dict[str, str],
     ) -> None:
         response = await authenticated_admin_api_client_v3.patch(
-            "/api/v3/resource_pools/0", json=request_data
+            f"{V3_API_PREFIX}/resource_pools/0", json=request_data
         )
         assert response.status_code == error_code

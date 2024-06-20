@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.api.handlers import APICommon
+from maasapiserver.common.constants import API_PREFIX
 from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
 from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
@@ -47,7 +48,7 @@ class TestPrometheusMiddleware:
         response = await client.get(f"/{count}")
         assert response.json() == {"count": count}
         # metrics report matching number of queries for the endpoint
-        response = await client.get("/metrics")
+        response = await client.get(f"{API_PREFIX}/metrics")
         assert re.search(
             rf'maas_apiserver_request_query_count_total{{handler="/{{count}}",.*,method="GET",status="200"}} {count}.0',
             response.text,

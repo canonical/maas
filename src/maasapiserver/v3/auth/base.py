@@ -15,11 +15,11 @@ from maasapiserver.common.models.exceptions import (
 )
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 
 # This is used just to generate the openapi spec with the security annotations.
 oauth2_bearer_openapi = OpenapiOAuth2PasswordBearer(
-    tokenUrl=f"{EXTERNAL_V3_API_PREFIX}/auth/login"
+    tokenUrl=f"{V3_API_PREFIX}/auth/login"
 )
 
 

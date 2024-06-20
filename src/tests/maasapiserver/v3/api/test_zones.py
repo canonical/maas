@@ -15,7 +15,7 @@ from maasapiserver.v3.api.models.responses.zones import (
     ZonesListResponse,
 )
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
@@ -59,7 +59,7 @@ class TestZonesApi(ApiCommonTests):
         return [
             EndpointDetails(
                 method="GET",
-                path="/api/v3/zones",
+                path=f"{V3_API_PREFIX}/zones",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig(
                     response_type=ZonesListResponse,
@@ -69,14 +69,18 @@ class TestZonesApi(ApiCommonTests):
                 ),
             ),
             EndpointDetails(
-                method="GET", path="/api/v3/zones/1", user_role=UserRole.USER
+                method="GET",
+                path=f"{V3_API_PREFIX}/zones/1",
+                user_role=UserRole.USER,
             ),
             EndpointDetails(
-                method="POST", path="/api/v3/zones", user_role=UserRole.ADMIN
+                method="POST",
+                path=f"{V3_API_PREFIX}/zones",
+                user_role=UserRole.ADMIN,
             ),
             EndpointDetails(
                 method="DELETE",
-                path="/api/v3/zones/1",
+                path=f"{V3_API_PREFIX}/zones/1",
                 user_role=UserRole.ADMIN,
             ),
         ]
@@ -87,7 +91,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         # A "default" zone should be created at startup by the migration scripts.
         response = await authenticated_user_api_client_v3.get(
-            "/api/v3/zones/1"
+            f"{V3_API_PREFIX}/zones/1"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
@@ -101,7 +105,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         created_zone = await create_test_zone(fixture)
         response = await authenticated_user_api_client_v3.get(
-            f"/api/v3/zones/{created_zone.id}"
+            f"{V3_API_PREFIX}/zones/{created_zone.id}"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
@@ -113,9 +117,7 @@ class TestZonesApi(ApiCommonTests):
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "_links": {
-                "self": {
-                    "href": f"{EXTERNAL_V3_API_PREFIX}/zones/{created_zone.id}"
-                }
+                "self": {"href": f"{V3_API_PREFIX}/zones/{created_zone.id}"}
             },
         }
 
@@ -123,7 +125,7 @@ class TestZonesApi(ApiCommonTests):
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         response = await authenticated_user_api_client_v3.get(
-            "/api/v3/zones/100"
+            f"{V3_API_PREFIX}/zones/100"
         )
         assert response.status_code == 404
         assert "ETag" not in response.headers
@@ -136,7 +138,7 @@ class TestZonesApi(ApiCommonTests):
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         response = await authenticated_user_api_client_v3.get(
-            "/api/v3/zones/xyz"
+            f"{V3_API_PREFIX}/zones/xyz"
         )
         assert response.status_code == 422
         assert "ETag" not in response.headers
@@ -151,7 +153,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description="my description")
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/zones", json=jsonable_encoder(zone_request)
+            f"{V3_API_PREFIX}/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
         assert len(response.headers["ETag"]) > 0
@@ -161,7 +163,7 @@ class TestZonesApi(ApiCommonTests):
         assert zone_response.description == zone_request.description
         assert (
             zone_response.hal_links.self.href
-            == f"{EXTERNAL_V3_API_PREFIX}/zones/{zone_response.id}"
+            == f"{V3_API_PREFIX}/zones/{zone_response.id}"
         )
 
     async def test_post_default_parameters(
@@ -169,7 +171,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/zones", json=jsonable_encoder(zone_request)
+            f"{V3_API_PREFIX}/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
         zone_response = ZoneResponse(**response.json())
@@ -180,12 +182,12 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         zone_request = ZoneRequest(name="myzone", description=None)
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/zones", json=jsonable_encoder(zone_request)
+            f"{V3_API_PREFIX}/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 201
 
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/zones", json=jsonable_encoder(zone_request)
+            f"{V3_API_PREFIX}/zones", json=jsonable_encoder(zone_request)
         )
         assert response.status_code == 409
 
@@ -210,7 +212,7 @@ class TestZonesApi(ApiCommonTests):
         zone_request: dict[str, str],
     ) -> None:
         response = await authenticated_admin_api_client_v3.post(
-            "/api/v3/zones", json=zone_request
+            f"{V3_API_PREFIX}/zones", json=zone_request
         )
         assert response.status_code == 422
 
@@ -223,7 +225,7 @@ class TestZonesApi(ApiCommonTests):
         self, authenticated_admin_api_client_v3: AsyncClient
     ) -> None:
         response = await authenticated_admin_api_client_v3.delete(
-            "/api/v3/zones/100"
+            f"{V3_API_PREFIX}/zones/100"
         )
         assert response.status_code == 204
 
@@ -232,7 +234,7 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         created_zone = await create_test_zone(fixture)
         response = await authenticated_admin_api_client_v3.delete(
-            f"/api/v3/zones/{created_zone.id}"
+            f"{V3_API_PREFIX}/zones/{created_zone.id}"
         )
         assert response.status_code == 204
 
@@ -245,7 +247,7 @@ class TestZonesApi(ApiCommonTests):
         self, authenticated_admin_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         response = await authenticated_admin_api_client_v3.delete(
-            "/api/v3/zones/1"
+            f"{V3_API_PREFIX}/zones/1"
         )
         error_response = ErrorBodyResponse(**response.json())
         assert response.status_code == 400
@@ -261,7 +263,8 @@ class TestZonesApi(ApiCommonTests):
     ) -> None:
         created_zone = await create_test_zone(fixture)
         failed_response = await authenticated_admin_api_client_v3.delete(
-            f"/api/v3/zones/{created_zone.id}", headers={"if-match": "blabla"}
+            f"{V3_API_PREFIX}/zones/{created_zone.id}",
+            headers={"if-match": "blabla"},
         )
         assert failed_response.status_code == 412
         error_response = ErrorBodyResponse(**failed_response.json())
@@ -272,7 +275,7 @@ class TestZonesApi(ApiCommonTests):
         )
 
         response = await authenticated_admin_api_client_v3.delete(
-            f"/api/v3/zones/{created_zone.id}",
+            f"{V3_API_PREFIX}/zones/{created_zone.id}",
             headers={"if-match": created_zone.etag()},
         )
         assert response.status_code == 204

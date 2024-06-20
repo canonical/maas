@@ -12,6 +12,7 @@ from maasapiserver.main import create_app
 from maasapiserver.settings import Config
 from maasapiserver.v2.models.entities.user import User
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from maasapiserver.v3.constants import V3_API_PREFIX
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -102,7 +103,7 @@ async def authenticated_admin_api_client_v3(
     created_user = await create_test_user(fixture, **params)
     async with AsyncClient(app=api_app, base_url="http://test") as client:
         response = await client.post(
-            "/api/v3/auth/login",
+            f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
         )
         token_response = AccessTokenResponse(**response.json())
@@ -121,7 +122,7 @@ async def authenticated_user_api_client_v3(
     created_user = await create_test_user(fixture, **params)
     async with AsyncClient(app=api_app, base_url="http://test") as client:
         response = await client.post(
-            "/api/v3/auth/login",
+            f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
         )
         token_response = AccessTokenResponse(**response.json())

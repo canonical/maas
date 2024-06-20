@@ -2,6 +2,7 @@ import pytest
 from requests.utils import dict_from_cookiejar
 
 from maasapiserver.client import APIServerClient
+from maasapiserver.v2.constants import V2_API_PREFIX
 
 SAMPLE_SESSION_ID = "abcdef"
 
@@ -24,9 +25,9 @@ class TestAPIServerClient:
     @pytest.mark.parametrize(
         "path,expected",
         [
-            ("endpoint", "http+unix://socket/api/v2/endpoint"),
-            ("/endpoint", "http+unix://socket/api/v2/endpoint"),
-            ("/some/path", "http+unix://socket/api/v2/some/path"),
+            ("endpoint", f"http+unix://socket{V2_API_PREFIX}/endpoint"),
+            ("/endpoint", f"http+unix://socket{V2_API_PREFIX}/endpoint"),
+            ("/some/path", f"http+unix://socket{V2_API_PREFIX}/some/path"),
         ],
     )
     def test_request(self, client, path, expected):
@@ -36,7 +37,7 @@ class TestAPIServerClient:
     def test_get(self, client):
         client.get("endpoint")
         client.session.request.assert_called_with(
-            "GET", "http+unix://socket/api/v2/endpoint"
+            "GET", f"http+unix://socket{V2_API_PREFIX}/endpoint"
         )
 
     def test_post(self, client):
@@ -45,7 +46,7 @@ class TestAPIServerClient:
         }
         client.post("endpoint", **kwargs)
         client.session.request.assert_called_with(
-            "POST", "http+unix://socket/api/v2/endpoint", **kwargs
+            "POST", f"http+unix://socket{V2_API_PREFIX}/endpoint", **kwargs
         )
 
     def test_put(self, client):
@@ -54,12 +55,12 @@ class TestAPIServerClient:
         }
         client.put("endpoint", **kwargs)
         client.session.request.assert_called_with(
-            "PUT", "http+unix://socket/api/v2/endpoint", **kwargs
+            "PUT", f"http+unix://socket{V2_API_PREFIX}/endpoint", **kwargs
         )
 
     def test_delete(self, client):
         client.delete("endpoint")
         client.session.request.assert_called_with(
             "DELETE",
-            "http+unix://socket/api/v2/endpoint",
+            f"http+unix://socket{V2_API_PREFIX}/endpoint",
         )

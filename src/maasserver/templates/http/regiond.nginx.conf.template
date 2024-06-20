@@ -60,21 +60,6 @@ server {
         proxy_set_header Upgrade $http_upgrade;
     }
 
-    # apiserver Prometheus endpoint
-    location = /MAAS/a/metrics {
-        proxy_pass http://apiserver/metrics;
-    }
-
-    # apiserver swagger endpoint
-    location /MAAS/a/docs {
-        proxy_pass http://apiserver/docs;
-    }
-
-    # apiserver openapi endpoint
-    location /MAAS/a/openapi.json {
-        proxy_pass http://apiserver/openapi.json;
-    }
-
     # block remote access to the machines endpoints for now since it doesn't
     # filter machines by user
     location = /MAAS/a/v2/machines {
@@ -87,9 +72,7 @@ server {
     }
 
     location /MAAS/a/ {
-        rewrite ^/MAAS/a/(.*)$ /api/$1 break;
         proxy_pass http://apiserver;
-        proxy_redirect http://localhost/api/ $scheme://$host:$server_port/MAAS/a/;
     }
 
     # static assets

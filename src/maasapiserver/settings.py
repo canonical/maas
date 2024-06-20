@@ -45,15 +45,6 @@ class Config:
     debug: bool = False
 
 
-@lru_cache
-def api_prefix_path() -> str:
-    """
-    By default, this service is running behing the maasserver NGINX. We allow to customize the api prefix with the
-    env variable MAAS_APISERVER_API_PREFIX
-    """
-    return os.getenv("MAAS_APISERVER_API_PREFIX", "/MAAS/a")
-
-
 def api_service_socket_path() -> Path:
     """Return the path of the socket for the service."""
     return Path(

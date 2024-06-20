@@ -5,6 +5,7 @@ from requests.models import Response
 from requests.utils import add_dict_to_cookiejar
 from requests_unixsocket import Session
 
+from maasapiserver.common.constants import API_PREFIX
 from maasapiserver.settings import api_service_socket_path
 
 
@@ -19,7 +20,7 @@ class APIServerClient:
         add_dict_to_cookiejar(self.session.cookies, {"sessionid": session_id})
         path = str(api_service_socket_path())
         self.socket_path = f"http+unix://{quote_plus(path)}"
-        self.prefix = f"/api/v{version}/"
+        self.prefix = f"{API_PREFIX}/v{version}/"
 
     def request(self, verb: str, path: str, **kwargs) -> Response:
         url = self.socket_path + self.prefix + path.lstrip("/")

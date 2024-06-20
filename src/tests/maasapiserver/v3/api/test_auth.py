@@ -4,6 +4,7 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from maasapiserver.v3.constants import V3_API_PREFIX
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -17,7 +18,7 @@ class TestAuthApi:
     ) -> None:
         created_user = await create_test_user(fixture)
         response = await api_client.post(
-            "/api/v3/auth/login",
+            f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "test"},
         )
         assert response.status_code == 200
@@ -34,12 +35,14 @@ class TestAuthApi:
     ) -> None:
         created_user = await create_test_user(fixture)
         response = await api_client.post(
-            "/api/v3/auth/login", data={"username": created_user.username}
+            f"{V3_API_PREFIX}/auth/login",
+            data={"username": created_user.username},
         )
         assert response.status_code == 422
 
         response = await api_client.post(
-            "/api/v3/auth/login", data={"username": created_user.username}
+            f"{V3_API_PREFIX}/auth/login",
+            data={"username": created_user.username},
         )
         assert response.status_code == 422
 
@@ -48,7 +51,7 @@ class TestAuthApi:
     ) -> None:
         created_user = await create_test_user(fixture)
         response = await api_client.post(
-            "/api/v3/auth/login",
+            f"{V3_API_PREFIX}/auth/login",
             data={"username": created_user.username, "password": "wrong"},
         )
         assert response.status_code == 401
@@ -57,7 +60,7 @@ class TestAuthApi:
         assert error_response.code == 401
 
         response = await api_client.post(
-            "/api/v3/auth/login",
+            f"{V3_API_PREFIX}/auth/login",
             data={"username": "wrong", "password": "test"},
         )
         assert response.status_code == 401

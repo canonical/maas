@@ -11,7 +11,7 @@ from maasapiserver.v3.api.models.responses.interfaces import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
@@ -48,7 +48,7 @@ class InterfacesHandler(Handler):
         return InterfaceListResponse(
             items=[
                 interface.to_response(
-                    f"{EXTERNAL_V3_API_PREFIX}/machines/{node_id}/interfaces"
+                    f"{V3_API_PREFIX}/machines/{node_id}/interfaces"
                 )
                 for interface in interfaces.items
             ],

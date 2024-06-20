@@ -4,9 +4,9 @@ from typing import Any
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.v2.constants import V2_API_PREFIX
 from maastesting.factory import factory
-
-from ...fixtures.db import Fixture
+from tests.maasapiserver.fixtures.db import Fixture
 
 
 def bmc_details(**extra_details: Any) -> dict[str, Any]:
@@ -132,7 +132,7 @@ class TestZoneApi:
         self,
         api_client: AsyncClient,
     ) -> None:
-        response = await api_client.get("/api/v2/zones")
+        response = await api_client.get(f"{V2_API_PREFIX}/zones")
         assert response.status_code == 401
         assert response.json() == {"detail": "Invalid session ID"}
 
@@ -147,7 +147,7 @@ class TestZoneApi:
         zone["machines_count"] = 0
         zone["controllers_count"] = 0
 
-        response = await authenticated_api_client.get("/api/v2/zones")
+        response = await authenticated_api_client.get(f"{V2_API_PREFIX}/zones")
         assert response.status_code == 200
         assert response.json() == [zone]
 
@@ -168,7 +168,7 @@ class TestZoneApi:
         zone["machines_count"] = 1
         zone["controllers_count"] = 0
 
-        response = await authenticated_api_client.get("/api/v2/zones")
+        response = await authenticated_api_client.get(f"{V2_API_PREFIX}/zones")
         assert response.status_code == 200
         assert response.json() == [zone]
 
@@ -228,6 +228,6 @@ class TestZoneApi:
         zone2["machines_count"] = 0
         zone2["controllers_count"] = 0
 
-        response = await authenticated_api_client.get("/api/v2/zones")
+        response = await authenticated_api_client.get(f"{V2_API_PREFIX}/zones")
         assert response.status_code == 200
         assert response.json() == [zone1, zone2]

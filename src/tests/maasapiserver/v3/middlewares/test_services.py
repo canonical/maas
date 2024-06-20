@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
 
 from maasapiserver.common.db import Database
+from maasapiserver.v2.constants import V2_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 
 
@@ -24,11 +26,11 @@ def services_app(
         """Return 200 if the request context has the services, 404 otherwise"""
         return 200 if hasattr(request.state, "services") else 404
 
-    @app.get("/api/v3")
+    @app.get(V3_API_PREFIX)
     async def get_v3(request: Request) -> Any:
         return Response(status_code=check_services_are_set(request))
 
-    @app.get("/api/v2")
+    @app.get(V3_API_PREFIX)
     async def get_v2(request: Request) -> Response:
         return Response(status_code=check_services_are_set(request))
 
@@ -46,9 +48,9 @@ class TestServicesMiddleware:
         self, services_client: AsyncClient
     ) -> None:
         # v2 endpoints should not have the services in the request context
-        v2_response = await services_client.get("/api/v2")
+        v2_response = await services_client.get(V2_API_PREFIX)
         assert v2_response.status_code == 404
 
         # v3 endpoints should have the services in the request context
-        v3_response = await services_client.get("/api/v3")
+        v3_response = await services_client.get(V3_API_PREFIX)
         assert v3_response.status_code == 200

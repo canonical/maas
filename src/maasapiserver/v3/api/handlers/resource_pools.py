@@ -19,7 +19,7 @@ from maasapiserver.v3.api.models.responses.resource_pools import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
@@ -52,9 +52,7 @@ class ResourcePoolHandler(Handler):
         resource_pools = await services.resource_pools.list(pagination_params)
         return ResourcePoolsListResponse(
             items=[
-                resource_pools.to_response(
-                    f"{EXTERNAL_V3_API_PREFIX}/resource_pools"
-                )
+                resource_pools.to_response(f"{V3_API_PREFIX}/resource_pools")
                 for resource_pools in resource_pools.items
             ],
             total=resource_pools.total,
@@ -91,7 +89,7 @@ class ResourcePoolHandler(Handler):
         )
         response.headers["ETag"] = resource_pools.etag()
         return resource_pools.to_response(
-            self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/resource_pools"
+            self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools"
         )
 
     @handler(
@@ -125,7 +123,7 @@ class ResourcePoolHandler(Handler):
         ):
             response.headers["ETag"] = resource_pool.etag()
             return resource_pool.to_response(
-                self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/resource_pools"
+                self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools"
             )
         return NotFoundResponse()
 
@@ -161,5 +159,5 @@ class ResourcePoolHandler(Handler):
         )
         response.headers["ETag"] = resource_pool.etag()
         return resource_pool.to_response(
-            self_base_hyperlink=f"{EXTERNAL_V3_API_PREFIX}/resource_pools"
+            self_base_hyperlink=f"{V3_API_PREFIX}/resource_pools"
         )

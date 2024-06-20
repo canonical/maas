@@ -1,6 +1,6 @@
 from maasapiserver.v3.api.models.responses.machines import MachinesListResponse
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.machines import Machine
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
@@ -26,7 +26,7 @@ class TestMachinesApi(ApiCommonTests):
             )
             assert machine.id == machine_response.id
             assert (
-                machine.to_response(f"{EXTERNAL_V3_API_PREFIX}/machines")
+                machine.to_response(f"{V3_API_PREFIX}/machines")
                 == machine_response
             )
 
@@ -47,7 +47,7 @@ class TestMachinesApi(ApiCommonTests):
         return [
             EndpointDetails(
                 method="GET",
-                path="/api/v3/machines",
+                path=f"{V3_API_PREFIX}/machines",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig(
                     response_type=MachinesListResponse,

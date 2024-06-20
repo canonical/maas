@@ -9,7 +9,7 @@ from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.responses.machines import MachinesListResponse
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
-from maasapiserver.v3.constants import EXTERNAL_V3_API_PREFIX
+from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
@@ -42,7 +42,7 @@ class MachinesHandler(Handler):
         machines = await services.machines.list(pagination_params)
         return MachinesListResponse(
             items=[
-                machine.to_response(f"{EXTERNAL_V3_API_PREFIX}/machines")
+                machine.to_response(f"{V3_API_PREFIX}/machines")
                 for machine in machines.items
             ],
             total=machines.total,
