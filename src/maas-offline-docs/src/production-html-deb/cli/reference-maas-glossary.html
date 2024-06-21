@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Reference: MAAS glossary</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>Reference: MAAS glossary</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/maas-glossary" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>This page defines a number of terms specific to MAAS, in alphabetical order.</p>
+      <h2 id="a-c">A-C</h2>
+      <h3 id="a">A</h3>
+      <h4 id="abort">Abort</h4>
+      <p>You can abort any action that permits retries. Currently, only commissioning and deployment permit retries.</p>
+      <h4 id="allocated">Allocated</h4>
+      <p>The node is allocated (reserved) to a MAAS user. See node action ‘Allocate’.</p>
+      <h4 id="allocate">Allocate</h4>
+      <p>Allocates (reserves) a node to the MAAS user performing the action (and currently logged in). Changes a node’s status from ‘Ready’ to ‘Allocated’.</p>
+      <p>With the CLI, it is necessary to perform this action before deploying. With the web UI, it is done automatically for the user. Allocating in the web UI is used for machine reservation.</p>
+      <h3 id="b">B</h3>
+      <h4 id="bond">Bond</h4>
+      <p>A bond interface is capable of aggregating two or more physical interfaces into a single logical interface. You can use bonds in conjunction with a managed switch (using Link Aggregation and Control Protocol, or LACP), or independently (software bonds).</p>
+      <h4 id="broken">Broken</h4>
+      <p>The node is broken. See node action ‘Mark broken’.</p>
+      <h3 id="c">C</h3>
+      <h4 id="client">Client</h4>
+      <p>In the client/server age, the lines between client and server are blurred and sometimes reversible. For the purposes of MAAS and general networking principles, we can define a <a href="https://en.wikipedia.org/wiki/Client_%28computing%29#firstHeading">client</a><strong>^</strong> as a node that uses shared resources via a network. If that same client provides shared resources to other nodes, it could also be considered a server.</p>
+      <h4 id="cloud-init">Cloud-init</h4>
+      <p>Cloud-init is the industry-standard method for initialising cloud instances, independent of platform. It allows you to automatically provision operating system images, bringing them to a fully running state. It also allows you to customise networking, storage, user space, applications, and various other components of a functioning system.</p>
+      <p>There are four stages of cloud-init action:</p>
+      <ul>
+      <li><p>Local initialisation - this “as-early-as-possible” stage configures system elements that must be set up before the system can be made fully operational, such as networking configuration, including bridges, VLANs, bonds, and so forth.</p></li>
+      <li><p>Initialisation - this second stage runs as soon as the network connections are up and running, taking care of custom storage configurations, disk volume expansion, block device setup and filesystem allocations.</p></li>
+      <li><p>Module configuration - stage three configures the necessary meta-tools to allow full system configuration, such as SSH, apt/yum, and NTP.</p></li>
+      <li><p>Module finalisation - stage four is the very end of the boot process, installing packages and executing any user-supplied configuration scripts.</p></li>
+      </ul>
+      <p>These four steps combine (at least) four general data sources to bring an instance into being:</p>
+      <ul>
+      <li><p>Disk image - the operating system for the instance; this is a bare-bones, un-customised version of the chosen OS.</p></li>
+      <li><p>Metadata - this configuration information is supplied by the cloud provider, specifying things like disk images storage, networking, default users, and other basic customisations.</p></li>
+      <li><p>User data - data provided by end users or cloud administrators to initialise the instance. This completely optional data can be anything from shell scripts to highly-structured cloud-config data that trigger cloud-init built-ins.</p></li>
+      <li><p>Vendor data - data provided by cloud platform vendors; this is identical (in principle) to user data, but derived from a different source. In practice, vendor data usually handle things that users wouldn’t normally specify, such as mirror setup, NTP service management, etc.</p></li>
+      </ul>
+      <h4 id="commission">Commission</h4>
+      <p>This action commissions a node, changing a node’s status from ‘New’ to ‘Commissioning’ to ‘Ready’.</p>
+      <p>Commissioning enables MAAS to build a detailed inventory of RAM, CPU, storage, NICs and accelerators like GPUs. These are itemised and usable as constraints for machine selection.</p>
+      <p>If commissioning is unsuccessful, the status becomes ‘Failed commissioning’.</p>
+      <p>Any time a node’s underlying networking or disk subsystem has changed, it should be re-commissioned. Typically, you would mark the node as ‘Broken’ (see below), implement maintenance, and then Commission.</p>
+      <h4 id="commissioning">Commissioning</h4>
+      <p>The node is in the process of commissioning. See node action ‘Commission’.</p>
+      <h4 id="controllers">Controllers</h4>
+      <p>There are two types of controllers: a region controller and a rack controller. The region controller deals with operator requests while one or more rack controllers provide the high-bandwidth services to multiple server racks, as typically found in a data centre.</p>
+      <p>A region controller consists of the following components:</p>
+      <ul>
+      <li>REST API server (TCP port 5240)</li>
+      <li>PostgreSQL database</li>
+      <li>DNS</li>
+      <li>caching HTTP proxy</li>
+      <li>web UI</li>
+      </ul>
+      <p>Think of a region controller can as being responsible for a data centre, or a single region. Multiple fabrics are used by MAAS to accommodate subdivisions within a single region, such as multiple floors in a data centre.</p>
+      <p>A rack controller provides the following services:</p>
+      <ul>
+      <li>DHCP</li>
+      <li>TFTP</li>
+      <li>HTTP (for images)</li>
+      <li>power management</li>
+      </ul>
+      <p>A rack controller is attached to each “fabric”. As the name implies, a typical setup is to have a rack controller in each data centre server rack. The rack controller will cache large items for performance, such as operating system install images, but maintains no independent state other than the credentials required to talk to the region controller.</p>
+      <p>Both the region controller and the rack controller can be scaled-out as well as made highly available.</p>
+      <h2 id="d-e">D-E</h2>
+      <h3 id="d">D</h3>
+      <h4 id="delete">Delete</h4>
+      <p>This action removes a node from MAAS. The underlying machine remains unaffected. Upon rebooting, it will be enlisted once more (status ‘New’).</p>
+      <h4 id="deployed">Deployed</h4>
+      <p>The node is deployed. See node action ‘Deploy’.</p>
+      <p>The visible status will be the name of the chosen OS (e.g. ‘Ubuntu 16.04 LTS’).</p>
+      <h4 id="deploy">Deploy</h4>
+      <p>This action, which includes ‘Power on,’ deploys a node, changing a node’s status from ‘Ready’ (or ‘Allocated’) to a deployed status.</p>
+      <p>During deployment, MAAS turns on the machine and installs a complete server operating system without manual intervention, configuring network interfaces, disk partitions and more automatically.</p>
+      <p>If the deployment is unsuccessful, the status becomes ‘Failed deployment’.</p>
+      <p>Note that Juju, often used in conjunction with MAAS, also uses the term “deploy” to mean “deploy an application”.</p>
+      <h4 id="deploying">Deploying</h4>
+      <p>The node is in the process of deploying. See node action ‘Deploy’.</p>
+      <p>The visible status will be Deploying to ‘OS’, where ‘OS’ is the name of the OS being deployed (e.g. ‘Deploying to Ubuntu 16.04 LTS’).</p>
+      <h4 id="devices">Devices</h4>
+      <p>A device is a non-deployable node. This entity can be used to track routers, for example.</p>
+      <p>Static or dynamic IP addresses and DNS names can be assigned to any device or parent node. These addresses will be automatically deleted when the parent node is deleted or released, along with any IP address reservations. This arrangement is designed to model and manage the virtual machines or containers running inside a MAAS-deployed node.</p>
+      <h4 id="dhcp">DHCP</h4>
+      <p>The Dynamic Host Control Protocol is a network management system in which a server (or group of servers) dynamically assigns IP addresses and other network parameters to a network device. This network device may or may not have the capability to provide its own IP address, although to take advantage of DHCP, the device must have been configured to seek out a DHCP server and accept an assigned IP address. Typically, a network administrator defines a range of reserved IP addresses from which the DHCP server can pull when assigning addresses.</p>
+      <p>DHCP operates using the four-step “DORA” model – Discovery, Offer, Request, and Acknowledge:</p>
+      <ul>
+      <li><p>Potential DHCP clients broadcast a DHCPDISCOVER message on its attached subnet using destination address 255.255.255.255.</p></li>
+      <li><p>A connected DHCP server receives the DHCPDISCOVER message and sends a DHCPOFFER message, containing an IP address that the client may use.</p></li>
+      <li><p>The client replies with a DHCPREQUEST message, requesting the offered address.</p></li>
+      <li><p>The DHCP server responds with a DHCPACK (acknowledgement) which includes various important configuration parameters, such as the lease duration.</p></li>
+      </ul>
+      <p>Of course, there is <a href="https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol">much more to DHCP</a><strong>^</strong>, but what’s covered here should be sufficient understanding for using MAAS.</p>
+      <h4 id="dhcp-relay">DHCP relay</h4>
+      <p>A DHCP relay, or relay agent, is a network device that forwards requests and replies between a DHCP client and a DHCP server when both are not on the same physical subnet.</p>
+      <h3 id="e">E</h3>
+      <h4 id="edge-clouds">Edge clouds</h4>
+      <p>Edge clouds are designed to minimise latency, so that your cloud computing experience is nearer to real-time. The use of “edge” doesn’t specifically refer to the edges of the cloud, but to the machines that are at the “edge of the problem,” or more to the point, “the edge of the cloud that is closest to your application.” Sometimes these are separate clouds in your own data centre, though they can also be parts of a remote cloud that are closer to you in network terms.</p>
+      <p>There are a number of complex decision lops and optimisation algorithms used by edge clouds, but the primary purpose is low-latency computing where possible. If the servers closest to you (network-wise) can handle the load, they do; if not, they can call on other servers just a little further away.</p>
+      <p>Edge clouds can be planned and enhanced by using NUMA and SR-IOV techniques. NUMA can help you create SMP nodes on VM cores the shortest (network) distance away from your application. SR-IOV can, in general, reduce network latency even more by eliminating core involvement in network traffic. You can create virtual machines and assign NUMA nodes to minimise network latency, and then ensure that MAAS gives you NUMA tools to find out whether you’re achieving this sort of optimisation, and help you make decisions about how to adjust and improve over time.</p>
+      <h4 id="entering-rescue-mode">Entering rescue mode</h4>
+      <p>The node is in the process of entering rescue mode. See node action ‘Rescue mode’.</p>
+      <h4 id="exiting-rescue-mode">Exiting rescue mode</h4>
+      <p>The node is in the process of exiting rescue mode. See node action ‘Exit rescue mode’.</p>
+      <h4 id="exit-rescue-mode">Exit rescue mode</h4>
+      <p>This action changes a node’s status from ‘Rescue mode’ to the ‘Exiting rescue mode’ transitory status and then back to its original status when the operation is complete.</p>
+      <h2 id="f-i">F-I</h2>
+      <h3 id="f">F</h3>
+      <h4 id="fabrics">Fabrics</h4>
+      <p>A <strong>fabric</strong> connects VLANs. If you understand a VLAN, you know that they permit network connections only between specific switch ports or specifically identified ports (“tagged” ports). Consequently, it would be impossible for two VLANs to communicate with each other. A fabric makes these VLAN-to-VLAN connections possible.</p>
+      <details>
+      <p><summary>Take me on a quick, deep dive on fabrics</summary></p>
+      <p>We can illustrate a network fabric more easily by rewinding the term to one of its earliest uses: the early phone system. In a telephone switchboard, subscriber lines (customer phone numbers) ran in a grid pattern in the back of the switchboard, but they didn’t touch each other until the operator inserted the plugs of a patch cable to join them. With some “plugboards” (what a switchboard was actually called), an operator could conference multiple lines by adding more patch cords.</p>
+      <p>These patch cords essentially acted like a VLAN, allowing only the subscribers whose lines were “patched in” to join the conversation.</p>
+      <p>But the switchboard only covered one exchange, that is, one three-digit phone number prefix. If a subscriber wanted to conference someone from another exchange, there had to be patch from one exchange to another. This was handled by a long-distance operator. Each exchange had a more robust outgoing line, called a “trunk line,” that connected exchanges in some central place. The long-distance operators could bridge trunks in a specific way, involving a local operator in each of the “bridged” exchanges.</p>
+      <p>By now, you’re probably starting to recognise a lot of network terms, which is completely appropriate. Almost all modern networking technology originated in the telephone system.</p>
+      <p>Now imagine that you want to conference in six people, two in each of three distant exchanges. Each exchange operator had to patch two numbers and a trunk line. The long-distance operator had to patch three trunks in a specific way that prevented the conversation from going out to all numbers attached to the trunk.</p>
+      <p>The details of the method aren’t particularly relevant here, but it usually involved a pair of “bridge clips” that connected non-adjacent wire-crossings, with an insulated portion that laid across wires that weren’t meant to be connected. It looked a lot like a little bridge when properly placed.</p>
+      <p>Think of each of the local exchange conferences as a VLAN; the long-distance operator’s patch cables created what was called a “fabric.” Our use of fabric is exactly the same idea: some number of private “conversations” (connections) connected to each other so that specific people in each “group” can all talk to each other.</p>
+      </details>
+      <p>You could describe a fabric as a VLAN namespace. It’s a switch or a combination of switches that use trunking to provide access to specific VLANs. MAAS creates a default fabric (‘fabric-0’) for each detected subnet during installation.</p>
+      <p>The following conceptual diagram shows two fabrics in the same data centre or region, each using distinct VLAN ranges and their associated subnets:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/46177305128bf7f3190f8a7bbd037c33e96f6a9e.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <h4 id="failed-commissioning">Failed Commissioning</h4>
+      <p>The node failed to commission.</p>
+      <h4 id="failed-deployment">Failed Deployment</h4>
+      <p>The node failed to deploy.</p>
+      <h3 id="h">H</h3>
+      <h4 id="hub">Hub</h4>
+      <p><a href="https://en.wikipedia.org/wiki/Ethernet_hub#firstHeading">Hubs</a><strong>^</strong> essentially started as repeaters. While they may be able to connect more than two computers together (i.e., multiple RJ45 ports)<strong>^</strong>, they provide no improvement over simple bus networks, since every connected NIC must examine every packet. They are rarely used any more.</p>
+      <h4 id="hugepages">Hugepages</h4>
+      <p>Computer memory is addressed not as raw RAM, but as virtual memory. Assisted by the CPU’s memory management unit (MMU), the kernel maps virtual memory to a physical location. Virtual memory is divided into pages, which can be swapped in and out to disk during normal operation (hence the term “swap space”). When programs access memory, the CPU needs to know which physical page has the data, so it relies on the kernel’s “page table” to find the right virtual-to-physical address mapping.</p>
+      <p>Since this page table is big and slow, the CPU has a special buffer – the Translation Lookaside Buffer (TLB) – that caches address mapping. This means after the first access to a page, subsequent accesses are much faster. Since this buffer is implemented in hardware, for speed, the size is limited to, say, 4096 bytes.</p>
+      <p>When the core is accessing lots of pages, the speed advantage of the TLB can be lost. Hugepages allow one TLB entry to point to 2MB, instead of just 4096 bytes. With 512 TLB entries, typically, you can map 1GB of memory. Hugepages come with a catch, though: if you have to swap pages, it (obviously) takes longer.</p>
+      <p>There’s no tried and true formula for when to use them, but the key consideration is that you want to use most of a hugepage when you swap. Rather than using little sections of a hugepage, which would mean losing the performance advantage from constant swapping, you want to maximise the use of each hugepage. While there’s no simple, empirical way to calculate this answer, you can do it by trial-and-error observation.</p>
+      <p>MAAS provides the dashboards and tools necessary to monitor and adjust your use of hugepages, so that you can find the right balance.</p>
+      <h3 id="i">I</h3>
+      <h4 id="images">Images</h4>
+      <p>An image is used to provision a machine. As soon as you install MAAS, images are imported based on what series you have selected. MAAS won’t work until it has imported the necessary images.</p>
+      <h4 id="interfaces">Interfaces</h4>
+      <h4 id="ip-ranges">IP ranges</h4>
+      <p>You can reserve IP addresses by adding one or more reserved ranges to a subnet configuration. You can define two types of ranges:</p>
+      <ul>
+      <li><strong>Reserved range</strong> Mode operates differently depending on whether the subnet is managed or unmanaged:</li>
+      <li><strong>Managed (subnet)</strong>: MAAS will never assign IP addresses inside this range. You can use this range for anything, such as infrastructure systems, network hardware, external DHCP, or an OpenStack namespace.</li>
+      <li><strong>Unmanaged (subnet)</strong>: MAAS will only assign IP addresses inside this range.</li>
+      <li><strong>Reserved dynamic range</strong> An IP range that MAAS will use for enlisting, commissioning and, if enabled, MAAS-managed DHCP on the node’s VLAN during commissioning, deploying. An initial range is created as part of the DHCP enablement process if done with the web UI. MAAS never uses IP addresses from this range for an unmanaged subnet.</li>
+      </ul>
+      <h4 id="isolating-cpus">Isolating CPUs</h4>
+      <p>For certain operations, it’s useful to shield a CPU from having to execute general system processes and take interrupts. These are sometimes referred to as “isolcpus,” more correctly described as booting a core with the <code>isolcpus</code> boot parameter. This parameter restricts the shielded core to processes assigned directly to it, avoiding sharing bandwidth with the general scheduler and preventing the core from taking non-specific interrupts.</p>
+      <p>When used with VMs, users can maximise performance by configuring isolcpus in the kernel, to prevent the general scheduler and other tasks from using bandwidth on your VM core(s).</p>
+      <h2 id="l-m">L-M</h2>
+      <h3 id="l">L</h3>
+      <h4 id="lan">LAN</h4>
+      <p>Besides topology, networks can also be classified by their size, range, or “reach.” One such classification is the <a href="https://en.wikipedia.org/wiki/Local_area_network#firstHeading">Local Area Network (LAN)</a><strong><sup><strong>, which connects computers in close proximity (about 300 feet)</strong></sup></strong>.</p>
+      <h4 id="locked">Locked</h4>
+      <p>It’s not strictly a status, but a machine showing a ‘padlock’ symbol adjacent to its name is in a locked state.</p>
+      <h4 id="lock">Lock</h4>
+      <p>This action marks a machine as locked, preventing the user from performing actions on machines that could change their state. For example, a locked machine cannot be mistakenly powered off or released.</p>
+      <p>A locked machine has a padlock symbol next to its name.</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/7d1f0928fb599d465916e43e731535dfee60e65a.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <h3 id="m">M</h3>
+      <h4 id="mac-address">MAC address</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/MAC_address#firstHeading">MAC address</a><strong>^</strong> or “media access control” address is a unique address or “physical address” associated with a network interface. They are 48 bits in length, which allows for 280 trillion devices, arranged into six hexadecimal octets, separated by colons or dashes. Every computer in the world theoretically has a unique MAC address. You can identify a node’s IP address with the command <code>ipconfig /all</code>.</p>
+      <h4 id="machine-actions">Machine actions</h4>
+      <p>Machine actions are essentially “things you can do with nodes”. You can trigger them via the web UI or the MAAS CLI. In the web UI, you manage them with the ‘Take action’ button in the top right corner. An action usually changes the status (see next section) of a node. Below is the full list of possible actions and their meaning, arranged alphabetically.</p>
+      <h4 id="machines">Machines</h4>
+      <p>A machine is a node that can be deployed by MAAS.</p>
+      <h4 id="machine-statuses">Machine statuses</h4>
+      <p>Node statuses are labels used to describe the general state of a node as known to MAAS. A node will undergo various manipulations during their time spent in MAAS, and its status will change accordingly. Actions applied to a node are the most common cause of a status change (see section above.) Below is the full list of status values and their meaning, arranged alphabetically.</p>
+      <p>Some aspects of a node can only be modified when a node has a certain status. Here are two typical examples:</p>
+      <ul>
+      <li>you cannot modify a network interfaces unless the node has a status of either ‘Ready’ or ‘Broken’.</li>
+      <li>you cannot modify storage unless the node has a status of either ‘Ready’ or ‘Allocated’.</li>
+      </ul>
+      <h4 id="man">MAN</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Metropolitan_area_network#firstHeading">metro area network or MAN</a><strong>^</strong> connects LANs over a smaller area, like a city or urban footprint. Basically, if it isn’t really a WAN, but you can’t connect it with cables, it’s usually considered a MAN.</p>
+      <h4 id="mark-broken">Mark broken</h4>
+      <p>Marks a node as broken. Changes a node’s status to ‘Broken’. Includes action ‘Power off’.</p>
+      <p>You can choose this action if any other action has failed (such as Commission and Deploy). If you mark a node broken, MAAS will not use it. This action would usually be followed by an investigation to determine the source of the problem.</p>
+      <p>By marking a node broken, you can also flag it for hardware maintenance that would affect MAAS, such as network or disk modifications. In this case, the original status would be ‘Deployed’.</p>
+      <p>You can also mark a newly-commissioned node (‘Ready’) as ‘Broken.’</p>
+      <h4 id="mark-fixed">Mark fixed</h4>
+      <p>This action fixes a broken node, changing its status from ‘Broken’ to ‘Ready’.</p>
+      <h2 id="n-p">N-P</h2>
+      <h3 id="n">N</h3>
+      <h4 id="network-cable">Network cable</h4>
+      <p><a href="https://en.wikipedia.org/wiki/Category_5_cable#firstHeading">Network cables</a><strong>^</strong> are special cables that connect non-wireless-based nodes. They consist of our pairs of insulated, 24-gauge wire, colour-coded (solid/striped)<strong>^</strong>, usually in four colours: blue, green, orange, and brown. The matching colour pairs are twisted together, each pair at a different turn rate to prevent electromagnetic interference between pairs. These twists must be maintained all the way up to the (RJ45) connector.</p>
+      <p>Even with insulation, careful twisting, and connector-termination, natural losses in the cable cause the network signals to become too weak to maintain reliable data rates after a certain length. In the case of Cat 5e cable, the maximum cable length is 100 meters to maintain 1Gb per second. For Cat 6, the max length to maintain 10Gb per second is 55 meters. These limits are overcome with <a href="#heading--repeater">repeaters</a>, which amplify the signal and relay it to the next repeater or NIC.</p>
+      <h4 id="network-infrastructure">Network infrastructure</h4>
+      <p>Network infrastructure is a catch-all term covering the physical components of a network, include cables, patch panels, switches, routers, hubs, and other associated network gear.</p>
+      <h4 id="network-interface">Network interface</h4>
+      <p>A network interface, often referred to as a “network interface card” or NIC, is either a separate physical card connected to a node, a set of circuits embedded on a node’s motherboard, or a radio transceiver attached to a node in some way. All network connections require a NIC. The terms “port” and “adaptor” are also used to refer to a network interface.</p>
+      <h4 id="network-topology">Network topology</h4>
+      <p><a href="https://en.wikipedia.org/wiki/Network_topology#mw-content-text">Topology</a><strong>^</strong> describes how nodes are connected to a network, specifically referring to the shapes made by the cables and the paths that packets can take. There are probably as many topologies are there are shapes, but here are some of the most common:</p>
+      <ul>
+      <li><p>Bus topology: the most basic network topology, a group of computers connected to a single, long cable. In this configuration, every computer sees every packet. A <a href="#heading--hub">hub</a> network, for instance, is still a bus topology, because every machine sees every packet.</p></li>
+      <li><p>Star or switch topology: a group of computers connected to a <a href="#heading--switch">switch</a>. As the switch learns where packets are supposed to go, the star quickly evolves so that only packets are only seen by computers that are intended to receive the packet.</p></li>
+      <li><p>Backbone topology: a hybrid network configuration in which several stars are connected to a bus.</p></li>
+      <li><p>Daisy-chain topology: stars connected to stars, or more accurately, switches connected to switches.</p></li>
+      <li><p>Mesh topology: nodes with multiple interfaces and multiple connections. Useful where wide-area networks (<a href="#heading--wan">WAN</a>) where there would otherwise be lots of intermediaries. Not popular or particularly cost effective for <a href="#heading--lan">LAN</a> networks.</p></li>
+      </ul>
+      <h4 id="new">New</h4>
+      <p>This status represents the first stage of a node’s life in MAAS. Typically, a node with this status has just been added to MAAS.</p>
+      <h4 id="nodes">Nodes</h4>
+      <p>A node is a general term that refers to multiple, more specific objects. Nodes are managed by MAAS through a life cycle, from adding and enlistment into MAAS, through commissioning, allocation and deployment. Nodes are then either released back into the pool of nodes or retired.</p>
+      <p>Nodes include the following classes of objects:</p>
+      <ul>
+      <li>Controllers</li>
+      <li>Machines</li>
+      <li>Devices</li>
+      </ul>
+      <p>See <a href="#heading--machine-actions">Machine actions</a> and <a href="#heading--machine-statuses">Machine statuses</a> below for an overview of a node’s life cycle.</p>
+      <h4 id="numavnuma">NUMA/vNUMA</h4>
+      <p>NUMA stands for “Non-Uniform Memory Access.” In this context, “non-uniform” means that any given CPU core can access its dedicated memory faster than the memory dedicated to other cores. A NUMA configuration groups core(s) and memory as a dedicated node, which reduces memory access times, so the core won’t spend a lot of time stalled in wait states – that is, waiting for access to data in memory, either because the memory is relatively far away (proximity) or because other cores have access to the same memory (shared memory). In other words, NUMA works better when the core has dedicated memory that is relatively close by.</p>
+      <p>In this context, “far away” could mean physical distance (more wire or a longer bus distance), more interceding processes (as in virtual machines), or both. The process of optimising thread and process scheduling so that the core running the code and the required data are close together is sometimes known as “creating affinity.” This affinity creates NUMA “nodes,” which can be treated as opaque nodes from a symmetric multi-processing (SMP) point of view. Tasks are assigned to nodes to minimise overhead and wait states.</p>
+      <p>There is more flexibility in creating affinity when using virtual machines, because memory and core are constructs overlaid on existing hardware, rather than hard silicon. While this seems as if it might make SMP easier, in fact, it creates difficulties because of the nature of virtual machines and the potential number of interceding processes that manage virtual memory. For optimum performance, VMs should be aligned to a single NUMA node, so that resources are not split across nodes.</p>
+      <p>In practice, this means that VMs would be “pinned” to specific cores to create stability. While the user has the choice of how to pin VMs, MAAS provides visual information that helps the user see how VMs are allocated to physical hardware, and make adjustments if that arrangement isn’t (or turns out not to be) optimal.</p>
+      <p>If you want to dig deeper, there is a <a href="https://en.wikipedia.org/wiki/Non-uniform_memory_access">more through treatment of NUMA</a><strong>^</strong> on Wikipedia.</p>
+      <h3 id="o">O</h3>
+      <h4 id="override-failed">Override failed</h4>
+      <p>Allows a machine marked as ‘Failed testing’ to be usable.</p>
+      <h3 id="p">P</h3>
+      <h4 id="package-repositories">Package repositories</h4>
+      <p>Package repositories managed within MAAS can be of two types:</p>
+      <ul>
+      <li>Ubuntu package repositories</li>
+      <li>Personal Package Archives (PPA)</li>
+      </ul>
+      <p>You can configure repositories in the ‘Package repositories’ tab on the ‘Settings’ page. Any enabled repository listed on this page will become automatically available to any subsequently deployed nodes.</p>
+      <p>MAAS further simplifies the addition of third-party repositories by also allowing the administrator to input their respective GPG keys here. This arrangement means that nodes will have instant access to these repositories (i.e. no need to import the keys into APT).</p>
+      <p>An added repository can be disabled and re-enabled using a toggle switch to the right of it.</p>
+      <h4 id="patch-panel">Patch panel</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Patch_panel#firstHeading">patch panel</a><strong>^</strong> is simply a 24- to 48-port panel of connectors that can link together three- to ten-foot cables. A patch panel allows jumpers from network runs to devices in racks, without putting strain and “cable creep” on long runs.</p>
+      <h4 id="personal-package-archives-ppa">Personal Package Archives (PPA)</h4>
+      <p>A Personal Package Archive (PPA) is a <a href="https://launchpad.net">Launchpad</a>-based method for any individual (or team)<strong>^</strong> to build and distribute packages for Ubuntu.</p>
+      <p>Adding a PPA is equally straightforward. Using the <a href="https://launchpad.net/~canonical-support/+archive/ubuntu/support-tools"><code>sosreport</code> PPA</a><strong>^</strong> as an example, first retrieve the PPA’s address from its page on Launchpad:</p>
+      <p><code>ppa:canonical-support/support-tools</code></p>
+      <p>Like before, a public GPG key will be needed. Also get this from the PPA’s Launchpad page: ‘Technical details about this PPA’ &gt; ‘1024R/9360754F’ &gt; ‘9360754F’.</p>
+      <p>To add this PPA, then, hit the ‘Add repository’ button and fill in the fields. Before saving, the form should look something like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/a0962e17452362855b185248c60bb5e269554f4c.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Click ‘Add repository’ to save the configuration.</p>
+      <p>See <a href="https://help.launchpad.net/Packaging/PPA">Launchpad PPAs</a><strong>^</strong> for more information on PPAs.</p>
+      <h4 id="physical">Physical</h4>
+      <p>After a node is commissioned, MAAS discovers its physical interfaces.</p>
+      <p>MAAS always creates a device with at least one physical interface.</p>
+      <p>Before deployment, a MAAS administrator can configure additional interfaces on the node, including one or more of the types mentioned below.</p>
+      <h4 id="power-off">Power off</h4>
+      <p>This action turns off a node’s underlying machine.</p>
+      <h4 id="power-on">Power on</h4>
+      <p>This action turns on a node’s underlying machine.</p>
+      <h2 id="r-s">R-S</h2>
+      <h3 id="r">R</h3>
+      <h4 id="ready">Ready</h4>
+      <p>A node bearing this status has been commissioned and is ready for use, including the necessary BMC credentials. MAAS can start or stop this machine, and allocate or (re)deploy it with a fresh operating system.</p>
+      <h4 id="regions">Regions</h4>
+      <p>A region is an organisational unit one level above a zone. It contains all information about all machines running in any possible zones. In particular, the PostgreSQL database runs at this level and maintains state for all these machines.</p>
+      <h4 id="release">Release</h4>
+      <p>This action, which includes the ‘Power off’ action, releases a node back into the pool of available nodes, changing a node’s status from ‘Deployed’ (or ‘Allocated’) to ‘Ready’.</p>
+      <p>The user has the opportunity to erase the node’s storage (disks) before confirming the action. You can configure a default erasure setting on the ‘Storage’ tab of the ‘Settings’ page.</p>
+      <h4 id="repeater">Repeater</h4>
+      <p>Technically, a <a href="https://en.wikipedia.org/wiki/Repeater#firstHeading">repeater</a><strong>^</strong> is a network signal amplifier with two RJ45 connectors which adds one maximum length (for the cable type) to the network connection or “run.” In practice, repeaters usually come in the form of <a href="#heading--hub">hubs</a> or <a href="#heading--switch">switches</a><strong>^</strong>, which can usually perform other functions as well.</p>
+      <h4 id="rescue-mode">Rescue mode</h4>
+      <p>This action allows you to boot a node ephemerally (Ubuntu running in memory on the underlying machine). By doing so, you can SSH to the machine for maintenance purposes. This action works for a Deployed or Broken node, as well as for a node that failed to deploy.</p>
+      <p>Authentication and access to the node’s storage work the same way it would if the node were deployed. The fact that ephemeral Ubuntu is running is entirely transparent to the user.</p>
+      <p>The node status is changed to the ‘Entering rescue mode’ transitory status and then to ‘Rescue mode’ when the operation is complete.</p>
+      <h4 id="rescue-mode-1">Rescue mode</h4>
+      <p>The node is in rescue mode and is ready to accept SSH connections. See node action ‘Rescue mode’.</p>
+      <h4 id="router">Router</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Router_%28computing%29#firstHeading">router</a><strong>^</strong> is a device that transfers packets from one network to another. Unlike switches, which only ensure that pre-addressed packets get to the correct recipient machines, routers actually modify or encapsulate packets to ensure that they can travel on other networks to reach a remote destination. Choices about routing are so important that we’ll spend a <a href="#heading--routing-still-rules">great deal of time on the subject</a><strong>^</strong> when we learn about cloud networking. ### S</p>
+      <h4 id="series">Series</h4>
+      <p>A series is essentially an operating system version. For Ubuntu, a series takes into account HWE kernels. In practical terms, a series manifests itself in the form of install images that are used to provision MAAS machines. The MAAS administrator can select series as desired.</p>
+      <h4 id="server">Server</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Server_%28computing%29#Classes_of_computers">server</a><strong>^</strong> is a node that provides shared resources to clients via a network. If that same server uses shared resources from other nodes, it could also be considered a client, but only in that context.</p>
+      <h4 id="set-zone">Set Zone</h4>
+      <p>This action puts the node in a specific zone.</p>
+      <h4 id="spaces">Spaces</h4>
+      <p>A space is a logical grouping of subnets that can communicate with one another. Spaces can be arranged to group subnets according to various parameters. One of the most common examples is a DMZ space, which might group subnets presenting a web interface to the public Internet. Behind this DMZ would be specific applications that aren’t allowed to interact directly with the user, but instead must interact with a Web UI in the DMZ space. MAAS does not create a default space during installation.</p>
+      <p>Spaces facilitate machine allocation for <a href="https://jaas.ai/">Juju</a><strong><sup><strong>. See <a href="https://jaas.ai/docs/spaces">Juju network spaces</a></strong></sup></strong> for more details.</p>
+      <h4 id="sr-iov">SR-IOV</h4>
+      <p>With traditional Ethernet, a packet comes into the NIC and interrupt is fired for the one core assigned to handle NIC interrupts. That core has to go get the packet, find the destination MAC address or VLAN tag, then go interrupt the destination core – which has to get the packet and write it to the memory of the VM it’s managing. Statistically speaking, that’s basically two core interrupts for every incoming packet.</p>
+      <p>Many smart NICs are able to sort network packets into queues, based on MAC address or VLAN tag of the intended recipient, a technology sometimes known as “VMDq”. In these cases, each queue has its own interrupt, so each core gets interrupted only for its own packets. This arrangement is much faster than having one core assigned to handle all network interrupts. Even so, the hypervisor still has to copy every packet from the NIC to the VM, physically touching each packet.</p>
+      <p>With SR-IOV, it’s possible to have no core interrupts when packets come in. SR-IOV creates “virtual functions,” with dedicated queues for transmitting and receiving. Each VM is directly assigned hardware resources via a virtual function driver, which knows how to DMA-copy data directly between the NIC and the memory space of the relevant VM. Essentially, SR-IOV is like a “jumper wire” between the NIC and the VM, bypassing the core. This prevents interrupting the core when packets arrive for it, and significantly reduces the core workload when sending network packets.</p>
+      <p>For a deeper dive, try this <a href="https://www.youtube.com/watch?v=hRHsk8Nycdg">SR-IOV presentation</a><strong>^</strong> from Intel.</p>
+      <h4 id="subnets">Subnets</h4>
+      <p>A subnet is a “layer 3” network, defined by a network address and a network mask length (in bits) and usually written in “CIDR” format. MAAS supports IPv4 and IPv6 subnets. Examples include:</p>
+      <pre class="no-highlight"><code>- 0.0.0/8
+      - 16.0.0/12
+      - 168.0.0/16
+      2001:db8:4d41:4153::/64</code></pre>
+      <h4 id="switch">Switch</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Network_switch#firstHeading">switch</a><strong>^</strong> is a “smart” device that connects cables from nodes to make networks. Like a hub, a switch amplifies signals, that is, it acts as a repeater. Switches learn by induction which cables receive which IP addresses. Over time a switch will direct each packet only to devices which indicate that they will accept the addresses associated with those packets.</p>
+      <h2 id="t-z">T-Z</h2>
+      <h3 id="t">T</h3>
+      <h4 id="tags">Tags</h4>
+      <p>A tag (not to be confused with VLAN tags) is user-created and associated with nodes based on their physical properties. These can then be used to identify nodes with particular abilities which can be useful during the deployment of services.</p>
+      <h4 id="test-hardware">Test hardware</h4>
+      <p>This action allows the user to select and run scripts to test a machine’s underlying hardware.</p>
+      <h3 id="u">U</h3>
+      <h4 id="ubuntu-package-repositories">Ubuntu package repositories</h4>
+      <p>An Ubuntu package repository is a repository that makes available Ubuntu packages to computers able to connect to it over the network, whether that network is private or public (e.g. the Internet).</p>
+      <p>MAAS comes equipped with the official Ubuntu repository <code>archive.ubuntu.com</code> as well as the equivalent for architectures other than i386 and amd64: <code>ports.ubuntu.com</code> as is evident in the default configuration below:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/77b93794406b5e1769e0c04b60aa059504a08c6a.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Adding a third-party repository is elementary. Begin by basing the configuration on a line you would typically place in a system’s <code>/etc/apt/sources.list</code> file. For instance, for the Google Chrome repository, the line would look like:</p>
+      <p><code>deb http://dl.google.com/linux/chrome/deb stable main</code></p>
+      <p>You will also need the GPG public key that is associated with the private key that signed this particular repository. Typically, the project’s website is consulted to obtain this information. For this example, you could download the key like this:</p>
+      <pre><code>wget https://dl.google.com/linux/linux_signing_key.pub</code></pre>
+      <p>The key now resides in the saved file <code>linux_signing_key.pub</code> for later use.</p>
+      <p>To add this repository, then, hit the ‘Add repository’ button and fill in the fields using the gathered information. Note that the ‘Name’ is an arbitrary label to give the repository.</p>
+      <p>Before saving, the form should look very similar to this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/1aa1c512f88765d06e2760535db877b3e0a71c32.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Click ‘Add repository’ to save the configuration.</p>
+      <p>A private repository can be built to assist with offline operations, based on the official repository. This repository can also contain custom packages.</p>
+      <h4 id="unknown">Unknown</h4>
+      <p>Unknown interfaces are sometimes discovered by MAAS. For example, a new DHCP lease that is not associated with any known node or device. Such an interface cannot be user-created.</p>
+      <h4 id="unlock">Unlock</h4>
+      <p>This action releases a machine from a locked state.</p>
+      <h3 id="v">V</h3>
+      <h4 id="vlan">VLAN</h4>
+      <p>A VLAN interface can be used to connect to a tagged VLAN, if the node is connected to an authorised port.</p>
+      <h4 id="vm-hosts">VM hosts</h4>
+      <p>VM hosts, also called composable hardware, allow for the dynamic composition of machines from a pool of available hardware resources (e.g. disk space, memory, cores).</p>
+      <h3 id="w">W</h3>
+      <h4 id="wan">WAN</h4>
+      <p>A <a href="https://en.wikipedia.org/wiki/Wide_area_network#firstHeading">WAN (wide area network)</a><strong>^</strong> is a network which connects LANs across large geographic distances, e.g., thousands of miles.</p>
+      <h3 id="z">Z</h3>
+      <h4 id="zones">Zones</h4>
+      <p>A physical zone, or just zone, is an organisational unit that contains nodes where each node is in one, and only one, zone. Later, while in production, a node can be taken (allocated) from a specific zone (or not from a specific zone). Since zones, by nature, are custom-designed (except for the ‘default’ zone), they provide more flexibility than a similar feature offered by a public cloud service (ex: availability zones).</p>
+      <p>Some prime examples of zone usage include fault-tolerance, service performance, and power management.</p>
+      <p>A newly installed MAAS comes with a default zone which contains all nodes unless you create a new zone. You can therefore safely ignore the entire concept if you’re not interested in leveraging zones.</p>
+      <p>You cannot remove the ‘default’ zone or change its name.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

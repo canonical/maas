@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Reference: Release notes MAAS 3.3</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>Reference: Release notes MAAS 3.3</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-3" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>These are the release notes for MAAS 3.3.</p>
+      <h2 id="release-history">Release history</h2>
+      <h3 id="maas-3.3.7-has-been-released">MAAS 3.3.7 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.7 has been released. This is a maintenance release, with no new features, providing the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1887558">1887558</a><strong>^</strong>: multipathd bcache disks do not get picked up by multipath-tools during boot</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2007297">2007297</a><strong>^</strong>: LXD REST API connection goes via proxy</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2012596">2012596</a><strong>^</strong>: MAAS 3.2 deb package memory leak after upgrading</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2033632">2033632</a><strong>^</strong>: New deployments do not take into account the new configurations (ephemeral_deployments, hw_sync etc..))</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2052958">2052958</a><strong>^</strong>: PPC64 machines without disk serial fail condense LUNs</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2054915">2054915</a><strong>^</strong>: Failed configuring DHCP on rack controller - too many values to unpack (expected 5)</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2062107">2062107</a><strong>^</strong>: Failed to reload DNS; serial mismatch on domains maas</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2066276">2066276</a><strong>^</strong>: ipv6 test failures: AttributeError: ‘RRHeader’ object has no attribute ’_address’</li>
+      </ul>
+      <h3 id="maas-3.3.6-has-been-released">MAAS 3.3.6 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.6 has been released. This is a maintenance release, with no new features, providing the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2053033">2053033</a><strong>^</strong>: Creating MAAS Virsh VM does not work (libvirt: error)</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2033505">2033505</a><strong>^</strong>: Failed to update regiond’s processes and endpoints</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2041276">2041276</a><strong>^</strong>: Adding subnet sends named into crash loop [rdns zones]</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2048399">2048399</a><strong>^</strong>: MAAS LXD VM creation issue (Ensure this value is less than or equal to 0)</li>
+      </ul>
+      <h3 id="maas-3.3.5-has-been-released">MAAS 3.3.5 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.5 has been released. This is a maintenance release, with no new features, providing the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2013120">2013120</a><strong>^</strong>: Incorrect Nginx Logging Configuration on MAAS Snap</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2026802">2026802</a><strong>^</strong>: MAAS 3.4 installed with deb fails to start the rack due to permission error</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2027735">2027735</a><strong>^</strong>: Concurrent API calls don’t get balanced between regiond processes</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2029481">2029481</a><strong>^</strong>: MAAS 3.4 RC (Aug 2nd 2023) breaks DNS</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2046255">2046255</a><strong>^</strong>: For every interface MAAS is adding an A record for the name <machine>.<domain></li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1914812">1914812</a><strong>^</strong>: curtin fails to deploy centos 8 on nvme with multipath from ubuntu 20.04</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1996204">1996204</a><strong>^</strong>: failing metrics cause 500 error</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1999668">1999668</a><strong>^</strong>: reverse DNS not working for CIDR with non 0 last octet</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2012801">2012801</a><strong>^</strong>: MAAS rDNS returns two hostnames that lead to Services not running…</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2015411">2015411</a><strong>^</strong>: StaticIPAddress matching query does not exist.</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2020397">2020397</a><strong>^</strong>: Custom images which worked ok is not working with 3.2</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2022926">2022926</a><strong>^</strong>: Wrong metadata url in enlist cloud-config</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2024625">2024625</a><strong>^</strong>: DNS Forward failures</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2026824">2026824</a><strong>^</strong>: Enlistment fail for a machine with BIOS Legacy if PXE interface is the second one</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2027621">2027621</a><strong>^</strong>: ipv6 addresses in dhcpd.conf</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2028284">2028284</a><strong>^</strong>: LXD vm compose fails with - This “instances” entry already exists</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2029417">2029417</a><strong>^</strong>: RPC failure to contact rack/region - operations on closed handler</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2034014">2034014</a><strong>^</strong>: Conflict error during w3 request</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2040188">2040188</a><strong>^</strong>: MAAS config option for IPMI cipher suite ID is not passed to bmc-config script</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2045228">2045228</a><strong>^</strong>: DNS updates are consumed concurrently, leading to an incorrect nsupdate payload</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1999064">1999064</a><strong>^</strong>: <code>maas_run_scripts.py</code> does not clean up temporary directory</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2009045">2009045</a><strong>^</strong>: WebSocket API to report reasons for failure for machine bulk actions</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2025468">2025468</a><strong>^</strong>: maas-dhcp-helper stopped working which gives issues with DNS updates</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1891900">1891900</a><strong>^</strong>: Change the logo or theme of the MaaS Dashboard</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1999827">1999827</a><strong>^</strong>: DNS entries for MAAS servers change to secondary IPs</li>
+      </ul>
+      <h3 id="maas-3.3.4-has-been-released">MAAS 3.3.4 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.4 has been released. This is a maintenance release, with no new features, providing the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1998615">1998615</a><strong>^</strong>: Rack controller status flapping when “ClusterClient connection lost” messages in rackd.log</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2013476">2013476</a><strong>^</strong>: 3.3/UI: Machines page is flapping once the machine operation in progress</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1807725">1807725</a><strong>^</strong>: Machine interfaces allow ’_’ character, results on a interface based domain breaking bind (as it doesn’t allow it for the host part).</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1914762">1914762</a><strong>^</strong>: test network configuration broken with openvswitch bridge</li>
+      </ul>
+      <h3 id="maas-3.3.3-has-been-released">MAAS 3.3.3 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.3 has been released. This is a maintenance release, with no new features, providing the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1959648">1959648</a><strong>^</strong>: Websocket vlan handler should include associated subnet ids</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1979403">1979403</a><strong>^</strong>: commission failed with MAAS 3.1 when BMC has multiple channels but the first channel is disabled</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1990416">1990416</a><strong>^</strong>: MAAS reports invalid command to run when maas-url is incorrect</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1999668">1999668</a><strong>^</strong>: reverse DNS not working for some interfaces</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2003940">2003940</a><strong>^</strong>: MAAS 3.3 RC shows incorrect storage amount</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2011841">2011841</a><strong>^</strong>: DNS resolution fails</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2012466">2012466</a><strong>^</strong>: Fractional value for available CPU cores with an overcommit ratio breaks UI</li>
+      </ul>
+      <h3 id="maas-3.3.2-has-been-released">MAAS 3.3.2 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.2 has been release with the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1990867T">1990867</a><strong>^</strong>: TestImportBootImages - test_update_last_image_sync_end_to_end_import_not_performed</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1990872">1990872</a><strong>^</strong>: Flaky test: TestClusterClient - test_registerRackWithRegion_end_to_end</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2011822">2011822</a><strong>^</strong>: Reverse DNS resolution fails for some machines</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2012139">2012139</a><strong>^</strong>: maas commands occasionally fail with NO_CERTIFICATE_OR_CRL_FOUND when TLS is enabled</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1986590">1986590</a><strong>^</strong>: maas-cli from PPA errors out with traceback - ModuleNotFoundError: No module named ‘provisioningserver’</li>
+      </ul>
+      <h3 id="maas-3.3.1-has-been-released">MAAS 3.3.1 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3.1 has been released with the following bug fixes:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1773150">1773150</a><strong>^</strong>: smartctl verify fails due to Unicode in Disk Vendor Name</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1993618">1993618</a><strong>^</strong>: Web UI redirection policy can invalidate HAProxy and/or TLS setup</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1996997">1996997</a><strong>^</strong>: LXD resources fails on a Raspberry Pi with no Ethernet</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2003310">2003310</a><strong>^</strong>: Refresh scripts are not re-run if they pass, but fail to report the results to the region</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2008275">2008275</a><strong>^</strong>: Intel AMT support is broken in MAAS 3.3.0</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2009137">2009137</a><strong>^</strong>: MAAS OpenApi Schema missing parameters</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2009140">2009140</a><strong>^</strong>: MAAS OpenApi Schema cutoff variable names</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2009186">2009186</a><strong>^</strong>: CLI results in connection timed out when behind haproxy and 5240 is blocked</li>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2009805">2009805</a><strong>^</strong>: machine deploy install_kvm=True fails</li>
+      </ul>
+      <h3 id="maas-3.3-has-been-released">MAAS 3.3 has been released</h3>
+      <p>We are happy to announce that MAAS 3.3 has been released, with <a href="#heading--MAAS-3-3-bug-list">one additional bug fix</a>. MAAS 3.3 is a concerted effort to improve MAAS on multiple fronts, including a large number of bug fixes.</p>
+      <h2 id="features">Features</h2>
+      <p>New features created for MAAS 3.3 include:</p>
+      <ul>
+      <li><p><a href="#heading--Improved-machine-list-filtering">Improved machine list filtering</a>: MAAS 3.3 enhances the presentation and filtering of the machine list, with a shorter wait to start filtering and a wider range of filter choices.</p></li>
+      <li><p><a href="#heading--vault-integration">Integration of Vault for credential storage</a>: MAAS 3.3 allows you to use <a href="https://www.vaultproject.io/">Hashicorp Vault</a><strong>^</strong> to protect your secrets, if you wish.</p></li>
+      </ul>
+      <p>Improved capabilities include the following:</p>
+      <ul>
+      <li><p><a href="#heading--22-04-support">Native support for 22.04 LTS and core22</a>: We’ve removed the requirement to use snaps on 22.04 (Jammy Jellyfish); you now can load MAAS 3.3 on 22.04 using packages.</p></li>
+      <li><p><a href="#heading--UI-performance-improvements">UI performance improvements for large machine counts</a>: We’ve improved the performance of the UI machine list for large (&gt;10000 machines) MAAS instances. The machine list now goes live just a few seconds after the first visible page loads, with the rest of the list loading in background.</p></li>
+      <li><p><a href="#heading--Enhanced-MIB-support-for-Windows-OS-images">Enhanced MIB support for Windows OS images</a>: The <a href="customising-images-for-specific-needs.html#heading--custom-windows-images">procedure</a> for creating custom Windows OS images has been thoroughly updated and verified.</p></li>
+      </ul>
+      <p>Greatly expanded documentation sections include:</p>
+      <ul>
+      <li><p><a href="#heading--maas-config-settings-ref">MAAS configuration settings reference</a>: There is now one reference page that addresses all MAAS settings in one place. Other references throughout the document are preserved for now.</p></li>
+      <li><p><a href="#heading--Improved-MAAS-event-documentation">Improved MAAS event documentation</a>: MAAS event documentation has been expanded to include <a href="an-overview-of-maas-events.html">much better explanations</a> of MAAS events, including many examples.</p></li>
+      <li><p><a href="#heading--Improved-MAAS-audit-event-documentation">Improved MAAS audit event documentation</a>: MAAS audit event documentation has been greatly expanded to include <a href="understanding-audit-events.html">much better explanations</a> of MAAS audit events, including many examples and use cases.</p></li>
+      </ul>
+      <p>Several forward-looking improvements are included as well:</p>
+      <ul>
+      <li><p>Reliability improvements for simultaneous machine deployments</p></li>
+      <li><p>The first phase of <a href="https://www.nvidia.com/en-us/networking/products/data-processing-unit/">Nvidia DPU</a><strong>^</strong> support</p></li>
+      <li><p>Shifting the MAAS API documentation toward <a href="https://www.openapis.org/">OpenAPI standards</a><strong>^</strong></p></li>
+      </ul>
+      <p>These will be documented later in blog posts.</p>
+      <p>This release also includes well over one-hundred <a href="#heading--MAAS-3.3-bug-list">bug fixes</a>. Read on to catch up with what we’ve done so far this cycle.</p>
+      <h3 id="improved-machine-list-filtering">Improved machine list filtering</h3>
+      <p>MAAS 3.3 dramatically reduces the latency associated with refreshing large machine lists.</p>
+      <h4 id="ten-words-or-less">Ten words or less</h4>
+      <p>You can filter machines mere seconds after one page loads.</p>
+      <h4 id="how-list-filtering-is-improved">How list filtering is improved</h4>
+      <blockquote>
+      <p><strong>NOTE</strong> that this feature is still in development, so some of the feature-set described in this section may not be fully operational yet. As always, we reserve the right to change this feature-set until the final release of MAAS 3.3. These release notes will be updated as the feature develops.</p>
+      </blockquote>
+      <p>MAAS 3.3 enhances the way you can filter the machine list, in two ways:</p>
+      <ol type="1">
+      <li><p>You may begin filtering within a very short time after the first page of the machine list loads, even if you have more than 10,000 machines in the list.</p></li>
+      <li><p>You have a wider range of filter choices, as described in the table below.</p></li>
+      </ol>
+      <p>Note that with this version of MAAS, matching machine counts have been removed from the filter list for better performance.</p>
+      <h4 id="more-filter-parameters-have-been-added">More filter parameters have been added</h4>
+      <p>The following table describes the expanded filter set for the MAAS machine list:</p>
+      <ul>
+      <li>Items marked “Dyn” are dynamic, populated based on existing data, that is, the “Tags” filter only shows tags that currently exist.</li>
+      <li>Items which are not dynamic present the entire range of possible values, regardless of whether that value currently exists in MAAS; for example, all machine status values are available to be filtered, even if no machines currently have that status.</li>
+      <li>Items marked “Grp” can be used to group machines, instead of the default machine status.</li>
+      <li>Items marked “Man” must be manually entered, i.e., they are not in the UI filter drop-down, but can be entered in the “Search” box if properly formatted (as in the examples given).</li>
+      </ul>
+      <p>See <a href="locating-and-searching-for-machines.html">How to search MAAS</a> for more details on how to use these parameters.</p>
+      <table>
+      <thead>
+      <tr class="header">
+      <th>Parameter (bold) w/example</th>
+      <th>Shows nodes…</th>
+      <th>Dyn</th>
+      <th>Grp</th>
+      <th>Man</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr class="odd">
+      <td><strong>arch</strong>:(=architecture)</td>
+      <td>with “architecture”</td>
+      <td></td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>arch:(!=architecture)</td>
+      <td>NOT with “architecture”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>zone</strong>:(=zone-name)</td>
+      <td>in “zone-name”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>zone:(!=zone-name)</td>
+      <td>NOT in “zone-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>pool</strong>:(=resource-pool)</td>
+      <td>in “resource-pool”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>pool:(!=resource-pool)</td>
+      <td>NOT in “resource-pool”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>pod</strong>:(=pod-name)</td>
+      <td>with “pod-name”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>pod:(!=pod-name)</td>
+      <td>NOT with “pod-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>pod_type</strong>:(=pod-type)</td>
+      <td>with power type “pod-type”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>pod_type:(!=pod-type)</td>
+      <td>NOT with power type “pod-type”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>domain</strong>:(=domain-name)</td>
+      <td>with “domain-name”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>domain:(!=domain-name)</td>
+      <td>NOT with “domain-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>status</strong>:(=op-status)</td>
+      <td>having “op-status”</td>
+      <td></td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>status:(!=op-status)</td>
+      <td>NOT having “op-status”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>owner</strong>:(=user)</td>
+      <td>owned by “user”</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>owner:(!=user)</td>
+      <td>NOT owned by “user”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>power_state</strong>:(=power-state)</td>
+      <td>having “power-state”</td>
+      <td></td>
+      <td>Grp</td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>power_state:(!=power-state)</td>
+      <td>NOT having “power-state”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>tags</strong>:(=tag-name)</td>
+      <td>with tag “tag-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>tags:(!=tag-name)</td>
+      <td>NOT with tag “tag-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>fabrics</strong>:(=fabric-name)</td>
+      <td>in “fabric-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>fabrics:(!=fabric-name)</td>
+      <td>NOT in “fabric-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>fabric_classes</strong>:(=fabric-class)</td>
+      <td>in “fabric-class”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>fabric_classes:(!=fabric-class)</td>
+      <td>NOT in “fabric-class”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>fabric_name</strong>:(=fabric-name)</td>
+      <td>in “boot-interface-fabric”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>fabric_name:(!=fabric-name)</td>
+      <td>NOT in “boot-interface-fabric”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>subnets</strong>:(=subnet-name)</td>
+      <td>attached to “subnet-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>subnets:(!=subnet-name)</td>
+      <td>Not attached to “subnet-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>link_speed</strong>:(link-speed)</td>
+      <td>having “link-speed”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td>link_speed:(!link-speed)</td>
+      <td>NOT having “link-speed”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>vlans</strong>:(=vlan-name)</td>
+      <td>attached to “vlan-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td>vlans:(!=vlan-name)</td>
+      <td>NOT attached to “vlan-name”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td><strong>storage</strong>:(storage-MB)</td>
+      <td>having “storage-MB”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>total_storage</strong>:(total-stg-MB)</td>
+      <td>having “total-stg-MB”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>total_storage:(!total-stg-MB)</td>
+      <td>NOT having “total-stg-MB”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>cpu_count</strong>:(cpu-count)</td>
+      <td>having “cpu-count”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>cpu_count:(!cpu-count)</td>
+      <td>NOT having “cpu-count”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>mem</strong>:(ram-in-MB)</td>
+      <td>having “ram-in-MB”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>mem:(!ram-in-MB)</td>
+      <td>NOT having “ram-in-MB”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>mac_address</strong>:(=MAC)</td>
+      <td>having MAC address “MAC”</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>mac_address:(!=MAC)</td>
+      <td>NOT having</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>agent_name</strong>:(=agent-name)</td>
+      <td>Include nodes with agent-name</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>agent_name:(!=agent-name)</td>
+      <td>Exclude nodes with agent-name</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>cpu_speed</strong>:(cpu-speed-GHz)</td>
+      <td>CPU speed</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>cpu_speed:(!cpu-speed-GHz)</td>
+      <td>CPU speed</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>osystem</strong>:(=os-name)</td>
+      <td>The OS of the desired node</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>osystem:(!=os-name)</td>
+      <td>OS to ignore</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>distro_series</strong>:(=distro-name)</td>
+      <td>Include nodes using distro</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>distro_series:(!=distro-name)</td>
+      <td>Exclude nodes using distro</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>ip_addresses</strong>:(=ip-address)</td>
+      <td>Node’s IP address</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>ip_addresses:(!=ip-address)</td>
+      <td>IP address to ignore</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>spaces</strong>:(=space-name)</td>
+      <td>Node’s spaces</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td>spaces:(!=space-name)</td>
+      <td>Node’s spaces</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td><strong>workloads</strong>:(=annotation-text)</td>
+      <td>Node’s workload annotations</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="odd">
+      <td>workloads:(!=annotation-text)</td>
+      <td>Node’s workload annotations</td>
+      <td>Dyn</td>
+      <td></td>
+      <td></td>
+      </tr>
+      <tr class="even">
+      <td><strong>physical_disk_count</strong>:(disk-count)</td>
+      <td>Physical disk Count</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>physical_disk_count:(!disk-count)</td>
+      <td>Physical disk Count</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>pxe_mac</strong>:(=PXE-MAC)</td>
+      <td>Boot interface MAC address</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>pxe_mac:(!=PXE-MAC)</td>
+      <td>Boot interface MAC address</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>fqdn</strong>:(=fqdn-value)</td>
+      <td>Node FQDN</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>fqdn:(!=fqdn-value)</td>
+      <td>Node FQDN</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>simple_status</strong>:(=status-val)</td>
+      <td>Include nodes with simple-status</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td>simple_status:(!=status-val)</td>
+      <td>Exclude nodes with simple-status</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>devices</strong>:(=)</td>
+      <td>Devices</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="odd">
+      <td><strong>interfaces</strong>:(=)</td>
+      <td>Interfaces</td>
+      <td>Dyn</td>
+      <td></td>
+      <td>Man</td>
+      </tr>
+      <tr class="even">
+      <td><strong>parent</strong>:(=)</td>
+      <td>Parent node</td>
+      <td>Dyn</td>
+      <td>Grp</td>
+      <td>Man</td>
+      </tr>
+      </tbody>
+      </table>
+      <h3 id="native-support-for-22.04-lts-and-core22">Native support for 22.04 LTS and core22</h3>
+      <p>MAAS can now be installed as a PPA, directly on Ubuntu 22.04, without the need to use snaps.</p>
+      <h4 id="ten-words-or-less-1">Ten words or less</h4>
+      <p>MAAS packages now run on Ubuntu 22.04, aka Jammy Jellyfish.</p>
+      <h4 id="notes-on-22.04-lts-maas-packages">Notes on 22.04 LTS MAAS packages</h4>
+      <p>MAAS users want to install MAAS on a 22.04 LTS system via deb packages, as well as upgrade machines currently running MAAS on Ubuntu 20.04 LTS to 22.04 LTS. With the advent of MAAS 3.3, we have created an appropriate PPA with all required dependencies. This PPA can be directly installed on Ubuntu 22.04, Jammy Jellyfish, with no requirement to use snaps.</p>
+      <p>Note that the upgrade procedure will require a release upgrade from previous Ubuntu versions to Ubuntu 22.04. Also note that, with this version of MAAS, PostgreSQL 12 is deprecated and should be upgraded to PostgreSQL 14. The <a href="fresh-installation-of-maas.html">installation guide</a> provides the necessary details.</p>
+      <!--
+      ### Reliability improvements for simultaneous machine deployments
+
+      MAAS 3.3 brings some behind-the-scenes performance improvements to the product. When you deploy many machines, you expect them all deploy reliably, with IPs allocated in bulk, and no DNS delays or RPC timeouts. Within our development system, we've added system tests and metrics to track any failures or latency when large numbers of machines are being deployed. We've then used these new data to lower the failure rate and reduce latency in those situations.
+
+      ### The first phase of Nvidia DPU support
+
+      Long-term, we know that MAAS administrators want to enlist and use DPUs with MAAS. The Nvidia DPU is a complex machine with a tremendous amount of capability, so this cycle, we made the first steps toward supporting them. Details will follow in a forward-looking blog post sometime after the MAAS 3.3 release.
+      -->
+      <h3 id="ui-performance-improvements">UI performance improvements</h3>
+      <p>We wanted to improve the performance of the machine list page for large (&gt;10000 machines) MAASes, and allow users to search and filter machines as quickly as possible.</p>
+      <h4 id="ten-words-or-less-2">Ten words or less</h4>
+      <p>We’re working on making large machine lists load in background.</p>
+      <h4 id="background-performance-work">Background performance work</h4>
+      <p>In MAAS 3.2 and earlier, machine search and filter requires that all machines be fetched by the UI client before it becomes usable. For smaller MAASes this may not be an issue, but when considering MAASes with 1000 machines or more this can make the user wait an unacceptably long time before they can search and filter. With the release of MAAS 3.3, when a MAAS UI user wants to find a particular machine, they do not have to wait for all their machines data to load before they can start searching. The user can start searching for machines within a short time after the visible page of the machine list has fully loaded on the UI screen. See <a href="#heading--Improved-machine-list-filtering">Improved machine list filtering</a>, in these release notes, for details on the enhanced filtering capabilities that were included in this work.</p>
+      <h3 id="enhanced-mib-support-for-windows-os-images">Enhanced MIB support for Windows OS images</h3>
+      <p>The <a href="customising-images-for-specific-needs.html#heading--custom-windows-images">procedure</a> for creating custom Windows OS images has been thoroughly updated and verified.</p>
+      <h4 id="ten-words-or-less-3">Ten words or less</h4>
+      <p>MAAS custom Windows images now support most releases and options.</p>
+      <h4 id="what-has-been-added-to-windows-custom-images">What has been added to Windows custom images</h4>
+      <p>Specifically, MIB now supports a much wider range of Windows images. Previously, only 2012 and 2106 Windows versions were supported with MIB. Now the list is much longer, bringing deployable MAAS versions up to date with the current Windows releases:</p>
+      <ul>
+      <li>win2008r2</li>
+      <li>win2008hvr2</li>
+      <li>win2012</li>
+      <li>win2012hv</li>
+      <li>win2012r2</li>
+      <li>win2012hvr2</li>
+      <li>win2016</li>
+      <li>win2016-core</li>
+      <li>win2016hv</li>
+      <li>win2016dc</li>
+      <li>win2016dc-core</li>
+      <li>win2019</li>
+      <li>win2019-core</li>
+      <li>win2019dc</li>
+      <li>win2019dc-core</li>
+      <li>win10ent</li>
+      <li>win10ent-eval</li>
+      <li>win2022</li>
+      <li>win2022-core</li>
+      </ul>
+      <p>There are also special instructions for using both UEFI and BIOS bootloaders, as well as instructions for using LXD containers with custom-built Windows images.</p>
+      <p>Finally, MIB has been extended to accept a much wider range of options for windows builds. Some of the new Windows-specific options include:</p>
+      <ul>
+      <li>–windows-iso: path to the Windows ISO image.</li>
+      <li>–windows-edition: identifier for the Windows edition/option being installed (see above).</li>
+      <li>–windows-license-key: Windows license key (required with non-evaluation editions)</li>
+      <li>–windows-language: Windows installation language (default: en-US)</li>
+      <li>–windows-updates: download and install Windows Updates (requires internet access; might require a larger –disk-size option)</li>
+      <li>–windows-drivers: path to directory with Windows drivers to be installed (requires internet access; uses the Windows Driver Kit, by default)</li>
+      <li>–driver-store: combined with –windows-drivers, uses the Windows Driver Store to install drivers early into Windows Setup and image (does not require internet access; does not use the Windows Driver Kit).</li>
+      </ul>
+      <p>Some news Windows-specific platform options include:</p>
+      <ul>
+      <li>–uefi: use UEFI partition layout and firmware</li>
+      <li>–virtio: use paravirtualized VirtIO SCSI and VirtIO NET devices (instead of emulated devices) for installation (requires –windows-drivers)</li>
+      <li>–disk-size: specify the (virtual) disk size for Windows setup (must be larger for –windows-updates; increases deployment/copy-to-disk time, and is expanded to physical disk size during deployment)</li>
+      </ul>
+      <p>This update should make it much simpler to use custom-built Windows images with MAAS.</p>
+      <h3 id="shifting-the-maas-api-documentation-to-openapi-standards">Shifting the MAAS API documentation to OpenAPI standards</h3>
+      <p>MAAS API User want to experience the MAAS API in a more standard way, along the lines of the OpenAPI definition. MAAS 3.3 begins this process by providing most of the MAAS API functionality in a discover-able form. You should now be able to easily retrieve human-readable service documentation and API definitions using standard methods. Consult <a href="https://maas.io/docs/api">the API documentation</a><strong>^</strong> for details.</p>
+      <h3 id="maas-configuration-settings-reference">MAAS configuration settings reference</h3>
+      <p>MAAS 3.3 documentation consolidates configuration settings in one article, in addition to their other mentions throughout the documentation set.</p>
+      <h4 id="ten-words-or-less-4">Ten words or less</h4>
+      <p>“Settings” now has its own page, and some new options.</p>
+      <h4 id="what-is-new-about-this-update">What is new about this update</h4>
+      <p>MAAS configuration settings are scattered in various (generally relevant) places throughout the documentation, but there has never been one reference page that addresses all settings in one place. MAAS 3.3 remedies this by adding the <a href="maas-settings.html">Configuration settings reference</a>.</p>
+      <p>A minor new feature added with MAAS 3.3 is MAAS site identity, which enables some new configuration parameters:</p>
+      <ul>
+      <li><p>MAAS name: The “* MAAS name” is a text box that sets the text which appears at the bottom of every MAAS screen, in front of the version descriptor.</p></li>
+      <li><p>MAAS name emoji: You may also paste a suitable emoji in front of the MAAS name to help identify it.</p></li>
+      <li><p>MAAS theme main colour: You may also help identify your MAAS instance by changing the colour of the top bar; several colour choices are available.</p></li>
+      </ul>
+      <p>These enhancements were made available to assist users who have more than one instance (e.g., production and staging), and have issues with operations accidentally making changes to the wrong instance.</p>
+      <h3 id="improved-maas-event-documentation">Improved MAAS event documentation</h3>
+      <p>MAAS event documentation has been expanded to include <a href="an-overview-of-maas-events.html">much better explanations</a> of MAAS events, including many examples.</p>
+      <h4 id="ten-words-or-less-5">Ten words or less</h4>
+      <p>We’ve finally documented MAAS events, making them easier to decode.</p>
+      <h4 id="understanding-maas-events">Understanding MAAS events</h4>
+      <p>Events are state changes that happen to MAAS elements, caused by MAAS itself, an external agent, or a users. Understanding events is an essential debugging skill. But events appear in three different places in MAAS, each presentation providing slightly different information. These screens are usually dense and hard to search.</p>
+      <p>In this major documentation update, we’ve standardised on the MAAS CLI events query command as the best way to review, filter, and summarise events. We’ve summarised the six main event types:</p>
+      <ul>
+      <li><p>INFO: the default, used if no level= is specified; shows INFO and ERROR events. A typical INFO event is “Ready”, indicating that a machine has reached the “Ready” state.</p></li>
+      <li><p>CRITICAL: critical MAAS failures; shows only CRITICAL events. These events usually represent severe error conditions that should be immediately remedied.</p></li>
+      <li><p>ERROR: MAAS errors; shows only ERROR events. Typical ERROR events include such things as power on/off failures, commissioning timeouts, and image import failures.</p></li>
+      <li><p>WARNING: failures which may or may not affect MAAS performance; shows WARNING and ERROR events. A typical warning event, for example, might include the inability to find and boot a machine.</p></li>
+      <li><p>DEBUG: information which would help debug MAAS behaviour; shows DEBUG and INFO events. Typical DEBUG events involve routine image import activities, for example.</p></li>
+      <li><p>AUDIT: information which helps determine settings and user actions in MAAS; shows only AUDIT events. They are covered in more detail elsewhere.</p></li>
+      </ul>
+      <p>In addition, the new document explains how these event types tend to overlap when queried. We’ve also provide detailed instructions on how to use the most common filters:</p>
+      <ul>
+      <li><p>hostname: Only events relating to the node with the matching hostname will be returned. This can be specified multiple times to get events relating to more than one node.</p></li>
+      <li><p>mac_address: Only nodes with matching MAC addresses will be returned. Note that MAC address is not part of the standard output, so you’d need to look it up elsewhere.</p></li>
+      <li><p>id: Only nodes with matching system IDs will be returned. This corresponds to the node parameter in the JSON listing, not the id parameter there, which is a serial event number.</p></li>
+      <li><p>zone: Only nodes in the zone will be returned. Note that zones are not part of the standard output, so you’d need to look these up elsewhere.</p></li>
+      <li><p>level: The event level to capture. You can choose from AUDIT, CRITICAL, DEBUG, ERROR, INFO, or WARNING. The default is INFO.</p></li>
+      <li><p>limit: Number of events to return. The default is 100, the maximum in one command is 1000.</p></li>
+      <li><p>before: Defines an event id to start returning older events. This is the “id” part of the JSON, not the system ID or “node”. Note that before and after cannot be used together, as the results are unpredictable.</p></li>
+      <li><p>after: Defines an event id to start returning newer events. This is the “id” part of the JSON, not the system ID or “node”. Note that before and after cannot be used together, as the results are unpredictable.</p></li>
+      </ul>
+      <p>Since the MAAS CLI returns JSON – which is hard to humans to parse – we’ve included some exemplary <code>jq</code> predicates of the form:</p>
+      <pre class="nohighlight"><code>maas $PROFILE events query limit=20 \
+      | jq -r &#39;([&quot;USERNAME&quot;,&quot;NODE&quot;,&quot;HOSTNAME&quot;,&quot;LEVEL&quot;,&quot;DATE&quot;,&quot;TYPE&quot;,&quot;EVENT&quot;] | 
+      (., map(length*&quot;-&quot;))),
+      (.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) 
+      | @tsv&#39; | column -t -s$&#39;\t&#39;</code></pre>
+      <p>And finally, we provided some detailed usage examples. For instance, we walked a MAAS machine called <code>fun-zebra</code> through the following states:</p>
+      <ul>
+      <li>Commissioning</li>
+      <li>Allocation</li>
+      <li>Deployment</li>
+      <li>Releasing</li>
+      <li>Testing (with a premature manual abort)</li>
+      <li>Rescue mode</li>
+      </ul>
+      <p>We used this example command:</p>
+      <pre class="nohighlight"><code> maas $PROFILE events query level=INFO hostname=fun-zebra limit=1000 | jq -r &#39;([&quot;USERNAME&quot;,&quot;NODE&quot;,&quot;HOSTNAME&quot;,&quot;LEVEL&quot;,&quot;DATE&quot;,&quot;TYPE&quot;,&quot;EVENT&quot;] | (., map(length*&quot;-&quot;))),(.events[] | [.username,.node,.hostname,.level,.created,.type,.description]) | @tsv&#39; | column -t -s$&#39;\t&#39;</code></pre>
+      <p>This gave us a reasonably thorough report of what happened to the machine:</p>
+      <pre class="nohighlight"><code>USERNAME  NODE    HOSTNAME   LEVEL  DATE                        TYPE                   EVENT
+      --------  ----    --------   -----  ----                        ----                   -----
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:53  Exited rescue mode     
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:29:52  Powering off           
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:28:58  Rescue mode            
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:27:18  Loading ephemeral      
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:40  Performing PXE boot    
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Power cycling          
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:23  Entering rescue mode   
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Powering off           
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:26:14  Aborted testing        
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:24:08  Performing PXE boot    
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Powering on            
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:51  Testing                
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:38  Released               
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Powering off           
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:23:37  Releasing              
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:22:41  Deployed               
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:21:49  Rebooting              
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:18:42  Configuring OS         
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:42  Installing OS          
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:17:30  Configuring storage    
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:15:31  Loading ephemeral      
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:48  Performing PXE boot    
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:31  Powering on            
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 21:14:27  Deploying              
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:04:17  Ready                  
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:04:07  Running test           smartctl-validate on sda
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:27  Gathering information  
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:01:10  Loading ephemeral      
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:35  Performing PXE boot    
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Powering on            
+      unknown   bk7mg8  fun-zebra  INFO   Thu, 29 Sep. 2022 20:00:16  Commissioning          </code></pre>
+      <p>Additional examples and techniques are provided as part of this new documentation.</p>
+      <h3 id="improved-maas-audit-event-documentation">Improved MAAS audit event documentation</h3>
+      <p>MAAS audit event documentation has been greatly expanded to include <a href="understanding-audit-events.html">much better explanations</a> of MAAS audit events, including <a href="auditing-maas-operations.html#heading--How-to-audit-a-machines-life-cycle-with-audit-events">detailed examples of how to reconstruct machine life-cycles</a> in the updated version of “<a href="auditing-maas-operations.html">How to work with audit event logs</a>”.</p>
+      <h4 id="ten-words-or-less-6">Ten words or less</h4>
+      <p>We’ve finally offered details about how you should audit MAAS.</p>
+      <h4 id="understanding-how-audit-events-explain-maas-internal-operations">Understanding how audit events explain MAAS internal operations</h4>
+      <p>There’s probably no limit to what you can figure out if you use audit events properly. The problems are: (1) a lot goes on in MAAS, and (2) you need more than just the explicit audit events to get a clear picture of what’s happening. We’ve tried to address this by taking a deeper look at the auditing process (not just the events).</p>
+      <p>As you may know, an audit event is just a <a href="an-overview-of-maas-events.html">MAAS event</a> tagged with <code>AUDIT</code>. It generally captures changes to the MAAS configuration and machine states. These events provide valuable oversight of user actions and automated updates – and their effects – especially when multiple users are interacting with multiple machines.</p>
+      <h4 id="viewing-events">Viewing events</h4>
+      <p>Audit events are examined using the MAAS CLI with the <code>level=AUDIT</code> parameter set:</p>
+      <pre class="nohighlight"><code>$ maas $PROFILE events query level=AUDIT</code></pre>
+      <p>You’ll probably get better results by appending a <code>jq</code> filter, to prettify the output:</p>
+      <pre class="nohighlight"><code>$ maas $PROFILE events query level=AUDIT after=0 limit=20 \
+      | jq -r &#39;([&quot;USERNAME&quot;,&quot;HOSTNAME&quot;,&quot;DATE&quot;,&quot;EVENT&quot;] | 
+      (., map(length*&quot;-&quot;))),
+      (.events[] | [.username,.hostname,.created,.description]) 
+      | @tsv&#39; | column -t -s$&#39;\t&#39;</code></pre>
+      <p>By itself, such a command might produce output similar to this:</p>
+      <pre class="nohighlight"><code>USERNAME  HOSTNAME     DATE                        EVENT
+      --------  --------     ----                        -----
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 2 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 1 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  pci device 0 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  block device sda was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  interface enp5s0 was updated on node 8wmfx3
+      unknown   valued-moth  Thu, 21 Apr. 2022 19:45:14  0 bytes of memory was removed on node 8wmfx3
+      admin     valued-moth  Thu, 21 Apr. 2022 19:36:48  Started deploying &#39;valued-moth&#39;.
+      admin     valued-moth  Thu, 21 Apr. 2022 19:36:21  Acquired &#39;valued-moth&#39;.
+      admin     unknown      Thu, 21 Apr. 2022 19:21:46  Updated configuration setting &#39;completed_intro&#39; to &#39;True&#39;.
+      admin     unknown      Thu, 21 Apr. 2022 19:20:49  Updated configuration setting &#39;upstream_dns&#39; to &#39;8.8.8.8&#39;.
+      admin     unknown      Thu, 21 Apr. 2022 19:20:49  Updated configuration setting &#39;maas_name&#39; to &#39;neuromancer&#39;.
+      admin     unknown      Thu, 21 Apr. 2022 19:20:47  Updated configuration setting &#39;http_proxy&#39; to &#39;&#39;.
+      admin     unknown      Thu, 21 Apr. 2022 19:20:24  Logged in admin.</code></pre>
+      <p>You can, of course, use the <a href="an-overview-of-maas-events.html#heading--filter-parameters">various event filters</a> with <code>level=AUDIT</code> to further restrict your output.</p>
+      <h4 id="the-meaning-of-audit-events">The meaning of audit events</h4>
+      <p>Later on in the documentation, we walk through a sample of audit events and demonstrate how to interpret and use them. This includes detailed examples of various audit event queries, walking through real-world examples to answer questions like:</p>
+      <ol type="1">
+      <li><p>Who deployed <code>comic-muskox</code>?</p></li>
+      <li><p>What happened to <code>sweet-urchin</code>?</p></li>
+      <li><p>Why is <code>fleet-calf</code> in rescue mode?</p></li>
+      <li><p>Where did these changes come from in <code>setup.sh</code>?</p></li>
+      <li><p>What caused <code>ruling-bobcat</code> to be marked as broken?</p></li>
+      <li><p>Who’s responsible for the DHCP snippet called <code>foo</code>?</p></li>
+      </ol>
+      <h4 id="auditing-with-finesse">Auditing with finesse</h4>
+      <p>As part of the updates to our “<a href="auditing-maas-operations.html">How to work with audit event logs</a>”, we’ve tried to offer you some finesse in reconstructing machine life-cycles. We’ve shown how to combine various levels of MAAS event queries with standard command line utilities to produce clear audit trails such as this one:</p>
+      <pre class="nohighlight"><code>418606  ERROR    Marking node broken               Wed, 17 Nov. 2021 00:02:52  A Physical Interface requires a MAC address.
+      418607  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:02:52  From &#39;New&#39; to &#39;Broken&#39;
+      418608  DEBUG    Marking node fixed                Wed, 17 Nov. 2021 00:04:24  
+      418609  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:24  From &#39;Broken&#39; to &#39;Ready&#39;
+      418613  DEBUG    User acquiring node               Wed, 17 Nov. 2021 00:04:51  (admin)
+      418614  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:51  From &#39;Ready&#39; to &#39;Allocated&#39; (to admin)
+      418615  DEBUG    User starting deployment          Wed, 17 Nov. 2021 00:04:51  (admin)
+      418616  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:04:51  From &#39;Allocated&#39; to &#39;Deploying&#39;
+      418617  INFO     Deploying                         Wed, 17 Nov. 2021 00:04:51  
+      418618  AUDIT    Node                              Wed, 17 Nov. 2021 00:04:51  Started deploying &#39;ruling-bobcat&#39;.
+      418619  INFO     Powering on                       Wed, 17 Nov. 2021 00:04:55  
+      418625  ERROR    Marking node failed               Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node&#39;s BMC: Failed to power pbpncx. BMC never transitioned from off to on.
+      418626  DEBUG    Node changed status               Wed, 17 Nov. 2021 00:05:32  From &#39;Deploying&#39; to &#39;Failed deployment&#39;
+      418627  ERROR    Failed to power on node           Wed, 17 Nov. 2021 00:05:32  Power on for the node failed: Failed talking to node&#39;s BMC: Failed to power pbpncx. BMC never transitioned from off to on.</code></pre>
+      <p>In this case, we managed to recognise, rather quickly, that no physical interface had been defined for <code>ruling-bobcat</code>, hence deployment fails because MAAS can’t communicate with the node’s BMC. There are many other issues you can recognise with careful use of MAAS events to audit machine behaviours. We welcome your feedback on this new documentation endeavour.</p>
+      <h2 id="installation">Installation</h2>
+      <p>MAAS will run on just about any modern hardware configuration, even a development laptop. If you’re not sure whether your target server will handle MAAS, <a href="installation-requirements.html">you can always double-check</a>.</p>
+      <p><strong>NOTE</strong> that PostgreSQL 12 is deprecated with the release of MAAS 3.3, in favour of PostgreSQL 14. Support for PostgreSQL 12 will be discontinued in MAAS 3.4. Also note, though, that Postgres 14 does not run on Focal 20.04 LTS.</p>
+      <h3 id="how-to-do-a-fresh-snap-install-of-maas-3.3">How to do a fresh snap install of MAAS 3.3</h3>
+      <p>To install MAAS 3.3 from a snap, simply enter the following:</p>
+      <pre><code>$ sudo snap install --channel=3.3 maas</code></pre>
+      <p>After entering your password, the snap will download and install from the 3.3 channel.</p>
+      <h3 id="how-to-upgrade-from-an-earlier-snap-version-to-maas-3.3">How to upgrade from an earlier snap version to MAAS 3.3</h3>
+      <p>Maybe instead of a fresh install, you want to upgrade from a earlier snap version to the 3.3 snap, and you are using a <code>region+rack</code> configuration, use this command:</p>
+      <pre><code>$ sudo snap refresh --channel=3.3 maas</code></pre>
+      <p>After entering your password, the snap will refresh from the 3.3 candidate channel. You will <strong>not</strong> need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="how-to-initialise-maas-3.3-snap-for-a-test-or-poc-environment">How to initialise MAAS 3.3 snap for a test or POC environment</h3>
+      <p>You can initialise MAAS as a compact version for testing. To achieve this, we provide a separate snap, called <code>maas-test-db</code>, which contains a PostgreSQL database for use in testing and evaluating MAAS. The following instructions will help you take advantage of this test configuration.</p>
+      <p>Once MAAS is installed, you can use the <code>--help</code> flag with <code>maas init</code> to get relevant instructions:</p>
+      <pre><code>$ sudo maas init --help
+      usage: maas init [-h] {region+rack,region,rack} . . .
+
+      Initialise MAAS in the specified run mode.
+
+      optional arguments:
+        -h, --help            show this help message and exit
+
+      run modes:
+        {region+rack,region,rack}
+          region+rack         Both region and rack controllers
+          region              Region controller only
+          rack                Rack controller only
+
+      When installing region or rack+region modes, MAAS needs a
+      PostgreSQL database to connect to.
+
+      If you want to set up PostgreSQL for a non-production deployment on
+      this machine, and configure it for use with MAAS, you can install
+      the maas-test-db snap before running &#39;maas init&#39;:
+          sudo snap install maas-test-db
+          sudo maas init region+rack --database-uri maas-test-db:///</code></pre>
+      <p>We’ll quickly walk through these instructions to confirm your understanding. First, install the <code>maas-test-db</code> snap:</p>
+      <pre><code>sudo snap install maas-test-db</code></pre>
+      <p>Note that this step installs a a running PostgreSQL and a MAAS-ready database instantiation. When it’s done, you can double check with a built-in PostgreSQL shell:</p>
+      <pre><code>$ sudo maas-test-db.psql
+      psql (12.4)
+      Type &quot;help&quot; for help.
+
+      postgres=# \l</code></pre>
+      <p>This will produce a list of databases, one of which will be <code>maasdb</code>, owned by <code>maas</code>. Note that this database is still empty because MAAS is not yet initialised and, hence, is not yet using the database. Once this is done, you can run the <code>maas init</code> command:</p>
+      <pre><code>sudo maas init region+rack --database-uri maas-test-db:///</code></pre>
+      <p>After running for a moment, the command will prompt you for a MAAS URL; typically, you can use the default:</p>
+      <pre><code>MAAS URL [default=http://10.45.222.159:5240/MAAS]:</code></pre>
+      <p>When you’ve entered a suitable URL, or accepted the default, the following prompt will appear:</p>
+      <pre><code>MAAS has been set up.
+
+      If you want to configure external authentication or use
+      MAAS with Canonical RBAC, please run
+
+        sudo maas configauth
+
+      To create admins when not using external authentication, run
+
+        sudo maas createadmin</code></pre>
+      <p>Let’s assume you just want a local testing user named <code>admin</code>:</p>
+      <pre><code>$ sudo maas createadmin
+      Username: admin
+      Password: ******
+      Again: ******
+      Email: admin@example.com
+      Import SSH keys [] (lp:user-id or gh:user-id): gh:yourusername</code></pre>
+      <p>At this point, MAAS is basically set up and running. You can confirm this with <code>sudo maas status</code>. If you need an API key, you can obtain this with <code>sudo maas apikey --username yourusername</code>. Now you will be able to test and evaluate MAAS by going to the URL you entered or accepted above and entering your <code>admin</code> username and password.</p>
+      <h3 id="initialise-maas-for-a-production-configuration">Initialise MAAS for a production configuration</h3>
+      <p>To install MAAS in a production configuration, you need to setup PostgreSQL, as described below.</p>
+      <h4 id="setting-up-postgresql-from-scratch">Setting up PostgreSQL from scratch</h4>
+      <p>To set up PostgreSQL, even if it’s running on a different machine, you can use the following procedure:</p>
+      <ol type="1">
+      <li><p>You will need to install PostgreSQL on the machine where you want to keep the database. This can be the same machine as the MAAS region/rack controllers or a totally separate machine. If PostgreSQL (version 14) is already running on your target machine, you can skip this step. To install PostgreSQL, run these commands:</p>
+      <pre><code> sudo apt update
+       sudo apt install -y postgresql</code></pre></li>
+      <li><p>You want to make sure you have a suitable PostgreSQL user, which can be accomplished with the following command, where <code>$MAAS_DBUSER</code> is your desired database username, and <code>$MAAS_DBPASS</code> is the intended password for that username. Note that if you’re executing this step in a LXD container (as root, which is the default), you may get a minor error, but the operation will still complete correctly.</p>
+      <pre><code> sudo -u postgres psql -c &quot;CREATE USER \&quot;$MAAS_DBUSER\&quot; WITH ENCRYPTED PASSWORD &#39;$MAAS_DBPASS&#39;&quot;</code></pre></li>
+      <li><p>Create the MAAS database with the following command, where <code>$MAAS_DBNAME</code> is your desired name for the MAAS database (typically known as <code>maas</code>). Again, if you’re executing this step in a LXD container as root, you can ignore the minor error that results.</p>
+      <pre><code> sudo -u postgres createdb -O &quot;$MAAS_DBUSER&quot; &quot;$MAAS_DBNAME&quot;</code></pre></li>
+      <li><p>Edit <code>/etc/postgresql/14/main/pg_hba.conf</code> and add a line for the newly created database, replacing the variables with actual names. You can limit access to a specific network by using a different CIDR than <code>0/0</code>.</p>
+      <pre><code> host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5</code></pre></li>
+      <li><p>You can then initialise MAAS via the following command:</p>
+      <pre><code> sudo maas init region+rack --database-uri &quot;postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME&quot;</code></pre></li>
+      </ol>
+      <p>You should use <code>localhost</code> for <code>$HOSTNAME</code> if you’re running PostgreSQL on the same box as MAAS.</p>
+      <p>Don’t worry; if you leave out any of the database parameters, you’ll be prompted for those details.</p>
+      <h3 id="how-to-do-a-fresh-install-of-maas-3.3-from-packages">How to do a fresh install of MAAS 3.3 from packages</h3>
+      <p>MAAS 3.3 from packages runs on 22.04 LTS only. The recommended way to set up an initial MAAS environment is to put everything on one machine:</p>
+      <div class="sourceCode" id="cb22"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="fu">sudo</span> apt-add-repository ppa:maas/3.3</span>
+      <span id="cb22-2"><a href="#cb22-2" aria-hidden="true"></a><span class="fu">sudo</span> apt update</span>
+      <span id="cb22-3"><a href="#cb22-3" aria-hidden="true"></a><span class="fu">sudo</span> apt-get -y install maas</span></code></pre></div>
+      <p>Executing this command leads you to a list of dependent packages to be installed, and a summary prompt that lets you choose whether to continue with the install. Choosing “Y” proceeds with a standard <code>apt</code> package install.</p>
+      <h3 id="distributed-environment">Distributed environment</h3>
+      <p>
+      For a more distributed environment, you can place the region controller on one machine:
+      </p>
+      <div class="sourceCode" id="cb23"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a><span class="fu">sudo</span> apt install maas-region-controller</span></code></pre></div>
+      <p>and the rack controller on another:</p>
+      <div class="sourceCode" id="cb24"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="fu">sudo</span> apt install maas-rack-controller</span>
+      <span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a><span class="fu">sudo</span> maas-rack register</span></code></pre></div>
+      <p>These two steps will lead you through two similar <code>apt</code> install sequences.</p>
+      <h3 id="how-to-upgrade-from-3.2-or-lower-to-maas-3.3">How to upgrade from 3.2 or lower to MAAS 3.3</h3>
+      <p>If you are running MAAS 3.2 or lower, you can upgrade directly to MAAS 3.3. You must first make sure that the target system is running Ubuntu 22.04 LTS by executing the following command:</p>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>The response should look something like this:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu xx.yy
+      Release:    xx.yy
+      Codename:   $RELEASE_NAME</code></pre>
+      <p>The required “xx.yy” required for MAAS 3.3 is “22.04,” code-named “jammy”.</p>
+      <p>If you are currently running Ubuntu focal 20.04 LTS, you can upgrade to jammy 22.04 LTS with the following procedure:</p>
+      <p>Upgrade the release:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>Accept the defaults for any questions asked by the upgrade script.</p>
+      <p>Reboot the machine when requested.</p>
+      <p>Check whether the upgrade was successful:</p>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>A successful upgrade should respond with output similar to the following:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04(.nn) LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <p>If you’re upgrading from MAAS version 2.8 or lower to version 3.3: While the following procedures should work, note that they are untested. Use at your own risk. Start by making a verifiable backup; see step 1, below.</p>
+      <p>Back up your MAAS server completely; the tools and media are left entirely to your discretion. Just be sure that you can definitely restore your previous configuration, should this procedure fail to work correctly.</p>
+      <p>Add the MAAS 3.3 PPA to your repository list with the following command, ignoring any apparent error messages:</p>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.3</code></pre>
+      <p>Run the release upgrade like this, answering any questions with the given default values:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>Check whether your upgrade has been successful by entering:</p>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>If the ugprade was successful, this command should yield output similar to the following:</p>
+      <pre class="nohighlight"><code>No LSB modules are available.
+      Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04(.nn) LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <p>Check your running MAAS install (by looking at the information on the bottom of the machine list) to make sure you’re running the 3.3 release.</p>
+      <p>If this didn’t work, you will need to restore from the backup you made in step 1, and consider obtaining separate hardware to install MAAS 3.3.</p>
+      <h2 id="bugs-fixed">Bugs fixed</h2>
+      <p>The following sections enumerate the bugs we’ve fixed in MAAS 3.3.</p>
+      <h3 id="maas-3.3-beta-1-bug-list">MAAS 3.3 Beta 1 bug list</h3>
+      <p>So far in MAAS 3.3, we’ve fixed well over 100 bugs:</p>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/bugs/1762673">1762673</a><strong>^</strong>: maas insists on running the proxy, even when it’s disabled</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1802505">1802505</a><strong>^</strong>: [ui][2.4][2.5] maas ignores ttl parameter for address records</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1806707">1806707</a><strong>^</strong>: [2.5] Composing a VM with an interface attached to a (macvtap) network (on a KVM host NIC that is not a bridge) resulted in disconnect interface</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1811109">1811109</a><strong>^</strong>: [2.5, UI, RBAC] Normal users can unmount the root file system, but not remount it</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1818004">1818004</a><strong>^</strong>: Slow response in the UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1822640">1822640</a><strong>^</strong>: [websocket, UI] Admins should be able to change ownership of resources over the UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1822840">1822840</a><strong>^</strong>: [UI, feature] Add ability to edit/delete (manage) tags over the UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1825255">1825255</a><strong>^</strong>: TestPostgresListenerService test fails erroneously in CI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1826011">1826011</a><strong>^</strong>: [UI] Compose machine from pod misaligned message</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1826789">1826789</a><strong>^</strong>: stress-ng-cpu-long times out in bionic</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1826967">1826967</a><strong>^</strong>: Exiting rescue mode shows ‘loading ephemeral’</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1833545">1833545</a><strong>^</strong>: After removing a controller rackd still tries to update DNS</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1840049">1840049</a><strong>^</strong>: [UI] When changing configuration of an Interface, one has to enter the config twice</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1852360">1852360</a><strong>^</strong>: Validate network configuration button selects all network scripts that accept an interface parameter</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1863395">1863395</a><strong>^</strong>: 2.6.2 Unable to change power type to manual via UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1871605">1871605</a><strong>^</strong>: Updating controller name shouldn’t be allowed in the UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1874355">1874355</a><strong>^</strong>: Controller details page not updated to match machine details page designs</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1881948">1881948</a><strong>^</strong>: IPv6 address for power control fails</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1882633">1882633</a><strong>^</strong>: Logical volume size is required</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1883232">1883232</a><strong>^</strong>: UI: UI application cached after upgrade</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1890262">1890262</a><strong>^</strong>: UI: Error message with a custom image URL doesn’t clear</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1893226">1893226</a><strong>^</strong>: Machine-specific minimal commissioning kernel resets to MAAS wide default</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1893670">1893670</a><strong>^</strong>: UI: display bios_boot_mode in the web UI</li>
+      <li>1898131: IP address gets hidden, instead of subnet when window is resized</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1905636">1905636</a><strong>^</strong>: UI: CentOS 7 is the default over CentOS 8</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1909348">1909348</a><strong>^</strong>: MAAS 2.9.0 DNS zone remove @ labels impossible</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1913800">1913800</a><strong>^</strong>: PCI and USB information missing from controllers page</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1918963">1918963</a><strong>^</strong>: Controllers page out of sync with nodes</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1918978">1918978</a><strong>^</strong>: doesn’t detect the subarchitecture xgene-uboot for a HP m400 cartridge</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1927748">1927748</a><strong>^</strong>: Need additional form inputs for DHCP Snippets associated with ipranges</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1929478">1929478</a><strong>^</strong>: Commissioning fails with binary data in IPMI Lan_Conf_Security_Keys</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1929973">1929973</a><strong>^</strong>: “Controllers have different installation sources.” is not shown on the controllers page</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1931654">1931654</a><strong>^</strong>: domain.set_default error handling just returns id</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1933408">1933408</a><strong>^</strong>: Setting discovery parent returns cryptic error</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1938296">1938296</a><strong>^</strong>: MAAS 3.0 incorrectly calculates the amount of free space on drive</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1940909">1940909</a><strong>^</strong>: UI: Allow to create a machine as deployed from the UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1951229">1951229</a><strong>^</strong>: CLI: Uninformative errors when adding non-existent tags to machines</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1955671">1955671</a><strong>^</strong>: support for rocky linux UEFI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1956766">1956766</a><strong>^</strong>: UI: Unable to deploy CentOS7 - centos/focal not a supported combination</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1958817">1958817</a><strong>^</strong>: Cannot delete a tag from multiple machines in a bulk with Web UI</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1959856">1959856</a><strong>^</strong>: newly added tags in UI don’t show until refresh/page change</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1960571">1960571</a><strong>^</strong>: Domain name should be checked for duplicate against maas_internal_domain</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1961627">1961627</a><strong>^</strong>: confusing UI to add the first network space</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1964024">1964024</a><strong>^</strong>: smartctl-validate test runs even when explicitly removed from commissioning step</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1965172">1965172</a><strong>^</strong>: [3.1] Setting interface into unconfigured does not reset auto-assign IP mode</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1967577">1967577</a><strong>^</strong>: commissioning fails w/ 3.2-beta1: “please fill out the field”</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1970803">1970803</a><strong>^</strong>: CLI event filters give extraneous results with more than one filter</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1971152">1971152</a><strong>^</strong>: Authentication broken with MASS using Candid</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1973236">1973236</a><strong>^</strong>: MAAS reports failure to detect storage that it already detected</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1973617">1973617</a><strong>^</strong>: refresh a lxd KVM host resources after it was added</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1976194">1976194</a><strong>^</strong>: init rack can’t find secrets</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1976196">1976196</a><strong>^</strong>: Controller WebSocket handler contains unimplemented methods</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977820">1977820</a><strong>^</strong>: Some tests are skipped due to the “perf” filtering</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977822">1977822</a><strong>^</strong>: ERROR: Redfish ‘Redfish’ object has no attribute ’_get_network_interface’</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977864">1977864</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: Redfish string indices must be integers</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977866">1977866</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: 169.254.95.120/16 has host bits set</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977895">1977895</a><strong>^</strong>: Certificate metadata missing from controller websocket model</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977942">1977942</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: Redfish ‘Redfish’ object has no attribute ’_bmc_config’</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1977951">1977951</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: Redfish nonnumeric port: ‘None’</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978024">1978024</a><strong>^</strong>: maas auto-creates interface name for docker bridge on controller, which breaks bind</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978037">1978037</a><strong>^</strong>: Drop legacy /l/ UI prefix</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978072">1978072</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: Redfish ‘dict’ object has no attribute ‘split’</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978121">1978121</a><strong>^</strong>: 30-maas-01-bmc-config: ERROR: ERROR: Unable to add BMC user!</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978154">1978154</a><strong>^</strong>: MAAS 3.1 introduces breaking changes for custom centos7 images</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1978922">1978922</a><strong>^</strong>: MAAS 3.1 - Missing button “Create datastore” in VMFS7 storage layout</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1979039">1979039</a><strong>^</strong>: TLS certificates are not recognised by CLI maas <profile> boot-resources create action</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1979256">1979256</a><strong>^</strong>: Add config option for UI theme</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1979316">1979316</a><strong>^</strong>: UI stuck at the initial configuration page</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1979317">1979317</a><strong>^</strong>: Initial configuration form doesn’t allow proxy URL with hostname</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1980347">1980347</a><strong>^</strong>: MAAS snap fails to parse supervisor STOPPING state</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1980436">1980436</a><strong>^</strong>: MAAS CLI with anonymous access fails when TLS is enabled</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1980490">1980490</a><strong>^</strong>: MAAS regiond IPC crash due to a machine-resources binary crash when parsing some VPDs</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1980818">1980818</a><strong>^</strong>: Configure DHCP for VLAN</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1980846">1980846</a><strong>^</strong>: IP Address tooltip on Machines page blocks access to everything underneath and doesnt disappear until mouse-off</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1981536">1981536</a><strong>^</strong>: volume group creation fails on md device - MAAS 3.2</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1981560">1981560</a><strong>^</strong>: upgrade from 3.1 to 3.2 using debian packages missing steps</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982208">1982208</a><strong>^</strong>: agent.yaml.example is missing when maas is installed via deb package</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982315">1982315</a><strong>^</strong>: MAAS not sending correct metadata_url</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982328">1982328</a><strong>^</strong>: update docstring to include informative not found change</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982846">1982846</a><strong>^</strong>: Missing update_interface method on controller websocket handler</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982866">1982866</a><strong>^</strong>: MAAS Breaks historical custom images</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1982984">1982984</a><strong>^</strong>: reverse-proxy service is not displayed for region controller</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1983624">1983624</a><strong>^</strong>: Fresh MAAS 3.2 install failed to find controller</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1984141">1984141</a><strong>^</strong>: duplicate tag results in failed deployment for KVM host</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1984852">1984852</a><strong>^</strong>: machine.filter_options returns empty, duplicate and mis-typed options</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1984994">1984994</a><strong>^</strong>: machine.list fails for some group_key values</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1985741">1985741</a><strong>^</strong>: Commissioning script ‘maas-kernel-cmdline’ fails with bonded interfaces</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1986372">1986372</a><strong>^</strong>: UI: Setting Default minimum kernel version for commissioning blocks deployments</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1987874">1987874</a><strong>^</strong>: interface.update_ip_addresses raise an Exception when exsits multiple StaticIPAddress</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1988543">1988543</a><strong>^</strong>: VM Discovery fails, resulting in " Error: An architecture is required." when composing a LXD VM</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1988759">1988759</a><strong>^</strong>: Provisioning LXD vmhost fails</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1988769">1988769</a><strong>^</strong>: The ppc64 machine in our lab fails during commissioning</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1988874">1988874</a><strong>^</strong>: Release command is failing for ppc64 machine in our lab</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1989949">1989949</a><strong>^</strong>: provisioningserver TestGetSourceAddress.test_returns_none_if_no_route_found sometimes fails locally</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1989970">1989970</a><strong>^</strong>: Can’t enlist machines on subnets with DNS set</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1989974">1989974</a><strong>^</strong>: rackd fails on CIS-hardened machine with “Failed to update and/or record network interface configuration: Expecting value: line 1 column 1 (char 0)”</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1990014">1990014</a><strong>^</strong>: regiond.conf “debug_http: true” causes image downloads from regiond to fail with 500 error code</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1990649">1990649</a><strong>^</strong>: Kernel parameters form resets to previous value after save</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1990873">1990873</a><strong>^</strong>: TestKeys - test_get_launchpad_crashes_for_user_not_found</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991106">1991106</a><strong>^</strong>: vCenter password field text is visible in settings</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991210">1991210</a><strong>^</strong>: Color theme resets with page reload</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991229">1991229</a><strong>^</strong>: Selecting all machines in a state in the UI causes traceback in backend</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991372">1991372</a><strong>^</strong>: websocket config update notifications are no longer sent</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991410">1991410</a><strong>^</strong>: wildcard DNS entry is not allowed</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991792">1991792</a><strong>^</strong>: machine.action clone does not accept filter</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991795">1991795</a><strong>^</strong>: machine.action does not always throw errors for failed machines</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992332">1992332</a><strong>^</strong>: websocket machine.list parent group label should return hostname</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992686">1992686</a><strong>^</strong>: MAAS 3.3 alpha missing two existing filters</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992975">1992975</a><strong>^</strong>: Grouping by parents fails if there’s more than one page</li>
+      </ul>
+      <p>More bug-fixes are planned for later 3.3 releases.</p>
+      <h3 id="maas-3.3-beta-2-bug-list">MAAS 3.3 Beta 2 bug list</h3>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/bugs/1990289">1990289</a><strong>^</strong>: allocate call with system_id can allocate a new machine</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1991784">1991784</a><strong>^</strong>: [needs-packaging] GL Excess</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992185">1992185</a><strong>^</strong>: unable to deploy a machine with vmhost if a bond interface was created</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992494">1992494</a><strong>^</strong>: Jammy KVM host support</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992791">1992791</a><strong>^</strong>: Info icons appear/disappear based on checked options in subnet page</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1993289">1993289</a><strong>^</strong>: Pod storage pool path can’t be blank</li>
+      </ul>
+      <h3 id="maas-3.3-beta-3-bug-list">MAAS 3.3 Beta 3 bug list</h3>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/bugs/1835271">1835271</a><strong>^</strong>: Ephemeral deployment keeps cloud-inits autogenerated netplan config</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1843268">1843268</a><strong>^</strong>: maas become unresponsive with maasserver_notification stuck at concurrent update</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1886045">1886045</a><strong>^</strong>: Error message mentions Pods when trying to release a machine</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1886850">1886850</a><strong>^</strong>: Encrypt the BMC credentials</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1937138">1937138</a><strong>^</strong>: Calling mark_intro_complete doesn’t respond correctly</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1955709">1955709</a><strong>^</strong>: Metadata field may_reboot not working correctly in 20.04</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1988229">1988229</a><strong>^</strong>: dhcp snippet create fails when dhcp subnet is relayed regression</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1990383">1990383</a><strong>^</strong>: Link subnet on new machine</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1992330">1992330</a><strong>^</strong>: Use the rack controller IP as DNS when relaying DHCP</li>
+      <li>1993032: maas_hardware_sync creds are readable to local users on deployed OS and can give a super user access to MAAS itself</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1993152">1993152</a><strong>^</strong>: Updating a VM host through API unset tags</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1994899">1994899</a><strong>^</strong>: MAAS cannot mark “broken” VMs as fixed without recommissioning</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1995397">1995397</a><strong>^</strong>: Sentry blocked by CORS</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1995624">1995624</a><strong>^</strong>: suppressing script results no longer available on machine listing</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1996065">1996065</a><strong>^</strong>: CLI errors when redirecting the output to a file</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1996074">1996074</a><strong>^</strong>: Machine details stuck at “Loading” for machines with no disks</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1996419">1996419</a><strong>^</strong>: renaming a DNS record to a previous name fails with error: list.remove(x): x not in list</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1996935">1996935</a><strong>^</strong>: agent.yaml.example is missing when maas is installed via snap</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1997190">1997190</a><strong>^</strong>: Power parameters access attempt from non-db thread</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1997191">1997191</a><strong>^</strong>: Uncaught exception when configuring DNS</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1997281">1997281</a><strong>^</strong>: machine.count fails for new filter options</li>
+      <li><a href="https://bugs.launchpad.net/bugs/1997599">1997599</a><strong>^</strong>: Losing LXD certificate</li>
+      </ul>
+      <h3 id="maas-3.3-rc1-bug-list">MAAS 3.3 RC1 bug list</h3>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1997975">1997975</a><strong>^</strong>: Update grafana_agent/agent.yaml.example</li>
+      </ul>
+      <h3 id="maas-3.3-rc3-bug-list">MAAS 3.3 RC3 bug list</h3>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1990172">1990172</a><strong>^</strong>: “20-maas-03-machine-resources” commissioning script improperly reports a Pass when the test fails</li>
+      </ul>
+      <h3 id="maas-3.3.0-bug-list">MAAS 3.3.0 bug list</h3>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/2003888">2003888</a><strong>^</strong>: Grouped machine list view: Inconsistent display when machine state changes</li>
+      </ul>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>About custom images</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>About custom images</h1>
+      <p>MAAS is much more useful when you can upload images that aren’t gathered from <a href="http://images.maas.io/">the MAAS image repository</a><strong>^</strong>, deploy them to MAAS-managed machines, and count on them to work properly. But there’s a problem: the typical, off-the-shelf ISO image can’t just be uploaded to MAAS and deployed to a machine. For one thing, the machines couldn’t write the image to their disks or boot the images once they’re there. For another, any non-standard configuration items (networking, storage, users, added software) wouldn’t be loaded.</p>
+      <p>We can help guide you in preparing ISO images to run on MAAS machines. Usable MAAS images need both a <code>curtin</code> hook script (to write and boot the image), and some <code>cloud-init</code> meta-data (to configure the image beyond the out-of-the-box experience). As long as a prepared image meets these requirements, you can successfully upload it to MAAS, deploy it to a machine, and expect it to run properly on that machine.</p>
+      <p>This explains how MAAS images differ from a standard ISO, and what has to happen to make those off-the-shelf ISOs deployable and usable by MAAS.</p>
+      <h2 id="transforming-an-iso">Transforming an ISO</h2>
+      <p>When it comes to creating images for MAAS machines, you can hand-build images, as long as they meet the <code>curtin</code> and <code>cloud-init</code> requirements; or you can use a third-party tool called <a href="https://www.packer.io">packer</a><strong>^</strong> to prepare special versions of these images that will work with MAAS. There are also static Ubuntu images targeted at older MAAS versions (&lt;3.1). Beyond providing a bit of technical detail here, we won’t shepherd you through hand-building images: you’re pretty much on your own there. We will try to help you understand how to create and customise MAAS-friendly images, mostly focusing on packer templates.</p>
+      <p>We maintain a <a href="https://github.com/canonical/packer-maas">git repo</a><strong>^</strong> of packer templates for a few popular operating systems. You can check out this graphic of a real, running lab MAAS instance to get an idea:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-snap/images/a80ed5eb191a798d049cb82fade4ee117f5128fd.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Packer uses templates (built in HCL2) to run different build, provisioning, and post-processing tools that produce an image MAAS can deploy – one that you can successfully access and use. These tools might be as simple as a shell command, or as specialised as the RedHat <code>anaconda</code> installer. It really just depends on what’s needed to prepare an image so that MAAS can deploy it.</p>
+      <p>We encourage and document custom images – and help informally as much as we can – but we’re really not able to offer much support. After all, other OS images are built from code we don’t own, and licensed in ways that may or may not be compatible with a MAAS deployment. For those reasons, among others, we recommend you customise machines using <code>cloud-init</code> user_data and/or <code>curtin</code> preseed data, whenever you can, instead of creating a custom image.</p>
+      <p>That warning bears repeating: While it may be possible to deploy a certain image with MAAS, the particular use case may not be supported by that image’s vendor due to licensing or technical reasons. Canonical recommends that, whenever possible, you should customise machines using <code>cloud-init</code> user_data or <code>curtin</code> preseed data, instead of creating a custom image.</p>
+      <p>There are two types of custom images we’ll explain here: static Ubuntu images (just below) and <a href="#heading--about-packer">packer images</a>.</p>
+      <h2 id="static-ubuntu-images">Static Ubuntu images</h2>
+      <p>MAAS provides the capability for you to build a static Ubuntu OS image to deploy with MAAS, using any image-building method you choose. You can create the image once, with a fixed configuration, and deploy it to many machines. This fixed configuration can consist of anything that a normal image would contain: users, packages, etc. This capability is really targeted at older versions of MAAS, but it should work with MAAS of any vintage.</p>
+      <p>If you’re using newer versions of MAAS (&gt;3.0), we recommend choosing packer, since the packer-maas repository already has a built-in Ubuntu image you can customise – but the choice is yours.</p>
+      <h2 id="uploading-hand-built-ubuntu-images">Uploading hand-built Ubuntu images</h2>
+      <p>You can upload hand-built Ubuntu images, containing a kernel, bootloader, and a fixed configuration, for deployment to multiple machines. The image can be built via a tool, such as <a href="https://www.packer.io">packer</a><strong>^</strong>, or build with scripts. You can upload these images to the boot-resources endpoint, where it will then be available for deployment to machines.</p>
+      <p>At a minimum, this image must contain a kernel, a bootloader, and a <code>/curtin/curtin-hooks</code> script that configures the network. A sample can be found in the <a href="https://github.com/canonical/packer-maas/tree/master/ubuntu/scripts">packer-maas repos</a><strong>^</strong>. The image must be in raw img file format, since that is the format MAAS accepts for upload. This is the most portable format, and the format most builders support. Upon completing the image build, you will upload this img file to the boot-resources endpoint, specifying the architecture for the image.</p>
+      <h2 id="how-maas-handles-static-ubuntu-images">How MAAS handles static Ubuntu images</h2>
+      <p>MAAS will save the image – in the same way it would save a <code>tar.gz</code> file – in the database. MAAS can differentiate between custom Ubuntu images and custom non-Ubuntu images, generating appropriate pre-seed configurations for each image type.</p>
+      <p>MAAS will also recognise the base Ubuntu version, so it can apply the correct ephemeral OS version for installation. Custom images are always deployed with the ephemeral operating system. The base_image field is used to select the appropriate version of the ephemeral OS to avoid errors. This ensures a smooth deployment later.</p>
+      <h2 id="how-maas-boots-static-ubuntu-images">How MAAS boots static Ubuntu images</h2>
+      <p>When you decide to deploy a machine with your uploaded, custom image, MAAS ensures that the machine receives the kernel, bootloader and root file system provided in the image. The initial boot loader takes over, and boots an ephemeral OS of the same Ubuntu version as the custom image, to reduce the chances of incompatibilities. Curtin then writes your entire custom image to disk. Once the custom image is written to disk, it is not modified by MAAS.</p>
+      <p>Note that custom non-Ubuntu images still use a standard Ubuntu ephemeral OS to boot, prior to installing the non-Ubuntu OS.</p>
+      <h2 id="configuring-deployed-machine-networking">Configuring deployed machine networking</h2>
+      <p>If you deploy a machine with a custom Ubuntu image, MAAS allows you to configure the deployed machine’s networks just like you would for any other MAAS machine. If you create an interface and assign it to a subnet or static address, this will be reflected in the deployed machine.</p>
+      <p>For this reason, MAAS also does some initial diagnostics while installing the custom image. MAAS will detect when a network configuration is not present and abort the installation with a warning. Essentially, MAAS checks to be sure that <code>cloud-init</code> and <code>netplan</code> are present in the images written by <code>curtin</code>. If not, MAAS won’t deploy the machine with the image.</p>
+      <h2 id="configuring-deployed-machine-storage">Configuring deployed machine storage</h2>
+      <p>If you deploy a machine with a custom Ubuntu image, you will also want to be able to configure storage, just like you would do with any other machine. MAAS facilitates changes to the storage configuration. You can resize the root partition, as well as attaching and formatting any additional block devices you may desire.</p>
+      <h2 id="static-image-metrics">Static image metrics</h2>
+      <p>As a user, you want to keep track of how many static images are being used, and how many deployed machines are using static images. The standard MAAS dashboard reflects both of these metrics.</p>
+      <h2 id="packer">Packer</h2>
+      <p>The <a href="https://www.packer.io/docs">packer documentation</a><strong>^</strong> has an excellent, in-depth discussion of what packer does, how it works, and where it is limited. Simply put, packer creates OS images that can be uploaded and deployed using MAAS. We can summarise packer with the following flowchart:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-snap/images/47cb177f4ee2f52ac00c877449770a23cfa0c9b4.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>We can walk through packer operation like this:</p>
+      <ul>
+      <li><p>A template is created or obtained which drives the packer build. The <a href="https://github.com/canonical/packer-maas">packer-maas</a><strong>^</strong> repository uses HCL2 templates.</p></li>
+      <li><p>The template specifies packer commands and data sources.</p></li>
+      <li><p>The template specifies a builder, which creates the MAAS-consumable images.</p></li>
+      <li><p>Multiple builds can run in parallel. Within the MAAS domain, we typically don’t set templates up that way, but it is possible to do so.</p></li>
+      <li><p>Provisioners spin up a running version of the image and add things that make it usable, like <code>curtin</code> hooks, <code>cloud-init</code> meta-data to install custom packages, and so on.</p></li>
+      <li><p>Post-processors do things to the built image to make it usable, e.g., compressing the file into a <code>tar.gz</code> image.</p></li>
+      <li><p>Because packer creates a wide-range of load packages, the results are called “artefacts” in packer terminology. MAAS simply refers to these as “images”.</p></li>
+      </ul>
+      <p>Note that we said this flow is linear. You can see that provisioners might need to run before a post-processor creates an uploadable <code>tar.gz</code> image. The actual flow depends on the template, which depends on the OS being customised into an image. In the parlance of packer, all of these components – builders, post-processors, provisioners – are sometimes referred to collectively as “plugins”.</p>
+      <h2 id="packer-dependencies">Packer dependencies</h2>
+      <p>Depending upon which image you are building, packer-maas may require various dependencies. For example, when customising an Ubuntu image, you’d need to install the following dependencies:</p>
+      <ul>
+      <li>qemu-utils</li>
+      <li>qemu-system</li>
+      <li>ovmf</li>
+      <li>cloud-image-utils</li>
+      </ul>
+      <p>These dependencies – and the functionality they provide – will be explained in the specific image sections which follow.</p>
+      <h2 id="packer-templates">Packer templates</h2>
+      <p>A <a href="https://www.packer.io/docs/templates">packer template</a><strong>^</strong> could just as easily be called a “packer script”. It contains declarations and commands that sequence and configure plugins. Templates also have built-in functions to help you customise your artefacts. Our packer-maas templates are implemented in HCL2.</p>
+      <p>Templates are run by the packer <code>build</code> command. Within packer-maas, packer commands (like <code>build</code>) are collected into makefiles that prevent you from having to know a lot about how packer works. Even so, it’s beneficial to take a quick tour of how a typical packer template works. Let’s use the <a href="https://github.com/canonical/packer-maas/blob/master/ubuntu/ubuntu-cloudimg.pkr.hcl">ubuntu-cloudimg</a><strong>^</strong> template as a simple example.</p>
+      <p>Building workable templates can be extremely difficult. This section is intended to familiarise you with templates and their components so that you can possibly pinpoint bugs in community-provided templates. If you want to build your own template, you should rely on the <a href="https://www.packer.io/docs">packer documentation</a><strong>^</strong> as your guide.</p>
+      <p>This template builds a customised Ubuntu image with packer:</p>
+      <pre class="nohighlight"><code>packer {
+        required_version = &quot;&gt;= 1.7.0&quot;
+        required_plugins {
+          qemu = {
+            version = &quot;~&gt; 1.0&quot;
+            source  = &quot;github.com/hashicorp/qemu&quot;
+          }
+        }
+      }
+
+      variable &quot;ubuntu_series&quot; {
+        type        = string
+        default     = &quot;focal&quot;
+        description = &quot;The codename of the Ubuntu series to build.&quot;
+      }
+
+      variable &quot;filename&quot; {
+        type        = string
+        default     = &quot;custom-cloudimg.tar.gz&quot;
+        description = &quot;The filename of the tarball to produce&quot;
+      }
+
+      variable &quot;kernel&quot; {
+        type        = string
+        default     = &quot;&quot;
+        description = &quot;The package name of the kernel to install. May include version string, e.g linux-image-generic-hwe-22.04=5.15.0.41.43&quot;
+      }
+
+      variable &quot;customize_script&quot; {
+        type        = string
+        description = &quot;The filename of the script that will run in the VM to customize the image.&quot;
+      }
+
+      variable &quot;architecture&quot; {
+        type        = string
+        default     = &quot;amd64&quot;
+        description = &quot;The architecture to build the image for (amd64 or arm64)&quot;
+      }
+
+      variable &quot;headless&quot; {
+        type        = bool
+        default     = true
+        description = &quot;Whether VNC viewer should not be launched.&quot;
+      }
+
+      variable &quot;http_directory&quot; {
+        type        = string
+        default     = &quot;http&quot;
+        description = &quot;Directory for files to be accessed over http in the VM.&quot;
+      }
+
+      variable &quot;http_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;http_proxy&quot;)}&quot;
+        description = &quot;HTTP proxy to use when customising the image inside the VM. The http_proxy environment is set, and apt is configured to use the http proxy&quot;
+      }
+
+      variable &quot;https_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;https_proxy&quot;)}&quot;
+        description = &quot;HTTPS proxy to use when customising the image inside the VM. The https_proxy environment is set, and apt is configured to use the https proxy&quot;
+      }
+
+      variable &quot;no_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;no_proxy&quot;)}&quot;
+        description = &quot;NO_PROXY environment to use when customising the image inside the VM.&quot;
+      }
+
+      variable &quot;ssh_password&quot; {
+        type        = string
+        default     = &quot;ubuntu&quot;
+        description = &quot;SSH password to use to connect to the VM to customize the image. Needs to match the hashed password in user-data-cloudimg.&quot;
+      }
+
+      variable &quot;ssh_username&quot; {
+        type        = string
+        default     = &quot;root&quot;
+        description = &quot;SSH user to use to connect to the VM to customize the image. Needs to match the user in user-data-cloudimg.&quot;
+      }
+
+      locals {
+        qemu_arch = {
+          &quot;amd64&quot; = &quot;x86_64&quot;
+          &quot;arm64&quot; = &quot;aarch64&quot;
+        }
+        uefi_imp = {
+          &quot;amd64&quot; = &quot;OVMF&quot;
+          &quot;arm64&quot; = &quot;AAVMF&quot;
+        }
+        qemu_machine = {
+          &quot;amd64&quot; = &quot;ubuntu,accel=kvm&quot;
+          &quot;arm64&quot; = &quot;virt&quot;
+        }
+        qemu_cpu = {
+          &quot;amd64&quot; = &quot;host&quot;
+          &quot;arm64&quot; = &quot;cortex-a57&quot;
+        }
+
+        proxy_env = [
+          &quot;http_proxy=${var.http_proxy}&quot;,
+          &quot;https_proxy=${var.https_proxy}&quot;,
+          &quot;no_proxy=${var.https_proxy}&quot;,
+        ]
+      }
+
+
+      source &quot;qemu&quot; &quot;cloudimg&quot; {
+        boot_wait      = &quot;2s&quot;
+        cpus           = 2
+        disk_image     = true
+        disk_size      = &quot;4G&quot;
+        format         = &quot;qcow2&quot;
+        headless       = var.headless
+        http_directory = var.http_directory
+        iso_checksum   = &quot;file:https://cloud-images.ubuntu.com/${var.ubuntu_series}/current/SHA256SUMS&quot;
+        iso_url        = &quot;https://cloud-images.ubuntu.com/${var.ubuntu_series}/current/${var.ubuntu_series}-server-cloudimg-${var.architecture}.img&quot;
+        memory         = 2048
+        qemu_binary    = &quot;qemu-system-${lookup(local.qemu_arch, var.architecture, &quot;&quot;)}&quot;
+        qemu_img_args {
+          create = [&quot;-F&quot;, &quot;qcow2&quot;]
+        }
+        qemuargs = [
+          [&quot;-machine&quot;, &quot;${lookup(local.qemu_machine, var.architecture, &quot;&quot;)}&quot;],
+          [&quot;-cpu&quot;, &quot;${lookup(local.qemu_cpu, var.architecture, &quot;&quot;)}&quot;],
+          [&quot;-device&quot;, &quot;virtio-gpu-pci&quot;],
+          [&quot;-drive&quot;, &quot;if=pflash,format=raw,id=ovmf_code,readonly=on,file=/usr/share/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}_CODE.fd&quot;],
+          [&quot;-drive&quot;, &quot;if=pflash,format=raw,id=ovmf_vars,readonly=on,file=/usr/share/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}_VARS.fd&quot;],
+          [&quot;-drive&quot;, &quot;file=output-qemu/packer-qemu,format=qcow2&quot;],
+          [&quot;-drive&quot;, &quot;file=seeds-cloudimg.iso,format=raw&quot;]
+        ]
+        shutdown_command       = &quot;sudo -S shutdown -P now&quot;
+        ssh_handshake_attempts = 500
+        ssh_password           = var.ssh_password
+        ssh_timeout            = &quot;45m&quot;
+        ssh_username           = var.ssh_username
+        ssh_wait_timeout       = &quot;45m&quot;
+        use_backing_file       = true
+      }
+
+      build {
+        sources = [&quot;source.qemu.cloudimg&quot;]
+
+        provisioner &quot;shell&quot; {
+          environment_vars = concat(local.proxy_env, [&quot;DEBIAN_FRONTEND=noninteractive&quot;])
+          scripts          = [&quot;${path.root}/scripts/cloudimg/setup-boot.sh&quot;]
+        }
+
+
+        provisioner &quot;shell&quot; {
+          environment_vars  = concat(local.proxy_env, [&quot;DEBIAN_FRONTEND=noninteractive&quot;])
+          expect_disconnect = true
+          scripts           = [var.customize_script]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [
+            &quot;CLOUDIMG_CUSTOM_KERNEL=${var.kernel}&quot;,
+            &quot;DEBIAN_FRONTEND=noninteractive&quot;
+          ]
+          scripts = [&quot;${path.root}/scripts/cloudimg/install-custom-kernel.sh&quot;]
+        }
+
+        provisioner &quot;file&quot; {
+          destination = &quot;/tmp/&quot;
+          sources     = [&quot;${path.root}/scripts/cloudimg/curtin-hooks&quot;]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [&quot;CLOUDIMG_CUSTOM_KERNEL=${var.kernel}&quot;]
+          scripts          = [&quot;${path.root}/scripts/cloudimg/setup-curtin.sh&quot;]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [&quot;DEBIAN_FRONTEND=noninteractive&quot;]
+          scripts          = [&quot;${path.root}/scripts/cloudimg/cleanup.sh&quot;]
+        }
+
+        post-processor &quot;shell-local&quot; {
+          inline = [
+            &quot;IMG_FMT=qcow2&quot;,
+            &quot;source ../scripts/setup-nbd&quot;,
+            &quot;OUTPUT=$${OUTPUT:-${var.filename}}&quot;,
+            &quot;source ./scripts/cloudimg/tar-rootfs&quot;
+          ]
+          inline_shebang = &quot;/bin/bash -e&quot;
+        }
+      }</code></pre>
+      <p>You can see that the sections match the typical structure of a <code>packer</code> HCL2 template: declarations (variables); a source declaration; and build tools. We can deconstruct these briefly to understand what the template is doing. This will help explain the image creation process.</p>
+      <h3 id="variables-declaration-section">Variables (declaration section)</h3>
+      <p>The variables section of this template looks like this:</p>
+      <pre class="nohighlight"><code>variable &quot;ubuntu_series&quot; {
+        type        = string
+        default     = &quot;focal&quot;
+        description = &quot;The codename of the Ubuntu series to build.&quot;
+      }
+
+      variable &quot;filename&quot; {
+        type        = string
+        default     = &quot;custom-cloudimg.tar.gz&quot;
+        description = &quot;The filename of the tarball to produce&quot;
+      }
+
+      variable &quot;kernel&quot; {
+        type        = string
+        default     = &quot;&quot;
+        description = &quot;The package name of the kernel to install. May include version string, e.g linux-image-generic-hwe-22.04=5.15.0.41.43&quot;
+      }
+
+      variable &quot;customize_script&quot; {
+        type        = string
+        description = &quot;The filename of the script that will run in the VM to customize the image.&quot;
+      }
+
+      variable &quot;architecture&quot; {
+        type        = string
+        default     = &quot;amd64&quot;
+        description = &quot;The architecture to build the image for (amd64 or arm64)&quot;
+      }
+
+      variable &quot;headless&quot; {
+        type        = bool
+        default     = true
+        description = &quot;Whether VNC viewer should not be launched.&quot;
+      }
+
+      variable &quot;http_directory&quot; {
+        type        = string
+        default     = &quot;http&quot;
+        description = &quot;Directory for files to be accessed over http in the VM.&quot;
+      }
+
+      variable &quot;http_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;http_proxy&quot;)}&quot;
+        description = &quot;HTTP proxy to use when customizing the image inside the VM. The http_proxy enviroment is set, and apt is configured to use the http proxy&quot;
+      }
+
+      variable &quot;https_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;https_proxy&quot;)}&quot;
+        description = &quot;HTTPS proxy to use when customizing the image inside the VM. The https_proxy enviroment is set, and apt is configured to use the https proxy&quot;
+      }
+
+      variable &quot;no_proxy&quot; {
+        type        = string
+        default     = &quot;${env(&quot;no_proxy&quot;)}&quot;
+        description = &quot;NO_PROXY environment to use when customizing the image inside the VM.&quot;
+      }
+
+      variable &quot;ssh_password&quot; {
+        type        = string
+        default     = &quot;ubuntu&quot;
+        description = &quot;SSH password to use to connect to the VM to customize the image. Needs to match the hashed password in user-data-cloudimg.&quot;
+      }
+
+      variable &quot;ssh_username&quot; {
+        type        = string
+        default     = &quot;root&quot;
+        description = &quot;SSH user to use to connect to the VM to customize the image. Needs to match the user in user-data-cloudimg.&quot;
+      }
+
+      locals {
+        qemu_arch = {
+          &quot;amd64&quot; = &quot;x86_64&quot;
+          &quot;arm64&quot; = &quot;aarch64&quot;
+        }
+        uefi_imp = {
+          &quot;amd64&quot; = &quot;OVMF&quot;
+          &quot;arm64&quot; = &quot;AAVMF&quot;
+        }
+        qemu_machine = {
+          &quot;amd64&quot; = &quot;ubuntu,accel=kvm&quot;
+          &quot;arm64&quot; = &quot;virt&quot;
+        }
+        qemu_cpu = {
+          &quot;amd64&quot; = &quot;host&quot;
+          &quot;arm64&quot; = &quot;cortex-a57&quot;
+        }
+
+        proxy_env = [
+          &quot;http_proxy=${var.http_proxy}&quot;,
+          &quot;https_proxy=${var.https_proxy}&quot;,
+          &quot;no_proxy=${var.https_proxy}&quot;,
+        ]
+      }</code></pre>
+      <p>Most of this is straightforward. We’re going to use a base image of Ubuntu 20.04, keeping the HTTP files in directory <code>http</code> and making three possible proxy options available: HTTP, HTTPS, or no proxy. The produced image will have an SSH username and password of “ubuntu”. It’s that simple.</p>
+      <p>The really complicated “builders” section of the old JSON version is replaced by a “source” section that is much cleaner. Here’s the source section of this HCL2 template, with a few comments added for clarity:</p>
+      <pre class="nohighlight"><code>source &quot;qemu&quot; &quot;cloudimg&quot; {
+        boot_wait      = &quot;2s&quot;
+       SETS UP THE IMAGE FOR A TWO-CPU VIRTUAL/MACHINE:
+        cpus           = 2
+        disk_image     = true
+       SETS UP THE IMAGE TO EXPECT A 4GB DISK:
+        disk_size      = &quot;4G&quot;
+        format         = &quot;qcow2&quot;
+       WHETHER OR NOT THE IMAGE EXPECTS TO RUN HEADLESS, THAT IS, WITHOUT A CONSOLE:
+        headless       = var.headless
+       THE HTTP DIRECTORY WILL (HOPEFULLY) BE THE USER&#39;S HTTP DIRECTORY:
+        http_directory = var.http_directory
+       THE CHECKSUM FOR THE ISO IMAGE WILL BE FOUND HERE:
+        iso_checksum   = &quot;file:https://cloud-images.ubuntu.com/${var.ubuntu_series}/current/SHA256SUMS&quot;
+       THE ISO IMAGE ITSELF WILL BE FOUND AT THIS URL:
+        iso_url        = &quot;https://cloud-images.ubuntu.com/${var.ubuntu_series}/current/${var.ubuntu_series}-server-cloudimg-${var.architecture}.img&quot;
+       THE IMAGE SHOULD EXPECT THIS MUCH MEMORY:
+        memory         = 2048
+        qemu_binary    = &quot;qemu-system-${lookup(local.qemu_arch, var.architecture, &quot;&quot;)}&quot;
+        qemu_img_args {
+          create = [&quot;-F&quot;, &quot;qcow2&quot;]
+        }
+       IF YOU STUDY THE QEMU DOCUMENTATION, IT&#39;S FAIRLY EASY TO SEE WHAT THESE ARGS DO:
+        qemuargs = [
+          [&quot;-machine&quot;, &quot;${lookup(local.qemu_machine, var.architecture, &quot;&quot;)}&quot;],
+          [&quot;-cpu&quot;, &quot;${lookup(local.qemu_cpu, var.architecture, &quot;&quot;)}&quot;],
+          [&quot;-device&quot;, &quot;virtio-gpu-pci&quot;],
+          [&quot;-drive&quot;, &quot;if=pflash,format=raw,id=ovmf_code,readonly=on,file=/usr/share/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}_CODE.fd&quot;],
+          [&quot;-drive&quot;, &quot;if=pflash,format=raw,id=ovmf_vars,readonly=on,file=/usr/share/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}/${lookup(local.uefi_imp, var.architecture, &quot;&quot;)}_VARS.fd&quot;],
+          [&quot;-drive&quot;, &quot;file=output-qemu/packer-qemu,format=qcow2&quot;],
+          [&quot;-drive&quot;, &quot;file=seeds-cloudimg.iso,format=raw&quot;]
+        ]
+       HERE&#39;S THE SHUTDOWN COMMAND TO USE:
+        shutdown_command       = &quot;sudo -S shutdown -P now&quot;
+       HERE&#39;S HOW MANY TIMES YOU TRY SSH:
+        ssh_handshake_attempts = 500
+       HERE&#39;S HOW YOU GATHER THE SSH PASSWORD:
+        ssh_password           = var.ssh_password
+       USE A REALLY LONG SSH WAIT TIMEOUT:
+        ssh_timeout            = &quot;45m&quot;
+       HERE&#39;S HOW YOU GATHER THE SSH USERNAME:
+        ssh_username           = var.ssh_username
+       USE A REALLY LONG SSH TIMEOUT, TOO:
+        ssh_wait_timeout       = &quot;45m&quot;
+        use_backing_file       = true
+      }</code></pre>
+      <p>The high number of SSH handshake attempts – and the really long timeouts – have to do with trying to catch the system after it has successfully booted. Because of the way packer works, it has no direct way to be informed that the system has booted. As a consequence, to finish the build and run provisioners and post-processors, packer has to keep trying for a while until an SSH connection is successful. In practice, this should only take 2-3 minutes, but this template uses very long values, just to be sure.</p>
+      <h3 id="build-section">Build section</h3>
+      <p>The build section of this template lays out the tools that will build the packed image:</p>
+      <pre class="nohighlight"><code>build {
+        sources = [&quot;source.qemu.cloudimg&quot;]
+
+        provisioner &quot;shell&quot; {
+          environment_vars = concat(local.proxy_env, [&quot;DEBIAN_FRONTEND=noninteractive&quot;])
+          scripts          = [&quot;${path.root}/scripts/cloudimg/setup-boot.sh&quot;]
+        }
+
+
+        provisioner &quot;shell&quot; {
+          environment_vars  = concat(local.proxy_env, [&quot;DEBIAN_FRONTEND=noninteractive&quot;])
+          expect_disconnect = true
+          scripts           = [var.customize_script]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [
+            &quot;CLOUDIMG_CUSTOM_KERNEL=${var.kernel}&quot;,
+            &quot;DEBIAN_FRONTEND=noninteractive&quot;
+          ]
+          scripts = [&quot;${path.root}/scripts/cloudimg/install-custom-kernel.sh&quot;]
+        }
+
+        provisioner &quot;file&quot; {
+          destination = &quot;/tmp/&quot;
+          sources     = [&quot;${path.root}/scripts/cloudimg/curtin-hooks&quot;]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [&quot;CLOUDIMG_CUSTOM_KERNEL=${var.kernel}&quot;]
+          scripts          = [&quot;${path.root}/scripts/cloudimg/setup-curtin.sh&quot;]
+        }
+
+        provisioner &quot;shell&quot; {
+          environment_vars = [&quot;DEBIAN_FRONTEND=noninteractive&quot;]
+          scripts          = [&quot;${path.root}/scripts/cloudimg/cleanup.sh&quot;]
+        }
+
+        post-processor &quot;shell-local&quot; {
+          inline = [
+            &quot;IMG_FMT=qcow2&quot;,
+            &quot;source ../scripts/setup-nbd&quot;,
+            &quot;OUTPUT=$${OUTPUT:-${var.filename}}&quot;,
+            &quot;source ./scripts/cloudimg/tar-rootfs&quot;
+          ]
+          inline_shebang = &quot;/bin/bash -e&quot;
+        }
+      }</code></pre>
+      <p>Rather than walking through each of these lines individually, we can just note that this HCL2 causes packer to:</p>
+      <ul>
+      <li>retrieve scripts that set up the bootloader, configure curtin hooks, and install custom packages from a named gzip source.</li>
+      <li>set the homedir and proxy options for the image.</li>
+      <li>set up curtin, networking, and maybe storage for the image.</li>
+      <li>clean up the image prior to post-processing.</li>
+      </ul>
+      <p>The post-processing section of this template prepares the image for use:</p>
+      <pre class="nohighlight"><code>  post-processor &quot;shell-local&quot; {
+          inline = [
+            &quot;IMG_FMT=qcow2&quot;,
+            &quot;source ../scripts/setup-nbd&quot;,
+            &quot;OUTPUT=$${OUTPUT:-${var.filename}}&quot;,
+            &quot;source ./scripts/cloudimg/tar-rootfs&quot;
+          ]
+          inline_shebang = &quot;/bin/bash -e&quot;
+        }</code></pre>
+      <p>You can see right away that this template has one post-processor (only one <code>post-processor</code> entry). This post-processor is a local shell, invoked with the <code>-e</code> option, which causes the shell to terminate if there’s an error (rather than continuing with the next command). In this case, we can see that the shell runs four commands:</p>
+      <ul>
+      <li>sets <code>$IMG_FMT</code> to “qcow2”</li>
+      <li>runs the script <code>setup-nbd</code></li>
+      <li>sets $OUTPUT to “<name of image>-custom-cloudimg.tar.gz”</li>
+      <li>runs the script <code>tar-rootfs</code></li>
+      </ul>
+      <p>In this case, it’s worth a quick look at the two scripts to see what this post-processor does. First, let’s glance at <code>setup-nbd</code>:</p>
+      <pre class="nohighlight"><code>!/bin/bash -e
+
+       setup-nbd - Bind Packer qemu output to a free /dev/nbd device.
+
+       Author: Lee Trager &lt;lee.trager@canonical.com&gt;
+
+       Copyright (C) 2020 Canonical
+
+       This program is free software: you can redistribute it and/or modify
+       it under the terms of the GNU Affero General Public License as
+       published by the Free Software Foundation, either version 3 of the
+       License, or (at your option) any later version.
+
+       This program is distributed in the hope that it will be useful,
+       but WITHOUT ANY WARRANTY; without even the implied warranty of
+       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+       GNU Affero General Public License for more details.
+
+       You should have received a copy of the GNU Affero General Public License
+       along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+
+      if [ $UID -ne 0 ]; then
+          echo &quot;ERROR: Must be run as root!&quot; &gt;&amp;2
+          exit 1
+      fi
+
+      if [ ! -f output-qemu/packer-qemu ]; then
+          echo &quot;ERROR: Not in the same path as template!&quot; &gt;&amp;2
+          exit
+      fi
+
+      echo &#39;Loading nbd...&#39;
+      shopt -s extglob
+      modprobe nbd
+      for nbd in /sys/class/block/nbd+([0-9]); do
+          if [ &quot;$(cat ${nbd}/size)&quot; -eq 0 ]; then
+          nbd=&quot;/dev/$(basename $nbd)&quot;
+          echo &quot;Using $nbd&quot;
+          break
+          fi
+      done
+
+      if [ -z &quot;${nbd}&quot; ] || ! echo $nbd | grep -q &quot;/dev&quot;; then
+          echo &quot;ERROR: Unable to find nbd device to mount image!&quot; &gt;&amp;2
+          exit 1
+      fi
+
+      echo &quot;Binding image to $nbd...&quot;
+      qemu-nbd -d $nbd
+      if [ -n &quot;$IMG_FMT&quot; ]; then
+          qemu-nbd -c $nbd -f &quot;$IMG_FMT&quot; -n output-qemu/packer-qemu
+      else
+          qemu-nbd -c $nbd -n output-qemu/packer-qemu
+      fi
+      echo &#39;Waiting for partitions to be created...&#39;
+      tries=0
+      while [ ! -e &quot;${nbd}p1&quot; -a $tries -lt 60 ]; do
+          sleep 1
+          tries=$((tries+1))
+      done</code></pre>
+      <p>As you can see, this is just a well-structured script to export a QEMU image as a Network Block Device, binding it to a <code>/dev/nbd</code> directory. This is first step in creating MAAS-loadable Ubuntu image. The second step comes in <code>tar-rootfs</code>:</p>
+      <pre class="nohighlight"><code>!/bin/bash -e
+
+       tar-rootfs - Create a tar.gz from a binded /dev/nbd device
+
+       Author: Alexsander de Souza &lt;alexsander.souza@canonical.com&gt;
+
+       Copyright (C) 2021 Canonical
+
+       This program is free software: you can redistribute it and/or modify
+       it under the terms of the GNU Affero General Public License as
+       published by the Free Software Foundation, either version 3 of the
+       License, or (at your option) any later version.
+
+       This program is distributed in the hope that it will be useful,
+       but WITHOUT ANY WARRANTY; without even the implied warranty of
+       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+       GNU Affero General Public License for more details.
+
+       You should have received a copy of the GNU Affero General Public License
+       along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+
+      cleanup() {
+          qemu-nbd -d &quot;$nbd&quot;
+          [ -d &quot;${TMP_DIR}&quot; ] &amp;&amp; rm -rf &quot;${TMP_DIR}&quot;
+      }
+      trap cleanup EXIT
+
+      if [ ${UID} -ne 0 ]; then
+          echo &quot;ERROR: Must be run as root!&quot; &gt;&amp;2
+          exit 1
+      fi
+
+      TMP_DIR=$(mktemp -d /tmp/packer-maas-XXXX)
+
+      echo &#39;Mounting root partition...&#39;
+      mount &quot;${nbd}p2&quot; &quot;${TMP_DIR}&quot;
+      mount &quot;${nbd}p1&quot; &quot;${TMP_DIR}/boot/efi&quot;
+
+      echo &quot;Creating MAAS image $OUTPUT...&quot;
+      tar -Sczpf &quot;$OUTPUT&quot; --acls --selinux --xattrs -C &quot;${TMP_DIR}&quot; .
+
+      echo &#39;Unmounting image...&#39;
+      umount &quot;${TMP_DIR}/boot/efi&quot;
+      umount &quot;${TMP_DIR}&quot;</code></pre>
+      <p>This script just creates a <code>.tar.gz</code> from a bound <code>/dev/nbd</code> device (where the QEMU image was initially stored by the last script.</p>
+      <p>As you can see, the process of creating a customised packer image is not overly complex. Nevertheless, it’s a difficult process to get right, hence our community-contributed templates.</p>
+      <h2 id="the-image-installation-process">The image installation process</h2>
+      <p>Installing a packer-created image is highly dependent on the application. In the case of MAAS, we use the CLI <code>boot-resources</code> command to upload the image to MAAS, something like this:</p>
+      <pre class="nohighlight"><code>$ maas admin boot-resources create \
+          name=&#39;custom/ubuntu-tgz&#39; \
+          title=&#39;Ubuntu Custom TGZ&#39; \
+          architecture=&#39;amd64/generic&#39; \
+          filetype=&#39;tgz&#39; \
+          content@=custom-ubuntu.tar.gz</code></pre>
+      <p>At this point, the image shows up in MAAS, synced to the controller, the same as any other image.</p>
+      <h2 id="packer-created-images">Packer-created images</h2>
+      <p>If you’re more interested in the anatomy of a packer-created image, for example, an ISO image, you can use <code>isoinfo</code> to explore the image file. The image should be found in the packer git repository, under <code>&lt;imagename&gt;/packer-cache</code>. Ideally, it shouldn’t differ too much from any other customised ISO image. You can explore with a few of the <code>isoinfo</code> commands. For example, you can read the primary volume descriptor like this:</p>
+      <pre class="nohighlight"><code>stormrider@neuromancer:~/mnt/Dropbox/src/git/packer-maas/ubuntu/packer_cache$ isoinfo -d -i ubuntu.iso | more                                                         
+      CD-ROM is in ISO 9660 format
+      System id: 
+      Volume id: Ubuntu-Server 20.04.4 LTS amd64
+      Volume set id: 
+      Publisher id: 
+      Data preparer id: XORRISO-1.2.4 2012.07.20.130001, LIBISOBURN-1.2.4, LIBISOFS-1.2.4, LIBBURN-1.2.4
+      Application id: 
+      Copyright File id: 
+      Abstract File id: 
+      Bibliographic File id: 
+      Volume set size is: 1
+      Volume set sequence number is: 1
+      Logical block size is: 2048
+      Volume size is: 650240
+      El Torito VD version 1 found, boot catalog is in sector 250
+      Joliet with UCS level 3 found
+      Rock Ridge signatures version 1 found
+      Eltorito validation header:
+          Hid 1
+          Arch 0 (x86)
+          ID &#39;&#39;
+          Key 55 AA
+          Eltorito defaultboot header:
+              Bootid 88 (bootable)
+              Boot media 0 (No Emulation Boot)
+              Load segment 0
+              Sys type 0
+              Nsect 4
+              Bootoff 8EC04 584708</code></pre>
+      <p>You could also generate an exhaustive directory listing with <code>isoinfo -f -i &lt;isoname&gt;</code>, and possibly pipe that through <code>grep</code> to ensure that your desired packages have been added to the image. Or, if you prefer to sweep the image directories manually, you can use <code>isoinfo -l -i &lt;isoname&gt;</code>. The larger point, of course, is that a packer-generated image is essentially identical to any prepared ISO image, including, of course, any customisations (e.g., extra software) that the template loads before finalising the image.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

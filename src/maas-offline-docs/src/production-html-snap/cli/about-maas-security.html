@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>About MAAS security</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>About MAAS security</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/ensuring-security-in-maas" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>As a MAAS administrator, it’s crucial to avoid storing secrets associated with your MAAS instance in the database. This includes secrets like the OMAPI key and the RPC secret.</p>
+      <p>Beginning with version 3.3, MAAS secrets are stored in <a href="https://www.hashicorp.com/products/vault">HashiCorp Vault</a>.</p>
+      <h2 id="hashicorp-vault">HashiCorp Vault</h2>
+      <p>Vault employs identity for securing secrets and encryption keys. Its core component is the <code>kv</code> secrets engine, which utilises key-value pairs to store secrets within an encrypted storage managed by Vault. You can explore more about <a href="https://developer.hashicorp.com/vault/docs/secrets">secrets engines</a> if you’re interested.</p>
+      <p>Vault safeguards the secrets engine using a <a href="https://developer.hashicorp.com/vault/docs/secrets#barrier-view">barrier view</a>, creating a folder with a randomly-generated UUID as the absolute root directory for that engine. This prevents the engine from accessing secrets outside its UUID folder.</p>
+      <p>For detailed information, it’s recommended to refer to the <a href="https://developer.hashicorp.com/vault/docs">Vault documentation</a> and consider <a href="https://developer.hashicorp.com/vault/tutorials/associate-cert">Vault certification</a>.</p>
+      <h2 id="multi-tenancy">Multi-tenancy</h2>
+      <p>Likewise, you want to grant fine-grained access-controls to different users, based on assigned roles. Working in concert with RBAC and <a href="https://github.com/canonical/candid#readme">Candid</a>, MAAS can restrict user access and actions based on four roles:</p>
+      <ul>
+      <li>Administrator: can access all settings and perform any operation on any machine in any resource pool.</li>
+      <li>Operator: can only act as a MAAS administrator within an assigned resource pool. Machines in other resource pools – and system settings – are not accessible.</li>
+      <li>User: can access and manipulate machines that are not allocated to other users, within the confines of an assigned resource pool. Users cannot access any settings.</li>
+      <li>Auditor: can view information for all machines within an assigned resource pool; cannot make any changes or alter any settings.</li>
+      </ul>
+      <p>MAAS controls access with the help of RBAC (Role-Based Access Control), Candid (Canonical Identity Manager), and an identity service of your choice, such as SSO (Single Sign-On). You can design and deploy a controlled MAAS environment using MAAS/RBAC.</p>
+      <h2 id="resource-pools-and-rbac">Resource pools and RBAC</h2>
+      <p>Resource pools group machines. Each machine is assigned to exactly one resource pool. If you control access to resource pools, and you assign roles properly, you control user access.</p>
+      <p>Note that just using resource pools to hide machines is a flawed access control approach, known as “security by obscurity.” What users don’t know will hurt you when the users figure it out – usually entirely by accident, while trying to do the right thing.</p>
+      <p>Consequently, there must also be some means of active authorisation that allows access to a resource pool. That authorisation must be based on user identity. There must be some way of controlling what the user can do with that resource pool. In the parlance of standard security model, “what the user can do” would be called “privilege”, but for the purposes of MAAS, we simply call them “permissions.”</p>
+      <h2 id="identity-services">Identity services</h2>
+      <p>MAAS/RBAC will interface with many identity services, using Candid as a mediator. The choice of identity service is up to you. As an example, let’s take a closer look at <a href="https://help.ubuntu.com/community/SingleSignOn">Ubuntu Single Sign-On (SSO)</a>.</p>
+      <p>SSO permits users to log in once to access many network services. SSO centralises authentication (via Kerberos), account management (via LDAP), resource-sharing (via <code>pam_mount</code>), and limited authorisation through group memberships in LDAP, coupled with file permissions.</p>
+      <p>RBAC (Role-based access control) does not authenticate users or verify their identity; that function is assigned to the identity service you choose. RBAC does receive an identity token or “macaroon” (via Candid) that RBAC uses to assign user roles. MAAS uses these roles, in turn, to control user access and actions.</p>
+      <h2 id="candid">Candid</h2>
+      <p>Direct authentication involves a user entering something uncommon or unique in response to a challenge, in order to gain access. “Something uncommon” means “something you know” or “something you have, like a password or a hardware key.”Something unique" means “something you are”, like a fingerprint. Authentication can be automated with private/public key exchanges, protected with a password on the first exchange. Adding another access point (another trusted client) usually means providing a public key, setting a password, or registering some biometric data. Direct authentication works well when there are a limited number of clients and not a lot of user turnover.</p>
+      <p>Increase users and services that need to authenticate, and direct authentication requires more effort: generating access requests; validating requests; setting up authentication; and then managing access as users move around the organisation. <a href="https://github.com/canonical/candid">Candid</a>, the Canonical identity service, was designed to meet this need. Candid acts as an authentication gateway that connects a service (e.g., RBAC) to your chosen identity service.</p>
+      <p>Candid manages authenticated users via special access tokens (<a href="https://askubuntu.com/questions/940640/what-is-a-macaroon">macaroons</a>) that confirm user identity. Unlike standard access tokens, macaroons</p>
+      <p>can be verified independently, in a standard way, reducing network traffic and repeated queries. Traditional access tokens must be short-lived; macaroons are valid for much longer and more easily refreshed. Macaroons can also be bound to TLS certificates, and used by multiple clients and services with no loss of security.</p>
+      <p>Candid can do the following things:</p>
+      <ul>
+      <li>find users by various identity parameters, such as e-mail, full name, last login time, etc.</li>
+      <li>show details for a user, based on e-mail or username.</li>
+      <li>add or remove users from ACLs (access control lists), or list members of an ACL.</li>
+      <li>add or remove users from arbitrary groups.</li>
+      <li>clear the multi-factor authentication (MFA) credentials for a specific user.</li>
+      <li>manage Candid agents.</li>
+      </ul>
+      <p>Candid can use certificates and agents, if desired. You specify the identity provider by URL when instantiating the program.</p>
+      <p>When a user logs into an RBAC-enabled MAAS server, that login is redirected to RBAC. RBAC authenticates via Candid, which consults the chosen identity server. If the user is authenticated, Candid constructs a macaroon and passes it to RBAC – and on to MAAS. This macaroon serves as the user’s authentication token until it expires.</p>
+      <p>To find out more about Candid and how to use it, consult the <a href="https://github.com/canonical/candid#readme">github README</a> or get in touch with your sales representative.</p>
+      <h2 id="rbac">RBAC</h2>
+      <p>RBAC uses a database to associate a given role with a properly-authenticated user identity. With RBAC, permissions are associated with roles, not individual users. Within a given resource pool, the role assigned to a properly authenticated user controls user access and actions. MAAS becomes an RBAC service, while each resource pool becomes a scope. RBAC/MAAS also recognises scopes that are not tied to machines, including:</p>
+      <ul>
+      <li>DNS</li>
+      <li>Availability zones</li>
+      <li>Images</li>
+      <li>Settings</li>
+      </ul>
+      <p>RBAC also helps MAAS control access to these “non-machine resources”.</p>
+      <p>Any given user may be an operator for one resource pool, a user for another, and an auditor for still another, all with no ability to change system settings or manipulate images. RBAC permits such arrangements.</p>
+      <h2 id="permissions">Permissions</h2>
+      <p>Here is a thumbnail sketch of the permissions model:</p>
+      <ul>
+      <li>MAAS maintains resource pools, which are a machine attribute. Each machine is assigned to one resource pool.</li>
+      <li>RBAC maintains roles associated with user identities. For a given user identity to carry out a particular operation in MAAS, that user identity must correspond to a role that has permission to carry out that operation in a given resource pool.</li>
+      <li>Candid vouches for the user with a macaroon.</li>
+      <li>Some identity service (e.g., SSO) authenticates the user to Candid; macaroons are not generated for unrecognised users.</li>
+      </ul>
+      <p>Relationships among roles, resource pools, and users are maintained by RBAC as a source of truth. MAAS mediates access to resource pools, based on user roles, using information obtained from RBAC.</p>
+      <h2 id="rbac-architecture">RBAC architecture</h2>
+      <p>The following diagram will give you a graphical view of how MAAS, RBAC, Candid, and an identity provider work together to control access to MAAS resources:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-snap/images/d4735c74ae08a8a5bd1ffc4155d8fb0260a01097.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>Here is a step-by-step walk-through of the MAAS/RBAC relationship:</p>
+      <ul>
+      <li>When MAAS is initiated with RBAC connected, MAAS pushes a list of resource pools and a global resource key to RBAC. The global resource key covers things that are not added to resource pools, such as devices or settings.</li>
+      <li>When a user tries to login, MAAS redirects that login request to RBAC.</li>
+      <li>RBAC, in turn, requests an authentication check from Candid.</li>
+      <li>Candid attempts to authenticate the user via whatever identity provider was configured when Candid was started (e.g., SSO).</li>
+      <li>If Candid authenticates the user, Candid creates a macaroon as a temporary identity token for the user.</li>
+      <li>Candid passes the macaroon back to RBAC.</li>
+      <li>RBAC passes the macaroon, in turn, to MAAS, along with a dictionary of groups, role(s), and resource pools corresponding to that user.</li>
+      <li>As needed, MAAS then mediates access to resource pools, using the macaroon to recognise the user and their group(s), and using the role/resource pool pairs to adjudicate access.</li>
+      </ul>
+      <p>Note that RBAC does not adjudicate individual permissions against resource pools. RBAC sends MAAS the combination of users, roles, and related resource pools to MAAS when requested. The MAAS code has a built-in understanding of the four roles (user, administrator, operator, and auditor) and what those roles can and cannot do with a given item.</p>
+      <h2 id="four-maas-rbac-roles">Four MAAS RBAC roles</h2>
+      <p>MAAS RBAC roles prevent users from seeing or interacting with machines in non-permitted resource pools. Even if a user knows the name or system ID of a machine in a non-permitted resource pool, that user can’t access it. Removing non-permitted machines from view prevents confusion.</p>
+      <ul>
+      <li>Administrator: an administrator can do anything that a normal MAAS administrator can do in the absence of RBAC. This means an admin can see all resource pools, take any action against any machine, and change any MAAS settings.</li>
+      <li>Operator: an operator can administer only the machines in their permitted resource pools. An operator cannot see or change system settings.</li>
+      <li>User: a user has no special privileges. They can only view and allocate machines that aren’t allocated to someone else. Users can’t change or access settings at all.</li>
+      <li>Auditor: an auditor can view anything about machines in the resource pool(s) for which they are permitted. Auditors cannot change or access settings.</li>
+      </ul>
+      <p>MAAS makes no assumptions about how these roles might be used in the day-to-day operation of your MAAS instance.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

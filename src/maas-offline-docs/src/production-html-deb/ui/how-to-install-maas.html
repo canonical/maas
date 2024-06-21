@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to install MAAS</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to install MAAS</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/fresh-installation-of-maas" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>This page explains how to install MAAS from scratch.</p>
+      <blockquote>
+      <p><strong>Important note</strong>: If you’re not already running PostgreSQL 14, it’s important to <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrade</a> before installing MAAS 3.4 or higher. Also, you should review the new PostgreSQL requirements in the <a href="reference-installation-requirements.html">installation requirements document</a> before installing MAAS.</p>
+      </blockquote>
+      <h2 id="install-from-snap">Install from Snap</h2>
+      <p>To install MAAS from a snap:</p>
+      <ol type="1">
+      <li><p>Check the <a href="reference-installation-requirements.html">MAAS installation requirements</a> to make sure that your hardware will support MAAS.</p></li>
+      <li><p>Enter the following command:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo snap install --channel=X.X maas</code></pre>
+      <pre><code>where &quot;X.X&quot; is the MAAS version you want to install (3.5, 3.4, 3.3, etc.).</code></pre>
+      <ol start="3" type="1">
+      <li>Enter your account password.</li>
+      </ol>
+      <p>At this point, the snap will download and install the chosen version.</p>
+      <h2 id="install-from-packages">Install from packages</h2>
+      <p>To install MAAS from packages:</p>
+      <ol type="1">
+      <li><p>Check the <a href="reference-installation-requirements.html">MAAS installation requirements</a> to make sure that your hardware will support MAAS.</p></li>
+      <li><p>Add the MAAS PPA to your <code>apt</code> repository paths:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt-add-repository ppa:maas/X.X</code></pre>
+      <p>where “X.X” is the MAAS version you want to install (3.5, 3.4, 3.3, etc).</p>
+      <ol start="3" type="1">
+      <li>Update your <code>apt</code> repository lists:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt update</code></pre>
+      <ol start="4" type="1">
+      <li>Install MAAS with the following command:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt-get -y install maas</code></pre>
+      <ol start="5" type="1">
+      <li>Choose “Y” if asked about whether to continue with the install.</li>
+      </ol>
+      <h2 id="potential-ntp-conflicts">Potential NTP conflicts</h2>
+      <p>When installing MAAS on Ubuntu, there can be conflicts between the existing NTP client, <code>systemd-timesyncd</code>, and the NTP client/server provided by MAAS, chrony. This can lead to time synchronisation issues, especially if MAAS is configured with different upstream NTP servers than the ones used by <code>systemd-timesyncd</code>. To avoid conflicts, users can manually disable and stop <code>systemd-timesyncd</code> using the following command:</p>
+      <pre class="nohighlight"><code>sudo systemctl disable --now systemd-timesyncd</code></pre>
+      <p>Also note that support for PostgreSQL 12 has been deprecated in MAAS 3.3 and will be discontinued in MAAS 3.5.</p>
+      <h2 id="poc-configuration-snap-only">POC configuration (Snap only)</h2>
+      <p>There is a proof-of-concept configuration defined for the MAAS Snap version. To initialise the MAAS snap in this POC configuration, simply use the <code>--help</code> flag with <code>maas init</code> and follow the instructions.</p>
+      <h2 id="production-configuration">Production configuration</h2>
+      <p>To install MAAS in a production configuration:</p>
+      <ol type="1">
+      <li>Install PostgreSQL on any machine where you want to keep the database with the following commands:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt update -y
+          sudo apt install -y postgresql</code></pre>
+      <ol start="2" type="1">
+      <li>Create desired values for the following variables (replace them in the commands below):</li>
+      </ol>
+      <pre class="nohighlight"><code>    $MAAS_DBUSER = ___________
+          $MAAS_DBPASS = ___________
+          $MAAS_DBNAME = ___________
+          $HOSTNAME = _________</code></pre>
+      <p>Note that for most situations, you can use <code>localhost</code> for <code>$HOSTNAME</code>.</p>
+      <ol start="3" type="1">
+      <li>Create a suitable PostgreSQL user:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo -i -u postgres psql -c &quot;CREATE USER \&quot;$MAAS_DBUSER\&quot; WITH ENCRYPTED PASSWORD &#39;$MAAS_DBPASS&#39;&quot;</code></pre>
+      <ol start="4" type="1">
+      <li>Create the MAAS database:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo -i -u postgres createdb -O &quot;$MAAS_DBUSER&quot; &quot;$MAAS_DBNAME&quot;</code></pre>
+      <ol start="5" type="1">
+      <li>Edit <code>/etc/postgresql/14/main/pg_hba.conf</code> and add a line for the newly created database:</li>
+      </ol>
+      <pre class="nohighlight"><code>    host    $MAAS_DBNAME    $MAAS_DBUSER    0/0     md5</code></pre>
+      <ol start="6" type="1">
+      <li>Initialise MAAS via the following command:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo maas init region+rack --database-uri &quot;postgres://$MAAS_DBUSER:$MAAS_DBPASS@$HOSTNAME/$MAAS_DBNAME&quot;</code></pre>
+      <h2 id="distributed-environment-packages-only">Distributed environment (packages only)</h2>
+      <p>You can set up a distributed environment when you install with MAAS packages. To run MAAS region and rack controllers on separate machines:</p>
+      <ol type="1">
+      <li><p>Check the <a href="reference-installation-requirements.html">MAAS installation requirements</a> to make sure that your hardware will support MAAS.</p></li>
+      <li><p>Add the MAAS PPA to your <code>apt</code> repository paths on both region and rack target hosts:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt-add-repository ppa:maas/X.X</code></pre>
+      <p>where “X.X” is the MAAS version you want to install.</p>
+      <ol start="3" type="1">
+      <li>Update your <code>apt</code> repository lists on both region and rack hosts:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt update</code></pre>
+      <ol start="4" type="1">
+      <li>Install the MAAS region controller on the target region host:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt install maas-region-controller</code></pre>
+      <ol start="5" type="1">
+      <li>Install the MAAS rack controller on the target rack host:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo apt install maas-rack-controller</code></pre>
+      <ol start="6" type="1">
+      <li>Register the rack controller with the region controller by running the following command on the rack host:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo maas-rack register</code></pre>
+      <p>These two steps will lead you through two similar <code>apt</code> install sequences.</p>
+      <h2 id="create-an-admin-user">Create an admin user</h2>
+      <p>To create a MAAS administrative user:</p>
+      <ol type="1">
+      <li>Create a MAAS administrator user to access the web UI:</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo maas createadmin --username=$PROFILE --email=$EMAIL_ADDRESS</code></pre>
+      <pre><code>Substitute `$PROFILE` with the administrative MAAS username you wish to create. `$EMAIL_ADDRESS` is an email address you may type in at random (currently, MAAS does not use this email address). The `createadmin` option will cause MAAS to ask for an SSH key.</code></pre>
+      <ol start="2" type="1">
+      <li><p>To use an SSH key associated with your launchpad accounts, enter <code>lp:$USERNAME</code> (substitute your LP username for <code>$USERNAME</code>).</p></li>
+      <li><p>Alternatively, to use an SSH key associated with your github account, enter <code>gh:$USERNAME</code> (substitute your github username for <code>$USERNAME</code>)</p></li>
+      </ol>
+      <h2 id="check-maas-status">Check MAAS status</h2>
+      <p>To check the status of running services, enter:</p>
+      <pre class="nohighlight"><code>sudo maas status</code></pre>
+      <p>Typical output looks like this:</p>
+      <pre class="nohighlight"><code>bind9                            RUNNING   pid 7999, uptime 0:09:17
+      dhcpd                            STOPPED   Not started
+      dhcpd6                           STOPPED   Not started
+      ntp                              RUNNING   pid 8598, uptime 0:05:42
+      postgresql                       RUNNING   pid 8001, uptime 0:09:17
+      proxy                            STOPPED   Not started
+      rackd                            RUNNING   pid 8000, uptime 0:09:17
+      regiond:regiond-0                RUNNING   pid 8003, uptime 0:09:17
+      regiond:regiond-1                RUNNING   pid 8008, uptime 0:09:17
+      regiond:regiond-2                RUNNING   pid 8005, uptime 0:09:17
+      regiond:regiond-3                RUNNING   pid 8015, uptime 0:09:17
+      tgt                              RUNNING   pid 8040, uptime 0:09:15</code></pre>
+      <p>Your mileage may vary.</p>
+      <h2 id="more-init-options">More init options</h2>
+      <p>The <code>init</code> command can takes optional arguments. To list them, as well as read a brief description of each, you can enter:</p>
+      <pre class="nohighlight"><code>sudo maas init --help</code></pre>
+      <h2 id="configure-maas-with-the-ui">Configure MAAS with the UI</h2>
+      <p>To configure MAAS for first-time use with the MAAS UI:</p>
+      <ol type="1">
+      <li>Access MAAS at this address, where <code>$API_HOST</code> is the hostname or IP address of the region API server, which was set during installation:</li>
+      </ol>
+      <pre class="nohighlight"><code>    http://${API_HOST}:5240/MAAS</code></pre>
+      <ol start="2" type="1">
+      <li><p>Log in at the prompts, with the login information you created when initialising MAAS.</p></li>
+      <li><p>On the first welcome screen, set the DNS forwarder to a suitable value, e.g., <code>8.8.8.8</code>. This could be your own internal DNS server, if you have one.</p></li>
+      <li><p>Select an Ubuntu image to import; you may be required to select at least one LTS version.</p></li>
+      <li><p>Click <em>Continue</em>; a screen labelled, “SSH keys for admin:” appears.</p></li>
+      <li><p>In the <em>Source</em> drop-down, select “Launchpad,” “Github,” or “Upload.”</p></li>
+      <li><p>If you want to upload your SSH public key from Launchpad, you would enter the following, where <code>&lt;username&gt;</code> is your Launchpad username:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>    lp:&lt;username&gt;</code></pre>
+      <ol start="8" type="1">
+      <li>If you want to upload your github public SSH key, you would enter the following, where <code>&lt;username&gt;</code> is your GitHub username:</li>
+      </ol>
+      <pre class="nohighlight"><code>    gh:&lt;username&gt;</code></pre>
+      <ol start="9" type="1">
+      <li><p>If you want to use your existing public key from your home directory, select <em>Upload</em>.</p></li>
+      <li><p>Copy your entire public key from <code>.ssh/id_rsa.pub</code> (or wherever you may have stored the key).</p></li>
+      <li><p>Paste the public key into the block labelled “Public key.”</p></li>
+      <li><p>Press the “Import” button to import this key.</p></li>
+      <li><p>You should see a message that MAAS has been successfully set up. Click <em>Go to the Dashboard</em> to proceed.</p></li>
+      <li><p>Select <em>Subnets</em> from the top menu.</p></li>
+      <li><p>Choose the VLAN on which you want to enable DHCP.</p></li>
+      <li><p>Select <em>Enable DHCP</em>.</p></li>
+      </ol>
+      <p>You should now be able to add, commission, and deploy machines.</p>
+      <h2 id="configure-maas-with-the-cli">Configure MAAS with the CLI</h2>
+      <p>Login to the MAAS CLI via the following process:</p>
+      <ol type="1">
+      <li>Generate the API-key for the login you’re going to use, replacing <code>$PROFILE</code> with whatever username you set during the <code>createadmin</code> part of the install process.</li>
+      </ol>
+      <pre class="nohighlight"><code>    sudo maas apikey --username=$PROFILE &gt; api-key-file</code></pre>
+      <ol start="2" type="1">
+      <li>Login with the following command, substituting <code>$MAAS_URL</code> with the URL that was returned to you when you initialised MAAS, for example, <code>192.168.43.251:5240/MAAS</code>. :</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas login $PROFILE $MAAS_URL &lt; (cat api-key-file) </code></pre>
+      <ol start="3" type="1">
+      <li>Set upstream DNS (8.8.8.8 is always a reliable value):</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE maas set-config name=upstream_dns value=&quot;8.8.8.8&quot;</code></pre>
+      <ol start="4" type="1">
+      <li>Add a public SSH key to a MAAS user account:</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE sshkeys create &quot;key=$SSH_KEY&quot;</code></pre>
+      <ol start="5" type="1">
+      <li>See what images you may have already downloaded:</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE boot-resources read | jq -r &#39;.[] | &quot;\(.name)\t\(.architecture)&quot;&#39;</code></pre>
+      <ol start="6" type="1">
+      <li>Select an image(s) for download (e.g., “trusty” in this example):</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE boot-source-selections create 1 os=&quot;ubuntu&quot; release=&quot;trusty&quot; arches=&quot;amd64&quot; subarches=&quot;*&quot;  labels=&quot;*&quot;</code></pre>
+      <ol start="7" type="1">
+      <li>Import your selected image(s):</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas admin boot-resources import</code></pre>
+      <ol start="8" type="1">
+      <li>Identify a valid fabric ID for DHCP (returns <code>"fabric_id": $FABRIC_ID,</code>):</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE subnet read $SUBNET_CIDR | grep fabric_id</code></pre>
+      <ol start="9" type="1">
+      <li>Find the name of the primary rack controller:</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE rack-controllers read | grep hostname | cut -d &#39;&quot;&#39; -f 4</code></pre>
+      <ol start="10" type="1">
+      <li>Create an IP range for DHCP (in this case, a dynamic range):</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE ipranges create type=dynamic start_ip=$START_IP end_ip=$END_IP</code></pre>
+      <ol start="11" type="1">
+      <li>Use this collected information to turn on DHCP:</li>
+      </ol>
+      <pre class="nohighlight"><code>    maas $PROFILE vlan update $FABRIC_ID untagged dhcp_on=True primary_rack=$RACK_CONTR_HOSTNAME</code></pre>
+      <p>You should now be able to add, commission, and deploy machines.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to upgrade MAAS</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to upgrade MAAS</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/upgrading-maas" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>Upgrade your MAAS setup using this page.</p>
+      <blockquote>
+      <p>Note that with versions 3.4.1 and 3.5, <a href="postgresql-deprecation-notices.html">PostgreSQL requirements have changed</a>.</p>
+      </blockquote>
+      <h2 id="upgrade-to-3.5">Upgrade to 3.5</h2>
+      <blockquote>
+      <p><strong>Important note</strong>: Review the new PostgreSQL requirements in the <a href="reference-installation-requirements.html">installation requirements document</a> before installing MAAS.</p>
+      </blockquote>
+      <p><strong>For a region+rack setup</strong>, run this command:</p>
+      <pre class="nohighlight"><code>sudo snap refresh maas</code></pre>
+      <p>Be sure to input your password. Your snap will update to the 3.5 channel, no MAAS re-initialisation required.</p>
+      <p><strong>For separate regions and racks</strong>, update the rack nodes first with the above command, followed by the region nodes.</p>
+      <h3 id="upgrading-maas-2.9-to-3.5">Upgrading MAAS 2.9++ to 3.5</h3>
+      <p>Before updating to MAAS 3.5, keep in mind that PostgreSQL 12 support has been phased out. You must <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrade to PostgreSQL 14</a> beforehand.</p>
+      <p>If you’re running MAAS versions 2.9 to 3.3, first check the Ubuntu version with <code>lsb_release -a</code>. Look for “22.04” as the release and “Jammy” as the codename.</p>
+      <p>Next, update Ubuntu, if needed. If you’re on Ubuntu 20.04 LTS, move to 22.04 LTS using:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>You can safely follow the upgrade prompts, sticking to the default responses. When asked to reboot, restart the machine. When it reboots, double-check the Ubuntu version with <code>lsb_release -a</code>. The codename should now be “jammy.”</p>
+      <h3 id="upgrading-maas-2.8-to-3.5">Upgrading MAAS 2.8– to 3.5</h3>
+      <p>Upgrading from MAAS 2.8 or lower? Proceed with caution; this is untested, so start by completely backing up your MAAS server.</p>
+      <p>Once that’s done, add the PPA (ignore any errors here):</p>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.5</code></pre>
+      <p>Perform the upgrade, using this command and sticking to default answers:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>Confirm the upgrade using <code>lsb_release -a</code> (look for “22.04” and “Jammy”), and verify the MAAS version as “3.5.”</p>
+      <p>Failed? Restore from your backup and consider a fresh install on separate hardware.</p>
+      <h2 id="upgrade-to-3.4">Upgrade to 3.4</h2>
+      <p>Switching to MAAS 3.4? Here’s a quick rundown on how to upgrade your snap installation. Before diving in, note that PostgreSQL 12 support is ending with MAAS 3.4 and won’t be available in 3.5. We suggest <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrading to PostgreSQL 14</a> first.</p>
+      <p><strong>For a region+rack setup</strong>, run this command:</p>
+      <pre class="nohighlight"><code>sudo snap refresh maas</code></pre>
+      <p>Be sure to input your password. Your snap will update to the 3.4 channel, no MAAS re-initialisation required.</p>
+      <p><strong>For separate regions and racks</strong>, update the rack nodes first with the above command, followed by the region nodes.</p>
+      <h3 id="upgrading-maas-2.9-to-3.4">Upgrading MAAS 2.9++ to 3.4</h3>
+      <p>Before updating to MAAS 3.4, keep in mind that PostgreSQL 12 support is being phased out. We recommend <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrading to PostgreSQL 14</a> beforehand.</p>
+      <h3 id="maas-versions-3.3-to-2.9">MAAS versions 3.3 to 2.9</h3>
+      <p>If you’re running MAAS versions 2.9 to 3.3, first check the Ubuntu version with <code>lsb_release -a</code>. Look for “22.04” as the release and “Jammy” as the codename.</p>
+      <p>Next, update Ubuntu, if needed. If you’re on Ubuntu 20.04 LTS, move to 22.04 LTS using:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>You can safely follow the upgrade prompts, sticking to the default responses. When asked to reboot, restart the machine. When it reboots, double-check the Ubuntu version with <code>lsb_release -a</code>. The codename should now be “jammy.”</p>
+      <h3 id="upgrading-maas-2.8-to-3.4">Upgrading MAAS 2.8– to 3.4</h3>
+      <p>Upgrading from MAAS 2.8 or lower? Proceed with caution; this is untested, so start by completely backing up your MAAS server.</p>
+      <p>Once that’s done, add the PPA (ignore any errors here):</p>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.4</code></pre>
+      <p>Perform the upgrade, using this command and sticking to default answers:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>Confirm the upgrade using <code>lsb_release -a</code> (look for “22.04” and “Jammy”), and verify the MAAS version as “3.4.”</p>
+      <p>Failed? Restore from your backup and consider a fresh install on separate hardware.</p>
+      <h2 id="upgrade-to-3.3">Upgrade to 3.3</h2>
+      <p>Note that support for PostgreSQL version 12 is deprecated for MAAS version 3.3, and will be discontinued in MAAS 3.5. We recommend <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrading to PostgreSQL version 14</a> before installing MAAS 3.3.</p>
+      <p>To upgrade from a earlier snap version to the 3.3 snap (using a <code>region+rack</code> configuration), enter the following command:</p>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.3 maas</code></pre>
+      <p>Be sure to enter your account password. The snap will refresh from the 3.3 channel. You will not need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="moving-to-maas-3.3-via-snap">Moving to MAAS 3.3 via Snap</h3>
+      <p>First up, PostgreSQL 12 support is sun-setting with MAAS 3.3 and will be fully discontinued in version 3.5. Consider <a href="how-to-upgrade-postgresql-v12-to-v14.html">upgrading to PostgreSQL version 14</a> before you proceed.</p>
+      <h3 id="for-a-single-node-with-regionrack">For a single node with region+rack</h3>
+      <p>Fire off the following command to refresh your snap:</p>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.3 maas</code></pre>
+      <p>Input your account password when prompted. The snap will automatically shift to the 3.3 channel, sparing you a MAAS reconfiguration.</p>
+      <h3 id="for-clustered-deployment">For clustered deployment</h3>
+      <p>If you’re operating a multi-node setup, apply the snap refresh first to rack nodes and then to the region nodes.</p>
+      <h3 id="transitioning-to-maas-3.3-the-essentials">Transitioning to MAAS 3.3: The essentials</h3>
+      <p>Heads up, MAAS 3.3 doesn’t play well with PostgreSQL 12. Plan on <a href="how-to-upgrade-postgresql-v12-to-v14.html">shifting to PostgreSQL 14</a> as 3.5 will drop support entirely.</p>
+      <h3 id="if-youre-on-maas-2.9-to-3.2">If you’re on MAAS 2.9 to 3.2</h3>
+      <p>Verify your Ubuntu version by running <code>lsb_release -a</code>. Aim for 22.04 — aka “Jammy.” If you’re not on Jammy, transition from focal with:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>Proceed with caution: Accept default prompts during the upgrade; reboot post-upgrade; and run <code>lsb_release -a</code> again, post-reboot, to confirm a successful transition to 22.04.</p>
+      <h3 id="for-versions-2.8-or-lower">For versions 2.8 or lower</h3>
+      <p>Proceed with extreme caution, as this jump is not thoroughly tested. Make a comprehensive backup. Don’t skip this.</p>
+      <p>Once backed up, add the MAAS 3.3 PPA:</p>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.3</code></pre>
+      <p>Next, initiate the upgrade; defaults are your friend here:</p>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <p>When done, double-check the upgrade with <code>lsb_release -a</code>.</p>
+      <p>Finally, go to your MAAS UI and confirm version 3.3 at the bottom of the machine list. If all else fails, revert to your backup and consider a fresh 3.3 install on separate hardware.</p>
+      <h3 id="upgrade-maas-2.9-to-maas-3.3">Upgrade MAAS 2.9++ to MAAS 3.3</h3>
+      <p>Note that support for PostgreSQL version 12 is deprecated for MAAS version 3.3, and will be discontinued in MAAS 3.5. We recommend [upgrading to PostgreSQL version 14] before installing MAAS 3.3.</p>
+      <p>If you are running MAAS 3.2 through MAAS 2.9, you can upgrade directly to MAAS 3.3 with the following procedure:</p>
+      <ol type="1">
+      <li>Check whether the target system is running Ubuntu 22.04 LTS:</li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>The response should look something like this:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu xx.yy
+      Release:    xx.yy
+      Codename:   $RELEASE_NAME</code></pre>
+      <p>The required “xx.yy” for MAAS 3.3 is “22.04,” code-named “Jammy”.</p>
+      <ol start="2" type="1">
+      <li>If you are currently running Ubuntu focal 20.04 LTS, Upgrade to Jammy 22.04 LTS:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="3" type="1">
+      <li><p>Accept the defaults for any questions asked by the upgrade script.</p></li>
+      <li><p>Reboot the machine when requested.</p></li>
+      <li><p>Check whether the upgrade was successful:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>A successful upgrade should respond with output similar to the following:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu 22.04(.nn) LTS
+      Release:    22.04
+      Codename:   jammy</code></pre>
+      <h3 id="upgrade-maas-2.8-to-maas-3.3">Upgrade MAAS 2.8– to MAAS 3.3</h3>
+      <p>If you’re upgrading from MAAS version 2.8 or lower to version 3.3, try the fooling procedure. While the this procedure should work, note that they it’s untested. Use at your own risk.</p>
+      <ol type="1">
+      <li><p>Back up your MAAS server completely with your favourite tools and media.</p></li>
+      <li><p>Add the MAAS 3.3 PPA to your repository list; ignore any apparent error messages:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.3</code></pre>
+      <ol start="3" type="1">
+      <li>Upgrade the release; answer any questions with the default values:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="4" type="1">
+      <li>Check whether your upgrade has been successful:</li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>If the upgrade was successful, this command should yield output similar to the following:</p>
+      <pre class="nohighlight"><code>No LSB modules are available.
+      Distributor ID: Ubuntu
+      Description:    Ubuntu 22.04(.nn) LTS
+      Release:    22.04
+      Codename:   jammy</code></pre>
+      <ol start="5" type="1">
+      <li>Check your running MAAS install (by looking at the information on the bottom of the machine list) to make sure you’re running the 3.3 release.</li>
+      </ol>
+      <p>If this didn’t work, you will need to restore from the backup you made in step 1, and consider obtaining separate hardware to install MAAS 3.3.</p>
+      <h2 id="upgrade-to-3.2">Upgrade to 3.2</h2>
+      <p>To upgrade from a earlier snap version to the 3.2 snap (using a <code>region+rack</code> configuration):</p>
+      <ol type="1">
+      <li>Enter the following command:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.2 maas</code></pre>
+      <ol start="2" type="1">
+      <li>Enter your account password.</li>
+      </ol>
+      <p>The snap will refresh from the 3.2 channel; you will not need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="upgrade-maas-2.9-to-maas-3.2">Upgrade MAAS 2.9++ to MAAS 3.2</h3>
+      <p>To upgrade from MAAS 2.9 - 3.1 to MAAS 3.2, follow these steps:</p>
+      <ol type="1">
+      <li><p>Back up your MAAS server completely; the tools and media are left entirely to your discretion.</p></li>
+      <li><p>Add the MAAS 3.2 PPA to your repository list with the following command, ignoring any apparent error messages:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.2</code></pre>
+      <ol start="3" type="1">
+      <li>Run the MAAS upgrade:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt update
+      sudo apt upgrade maas</code></pre>
+      <ol start="4" type="1">
+      <li><p>Check your running MAAS install (by looking at the information on the bottom of the machine list) to make sure you’re running the 3.2 release.</p></li>
+      <li><p>If this didn’t work, you will need to restore from the backup you made in step 1, and consider obtaining separate hardware to install MAAS 3.2.</p></li>
+      </ol>
+      <h3 id="upgrade-maas-2.8-to-maas-3.2">Upgrade MAAS 2.8– to MAAS 3.2</h3>
+      <p>If you are running MAAS 2.8 or lower, you can’t upgrade directly to MAAS 3.2:</p>
+      <ol type="1">
+      <li>Make sure that the target system is running Ubuntu 20.04 LTS or higher:</li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>The response should look something like this:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu xx.yy
+      Release:    xx.yy
+      Codename:   $RELEASE_NAME</code></pre>
+      <p>The minimum “xx.yy” required for MAAS 3.2 is “20.04,” code-named “focal.”</p>
+      <ol start="2" type="1">
+      <li>If you’re not running focal, upgrade the release:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="3" type="1">
+      <li><p>Accept the defaults for any questions asked by the upgrade script.</p></li>
+      <li><p>Reboot the machine when requested.</p></li>
+      <li><p>Check whether the upgrade was successful:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>A successful upgrade should respond with output similar to the following:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04(.nn) LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <h2 id="upgrade-to-3.1">Upgrade to 3.1</h2>
+      <p>To upgrade from a earlier snap version to the 3.1 snap (using a <code>region+rack</code> configuration):</p>
+      <ol type="1">
+      <li>Refresh the snap:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.1 maas</code></pre>
+      <ol start="2" type="1">
+      <li>Enter your account password.</li>
+      </ol>
+      <p>The snap will refresh from the 3.1 channel. You will not need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="upgrade-maas-2.9-to-maas-3.1">Upgrade MAAS 2.9++ to MAAS 3.1</h3>
+      <p>You can upgrade from MAAS 2.9 or MAAS 3.0 to MAAS 3.1:</p>
+      <ol type="1">
+      <li><p>Back up your MAAS server completely; the tools and media are left entirely to your discretion. Just be sure that you can definitely restore your previous configuration, should this procedure fail to work correctly.</p></li>
+      <li><p>Add the MAAS 3.1 PPA to your repository list with the following command, ignoring any apparent error messages:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.1</code></pre>
+      <ol start="3" type="1">
+      <li>Run the MAAS upgrade like this:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt update
+      sudo apt upgrade maas</code></pre>
+      <ol start="4" type="1">
+      <li><p>Check your running MAAS install (by looking at the information on the bottom of the machine list) to make sure you’re running the 3.1 release.</p></li>
+      <li><p>If this didn’t work, you will need to restore from the backup you made in step 1, and consider obtaining separate hardware to install MAAS 3.1.</p></li>
+      </ol>
+      <h3 id="upgrade-maas-2.8-to-maas-3.1">Upgrade MAAS 2.8– to MAAS 3.1</h3>
+      <p>If you are running MAAS 2.8 or lower, you can also upgrade directly to MAAS 3.1, but it requires some extra steps. You must first make sure that the target system is running Ubuntu 20.04 LTS or higher, by executing the following command:</p>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>The response should look something like this:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu xx.yy
+      Release:    xx.yy
+      Codename:   $RELEASE_NAME</code></pre>
+      <p>The minimum “xx.yy” required for MAAS 3.0 is “20.04,” code-named “focal.”</p>
+      <p>If you are currently running Ubuntu bionic 18.04 LTS, you can upgrade to focal 20.04 LTS with the following procedure:</p>
+      <ol type="1">
+      <li>Upgrade the release:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="2" type="1">
+      <li><p>Accept the defaults for any questions asked by the upgrade script.</p></li>
+      <li><p>Reboot the machine when requested.</p></li>
+      <li><p>Check whether the upgrade was successful:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>A successful upgrade should respond with output similar to the following:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04(.nn) LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <h2 id="upgrade-to-3.0">Upgrade to 3.0</h2>
+      <p>To upgrade from a earlier snap version to the 3.0 snap (using a <code>region+rack</code> configuration), do the following:</p>
+      <ol type="1">
+      <li>Refresh the snap:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.0 maas</code></pre>
+      <ol start="2" type="1">
+      <li>Enter your user password.</li>
+      </ol>
+      <p>The snap will refresh from the 3.0 channel. You will not need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="upgrade-maas-2.9-to-maas-3.0">Upgrade MAAS 2.9 to MAAS 3.0</h3>
+      <p>To upgrade a working MAAS 2.9 instance to MAAS 3.0, follow these steps:</p>
+      <ol type="1">
+      <li><p>Back up your MAAS server completely; the tools and media are left entirely to your discretion.</p></li>
+      <li><p>Add the MAAS 3.0 PPA to your repository list:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt-add-repository ppa:maas/3.0</code></pre>
+      <ol start="3" type="1">
+      <li>Run the MAAS upgrade:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo apt update
+      sudo apt upgrade maas</code></pre>
+      <ol start="4" type="1">
+      <li><p>Check your running MAAS install (by looking at the information on the bottom of the machine list) to make sure you’re running the 3.0 release.</p></li>
+      <li><p>If this didn’t work, you will need to restore from the backup you made in step 1, and consider obtaining separate hardware to install MAAS 3.0.</p></li>
+      </ol>
+      <h3 id="upgrade-maas-2.8-to-maas-3.0">Upgrade MAAS 2.8– to MAAS 3.0</h3>
+      <p>If you are running MAAS 2.8, you can upgrade directly to MAAS 3.0 with the following procedure:</p>
+      <ol type="1">
+      <li>Check your release:</li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>The response should look something like this:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu xx.yy
+      Release:    xx.yy
+      Codename:   $RELEASE_NAME</code></pre>
+      <p>The minimum “xx.yy” required for MAAS 3.0 is “20.04,” code-named “focal.”</p>
+      <p>If you are currently running Ubuntu bionic 18.04 LTS, you can upgrade to focal 20.04 LTS with the following procedure:</p>
+      <ol start="2" type="1">
+      <li>Upgrade the release:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="3" type="1">
+      <li><p>Accept the defaults for any questions asked by the upgrade script.</p></li>
+      <li><p>Reboot the machine when requested.</p></li>
+      <li><p>Check whether the upgrade was successful:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>A successful upgrade should respond with output similar to the following:</p>
+      <pre class="nohighlight"><code>Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04(.nn) LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <h2 id="upgrade-to-2.9">Upgrade to 2.9</h2>
+      <p>To upgrade from an earlier snap version to the 2.9 snap (using a <code>region+rack</code> configuration), do the following:</p>
+      <ol type="1">
+      <li>Refresh the snap:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo snap refresh --channel=3.0/stable maas</code></pre>
+      <ol start="2" type="1">
+      <li>Enter your user password.</li>
+      </ol>
+      <p>The snap will refresh from the 3.0 channel. You will not need to re-initialise MAAS.</p>
+      <p>If you are using a multi-node maas deployment with separate regions and racks, you should first run the upgrade command above for rack nodes, then for region nodes.</p>
+      <h3 id="upgrade-maas-2.8-to-maas-2.9">Upgrade MAAS 2.8– to MAAS 2.9</h3>
+      <p>MAAS 2.8 is the last supported version for Ubuntu 18.04 LTS. Newer versions of MAAS will not be back-portable, and consequently, to upgrade to MAAS 2.9 and all future versions, you will also need to upgrade the base operating system to Ubuntu 20.04.</p>
+      <p>You do these two operations all at once, with the following procedure:</p>
+      <ol type="1">
+      <li>Add the 2.9 PPA to your repository path list:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo add-apt-repository ppa:maas/2.9</code></pre>
+      <ol start="2" type="1">
+      <li>Run the release upgrade:</li>
+      </ol>
+      <pre class="nohighlight"><code>sudo do-release-upgrade --allow-third-party</code></pre>
+      <ol start="3" type="1">
+      <li><p>Reboot your machine (requested by the upgrade script).</p></li>
+      <li><p>Check that your upgrade was successful:</p></li>
+      </ol>
+      <pre class="nohighlight"><code>lsb_release -a</code></pre>
+      <p>If the upgrade was successful, this command should yield output similar to the following:</p>
+      <pre class="nohighlight"><code>No LSB modules are available.
+      Distributor ID: Ubuntu
+      Description:    Ubuntu 20.04.1 LTS
+      Release:    20.04
+      Codename:   focal</code></pre>
+      <p>You have now upgraded to the Ubuntu 20.04 LTS base, and if you check your running MAAS install, you should see that the version has been updated to the latest stable 2.9 release.</p>
+      <h2 id="some-upgrade-notes">Some upgrade notes</h2>
+      <p>When installing MAAS on Ubuntu, there can be conflicts between the existing NTP client, systemd-timesyncd, and the NTP client/server provided by MAAS, chrony. This can lead to time synchronisation issues, especially if MAAS is configured with different upstream NTP servers than the ones used by systemd-timesyncd. To avoid conflicts, users can manually disable and stop systemd-timesyncd using the following command:</p>
+      <pre class="nohighlight"><code>sudo systemctl disable --now systemd-timesyncd</code></pre>
+      <p>Also note that support for PostgreSQL 12 has been deprecated in MAAS 3.3 and will be discontinued in MAAS 3.5.</p>
+      <h2 id="special-situations">Special situations</h2>
+      <p>This note is especially important for upgrading to MAAS 3.3, but may affect other upgrade paths as well.</p>
+      <p>If your MAAS environment includes multiple machines with identical IPMI BMC IP addresses and usernames but different passwords, please be aware of a potential migration issue when upgrading your MAAS instance.</p>
+      <p><strong>Background:</strong> In MAAS 3.3, a migration script (<code>0290_migrate_node_power_parameters</code>) moves the BMC password from <code>power_parameters</code> to a secure store. A unique database constraint (<code>power_type</code>, <code>md5(power_parameters::text)</code>) that previously allowed for identical BMC IPs and usernames with different passwords now fails because the <code>power_pass</code> field is removed during the migration, causing an upgrade failure.</p>
+      <p><strong>Steps to prevent upgrade failure:</strong></p>
+      <ol type="1">
+      <li><p><strong>Pre-upgrade check:</strong> Before upgrading, ensure that each BMC IP address and username combination is unique. This is essential as the migration script enforces a unique constraint that may not align with your current setup.</p></li>
+      <li><p><strong>Identify affected machines:</strong> Use the MAAS CLI to list all machines and their power parameters. Look for any entries with duplicate BMC IP and username combinations.</p></li>
+      <li><p><strong>Update machine configurations:</strong> For any duplicates found, update the BMC details to have unique combinations. This may involve reconfiguring or decommissioning machines as needed.</p></li>
+      <li><p><strong>Proceed with upgrade:</strong> Once all BMC details are unique, proceed with the upgrade to MAAS 3.3. Monitor the upgrade process for any errors related to power parameters.</p></li>
+      </ol>
+      <p><strong>Understanding the unique constraint:</strong> The unique constraint was designed to prevent duplicate IPMI IP/Username/Password combinations. However, in practice, this constraint might not cover all scenarios, especially where configurations are automatically generated and share many common values.</p>
+      <p><strong>Future considerations:</strong> The development team is aware of this issue and is considering changes to improve the upgrade process, such as adjusting the unique constraint and improving API/UI level checks. Further updates will be provided in subsequent releases.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

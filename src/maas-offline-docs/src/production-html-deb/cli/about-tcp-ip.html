@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>About TCP/IP</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>About TCP/IP</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/a-primer-on-tcp-ip" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>To design, operate, and troubleshoot MAAS networks effectively, you need a solid grasp of networking fundamentals. Here, we’ve distilled the essentials for quick reference.</p>
+      <h2 id="the-original-internet">The original Internet</h2>
+      <p>If you ask a networking expert to briefly explain cloud architecture, you might get something like this:</p>
+      <blockquote>
+      <p>The traditional Internet infrastructure is an <a href="https://www.cisco.com/c/en/us/td/docs/solutions/Enterprise/Data_Center/DC_Infra2_5/DCInfra_2.html">access-aggregation-core (AAC)</a><strong>^</strong> network. Mainframes were once epicentres. Monolithic applications ran with direct I/O connections, with routers as the multiplexing elements. Lateral paths exist for performance reasons, like latency, redundancy, and cost.</p>
+      <p>Because the focus was on hardware, switch-to-server ratios were high. These networks used hardware-based packet switching, rife with congestion issues and redundant loops known as “packet traps.” Eventually, the early Internet became a bottleneck because of unforeseen server-to-server traffic, leading to:</p>
+      <ul>
+      <li>Shortage of Virtual LANs (VLANs)</li>
+      <li>Spanning Tree Protocol (STP) switch-count constraints</li>
+      <li>Packet flood complications</li>
+      <li>Risks of VLAN partitioning</li>
+      <li>ARP table overloads</li>
+      </ul>
+      <p>TCP/IP has a dedicated solution for this problem, called <a href="https://en.wikipedia.org/wiki/Time_to_live#firstHeading">“Time To Live”</a><strong>^</strong>. Sadly, TTL reaches a point of diminishing returns with very large networks. Over time, Local Area Networks (LANs) (like Banyan Vines) began to address this problem by joining CPUs from different machines. Today, generic switches and servers in a “spine-leaf” configuration make up both cloud and bare-metal clusters, shifting toward virtualisation."</p>
+      </blockquote>
+      <p>If that seemed dense, don’t worry: You’re certainly not the only one who feels that way. Let’s explain that again, more slowly. In fact, let’s start with the original network – the telephone system – and build slowly, following the evolution of modern cloud networks. As we go, we’ll offer some links to more detailed information, but don’t feel obligated to follow those rabbit holes until you’re ready.</p>
+      <h2 id="yesterdays-phone-network-is-todays-internet">Yesterday’s phone network is today’s Internet</h2>
+      <p>Modern networking is really just a direct translation of the landline telephone system into the digital space. <a href="https://en.wikipedia.org/wiki/Network_switch#firstHeading">Network switching</a><strong>^</strong> is an outgrowth of <a href="https://en.wikipedia.org/wiki/Number_Five_Crossbar_Switching_System#firstHeading">crossbar</a><strong>^</strong>, which is how local phone calls were “switched” or “routed” to the correct phone line. Every number dialled closed one more relay, with all seven relays making a complete circuit between telephones.</p>
+      <p>For a telephone technician, monitoring local traffic on a connected printer, it might have looked something like this:</p>
+      <pre class="nohighlight"><code>Off-hook condition: 555-1287
+      Digit dialed: 5
+      Circuit routed to open frameset, relay 5
+      Digit dialed: 5
+      Circuit diverted to open frameset, relay 5/5
+      Digit dialed: 5
+      Circuit diverted to local exchange frameset
+      Digit dialed: 3
+      Circuit diverted to LE subrelay 3
+      Digit dialed 2
+      Circuit diverted to LE sub 3/2
+      Digit dialed 7
+      Circuit diverted to LE sub 3/2/7
+      Digit dialed 4
+      Circuit diverted to LE sub 3/2/7/4
+      Circuit complete
+      Initiating ring signal
+      One ring on 555-3274
+      Off-hook on 555-3274
+      Call connected; timer started</code></pre>
+      <p>These <a href="https://en.wikipedia.org/wiki/Distribution_frame#firstHeading">framesets</a><strong>^</strong> were the automated equivalent of having a switchboard operator find the right plug and connect the plug for your line (1287) to the plug for the called party (3274). Over time, these relay networks got much simpler by allowing exchanges to “swallow” dialled digits.</p>
+      <p>For example, if every local phone number had the exchange “881”, a local call wouldn’t trigger any relays beyond just sending the call to the “881” frameset. In some small exchanges, it wasn’t even necessary to dial the exchange, just the four digits of the phone number, if the caller had the same exchange. Networks still swallow digits today, they’re just called <a href="https://en.wikipedia.org/wiki/Subnetwork#firstHeading">subnets</a><strong>^</strong>.</p>
+      <h2 id="complexity-with-growth">Complexity with growth</h2>
+      <p>Over time, the increasing density of telephone coverage (and self-service long-distance) changed all this. More wires had to be installed. Local exchanges were replaced by centralised exchanges called “central offices” (CO). A CO would have frames for 8 or 10 exchanges, essentially serving the same function as today’s network <a href="https://en.wikipedia.org/wiki/Router_(computing)">routers</a>.</p>
+      <p>Repeaters (voltage boosters) were needed to get signals across longer distances. These “go-away-grey” metal cans (called pedestals) popped up everywhere, partly for wire re-routing, and partly to house repeaters. We still have those in today’s cloud networks, but they’re called <a href="https://en.wikipedia.org/wiki/Patch_panel">patch-panels</a>.</p>
+      <p>In the very early days of long-haul networking, most of the repeaters were owned by the local telephone companies. T1 lines, or <a href="https://en.wikipedia.org/wiki/T-carrier">T-carriers</a>, as they were officially called, provided a speedy (at the time) 1.5Mbps phone connection. They carried several phone calls on one line via <a href="https://en.wikipedia.org/wiki/Time-division_multiplexing">Time-Division Multiplexing</a>. TDM split up the call traffic into little digital packets that were sent on a rotating basis. We still do TDM today, we just call it <a href="https://en.wikipedia.org/wiki/Transmission_Control_Protocol">TCP</a>.</p>
+      <p>The first T1 lines, which showed up around 1962, could handle about 24 calls without the average telephone user noticing. Telephone linemen generally could tell by the “clipped” nature of the call, as there is a distinctive flatness to the conversation over a digital TDM circuit. Raw audio is too large to be efficiently transmitted, so it was sampled in “little digital packets” which were mixed in with other packets from other calls. T1 could rotate through 24 calls, sending the next packet of audio before the listener’s ear could fully process the first packet. We have that today: it’s called <a href="https://en.wikipedia.org/wiki/Packet_switching">packet-switching</a>.</p>
+      <p>The T1 lines used ordinary, double-twisted-pair copper wiring, with repeaters at roughly one-mile intervals (about every fourth pedestal in the modern phone system). When WAN and MAN networking became a thing, the phone company just repurposed some of those pairs to carry data traffic. Many other key elements of TCP/IP, like twisted-pair Ethernet cables, packet-based messaging, and multiplexing, are all just holdovers of the original telephone system, repurposed for computer networking.</p>
+      <h3 id="internet-infrastructure-gets-complicated">Internet infrastructure gets complicated</h3>
+      <p>The Internet is theoretically survivable because every computer can connect to every other computer. That’s not standard operating procedure. High-level networks <a href="https://en.wikipedia.org/wiki/Internet_service_provider#firstHeading">(Network Service Providers, NSPs)</a><strong>^</strong> connect to at least three top level nodes called Network Access Points (NAPs), aka <a href="https://en.wikipedia.org/wiki/Internet_exchange_point#firstHeading">Internet Exchange Points</a><strong>^</strong>. At these points, packets to jump from one NSP to another. NAPs are public access points, Metropolitan Area Exchanges are private. These are virtually indistinguishable for the purposes of this discussion.</p>
+      <p>As an aside, many of the MAEs are the residue of the phone company’s early T1 lines, which was the initial backbone for the Internet. These MAEs act just like a NAP for the purposes of this discussion. Put this all together, and it looks like a big ladder. There are lateral (sideways) connections at every level for both performance and cost reasons: performance, because the path from a computer on one NAP to another is too slow; cost, because each of those top-to-bottom layers is somebody else’s network, which means, basically, usage fees. Shortcut connections are faster and cheaper.</p>
+      <h3 id="internet-traffic">Internet traffic</h3>
+      <p>The real Internet has lots of these shortcut connections. Each one has an interface cost (heterogeneous hardware), a performance cost (varying network speeds), a bandwidth cost (differing traffic levels), and a dollar cost (somebody else’s wires). This is why contracts for connections change daily, which changes the routing, which changes the way the Internet behaves for users.</p>
+      <p>Internet paths are complicated and unpredictable. There not much value in counting how many hops a message takes, or where it hops, unless you’re trying to debug a broken route with, say, <a href="https://linux.die.net/man/8/traceroute">traceroute</a><strong>^</strong>. From a TCP/IP point of view, it’s much easier to ignore the specific network, since each one is custom built on-the-fly. The path can theoretically change every time a message is sent, even between the same two computers.</p>
+      <p>When it comes to designing and troubleshooting networks, knowing the specific route (almost) never helps. What we do want to know about is the network traffic between computers. We have to understand what kind of data travels between computers, besides just the data we send. To help us take the wires out of the equation, Internet data flows are governed by the <a href="https://en.wikipedia.org/wiki/OSI_model">OSI model</a>.</p>
+      <h2 id="the-osi-model">The OSI model</h2>
+      <p>Networks are really just switched circuits. What really matters is the traffic flowing on those circuits, which depends on our perspective – our level of magnification. At the highest “zoom” level, all we’ll see are electrons travelling down the wire; that’s a level of abstraction that isn’t comprehensible for debugging purposes. About all we can tell is whether or not the circuit’s dead.</p>
+      <p>The OSI model starts just above the raw physics, with the physical layer, also known as Layer 1. Starting with “1” makes sense, because this is the lowest level we consider. Layers are normally added on top of each other. For example, if you put six coats of varnish on a piece of furniture, you’re going to have six layers. The first layer you put on wouldn’t sensibly be called “layer 6”; neither network layering work that way.</p>
+      <p>Here’s a quick rundown of what each layer does. Most likely, we won’t get into details about all the layers, because the higher you go, the more widely they vary with the user application – and higher layers don’t really help us better understand MAAS networking, any more than watching electrons travel through a wire will help us debug a missing packet.</p>
+      <h3 id="the-physical-layer-l1">The physical layer (L1)</h3>
+      <p>The phrase “physical layer” may conjure up notions of physics, but don’t worry: we look at signals, not electrons. Here you can learn about the basics of the physical layer.</p>
+      <p>At the physical layer, we’re looking for binary (on/off) signals, set to the cadence of a clock. Every computer brings its own clock to the party, so we definitely need a way to “synchronise our watches”. <a href="https://en.wikipedia.org/wiki/Network_Time_Protocol">NTP</a><strong>^</strong>, the network time protocol, does the trick.</p>
+      <h4 id="variable-latency">Variable latency</h4>
+      <p>Variable latency is the important thing to know about the physical layer, because it affects the timing of network traffic. In order to understand variable latency, we need to understand network latency. Packets aren’t sent without some delay, because of:</p>
+      <ol type="1">
+      <li>The processing delay - how long it takes the router to process the packet header.</li>
+      <li>A queuing delay - how long the packet sits idle in routing queues.</li>
+      <li>Transmission delay - how long it takes layer 1 to push the packet’s bits onto the link.</li>
+      <li>Propagation delay - how long it takes the bits to travel through the wire to the other end.</li>
+      </ol>
+      <p>The size of the queue directly influences how fast data can get onto the link. The processing and transmission delays are real, though relatively constant. The propagation delay doesn’t just depend on the speed of light, because there may be lots of other “relay” computers in the link. Propagation depends on network architecture, network congestion, and the number of hops (how many routers between source and destination), among other things. As we’ll see later on, within your enterprise, <a href="#About-cloud-networks">modern cloud architectures</a> usually create significantly less propagation delay.</p>
+      <p>Variable-latency networks are “variable” because of the density of network traffic and the complexity of the route between hosts. We can’t predict congestion or routing, although we can influence local routing by choosing the right network architecture. We can’t predict transmission delays, though we can statistically bound them. Almost all digital networks are considered “variable-latency”.</p>
+      <h4 id="the-physical-layer-is-not-very-interesting">The physical layer is not very interesting</h4>
+      <p>Other than verifying that signals are flowing, the physical layer doesn’t usually tell us much about what happened to that DHCP request that never made it to the router. Consequently, we really won’t talk that much about the physical layer. Just know that it’s the thing that’s passing bits back and forth between hosts, and very occasionally, we need to scan it to debug network issues.</p>
+      <h3 id="the-datalink-layer-l2">The datalink layer (L2)</h3>
+      <p>The datalink layer (the “link” layer, layer 2 or “L2”) has one purpose: send and receive IP datagrams. L2 doesn’t maintain a connection with the target host; it’s intentionally “connectionless”, and it doesn’t guarantee delivery or integrity of packets. It just ships them between source and destination. At first, in fact, the message-agnostic state of the link layer may seem a little weird. L2 is not without error-checking and recovery code, but it functions efficiently because it isn’t concerned with the data or the message containing the data. That fact can be surprising, since L3 packets are called “datagrams”.</p>
+      <p>A datagram is just a basic network transfer unit – the indivisible unit for a given layer. If we’re talking about the data-link layer (aka the “link” layer), it’s an IEEE 802.xx frame. At the network layer, it’s a data packet. For the transport layer, it would be called a segment. Indivisible units in the physical layer are called chips, which are spread-spectrum pulses in the CDMA, noise-utilising transmission system that operates at that layer.</p>
+      <p>Since datagram isn’t carefully used by everyone (think of User Datagram Protocol), we’ll agree to call these indivisible layer units PDUs (protocol data units). This avoids conflation with other uses and reminds you that it’s the atomic unit at the current network layer. Just remember that, at the link layer (L2), it’s a frame.</p>
+      <h4 id="mac-frames">MAC frames</h4>
+      <p>A MAC frame, or just “frame”, encapsulates the packets from the network layer so that they can be transmitted on the physical layer. A frame can be small or big, anywhere from 5 bytes up to the kilobyte range. The upper size limit is called the maximum transmission unit (MTU) or maximum frame size. This size is set by the particular network technology in use.</p>
+      <p>This last observation brings up a good point: In order to talk sensibly about frames, we’d need to say what kind of frame. With MAAS, we’re always talking about packet-switched networks, so there are potentially four frame types to consider: Ethernet, fibre channel, V.42, and PPP (point-to-point protocol).</p>
+      <p>Happily, MAAS networks almost exclusively use Ethernet, as defined in the <a href="https://www.ieee802.org/">IEEE 802 standards</a><strong>^</strong>, so we’ll stick to that particular frame type for this discussion. Where other frame types may come into play, we’ll discuss those as special cases.</p>
+      <h4 id="ethernet">Ethernet</h4>
+      <p>Before explaining an Ethernet Frame, we need to give a little background information about how Ethernet works; otherwise a lot of the frame components either won’t make sense, or you’ll wonder how it works at all.</p>
+      <p>Remember earlier, when we talked about voice radio, and the need to say “over”? Well, Ethernet at the link layer is all about controlling the conversation, so that computers don’t “talk over each other”. Ethernet implements an algorithm called CSMA/CD, which stands for “carrier sense multiple access with collision detection.” This algorithm controls which computers can access the shared medium (an Ethernet cable) without any special synchronisation requirements.</p>
+      <p>“Carrier sense” means that every NIC does what humans do when we’re talking: it waits for quiet. In this case, it’s waiting for the network to be quiet, that is, when no signal is being sent on the network.</p>
+      <p>“Collision detection” means that, should two NICs both start to send on a shared network at the same time (because the network was quiet), they each receive a jam signal. This signal tells them to wait a specific, randomly-generated amount of time before attempting again. Every time subsequent messages collide, the NIC waits twice the amount of time it previously waited. When it waits some maximum number of times, the NIC will declare a failure and report that the message didn’t go. This ensures that only one frame is traversing the network at any given time.</p>
+      <h4 id="media-access-control-mac">Media Access Control (MAC)</h4>
+      <p>Systems like CSMA/CD are a subset of the Media Access Control (MAC) protocol kit. MAC is one-half of the link layer, with Logical Link Control (LLC) being the other half – though these are sometimes called sub-layers. LLC mostly just defines the frame format for the 802.xx protocols, like WiFi, so we can safely ignore it for the purposes of MAAS networking.</p>
+      <p>If you’ve worked with networks at all, you’ve heard of MAC addresses. Those are basically unique serial numbers assigned to network interface devices (like NICs) at the time of manufacture. Theoretically, they are unique in the world, not counting virtual NICs in virtual machine environments. <a href="https://kb.vmware.com/s/article/219">MAC address collisions</a><strong>^</strong> do happen when using VMs, and there are ways to fix it, assuming that your VMs are confined to a subnet.</p>
+      <p>The MAC sub-layer is connected to the physical layer by a media-independent interface (MII), independent of the actual link protocol (e.g, cellular broadband, Wi-Fi radio, Bluetooth, Cat5e, T1, …). You can learn more about the <a href="https://en.wikipedia.org/wiki/Media-independent_interface">MII</a><strong>^</strong> if you’re so inclined, but we won’t address it again in the context of MAAS networks.</p>
+      <p>Essentially, the MAC sub-layer grabs higher-level frames and makes them digestible by the physical layer, by encoding them into an MII format. It adds some synchronisation info and pads the message (if needed). The MAC sub-layer also adds a frame check sequence that makes it easier to identify errors.</p>
+      <p>In conventional Ethernet networks, all this looks something like the following:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/14f6847ed92339061eb4515c12ac2b6117d5cd7c.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Let’s decode those blocks of bits:</p>
+      <ul>
+      <li><p>The <strong>Preamble</strong> is 7 bytes of clock sync, basically just zeroes and ones like this: …0101010101…. This gives the receiving station a chance to catch up and sync their clock, so the following data isn’t out of sync (and thus misinterpreted). To delve just a little deeper, the Preamble helps the receiving NIC figure out the exact amount of time between encoded bits (it’s called clock recovery). NTP is nice, but Ethernet is an asynchronous LAN protocol, meaning it doesn’t expect perfectly synchronised clocks between any two NICs. The Preamble is similar to the way an orchestra conductor might “count the players in” so they all get the same rhythm to start. Before clock recovery, there was MPE. Clock recovery is much more reliable than trying to get computers all over the world synced up to the same clock frequency and the same downbeat (starting point). Ethernet actually started out that way with something called Manchester Encoding or Manchester Phase Encoding (MPE). This was important because electrical frequency varies not only across the world, but also from moment to moment when the power is slightly “dirty”. MPE involved bouncing a bit between two fractional voltages using a 20MHz oscillator to generate a reference square wave. It works, but it’s not very efficient, so MPE was scrapped in favour of using the Preamble, the way that projectionists use alignment marks on reels of movie film.</p></li>
+      <li><p>The <strong>Start Frame Delimiter (SFD)</strong> is the last chance for clock sync. It is exactly 10101011, where the “11” tells the receiving station that the real header content starts next. The receiving NIC has to recover the clock by the time it hits the SFD, or abandon the frame to the bit bucket.</p></li>
+      <li><p>The <strong>Destination Address (DAddr)</strong> is six bytes long, and gives the physical address – the MAC address – of the next hop. Be aware that the next hop might be the destination, but it’s also possible that the next hop might be a NAP, MAE, NSP, or intermediate ISP. It’s basically the next address in the direction of the destination that the sender knows about. Unlike the Source Address, the Destination Address can be in a broadcast format (similar to a subnet like 192.18.0.0, but using MAC addresses).</p></li>
+      <li><p>The <strong>Source Address (SAddr)</strong> is also a six-byte MAC address, this time the MAC address of the sender, which does not change as long as the message is traversing only layer-2 (Ethernet) switches and routers.</p></li>
+      <li><p>The <strong>PDU Length (PDULen)</strong> gives the byte length of the entire frame, assuming that it’s 1500 or less. If it’s longer than that, it indicates a message type, like IPv4, ARP, or a “q-tagged” frame, which carries a VLAN ID.</p></li>
+      <li><p>The <strong>DSAP</strong>, <strong>SSAP</strong>, and <strong>Control</strong> elements are each one byte in length, and help define devices and protocols. For the most part, we won’t be worried about these with MAAS networks. Just know that as more and more 802 point-standards come out (e.g., 802.11, WiFi), these elements get longer and more complex.</p></li>
+      <li><p>The <strong>Data</strong> or “Payload” is the actual packet being sent, which in the case of TCP/IP, is just a TCP header attached to a fixed-length chunk of the application’s data. It’s passed on from the layer above. It cannot be less than 46 bytes, and in conventional Ethernet, it cannot be larger than 1500 bytes. If the actual data is too small, it’s padded out to 46 bytes.</p></li>
+      <li><p>The <strong>CRC</strong> or “Frame Checksum” (FCS) is a standard checksum, used to verify that the message hasn’t been corrupted along the way.</p></li>
+      </ul>
+      <p>The Preamble and SFD are often considered to be part of the IEEE “packet”, so some people start counting the “frame” at the Destination Address. That distinction shouldn’t affect anything we do with MAAS networks, but it’s nice to keep in mind, in case you run into someone who groups packets differently than you do.</p>
+      <h4 id="trunking-vlans">Trunking VLANs</h4>
+      <p>There is a crucial modification to the basic frame format called a P/Q or VLAN Tag. This allows something called VLAN trunking, which means sending all the VLAN data over the same wire and port, but giving the NICs a field (the P/Q tag) to control access. On paper, it looks something like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/6e58930520fe4ed38d5ea49fab7a337627a88a55.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>As you can see in the modified P/Q frame, the following fields replace part of the frame:</p>
+      <ul>
+      <li><p>Sixteen bits of tags or a protocol ID.</p></li>
+      <li><p>Three bits representing a priority.</p></li>
+      <li><p>One bit is used as a Canonical Format Indicator (CFI), which is 0 if the following VLAN ID is in Ethernet format, or 1 if it’s in Token Ring format.</p></li>
+      <li><p>Twelve bits of VLAN ID.</p></li>
+      </ul>
+      <p>This matters when we’re building complex MAAS networks with lots of VLANS that probably cross over switches. After all, VLANs were initially controlled with ports and switches, although they more commonly use tags now. When more than one VLAN spans multiple switches, frames need to carry VLAN information that can be used by switches to sort or “trunk” the traffic.</p>
+      <h4 id="the-origin-of-trunking">The origin of “trunking”</h4>
+      <p>The word “trunking” is derived from the telephone network term trunk lines, which are lines connecting switchboards.</p>
+      <p>In the original telephone company model, each telephone had a subscriber line, which was a wire that went straight from the local Central Office (CO) to that subscriber’s telephone. Each CO had one switchboard, though it might have many seats.</p>
+      <p>Connections between Central Offices were handled by trunk lines, because they ran between phone company facilities. You’d have a thick cable with lots of pairs running from CO to CO, basically enough wires to handle something like 35% of the possible calls. If you ever got the message, “All circuits are busy now; please try your call again later”, you’ve heard what happens when the system is “trunking above capacity” or “TAC’d”, as it was called.</p>
+      <p>At the CO, the wires would “branch” and run all over the place: First to junction points (those five-foot-tall boxes you see from time to time on the road), then to interface points (the square cans beside the road every half mile or so, also called “pedestals”) and from there to subscriber homes. When you draw out this network, it looks like a tree, where the bundles of cables between COs look like the trunks of trees.</p>
+      <p>With VLAN trunking, by the way, we’re not just multiplexing packets, we’re actually multiplexing LAN channels, so to speak.</p>
+      <p>In the parlance of networks, especially VLANs, the term “trunking” is used to indicate the sharing of network routes. This sharing is made possible by the Ethernet VLAN tags, which make the VLAN-bound messages less dependent on switches and routers to get the traffic to the right place. Otherwise, you’d have to designate complicated port configurations for switches, which is particularly easy to misconfigure.</p>
+      <p>Note that the MAC sub-layer is responsible for managing CDMA/CD, that is, detecting a clear line, initiating re-transmission if there’s a jam signal, etc. On the way in, the MAC sub-layer verifies the CRC/FCS and removes frame elements before passing the data up to the higher layers. Basically, anything that some other MAC layer did to encapsulate the message for sending, the receiving MAC layer un-does on the way in.</p>
+      <h4 id="vlans-subnets-and-fabrics">VLANs, subnets, and fabrics</h4>
+      <p>When working with MAAS networks, you will frequently be concerned with VLANs, subnets, and fabrics, which are all network groupings:</p>
+      <ul>
+      <li><p>Subnets define (group) a range of IP addresses.</p></li>
+      <li><p>VLANs group subnets.</p></li>
+      <li><p>Fabrics group VLANs.</p></li>
+      </ul>
+      <p>Let’s give each of these terms a MAAS context.</p>
+      <p><strong>Subnets</strong></p>
+      <p>A subnet is a range or collection of IP addresses. A subnet just means “sub-network,” and that’s exactly what it is: a subset of IP addresses that can be treated like a single block for some operations.</p>
+      <p>Subnets are defined in CIDR (Classless Inter-Domain Routing) notation. If you want to use the addresses from 192.168.13.0 to 192.168.13.255 in a subnet, you can specify that with 192.168.13.0/24. The “24” refers to the number of bits in the subnet address, with the remainder out of 32 bits free to address hosts. Since 8 bits can represent 256 things, that means /24 gives you the last octet, or 255 host IP addresses.</p>
+      <p><strong>Whatever happened to subnet classes?</strong> Subnets used to be defined in terms of subnet classes, like A, B, and C. That got to be a limitation, because those three classes define a fixed number of bits of the IP address that represent the split between subnet addresses and host addresses. In other words, the class defined how many hosts could be in the network, and three classes wasn’t really adequate to address all the possible permutations that network architects needed. The change to CIDR notation made subnets more granular, allowing many more subnets from the same network.</p>
+      <p><strong>VLANs</strong></p>
+      <p>A VLAN used to be a series of IP addresses that could access a given port on a specific switch, generally the switch that gated some protected resource. With the advent of VLAN trunking (see above), VLANs are marked with the 802.1Q (P/Q) bits in the MAC frame. In theory, any set of addresses can be associated with any VLAN.</p>
+      <p>MAAS encourages a correspondence of subnets to VLANs. Every IP should be in exactly one subnet, and every subnet should be part of exactly one VLAN. You don’t have to do that: you could, for example, have two different subnets that overlap, like 192.168.43.0/24 and 192.168.43.0/26. The “.26” subnet would use fewer bits for the host addresses, so only some of the addresses would overlap. MAAS generally prevents this kind of address overlap.</p>
+      <p>Likewise, putting one subnet in two different VLANs might be possible, but it isn’t practical or easy to debug when conflicts happen. MAAS endeavours to enforce a clean “fan-out” across the network, with no possibility of conflicting IP addresses.</p>
+      <p><strong>Fabrics</strong></p>
+      <p>A fabric just collects VLANs together. If you stick to the clean fan-out, that also means that a fabric collects subnets. A fabric provides a higher level grouping.</p>
+      <p>Consider a MAAS-centric example. Suppose you have one VLAN for HR, and one VLAN for payroll, so that nobody else can see HR’s private files, and likewise you’ve got payroll data limited to just those people who should see it.</p>
+      <p>Some executives are entitled to see anything and everything about the corporation. An “executive” fabric would group all VLANs together, so that people admitted to that fabric can access the VLANs without having to be explicitly added to each one. That’s very handy in really large organisations, saving a lot of time and effort.</p>
+      <h4 id="visualising-the-link-layer">Visualising the link layer</h4>
+      <p>Let’s start with a message coming on Layer 1 from SanDiego to Bangor. When the message comes in, the link layer does the following things:</p>
+      <ol type="1">
+      <li><p>It synchronises the NIC, so that bits will indeed be recognised as bits and the message can be properly decoded.</p></li>
+      <li><p>It handles the source and destination addresses, using ARP as necessary.</p></li>
+      <li><p>It interprets the length/type bytes and uses them, which means it must judge the length of a frame, and of the data in a frame, or, alternatively, decide whether a frame is IPv4, ARP, or VLAN (“q-tagged”).</p></li>
+      <li><p>It processes VLAN tags, which means, at the very least, dealing with the message priority, deciding whether the VLAN frame is Ethernet or Token Ring, and capturing and using the VLAN ID. The layer handles messages by priority, knows how and when to send Ethernet or Token Ring frames, and knows how to route traffic to a specific VLAN.</p></li>
+      <li><p>It computes the checksum to make sure the message is valid.</p></li>
+      </ol>
+      <p>Next, we’ll take a look at the network layer, where most of the message transactions take place, and where most of our debugging will be done.</p>
+      <h3 id="interlayer-addressing-arp">Interlayer addressing: ARP</h3>
+      <p>One frequently asked question is this: Is ARP a layer 2 or layer 3 protocol? Actually, it’s both, as you’ll <a href="#heading--about-arp">discover later</a>, but it does all of its work at L2. One way to distinguish L2 from L3 is to find out what happens inside the firmware of the Network Interface Card (NIC), and that’s usually where ARP takes place. ARP maps MAC addresses, which is how things are addressed in L2, into other addresses (e.g., IP addresses), which is how L3 finds things.</p>
+      <h3 id="the-network-layer">The network layer</h3>
+      <p>You might have noticed in the original OSI model that “IP” was part of Layer 3, and protocol stacks like UDP and TCP were part of Layer 4. It’s a little bit confusing that we say “TCP/IP” when the “IP” really applies to so many other protocols like UDP and ICMP. There are certainly other protocols and protocol stacks, but for the purposes of MAAS networks, we’re talking almost exclusively about TCP/IP.</p>
+      <p>The network layer does not guarantee delivery. Essentially, it makes every effort to deliver IP datagrams (packets) to the destination, but it’s error-handling is pretty simple: just toss the packet into the bit-bucket.</p>
+      <p>It’s also a connectionless layer, meaning the packets making up a message aren’t part of an ongoing conversation. They can be split up, encoded, and sent separately, by different routes, and arrive completely out of order. And packets can get duplicated or corrupted. Figuring all this out is the job of the protocol stack (e.g., TCP) in layer 4. The network layer, L3, just delivers packets.</p>
+      <p><strong>Network byte order</strong>: A rarely needed (but useful) fact is that the network sends bytes in big endian order. That means bytes are transmitted starting with bit 0 and working down to bit 31, usually eight bits at a time. A lot of the computers on the Internet use little endian encoding, which starts at the other end of the word. In those cases, the byte order has to be reversed somewhere between the computer’s memory and Layer 3. For most situations, that fact isn’t particularly useful, but there is the occasional fault that involves failure to reverse byte order along the path from RAM to NIC.</p>
+      <h4 id="packets">Packets</h4>
+      <p>Packets are basic Internet Protocol (IP) message units. A message will probably be split into multiple packets by L4 (the transport layer) so it can be efficiently sent.</p>
+      <p>For example, imagine that you’re sending a very long letter to your friend, and all you have are lots of envelopes and first-class stamps. If you’ve ever done a lot of mailing, you’ll know that mailing a one-ounce letter costs you, say, fifty-eight cents. If you add another ounce of paper to it, that second ounce only costs you, say, twenty cents. But all you have are first class (i.e., fifty-eight-cent) stamps.</p>
+      <p>If you don’t want to waste your money, you can either cram more pages in the envelope, until you’re at three ounces (the most you can get with two stamps), or send two letters, each with one ounce in it. The way envelopes go through the mailing system, you’re better off not over-stuffing an envelope. So what do you do?</p>
+      <p>You sit down and write the letter to your friend, carefully numbering the pages. Then you divide it into piles of pages that are just under one ounce. Finally, you put each pile into an addressed, stamped envelope and mail each letter separately. When your friend gets the letters, it doesn’t matter which one gets there first, because they can reassemble your message, using the page numbers.</p>
+      <h4 id="fixed-packet-lengths-and-segmented-messaging">Fixed packet lengths and segmented messaging</h4>
+      <p>We could have designed computer networks to take messages of indeterminate lengths, but that presents some unique challenges when trying to manage network traffic. For example, suppose you send seven overstuffed letters to your friend, and so does everyone else on your block? All these huge letters aren’t going to fit in one letter-carrier’s bag, so they’ll have to either send out two delivery people, or wait until tomorrow to send out someone’s letters.</p>
+      <p>Choosing a fixed (relatively short) length makes it statistically possible for everyone’s letters (everyone’s messages) to be delivered at a fairly constant, reliable rate. That rate will vary with the size of the overall message, not with who threw their message on the Internet first. A larger message takes longer to send.</p>
+      <p>Messages are split into packets of consistent length before they’re passed to L3, so larger messages take longer. It’s statistically more efficient to split messages into equally-sized packets than any other arrangement – the method that gets the highest count of complete messages through the network in a given amount of time. In network terminology, it’s the highest-throughput approach to network traffic. Specifically, this technique is called multiplexing.</p>
+      <h4 id="ip-packets">IP packets</h4>
+      <p>The IP datagram (packet) is the backbone of most modern networks. The following diagram depicts an IPv4 header, which attaches to the front of data packets up to about 65K long:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/fc349972f6b7509b5b2459bf3bb44419961f0bcd.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Note that IPv6 headers have only the version field in common with IPv4 headers; otherwise, they are completely different. Here are the header fields and what information they carry:</p>
+      <ul>
+      <li><strong>IP Protocol Version</strong> This is “4” for IPv4 and “6” for IPv6. There are <a href="https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml">lots of others</a><strong>^</strong>, but they generally don’t touch a MAAS network.</li>
+      <li><strong>Internet Header Length</strong> The number of 32-bit words in the header, including the options (but not including the data, since it’s just the header). Most of the time, this will have the value “5”, but options do exist and are sometimes included.</li>
+      <li><strong>Differentiated Services Code Point</strong> This is used to specify special classes of service. Normally, IP packets are delivered on a “best-effort” basis, that is, Layer 3 will try everything possible to make sure a packet gets delivered. You can cause L3 to deliver packets with higher priority (implying more certainty) by using a different DSCP.</li>
+      <li><strong>ECN = Explicit Congestion Notification</strong> These bits are both set by an ECN-capable router when that router is above a certain traffic threshold. They are there to alert a sender to slow down (or expect delays) when the network segment in use is particularly congested.</li>
+      <li><strong>Total Length of IP Packet</strong> This field indicates the length of the entire packet, including the data. This makes it possible to calculate the byte offset of the data within the datagram.</li>
+      <li><strong>Identification</strong> This is a serial number, generated by the sending NIC, that helps the participants uniquely identify the datagram. In a sense, it works like the little “take-a-number” tickets you get at the hamburger stand: Eventually, the number will repeat, but the repeat cycle is so long that there’s no chance of confusing packets. The sequential nature of this field, when used in concert with the Flags and Fragmentation Offset field, helps the protocol stack correctly reassemble the message.</li>
+      <li><strong>Flags</strong> This field is basically used to indicate that a packet is a fragment of a longer message.</li>
+      <li><strong>Fragmentation Offset</strong> Used with the Identification sequence number, this field allows the system to know which packets precede or follow this one when re-assembling the message.</li>
+      <li><strong>Time to Live (TTL)</strong> This indicates the number of routers that a datagram can pass through before it’s discarded. Since routers function by replacing their own destination address with the IP address of the next hop, this essentially limits the number of times a packet’s destination IP can be changed. Most RFC documents suggest keeping this number at 64, it’s more often set to something like 255 without any real bottlenecks.</li>
+      <li><strong>Protocol</strong> This field indicates the higher level protocol (the protocol stack) that generated this message. Examples are given for TCP and UDP in the figure.</li>
+      <li><strong>Header Checksum</strong> This calculates a checksum for the header only. It’s only used in IPv4. Doing integrity-checking on the data is the responsibility of Layer 4.</li>
+      <li><strong>Source Address</strong> This is the IP address of the sender of the packet, for this hop only. As shown in the figure below, routers will change this address so they can get the answer back.</li>
+      <li><strong>Destination Address</strong> This is the IP address of the destination, for this hop only. As shown below, routers change this address to act as brokers in the IP chain.</li>
+      </ul>
+      <h4 id="routing">Routing</h4>
+      <p>We now have enough concepts in play to talk about routing. Routing takes place at the network layer, by changing the source and destination addresses (without losing track of the replaced address). The process looks something like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/73c49cb76573e42036c59832f5f16b6383fbc0bd.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>The router typically assigns a unique port number to the outbound message, and records the source IP against that port number. When the message comes back to it on that port number, it can look up the IP address of the NIC that sent the packet and route the answer back.</p>
+      <h3 id="the-transport-layer">The transport layer</h3>
+      <p>Layer 4 brings us to protocols implemented only by the end hosts (i.e., not by the routers or other switching gear that connect the network). This layer handles things like redundancy, confirmed delivery, managing packets on an unreliable network, and so forth. This is the last layer that TCP/IP has anything to say about; layers above this are unique to specific applications. Troubleshooting this level would involve knowing about entire protocol sets, like UDP or TCP.</p>
+      <h3 id="the-session-layer">The session layer</h3>
+      <p>Layer 5, the session layer, is where ongoing interactions between applications happen. The data is couched in terms of things an application might understand (e.g., cookies for a Web browser). This is also the layer where check-pointing (i.e., saving work finished so far) happens. At this layer, we’d discuss things like RPC, SQL, or NetBIOS.</p>
+      <h3 id="the-presentation-layer">The presentation layer</h3>
+      <p>The presentation layer converts data between formats and ensures standard encodings are used to present the information to the application. This layer is all about file formats: ASCII, EBCDIC, JPEG, GIF, and HTML, to name just a few.</p>
+      <h3 id="the-application-layer">The application layer</h3>
+      <p>The top layer, layer 7, is totally the province of the application(s) involved in processing messages. Two techs talking about this layer would be swapping stories about application protocols, like FTP, DNS, SMTP, or NFS. Almost nothing that happens at this layer – except for throughput estimates or fouled daemon code – filters into designing or debugging MAAS networks.</p>
+      <h2 id="bond-interfaces">Bond interfaces</h2>
+      <p>A bond interface is used to aggregate two or more physical interfaces into a single logical interface. Combining multiple network connections in parallel can increase network throughput beyond what a single NIC will allow. It also provides some redundancy in case one of the NICs should fail.</p>
+      <p>Bonded interfaces use a special frame format called LACPDU, or "Link Aggregation Control Protocol Data Unit. More information about these special frames, and about the theory behind bonded NICs, can be found in the <a href="https://1.ieee802.org/tsn/802-1ax-rev/">relevant IEEE standard</a><strong>^</strong>.</p>
+      <h2 id="bridge-interfaces">Bridge interfaces</h2>
+      <p>Let’s take a short diversion to talk about bridge interfaces. These will be important when we discuss ARP a little further down.</p>
+      <p>A network bridge may be useful if you intend to use virtual machines or containers with MAAS. Bridges are, to some extent, artefacts of the AAC network. Frequently, people ask about the difference between a switch and a bridge. The core answer lies in the number of ports: switches have as many ports as you can afford; bridges usually have fewer ports, often only two.</p>
+      <p>Switches traditionally forward packets, without storing them, to a specific host on a specific port, building up a table of host vs. port in the process to reduce broadcast transmissions. Switches traditionally use ASICs (Application Specific Integrated Circuits), otherwise known as “merchant silicon”, designed especially for that purpose.</p>
+      <p>Bridges, on the other hand, provide store and forward packets between two LANs, generally using software. They might still integrate merchant silicon, or even start as an ODM (original design manufacturer) box with no NOS (network operating system), similar to the way some mid-range switches are built. Software added on top, plus the low port count and the store-and-forward approach.</p>
+      <p>Bridges can use MAC addresses (L2) to direct packets, can essentially emulate L3 routing (recording IP addresses of bridged messages for correct return trips), or some combination of both. Switches usually just route packets between ports.</p>
+      <p>You can create a network bridge with MAAS; via netplan; or by any other established method to create a network bridge. For example, when you’re using LXD, you typically create a virtual bridge, called <code>lxdbr0</code> by default, that bridges between the MAAS host and the LXD instance. On the host side, the LXD bridge looks like this:</p>
+      <pre class="nohighlight"><code>7: lxdbr0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default qlen 1000
+          link/ether 00:16:3e:e4:2b:fe brd ff:ff:ff:ff:ff:ff
+          inet 10.90.194.1/24 scope global lxdbr0
+             valid_lft forever preferred_lft forever
+          inet6 fd42:1fc6:f588:d0b8::1/64 scope global 
+             valid_lft forever preferred_lft forever
+          inet6 fe80::216:3eff:fee4:2bfe/64 scope link 
+             valid_lft forever preferred_lft forever</code></pre>
+      <p>On the MAAS side, the virtual bridge looks like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/fbdef2010657939f5f25ee2f157ba5a92af72090.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Where the 10.190.94.0/24 network is usually part of a VLAN offering MAAS-provided DHCP:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/1067a379ba9411713ed1a67e78e249535771b08c.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>There are other DHCP configurations possible with MAAS (we’ll cover this later). The important point here is not to get overly hung up on the terms “switch”, “bridge”, and “router”. Instead, figure out whether you want to forward messages based on port numbers, MAC addresses, or IP addresses – or some combination – and then find real or virtual devices that will do this for you.</p>
+      <h2 id="arp">ARP</h2>
+      <p>In theory, every NIC card in the world has a unique identifier, called a /MAC address/. “MAC” stands for “Media Access Control” – you can find a <a href="https://en.wikipedia.org/wiki/Medium_access_control">little history of this</a><strong>^</strong> on Wikipedia, if you’re interested.</p>
+      <p>When you’re assigning MAC addresses with virtual machines, of course, you may be re-using one that’s actually assigned to a network device out there somewhere. Inside your Layer 2 network, that isn’t a problem, because only devices connected to a physical switch – that’s actually connected to the physical Internet – care about unique MAC addresses. Inside your network, the only conflicts you need to worry about are the ones you create by hand-assigning MAC addresses.</p>
+      <p>The shorter answer to that implied question is this: MAC addresses must be unique across the domain where they’re used.</p>
+      <h3 id="tcpip-does-not-use-mac-addresses">TCP/IP does not use MAC addresses</h3>
+      <p>If we look at the IP datagram again, we see that it doesn’t know about MAC addresses at all:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/fc349972f6b7509b5b2459bf3bb44419961f0bcd.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>TCP, UDP, and a number of other protocol stacks are written to use IP addresses. Routers depend on IP addresses, as we’ve already seen. This creates a bit of a conundrum: How do we map between MAC and IP addresses, and what does the mapping? Is it a layer 2 or layer 3 operation?</p>
+      <p>The first thing to remember is that the MAC address is “ROM-burned” into the NIC card. IP addresses, on the other hand, are assigned to a NIC by a DHCP server or an administrator. This intentional separation of addressing schemes is what makes the Internet flexible.</p>
+      <h3 id="fixed-versus-assigned-addressing">Fixed versus assigned addressing</h3>
+      <p>Here’s an analogy. Your postal address doesn’t /actually/ define where your house is located. There are two layers of other addressing schemes that are actually used by government organisations, like your county tax assessor or the local air ambulance company.</p>
+      <p>One is your land survey location. Depending on where you live, this is defined by a series of coordinates that go something like this: county, township, section, plat, lot, etc. If you’ve ever looked at your property tax bill, it will have your postal address on it, but it will not actually use your postal address to define the taxable property. Instead, it uses this unique set of (rather obscure) coordinates to place you exactly on land survey maps.</p>
+      <p>But that’s not good enough for the air ambulance, for two reasons. First, the survey maps are huge, complex, and hard to interpret, and they change somewhat as property is bought or sold. Second, helicopter navigation is intentionally independent of political boundaries. Instead, the air ambulance will use your latitude and longitude, which allows them to uniquely locate you on the earth. Granted, the ambulance company has a tool somewhere that automatically does the maths of translating your postal address to lat/long coordinates, but the principle holds.</p>
+      <p>In terms of your local network, each of these “address levels” applies. Your postal address corresponds to the IP address of a machine. That IP address may or may not be unique, depending on the domain. For example, you can use Google Maps to try and locate something like “20 Main Street”, and you’ll get a really long list of responses that vary by city.</p>
+      <p>Likewise, there are probably hundreds of thousands of local networks using addresses in the “192.168….” subnet, since it’s so common for local IP addressing. As mentioned above, routers at the network layer take care of protecting these unique local addresses when going out on the Internet. On the other hand, your NIC’s MAC address is like the GPS lat/long coordinates; it’s unique across the entire world.</p>
+      <p>What about the analogue of survey maps? Well, it’s not hard to argue that these are more like the MAC addresses that you assign to your VMs. Every county in a state like, say, Mississippi has the coordinates Township 1, Section 1, Parcel 1 – but the outer domain (the county) makes those coordinates unique. Granted, we don’t use a different format for MAC addresses for VMs than we do for Internet-connected NICs, but you get the idea.</p>
+      <h3 id="address-resolution">Address resolution</h3>
+      <p>Address resolution is what we call the process of mapping between IP addresses and MAC addresses. It’s done with something called ARP, which stands for “Address Resolution Protocol”. Oddly enough, ARP takes on a life of its own, so you may hear it discussed in unusual ways. Some people call it “the ARP”, others speak of “arpd” (the ARP daemon), although if you look at <a href="https://linux.die.net/man/8/arpd">the man page for arpd</a><strong>^</strong>, you’ll see those characterisations are not precisely correct.</p>
+      <p>A frequent question is, “Where does ARP take place?” Maybe the better question is, “Where is ARP implemented?” As always with Internet-related things, the answer can vary, but normally, ARP is implemented as part of the embedded code in the NIC. Technically, this means that ARP operates at Layer 2. More often, you’ll see vendors hedge their bets on this, with phrases such as “operates below the Network Layer”, as in <a href="https://support.hpe.com/hpesc/public/docDisplay?docId=emr_na-c00686597">this explanation</a><strong>^</strong>.</p>
+      <p>In reality, in order to work correctly, ARP has to map IP and MAC addresses, since the ARP message looks something like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/18a95f7ed64b83ec1302c92e41696d137783e7bc.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>To better understand, let’s walk an ARP call. It begins in say, a Web browser, when the browser makes a call to parse the URL. In most cases, that URL contains a hostname (not an IP address), so the following sort of dance takes place:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/1365006a1692e4788df733c58e1435e67da57536.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>We won’t go into this in much detail now, just know that the browser is able to gather an IP address, if it exists. To make the walk-through less confusing, let’s assume that we’re looking for a host with IP 192.168.17.4.</p>
+      <p>Next, the browser requests a connection with 192.168.17.4, using the TCP protocol, which sends a connection request, as an IP packet, to 192.168.17.4. Along the way, there is probably more than one router hop.</p>
+      <p>ARP sends a broadcast request to everything on the relevant subnet. This request looks like the ARP message above, but it’s encoded as a MAC frame, which helps to answer the often-fuzzy question, “Is ARP Layer 2 or Layer 3?” As you see, this is an L2 message. Incidentally, ARP only works as a broadcast, by the way; that is, it only works on a broadcast network.</p>
+      <p>A very important note for some systems like MAAS: ARP requests don’t typically span VLANs.</p>
+      <p>Essentially, this ARP message contains the IP address 192.168.17.4, but no corresponding MAC address in the message. This tells the owner of 192.168.17.4 that it should reply with a similar ARP message, including its MAC address. When the sender receives the ARP reply, it can send the datagram directly to the destination host, embedded in an Ethernet frame, using the MAC address.</p>
+      <p>By the way, for efficiency, the sending host and the intermediate routers are all doing ARP caching. They copy down the mapping between IP and MAC addresses, holding onto it for about twenty minutes. In terms of most network transactions, twenty minutes is an eternity.</p>
+      <h4 id="messages-are-sent-to-mac-addresses">Messages are sent to MAC addresses</h4>
+      <p>We often speak of TCP/IP as if messages are sent from one IP address to another, but that’s actually not strictly true. Messages are sent to MAC addresses. IP addresses are only used to get MAC addresses, so the message can go through.</p>
+      <p>We can return to the air ambulance company to see a practical analogy. A 911 call comes in for “20 Main Street, Yourtown, Yourstate, Yourpostalcode”. The address is sent to the pilot of the helicopter, who punches the address into his GPS. The GPS uses the postal address to retrieve the lat/long coordinates, which are then used to guide the helicopter, via satellite navigation.</p>
+      <p>The same sort of thing happens when you use the GPS navigator in your car. The navigator is translating a logical (postal) address to a physical (lat/long) address on the surface of the earth, calculating a route, and translating that route back to logical landmarks (street names) to let you know how to get there.</p>
+      <p>By the way, You should also note that ARP only works with IPv4. Certain other protocols, like Point-to-Point Protocol (PPP), don’t make use of ARP at all.</p>
+      <h4 id="the-arp-frame">The ARP frame</h4>
+      <p>ARP sends requests as an Ethernet frame, using the MAC address. If you remember the MAC frame from earlier:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/14f6847ed92339061eb4515c12ac2b6117d5cd7c.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>The ARP frame is just a special case of the MAC frame, replacing everything the DSAP, SSAP, control bits, and data with the ARP message shown above. The resulting ARP frame looks something like this:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/f430da9c144bda4cf2e2901181988f3444d335f8.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Based on the above diagram, you can see how the ARP request fits into the Ethernet frame to make an ARP frame.</p>
+      <h4 id="the-arp-cache">The ARP cache</h4>
+      <p>Let’s take a look at the ARP cache on a local system, <sub>cloudburst</sub>. We can do that like this:</p>
+      <pre class="nohighlight"><code>stormrider@cloudburst:~$ arp
+      Address                  HWtype  HWaddress           Flags Mask            Iface
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     wlo1
+      10.250.204.17                    (incomplete)                              mpqemubr0
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     enx606d3c645a57
+      192.168.117.16                   (incomplete)                              virbr0</code></pre>
+      <p>The columns are mostly obvious, but just in case:</p>
+      <ul>
+      <li><strong>Address</strong>: the IP address that’s been cached.</li>
+      <li><strong>HWtype</strong>: the Hardware Type field, which is blank when there’s no MAC address (as is the case in a number of these entries).</li>
+      <li><strong>HWaddress</strong>: the MAC address of the device. The “incomplete” entries are meant to indicate that an ARP request was sent for that address, but no response was received.</li>
+      <li><strong>Flags Mask</strong>: this field can have three values: “C” indicates that ARP learned this on its own, based on ARP responses; “M” means that the data was manually entered in the ARP table by a user; and “P” means “Publish,” which just tells the host how to respond to incoming ARP packets.</li>
+      <li><strong>Iface</strong>: the interface name.</li>
+      </ul>
+      <p>In this case, <sub>virbr0</sub> and <sub>mpqemubr0</sub> are virtual bridges used for different sets of libvirsh VMs that haven’t been used for anything in a while. Also note that something called <sub>lxdbr0</sub>, which is an LXD bridge, doesn’t even show up.</p>
+      <p>Let’s see if we can influence that. First, let’s take a look using ~ip a~:</p>
+      <pre class="nohighlight"><code>stormrider@cloudburst:~$ ip a show up
+      5: virbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+          link/ether 52:54:00:d6:70:6c brd ff:ff:ff:ff:ff:ff
+          inet 192.168.117.1/24 brd 192.168.117.255 scope global virbr0
+             valid_lft forever preferred_lft forever
+      6: mpqemubr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+          link/ether 52:54:00:84:0a:4c brd ff:ff:ff:ff:ff:ff
+          inet 10.250.204.1/24 brd 10.250.204.255 scope global mpqemubr0
+             valid_lft forever preferred_lft forever
+      7: lxdbr0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+          link/ether 00:16:3e:e4:2b:fe brd ff:ff:ff:ff:ff:ff
+          inet 10.90.195.1/24 scope global lxdbr0
+             valid_lft forever preferred_lft forever
+          inet6 fd42:1fc6:f588:d0b8::1/64 scope global 
+             valid_lft forever preferred_lft forever</code></pre>
+      <p>You’ll see that all three bridges are in a DOWN state, and again, <sub>lxdbr0</sub> is so cold that it doesn’t even show up in the ARP table. Let’s bring up a LXD VM connected to <sub>lxdbr0</sub> and look at the ARP table again:</p>
+      <pre class="nohighlight"><code>stormrider@cloudburst:~$ arp
+      Address                  HWtype  HWaddress           Flags Mask            Iface
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     wlo1
+      10.250.204.17                    (incomplete)                              mpqemubr0
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     enx606d3c645a57
+      192.168.117.16                   (incomplete)                              virbr0
+      10.90.195.16             ether   00:16:3e:fc:71:98   C                     lxdbr0</code></pre>
+      <p>Note that the <sub>lxdbr0</sub> bridge now shows up and has a MAC address, too – no incomplete entry here. If we look at the MAC address of <sub>lxdbr0</sub> in the <sub>ip</sub> listing, we’ll see it matches up.</p>
+      <p>Those “(incomplete)” entries are old. They’ve been cached, but no traffic has passed through those bridges in a really long time. The cache is just persistent in holding onto the IP addresses, but not the MAC addresses (since they could be stale). We can prove this to ourselves by clearing the cache:</p>
+      <pre class="nohighlight"><code>stormrider@cloudburst:~$ sudo ip -s neigh flush all
+      [sudo] password for stormrider: 
+
+      *Round 1, deleting 18 entries ***
+      *Flush is complete after 1 round ***</code></pre>
+      <p>…and rebuilding the ARP table:</p>
+      <pre class="nohighlight"><code>stormrider@cloudburst:~$ arp
+      Address                  HWtype  HWaddress           Flags Mask            Iface
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     wlo1
+      192.168.1.24             ether   0c:8b:7d:f1:51:d3   C                     enx606d3c645a57
+      10.90.195.16             ether   00:16:3e:fc:71:98   C                     lxdbr0</code></pre>
+      <h4 id="more-about-arp">More about ARP</h4>
+      <p>Another form of ARP is promiscuous ARP, in which some proxy host pretends to be the destination host and provides an ARP response on behalf of the actual destination host. You shouldn’t use this form of ARP unless there’s no other choice. You can Google it (and use it at your own risk), but it won’t be described here.</p>
+      <p>There is also gratuitous ARP, when the source and destination IP addresses are the same. This can be used for at least two purposes:</p>
+      <ol type="1">
+      <li><p>To find out if someone else already has the source machine’s IPv4 address, a technique called Address Conflict Detection by some references.</p></li>
+      <li><p>To update the source machine’s new MAC address (e.g., a new NIC card was installed) in upstream ARP cache entries. This is something akin to pre-caching MAC addresses before they’re actually needed.</p></li>
+      </ol>
+      <p>You can <a href="https://en.wikipedia.org/wiki/Address_Resolution_Protocol">read more about</a><strong>^</strong> these (and many more) nuances of ARP, but this introduction should answer most of the immediate questions.</p>
+      <h2 id="tcp">TCP</h2>
+      <p>If the Internet Protocol (IP) is connectionless, the transport layer is all about connections. The transport-layer protocol in use – we’ll talk exclusively about Transmission Control Protocol or TCP here – the L4 protocol is the last place in the stack where the entire message exists in one piece. L4 breaks up larger messages into segments. Each segment gets a TCP header, and gets passed on to L3 where it becomes an IP packet.</p>
+      <h3 id="the-tcp-header">The TCP header</h3>
+      <p>Here’s a diagram of the L4-to-L3 hand-off:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/a8f2aba29b1299bba2630177c0301dd518cacb57.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>We can get a pretty good idea what happens at Layer 4 just by decoding the contents of the TCP header. It contains the following fields:</p>
+      <ul>
+      <li><p><strong>Source port</strong>: the application port number of the host sending the data. For example, if this is an FTP message, the source port would probably be 21.</p></li>
+      <li><p><strong>Destination port</strong>: the port number of the application requested on the destination host. If this is FTP, again this port would likely be 21.</p></li>
+      <li><p><strong>Sequence number</strong>: the sequence number of this segment of data, to help the other end put the data back together in the correct order, as well as help Level 4 on the receiving end know whether a packet’s been dropped or lost.</p></li>
+      <li><p><strong>Acknowledgement number</strong>: essentially, the next sequence number the destination host is expecting; used to “gate” packets through the connection.</p></li>
+      <li><p><strong>TCP header length</strong>: given to know where the data begins.</p></li>
+      <li><p><strong>Reserved</strong>: reserved for future use, basically; currently always set to 0.</p></li>
+      <li><p><strong>Code bits</strong>: essentially a set of flags; see the list below.</p></li>
+      <li><p><strong>Window</strong>: used to negotiate the “window” size, that is, how many bytes the destination host is willing to receive at once; this allows for the most efficient transmission possible, based on the characteristics of the two communicating hosts.</p></li>
+      <li><p><strong>Checksum (CRC)</strong>: used to check the integrity of the segment.</p></li>
+      <li><p><strong>Urgent pointer</strong>: data byte count where urgent data ends; used if the urgent flag is set (see below).</p></li>
+      </ul>
+      <p>The code bits can indicate the following things:</p>
+      <ul>
+      <li><p><strong>URG</strong>: indicates that the urgent pointer field is meaningful, used to prioritise this message over other messages.</p></li>
+      <li><p><strong>ACK</strong>: used to acknowledge successful delivery of the previous segment.</p></li>
+      <li><p><strong>PSH</strong>: push notification; tells the receiving host the message is complete, you can push the data to the application.</p></li>
+      <li><p><strong>RST</strong>: request a connection reset when the error level reaches a certain threshold; basically, “let’s try that again from the top.” This is considered an abnormal termination of the TCP connection.</p></li>
+      <li><p><strong>SYN</strong>: used for a three-way TCP handshake; this handshake is how sender and receiver sync up; it serves a purpose similar to the preamble in a MAC frame, but at a different level of synchronisation.</p></li>
+      <li><p><strong>FIN</strong>: we’re done, close the connection. This is considered a normal termination of a TCP connection.</p></li>
+      <li><p><strong>NS/CWR/ECE</strong>: used to provide Explicit Congestion Notification; note that OSI provides several methods for endpoints to know that the network is congested.</p></li>
+      </ul>
+      <h3 id="tcp-is-like-a-phone-call">TCP is like a phone call</h3>
+      <p>As you can see from the bytes above, TCP is all about the state of a connection, which is basically the same as a phone call. When you pick up the receiver, you and the caller exchange information. You say “bye” when the call is over. If it’s a bad connection or one end suddenly gets noisy (think jack-hammers outside), one of you can reset the connection by saying, “Let me call you back in a minute.” Take a minute and try to see how the other header bytes fit this analogy.</p>
+      <p>Also like a telephone call, TCP provides a connection (the call, however long it lasts), flow control (provided by the two parties on the call), multiplexing (handled by the two handsets, basically letting through multiple frequencies and sounds, so that you can get the tone and breath sounds of the other person, not just their raw words). Likewise, the two parties try to handle the reliability of the connection by making sure you understand each other.</p>
+      <p>The analogy spreads a little because some of the items (connection, multiplexing) are handled by the telephone, and some are handled by the people operating the telephone (flow control, reliability). In the network, the Level 4 protocol stack handles it all.</p>
+      <p>There is a lot more to know about TCP, but most of it isn’t directly relevant for MAAS networking. Instead, we direct you to the excellent <a href="https://en.wikipedia.org/wiki/Transmission_Control_Protocol">Wikipedia article about TCP</a><strong>^</strong>. Going forward, we’ll only bring up specific transport layer elements as we need them.</p>
+      <h2 id="dns">DNS</h2>
+      <p>Because IP addresses are hard for humans to remember, the Internet supports the use of host names to identify hosts. These host names are associated with the host’s actual IP address in a server known as a Domain Name server. The overall protocol is known as the <a href="https://en.wikipedia.org/wiki/Domain_Name_System">Domain Name System</a><strong>^</strong>.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

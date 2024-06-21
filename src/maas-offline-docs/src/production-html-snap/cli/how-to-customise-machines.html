@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to customise machines</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to customise machines</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/customising-machine-specifications" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>MAAS allows you to customize machines before you provision them, using curtin or cloud-init.</p>
+      <h2 id="pre-seed-curtin">Pre-seed curtin</h2>
+      <p>You can customise the Curtin installation by either editing the existing <code>curtin_userdata</code> template or by adding a custom file as described above. For a flowchart, showing where Curtin and pre-seeding fits into the deployment picture, see <a href="about-deploying-machines.html">About deploying machines</a>.</p>
+      <p>Curtin provides hooks to execute custom code before and after installation takes place. These hooks are named <code>early</code> and <code>late</code> respectively, and they can both be overridden to execute the Curtin configuration in the ephemeral environment. Additionally, the <code>late</code> hook can be used to execute a configuration for a machine being installed, a state known as in-target.</p>
+      <p>Curtin commands look like this:</p>
+      <pre class="nohighlight"><code>    foo: [&quot;command&quot;, &quot;--command-arg&quot;, &quot;command-arg-value&quot;]</code></pre>
+      <p>Each component of the given command makes up an item in an array. Note, however, that the following won’t work:</p>
+      <pre class="nohighlight"><code>    foo: [&quot;sh&quot;, &quot;-c&quot;, &quot;/bin/echo&quot;, &quot;foobar&quot;]</code></pre>
+      <p>This syntax won’t work because the value of <code>sh</code>’s <code>-c</code> argument is itself an entire command. The correct way to express this is:</p>
+      <pre class="nohighlight"><code>    foo: [&quot;sh&quot;, &quot;-c&quot;, &quot;/bin/echo foobar&quot;]</code></pre>
+      <p>The following is an example of an early command that will run before the installation takes place in the ephemeral environment. The command pings an external machine to signal that the installation is about to start:</p>
+      <pre class="nohighlight"><code>early_commands:
+        signal: [&quot;wget&quot;, &quot;--no-proxy&quot;, &quot;http://example.com/&quot;, &quot;--post-data&quot;, &quot;system_id=&amp;signal=starting_install&quot;, &quot;-O&quot;, &quot;/dev/null&quot;]</code></pre>
+      <p>The following is an example of two late commands that run after installation is complete. Both run in-target, on the machine being installed.</p>
+      <p>The first command adds a PPA to the machine. The second command creates a file containing the machine’s system ID:</p>
+      <pre class="nohighlight"><code>late_commands:
+        add_repo: [&quot;curtin&quot;, &quot;in-target&quot;, &quot;--&quot;, &quot;add-apt-repository&quot;, &quot;-y&quot;, &quot;ppa:my/ppa&quot;]
+        custom: [&quot;curtin&quot;, &quot;in-target&quot;, &quot;--&quot;, &quot;sh&quot;, &quot;-c&quot;, &quot;/bin/echo -en &#39;Installed &#39; &gt; /tmp/maas_system_id&quot;]</code></pre>
+      <h2 id="pre-seed-cloud-init">Pre-seed cloud-init</h2>
+      <p>For a flowchart, showing where cloud-init fits into the deployment picture, see <a href="about-deploying-machines.html">About deploying machines</a>.</p>
+      <p>To customise cloud-init:</p>
+      <ul>
+      <li><p>In the MAAS 3.4 UI, select <em>Machines</em> &gt; machine &gt; <em>Actions</em> &gt; <em>Deploy</em> &gt; <em>Cloud-init user-data…</em> &gt; enter cloud-init customisations &gt; <em>Start deployment for machine</em>.</p></li>
+      <li><p>With the UI for all other MAAS versions, select a machine &gt; <em>Take action</em> &gt; <em>Deploy</em> &gt; <viable release> &gt; <em>Cloud-init user-data…" &gt; enter desired cloud-init script &gt; </em>Start deployment for machine*.</p></li>
+      <li><p>Via the CLI, use the following command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE machine deploy $SYSTEM_ID user_data=&lt;base-64-encoded-script&gt;</code></pre>
+      <pre><code>The three replaceable parameters shown above decode to:
+
+      1.  `$PROFILE`: Your MAAS login. E.g. `admin`
+      2.  `$SYSTEM_ID`: The machine&#39;s system ID (see example below)
+      3.  `&lt;base-64-encoded-script&gt;`: A base-64 encoded copy of your cloud-init script. See below for an example.</code></pre>
+      <h2 id="set-the-default-minimum-kernel">Set the default minimum kernel</h2>
+      <p>To set the default minimum enlistment and commissioning kernel for all machines:</p>
+      <ul>
+      <li><p>In the MAAS 3.4 UI, select <em>Settings</em> &gt; <em>Configuration</em> &gt; <em>Commissioning</em> &gt; <em>Default minimum kernel version</em> (dropdown) &gt; <em>Save</em>.</p></li>
+      <li><p>With the UI for all other MAAS versions, select <em>Settings</em> &gt; <em>General</em> &gt; <em>Default minimum kernel version</em> (dropdown) &gt; <em>Save</em>.</p></li>
+      <li><p>Via the MAAS CLI, use the following command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE maas set-config name=default_min_hwe_kernel value=$KERNEL</code></pre>
+      <pre><code>For example, to set it to the 16.04 GA kernel:</code></pre>
+      <pre class="nohighlight"><code>    maas $PROFILE maas set-config name=default_min_hwe_kernel value=ga-16.04</code></pre>
+      <p>Note that the command option <code>default_min_hwe_kernel</code> appears to apply to only HWE kernels but this is not the case.</p>
+      <h2 id="set-minimum-deployment-kernel-for-one-machine">Set minimum deployment kernel for one machine</h2>
+      <p>To set the minimum deployment kernel on a machine basis:</p>
+      <ul>
+      <li><p>In the MAAS UI, set <em>Machines</em> &gt; machine &gt; <em>Configuration</em> &gt; <em>Edit</em> &gt; <em>Minimum kernel</em>.</p></li>
+      <li><p>Via the MAAS CLI, use the following command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE machine update $SYSTEM_ID min_hwe_kernel=$HWE_KERNEL</code></pre>
+      <pre><code>For example, to set it to the HWE 16.04 kernel:</code></pre>
+      <pre class="nohighlight"><code>    maas $PROFILE machine update $SYSTEM_ID min_hwe_kernel=hwe-16.04</code></pre>
+      <h2 id="set-a-specific-kernel-during-machine-deployment">Set a specific kernel during machine deployment</h2>
+      <p>To set a specific kernel during deployment:</p>
+      <ul>
+      <li><p>In the MAAS UI, select <em>Machines</em> &gt; machine &gt; <em>Take action</em> &gt; <em>Deploy</em> &gt; choose a kernel &gt; <em>Deploy machine</em>. MAAS verifies that the specified kernel is available for the given Ubuntu release (series) before deploying the machine.</p></li>
+      <li><p>Via the MAAS CLI, use the following command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE machine deploy $SYSTEM_ID distro_series=$SERIES hwe_kernel=$KERNEL</code></pre>
+      <p>The operation will fail if the kernel specified by <code>hwe_kernel</code> is older than the kernel (possibly) given by <code>default_min_hwe_kernel</code>. Similarly, it will not work if the kernel is not available for the given distro series (such as ‘hwe-16.10’ for ‘xenial’).</p>
+      <h2 id="set-global-kernel-boot-options">Set global kernel boot options</h2>
+      <p>To set global kernel boot options:</p>
+      <ul>
+      <li><p>In the MAAS 3.4 UI, select <em>Settings</em> &gt; <em>Kernel parameters</em> &gt; enter the <em>Global boot parameters always passed to the kernel</em> &gt; <em>Save</em>.</p></li>
+      <li><p>With the UI for all other versions of MAAS, select <em>Settings</em> &gt; <em>General</em> &gt; <em>Global Kernel Parameters</em> section &gt; enter options &gt; <em>Save</em>.</p></li>
+      <li><p>Via the MAAS CLI, you can set kernel boot options and apply them to all machines with the following command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE maas set-config name=kernel_opts value=&#39;$KERNEL_OPTIONS&#39;</code></pre>
+      <h2 id="kernel-option-tags-cli">Kernel option tags (CLI)</h2>
+      <p>You can create tags with embedded kernel boot options. When you apply such tags to a machine, those kernel boot options will be applied to that machine on the next deployment.</p>
+      <p>To create a tag with embedded kernel boot options, use the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tags create name=&#39;$TAG_NAME&#39; \
+          comment=&#39;$TAG_COMMENT&#39; kernel_opts=&#39;$KERNEL_OPTIONS&#39;</code></pre>
+      <p>For example:</p>
+      <pre class="nohighlight"><code>maas admin tags create name=&#39;nomodeset_tag&#39; \
+          comment=&#39;nomodeset_kernel_option&#39; kernel_opts=&#39;nomodeset vga&#39;</code></pre>
+      <p>This command yields the following results:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;name&quot;: &quot;nomodeset_tag&quot;,
+          &quot;definition&quot;: &quot;,
+          &quot;comment&quot;: &quot;nomodeset_kernel_option&quot;,
+          &quot;kernel_opts&quot;: &quot;nomodeset vga&quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/tags/nomodeset_tag/&quot;
+      }</code></pre>
+      <p>You can check your work with a modified form of the listing command:</p>
+      <pre class="nohighlight"><code>maas admin tags read | jq -r \
+      &#39;([&quot;tag_name&quot;,&quot;tag_comment&quot;,&quot;kernel_options&quot;]
+      |(.,map(length*&quot;-&quot;))),(.[]|[.name,.comment,.kernel_opts]) 
+      | @tsv&#39; | column -t</code></pre>
+      <p>This should give you results something like this:</p>
+      <pre class="nohighlight"><code>tag_name             tag_comment                  kernel_options                     
+      --------             -----------                  --------------                     
+      virtual                                                                              
+      new_tag              a-new-tag-for-test-purposes                                     
+      pod-console-logging  console=tty1                 console=ttyS0                      
+      nomodeset_tag        nomodeset_kernel_option      nomodeset       vga</code></pre>
+      <h2 id="enable-hardware-sync-maas-3.2-and-higher">Enable hardware sync (MAAS 3.2 and higher)</h2>
+      <blockquote>
+      <p>MAAS hardware sync may leak the MAAS admin API token. You may need to rotate all admin tokens and re-deploy all machines that have hardware sync enabled. To find out whether this is an issue, and how to fix it, see the <a href="how-to-troubleshoot-common-issues.html">troubleshooting instructions</a> for this problem.</p>
+      </blockquote>
+      <p>To enable Hardware sync on a machine:</p>
+      <ul>
+      <li><p>In the MAAS 3.4 UI, select <em>Machines</em> &gt; machine &gt; <em>Actions</em> &gt; <em>Deploy</em> &gt; check <em>Periodically synch hardware</em> &gt; <em>Start deployment</em>.</p></li>
+      <li><p>With the UI on all other versions of MAAS, select <em>Machines</em> &gt; machine &gt; <em>Take action</em> &gt; <em>Deploy</em> &gt; check <em>Periodically synch hardware</em> &gt; <em>Start deployment</em>.</p></li>
+      <li><p>Via the MAAS CLI, deploy the machine from the command line, adding <code>enable_hw_sync=true</code>:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE machine deploy $SYSTEM_ID osystem=$OSYSTEM distro_series=$VERSION enable_hw_sync=true</code></pre>
+      <p>Once you’ve enabled hardware sync, any changes you make to the physical device, or to the VM through the VM host, will show up in the appropriate page for the deployed machine as soon as the sync interval has passed.</p>
+      <h2 id="view-updates-from-hardware-sync">View updates from hardware sync</h2>
+      <p>To view updates from hardware sync:</p>
+      <ul>
+      <li><p>In MAAS UI, select <em>Machines</em> &gt; machine. Any changes to the machine’s hardware configuration will be updated on the next sync. The status bar at the bottom will show times for <em>Last synced</em> and <em>Next sync</em>. Updated BMC configuration and tags can also be viewed on the machine itself.</p></li>
+      <li><p>Via the MAAS CLI, hardware sync updates the machine’s blockdevice, interface and device sets on a periodic basis. These can be viewed with the CLI command:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE machine read $SYSTEM_ID</code></pre>
+      <pre><code>The timestamps of the last time data was synced and the estimated next time the machine will be synced can be seen in the `last_sync` and `next_sync` fields respectively.</code></pre>
+      <h2 id="configure-hardware-sync-interval">Configure hardware sync interval</h2>
+      <p>The hardware sync interval is configured globally in <a href="how-to-change-maas-3-4-settings.html">MAAS deployment settings</a>.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

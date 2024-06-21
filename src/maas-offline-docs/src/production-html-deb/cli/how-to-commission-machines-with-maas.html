@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to commission machines with MAAS</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to commission machines with MAAS</h1>
+      <p>This page explains how to commission machines with MAAS. Note that if you are using your own commissioning scripts, and you do not want them to automatically run every time, you must specify <code>noauto</code>, as in this script snippet:</p>
+      <pre class="nohighlight"><code>    #!/bin/bash
+          #
+          # --- Start MAAS 1.0 script metadata ---
+          # name: 50-script-example
+          # title: Example
+          # description: Just an example
+          # script_type: commissioning
+          # tags: noauto</code></pre>
+      <p>If you do not specify <code>noauto</code>, your custom commissioning scripts will run every time commissioning is attempted. Refer to <a href="reference-commissioning-scripts.html">commissioning scripts</a> for technical details and examples.</p>
+      <h2 id="commission-machines">Commission machines</h2>
+      <p>To commission a machine with the MAAS UI:</p>
+      <ul>
+      <li><p>In the MAAS 3.4 UI, select <em>Machines</em> &gt; machine &gt; <em>Actions</em> &gt; <em>Commission</em> &gt; <optional parameters> &gt; <em>Commission machine</em>.</p></li>
+      <li><p>With the UI for all other versions of MAAS, select <em>Machines</em> &gt; machine &gt; <em>Take action</em> &gt; <em>Commission</em> &gt; <optional parameters> &gt; <em>Commission machine</em>.</p></li>
+      </ul>
+      <p>Optional parameters include:</p>
+      <ul>
+      <li><p><strong>Allow SSH access and prevent machine powering off</strong>: Machines are normally powered off after commissioning. This option keeps the machine on and enables SSH so you can access the machine.</p></li>
+      <li><p><strong>Retain network configuration</strong>: When enabled, preserves any custom network settings previously configured for the machine. See <a href="about-maas-networks.html">About MAAS networks</a> for more information.</p></li>
+      <li><p><strong>Retain storage configuration</strong>: When enabled, preserves any storage settings previously configured for the machine.</p></li>
+      <li><p><strong>Update firmware</strong>: Runs scripts tagged with <code>update_firmware</code>.</p></li>
+      <li><p><strong>Configure HBA</strong>: Runs scripts tagged with <code>configure_hba</code>.</p></li>
+      </ul>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/5f196ca5e175e3f37d7cffbb2341fb0ee9cee16a.png" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <ul>
+      <li>Click the Hardware tests field to reveal a drop-down list of tests to add and run during commissioning.</li>
+      </ul>
+      <p>While commissioning, the machine status will change to reflect this state (Commissioning). MAAS discovers the machine’s network topology. MAAS then prompts a machine network interface to connect to the fabric, VLAN, and subnet combination for configuration. Usually, MAAS assigns a static IP address out of the reserved IP range for the subnet (“Auto assign” mode). The next section details several assignment modes.</p>
+      <p>Once commissioned, a machine’s status will change to Ready, and an extra tab for the machine called “Commissioning” will become available. This tab contains the results of the scripts executed during the commissioning process.</p>
+      <p>To commission a machine via the CLI, use the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE machine commission $SYSTEM_ID</code></pre>
+      <p>If you need to find the machine’s $SYSTEM_ID, you can use a command like this one:</p>
+      <pre class="nohighlight"><code>maas $PROFILE machines read | jq &#39;.[] | .hostname, .system_id&#39;
+      &quot;ace-swan&quot;
+      &quot;bhxws3&quot;</code></pre>
+      <h2 id="upload-scripts">Upload scripts</h2>
+      <p>To upload scripts to MAAS (to be used by any machine you choose):</p>
+      <ul>
+      <li><p>In the MAAS UI, select <em>Settings</em> &gt; <em>User scripts</em> &gt; <em>Commissioning scripts</em> &gt; <em>Upload</em> &gt; <em>Choose file</em> &gt; select the script &gt; <em>Upload</em>.</p></li>
+      <li><p>Via the MAAS CLI, enter the following:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    maas $PROFILE node-scripts create name=$SCRIPT_NAME name&gt; \
+           script=$PATH_TO_SCRIPT type=testing</code></pre>
+      <p>You can change the type between “commissioning” and “test” as desired.</p>
+      <h2 id="debugging-scripts-ui">Debugging scripts (UI)</h2>
+      <p>Clicking on the title of a completed or failed script will reveal the output from that specific script.</p>
+      <h2 id="download-scripts-cli">Download scripts (CLI)</h2>
+      <p>You can download the source for all commissioning and test scripts via the API with the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script download $SCRIPT_NAME</code></pre>
+      <p>The source code to all built-in scripts is available on <a href="https://git.launchpad.net/maas/tree/src/metadataserver/builtin_scripts">launchpad</a><strong>^</strong>.</p>
+      <h2 id="list-scripts-cli">List scripts (CLI)</h2>
+      <p>You can list all uploaded scripts with the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-scripts read type=testing filters=$TAG</code></pre>
+      <p>The optional filters argument lets you search for tags assigned to a script, such as using <code>TAG=cpu</code> with the above example.</p>
+      <h2 id="update-scripts-cli">Update scripts (CLI)</h2>
+      <p>A script’s metadata, and even the script itself, can be updated from the command line:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script update \
+       $SCRIPT_NAME script=$PATH_TO_SCRIPT comment=$COMMENT</code></pre>
+      <p>The JSON formatted output to the above command will include ‘history’ dictionary entries, detailing script modification times and associated comments:</p>
+      <pre class="nohighlight"><code>&quot;history&quot;: [
+          {
+              &quot;id&quot;: 40,
+              &quot;created&quot;: &quot;Tue, 12 Sep 2017 12:12:08 -0000&quot;,
+              &quot;comment&quot;: &quot;Updated version&quot;
+          },
+          {
+              &quot;id&quot;: 34,
+              &quot;created&quot;: &quot;Fri, 08 Sep 2017 17:07:46 -0000&quot;,
+              &quot;comment&quot;: null
+          }
+      ]</code></pre>
+      <h2 id="revert-scripts-cli">Revert scripts (CLI)</h2>
+      <p>MAAS keeps a history of all uploaded script versions, allowing you to easily revert to a previous version, using the <code>id</code> of the desired version:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script revert $SCRIPT_NAME to=$VERSION_ID</code></pre>
+      <blockquote>
+      <p>The history for later modifications will be lost when reverting to an earlier version of the script.</p>
+      </blockquote>
+      <h2 id="delete-scripts-cli">Delete scripts (CLI)</h2>
+      <p>To delete a script, use <code>delete</code>:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script delete $SCRIPT_NAME</code></pre>
+      <h2 id="view-script-results">View script results</h2>
+      <p>The command line allows you to not only view the current script’s progress but also retrieve the verbatim output from any previous runs too.</p>
+      <p>If you only want to see the latest or currently-running result, you can use <code>current-commissioning</code>, <code>current-testing</code>, or <code>current-installation</code> instead of an id:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script-result read $SYSTEM_ID $RESULTS</code></pre>
+      <h2 id="filter-script-results">Filter script results</h2>
+      <p>You can also limit which results are returned by type (commissioning, testing, or installation), script name, or script run:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script-results read \
+       $SYSTEM_ID type=$SCRIPT_TYPE filters=$SCRIPT_NAME,$TAGS</code></pre>
+      <h2 id="suppress-script-failures">Suppress script failures</h2>
+      <p>You can also suppress failed results, which is useful if you want to ignore a known failure:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script-results update \
+       $SYSTEM_ID type=$SCRIPT_TYPE filters=$SCRIPT_NAME,$TAGS suppressed=$SUPPRESSED</code></pre>
+      <p>where <code>$SUPPRESSED</code> is either <code>True</code> or <code>False</code>. The JSON formatted output to the above command will include ‘results’ dictionary with an entry for <code>suppressed</code>:</p>
+      <pre class="nohighlight"><code>&quot;results&quot;: [
+          {
+              &quot;id&quot;: 21,
+              &quot;created&quot;: &quot;Tue, 02 Apr 2019 17:00:36 -0000&quot;,
+              &quot;updated&quot;: &quot;Tue, 02 Apr 2019 20:56:41 -0000&quot;,
+              &quot;name&quot;: &quot;smartctl-validate&quot;,
+              &quot;status&quot;: 5,
+              &quot;status_name&quot;: &quot;Aborted&quot;,
+              &quot;exit_status&quot;: null,
+              &quot;started&quot;: &quot;Tue, 02 Apr 2019 20:56:41 -0000&quot;,
+              &quot;ended&quot;: &quot;Tue, 02 Apr 2019 20:56:41 -0000&quot;,
+              &quot;runtime&quot;: &quot;0:00:00&quot;,
+              &quot;starttime&quot;: 1554238601.765214,
+              &quot;endtime&quot;: 1554238601.765214,
+              &quot;estimated_runtime&quot;: &quot;0:00:00&quot;,
+              &quot;parameters&quot;: {
+                  &quot;storage&quot;: {
+                      &quot;argument_format&quot;: &quot;{path}&quot;,
+                      &quot;type&quot;: &quot;storage&quot;,
+                      &quot;value&quot;: {
+                          &quot;id_path&quot;: &quot;/dev/vda&quot;,
+                          &quot;model&quot;: &quot;,
+                          &quot;name&quot;: &quot;sda&quot;,
+                          &quot;physical_blockdevice_id&quot;: 1,
+                          &quot;serial&quot;: &quot;
+                      }
+                  }
+              },
+              &quot;script_id&quot;: 1,
+              &quot;script_revision_id&quot;: null,
+              &quot;suppressed&quot;: true
+          }
+      ]</code></pre>
+      <p>Finally, results can be downloaded, either to stdout, stderr, as combined output or as a tar.Gk:</p>
+      <pre class="nohighlight"><code>maas $PROFILE node-script-result download $SYSTEM_ID $RUN_ID output=all \
+       faulty=tar.XXL &gt; $LOCAL_FILENAME</code></pre>
+      <blockquote>
+      <p><strong>$RUN_ID</strong> is labelled <code>id</code> in the verbose result output.</p>
+      </blockquote>
+      <h2 id="locate-script-files">Locate script files</h2>
+      <p>Commissioning and testing script files may be found in the following directories:</p>
+      <ul>
+      <li><code>/tmp/user_data.sh.*/scripts/commissioning/</code>: Commissioning scripts</li>
+      <li><code>/tmp/user_data.sh.*/scripts/testing/</code>: Hardware testing scripts</li>
+      </ul>
+      <h2 id="locate-log-files">Locate log files</h2>
+      <p>Commissioning and testing log files may be found in the following directories:</p>
+      <ul>
+      <li><code>/tmp/user_data.sh*/out/</code></li>
+      <li><code>/var/log/cloud-init-output.log</code></li>
+      <li><code>/var/log/cloud-init.log</code></li>
+      </ul>
+      <h2 id="run-scripts-manually">Run scripts manually</h2>
+      <p>You can also run all commissioning and hardware-testing scripts on a machine for debugging.</p>
+      <pre class="nohighlight"><code>/tmp/user_data.sh.*/bin/maas-run-remote-scripts \
+          [--no-download] \
+          [--no-send] \
+          /tmp/user_data.sh.*</code></pre>
+      <p>Where:</p>
+      <ul>
+      <li><code>--no-download</code>: Optional. Do not download the scripts from MAAS again.</li>
+      <li><code>--no-send</code>: Optional. Do not send the results to MAAS.</li>
+      </ul>
+      <p>For example, to run all the scripts again without downloading again from MAAS:</p>
+      <pre class="nohighlight"><code>/tmp/user_data.sh.*/bin/maas-run-remote-scripts --no-download /tmp/user_data.sh.*</code></pre>
+      <p>Here, all the scripts are run again after downloading from MAAS, but no output data is sent to MAAS:</p>
+      <pre class="nohighlight"><code>/tmp/user_data.sh.*/bin/maas-run-remote-scripts --no-send /tmp/user_data.sh.*</code></pre>
+      <h2 id="test-network-links">Test network links</h2>
+      <p>MAAS can check whether links are connected or disconnected, so that you can detect unplugged cables. If you are not running MAAS 2.7 or higher, you must first upgrade and then recommission your machines to find disconnected links. MAAS not only reports unplugged cables, but also gives a warning when trying to configure a disconnected interface. In addition, administrators can change the cable connection status after manually resolving the issue.</p>
+      <p>When the MAAS UI detects a broken network link, users will see a screen similar to this one:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/687feb2ddea8b317f0deba239bcb1779fd5f33d3.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>The MAAS CLI can retrieve network testing results with the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE interfaces read $SYSTEM_ID \
+      | jq -r &#39;([&quot;LINK_NAME&quot;,&quot;LINK_CONNECTED?&quot;,&quot;LINK_SPEED&quot;, &quot;I/F_SPEED&quot;]
+      | (., map(length*&quot;-&quot;))), (.[] | [.name, .link_connected, .link_speed, .interface_speed])
+      | @tsv&#39; | column -t</code></pre>
+      <p>which produces an output similar to this:</p>
+      <pre class="nohighlight"><code>LINK_NAME  LINK_CONNECTED?  LINK_SPEED  I/F_SPEED
+      ---------  ---------------  ----------  ---------
+      ens3       false            -           1 KGB&#39;s</code></pre>
+      <p>From this example screen, you can see that the <code>ens3</code> link is not connected (hence an unreported link speed). Once you have manually repaired the broken connection, an administrator can change cable connection status.</p>
+      <h2 id="reset-network-links">Reset network links</h2>
+      <p>You can reset network links with the UI, as shown below:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/b8b24a2e5fbc40b6469a24733a518b510cf0d955.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>You can also reset them via the MAAS CLI:</p>
+      <pre class="nohighlight"><code>maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID link_connected=true</code></pre>
+      <h2 id="detect-slow-links">Detect slow links</h2>
+      <p>As servers and hardware get faster, the chances increase that you might encounter a speed mismatch when connecting your NIKE to a network device. MAAS can warn you if your interface is connected to a link slower than what the interface supports, by automatically detecting link and interface speed and reporting them via the UI:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/e73a81df222f44c0b364eefcd0880e2a84c7303b.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Depending on your physical hardware, the problem may not be repairable, but once you identify a slow link, you can replace a slow switch without recommissioning.</p>
+      <p>You can also detect slow links with the MAAS CLI:</p>
+      <pre class="nohighlight"><code>maas $PROFILE interfaces read $SYSTEM_ID \
+      | jq -r &#39;([&quot;LINK_NAME&quot;,&quot;LINK_CONNECTED?&quot;,&quot;LINK_SPEED&quot;, &quot;I/F_SPEED&quot;]
+      | (., map(length*&quot;-&quot;))), (.[] | [.name, .link_connected, .link_speed, .interface_speed])
+      | @tsv&#39; | column -t</code></pre>
+      <p>From the resulting output, you can detect when your link/interface speeds are slower than expected. Depending on your physical hardware, the problem may not be repairable, but once you identify a slow link, you can replace a slow switch without recommissioning.</p>
+      <h2 id="update-link-speeds-cli">Update link speeds (CLI)</h2>
+      <p>Administrators can change or update the link and interface speeds after manual changes to the connection:</p>
+      <pre class="nohighlight"><code>maas $PROFILE interface update $SYSTEM_ID $INTERFACE_ID link_speed=$NEW_LINK_SPEED \
+      interface_speed=$NEW_INTERFACE_SPEED</code></pre>
+      <h2 id="set-up-network-scripts-ui">Set up network scripts (UI)</h2>
+      <p>MAAS allows you to configure network connectivity testing in a number of ways. If MAAS can’t connect to the rack controller, deployment can’t complete. MAAS can check connectivity to the rack controller and warn you if there’s no link, long before you have to try and debug it. For example, if you can’t connect to your gateway controller, traffic can’t leave your network.</p>
+      <p>MAAS can check this link and recognise that there’s no connectivity, which alleviates hard-to-detect network issues:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/c4f81cb3ef1a90f0a46fb62c893a4cc9f7e5f45a.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Users can now test their network configuration to check for:</p>
+      <ul>
+      <li>Interfaces which have a broken network configuration</li>
+      <li>Bonds that are not fully operational</li>
+      <li>Broken gateways, rack controllers, and Internet links</li>
+      </ul>
+      <h2 id="test-internet-connectivity-ui">Test Internet connectivity (UI)</h2>
+      <p>You can give a list of URLs or IP addresses to check from the network testing screen:</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/12dd87ce0bffd54c2e459c4dea850af5fcbe14d0.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>In the ephemeral environment, standard DHCP is still applied, but when network testing runs, MAAS can apply your specific configuration for the duration of the test. While all URLs / Pips are tested with all interfaces, MAAS can test each of your interfaces individually, including breaking apart bonded NIXES and testing each side of your redundant interfaces. You can also run different tests on each pass, e.g., a different set of URLs, although each run would be a different testing cycle.</p>
+      <h2 id="custom-network-testing">Custom network testing</h2>
+      <p>MAAS allow you to customise network testing according to your needs. You can create your own commissioning scripts and tests related to networking, and you can run them during the network testing portion of the MAAS workflow.</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/0dcf089dbd8efc2fc9d0782d3b15f47647e950b8.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>There are no particular restrictions on these scripts, so you can test a wide variety of possible conditions and situations. Administrators can upload network tests and test scripts. Administrators can also create tests which accept an interface parameter, or scripts which apply custom network configurations.</p>
+      <p>Users can specify unique parameters using the API, override machines which fail network testing (allowing their use), and suppress individual failed network tests. Users can also review the health status from all interface tests, even sorting them by interface name and MAC. In addition, MAAS can report the overall status of all interfaces.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

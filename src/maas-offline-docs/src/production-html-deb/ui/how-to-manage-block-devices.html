@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to manage block devices</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to manage block devices</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/how-to-manage-block-devices" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>You can manipulate machine block storage devices with the MAAS CLI. Note that block devices cannot be managed through the MAAS UI.</p>
+      <h2 id="list-block-devices">List block devices</h2>
+      <p>To view all block devices on a machine use the read operation. This list both physical and virtual block devices, as you can see in the output from the following command:</p>
+      <pre class="nohighlight"><code>maas admin block-devices read &lt;node-id&gt;</code></pre>
+      <p>Output:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      [
+          {
+              &quot;id&quot;: 10,
+              &quot;path&quot;: &quot;/dev/disk/by-dname/vda&quot;,
+              &quot;serial&quot;: &quot;,
+              &quot;block_size&quot;: 4096,
+              &quot;available_size&quot;: 0,
+              &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/10/&quot;,
+              &quot;filesystem&quot;: null,
+              &quot;id_path&quot;: &quot;/dev/vda&quot;,
+              &quot;size&quot;: 5368709120,
+              &quot;partition_table_type&quot;: &quot;MBR&quot;,
+              &quot;model&quot;: &quot;,
+              &quot;type&quot;: &quot;physical&quot;,
+              &quot;uuid&quot;: null,
+              &quot;used_size&quot;: 5365563392,
+              &quot;used_for&quot;: &quot;MBR partitioned with 1 partition&quot;,
+              &quot;partitions&quot;: [
+                  {
+                      &quot;bootable&quot;: false,
+                      &quot;id&quot;: 9,
+                      &quot;resource_uri&quot;:&quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/10/partition/9&quot;,
+                      &quot;path&quot;: &quot;/dev/disk/by-dname/vda-part1&quot;,
+                      &quot;uuid&quot;: &quot;aae082cd-8be0-4a64-ab49-e998abd6ea43&quot;,
+                      &quot;used_for&quot;: &quot;LVM volume for vgroot&quot;,
+                      &quot;size&quot;: 5360320512,
+                      &quot;type&quot;: &quot;partition&quot;,
+                      &quot;filesystem&quot;: {
+                          &quot;uuid&quot;: &quot;a56ebfa6-8ef4-48b5-b6bc-9f9d27065d24&quot;,
+                          &quot;mount_options&quot;: null,
+                          &quot;label&quot;: null,
+                          &quot;fstype&quot;: &quot;lvm-pv&quot;,
+                          &quot;mount_point&quot;: null
+                      }
+                  }
+              ],
+              &quot;tags&quot;: [
+                  &quot;rotary&quot;
+              ],
+              &quot;name&quot;: &quot;vda&quot;
+          },
+          {
+              &quot;id&quot;: 11,
+              &quot;path&quot;: &quot;/dev/disk/by-dname/lvroot&quot;,
+              &quot;serial&quot;: null,
+              &quot;block_size&quot;: 4096,
+              &quot;available_size&quot;: 0,
+              &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+              &quot;filesystem&quot;: {
+                  &quot;uuid&quot;: &quot;7181a0c0-9e16-4276-8a55-c77364d137ca&quot;,
+                  &quot;mount_options&quot;: null,
+                  &quot;label&quot;: &quot;root&quot;,
+                  &quot;fstype&quot;: &quot;ext4&quot;,
+                  &quot;mount_point&quot;: &quot;/&quot;
+              },
+              &quot;id_path&quot;: null,
+              &quot;size&quot;: 3221225472,
+              &quot;partition_table_type&quot;: null,
+              &quot;model&quot;: null,
+              &quot;type&quot;: &quot;virtual&quot;,
+              &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+              &quot;used_size&quot;: 3221225472,
+              &quot;used_for&quot;: &quot;ext4 formatted filesystem mounted at /&quot;,
+              &quot;partitions&quot;: [],
+              &quot;tags&quot;: [],
+              &quot;name&quot;: &quot;vgroot-lvroot&quot;
+          }
+      ]</code></pre>
+      <h2 id="read-block-device">Read block device</h2>
+      <p>If you want to read just one block device instead of listing all block devices the read operation on the block device endpoint provides that information. To display the details on device ‘11’ from the previous output, for example, we could enter:</p>
+      <pre class="nohighlight"><code>maas admin block-device read &lt;node-id&gt; 11</code></pre>
+      <p>The above command generates the following output:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;available_size&quot;: 0,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vgroot-lvroot&quot;,
+          &quot;name&quot;: &quot;vgroot-lvroot&quot;,
+          &quot;used_for&quot;: &quot;ext4 formatted filesystem mounted at /&quot;,
+          &quot;type&quot;: &quot;virtual&quot;,
+          &quot;used_size&quot;: 3221225472,
+          &quot;filesystem&quot;: {
+              &quot;uuid&quot;: &quot;7181a0c0-9e16-4276-8a55-c77364d137ca&quot;,
+              &quot;mount_point&quot;: &quot;/&quot;,
+              &quot;mount_options&quot;: null,
+              &quot;fstype&quot;: &quot;ext4&quot;,
+              &quot;label&quot;: &quot;root&quot;
+          },
+          &quot;id_path&quot;: null,
+          &quot;id&quot;: 11,
+          &quot;partition_table_type&quot;: null,
+          &quot;block_size&quot;: 4096,
+          &quot;tags&quot;: [],
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+          &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+          &quot;serial&quot;: null,
+          &quot;partitions&quot;: [],
+          &quot;size&quot;: 3221225472,
+          &quot;model&quot;: null
+      }</code></pre>
+      <p>It is also possible to use the name of the block device, such as ‘sda’ or ‘vda’, instead of its ‘id’:</p>
+      <pre class="nohighlight"><code>s admin block-device read &lt;node-id&gt; vda</code></pre>
+      <blockquote>
+      <p>MAAS allows the name of a block device to be changed. If the block device name has changed then the API call needs to use the new name. Using the ID is safer as it never changes.</p>
+      </blockquote>
+      <h2 id="create-block-device">Create block device</h2>
+      <p>MAAS gathers the required information itself on block devices when re- commissioning a machine. If this doesn’t provide the required information, it is also possible - though not recommended - for an administrator to use the API to manually add a physical block device to a machine.</p>
+      <pre class="nohighlight"><code>maas admin block-devices create &lt;node-id&gt; name=vdb model=&quot;QEMU&quot; serial=&quot;QM00001&quot; size=21474836480 block_size=4096</code></pre>
+      <p>Depending on your configuration, output should be similar to the following:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;available_size&quot;: 21474836480,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vdb&quot;,
+          &quot;name&quot;: &quot;vdb&quot;,
+          &quot;used_for&quot;: &quot;Unused&quot;,
+          &quot;type&quot;: &quot;physical&quot;,
+          &quot;used_size&quot;: 0,
+          &quot;filesystem&quot;: null,
+          &quot;id_path&quot;: &quot;,
+          &quot;id&quot;: 12,
+          &quot;partition_table_type&quot;: null,
+          &quot;block_size&quot;: 4096,
+          &quot;tags&quot;: [],
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/12/&quot;,
+          &quot;uuid&quot;: null,
+          &quot;serial&quot;: &quot;QM00001&quot;,
+          &quot;partitions&quot;: [],
+          &quot;size&quot;: 21474836480,
+          &quot;model&quot;: &quot;QEMU&quot;
+      }</code></pre>
+      <blockquote>
+      <p>The serial number is what MAAS will use when a machine is deployed to find the specific block device. It’s important that this be correct. In a rare chance that your block device does not provide a model or serial number you can provide an id_path. The id_path should be a path that is always the same, no matter the kernel version.</p>
+      </blockquote>
+      <h2 id="update-block-device">Update block device</h2>
+      <p>An administrator can also update the details held on a physical block device, such as its name, from the API:</p>
+      <pre class="nohighlight"><code>maas admin block-device update &lt;node-id&gt; 12 name=newroot</code></pre>
+      <p>Output from this command will show that the ‘name’ has changed:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;block_size&quot;: 4096,
+          &quot;size&quot;: 21474836480,
+          &quot;filesystem&quot;: null,
+          &quot;model&quot;: &quot;QEMU&quot;,
+          &quot;name&quot;: &quot;newroot&quot;,
+          &quot;partitions&quot;: [],
+          &quot;tags&quot;: [],
+          &quot;used_size&quot;: 0,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/newroot&quot;,
+          &quot;id_path&quot;: &quot;,
+          &quot;uuid&quot;: null,
+          &quot;available_size&quot;: 21474836480,
+          &quot;id&quot;: 12,
+          &quot;used_for&quot;: &quot;Unused&quot;,
+          &quot;type&quot;: &quot;physical&quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/12/&quot;,
+          &quot;partition_table_type&quot;: null,
+          &quot;serial&quot;: &quot;QM00001&quot;
+      }</code></pre>
+      <h2 id="delete-block-device">Delete block device</h2>
+      <p>Physical and virtual block devices can be deleted by an administrator, while ordinary users can only delete virtual block devices:</p>
+      <pre class="nohighlight"><code>maas admin block-device delete &lt;node-id&gt; 12</code></pre>
+      <h2 id="format-block-device">Format block device</h2>
+      <p>An entire block device can be formatted by defining a filesystem with the ‘format’ API call:</p>
+      <pre class="nohighlight"><code>maas admin block-device format &lt;node-id&gt; 11 fstype=ext4</code></pre>
+      <p>Successful output from this command will look similar to this:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;block_size&quot;: 4096,
+          &quot;size&quot;: 3221225472,
+          &quot;filesystem&quot;: {
+              &quot;label&quot;: &quot;,
+              &quot;fstype&quot;: &quot;ext4&quot;,
+              &quot;mount_options&quot;: null,
+              &quot;uuid&quot;: &quot;75e42f49-9a45-466c-8425-87a40e4f4148&quot;,
+              &quot;mount_point&quot;: null
+          },
+          &quot;model&quot;: null,
+          &quot;name&quot;: &quot;vgroot-lvroot&quot;,
+          &quot;partitions&quot;: [],
+          &quot;tags&quot;: [],
+          &quot;used_size&quot;: 3221225472,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vgroot-lvroot&quot;,
+          &quot;id_path&quot;: null,
+          &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+          &quot;available_size&quot;: 0,
+          &quot;id&quot;: 11,
+          &quot;used_for&quot;: &quot;Unmounted ext4 formatted filesystem&quot;,
+          &quot;type&quot;: &quot;virtual&quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+          &quot;partition_table_type&quot;: null,
+          &quot;serial&quot;: null
+      }</code></pre>
+      <blockquote>
+      <p>You cannot format a block device that contains partitions or is used to make another virtual block device.</p>
+      </blockquote>
+      <h2 id="unformat-block-device">Unformat block device</h2>
+      <p>You can remove the filesystem from a block device with the ‘unformat’ API call:</p>
+      <pre class="nohighlight"><code>maas admin block-device unformat &lt;node-id&gt; 11</code></pre>
+      <p>The output from this command should show the filesystem is now ‘null’:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;available_size&quot;: 3221225472,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vgroot-lvroot&quot;,
+          &quot;name&quot;: &quot;vgroot-lvroot&quot;,
+          &quot;used_for&quot;: &quot;Unused&quot;,
+          &quot;type&quot;: &quot;virtual&quot;,
+          &quot;used_size&quot;: 0,
+          &quot;filesystem&quot;: null,
+          &quot;id_path&quot;: null,
+          &quot;id&quot;: 11,
+          &quot;partition_table_type&quot;: null,
+          &quot;block_size&quot;: 4096,
+          &quot;tags&quot;: [],
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+          &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+          &quot;serial&quot;: null,
+          &quot;partitions&quot;: [],
+          &quot;size&quot;: 3221225472,
+          &quot;model&quot;: null
+      }</code></pre>
+      <h2 id="mount-block-device">Mount block device</h2>
+      <p>If a block device has a filesystem, you can use the ‘maas’ command to mount a block devices at a given mount point:</p>
+      <pre class="nohighlight"><code>maas admin block-device mount &lt;node-id&gt; 11 mount_point=/srv</code></pre>
+      <p>The mount point is included in the successful output from the command:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;available_size&quot;: 0,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vgroot-lvroot&quot;,
+          &quot;name&quot;: &quot;vgroot-lvroot&quot;,
+          &quot;used_for&quot;: &quot;ext4 formatted filesystem mounted at /srv&quot;,
+          &quot;type&quot;: &quot;virtual&quot;,
+          &quot;used_size&quot;: 3221225472,
+          &quot;filesystem&quot;: {
+              &quot;uuid&quot;: &quot;6f5965ad-49f7-42da-95ff-8000b739c39f&quot;,
+              &quot;mount_point&quot;: &quot;/srv&quot;,
+              &quot;mount_options&quot;: &quot;,
+              &quot;fstype&quot;: &quot;ext4&quot;,
+              &quot;label&quot;: &quot;
+          },
+          &quot;id_path&quot;: null,
+          &quot;id&quot;: 11,
+          &quot;partition_table_type&quot;: null,
+          &quot;block_size&quot;: 4096,
+          &quot;tags&quot;: [],
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+          &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+          &quot;serial&quot;: null,
+          &quot;partitions&quot;: [],
+          &quot;size&quot;: 3221225472,
+          &quot;model&quot;: null
+      }</code></pre>
+      <h2 id="unmount-block-device">Unmount block device</h2>
+      <p>To remove the mount point from the block device, use the ‘unmount’ call:</p>
+      <pre class="nohighlight"><code>maas admin block-device unmount &lt;node-id&gt; 11 mount_point=/srv</code></pre>
+      <p>The previous command will include a nullified ‘mount_point’ in its output:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;available_size&quot;: 0,
+          &quot;path&quot;: &quot;/dev/disk/by-dname/vgroot-lvroot&quot;,
+          &quot;name&quot;: &quot;vgroot-lvroot&quot;,
+          &quot;used_for&quot;: &quot;Unmounted ext4 formatted filesystem&quot;,
+          &quot;type&quot;: &quot;virtual&quot;,
+          &quot;used_size&quot;: 3221225472,
+          &quot;filesystem&quot;: {
+              &quot;uuid&quot;: &quot;6f5965ad-49f7-42da-95ff-8000b739c39f&quot;,
+              &quot;mount_point&quot;: null,
+              &quot;mount_options&quot;: null,
+              &quot;fstype&quot;: &quot;ext4&quot;,
+              &quot;label&quot;: &quot;
+          },
+          &quot;id_path&quot;: null,
+          &quot;id&quot;: 11,
+          &quot;partition_table_type&quot;: null,
+          &quot;block_size&quot;: 4096,
+          &quot;tags&quot;: [],
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/nodes/4y3h8a/blockdevices/11/&quot;,
+          &quot;uuid&quot;: &quot;fc8ba89e-9149-412c-bcea-e596eb7c0d14&quot;,
+          &quot;serial&quot;: null,
+          &quot;partitions&quot;: [],
+          &quot;size&quot;: 3221225472,
+          &quot;model&quot;: null
+      }</code></pre>
+      <h2 id="boot-from-block-device">Boot from block device</h2>
+      <p>By default, MAAS picks the first added block device to the machine as the boot disk. In most cases this works as expected as the BIOS usually enumerates the boot disk as the first block device. There are cases where this fails and the boot disk needs to be set to another disk. This API allow setting which block device on a machine MAAS should use as the boot disk.:</p>
+      <pre class="nohighlight"><code>maas admin block-device set-boot-disk &lt;node-id&gt; 10</code></pre>
+      <blockquote>
+      <p>Only an administrator can set which block device should be used as the boot disk and only a physical block device can be set as as the boot disk. This operation should be done before a machine is allocated or the storage layout will be applied to the previous boot disk.</p>
+      </blockquote>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

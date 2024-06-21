@@ -1,0 +1,11 @@
+# MAAS documentation git repository
+
+This is the MAAS documentation git repository.  It houses the following project resources:
+
+- **html-support**: CSS files and templates used to automatically construct the HTML docs when new discourse versions are published.
+- **production-html-deb**: the package version of the HTML documentaiton.
+- **production-html-snap**: the snap version of the HTML documentation.
+- **src**: the source markdown for each discourse topic.
+- **tools**: automation tools for working with MAAS docs.
+
+Use it wisely.

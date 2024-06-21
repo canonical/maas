@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to manage tags</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to manage tags</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/tagging-machines-and-controllers" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>This page explains how to work with <a href="how-to-label-machines.html">tags</a>.</p>
+      <h2 id="naming-tags">Naming tags</h2>
+      <p>When working with tags, there are some universal rules you need to follow:</p>
+      <ol type="1">
+      <li>Tag names can include any combination of alphabetic letters (a-zA-Z), numbers (0-9), dashes (-) and underscores (_).</li>
+      <li>Tag names can be a maximum of 256 characters in length.</li>
+      <li>Tag names <em>cannot</em> include spaces.</li>
+      </ol>
+      <p>In general, names that do not conform to these rules cannot be created.</p>
+      <h2 id="download-hw-info-ui">Download H/W info (UI)</h2>
+      <p>To download hardware configuration information in XML format, select <em>Machines</em> &gt; machine (allocated or deployed) &gt; <em>Logs</em> &gt; <em>Installation output</em> &gt; <em>Download</em> &gt; <em>Machine output (XML)</em></p>
+      <p>You can <a href="https://ezix.org/project/wiki/HardwareLiSter">learn more about the returned information</a><strong>^</strong> if desired. Note that:</p>
+      <ul>
+      <li>Size and capacity can have various meanings depending on the device</li>
+      <li>The size of a node is always equal to its capacity</li>
+      <li>Serial refers to the device’s serial number, but is used to report the MAC address for network devices, GUID for disk partition.</li>
+      </ul>
+      <p>You can also find device classes from the same sources.</p>
+      <h2 id="adding-tags-3.2ui">Adding tags (3.2++/UI)</h2>
+      <p>In the MAAS UI, creating and assigning tags is a combined operation; that is, you create tags as you assign them, rather than creating them first. Creating tags in the UI is a little different user experience: there is a self-loading completion menu that collects all tags of a similar type. This completion menu helps you avoid misspelling tags when entering them more than once; otherwise, you might not be able to group and filter tags properly. It also makes tag entry more efficient.</p>
+      <p>To create and assign a tag to specific machines, select <em>Machines</em> &gt; machine &gt; <em>Take action</em> &gt; <em>Tag</em>. In the pop-up tag dialogue, enter your proposed tag name in <em>Search existing or add new tags</em>, then select <em>Create tag {tag-name}</em>. Fill in the form:</p>
+      <ul>
+      <li><p>Optionally enter a <em>Comment</em>.</p></li>
+      <li><p>Optionally enter <em>Kernel options</em>.</p></li>
+      </ul>
+      <p>Select <em>Create and add to tag changes</em> &gt; <em>Save</em>. You can confirm your changes by hovering over the <em>Tags</em> list in the <em>Machines</em> screen.</p>
+      <h2 id="adding-tags-3.1ui">Adding tags (3.1–/UI)</h2>
+      <p>In the MAAS UI, creating and assigning tags is a combined operation; that is, you create tags as you assign them, rather than creating them first. Creating tags in the UI is a little different user experience: there is a self-loading completion menu that collects all tags of a similar type. This completion menu helps you avoid misspelling tags when entering them more than once; otherwise, you might not be able to group and filter tags properly. It also makes tag entry more efficient.</p>
+      <p>The process for creating and assigning tags in the UI is generally the same for all tag types: Enter the name of the tag in the *Tags box and press the return key. Select the appropriate completion button to register your changes. The tag you just entered will now be added to the tag auto complete list, in alphabetical order, for re-use with other machines.</p>
+      <h2 id="adding-tags-cli">Adding tags (CLI)</h2>
+      <p>With the CLI, you can create a tag with the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tags create name=$TAG_NAME comment=&#39;$TAG_COMMENT&#39;</code></pre>
+      <p>For example, depending upon your system configuration, you might type a command similar to this one:</p>
+      <pre class="nohighlight"><code>maas admin tags create name=&quot;new_tag&quot; comment=&quot;a new tag for test purposes&quot;</code></pre>
+      <p>When the command is successful, you should see output similar to this:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;name&quot;: &quot;new_tag&quot;,
+          &quot;definition&quot;: &quot;,
+          &quot;comment&quot;: &quot;a new tag for test purposes&quot;,
+          &quot;kernel_opts&quot;: &quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/tags/new_tag/&quot;
+      }</code></pre>
+      <h2 id="kernel-option-tags">Kernel option tags</h2>
+      <p><em>This feature is only available via the MAAS CLI.</em></p>
+      <p>You can create tags with embedded kernel boot options. When you apply such tags to a machine, those kernel boot options will be applied to that machine on the next deployment.</p>
+      <p>To create a tag with embedded kernel boot options, use the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tags create name=&#39;$TAG_NAME&#39; \
+          comment=&#39;$TAG_COMMENT&#39; kernel_opts=&#39;$KERNEL_OPTIONS&#39;</code></pre>
+      <p>For example:</p>
+      <pre class="nohighlight"><code>maas admin tags create name=&#39;nomodeset_tag&#39; \
+          comment=&#39;nomodeset_kernel_option&#39; kernel_opts=&#39;nomodeset vga&#39;</code></pre>
+      <p>This command yields the following results:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;name&quot;: &quot;nomodeset_tag&quot;,
+          &quot;definition&quot;: &quot;,
+          &quot;comment&quot;: &quot;nomodeset_kernel_option&quot;,
+          &quot;kernel_opts&quot;: &quot;nomodeset vga&quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/tags/nomodeset_tag/&quot;
+      }</code></pre>
+      <p>You can check your work with a modified form of the listing command:</p>
+      <pre class="nohighlight"><code>maas admin tags read | jq -r \
+      &#39;([&quot;tag_name&quot;,&quot;tag_comment&quot;,&quot;kernel_options&quot;]
+      |(.,map(length*&quot;-&quot;))),(.[]|[.name,.comment,.kernel_opts]) 
+      | @tsv&#39; | column -t</code></pre>
+      <p>This should give you results something like this:</p>
+      <pre class="nohighlight"><code>tag_name             tag_comment                  kernel_options                     
+      --------             -----------                  --------------                     
+      virtual                                                                              
+      new_tag              a-new-tag-for-test-purposes                                     
+      pod-console-logging  console=tty1                 console=ttyS0                      
+      nomodeset_tag        nomodeset_kernel_option      nomodeset       vga</code></pre>
+      <h2 id="removing-tags-3.2ui">Removing tags (3.2++/UI)</h2>
+      <p>You have two choices when it comes to eliminating tags from machines in your MAAS instance: you can delete them from all machines, or simply remove them from specific machines.</p>
+      <h2 id="deleting-tags-from-all-machines-at-once">Deleting tags from all machines at once</h2>
+      <p>To delete tags from all machines, select <em>Machines</em> &gt; <em>Tags</em> &gt; trash can icon &gt; <em>Delete</em>. The tag will be unassigned from all machines and deleted. There is no undo.</p>
+      <h2 id="removing-a-tag-from-specific-machines">Removing a tag from specific machines</h2>
+      <p>To remove a tag only from specific machines, select <em>Machines</em> &gt; machine(s) by checkbox &gt; <em>Take action</em> &gt; <em>Tag</em>. For each tag you wish to unassign, select <em>Remove</em>. When done, select <em>Save</em> to finalise your changes.</p>
+      <h2 id="removing-tags-3.1ui">Removing tags (3.1–/UI)</h2>
+      <p>With the MAAS UI, you remove tags, rather than explicitly deleting them. Tags are “deleted” when you have removed them from all machines:</p>
+      <ol type="1">
+      <li><p>Find the <em>Tags</em> box.</p></li>
+      <li><p>Click the <em>X</em> next to the tag you wish to remove.</p></li>
+      <li><p>When you’re done, select the appropriate completion button to register your changes.</p></li>
+      </ol>
+      <p>Note that the tag you just removed will be deleted from the tag auto complete list when it is no longer assigned to any machines.</p>
+      <h2 id="removing-tags-cli">Removing tags (CLI)</h2>
+      <p>With the CLI, you can delete a tag with the following command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tag delete $TAG_NAME</code></pre>
+      <p>For example, depending upon your system configuration, you might type a command similar to this one:</p>
+      <pre class="nohighlight"><code>maas admin tag delete zorko</code></pre>
+      <p>When the command is successful, you should see output similar to this:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:</code></pre>
+      <p>Note that there is no actual “Machine-readable output” produced by this command, in most cases. Also note that remove a tag removes it from any nodes where you may have assigned it, but does not affect those nodes in any other way.</p>
+      <h2 id="unassign-tags-ui">Unassign tags (UI)</h2>
+      <p>To unassign tags from machines:</p>
+      <ol type="1">
+      <li><p>Select <em>Machines</em>.</p></li>
+      <li><p>Select the checkbox(es) next to the machine(s) you wish to untag.</p></li>
+      <li><p>Select <em>Take action</em> &gt; <em>Tag</em>. A table of tags appears at the top of the screen.</p></li>
+      <li><p>For each tag you wish to unassign, select <em>Remove</em>. The text will change to <em>Discard</em> with an <em>X</em> to the right.</p></li>
+      <li><p>If you want to undo a choice before saving, click the <em>X</em> to right of <em>Discard</em> to undo the proposed change.</p></li>
+      <li><p>When you’re satisfied with your new tag configuration, select <em>Save</em> to finalise and register your choice(s).</p></li>
+      </ol>
+      <blockquote>
+      <p>Automatic tags cannot be unassigned manually. You can either update or delete automatic tags.</p>
+      </blockquote>
+      <p>You can also unassign tags individually by going to <em>Machines &gt;&gt; {machine-name} &gt;&gt; Configuration &gt;&gt; Tags &gt;&gt; Edit</em>. The <em>Tags</em> table functions exactly the same as what’s described above.</p>
+      <h2 id="list-tagged-nodes">List tagged nodes</h2>
+      <p>To see how many nodes (Machines, controllers, devices) are tagged, search for GRUB_CMDLINE_LINUX_DEFAULT in the “Installation output” tab of the machine details page. That log should stay around for the lifetime of the deployment of the machine. The log gets overwritten when you redeploy the machine. For example:</p>
+      <pre class="nohighlight"><code>GRUB_CMDLINE_LINUX_DEFAULT=&quot;sysrq_always_enabled dyndbg=&#39;file drivers/usb/* +p&#39; console=tty1 console=ttyS0&quot;</code></pre>
+      <h2 id="update-tags">Update tags</h2>
+      <p><em>This feature is only available via the MAAS CLI.</em></p>
+      <p>You can update a tag (e.g., a tag comment) like this:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tag update $TAG_NAME comment=&#39;$TAG_COMMENT&#39;</code></pre>
+      <p>For example:</p>
+      <pre class="nohighlight"><code>maas admin tag update new_tag comment=&quot;a-new-tag-for-test-purposes&quot;</code></pre>
+      <p>This should return an output similar to this one:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;name&quot;: &quot;new_tag&quot;,
+          &quot;definition&quot;: &quot;,
+          &quot;comment&quot;: &quot;a-new-tag-for-test-purposes&quot;,
+          &quot;kernel_opts&quot;: &quot;,
+          &quot;resource_uri&quot;: &quot;/MAAS/api/2.0/tags/new_tag/&quot;
+      }</code></pre>
+      <h2 id="list-all-tags">List all tags</h2>
+      <p><em>This feature is only available via the MAAS CLI.</em></p>
+      <p>You can list all tags that currently exist in this MAAS with a command of the form:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tags read | jq -r &#39;([&quot;tag_name&quot;,&quot;tag_comment&quot;]|(.,map(length*&quot;-&quot;))),(.[]|[.name,.comment]) | @tsv&#39; | column -t</code></pre>
+      <p>For example:</p>
+      <pre class="nohighlight"><code>maas admin tags read | jq -r &#39;([&quot;tag_name&quot;,&quot;tag_comment&quot;]|(.,map(length*&quot;-&quot;))),(.[]|[.name,.comment]) | @tsv&#39; | column -t</code></pre>
+      <p>Your output might look like this:</p>
+      <pre class="nohighlight"><code>tag_name  tag_comment
+      --------  -----------
+      virtual   
+      new_tag   a-new-tag-for-test-purposes</code></pre>
+      <h2 id="rebuild-a-tag">Rebuild a tag</h2>
+      <p><em>This feature is only available via the MAAS CLI.</em></p>
+      <p>If you need to update tags for all machines – without having to recommission them – you can accomplish this with the rebuild command:</p>
+      <pre class="nohighlight"><code>maas $PROFILE tag rebuild $TAG</code></pre>
+      <p>This command automatically applies the tag to all machines regardless of state, even machines that are actively deployed. For example:</p>
+      <pre class="nohighlight"><code>maas admin tag rebuild virtual</code></pre>
+      <p>This command would produce output similar to the following:</p>
+      <pre class="nohighlight"><code>Success.
+      Machine-readable output follows:
+      {
+          &quot;rebuilding&quot;: &quot;virtual&quot;
+      }</code></pre>
+      <h2 id="automatic-tags">Automatic tags</h2>
+      <p>MAAS 3.2 and above provide greatly expanded tagging capability (through the UI only). You can auto-apply tags to machines that match a custom XPath expression. Setting up an automatic tag lets you recognise special hardware characteristics and settings, e.g., the gpu passthrough.</p>
+      <h2 id="creating-automatic-tags-3.4">Creating automatic tags (3.4)</h2>
+      <p>To create automatic tags, select <em>Organisation &gt; Tags</em> &gt; <em>Create new tag</em> and fill in the form:</p>
+      <ul>
+      <li><p>Enter the <em>Tag name</em>.</p></li>
+      <li><p>Optionally enter a <em>Comment</em>.</p></li>
+      <li><p>Optionally enter <em>Kernel options</em>.</p></li>
+      <li><p>Enter an XPath-based <em>Definition</em>. A tag is considered automatic when the definition field is filled with an XPath expression. The current version of our UI will only validate if your XPath expression is valid or not, but it will not show you which machines it will apply to before you create the tag.</p></li>
+      </ul>
+      <p>When done, select <em>Save</em> to register your changes. Once an automatic tag is created the screen will initially show that 0 machines are tagged. That is because MAAS is running a background task to auto-apply the tag to matching machines. It can take some time to see that the number of machines tagged is populating.</p>
+      <blockquote>
+      <p><strong>Pro tip</strong>: Kernel options will be applied at boot time. So by default kernel options will not be applied to any machines until they are deployed. If machines are deployed before they are tagged, the kernel option will be applied when these machines are redeployed.</p>
+      </blockquote>
+      <h2 id="change-tag-definitions">Change tag definitions</h2>
+      <p>To change tag definitions:</p>
+      <ol type="1">
+      <li><p>Select <em>Organisation &gt; Tags</em>.</p></li>
+      <li><p>Select the pencil icon on the right end of the tag’s row.</p></li>
+      <li><p>Edit the <em>Definition</em>.</p></li>
+      <li><p>Select <em>Save</em> to register your changes.</p></li>
+      </ol>
+      <p>Keep in mind that when a new definition is updated, MAAS will re-tag all the machines that match with the new definition. This can take some time, since it is a background process.</p>
+      <h2 id="creating-automatic-tags-3.33.2">Creating automatic tags (3.3/3.2)</h2>
+      <p>To create automatic tags, select <em>Machines</em> &gt; <em>Tags</em> &gt; <em>Create new tag</em> and fill in the form:</p>
+      <ul>
+      <li><p>Enter the <em>Tag name</em>.</p></li>
+      <li><p>Optionally enter a <em>Comment</em>.</p></li>
+      <li><p>Optionally enter <em>Kernel options</em>.</p></li>
+      <li><p>Enter an XPath-based <em>Definition</em>. A tag is considered automatic when the definition field is filled with an XPath expression. The current version of our UI will only validate if your XPath expression is valid or not, but it will not show you which machines it will apply to before you create the tag.</p></li>
+      </ul>
+      <p>Select <em>Save</em> to register your changes. Once an automatic tag is created the screen will initially show that 0 machines are tagged. That is because MAAS is running a background task to auto-apply the tag to matching machines. It can take some time to see that the number of machines tagged is populating.</p>
+      <p>Kernel options will be applied at boot time. So, by default, kernel options will not be applied to any machines until they are deployed. If machines are deployed before they are tagged, the kernel option will be applied when these machines are redeployed.</p>
+      <h2 id="update-tag-definitions-ui">Update tag definitions (UI)</h2>
+      <p>To update tag definitions:</p>
+      <ol type="1">
+      <li><p>Select <em>Machines</em> &gt; <em>Tags</em>.</p></li>
+      <li><p>Select the pencil icon on the right end of the tag’s row.</p></li>
+      <li><p>Edit the <em>Definition</em>.</p></li>
+      <li><p>Select <em>Save</em> to register your changes.</p></li>
+      </ol>
+      <p>Keep in mind that when a new definition is updated, MAAS will re-tag all the machines that match with the new definition. This can take some time, since it is a background process.</p>
+      <h2 id="update-tag-kernel-options">Update tag kernel options</h2>
+      <p><em>This feature is only available via the MAAS UI.</em></p>
+      <p>To update the kernel options on a tag:</p>
+      <ol type="1">
+      <li><p>Select <em>Machines</em> &gt; <em>Tags</em>.</p></li>
+      <li><p>Select the pencil icon on the right end of the tag’s row.</p></li>
+      <li><p>Edit the <em>Kernel options</em>.</p></li>
+      <li><p>Select <em>Save</em> to register your changes.</p></li>
+      </ol>
+      <p>Kernel options can exist for both manual and automatic tags. However, they will be applied during boot time (commissioning and deploying).</p>
+      <p>If the tagged machines are deployed, the updated kernel option won’t apply until the machines are redeployed. We suggest that you release those machines prior to the update, then redeploy those machines when the kernel options of the tag are updated.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

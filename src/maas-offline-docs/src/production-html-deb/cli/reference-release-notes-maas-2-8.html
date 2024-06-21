@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Reference: Release notes MAAS 2.8</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>Reference: Release notes MAAS 2.8</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-2-8" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <h2 id="release-history">Release history</h2>
+      <h3 id="maas-2.8.4-released">MAAS 2.8.4 released</h3>
+      <p>MAAS 2.8.4 has been released, replacing the <code>2.8/stable</code> channel in snap and the <a href="https://launchpad.net/~maas/+archive/ubuntu/2.8">ppa:maas/2.8</a><strong>^</strong> . You can update your 2.8 release to 2.8.4 with the command:</p>
+      <pre class="nohighlight"><code>    snap refresh --channel=2.8/stable</code></pre>
+      <p>or by using the aforementioned PPA. 2.8.4 has a single <a href="https://bugs.launchpad.net/maas/+bug/1917372">bug fix - LP:1917372</a><strong>^</strong> in it. No other changes have been made to MAAS with this release.</p>
+      <h3 id="maas-2.8.3-released">MAAS 2.8.3 released</h3>
+      <p>MAAS 2.8.3 has been released, replacing the <code>2.8/stable</code> channel in snap and the <a href="https://launchpad.net/~maas/+archive/ubuntu/2.8">ppa:maas/2.8</a><strong>^</strong>. You can update your 2.8 release to 2.8.3 with the command:</p>
+      <pre class="nohighlight"><code>    snap refresh --channel=2.8/stable</code></pre>
+      <p>or by using the aforementioned PPA. The focus for this release has been <a href="https://bugs.launchpad.net/maas/+milestone/2.8.3rc1">bug-fixing</a><strong>^</strong> and <a href="https://bugs.launchpad.net/maas/+milestone/2.8.3">more bug-fixing</a><strong>^</strong>. No other changes have been made to MAAS with this release.</p>
+      <p>Here’s a summary of the bugs that were fixed in 2.8.3:</p>
+      <ul>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1881133">DNS Servers not set as expected</a><strong>^</strong>: MAAS was using the region controller IP in dhcpd.conf when other DNS servers are present, effectively bypassing the rack controller proxy to machines. The code was updated to use the region controller IP for DNS only if no other DNS servers are found.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1890468">not able to import new image after MAAS upgrade</a><strong>^</strong>: After upgrading from MAAS 2.6.2 to snap-MAAS 2.8.1, it is impossible to import a new image. This was fixed in MAAS 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1883748">an unlogged chown permission error leaves a temporary file behind</a><strong>^</strong>: Fixed in MAAS 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1904329">smartctl-validate fails to detect that NVME device is SMART-capable</a><strong>^</strong>: MAAS 2.8.2 fails to realize that WD Black gaming NVMEs are smart devices, hence MAAS doesn’t display attributes. This is fixed in 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1898122">cannot use release API on stuck observed IPs</a><strong>^</strong>: The CLI/API provide commands for forcing the release of an IP, but MAAS 2.8.2 was not allowing these commands to run successfully. This was fixed. There is also a workaround for those who cannot upgrade to 2.8.3 right away:</p></li>
+      </ul>
+      <pre class="nohighlight"><code>    $ sudo -u postgres psql $MAAS_DB -c &quot;UPDATE maasserver_staticipaddress SET alloc_type=5 WHERE ip = &#39;$IP_ADDRESS&#39; AND alloc_type=6;&quot;
+          $ maas $PROFILE ipaddresses release ip=&#39;$IP_ADDRESS&#39; force=true</code></pre>
+      <ul>
+      <li><a href="https://bugs.launchpad.net/maas/+bug/1893690">MAAS is unable to handle duplicate UUIDs</a><strong><sup><strong>: The firmware for Dell servers (and possibly others)</strong></sup></strong> has a bug whereby they use the service number for the UUID, which is not guaranteed to be unique. This caused MAAS commissioning to fail. The code was modified in 2.8.3 to detect and remove duplicate UUIDs, allowing MAAS to fall back to the MAC address. There is also a database workaround for those who cannot upgrade to 2.8.3 right away:</li>
+      </ul>
+      <pre class="nohighlight"><code>     $ sudo -u postgres psql $MAAS_DB -c &quot;UPDATE maasserver_node SET hardware_uuid=NULL where hardware_uuid=&#39;$DUPLICATE_UUID&#39;&quot;;</code></pre>
+      <ul>
+      <li><p><a href="https://bugs.launchpad.net/curtin/+bug/1876258">Ubuntu 20.04 pxe installation fails…</a><strong>^</strong>: When trying to PXE install Ubuntu 20.04, the installation fails with “no such file or directory, /dev/disk/by-id exception.” This was an issue with block devices being created without serial numbers, bug fixed in curtin and released with 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1902425">Failed to allocate the required AUTO IP addresses after 2 retries</a><strong>^</strong>: MAAS incorrectly perceives that there are no available IP addresses, when in fact, there are plenty still available. This is fixed in 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1904398">maas 2.9 rc1 machines create error (backport)</a><strong>^</strong>: Adding <code>commission=true</code> to a CLI machine creation command produces an error. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1910473">Lists of LXD nodes are represented in an incompatible data structure</a><strong>^</strong>: Fixed in 2.8.3.</p></li>
+      <li><p>Deselecting all architectures in the Ubuntu extra architectures repo <a href="https://bugs.launchpad.net/maas/+bug/1894116">blocks all deployments (backport)</a><strong>^</strong>. The default architectures have been changed to prevent this issue. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1884278">Can’t commission without a test (backport)</a><strong>^</strong>: MAAS 2.8 does not allow machines to be commissioned with zero tests selected; this occurs only for multiple machines, and only when commissioning from the UI. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      </ul>
+      <p>Note that there is a workaround for those not ready to upgrade to 2.8.3, specifically, using the CLI to commission machines without testing them:</p>
+      <pre class="nohighlight"><code>    maas $PROFILE machine commission $SYSTEM_ID testing_scripts=none</code></pre>
+      <ul>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1884827">UI should not autoselect noauto commissioning scripts (backport)</a><strong>^</strong>: Previously, users gained the ability to upload commissioning scripts which do not automatically run, but the UI ignores the “noauto” tag and runs the script anyway. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1891331">ipmi-config command not found in snap (backport)</a><strong>^</strong>: The <code>ipmi-config</code> cannot be found in a MAAS snap, due to path confusion in the wrapper script. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1894727">Admin users cannot change other user’s passwords via UI (backport)</a><strong>^</strong>: An administrator is unable to change users passwords via the UI. This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1896684">all rack addresses in vlan are included in list of nameservers sent to deployed server (backport)</a><strong>^</strong>: From the Bug Description: “MAAS forces all rack addresses for all subnets in a single vlan to any system deployed into any of those subnets. If the deployed systems are isolated, with no gateway configured, they may end up with broken DNS due to having nameservers configured which are not reachable.” This was fixed in 2.9 and backported to 2.8.3.</p></li>
+      </ul>
+      <h3 id="maas-2.8.2-released">MAAS 2.8.2 released</h3>
+      <p>On 1 September 2020, MAAS 2.8.2 was released, replacing the <code>2.8/stable</code> channel in snap and the <a href="https://launchpad.net/~maas/+archive/ubuntu/2.8">ppa:maas/2.8</a><strong>^</strong>. You can update your 2.8 release to 2.8.2 with the command:</p>
+      <pre class="nohighlight"><code>snap refresh --channel=2.8/stable</code></pre>
+      <p>or by using the aforementioned PPA. The focus for this release has been <a href="https://launchpad.net/maas/+milestone/2.8.2rc1">bug fixing</a><strong>^</strong> – there were no changes to MAAS since RC1.</p>
+      <p>Thanks to everyone who reported the issues with previous 2.7 releases and helped us with the logs.</p>
+      <h3 id="maas-2.8-released">MAAS 2.8 released</h3>
+      <p>Following on from MAAS 2.7, we are happy to announce that MAAS 2.8 is now available. This release features some critical bug fixes, along with some exciting new features.</p>
+      <h2 id="features">Features</h2>
+      <h3 id="faq">FAQ:</h3>
+      <ul>
+      <li><a href="#heading--2-8-release-notes">What are the new features and fixes for 2.8?</a></li>
+      <li><a href="#heading--2-8-known-issues">What known issues should I be aware of?</a></li>
+      <li><a href="how-to-install-maas.html">How do I install MAAS 2.8 as a snap?</a></li>
+      <li><a href="how-to-upgrade-maas.html">How do I upgrade my MAAS 2.7 snap to a MAAS 2.8 snap?</a></li>
+      <li><a href="how-to-install-maas.html">How do I install MAAS 2.8 from packages?</a></li>
+      <li><a href="#heading--bug-fixes">What bugs were fixed in this release?</a></li>
+      </ul>
+      <h3 id="lxd-support-beta">LXD support (Beta)</h3>
+      <p>MAAS 2.8 adds the beta capability to use LXD-based VM hosts and virtual machines (VMs), in addition to the <a href="https://ubuntu.com/server/docs/virtualization-libvirt">libvirt</a>-based<strong>^</strong> VM hosts/VMs already available. These new LXD VM hosts use the same underlying technology as libvirt (QEMU)<strong>^</strong>. Unlike libvirt KVMs, though, LXD VMs can be managed without requiring SSH access to the VM host. LXD are remotely accessed via secure HTTP transport, which provides better security for LXD-based VMs. In addition, LXD has a better API, and is part of a much larger constellation of enterprise software, offering a wider range of future features and use cases.</p>
+      <h3 id="ui-improvements">UI improvements</h3>
+      <p>Within MAAS 2.8, we have made a number of performance improvements to everything related to the machine listing. Some of the most visible changes involve the way that long lists are presented within categories (see the example below), but there are a number of other changes that make the list easier and more efficient to use.</p>
+      <figure>
+      <img src="/home/stormrider/git/maas-doc/production-html-deb/images/b4ec4124225f052fb8646f754c22d287fffcc850.jpg" alt="" /><figcaption>image</figcaption>
+      </figure>
+      <p>Among those other changes are persisting UI state for grouping, new grouping options, bookmark-able URLs with filter and search parameters, and many other performance improvements. If you’re interested in more details, see this <a href="https://ubuntu.com/blog/building-a-cross-framework-ui-with-single-spa-in-maas-2-8">blog post</a><strong>^</strong>.</p>
+      <h3 id="external-postgresql-support">External PostgreSQL support</h3>
+      <p>In order to make MAAS more scalable, we have separated the MAAS database from the MAAS snap, so that the DB can be situated separately. MAAS 2.8 now allows the MAAS DB to be located outside the snap on localhost, or on a separate, external or remote server. We complement this capability with extensive instructions for setting up and managing this configuration. To support those who are testing MAAS, we’ve also provided a test DB configuration that embeds the database in a separate snap that can easily be connected to MAAS.</p>
+      <h2 id="bug-fixes">Bug fixes</h2>
+      <p>We’ve also fixed number of bugs (see the <a href="https://bugs.launchpad.net/bugs/+bugs?field.milestone%3Alist=89978&amp;field.milestone%3Alist=90576&amp;field.milestone%3Alist=90599&amp;field.milestone%3Alist=90640&amp;field.milestone%3Alist=90645&amp;field.milestone%3Alist=90722&amp;field.milestone%3Alist=91005&amp;field.milestone%3Alist=91123&amp;field.milestone%3Alist=91124&amp;field.milestone%3Alist=91180&amp;field.status%3Alist=FIXRELEASED">list in Launchpad</a>)<strong>^</strong>. Notable among these are the following:</p>
+      <ul>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1860619">MAAS event table</a><strong>^</strong>: Power events are now being logged differently to reduce log sizes and improve performance.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1864201">Unprivileged users controlling services</a><strong>^</strong>: Unprivileged users can no longer start, stop, or restart services via HTTP channels.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1852405">Adding KVMs to snap-installed MAAS</a><strong>^</strong>: SSH key usage has been updated so that KVMs can now be added to snap-installed MAAS without difficulty.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1864241">Trouble editing physical interfaces in GUI</a><strong>^</strong>: It is now possible to edit physical interface parameters, when appropriate, from the web UI.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1873430">Subnet pages slow to load</a><strong>^</strong>: Subnet pages now load more quickly and efficiently.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1865122">Trouble loading multiple MAC addresses</a><strong>^</strong>: You can now reliably load multiple MAC addresses using the web UI.</p></li>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1871584">Disabling DNS on regiond subnet breaks DNS</a><strong>^</strong>: This problem has been resolved.</p></li>
+      </ul>
+      <h2 id="known-issues">Known issues</h2>
+      <ul>
+      <li><p><strong>Browser caching issue:</strong> There is a known issue with browser caching on some MAAS pages. If you initially encounter a page which does not appear to be correctly formatted, please manually clear your browser cache (<strong>not Ctrl-F5</strong>) and it should restore the page to normal. You manually clear your browser cache, for example, in the “History” section of the menu on a Chrome browser.</p></li>
+      <li><p><strong>Extra power types when adding chassis:</strong> (<a href="https://bugs.launchpad.net/maas/+bug/1883743">see bug report</a>)<strong>^</strong> When adding a chassis, the “Power type” drop-down will show power types not supported by a chassis. Selecting one of the non-supported power types will result in the UI blocking the action. Here is a list of power types supported for chassis creation:</p>
+      <ul>
+      <li><code>mscm</code> - Moonshot Chassis Manager</li>
+      <li><code>msftocs</code> - Microsoft OCS Chassis Manager</li>
+      <li><code>powerkvm</code> - Virtual Machines on Power KVM, managed by Virsh</li>
+      <li><code>recs_box</code> - Christmann RECS|Box servers</li>
+      <li><code>sm15k</code> - SeaMicro 1500 Chassis</li>
+      <li><code>ucsm</code> - Cisco UCS Manager</li>
+      <li><code>virsh</code> - virtual machines managed by Virsh</li>
+      <li><code>vmware</code> - virtual machines managed by VMware</li>
+      </ul></li>
+      <li><p><strong>MAAS keys count in user list is bogus:</strong> (<a href="https://bugs.launchpad.net/maas/+bug/1884112">see bug report</a>)<strong>^</strong> The count of keys shown in the User list in the UI is wrong.</p></li>
+      <li><p><strong>Leftover lock files may be present under some conditions:</strong> Even if you purge an old MAAS Debian package, it can leave lock files in <code>/run/lock/maas*</code>. This can cause issues if you later reinstall MAAS, and the previous MAAS user UID has been reassigned. At that point, MAAS can’t remove those files and create new ones. If this occurs, it is easily fixed by removing those files manually before reinstalling.</p></li>
+      </ul>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

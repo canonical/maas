@@ -1,0 +1,9 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: spellit
+        name: spellit
+        entry: /home/stormrider/bin/spellit
+        language: system
+        files: \.md$
+

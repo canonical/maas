@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Reference: Release notes MAAS 3.1</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>Reference: Release notes MAAS 3.1</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-1" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>We are happy to announce that MAAS 3.1 is now available. This release provides new features and critical bug fixes.</p>
+      <h2 id="features">Features</h2>
+      <ul>
+      <li><p><a href="#heading--lxd-clusters">Support for LXD clusters</a>: MAAS 3.1 can use LXD clusters with MAAS KVMs.</p></li>
+      <li><p><a href="#heading--image-sync-performance">Improved image sync performance</a>: After images are downloaded, rack controllers sync new images more quickly.</p></li>
+      <li><p><a href="#heading--enlist-deployed-machines">Ability to enlist deployed machines</a>: Users can enlist deployed machines, a top feature poll request.</p></li>
+      <li><p><a href="#heading--static-ubuntu-images">Static Ubuntu image upload and reuse</a>: Users can upload, deploy and reuse a bootable ubuntu image</p></li>
+      <li><p><a href="#heading--machine-cloning-ui">Machine configuration cloning UI</a>: We have extended machine cloning to the UI.</p></li>
+      <li><p><a href="#heading--lxd-auth-ux-improvements">LXD authentication UX improvements</a>: LXD certificates are easier to use.</p></li>
+      <li><p><a href="#heading--maas-3-1-cumulative-bug-fixes">MAAS 3.1 cumulative bug fixes</a></p></li>
+      </ul>
+      <p>Critical and high-priority fixes also extend or repair MAAS features:</p>
+      <ul>
+      <li><p><a href="https://bugs.launchpad.net/maas/+bug/1867394">Expanded proxies</a><strong>^</strong>: Some proxies require authentication; MAAS now respects peer proxy username and password</p></li>
+      <li><p><a href="https://bugs.launchpad.net/bugs/1949410">Accurate storage pool sizes</a><strong>^</strong>: The UI now calculates storage pool sizes correctly for CEPH pools; shared pools are no longer stacked</p></li>
+      <li><p><a href="https://bugs.launchpad.net/bugs/1949485">Refresh wipeout bug</a><strong>^</strong>: MAAS does not destroy existing VMs on a refresh, or when the memory overcommit ratio is changed</p></li>
+      <li><p><a href="https://bugs.launchpad.net/bugs/1948500">Cloning issue fixed</a><strong>^</strong>: UI cloning has been repaired to prevent “unsuccessful cloning” of storage</p></li>
+      </ul>
+      <h3 id="lxd-clusters">LXD clusters</h3>
+      <p>MAAS 3.1 takes advantage of the existing LXD clustering capability.</p>
+      <h4 id="about-lxd-clusters">About LXD clusters</h4>
+      <p>LXD clusters in MAAS allow you to view and manage existing VM host clusters and compose VMs within clusters. MAAS will not create a cluster, but it will discover existing clusters.</p>
+      <h4 id="how-to-add-lxd-clusters">How to add LXD clusters</h4>
+      <p>MAAS assumes you have already configured an LXD cluster. You then need to configure the cluster with a single trust which MAAS uses to communicate it. Adding a LXD cluster is like adding a single LXD host: you provide authentication in a similar way, and then select a project. MAAS then connects to the provided host to discover other hosts within the cluster, renaming the cluster host with a name you supply.</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/d9771872c6a5da87ec558e57f6f17ba6945cf8f1.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>First, add an LXD KVM:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/a202037794cac6a2954a8306b11cfa985dd1d2c9.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>Next, set up credentials and let LXD trust your MAAS certificate:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/70c2278b3ca612f42dfd23f26d850b9ee3118c7f.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>Once connected, you can select the project in that cluster:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/826e94ea0d03aba94753a4e4c7a6a9cb0501a639.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>If the KVM host address is part of a cluster, it will show as a cluster on the listing page.</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/d56dad67f3550d0776eb9f98f93f94203c044da9.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <h4 id="how-to-compose-vms-in-lxd-clusters">How to compose VMs in LXD clusters</h4>
+      <p>Composing a VM in a LXD cluster via MAAS is similar to composing a VM for a single VM host. MAAS does not provide any sort of scheduling of said VM, and will instead target the host you select for composing the VM.</p>
+      <p>From the KVM host listing page, click on the <code>+</code> icon to add a VM to a specific host:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/4b5156284217d2cbc2c0198c6234a4b601556f54.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>If you are in a specific KVM host page, you can click <code>+ add virtual machine</code>:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/4b5156284217d2cbc2c0198c6234a4b601556f54.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <h4 id="how-to-delete-lxd-clusters">How to delete LXD clusters</h4>
+      <p>To delete an LXD cluster, simply delete any VM host within the cluster:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/2a83c09ee60374e33ede9402808bed8107412239.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <h3 id="enlist-deployed-machines">Enlist deployed machines</h3>
+      <h4 id="ten-words-or-fewer">Ten words or fewer</h4>
+      <p>Users can enlist deployed machines, a top feature poll request.</p>
+      <h4 id="about-this-feature">About this feature</h4>
+      <p>When adding machines to MAAS, MAAS (non-destructively) boots them into an ephemeral environment to gather hardware information. Previously, this didn’t work for deployed machines, since you don’t want to disrupt deployed workloads or mark deployed machines as ready.</p>
+      <p>Now you may add deployed machines, without normal commissioning process or relabelling the machine. In order to update the information, a script is provided to run minimal commissioning scripts and update to MAAS.</p>
+      <h4 id="how-to-enlist-a-machine-thats-already-running-a-workload">How to enlist a machine that’s already running a workload</h4>
+      <p>In order to enlist a deployed machine, you have two options:</p>
+      <p>Via the API/CLI, you can create a machine, passing the deployed flag:</p>
+      <pre class="nohighlight"><code>$ maas $profile machines create deployed=true hostname=mymachine \   
+      architecture=amd64 mac_addresses=00:16:3e:df:35:bb power_type=manual</code></pre>
+      <p>On the machine itself (the recommended way, if the machine is running Ubuntu), you can download and run a helper script from MAAS:</p>
+      <pre class="nohighlight"><code>$ wget http://$MAAS_IP:5240/MAAS/maas-run-scripts
+      $ chmod 755 maas-run-scripts
+      $ ./maas-run-scripts register-machine --hostname mymachine \
+       &gt; http://$MAAS_IP:5240/MAAS $MAAS_API_TOKEN</code></pre>
+      <p>Now you have enlisted a deployed machine, with no hardware information yet.</p>
+      <h4 id="how-to-update-hardware-information-for-a-deployed-machine">How to update hardware information for a deployed machine</h4>
+      <p>To update hardware information for a deployed machine, we recommend that you download and run the maas-run-scripts script on the machine:</p>
+      <pre class="nohighlight"><code>$ wget http://$MAAS_IP:5240/MAAS/maas-run-scripts
+      $ chmod 755 maas-run-scripts
+      $ ./maas-run-scripts report-results --config mymachine-creds.yaml</code></pre>
+      <p>If you created the machine with the maas-run-scripts, you should have such a mymachine-creds.yaml file already. If not, it should look like this:</p>
+      <pre class="nohighlight"><code>reporting:
+                maas:
+                  consumer_key: $CONSUMER_KEY
+                  endpoint: http://$MAAS_IP:5240/MAAS/metadata/status/$SYSTEM_ID
+                  token_key: $TOKEN_KEY
+                  token_secret: $TOKEN_SECRET</code></pre>
+      <p>You may get the needed credentials from the MAAS API, for example:</p>
+      <pre class="nohighlight"><code>$ maas $profile machine get-token wxwwga
+      Success.
+      Machine-readable output follows:
+      {
+              &quot;token_key&quot;: &quot;Lyy9BS4tKsQakDQScy&quot;,
+              &quot;token_secret&quot;: &quot;V8vta8Azwn6FZVkfHnuTvLGLScAvEufB&quot;,
+              &quot;consumer_key&quot;: &quot;YGT6QKSH65aap4tGnw&quot;
+      }</code></pre>
+      <h3 id="static-ubuntu-image-upload">Static Ubuntu image upload</h3>
+      <h4 id="ten-words-or-fewer-1">Ten words or fewer</h4>
+      <p>Users can upload, deploy and reuse a bootable ubuntu image</p>
+      <h4 id="about-this-feature-1">About this feature</h4>
+      <p>MAAS supports deploying custom OS images. Canonical provides both <a href="https://launchpad.net/maas-image-builder">lp:maas-image-builder</a><strong>^</strong> and <a href="https://github.com/canonical/packer-maas">gh:canonical/packer-maas</a><strong>^</strong> to create custom images. With 3.1, these custom images can include static Ubuntu images, created with whatever tool you choose, deployed as described below. Canonical still suggests customising Ubuntu using cloud-init user_data or Curtin preseed data, if possible.</p>
+      <h4 id="about-static-ubuntu-images">About static Ubuntu images</h4>
+      <p>MAAS allows you to build an Ubuntu image to deploy with MAAS, using any chosen image-building tool. You can create the image with a fixed configuration and deploy it to many machines. This fixed configuration can contain anything a normal image would contain: users, packages, etc.</p>
+      <h4 id="about-uploading-hand-built-ubuntu-images">About uploading hand-built Ubuntu images</h4>
+      <p>You can upload and deploy hand-built Ubuntu images, containing kernel, bootloader, and fixed configuration. The image can be built by tool, e.g., <a href="https://github.com/canonical/packer-maas">packer</a><strong>^</strong>, or by scripts. You can upload these images to the boot-resources endpoint, where they will be available for deployment.</p>
+      <p>The minimum image must contain a kernel, bootloader, and <code>/curtin/curtin-hooks</code> script that configures the network. Samples can be found in the <a href="https://github.com/canonical/packer-maas/tree/master/ubuntu/scripts">packer-maas repos</a><strong>^</strong>. The image must be in raw img file format so MAAS will accept the upload. When built, you will upload this img file to the boot-resources endpoint, specifying the image architecture.</p>
+      <h4 id="about-how-maas-handles-these-images">About how MAAS handles these images</h4>
+      <p>MAAS will save the image as a <code>tar.gz</code> file in the database. MAAS can differentiate between image types and generate appropriate pre-seed configurations. MAAS also recognises the base Ubuntu version, so it can apply the correct ephemeral OS for installation. Custom images are always deployed with the ephemeral OS, where the <code>base_image</code> field indicates the appropriate ephemeral version to avoid errors, ensuring smooth deployment later.</p>
+      <h4 id="about-how-maas-boots-these-images">About how MAAS boots these images</h4>
+      <p>When you deploy a machine with your custom image, MAAS ensures that the machine receives the kernel, bootloader and root file system provided in the image. The initial boot loader then boots an ephemeral OS matching the Ubuntu version of the custom image, reducing compatibility issues. Curtin then writes your entire custom image to disk, after which it is not modified by MAAS.</p>
+      <p>Note that custom non-Ubuntu images still use a standard Ubuntu ephemeral OS to boot.</p>
+      <h4 id="about-configuring-deployed-machine-networking">About configuring deployed machine networking</h4>
+      <p>If you deploy a machine with a custom Ubuntu image, MAAS allows you to configure the deployed machine’s networks just like any other MAAS machine. If you create an interface and assign it to a subnet or static address, this will be reflected in the deployed machine.</p>
+      <p>For this reason, MAAS also does some initial diagnostics while installing the custom image. MAAS will warn you about a missing network configuration, by checking for <code>cloud-init</code> and <code>netplan</code> in the <code>curtin</code> images. MAAS won’t deploy machine with such images.</p>
+      <h4 id="about-configuring-deployed-machine-storage">About configuring deployed machine storage</h4>
+      <p>If you deploy a machine with a custom Ubuntu image, you will also want to be able to configure storage, just like any other machine. MAAS facilitates changes to the storage configuration, such as resizing <code>/root</code>, attaching and formatting block devices, etc.</p>
+      <h4 id="about-static-image-metrics">About static image metrics</h4>
+      <p>As a user, you want to track of deployed static images. The standard MAAS dashboard now reflects these metrics.</p>
+      <h4 id="how-to-upload-a-custom-ubuntu-image">How to upload a custom Ubuntu image</h4>
+      <p>Custom Ubuntu images can be uploaded with the MAAS CLI by creating a boot-resource:</p>
+      <pre class="nohighlight"><code>    maas $PROFILE boot-resources create \
+              name=&#39;custom/ubuntu-custom&#39;  \
+              architecture=amd64/generic \
+              title=’custom ubuntu’ \
+              base_image=ubuntu/focal \
+              filetype=ddraw \
+              content@=./custom-ubuntu.img</code></pre>
+      <p>When uploading a custom image, there is a new required field: <code>base_image</code>. This is not required for non-custom images; any image with the <code>custom</code> prefix will require it.</p>
+      <h3 id="machine-configuration-cloning-ui">Machine configuration cloning UI</h3>
+      <h4 id="ten-words-or-fewer-2">Ten words or fewer</h4>
+      <p>Extend machine cloning to UI, moving toward machine profile templates.</p>
+      <h4 id="about-this-feature-2">About this feature</h4>
+      <p>MAAS 3.1 allows you to quickly clone or copy a configuration between machines, via the MAAS UI – a step towards machine templating.</p>
+      <p>Creating a machine profile is repetitive. We’ve learned that most users create multiple machines of the same configuration in batches. Some users loop a template through the API, while others rely on scripts. MAAS API cloning functionality is now being exposed in the UI.</p>
+      <h4 id="about-copying-machine-configurations">About copying machine configurations</h4>
+      <p>As a MAAS user, you may want to copy a machine configuration to multiple existing machines. Assuming that at least one machine is already configured, you should be able to apply these settings to a list of machines. This means that a user should be able to:</p>
+      <ul>
+      <li>select the source machine to copy from.</li>
+      <li>validate that the source machine exists.</li>
+      <li>select at least 1 destination machine.</li>
+      <li>validate that the destination machine(s) exist.</li>
+      <li>edit the source machine or destination machines, if needed.</li>
+      <li>know at all times which machines are affected.</li>
+      <li>see the cloned machines when cloning is successful, or</li>
+      <li>get clear failure information, if cloning fails.</li>
+      </ul>
+      <h4 id="about-choosing-configuration-items-to-copy">About choosing configuration items to copy</h4>
+      <p>As a MAAS user, you likely want to select whether storage, network, or both configurations should be cloned. The cloning API allows users to choose interfaces and storage separately. Thus, this new feature also allows you to:</p>
+      <ul>
+      <li>clone only the interface (network) configuration.</li>
+      <li>clone only the storage configuration.</li>
+      <li>clone both configurations.</li>
+      </ul>
+      <h4 id="about-cloning-restrictions">About cloning restrictions</h4>
+      <p>In order for cloning to succeed, a few restrictions must be met:</p>
+      <ol type="1">
+      <li>The destination interface names must be the same source.</li>
+      <li>The destination drive must be equal to or larger than the source drive.</li>
+      <li>For static IPs, a new IP will be allocated to the interface on the destination machine</li>
+      </ol>
+      <h4 id="how-to-clone-a-machine-from-the-ui">How to clone a machine from the UI</h4>
+      <p>Assume you have two machines available, like this:</p>
+      <p><embed src="/home/stormrider/git/maas-doc/production-html-deb/images/30cd852bbd57c61a22d022ac40fdfe266243568b.shtml" /></p>
+      <p>Select the machine <em>to which you want to clone configuration</em>, and select “Clone from…”</p>
+      <p><embed src="/home/stormrider/git/maas-doc/production-html-deb/images/c942280624183fad27df29c5fdb44ec9d27b6cfc.shtml" /></p>
+      <p>Under “1. Select the source machine” – choose a machine from the attached list:</p>
+      <p><embed src="/home/stormrider/git/maas-doc/production-html-deb/images/c89d27d5003a0ea6fdce994e97f3810b1ab78582.shtml" /></p>
+      <p>Under “2. Select what to clone”, choose “Network”, “Storage”, or both (here, we’ve chosen “Storage”):</p>
+      <p><embed src="/home/stormrider/git/maas-doc/production-html-deb/images/88108a90e50e29eb83e5ddaca4aa0aeb3f00dfef.shtml" /></p>
+      <p>Click “Clone to machine”. MAAS will report the status of the attempt.</p>
+      <h3 id="lxd-authentication-ux-improvements">LXD authentication UX improvements</h3>
+      <h4 id="ten-words-or-fewer-3">Ten words or fewer</h4>
+      <p>Easier MAAS to LXD connection that uses certificates for authentication.</p>
+      <h4 id="about-this-feature-3">About this feature</h4>
+      <p>MAAS 3.1 provides a smoother experience when connecting an existing LXD server to MAAS, guiding the user through manual steps and providing increased connection security with use of certificates. Currently, each MAAS region/rack controller has its own certificate. To add a LXD VM host to MAAS, the user needs to either add the certificate for each controller that can reach the LXD server to the trust list in LXD, or use the trust_password (in which case the controller talking to LXD will automatically add its certificate to the trust).</p>
+      <p>This doesn’t provide a great user experience, as the former process is cumbersome, and the latter is not suggested for production use for security reasons. To improve this, MAAS 3.1 manages per-LXD keys/certificates, and provide a way for users to get the content of certificates, to authorise MAAS in LXD.</p>
+      <h4 id="about-on-the-spot-certificate-creation">About on-the-spot certificate creation</h4>
+      <p>As a MAAS user, you want to register a LXD host into MAAS using certificates for authentication – to follow LXD production deployment best practices. The standard way for clients to authenticate with LXD servers is through certificates. The use of trust_password is <em>only</em> meant as a way to interact for initial setup.</p>
+      <p>While prior versions of MAAS support both ways of authentication (and automatically adds the certificate for the rack talking to LXD when registering the VM host), the user experience is lacking, since there’s no control over the certificate being used. In addition, each rack uses a different certificate, making it hard to manage scenarios where multiple racks can connect to a LXD server.</p>
+      <p>For these reasons, when adding a LXD host, MAAS 3.1 provides a way to generate a secret key and certificate pair to use specifically for that server, and show the certificate to the user, so that they can add it to the LXD server trust list. The user experience changes to something like the following:</p>
+      <ul>
+      <li>MAAS generates a secret key and certificate pair for use with a LXD server.</li>
+      <li>The user can see the certificate and is guided to add it to the LXD server trust list.</li>
+      <li>The user can easily complete the registration of the LXD server once the certificate is trusted in LXD.</li>
+      <li>All racks use the same key when talking to the LXD server.</li>
+      <li>If a new rack controller is added, it can communicate with the LXD server out of the box.</li>
+      <li>If the trust password is used, it’s not stored in MAAS persistently.</li>
+      <li>It’s possible to get the certificate for a LXD server from a URL (e.g. for curl use).</li>
+      </ul>
+      <h4 id="about-bringing-your-own-certificates">About bringing your own certificates</h4>
+      <p>As a MAAS user, you may want to register a LXD host into MAAS by providing a private key for a certificate that’s already trusted by the LXD server. For example, you may already have set up certificates in the server trust for MAAS to use, MAAS should provide a way to import it, instead of generating a new one.</p>
+      <p>With MAAS 3.1, it’s possible to import an existing key/certificate pair for use with a LXD server when registering it with MAAS. MAAS stores the key/certificate instead of generating new ones.</p>
+      <p>The imported key must not have a passphrase; otherwise, MAAS will not be able to use it.</p>
+      <h4 id="how-to-get-started">How to get started</h4>
+      <p>Suppose that you’re creating a new LXD KVM, beginning from the top tab in MAAS:</p>
+      <p><span class="image"></span></p>
+      <p>Select “Add KVM”, which brings you to the definition screen:</p>
+      <p><span class="image"></span></p>
+      <p>From here, you’ll continue by choosing your authentication method.</p>
+      <h4 id="how-to-let-maas-create-a-certificate-for-you">How to let MAAS create a certificate for you</h4>
+      <p>If you choose “Generate new certificate”, as shown above, you’ll come to a screen like this one:</p>
+      <p><span class="image"></span></p>
+      <p>You can still choose to use the LXD trust password (entered when you ran <code>lxd init</code> during LXD installation). You can also, though, choose to use the certificate MAAS has just generated for you. To do that, select the entire contents of the text box, copy it, and paste it into a terminal window – then hit “Enter”:</p>
+      <pre class="nohighlight"><code>$ lxc config trust add - &lt;&lt;EOF
+      &gt; -----BEGIN CERTIFICATE-----
+      &gt; MIIErTCCApUCEQCGa86XdjYUGm8h8YOh4HAEMA0GCSqGSIb3DQEBDQUAMAAwHhcN
+      &gt; MjEwOTI0MjE1NDQ4WhcNMzEwOTIyMjE1NDQ4WjApMScwJQYDVQQDDB5teTBuZXh0
+      &gt; LTMuMS4wLWJldGExLWt2bUB3YWxkZW4wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAw
+      &gt; ggIKAoICAQC1tmJbSYx3Jb5JcuqLvyO6P0RtYWCbjVYOSAIM1PKHZJRvako6QhjR
+      &gt; 6wWNcVLAjDJIMuEBysrI8mcAv9D/AfT2qLQ/5mg7anbxfrd3YXG2nc70QJazpFaw
+      &gt; INDc85wrdJD5NEd50iaka+PztIAWzoZWQr/pLb7hUDnArzSHp5J+w0dRCUh54SyW
+      &gt; Du4mLpDks5UqMeONO1o7lbaQuBdzGtR4btdmvOkJfg/Pu3i/rzFZ1vvn1JhZTX96
+      &gt; +xH7tJQiqOk0SXG7F2RmbYiYDhAkiysbMoyOHBCf/qFWq4Vtd/VMxOAT1WERrgWn
+      &gt; 8nL5kRBozV94QocJaOe+GUSWLHsRpsVa8jiAj3LS2CFQfpaEsrzLSlQOeN2rNB9z
+      &gt; DO9yGXGql4tUpgtyEvxB/zVrIGd04iTC3D4S9b1KyzTbSsyjTc/XJhUStnn49ySW
+      &gt; Iwv1eHa2jMvIjRVm5sRfpf0EOZW27HLI1AqDOXR0DmlM2mWvndjvfacX+41I8vuG
+      &gt; +RPq0ZjDhwfRmUaLiebzcExwPmSHAxqiaV+t0n6ivDWTNk6cNc38rZBh3x6I7JMR
+      &gt; /85Rc1blLSF7QBMA1HxheCUYzBPTKsdE2btygq9vShRXCdSekV0jGoL1g0n6T59r
+      &gt; +9nHShgc/Bzk42kcddQySlrqWWHrXX6Z2N1R3eYpuvSEaKsnsjqjwwIDAQABMA0G
+      &gt; CSqGSIb3DQEBDQUAA4ICAQA4d1Xqi941ssyJoiovTzBgMDSp9kqjpB83BRqbF9oZ
+      &gt; fQGkezn2jF7SnaXbTyR/K+nir5Rms8OZfUxyZJwYh/YCdnIF8hzC32mLJbP6jcJV
+      &gt; LS0OD+EipwyRLSe9g2it68TtAhhVXKPx3tGQWWiXtJOF631sJRcRUZATc9nco5H2
+      &gt; 91GKog4LdFeKD3ArOq1GkE9r95WauTV37x0c474XBt2mVcEvFW50oZbIBPaWLt8E
+      &gt; q8NG0KYkfIHkhXDGqPDkUtdPJlkiGwqXdaqghuG31a4Or9IKcNmDlli47apaWWJW
+      &gt; /gqZfFALbOrSJHg10PCqNsfoKmQr2YZzPlTjG39RA7sA1XR6y+lQZqwcXnXk2iAE
+      &gt; n62OkRUrYVXzBo99zk5jQJVEg6zhfPH9zl6Jmn/vBu0p6RqmqNLTTlMOio8VOp9e
+      &gt; 9Gyb9uRwzwZ9zgydgI4bHMvcIAq+46wTruOfXBNATWLC2YqXbc+9QqemJebcXULW
+      &gt; Wf7Sc+SHHx2cVb4OUvUD8keZN37No/2vfZ9NI2SJOI4SxlV2yf6ZRyb7MYIwpm1h
+      &gt; YTzyS+ywUN4C8p1PsU5iT8DGdcg7Kcso4/DDZeZkLKNeCKizkdMreF7qV0qHTW8z
+      &gt; PyfZHcR/xWMkjxYZoFu4rVyxpsUJYItJNUNk6vZvSnSDfC2e2JJFfMws+fntNy14
+      &gt; /w==
+      &gt; -----END CERTIFICATE-----
+      &gt; EOF
+      $ </code></pre>
+      <p>The certificate will be created for you. When you click the “Check authentication” button, you will be brought to this screen:</p>
+      <p><span class="image">image</span></p>
+      <p>from which you can continue with normal LXD KVM setup.</p>
+      <h4 id="how-to-use-your-own-existing-certificate">How to use your own, existing certificate</h4>
+      <p>Suppose that, after identifying your LXD KVM, you choose “Provide certificate and private key”. When you do so, the screen will extend to allow you to upload these items:</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/b9e54b5d4d09031b3e11d21a556e66a69cfcd0d9.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <p>Paste or upload your certificate and private key, then click “Next” to validate your authentication criteria, before continuing through the normal LXD KVM creation process. If your certificate and/or key aren’t usable for some reason, MAAS will return an error (in this case, the private key was entered as gibberish, to produce an error output):</p>
+      <figure>
+      <embed src="/home/stormrider/git/maas-doc/production-html-deb/images/b5ebc153141394ba4d338c09dcf2e885e1459953.shtml" /><figcaption>image</figcaption>
+      </figure>
+      <h3 id="improved-image-sync-performance">Improved image sync performance</h3>
+      <h4 id="ten-words-or-fewer-4">Ten words or fewer</h4>
+      <p>After downloading images, the rack controller syncs them much faster.</p>
+      <h4 id="about-this-feature-4">About this feature</h4>
+      <p>Downloading and syncing images is a known delay element in MAAS. While images aren’t small, and do take some time to download, we decided to try to speed up the process as much as possible. After the region has downloaded new images, the rack controllers are now much quicker at syncing the new images.</p>
+      <h4 id="how-to-take-advantage-of-this-new-feature">How to take advantage of this new feature</h4>
+      <p>There is nothing required of our users to experience this improved sync performance, other than upgrading to 3.1.</p>
+      <h2 id="installation">Installation</h2>
+      <p>MAAS 3.1 can be installed fresh from snaps (recommended) with:</p>
+      <pre class="nohighlight"><code>sudo snap install --channel=3.1 maas</code></pre>
+      <p>MAAS 3.1 can also be installed via packages, by adding the <code>3.1</code> PPA:</p>
+      <pre class="nohighlight"><code>sudo add-apt-repository ppa:maas/3.1
+      sudo apt update
+      sudo apt install maas</code></pre>
+      <p>You can then install MAAS 3.1 fresh (recommended) with:</p>
+      <pre class="nohighlight"><code>sudo apt-get -y install maas</code></pre>
+      <p>Or, if you prefer to upgrade, you can:</p>
+      <pre class="nohighlight"><code>sudo apt upgrade maas</code></pre>
+      <p>At this point, proceed with a normal installation.</p>
+      <h2 id="bug-fixes">Bug fixes</h2>
+      <p>MAAS 3.1 bug fixes can be found in the following milestones:</p>
+      <ul>
+      <li><a href="https://launchpad.net/maas/+milestone/3.1.0-beta5">MAAS 3.1 Beta5 bug fixes</a><strong>^</strong></li>
+      <li><a href="https://launchpad.net/maas/+milestone/3.1.0-beta4">MAAS 3.1 Beta4 bug fixes</a><strong>^</strong></li>
+      <li><a href="https://launchpad.net/maas/+milestone/3.1.0-beta3">MAAS 3.1 Beta3 bug fixes</a><strong>^</strong></li>
+      <li><a href="https://launchpad.net/maas/+milestone/3.1.0-beta2">MAAS 3.1 Beta2 bug fixes</a><strong>^</strong></li>
+      <li><a href="https://launchpad.net/maas/+milestone/3.1.0-beta1">MAAS 3.1 Beta1 bug fixes</a><strong>^</strong></li>
+      </ul>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

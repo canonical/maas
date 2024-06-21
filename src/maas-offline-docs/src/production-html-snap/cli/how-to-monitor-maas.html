@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to monitor MAAS</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to monitor MAAS</h1>
+      <blockquote>
+      <p><em>Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/monitoring-maas-activities" target = "_blank">Let us know.</a></em></p>
+      </blockquote>
+      <p>To keep your MAAS setup transparent, we’ve engineered it for observability — you can gauge its internal state purely through telemetry data. Depending on your MAAS version, your monitoring toolkit will differ.</p>
+      <p>Make sure to navigate to the section that matches your MAAS version.</p>
+      <h2 id="monitoring-3.2">Monitoring (3.2++)</h2>
+      <p>From version 3.2 onward, MAAS simplifies the integration process with key Grafana stack components like Prometheus and Loki. Use this data seamlessly with an open-source stack, whether it’s orchestrated by Juju—like the Canonical Observability Stack—or a third-party solution, be it SaaS or self-managed.</p>
+      <p>Below is a reference observability stack featuring Prometheus for metric collection and alerting, Loki for log aggregation and alerts, Grafana for visualisation, Alertmanager for handling notifications, and Grafana Agent as the telemetry collector.</p>
+      <p><a href="https://discourse.maas.io/uploads/default/optimized/2X/d/d6f66cbb3ea314818894b4f07ca8037628993ae2_2_690x437.png" target = "_blank"><span class="image"></span></a></p>
+      <p>This section walks you through setting up the stack to ingest telemetry data and trigger alerts for failures.</p>
+      <h2 id="o11y-requirements">O11y requirements</h2>
+      <ul>
+      <li>an Ubuntu host with MAAS 3.2+ running</li>
+      <li>an Ubuntu host with enough storage capacity to hold logs and metrics’ time-series</li>
+      </ul>
+      <p>Both hosts need internet access for installation. While we employ LXD for a single-host setup, it’s not mandatory. For production use, consult the <a href="https://prometheus.io/docs/">Prometheus</a><strong>^</strong> and <a href="https://grafana.com/docs/loki/latest/">Loki</a><strong>^</strong> docs to enhance security and performance.</p>
+      <h2 id="configuring-olly">Configuring Olly</h2>
+      <p>In monitoring MAAS, you’ll need to follow three key steps: set up your tool stack, export telemetry data, and validate that it’s all running smoothly.</p>
+      <h2 id="configure-the-stack">Configure the stack</h2>
+      <p>Create a VM with the following script to install all required software.</p>
+      <pre class="nohighlight"><code>export LXD_NET=virbr0
+      export GRAFANA_REPOS=https://packages.grafana.com/oss/deb
+      export GRAFANA_KEY=https://packages.grafana.com/gpg.key
+      export LOKI_PKG=https://github.com/grafana/loki/releases/download/v2.4.2/loki-linux-amd64.zip
+      export PROM_PKG=https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz
+      export PROM_ALERT_PKG=https://github.com/prometheus/alertmanager/releases/download/v0.23.0/alertmanager-0.23.0.linux-amd64.tar.gz
+
+      cat &lt;&lt;EOF | lxc launch ubuntu: o11y
+      config:
+          user.user-data: |
+              #cloud-config
+              apt:
+                  sources:
+                      grafana:
+                          source: &#39;deb ${GRAFANA_REPOS} stable main&#39;
+                          key: |
+      $(wget -qO- ${GRAFANA_KEY} | sed &#39;s/^/                        /&#39;)
+              packages:
+              - unzip
+              - grafana
+              - make
+              - git
+              - python3-pip
+              runcmd:
+              - mkdir -p /opt/prometheus /opt/loki /opt/alertmanager
+              - wget -q &quot;${LOKI_PKG}&quot; -O /tmp/loki-linux-amd64.zip
+              - unzip /tmp/loki-linux-amd64.zip -d /opt/loki
+              - chmod a+x /opt/loki/loki-linux-amd64
+              - wget -qO- &quot;${PROM_PKG}&quot; | tar xz --strip-components=1 -C /opt/prometheus
+              - wget -qO- &quot;${PROM_ALERT_PKG}&quot; | tar xz --strip-components=1 -C /opt/alertmanager
+              - cat /dev/zero | sudo -u ubuntu -- ssh-keygen -q -N &quot;
+              ssh_authorized_keys:
+              - $(cat ${HOME}/.ssh/id_rsa.pub | cut -d&#39; &#39; -f1-2)
+      description: O11y stack
+      devices:
+          eth0:
+              type: nic
+              name: eth0
+              network: ${LXD_NET}
+      EOF
+
+      # log into the VM
+      lxc shell o11y</code></pre>
+      <p>Next, you have to configure and start four services, include Prometheus, Loki, AlertManager, and Grafana. Once these services are started, you can proceed to export telemetry data and see how your observability tools are working.</p>
+      <h2 id="configure-prometheus">Configure Prometheus</h2>
+      <p>Create the Prometheus configuration.</p>
+      <pre class="nohighlight"><code>cat &gt; /opt/prometheus/prometheus.yaml &lt;&lt;EOF
+      global:
+        evaluation_interval: 1m
+      rule_files:
+        - /var/lib/prometheus/rules/maas/*.yml
+      alerting:
+        alertmanagers:
+          - static_configs:
+            - targets:
+              - localhost:9093
+      EOF</code></pre>
+      <p>MAAS has a git repository of curated alert rules for Prometheus. Checkout this repository, compile the rules and copy them to prometheus directory.</p>
+      <pre class="nohighlight"><code>git clone https://github.com/canonical/maas-prometheus-alert-rules.git
+      cd maas-prometheus-alert-rules
+      make python-deps groups
+
+      mkdir -p /var/lib/prometheus/rules/maas
+      cp group.yml /var/lib/prometheus/rules/maas/</code></pre>
+      <p>Start the Prometheus service. You should enable the <em>Remote-Write Receiver</em> function.</p>
+      <pre class="nohighlight"><code>systemd-run -u prometheus /opt/prometheus/prometheus \
+          --config.file=/opt/prometheus/prometheus.yaml \
+          --enable-feature=remote-write-receiver</code></pre>
+      <h2 id="configure-loki">Configure Loki</h2>
+      <p>Create the Loki configuration.</p>
+      <pre class="nohighlight"><code>cat &gt; /opt/loki/loki.yaml &lt;&lt;EOF
+      auth_enabled: false
+      server:
+        http_listen_port: 3100
+        grpc_listen_port: 9096
+      common:
+        path_prefix: /var/lib/loki/
+        storage:
+          filesystem:
+            chunks_directory: /var/lib/loki/chunks
+            rules_directory: /var/lib/loki/rules
+        replication_factor: 1
+        ring:
+          instance_addr: 127.0.0.1
+          kvstore:
+            store: inmemory
+      schema_config:
+        configs:
+          - from: 2020-10-24
+            store: boltdb-shipper
+            object_store: filesystem
+            schema: v11
+            index:
+              prefix: index_
+              period: 24h
+      ruler:
+        alertmanager_url: http://localhost:9093
+        evaluation_interval: 15s
+        poll_interval: 1m
+        storage:
+          type: local
+          local:
+            directory: /var/lib/loki/rules
+        enable_api: true
+      EOF</code></pre>
+      <p>MAAS has a git repository of curated alert rules for Loki. Checkout this repository, compile the rules and copy them to Loki directory.</p>
+      <pre class="nohighlight"><code>git clone https://github.com/canonical/maas-loki-alert-rules.git
+      cd maas-loki-alert-rules
+      make groups
+
+      mkdir -p /var/lib/loki/rules/fake
+      cp rules/bundle.yml /var/lib/loki/rules/fake/</code></pre>
+      <p>Start the Loki service.</p>
+      <pre class="nohighlight"><code>systemd-run -u loki /opt/loki/loki-linux-amd64 \
+          --config.file=/opt/loki/loki.yaml</code></pre>
+      <h2 id="start-alertmanager">Start AlertManager</h2>
+      <p>The default configuration is enough for receiving alerts from Prometheus and Loki. You should read the project documentation to change it to forward notifications to somewhere useful.</p>
+      <pre class="nohighlight"><code>systemd-run -u alertmanager /opt/alertmanager/alertmanager \
+          --config.file=/opt/alertmanager/alertmanager.yml</code></pre>
+      <p>You can access the AlertManager dashboard at <code>http://&lt;VM_IP&gt;:9093</code></p>
+      <h2 id="start-grafana">Start Grafana</h2>
+      <p>Grafana works out-of-the-box with the default configuration.</p>
+      <pre class="nohighlight"><code>systemctl enable grafana-server
+      systemctl start grafana-server</code></pre>
+      <p>You can access the dashboard at <code>http://&lt;VM_IP&gt;:3000</code>, the default user/password is “admin”.</p>
+      <h2 id="export-telemetry">Export telemetry</h2>
+      <p>The Grafana Agent should be installed in the same host as MAAS.</p>
+      <pre class="nohighlight"><code># Set this to the address of the VM running Loki and Prometheus
+      export O11y_IP=&lt;VM_IP&gt;
+      export GRAFANA_AGENT_PKG=https://github.com/grafana/agent/releases/download/v0.22.0/agent-linux-amd64.zip
+
+      wget -q &quot;${GRAFANA_AGENT_PKG}&quot; -O /tmp/agent.zip
+      unzip /tmp/agent.zip -d /opt/agent
+      chmod a+x /opt/agent/agent-linux-amd64</code></pre>
+      <p>Copy the agent example configuration from MAAS and start the agent. Adapt the environment variable values to your setup. For example, if you’re using a snap, the <code>MAAS_LOGS</code> variable would be as shown (<code>/var/snap/maas/common/log</code>):</p>
+      <pre class="nohighlight"><code>mkdir -p /var/lib/grafana-agent/positions \
+               /var/lib/grafana-agent/wal
+      cp /snap/maas/current/usr/share/maas/grafana_agent/agent.yaml.example /opt/agent/agent.yml
+
+      systemd-run -u telemetry \
+          -E HOSTNAME=&quot;$(hostname)&quot; \
+          -E AGENT_WAL_DIR=&quot;/var/lib/grafana-agent/wal&quot; \
+          -E AGENT_POS_DIR=&quot;/var/lib/grafana-agent/positions&quot; \
+          -E PROMETHEUS_REMOTE_WRITE_URL=&quot;http://${O11y_IP}:9090/api/v1/write&quot; \
+          -E LOKI_API_URL=&quot;http://${O11y_IP}:3100/loki/api/v1/push&quot; \
+          -E MAAS_LOGS=&quot;/var/snap/maas/common/log/&quot; \
+          -E MAAS_IS_REGION=&quot;true&quot; \
+          -E MAAS_IS_RACK=&quot;true&quot; \
+          -E MAAS_AZ=&quot;default&quot; \
+          /opt/agent/agent-linux-amd64 \
+              -config.expand-env \
+              -config.file=/opt/agent/agent.yml</code></pre>
+      <p>On the other hand, if you’re using packages, the <code>MAAS_LOGS</code> would be <code>/var/log/maas</code>, as shown below:</p>
+      <pre class="nohighlight"><code>    ...
+          -E MAAS_LOGS=&quot;/var/log/maas&quot; \
+          ...</code></pre>
+      <p>Be sure to adjust the values of the other environment variables to suit your situation, where applicable.</p>
+      <p>Next, enable log forwarding in MAAS.</p>
+      <pre class="nohighlight"><code># set the TCP port the Grafana Agent is listening for syslog messages
+      # this port must match the one in /opt/agent/agent.yml
+      maas $ADMIN maas set-config name=promtail_port value=5238
+
+      # enable syslog forwarding
+      maas $ADMIN maas set-config name=promtail_enabled value=true</code></pre>
+      <h2 id="verify-operation">Verify operation</h2>
+      <p>Once your stack is set up, verifying its operation becomes crucial. You should be able to add both Loki and Prometheus as data sources in Grafana. This enables you to craft dashboards that bring MAAS metrics to life. Beyond that, you’ll want to fine-tune Alertmanager to ensure that you’re receiving timely and relevant alerts.</p>
+      <h2 id="basic-o11y-3.1">Basic O11y (3.1–)</h2>
+      <p>MAAS services can provide <a href="https://prometheus.io/">Prometheus</a><strong>^</strong> endpoints for collecting performance metrics.</p>
+      <h2 id="prometheus-for-maas">Prometheus for MAAS</h2>
+      <p>MAAS can provide five endpoints of particular interest to MAAS users:</p>
+      <ol type="1">
+      <li>TFTP server file transfer latency</li>
+      <li>HTTP requests latency</li>
+      <li>Websocket requests latency</li>
+      <li>RPC calls (between MAAS services) latency</li>
+      <li>Per request DB queries counts</li>
+      </ol>
+      <p>All available metrics are prefixed with <code>maas_</code>, to make it easier to look them up in Prometheus and Grafana UIs.</p>
+      <h2 id="prometheus-endpoints">Prometheus endpoints</h2>
+      <p>Whenever you install the <code>python3-prometheus-client</code> library, Prometheus endpoints are exposed over HTTP by the <code>rackd</code> and <code>regiond</code> processes under the default <code>/metrics</code> path.</p>
+      <blockquote>
+      <p>Pro tip: Currently, prometheus metrics are shared when rack and region controllers are running on the same machine, even though each service provides its own port. You can safely only query one of the two ports if you’re running both controllers.</p>
+      </blockquote>
+      <p>For a Snap-based MAAS setup, you’re in luck: the necessary libraries are bundled right in, making metrics immediately available. For those on a Debian-based MAAS installation, you’ll need to install the library and give your MAAS services a quick restart. Here’s how:</p>
+      <pre><code>sudo apt install python3-prometheus-client
+      sudo systemctl restart maas-rackd
+      sudo systemctl restart maas-regiond</code></pre>
+      <p>MAAS also provides optional stats about resources registered with the MAAS server itself. These include four broad categories of information:</p>
+      <ol type="1">
+      <li>The number of nodes by type, arch, …</li>
+      <li>Number of networks, spaces, fabrics, VLANs and subnets</li>
+      <li>Total counts for machines CPU cores, memory and storage</li>
+      <li>Counters for VM host resources</li>
+      </ol>
+      <p>After installing the <code>python3-prometheus-client</code> library as describe above, run the following to enable stats:</p>
+      <pre><code>maas $PROFILE maas set-config name=prometheus_enabled value=true</code></pre>
+      <h2 id="configure-prometheus-1">Configure Prometheus</h2>
+      <p>Once the <code>/metrics</code> endpoint is available in MAAS services, Prometheus can be configured to scrape metric values from these. You can configure this by adding a stanza like the following to the <a href="https://prometheus.io/docs/prometheus/latest/configuration/configuration/">prometheus configuration</a><strong>^</strong>:</p>
+      <div class="sourceCode" id="cb16"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> maas</span></span>
+      <span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a><span class="at">      </span><span class="fu">static_configs</span><span class="kw">:</span></span>
+      <span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a><span class="at">        </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span></span>
+      <span id="cb16-4"><a href="#cb16-4" aria-hidden="true"></a><span class="at">          </span><span class="kw">-</span><span class="at"> &lt;maas-host1-IP&gt;:5239</span><span class="co">  # for regiond</span></span>
+      <span id="cb16-5"><a href="#cb16-5" aria-hidden="true"></a><span class="at">          </span><span class="kw">-</span><span class="at"> &lt;maas-host1-IP&gt;:5249</span><span class="co">  # for rackd</span></span>
+      <span id="cb16-6"><a href="#cb16-6" aria-hidden="true"></a><span class="at">          </span><span class="kw">-</span><span class="at"> &lt;maas-host2-IP&gt;:5239</span><span class="co">  # regiond-only</span></span>
+      <span id="cb16-7"><a href="#cb16-7" aria-hidden="true"></a><span class="at">          </span><span class="kw">-</span><span class="at"> &lt;maas-host3-IP&gt;:5249</span><span class="co">  # rackd-only</span></span></code></pre></div>
+      <p>If the MAAS installation includes multiple nodes, the <code>targets</code> entries must be adjusted accordingly, to match services deployed on each node.</p>
+      <p>If you have enabled MAAS stats, you must add an additional Prometheus job to the config:</p>
+      <div class="sourceCode" id="cb17"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">job_name</span><span class="kw">:</span><span class="at"> maas</span></span>
+      <span id="cb17-2"><a href="#cb17-2" aria-hidden="true"></a><span class="at">      </span><span class="fu">metrics_path</span><span class="kw">:</span><span class="at"> /MAAS/metrics</span></span>
+      <span id="cb17-3"><a href="#cb17-3" aria-hidden="true"></a><span class="at">      </span><span class="fu">static_configs</span><span class="kw">:</span></span>
+      <span id="cb17-4"><a href="#cb17-4" aria-hidden="true"></a><span class="at">        </span><span class="kw">-</span><span class="at"> </span><span class="fu">targets</span><span class="kw">:</span></span>
+      <span id="cb17-5"><a href="#cb17-5" aria-hidden="true"></a><span class="at">          </span><span class="kw">-</span><span class="at"> &lt;maas-host-IP&gt;:5240</span></span></code></pre></div>
+      <p>In case of a multi-host deploy, adding a single IP for any of the MAAS hosts running <code>regiond</code> will suffice.</p>
+      <h2 id="deploy-prometheus">Deploy Prometheus</h2>
+      <p><a href="https://grafana.com/">Grafana</a><strong>^</strong> and Prometheus can be easily deployed using Juju.</p>
+      <p>The <a href="https://git.launchpad.net/~maas-committers/maas/+git/maas-performance">MAAS performance repo</a><strong>^</strong> repository provides a sample <code>deploy-stack</code> script that will deploy and configure the stack on LXD containers.</p>
+      <p>First, you must install juju via:</p>
+      <pre><code>sudo snap install --classic juju</code></pre>
+      <p>Then you can run the script from the repo:</p>
+      <pre><code>grafana/deploy-stack &lt;MAAS-IP&gt;</code></pre>
+      <p>To follow the progress of the deployment, run the following:</p>
+      <pre><code>watch -c juju status --color</code></pre>
+      <p>Once you deploy everything, the Grafana UI is accessible on port <code>3000</code> with the credentials <code>admin</code>/<code>grafana</code>. The Prometheus UI will be available on port <code>9090</code>.</p>
+      <p>The repository also provides some sample dashboard covering the most common use cases for graphs. These are available under <code>grafana/dashboards</code>. You can import them from the Grafana UI or API.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>

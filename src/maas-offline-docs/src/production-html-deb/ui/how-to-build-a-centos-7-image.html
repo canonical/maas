@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>How to build a CentOS 7 image</title>
+    <link rel="stylesheet" type="text/css" href="css/stylesheet.css" />
+    <style>
+      .collapsible {
+	  cursor: pointer;
+	  border: none;
+	  outline: none;
+	  margin: 0;
+	  padding:0;
+      }
+
+      .content {
+	  display: none;
+	  overflow: hidden;
+      }
+
+      .collapsible:after {
+	  content: '\003E'; /* Unicode right-pointing arrow */
+	  float: right;
+      }
+      .collapsible.active:after {
+	  content: 'v'; 
+      }
+    </style>
+    <style>
+      #selector a:link{color:black;}
+      #selector a:visited{color:black;}
+      #selector a:active{color:black;}
+      #selector a:hover{color:blue;}
+      #sidebar a:link{color:black;}
+      #sidebar a:visited{color:black;}
+      #sidebar a:active{color:black;}
+      #sidebar a:hover{color:blue;}
+      #sidebar ul {margin-left:0;margin-top:0;margin-bottom:0;list-style-type:none;padding-left:20px;}
+      #sidebar li {margin: 4px 0;}
+      #sidebar details {margin-top:0;margin-bottom:0;}
+      #sidebar details > summary {
+	  padding: 0px;
+	  margin-top: 0px;
+	  margin-bottom: 0px;
+	  width: 200px;
+	  background-color: #ffffff;
+	  border: none;
+	  cursor: pointer;
+    	  list-style-type: "< ";
+	  direction: rtl;
+      }
+      #sidebar details[open] > summary {
+	  list-style-type: "v ";
+      }
+
+      </style>
+  </head>
+  <body>
+    <div id="selector" style="top:0; position:fixed; float:right; background-color:#d9d9d9; width:100%;border-bottom:1px solid black;">
+      &nbsp;&nbsp;
+      <strong>Offline docs</strong>
+      <a href="https://maas.io/docs">(switch to live docs)</a>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <!-- this is left in just in case we have to update --
+	-- older html versions that still use tabs; tbh, we --
+	-- should be slowly doing  away with these; other --
+	-- changes will be needed, since the older directory --
+	-- structures are no longer differentiated, but left --
+	-- in place for now so we don't have to dork around --
+	-- with the build tools, which expect the subdirs -->
+          </div>
+    <div id="sidebar" style="float:left; width:25%;margin-top:40px; margin-left:20px">
+      <ul>
+	<li>
+	  <a href="maas-documentation.html"><b>MAAS Documentation</b></a>
+	</li>
+        <hr style="margin-top: 15px;">
+	<li>
+ 	  <button class="collapsible" id="m01"><a href="tutorials.html">Tutorials&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m02">
+	    <ul>
+	      <li>
+		<a href="tutorial-bootstrapping-maas.html">Bootstrapping MAAS</a>
+	      </li>
+	      <li>
+		<a href="tutorial-try-the-maas-cli.html">Try the MAAS CLI</a>
+	      </li>
+	      <li>
+		<a href="tutorial-creating-custom-images.html">Creating custom images</a>
+	      </li>
+	      <li>
+		<a href="tutorial-get-fancy-cli-output.html">Get fancy CLI output</a>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m03"><a href="how-to-guides.html">How-to guides&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m04">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m05"><a href="how-to-set-up-maas.html">Set up MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m06">
+		  <ul>
+		    <li>
+		      <a href="how-to-install-maas.html">Install MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-maas.html">Upgrade MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-back-up-maas.html">Back up MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m07"><a href="how-to-manage-maas-networks.html">Manage MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m08">
+		  <ul>
+		    <li>
+		      <a href="how-to-connect-maas-networks.html">Connect MAAS networks</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-dhcp.html">Enable DHCP</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-availability-zones.html">Use availability zones</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m09"><a href="how-to-manage-maas-images.html">Manage MAAS images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m10">
+		  <ul>
+		    <li>
+		      <a href="how-to-use-standard-images.html">Use standard images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-mirror-maas-images.html">Mirror MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-real-time-kernel.html">Deploy a real-time kernel</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-vmware-images.html">Use VMWare images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-a-fips-compliant-kernel.html">Deploy a FIPS-compliant kernel</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m12"><a href="how-to-customise-images.html">Customise images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m13">
+		  <ul>
+		    <li>
+		      <a href="how-to-build-maas-images.html">Build MAAS images</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-ubuntu-image.html">Build an Ubuntu image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-7-image.html">Build a RHEL 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-rhel-8-image.html">Build a RHEL 8 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-centos-7-image.html">Build a CentOS 7 image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-an-esxi-image.html">Build an ESXi image</a>
+		    </li>
+		    <li>
+		      <a href="how-to-build-a-windows-image.html">Build a Windows image</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m14"><a href="how-to-manage-controllers.html">Manage controllers&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m15">
+		  <ul>
+		    <li>
+		      <a href="how-to-configure-controllers.html">Configure controllers</a>
+		    </li>
+		    <li>
+		      <a href="how-to-enable-high-availability.html">Enable high availability</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m16"><a href="how-to-use-machines.html">Use machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m17">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-machines.html">Manage machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-customise-machines.html">Customise machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-commission-machines-with-maas.html">Commission machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-allocate-machines-with-maas.html">Allocate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-machines-with-maas.html">Deploy machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-resource-pools.html">Use resource pools</a>
+		    </li>
+		    <li>
+		      <a href="how-to-set-up-power-drivers.html">Set up power drivers</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m18"><a href="how-to-manage-storage.html">Manage storage&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m19">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-block-devices.html">Manage block devices</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-partitions.html">Manage partitions</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-vmfs-datastores.html">Manage VMFS datastores</a>
+		    </li>
+		    <li>
+		      <a href="how-to-create-custom-storage.html">Create custom storage</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m20"><a href="how-to-use-virtual-machines.html">Use virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m21">
+		  <ul>
+		    <li>
+		      <a href="how-to-set-up-external-lxd.html">Set up external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-external-lxd.html">Use external LXD</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-lxd-projects.html">Use LXD projects</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-storage-layouts.html">Configure storage layouts</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-virtual-machines.html">Manage virtual machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-deploy-vms-on-ibm-z.html">Deploy VMs on IBM Z</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m22"><a href="how-to-label-machines.html">Label machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m23">
+		  <ul>
+		    <li>
+		      <a href="how-to-manage-tags.html">Manage
+			tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-annotate-machines.html">Annotate
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-machine-tags.html">Use
+			machine tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-controller-tags.html">Use
+			controller tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-storage-tags.html">Use
+			storage tags</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-network-tags.html">Use
+			network tags</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m24"><a href="how-to-use-logging.html">Use logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m25">
+		  <ul>
+		    <li>
+		      <a href="how-to-read-event-logs.html">Read event logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-review-audit-logs.html">Review audit logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-read-commissioning-logs.html">Read commissioning logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-interpret-testing-logs.html">Interpret testing logs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-maas-systemd-logs.html">Use MAAS systemd logs</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m26"><a href="how-to-secure-maas.html">Secure MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m27">
+		  <ul>
+		    <li>
+		      <a href="how-to-enhance-maas-security">Enhance MAAS security</a>
+		    </li>
+		    <li>
+		      <a href="how-to-manage-user-access.html">Manage user access</a>
+		    </li>
+		    <li>
+		      <a href="how-to-implement-tls.html">Implement TLS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-integrate-vault.html">Integrate Vault</a>
+		    </li>
+		    <li>
+		      <a href="how-to-configure-an-air-gapped-maas.html">Configure an air-gapped MAAS</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m28"><a href="how-to-change-maas-settings.html">Change MAAS settings&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m29">
+		  <ul>
+		    <li>
+		      <a href="how-to-change-maas-3-4-settings.html">Change MAAS 3.4 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-maas-3-3-settings.html">Change MAAS 3.3 settings</a>
+		    </li>
+		    <li>
+		      <a href="how-to-change-settings-with-the-cli.html">Change settings with the CLI</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m30"><a href="how-to-operate-maas.html">Operate MAAS&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m31">
+		  <ul>
+		    <li>
+		      <a href="how-to-locate-machines.html">Locate machines</a>
+		    </li>
+		    <li>
+		      <a href="how-to-monitor-maas.html">Monitor MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-audit-maas.html">Audit MAAS</a>
+		    </li>
+		    <li>
+		      <a href="how-to-upgrade-postgresql-v12-to-v14.html">Upgrade PostgreSQL v12 to v14</a>
+		    </li>
+		    <li>
+		      <a href="how-to-troubleshoot-common-issues.html">Troubleshoot common issues</a>
+		    </li>
+		    <li>
+		      <a href="how-to-authenticate-to-the-maas-api.html">Authenticate to the MAAS API</a>
+		    </li>
+		    <li>
+		      <a href="how-to-use-the-python-api-client.html">Use the Python API client</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m32"><a href="how-to-join-the-community.html">Join the community&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m33">
+		  <ul>
+		    <li>
+		      <a href="how-to-engage-on-the-discourse-forum.html">Engage on the Discourse forum</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/pro">How to get support</a>
+		    </li>
+		    <li>
+		      <a href="how-to-request-features.html">Request features</a>
+		    </li>
+		    <li>
+		      <a href="how-to-report-and-review-bugs.html">Report and review bugs</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contribute-to-maas-documentation.html">Contribute to MAAS documentation</a>
+		    </li>
+		    <li>
+		      <a href="how-to-contact-us.html">How to contact us</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m34"><a href="reference.html">Reference&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m35">
+	    <ul>
+	      <li>
+		<button class="collapsible" id="m36"><a href="reference-general-information.html">General information&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m37">
+		  <ul>
+		    <li>
+		      <a href="reference-installation-requirements.html">Installation requirements</a>
+		    </li>
+		    <li>
+		      <a href="https://launchpad.net/maas">MAAS source code</a>
+		    </li>
+		    <li>
+		      <a href="reference-documentation-style-guide.html">Documentation style guide</a>
+		    </li>
+		    <li>
+		      <a href="reference-maas-glossary.html">MAAS glossary</a>
+		    </li>
+		    <li>
+		      <a href="https://ubuntu.com/community/code-of-conduct">MAAS community code of conduct</a>
+		    </li>
+		    <li>
+		      <a href="reference-api-documentation.html">MAAS API reference</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m38"><a href="reference-maas-scripts.html">Scripts and automation&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m39">
+		  <ul>
+		    <li>
+		      <a href="reference-commissioning-scripts.html">Commissioning scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-hardware-test-scripts.html">Hardware test scripts</a>
+		    </li>
+		    <li>
+		      <a href="reference-terraform.html">Terraform IAC</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="reference-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-metrics.html">MAAS metrics</a>
+	      </li>
+	      <li>
+		<a href="reference-power-drivers.html">Power drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-bmc-drivers.html">BMC drivers</a>
+	      </li>
+	      <li>
+		<a href="reference-maas-storage.html">Storage reference</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m40"><a href="reference-release-notes.html">Release notes and version details&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m41">
+		  <ul>
+		    <li>
+		      <a href="reference-release-notes-maas-3-4.html">MAAS
+			3.4 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-3.html">MAAS
+			3.3 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-2.html">MAAS
+			3.2 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-1.html">MAAS
+			3.1 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-3-0.html">MAAS
+			3.0 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-9.html">MAAS
+			2.9 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-8.html">MAAS
+			2.8 release notes</a>
+		    </li>
+		    <li>
+		      <a href="reference-release-notes-maas-2-7.html">MAAS
+			2.7 release notes</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+	<hr style="margin-top: 15px;">
+	<li>
+	  <button class="collapsible" id="m42"><a href="explanation.html">Explanation&nbsp;&nbsp;&nbsp;</a></button>
+	  <div class="content" id="m43">
+	    <ul>
+	      <li>
+		<a href="about-maas.html">MAAS</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m44"><a href="about-machines.html">Machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m45">
+		  <ul>
+		    <li>
+		      <a    href="about-machine-basics.html">Machine
+			basics</a>
+		    </li>
+		    <li>
+		      <a href="about-commissioning-machines.html">Commissioning
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-the-machine-life-cycle.html">The
+			machine life-cycle</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-machines.html">Deploying
+			machines</a>
+		    </li>
+		    <li>
+		      <a href="about-machine-customisation.html">Machine
+			customisation</a>
+		    </li>
+		    <li>
+		      <a href="about-deploying-running-machines.html">Deploying
+			running machines</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m46"><a href="about-virtual-machines.html">Virtual machines&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m47">
+		  <ul>
+		    <li>
+		      <a href="about-lxd.html">LXD</a>
+		    </li>
+		    <li>
+		      <a href="about-lxd-projects.html">LXD projects</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m48"><a href="about-images.html">Images&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m49">
+		  <ul>
+		    <li>
+		      <a href="about-standard-images.html">Standard images</a>
+		    </li>
+		    <li>
+		      <a href="about-custom-images.html">Custom images</a>
+		    </li>
+		  </ul>
+		</div>
+	      <li>
+		<a href="about-controllers.html">Controllers</a>
+	      </li>
+	      <li>
+		<a href="about-device-labels.html">Device labels</a>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m50"><a href="about-maas-networks.html">MAAS networks&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m51">
+		  <ul>
+		    <li>
+		      <a href="about-the-osi-model.html">The OSI model</a>
+		    </li>
+		    <li>
+		      <a href="about-tcp-ip.html">TCP/IP</a>
+		    </li>
+		    <li>
+		      <a href="about-dhcp-in-maas.html">DHCP in MAAS</a>
+		    </li>
+		    <li>
+		      <a href="about-cloud-networking.html">Cloud networking</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<button class="collapsible" id="m52"><a href="about-monitoring-and-logging.html">Monitoring and logging&nbsp;&nbsp;&nbsp;</a></button>
+		<div class="content" id="m53">
+		  <ul>
+		    <li>
+		      <a href="about-maas-performance.html">MAAS performance</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-events.html">MAAS events</a>
+		    </li>
+		    <li>
+		      <a href="about-audit-events.html">Audit events</a>
+		    </li>
+		    <li>
+		      <a href="about-maas-logging.html">MAAS logging</a>
+		    </li>
+		  </ul>
+		</div>
+	      </li>
+	      <li>
+		<a href="about-maas-security.html">Ensuring security in MAAS</a>
+	      </li>
+	      <li>
+	      </li>
+	    </ul>
+	  </div>
+	</li>
+      </ul>
+    </div>
+    <div class="container" style="float:left; width:60%; margin-left: 40px; margin-top:40px; margin-right:30px">
+      
+      <h1>How to build a CentOS 7 image</h1>
+      <p>This page explains how to create a CentOS 7 image with packer.</p>
+      <h2 id="verify-requirements">Verify requirements</h2>
+      <p>To create a CentOS 7 image to upload to MAAS, you must have a machine running Ubuntu 18.04+ or higher with the ability to run KVM virtual machines. You must also acquire the following items, as described in later instructions:</p>
+      <ul>
+      <li>qemu-utils</li>
+      <li>packer</li>
+      </ul>
+      <p>Note that a suitable CentOS 7 image is downloaded as part of the template.</p>
+      <p>To deploy the image to MAAS, you must also have:</p>
+      <ul>
+      <li>MAAS 2.3+</li>
+      <li>Curtin 18.1-59+</li>
+      </ul>
+      <h2 id="install-packer">Install packer</h2>
+      <p>Packer is easily installed from its Debian package:</p>
+      <pre class="nohighlight"><code>sudo apt install packer</code></pre>
+      <p>This should install with no additional prompts.</p>
+      <h2 id="install-dependencies">Install dependencies</h2>
+      <pre class="nohighlight"><code>sudo apt install qemu-utils</code></pre>
+      <h2 id="get-the-templates">Get the templates</h2>
+      <p>You can obtain the packer templates by cloning the <a href="https://github.com/canonical/packer-maas.git">packer-maas github repository</a><strong>^</strong>, like this:</p>
+      <pre class="nohighlight"><code>git clone https://github.com/canonical/packer-maas.git</code></pre>
+      <p>Make sure to pay attention to where the repository is cloned. The Packer template in this cloned repository creates a CentOS 7 AMD64 image for use with MAAS.</p>
+      <p>This package should install with no additional prompts.</p>
+      <h2 id="centos-7-template">CentOS 7 template</h2>
+      <p>The packer template in the directory <code>centos7</code> subdirectory creates a CentOS 7 AMD64 image for use with MAAS.</p>
+      <h2 id="customise-the-image">Customise the image</h2>
+      <p>The deployment image may be customized by modifying http/centos7.ks. See the CentOS kickstart documentation for more information.</p>
+      <h2 id="optional-proxy">Optional proxy</h2>
+      <p>The Packer template downloads the CentOS net installer from the Internet. To tell Packer to use a proxy set the HTTP_PROXY environment variable to your proxy server. Alternatively you may redefine iso_url to a local file, set iso_checksum_type to none to disable checksumming, and remove iso_checksum_url.</p>
+      <p>To use a proxy during the installation add the –proxy=$HTTP_PROXY flag to every line starting with url or repo in http/centos7.ks. Alternatively you may set the –mirrorlist values to a local mirror.</p>
+      <h2 id="build-centos-7">Build CentOS 7</h2>
+      <p>You can easily build the image using the Makefile:</p>
+      <pre class="nohighlight"><code>$ make</code></pre>
+      <p>For a few minutes, you will encounter a stream <code>qemu</code> text similar to this:</p>
+      <pre class="nohighlight"><code>2022/06/07 13:28:00 packer-builder-qemu plugin: Qemu path: /usr/bin/qemu-system-x86_64, Qemu Image page: /usr/bin/qemu-img
+      ==&gt; qemu: Retrieving ISO
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Leaving retrieve loop for ISO
+      2022/06/07 13:28:00 packer-builder-qemu plugin: No floppy files specified. Floppy disk will not be made.
+      2022/06/07 13:28:00 packer-builder-qemu plugin: No CD files specified. CD disk will not be made.
+      2022/06/07 13:28:00 packer-builder-qemu plugin: [INFO] Creating disk with Path: output-qemu/packer-qemu and Size: 4G
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Executing qemu-img: []string{&quot;create&quot;, &quot;-f&quot;, &quot;qcow2&quot;, &quot;output-qemu/packer-qemu&quot;, &quot;4G&quot;}
+      2022/06/07 13:28:00 packer-builder-qemu plugin: stdout: Formatting &#39;output-qemu/packer-qemu&#39;, fmt=qcow2 cluster_size=65536 extended_l2=off compression_type=zlib size=4294967296 lazy_refcounts=off refcount_bits=16
+      2022/06/07 13:28:00 packer-builder-qemu plugin: stderr:
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Found available port: 8144 on IP: 0.0.0.0
+      ==&gt; qemu: Starting HTTP server on port 8144
+          qemu: No communicator is set; skipping port forwarding setup.
+      ==&gt; qemu: Looking for available port between 5900 and 6000 on 127.0.0.1
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Looking for available port between 5900 and 6000 on 127.0.0.1
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Found available port: 5970 on IP: 127.0.0.1
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Found available VNC port: 5970 on IP: 127.0.0.1
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Qemu --version output: QEMU emulator version 6.2.0 (Debian 1:6.2+dfsg-2ubuntu6)
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Copyright (c) 2003-2021 Fabrice Bellard and the QEMU Project developers
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Qemu version: 6.2.0
+      ==&gt; qemu: Starting VM, booting from CD-ROM
+          qemu: view the screen of the VM, connect via VNC without a password to
+          qemu: vnc://127.0.0.1:70
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Qemu Builder has no floppy files, not attaching a floppy.
+          qemu: The VM will be run headless, without a GUI. If you want to
+          qemu: view the screen of the VM, connect via VNC without a password to
+          qemu: vnc://127.0.0.1:70
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Executing /usr/bin/qemu-system-x86_64: []string{&quot;-netdev&quot;, &quot;user,id=user.0&quot;, &quot;-vnc&quot;, &quot;127.0.0.1:70&quot;, &quot;-serial&quot;, &quot;stdio&quot;, &quot;-device&quot;, &quot;virtio-net,netdev=user.0&quot;, &quot;-drive&quot;, &quot;file=output-qemu/packer-qemu,if=virtio,cache=writeback,discard=ignore,format=qcow2&quot;, &quot;-drive&quot;, &quot;file=/home/stormrider/mnt/Dropbox/src/git/packer-maas/...
+      ==&gt; qemu: Overriding default Qemu arguments with qemuargs template option...
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Started Qemu. Pid: 7970
+      2022/06/07 13:28:00 packer-builder-qemu plugin: Qemu stderr: qemu-system-x86_64: warning: host doesn&#39;t support requested feature: CPUID.80000001H:ECX.svm [bit 2]
+      ==&gt; qemu: Waiting 3s for boot...
+      ==&gt; qemu: Connecting to VM via VNC (127.0.0.1:5970)
+      2022/06/07 13:28:05 packer-builder-qemu plugin: Connected to VNC desktop: QEMU (packer-qemu)
+      ==&gt; qemu: Typing the boot command over VNC...
+      2022/06/07 13:28:05 packer-builder-qemu plugin: Special code &#39;&lt;up&gt;&#39; found, replacing with: 0xFF52
+      2022/06/07 13:28:06 packer-builder-qemu plugin: Special code &#39;&lt;tab&gt;&#39; found, replacing with: 0xFF09
+      2022/06/07 13:28:06 packer-builder-qemu plugin: Sending char &#39; &#39;, code 0x20, shift false
+      2022/06/07 13:28:06 packer-builder-qemu plugin: Sending char &#39;i&#39;, code 0x69, shift false
+      2022/06/07 13:28:06 packer-builder-qemu plugin: Sending char &#39;n&#39;, code 0x6E, shift false
+      2022/06/07 13:28:06 packer-builder-qemu plugin: Sending char &#39;s&#39;, code 0x73, shift false
+      2022/06/07 13:28:07 packer-builder-qemu plugin: Sending char &#39;t&#39;, code 0x74, shift false
+      2022/06/07 13:28:07 packer-builder-qemu plugin: Sending char &#39;.&#39;, code 0x2E, shift false</code></pre>
+      <p>Eventually, the screen will clear and you will see an <code>anaconda</code> window. Anaconda is the RedHat installer tool, which is preparing your custom image:</p>
+      <pre class="nohighlight"><code>7) [x] Network configuration             8) [ ] User creation
+             (Wired (ens3) connected)                 (No user will be created)
+      2022/06/07 13:29:19 packer-builder-qemu plugin: Qemu stdout: 
+      ================================================================================
+      ================================================================================
+      Progress07 13:29:19 packer-builder-qemu plugin: Qemu stdout: 
+      2022/06/07 13:29:19 packer-builder-qemu plugin: Qemu stdout: 
+      .022/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: 
+      2022/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: Setting up the installation environment
+      2022/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: Setting up com_redhat_kdump addon
+      2022/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: Setting up org_fedora_oscap addon
+      2022/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: ..
+      2022/06/07 13:29:23 packer-builder-qemu plugin: Qemu stdout: Configuring storage
+      ...2/06/07 13:29:20 packer-builder-qemu plugin: Qemu stdout: 
+      Running pre-installation scriptser-qemu plugin: Qemu stdout:
+      .022/06/07 13:29:23 packer-builder-qemu plugin: Qemu stdout: 
+      Running pre-installation taskslder-qemu plugin: Qemu stdout:
+      ...2/06/07 13:29:24 packer-builder-qemu plugin: Qemu stdout: 
+      2022/06/07 13:29:24 packer-builder-qemu plugin: Qemu stdout: Installing.
+      2022/06/07 13:29:25 packer-builder-qemu plugin: Qemu stdout: Starting package installation process
+      Downloading packagespacker-builder-qemu plugin: Qemu stdout: 
+      2022/06/07 13:29:29 packer-builder-qemu plugin: Qemu stdout: 
+
+      [anaconda]1:main* 2:shell  3:log  4:storage-log &gt;Switch tab: Alt+Tab | Help: F1 :shell  3:log  4:sto&gt;&lt;&#39;echo -n &quot;Switch tab: Alt+Tab | Help: F</code></pre>
+      <p>Anaconda will run for three to five minutes. When it finishes, it will clear the screen and return you to the shell prompt.</p>
+      <h2 id="or-run-manually">OR run manually</h2>
+      <p>Alternatively you can manually run packer. Your current working directory must be in packer-maas/centos7, where this file is located. Once in packer-maas/centos7 you can generate an image with:</p>
+      <pre class="nohighlight"><code>$ sudo PACKER_LOG=1 packer build centos7.json</code></pre>
+      <p>centos7.json is configured to run Packer in headless mode. Only Packer output will be seen. If you wish to see the installation output connect to the VNC port given in the Packer output or change the value of headless to false in centos7.json.</p>
+      <p>Installation is non-interactive.</p>
+      <h2 id="upload-to-maas">Upload to MAAS</h2>
+      <p>You can upload the CentOS 7 raw packer image with the following command:</p>
+      <pre class="nohighlight"><code>$ maas $PROFILE boot-resources create
+      name=&#39;centos/7-custom&#39; title=&#39;CentOS 7 Custom&#39; architecture=&#39;amd64/generic&#39; filetype=&#39;tgz&#39; content@=centos7.tar.gz</code></pre>
+      <h2 id="verify-the-image">Verify the image</h2>
+      <p>Before relying on it in production, you should test your custom image by deploying it to a test (virtual) machine. It’s the machine named <code>open-gannet</code> in this listing:</p>
+      <pre class="nohighlight"><code>maas admin machines read | jq -r &#39;([&quot;HOSTNAME&quot;,&quot;SYSID&quot;,&quot;POWER&quot;,&quot;STATUS&quot;,
+      &quot;OWNER&quot;, &quot;OS&quot;, &quot;DISTRO&quot;] | (., map(length*&quot;-&quot;))),
+      (.[] | [.hostname, .system_id, .power_state, .status_name, .owner // &quot;-&quot;,
+      .osystem, .distro_series]) | @tsv&#39; | column -t
+
+      HOSTNAME     SYSID   POWER  STATUS    OWNER  OS      DISTRO
+      --------     -----   -----  ------    -----  --      ------
+      valued-moth  e86c7h  on     Deployed  admin  ubuntu  focal
+      open-gannet  nk7x8y  on     Deployed  admin  custom  centos7-raw</code></pre>
+      <h2 id="log-in-to-verify">Log in to verify</h2>
+      <p>You should log into your newly-deployed image and verify that it has all the customisations you added to the build process. The default username for packer-created CentOS 7 images is <code>centos</code>.</p>
+    </div>
+    <script>
+      document.addEventListener('DOMContentLoaded', (event) => {
+	  let coll = document.getElementsByClassName("collapsible");
+
+	  for (let i = 0; i < coll.length; i++) {
+	      coll[i].addEventListener("click", function() {
+		  toggleCollapsible(this);
+	      });
+	  }
+      });
+
+      function toggleCollapsible(element) {
+	  element.classList.toggle("active");
+	  let content = element.nextElementSibling;
+	  if (content.style.display === "none" || content.style.display === "") {
+	      content.style.display = "block";
+	  } else {
+	      content.style.display = "none";
+	  }
+      }
+
+      // Assuming you have a way to identify which menu item should be open, e.g., via URL
+      function openMenuItemBasedOnPage() {
+	  let currentPage = window.location.href; // or however you determine the current page
+	  let menuItem;
+
+	  // Logic to determine which menu item corresponds to the current page
+	  if (currentPage.includes("page1")) {
+	      menuItem = document.getElementById("menu-item-1");
+	  } else if (currentPage.includes("page2")) {
+	      menuItem = document.getElementById("menu-item-2");
+	  }
+
+	  if (menuItem) {
+	      toggleCollapsible(menuItem);
+	      menuItem.classList.add("active");
+	  }
+      }
+
+      // Call this function when the page loads
+      openMenuItemBasedOnPage();
+    </script>
+  </body>
+</html>
