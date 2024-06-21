@@ -21,6 +21,11 @@ class BmcRepository(BaseRepository[Bmc, BmcRequest]):
     ) -> ListResult[Bmc]:
         raise Exception("Not implemented yet.")
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[Bmc]:
+        raise Exception("Not implemented yet.")
+
     async def update(self, resource: Bmc) -> Bmc:
         raise Exception("Not implemented yet.")
 

@@ -12,7 +12,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.api.models.responses.zones import (
     ZoneResponse,
@@ -47,16 +47,22 @@ class ZonesHandler(Handler):
     )
     async def list_zones(
         self,
-        pagination_params: PaginationParams = Depends(),
+        token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        zones = await services.zones.list(pagination_params)
+        zones = await services.zones.list(
+            token=token_pagination_params.token,
+            size=token_pagination_params.size,
+        )
         return ZonesListResponse(
             items=[
                 zone.to_response(f"{V3_API_PREFIX}/zones")
                 for zone in zones.items
             ],
-            total=zones.total,
+            next=f"{V3_API_PREFIX}/zones?"
+            f"{TokenPaginationParams.to_href_format(zones.next_token, token_pagination_params.size)}"
+            if zones.next_token
+            else None,
         )
 
     @handler(

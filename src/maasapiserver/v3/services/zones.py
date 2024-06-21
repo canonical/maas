@@ -12,7 +12,6 @@ from maasapiserver.common.models.exceptions import (
     PreconditionFailedException,
 )
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.db.zones import ZonesRepository
 from maasapiserver.v3.models.base import ListResult
@@ -58,10 +57,10 @@ class ZonesService(Service):
     async def get_by_name(self, name: str) -> Optional[Zone]:
         return await self.zones_repository.find_by_name(name)
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Zone]:
-        return await self.zones_repository.list(pagination_params)
+    async def list(self, token: str | None, size: int) -> ListResult[Zone]:
+        return await self.zones_repository.list_with_token(
+            token=token, size=size
+        )
 
     async def delete(
         self, zone_id: int, etag_if_match: str | None = None

@@ -21,6 +21,11 @@ class VmClustersRepository(BaseRepository[VmCluster, VmClusterRequest]):
     ) -> ListResult[VmCluster]:
         raise Exception("Not implemented yet.")
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[VmCluster]:
+        pass
+
     async def update(self, resource: VmCluster) -> VmCluster:
         raise Exception("Not implemented yet.")
 

@@ -51,3 +51,13 @@ class PaginatedResponse(GenericModel, Generic[T]):
 
     total: int
     items: Sequence[T]
+
+
+class TokenPaginatedResponse(GenericModel, Generic[T]):
+    """
+    Base class for token-paginated responses.
+    Derived classes should overwrite the items property
+    """
+
+    items: Sequence[T]
+    next: Optional[str] = None

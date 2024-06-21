@@ -81,6 +81,11 @@ class ResourcePoolRepository(
             total=total,
         )
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[ResourcePool]:
+        raise Exception("Not implemented yet.")
+
     async def delete(self, id: int) -> None:
         raise Exception("Not implemented yet.")
 

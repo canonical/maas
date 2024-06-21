@@ -21,6 +21,11 @@ class NodesRepository(BaseRepository[Node, NodeRequest]):
     ) -> ListResult[Node]:
         raise Exception("Not implemented yet.")
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[Node]:
+        raise Exception("Not implemented yet.")
+
     async def update(self, resource: Node) -> Node:
         raise Exception("Not implemented yet.")
 

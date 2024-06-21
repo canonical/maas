@@ -2,8 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import delete, desc, insert, select, Select
-from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import DefaultResourceTable, ZoneTable
 from maasapiserver.common.models.constants import (
@@ -83,20 +82,26 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
     async def list(
         self, pagination_params: PaginationParams
     ) -> ListResult[Zone]:
-        total_stmt = select(count()).select_from(ZoneTable)
-        # There is always at least one "default" zone being created at first startup during the migrations.
-        total = (await self.connection.execute(total_stmt)).scalar()
+        raise Exception("Not implemented. Use the token based pagination.")
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[Zone]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(ZoneTable.c.id))
-            .offset((pagination_params.page - 1) * pagination_params.size)
-            .limit(pagination_params.size)
+            .limit(size + 1)  # Retrieve one more element to get the next token
         )
+        if token:
+            stmt = stmt.where(le(ZoneTable.c.id, int(token)))
 
-        result = await self.connection.execute(stmt)
+        result = (await self.connection.execute(stmt)).all()
+        next_token = None
+        if len(result) > size:  # There is another page
+            next_token = result.pop().id
         return ListResult[Zone](
-            items=[Zone(**row._asdict()) for row in result.all()], total=total
+            items=[Zone(**row._asdict()) for row in result],
+            next_token=next_token,
         )
 
     async def update(self, resource: Zone) -> Zone:

@@ -80,6 +80,11 @@ class InterfaceRepository(BaseRepository[Interface, InterfaceRequest]):
             total=total,
         )
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[Interface]:
+        raise Exception("Not implemented yet.")
+
     async def update(self, resource: Interface) -> Interface:
         raise Exception("Not implemented yet.")
 

@@ -7,7 +7,6 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.db.tables import ZoneTable
 from maasapiserver.common.models.exceptions import AlreadyExistsException
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasapiserver.v3.db.zones import ZonesRepository
@@ -76,16 +75,15 @@ class TestZonesRepository:
             for i in range(0, 9)
         ][::-1]
         total_pages = ceil(10 / page_size)
+        current_token = None
         for page in range(1, total_pages + 1):
-            zones_result = await zones_repository.list(
-                PaginationParams(size=page_size, page=page)
+            zones_result = await zones_repository.list_with_token(
+                token=current_token, size=page_size
             )
-            assert zones_result.total == 10
-            assert total_pages == ceil(zones_result.total / page_size)
             if page == total_pages:  # last page may have fewer elements
                 assert len(zones_result.items) == (
                     page_size
-                    - ((total_pages * page_size) % zones_result.total)
+                    - ((total_pages * page_size) % (len(created_zones) + 1))
                 )
             else:
                 assert len(zones_result.items) == page_size
@@ -93,6 +91,7 @@ class TestZonesRepository:
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 assert zone in zones_result.items
+            current_token = zones_result.next_token
 
     async def test_delete(
         self, db_connection: AsyncConnection, fixture: Fixture

@@ -32,6 +32,11 @@ class UsersRepository(BaseRepository[User, UserRequest]):
     ) -> ListResult[User]:
         raise Exception("Not implemented yet.")
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[User]:
+        pass
+
     async def update(self, resource: User) -> User:
         raise Exception("Not implemented yet.")
 

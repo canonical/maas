@@ -1,7 +1,7 @@
 from maasapiserver.v3.api.models.responses.base import (
     BaseHal,
     HalResponse,
-    PaginatedResponse,
+    TokenPaginatedResponse,
 )
 
 
@@ -12,5 +12,5 @@ class ZoneResponse(HalResponse[BaseHal]):
     description: str
 
 
-class ZonesListResponse(PaginatedResponse[ZoneResponse]):
+class ZonesListResponse(TokenPaginatedResponse[ZoneResponse]):
     kind = "ZonesList"

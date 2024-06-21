@@ -49,6 +49,11 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
             total=total,
         )
 
+    async def list_with_token(
+        self, token: str | None, size: int
+    ) -> ListResult[Machine]:
+        raise Exception("Not implemented yet.")
+
     async def update(self, resource: Machine) -> Machine:
         raise Exception("Not implemented yet.")
 
