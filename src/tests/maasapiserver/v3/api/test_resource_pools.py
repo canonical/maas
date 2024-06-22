@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timezone
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
@@ -21,11 +21,7 @@ from tests.fixtures.factories.resource_pools import (
     create_test_resource_pool,
 )
 from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import (
-    ApiCommonTests,
-    EndpointDetails,
-    PaginatedEndpointTestConfig,
-)
+from tests.maasapiserver.v3.api.base import ApiCommonTests, EndpointDetails
 
 
 class TestResourcePoolApi(ApiCommonTests):
@@ -63,12 +59,6 @@ class TestResourcePoolApi(ApiCommonTests):
                 method="GET",
                 path=f"{V3_API_PREFIX}/resource_pools",
                 user_role=UserRole.USER,
-                pagination_config=PaginatedEndpointTestConfig(
-                    response_type=ResourcePoolsListResponse,
-                    assert_routine=_assert_resource_pools_in_list,
-                    create_resources_routine=create_pagination_test_resources,
-                    size_parameters=list(range(1, 10)),
-                ),
             ),
             EndpointDetails(
                 method="GET",
@@ -86,6 +76,64 @@ class TestResourcePoolApi(ApiCommonTests):
                 user_role=UserRole.ADMIN,
             ),
         ]
+
+    def _assert_resource_pool_in_list(
+        self,
+        resource_pool: ResourcePool,
+        resource_pools_response: ResourcePoolResponse,
+    ) -> None:
+        rp_response = next(
+            filter(
+                lambda resp: resp.id == resource_pool.id,
+                resource_pools_response.items,
+            )
+        )
+        assert resource_pool.id == rp_response.id
+        assert resource_pool.name == rp_response.name
+        assert resource_pool.description == rp_response.description
+
+    async def test_list(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ):
+        # The default resource pool is created by the migrations
+        created_resource_pools = [
+            ResourcePool(
+                id=0,
+                name="default",
+                description="Default pool",
+                created=datetime.utcnow(),
+                updated=datetime.utcnow(),
+            )
+        ]
+        for i in range(9):
+            created_resource_pools.append(
+                await create_test_resource_pool(
+                    fixture, name=str(i), description=str(i)
+                )
+            )
+
+        next_page_link = f"{V3_API_PREFIX}/resource_pools?size=2"
+        last_page = 4
+        for page in range(5):  # There should be 5 pages
+            response = await authenticated_user_api_client_v3.get(
+                next_page_link
+            )
+            print(response)
+            resource_pools_response = ResourcePoolsListResponse(
+                **response.json()
+            )
+            assert resource_pools_response.kind == "ResourcePoolList"
+            assert len(resource_pools_response.items) == 2
+            self._assert_resource_pool_in_list(
+                created_resource_pools.pop(), resource_pools_response
+            )
+            self._assert_resource_pool_in_list(
+                created_resource_pools.pop(), resource_pools_response
+            )
+            if last_page == page:
+                assert resource_pools_response.next is None
+            else:
+                next_page_link = resource_pools_response.next
 
     async def test_get(
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture

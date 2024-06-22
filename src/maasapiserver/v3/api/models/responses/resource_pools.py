@@ -3,7 +3,7 @@ from datetime import datetime
 from maasapiserver.v3.api.models.responses.base import (
     BaseHal,
     HalResponse,
-    PaginatedResponse,
+    TokenPaginatedResponse,
 )
 
 
@@ -16,5 +16,5 @@ class ResourcePoolResponse(HalResponse[BaseHal]):
     updated: datetime
 
 
-class ResourcePoolsListResponse(PaginatedResponse[ResourcePoolResponse]):
+class ResourcePoolsListResponse(TokenPaginatedResponse[ResourcePoolResponse]):
     kind = "ResourcePoolList"

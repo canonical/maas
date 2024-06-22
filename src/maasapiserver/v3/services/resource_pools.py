@@ -10,7 +10,6 @@ from maasapiserver.common.models.exceptions import (
     NotFoundException,
 )
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolPatchRequest,
     ResourcePoolRequest,
@@ -42,9 +41,11 @@ class ResourcePoolsService(Service):
         return await self.resource_pools_repository.find_by_id(id)
 
     async def list(
-        self, pagination_params: PaginationParams
+        self, token: str | None, size: int
     ) -> ListResult[ResourcePool]:
-        return await self.resource_pools_repository.list(pagination_params)
+        return await self.resource_pools_repository.list_with_token(
+            token=token, size=size
+        )
 
     async def patch(
         self, id: int, patch_request: ResourcePoolPatchRequest

@@ -92,7 +92,7 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             .order_by(desc(ZoneTable.c.id))
             .limit(size + 1)  # Retrieve one more element to get the next token
         )
-        if token:
+        if token is not None:
             stmt = stmt.where(le(ZoneTable.c.id, int(token)))
 
         result = (await self.connection.execute(stmt)).all()

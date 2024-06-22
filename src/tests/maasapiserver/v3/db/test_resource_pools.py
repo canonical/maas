@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.orm.exc import NoResultFound
 
 from maasapiserver.common.models.exceptions import AlreadyExistsException
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolRequest,
 )
@@ -78,22 +77,25 @@ class TestResourcePoolRepository:
     ) -> None:
         resource_pools_repository = ResourcePoolRepository(db_connection)
         resource_pools_count = 10
+        # The "default" resource pool with id=0 is created at startup with the migrations.
+        # By consequence, we create resource_pools_count-1 resource pools here.
         created_resource_pools = (
             await create_n_test_resource_pools(
                 fixture, size=resource_pools_count - 1
             )
         )[::-1]
         total_pages = ceil(resource_pools_count / page_size)
+        current_token = None
         for page in range(1, total_pages + 1):
-            resource_pools_result = await resource_pools_repository.list(
-                PaginationParams(size=page_size, page=page)
+            resource_pools_result = (
+                await resource_pools_repository.list_with_token(
+                    token=current_token, size=page_size
+                )
             )
-            assert resource_pools_result.total == resource_pools_count
-            assert total_pages == ceil(resource_pools_result.total / page_size)
             if page == total_pages:  # last page may have fewer elements
                 assert len(resource_pools_result.items) == (
                     page_size
-                    - ((total_pages * page_size) % resource_pools_result.total)
+                    - ((total_pages * page_size) % resource_pools_count)
                 )
             else:
                 assert len(resource_pools_result.items) == page_size
@@ -101,6 +103,7 @@ class TestResourcePoolRepository:
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 assert resource_pools in resource_pools_result.items
+            current_token = resource_pools_result.next_token
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture

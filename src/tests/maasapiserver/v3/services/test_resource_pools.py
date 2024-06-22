@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.models.exceptions import NotFoundException
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolPatchRequest,
     ResourcePoolRequest,
@@ -50,21 +49,20 @@ class TestResourcePoolsService:
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.list = AsyncMock(
-            return_value=ListResult[ResourcePool](items=[], total=0)
+        resource_pool_repository_mock.list_with_token = AsyncMock(
+            return_value=ListResult[ResourcePool](items=[], next_token=None)
         )
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
         )
-        pagination_params = PaginationParams(page=1, size=1)
         resource_pools_list = await resource_pools_service.list(
-            pagination_params
+            token=None, size=1
         )
-        resource_pool_repository_mock.list.assert_called_once_with(
-            pagination_params
+        resource_pool_repository_mock.list_with_token.assert_called_once_with(
+            token=None, size=1
         )
-        assert resource_pools_list.total == 0
+        assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []
 
     async def test_get_by_id(

@@ -3,8 +3,7 @@ from typing import Any, Optional
 
 from sqlalchemy import desc, insert, select, Select, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import ResourcePoolTable
 from maasapiserver.common.models.constants import (
@@ -65,26 +64,28 @@ class ResourcePoolRepository(
     async def list(
         self, pagination_params: PaginationParams
     ) -> ListResult[ResourcePool]:
-        total_stmt = select(count()).select_from(ResourcePoolTable)
-        total = (await self.connection.execute(total_stmt)).scalar()
-
-        stmt = (
-            self._select_all_statement()
-            .order_by(desc(ResourcePoolTable.c.id))
-            .offset((pagination_params.page - 1) * pagination_params.size)
-            .limit(pagination_params.size)
-        )
-
-        result = await self.connection.execute(stmt)
-        return ListResult[ResourcePool](
-            items=[ResourcePool(**row._asdict()) for row in result.all()],
-            total=total,
-        )
+        raise NotImplementedError()
 
     async def list_with_token(
         self, token: str | None, size: int
     ) -> ListResult[ResourcePool]:
-        raise Exception("Not implemented yet.")
+        stmt = (
+            self._select_all_statement()
+            .order_by(desc(ResourcePoolTable.c.id))
+            .limit(size + 1)
+        )
+
+        if token is not None:
+            stmt = stmt.where(le(ResourcePoolTable.c.id, int(token)))
+
+        result = (await self.connection.execute(stmt)).all()
+        next_token = None
+        if len(result) > size:
+            next_token = result.pop().id
+        return ListResult[ResourcePool](
+            items=[ResourcePool(**row._asdict()) for row in result],
+            next_token=next_token,
+        )
 
     async def delete(self, id: int) -> None:
         raise Exception("Not implemented yet.")

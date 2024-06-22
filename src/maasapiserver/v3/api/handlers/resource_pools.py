@@ -8,7 +8,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolPatchRequest,
     ResourcePoolRequest,
@@ -46,16 +46,22 @@ class ResourcePoolHandler(Handler):
     )
     async def list_resource_pools(
         self,
-        pagination_params: PaginationParams = Depends(),
+        token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        resource_pools = await services.resource_pools.list(pagination_params)
+        resource_pools = await services.resource_pools.list(
+            token=token_pagination_params.token,
+            size=token_pagination_params.size,
+        )
         return ResourcePoolsListResponse(
             items=[
                 resource_pools.to_response(f"{V3_API_PREFIX}/resource_pools")
                 for resource_pools in resource_pools.items
             ],
-            total=resource_pools.total,
+            next=f"{V3_API_PREFIX}/resource_pools?"
+            f"{TokenPaginationParams.to_href_format(resource_pools.next_token, token_pagination_params.size)}"
+            if resource_pools.next_token
+            else None,
         )
 
     @handler(
