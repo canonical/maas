@@ -3,7 +3,6 @@ from math import ceil
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.machines import MachinesRepository
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
@@ -32,17 +31,16 @@ class TestMachinesRepository:
             )
             for i in range(0, machine_count)
         ][::-1]
-        total_pages = ceil(machine_count / page_size)
+        total_pages = ceil(10 / page_size)
+        current_token = None
         for page in range(1, total_pages + 1):
-            machines_result = await machines_repository.list(
-                PaginationParams(size=page_size, page=page)
+            machines_result = await machines_repository.list_with_token(
+                token=current_token, size=page_size
             )
-            assert machines_result.total == machine_count
-            assert total_pages == ceil(machines_result.total / page_size)
             if page == total_pages:  # last page may have fewer elements
                 assert len(machines_result.items) == (
                     page_size
-                    - ((total_pages * page_size) % machines_result.total)
+                    - ((total_pages * page_size) % (len(created_machines)))
                 )
             else:
                 assert len(machines_result.items) == page_size
@@ -50,6 +48,7 @@ class TestMachinesRepository:
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 assert machine in machines_result.items
+            current_token = machines_result.next_token
 
     async def test_list_only_machines_nodes_are_returned(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -63,8 +62,8 @@ class TestMachinesRepository:
             fixture, description="machine", bmc=bmc, user=user
         )
 
-        machines_result = await machines_repository.list(
-            PaginationParams(size=10, page=1)
+        machines_result = await machines_repository.list_with_token(
+            token=None, size=10
         )
-        assert machines_result.total == 1
+        assert machines_result.next_token is None
         assert len(machines_result.items) == 1

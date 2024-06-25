@@ -5,7 +5,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.responses.machines import MachinesListResponse
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
@@ -36,14 +36,20 @@ class MachinesHandler(Handler):
     )
     async def list_machines(
         self,
-        pagination_params: PaginationParams = Depends(),
+        token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        machines = await services.machines.list(pagination_params)
+        machines = await services.machines.list(
+            token=token_pagination_params.token,
+            size=token_pagination_params.size,
+        )
         return MachinesListResponse(
             items=[
                 machine.to_response(f"{V3_API_PREFIX}/machines")
                 for machine in machines.items
             ],
-            total=machines.total,
+            next=f"{V3_API_PREFIX}/machines?"
+            f"{TokenPaginationParams.to_href_format(machines.next_token, token_pagination_params.size)}"
+            if machines.next_token
+            else None,
         )

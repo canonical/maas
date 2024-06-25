@@ -113,7 +113,6 @@ class TestResourcePoolApi(ApiCommonTests):
             )
 
         next_page_link = f"{V3_API_PREFIX}/resource_pools?size=2"
-        last_page = 4
         for page in range(5):  # There should be 5 pages
             response = await authenticated_user_api_client_v3.get(
                 next_page_link
@@ -130,10 +129,9 @@ class TestResourcePoolApi(ApiCommonTests):
             self._assert_resource_pool_in_list(
                 created_resource_pools.pop(), resource_pools_response
             )
-            if last_page == page:
-                assert resource_pools_response.next is None
-            else:
-                next_page_link = resource_pools_response.next
+            next_page_link = resource_pools_response.next
+        # There was no next page
+        assert next_page_link is None
 
     async def test_get(
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture

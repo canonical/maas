@@ -4,7 +4,7 @@ from typing import Optional
 from maasapiserver.v3.api.models.responses.base import (
     BaseHal,
     HalResponse,
-    PaginatedResponse,
+    TokenPaginatedResponse,
 )
 from maasserver.enum import NODE_STATUS_CHOICES
 from provisioningserver.drivers.pod.lxd import LXDPodDriver
@@ -45,5 +45,5 @@ class MachineResponse(HalResponse[BaseHal]):
     fqdn: str
 
 
-class MachinesListResponse(PaginatedResponse[MachineResponse]):
+class MachinesListResponse(TokenPaginatedResponse[MachineResponse]):
     kind = "MachinesList"

@@ -2,8 +2,7 @@ from typing import Any
 
 from sqlalchemy import desc, select, Select
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import (
     BMCTable,
@@ -29,30 +28,27 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
     async def list(
         self, pagination_params: PaginationParams
     ) -> ListResult[Machine]:
-        total_stmt = (
-            select(count())
-            .select_from(NodeTable)
-            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
-        )
-        total = (await self.connection.execute(total_stmt)).scalar()
-
-        stmt = (
-            self._select_all_statement()
-            .order_by(desc(NodeTable.c.id))
-            .offset((pagination_params.page - 1) * pagination_params.size)
-            .limit(pagination_params.size)
-        )
-
-        result = await self.connection.execute(stmt)
-        return ListResult[Machine](
-            items=[Machine(**row._asdict()) for row in result.all()],
-            total=total,
-        )
+        raise Exception("To be removed. Use list_with_token instead.")
 
     async def list_with_token(
         self, token: str | None, size: int
     ) -> ListResult[Machine]:
-        raise Exception("Not implemented yet.")
+        stmt = (
+            self._select_all_statement()
+            .order_by(desc(NodeTable.c.id))
+            .limit(size + 1)
+        )
+        if token is not None:
+            stmt = stmt.where(le(NodeTable.c.id, int(token)))
+
+        result = (await self.connection.execute(stmt)).all()
+        next_token = None
+        if len(result) > size:  # There is another page
+            next_token = result.pop().id
+        return ListResult[Machine](
+            items=[Machine(**row._asdict()) for row in result],
+            next_token=next_token,
+        )
 
     async def update(self, resource: Machine) -> Machine:
         raise Exception("Not implemented yet.")
