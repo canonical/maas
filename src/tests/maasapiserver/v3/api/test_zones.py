@@ -88,7 +88,6 @@ class TestZonesApi(ApiCommonTests):
             response = await authenticated_user_api_client_v3.get(
                 next_page_link
             )
-            print(response)
             zones_response = ZonesListResponse(**response.json())
             assert zones_response.kind == "ZonesList"
             assert len(zones_response.items) == 2
