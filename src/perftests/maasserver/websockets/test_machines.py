@@ -61,4 +61,4 @@ def test_perf_list_machines_Websocket_endpoint_all(
             "sort_key": "hostname",
         }
         response = ws_handler.list(params)
-        assert response["count"] == machine_count
+    assert response["count"] == machine_count

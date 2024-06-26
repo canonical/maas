@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import math
+from urllib.parse import parse_qs, urlparse
 
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
@@ -33,7 +34,6 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
         # Extracted from a clean load of labmaas with empty local
         # storage
         params = {
-            "page": 1,
             "size": 50,
         }
 
@@ -63,15 +63,20 @@ def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
     with perf.record("test_perf_list_machines_APIv3_endpoint_all"):
         # Extracted from a clean load of labmaas with empty local
         # storage
-        for page in range(1, machine_pages + 1):
+        token = None
+        for page in range(machine_pages):
             params = {
-                "page": page,
+                "token": token,
                 "size": MAX_PAGE_SIZE,
             }
             response = api_client.get(
                 "machines", headers=headers, params=params
             )
-            responses[page - 1] = response
-
+            responses[page] = response
+            if next_page := response.json()["next"]:
+                token = parse_qs(urlparse(next_page).query)["token"][0]
+            else:
+                token = None
+    assert token is None
     assert all([r.ok for r in responses])
     assert sum([len(r.json()["items"]) for r in responses]) == machine_count
