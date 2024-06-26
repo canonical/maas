@@ -5,7 +5,7 @@ from maasapiserver.common.api.models.responses.errors import (
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
-from maasapiserver.v3.api.models.requests.query import PaginationParams
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.responses.interfaces import (
     InterfaceListResponse,
 )
@@ -39,11 +39,13 @@ class InterfacesHandler(Handler):
     async def list_interfaces(
         self,
         node_id: int,
-        pagination_params: PaginationParams = Depends(),
+        token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
         interfaces = await services.interfaces.list(
-            node_id=node_id, pagination_params=pagination_params
+            node_id=node_id,
+            token=token_pagination_params.token,
+            size=token_pagination_params.size,
         )
         return InterfaceListResponse(
             items=[
@@ -52,5 +54,8 @@ class InterfacesHandler(Handler):
                 )
                 for interface in interfaces.items
             ],
-            total=interfaces.total,
+            next=f"{V3_API_PREFIX}/machines/{node_id}/interfaces?"
+            f"{TokenPaginationParams.to_href_format(interfaces.next_token, token_pagination_params.size)}"
+            if interfaces.next_token
+            else None,
         )

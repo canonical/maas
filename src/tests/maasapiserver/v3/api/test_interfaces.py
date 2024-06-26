@@ -1,3 +1,5 @@
+import math
+
 from httpx import AsyncClient
 import pytest
 
@@ -69,21 +71,20 @@ class TestInterfaceApi:
         assert response.status_code == 200
 
         interfaces = InterfaceListResponse(**response.json())
-        assert interfaces.total == size
         assert len(interfaces.items) == size
 
         for resource in created_interfaces:
             _assert_interface_in_list(resource, interfaces)
 
-        for page in range(1, size // 2):
+        total_retrieved = 0
+        next_page = f"{path}?&size=2"
+        for page in range(math.ceil(size / 2)):
             response = await authenticated_user_api_client_v3.get(
-                f"{path}?page={page}&size=2",
+                next_page,
             )
             assert response.status_code == 200
             interfaces = InterfaceListResponse(**response.json())
-            assert interfaces.total == size
-            assert (
-                len(interfaces.items) == 2
-                if page != size // 2
-                else (size % 2 or 2)
-            )
+            total_retrieved += len(interfaces.items)
+            next_page = interfaces.next
+        assert total_retrieved == size
+        assert next_page is None

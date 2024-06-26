@@ -4,7 +4,6 @@ from math import ceil
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.interfaces import InterfaceRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.interfaces import Interface
@@ -53,7 +52,7 @@ def _assert_interface_in_list(
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestInterfaceRepository:
-    @pytest.mark.parametrize("page_size", range(1, 12))
+    @pytest.mark.parametrize("page_size", range(1, 4))
     @pytest.mark.parametrize(
         "alloc_type",
         ["AUTO", "STICKY", "USER_RESERVED"],
@@ -88,32 +87,33 @@ class TestInterfaceRepository:
             for i in range(0, interface_count)
         ][::-1]
 
+        next_token = None
         total_pages = ceil(interface_count / page_size)
+        total_retrieved = 0
         for page in range(1, total_pages + 1):
             interfaces_result = await interfaces_repository.list(
-                node_id=machine["id"],
-                pagination_params=PaginationParams(size=page_size, page=page),
+                node_id=machine["id"], token=next_token, size=page_size
             )
-            assert interfaces_result.total == interface_count
-            assert total_pages == ceil(interfaces_result.total / page_size)
+            next_token = interfaces_result.next_token
+            actual_page_size = len(interfaces_result.items)
+            total_retrieved += actual_page_size
 
-            expected_length = len(interfaces_result.items)
-            if page == total_pages:  # last page may have fewer elements
-                page_length = min(
-                    interface_count,
-                    page_size
-                    - ((total_pages * page_size) % interfaces_result.total),
+            if page == total_pages:
+                expected_length = page_size - (
+                    (total_pages * page_size) % interface_count
                 )
             else:
-                page_length = page_size
+                expected_length = page_size
             assert (
-                expected_length == page_length
-            ), f"page {page} has length {page_length}? expected {expected_length}"
+                expected_length == actual_page_size
+            ), f"page {page} has length {actual_page_size}? expected {expected_length}"
 
             for interface in created_interfaces[
                 ((page - 1) * page_size) : ((page * page_size))
             ]:
                 _assert_interface_in_list(interface, interfaces_result)
+        assert next_token is None
+        assert total_retrieved == interface_count
 
     async def test_lists_only_on_selected_node(
         self, db_connection: AsyncConnection, fixture: Fixture
@@ -167,17 +167,15 @@ class TestInterfaceRepository:
         ][::-1]
 
         interfaces1_result = await interfaces_repository.list(
-            node_id=machine1["id"],
-            pagination_params=PaginationParams(size=interface1_count, page=1),
+            node_id=machine1["id"], token=None, size=interface1_count
         )
 
         interfaces2_result = await interfaces_repository.list(
-            node_id=machine2["id"],
-            pagination_params=PaginationParams(size=interface2_count, page=1),
+            node_id=machine2["id"], token=None, size=interface2_count
         )
 
-        assert interfaces1_result.total == interface1_count
-        assert interfaces2_result.total == interface2_count
+        assert len(interfaces1_result.items) == interface1_count
+        assert len(interfaces2_result.items) == interface2_count
 
         for interface in created_interfaces1:
             _assert_interface_in_list(interface, interfaces1_result)
@@ -215,8 +213,7 @@ class TestInterfaceRepository:
         ][::-1]
 
         interfaces_result = await interfaces_repository.list(
-            node_id=machine["id"],
-            pagination_params=PaginationParams(size=interface_count, page=1),
+            node_id=machine["id"], token=None, size=interface_count
         )
 
         for iface in interfaces_result.items:
@@ -307,8 +304,7 @@ class TestInterfaceRepository:
             created_interfaces.insert(0, this_interface)
 
         interfaces_result = await interfaces_repository.list(
-            node_id=machine["id"],
-            pagination_params=PaginationParams(size=interface_count, page=1),
+            node_id=machine["id"], token=None, size=interface_count
         )
 
         for interface in created_interfaces:

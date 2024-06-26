@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from maasapiserver.v3.api.models.responses.base import (
     BaseHal,
     HalResponse,
-    PaginatedResponse,
+    TokenPaginatedResponse,
 )
 from maasserver.enum import INTERFACE_LINK_TYPE_CHOICES, INTERFACE_TYPE_CHOICES
 
@@ -48,5 +48,5 @@ class InterfaceResponse(HalResponse[BaseHal]):
         arbitrary_types_allowed = True
 
 
-class InterfaceListResponse(PaginatedResponse[InterfaceResponse]):
+class InterfaceListResponse(TokenPaginatedResponse[InterfaceResponse]):
     kind = "InterfaceList"

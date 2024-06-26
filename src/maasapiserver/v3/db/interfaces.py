@@ -1,9 +1,9 @@
 from typing import Any
 
 from sqlalchemy import desc, select, Select
+from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
-from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import (  # TODO; VlanTable,
     InterfaceIPAddressTable,
@@ -12,9 +12,6 @@ from maasapiserver.common.db.tables import (  # TODO; VlanTable,
     NodeTable,
     StaticIPAddressTable,
 )
-from maasapiserver.v3.api.models.requests.interfaces import InterfaceRequest
-from maasapiserver.v3.api.models.requests.query import PaginationParams
-from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.interfaces import Interface, Link
 from maasserver.enum import IPADDRESS_TYPE
@@ -34,62 +31,36 @@ def build_interface_links(
     return interface
 
 
-class InterfaceRepository(BaseRepository[Interface, InterfaceRequest]):
-    async def create(self, request: InterfaceRequest) -> Interface:
-        raise Exception("Not implemented yet.")
-
-    async def find_by_id(self, id: int) -> Interface | None:
-        raise Exception("Not implemented yet.")
+class InterfaceRepository:
+    def __init__(self, connection: AsyncConnection):
+        self.connection = connection
 
     async def list(
-        self, node_id: int, pagination_params: PaginationParams
+        self, node_id: int, token: str | None, size: int
     ) -> ListResult[Interface]:
-        total_stmt = (
-            select(count(InterfaceTable.c.id))
-            .select_from(NodeTable)
-            .where(eq(NodeTable.c.id, node_id))
-            .join(
-                NodeConfigTable,
-                eq(NodeTable.c.current_config_id, NodeConfigTable.c.id),
-                isouter=True,
-            )
-            .join(
-                InterfaceTable,
-                eq(NodeConfigTable.c.id, InterfaceTable.c.node_config_id),
-                isouter=True,
-            )
-        )
-        total = (await self.connection.execute(total_stmt)).scalar()
-
         stmt = (
             self._select_all_statement()
             .where(eq(NodeTable.c.id, node_id))
             .order_by(desc(InterfaceTable.c.id))
-            .offset((pagination_params.page - 1) * pagination_params.size)
-            .limit(pagination_params.size)
+            .limit(size + 1)
         )
 
-        interfaces = [
-            build_interface_links(row._asdict())
-            for row in (await self.connection.execute(stmt)).all()
-        ]
+        if token is not None:
+            stmt = stmt.where(le(InterfaceTable.c.id, int(token)))
+
+        result = (await self.connection.execute(stmt)).all()
+
+        next_token = None
+        if len(result) > size:  # There is another page
+            next_token = result.pop().id
+
+        interfaces = [build_interface_links(row._asdict()) for row in result]
         await self._find_discovered_ip_for_dhcp_links(interfaces, node_id)
 
         return ListResult[Interface](
             items=[Interface(**iface) for iface in interfaces],
-            total=total,
+            next_token=next_token,
         )
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Interface]:
-        raise Exception("Not implemented yet.")
-
-    async def update(self, resource: Interface) -> Interface:
-        raise Exception("Not implemented yet.")
-
-    async def delete(self, id: int) -> None:
-        raise Exception("Not implemented yet.")
 
     async def _find_discovered_ip_for_dhcp_links(
         self, interfaces, node_id
