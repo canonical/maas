@@ -67,7 +67,7 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
         match status["running"]:
             case MSM_STATUS.PENDING:
                 raise MSMException("This site is already pending approval")
-            case _:
+            case MSM_STATUS.CONNECTED:
                 raise MSMException(
                     "This site is already enroled to a Site Manager instance"
                 )

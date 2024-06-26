@@ -113,7 +113,19 @@ class Command(BaseCommand):
         enrolment_url = decoded["enrolment-url"]
         parsed = urlparse(enrolment_url)
         base_url = f"{parsed.scheme}://{parsed.hostname}"
-        msg = get_cert_verify_msg(base_url)
+        # check if we've previously been enroled
+        status = msm_status()
+        previous_url = ""
+        if status and status["running"] == MSM_STATUS.NOT_CONNECTED:
+            # if the URL is different, warn user
+            previous_base = (
+                urlparse(status["sm-url"])._replace(path="").geturl()
+            )
+            current_base = urlparse(enrolment_url)._replace(path="").geturl()
+            if previous_base != current_base:
+                previous_url = previous_base
+
+        msg = get_cert_verify_msg(base_url, previous_url=previous_url)
         if not prompt_yes_no(msg):
             return
         try:
@@ -177,7 +189,7 @@ class Command(BaseCommand):
         return handlers[options["command"]](options)
 
 
-def get_cert_verify_msg(base_url: str) -> str:
+def get_cert_verify_msg(base_url: str, previous_url: str = "") -> str:
     """
     Retrieve the SSL certificate from the given url, and compose a
     message to the user with details about the certificate.
@@ -195,10 +207,10 @@ def get_cert_verify_msg(base_url: str) -> str:
 
     # http
     if cert is None:
-        msg = (
-            f"\nThe URL of the Site Manager you want to enrol with is {base_url}\n\n"
-            "Are you sure you want to enrol with this site? [Y] [n]"
-        )
+        msg = f"\nThe URL of the Site Manager you want to enrol with is {base_url}\n"
+        if previous_url:
+            msg += f"WARNING: This MAAS was previously enroled to {previous_url}\n\n"
+        msg += "Are you sure you want to enrol with this site? [Y] [n]"
         return msg
 
     # https
@@ -208,7 +220,13 @@ def get_cert_verify_msg(base_url: str) -> str:
     ).strftime("%a, %d %b. %Y")
     issuer = cert.get_issuer().CN
     msg = (
-        f"The URL of the Site Manager you want to enrol with is {base_url}.\n\n"
+        f"The URL of the Site Manager you want to enrol with is {base_url}.\n"
+    )
+    if previous_url:
+        msg += (
+            f"WARNING: This MAAS was previously enroled to {previous_url}\n\n"
+        )
+    msg += (
         "The certificate of the Site Manager you want to enrol with is "
         "the following:\n\n"
         f"\tCN:\t\t\t{subject}\n"
