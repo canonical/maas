@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
-from math import ceil
 
 import pytest
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.orm.exc import NoResultFound
 
 from maasapiserver.common.models.exceptions import AlreadyExistsException
 from maasapiserver.v3.api.models.requests.resource_pools import (
@@ -16,6 +15,29 @@ from tests.fixtures.factories.resource_pools import (
     create_test_resource_pool,
 )
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasapiserver.v3.db.base import RepositoryCommonTests
+
+
+class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
+    @pytest.fixture
+    def _get_repository_instance(
+        self, db_connection
+    ) -> ResourcePoolRepository:
+        return ResourcePoolRepository(db_connection)
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture
+    ) -> tuple[list[ResourcePool], int]:
+        resource_pools_count = 10
+        # The "default" resource pool with id=0 is created at startup with the migrations.
+        # By consequence, we create resource_pools_count-1 resource pools here.
+        created_resource_pools = (
+            await create_n_test_resource_pools(
+                fixture, size=resource_pools_count - 1
+            )
+        )[::-1]
+        return created_resource_pools, resource_pools_count
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -70,40 +92,6 @@ class TestResourcePoolRepository:
 
         resource_pools = await resource_pools_repository.find_by_id(1234)
         assert resource_pools is None
-
-    @pytest.mark.parametrize("page_size", range(1, 12))
-    async def test_list(
-        self, page_size: int, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        resource_pools_repository = ResourcePoolRepository(db_connection)
-        resource_pools_count = 10
-        # The "default" resource pool with id=0 is created at startup with the migrations.
-        # By consequence, we create resource_pools_count-1 resource pools here.
-        created_resource_pools = (
-            await create_n_test_resource_pools(
-                fixture, size=resource_pools_count - 1
-            )
-        )[::-1]
-        total_pages = ceil(resource_pools_count / page_size)
-        current_token = None
-        for page in range(1, total_pages + 1):
-            resource_pools_result = (
-                await resource_pools_repository.list_with_token(
-                    token=current_token, size=page_size
-                )
-            )
-            if page == total_pages:  # last page may have fewer elements
-                assert len(resource_pools_result.items) == (
-                    page_size
-                    - ((total_pages * page_size) % resource_pools_count)
-                )
-            else:
-                assert len(resource_pools_result.items) == page_size
-            for resource_pools in created_resource_pools[
-                ((page - 1) * page_size) : ((page * page_size))
-            ]:
-                assert resource_pools in resource_pools_result.items
-            current_token = resource_pools_result.next_token
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture

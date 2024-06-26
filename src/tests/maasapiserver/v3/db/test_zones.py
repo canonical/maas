@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from math import ceil
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -10,8 +9,29 @@ from maasapiserver.common.models.exceptions import AlreadyExistsException
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasapiserver.v3.db.zones import ZonesRepository
+from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
+from tests.maasapiserver.v3.db.base import RepositoryCommonTests
+
+
+class TestZonesRepo(RepositoryCommonTests[Zone]):
+    @pytest.fixture
+    def _get_repository_instance(self, db_connection) -> ZonesRepository:
+        return ZonesRepository(db_connection)
+
+    @pytest.fixture
+    async def _setup_test_list(
+        self, fixture: Fixture
+    ) -> tuple[list[Zone], int]:
+        zones_count = 10
+        # The "default" zone with id=1 is created at startup with the migrations.
+        # By consequence, we create zones_size-1 zones here.
+        created_zones = [
+            (await create_test_zone(fixture, name=str(i), description=str(i)))
+            for i in range(0, zones_count - 1)
+        ][::-1]
+        return created_zones, zones_count
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
@@ -62,36 +82,6 @@ class TestZonesRepository:
 
         zone = await zones_repository.find_by_id(1234)
         assert zone is None
-
-    @pytest.mark.parametrize("page_size", range(1, 12))
-    async def test_list(
-        self, page_size: int, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_repository = ZonesRepository(db_connection)
-        # The "default" zone with id=1 is created at startup with the migrations. By consequence, we create zones_size-1 zones
-        # here.
-        created_zones = [
-            (await create_test_zone(fixture, name=str(i), description=str(i)))
-            for i in range(0, 9)
-        ][::-1]
-        total_pages = ceil(10 / page_size)
-        current_token = None
-        for page in range(1, total_pages + 1):
-            zones_result = await zones_repository.list_with_token(
-                token=current_token, size=page_size
-            )
-            if page == total_pages:  # last page may have fewer elements
-                assert len(zones_result.items) == (
-                    page_size
-                    - ((total_pages * page_size) % (len(created_zones) + 1))
-                )
-            else:
-                assert len(zones_result.items) == page_size
-            for zone in created_zones[
-                ((page - 1) * page_size) : ((page * page_size))
-            ]:
-                assert zone in zones_result.items
-            current_token = zones_result.next_token
 
     async def test_delete(
         self, db_connection: AsyncConnection, fixture: Fixture
