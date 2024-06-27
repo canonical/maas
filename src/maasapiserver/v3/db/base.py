@@ -3,7 +3,6 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.models.base import ListResult
 
 T = TypeVar("T")
@@ -24,16 +23,7 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def list(self, pagination_params: PaginationParams) -> ListResult[T]:
-        """
-        To be removed when all the repositories will have implemented the list_with_token method
-        """
-        pass
-
-    @abstractmethod
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[T]:
+    async def list(self, token: str | None, size: int) -> ListResult[T]:
         pass
 
     @abstractmethod

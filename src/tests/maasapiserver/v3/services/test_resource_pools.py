@@ -13,15 +13,12 @@ from maasapiserver.v3.db.resource_pools import ResourcePoolRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.resource_pools import ResourcePool
 from maasapiserver.v3.services import ResourcePoolsService
-from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestResourcePoolsService:
-    async def test_create(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
+    async def test_create(self, db_connection: AsyncConnection) -> None:
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -45,11 +42,9 @@ class TestResourcePoolsService:
         resource_pool_repository_mock.create.assert_called_once_with(request)
         assert created_resource_pool is not None
 
-    async def test_list(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
+    async def test_list(self, db_connection: AsyncConnection) -> None:
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.list_with_token = AsyncMock(
+        resource_pool_repository_mock.list = AsyncMock(
             return_value=ListResult[ResourcePool](items=[], next_token=None)
         )
         resource_pools_service = ResourcePoolsService(
@@ -59,15 +54,13 @@ class TestResourcePoolsService:
         resource_pools_list = await resource_pools_service.list(
             token=None, size=1
         )
-        resource_pool_repository_mock.list_with_token.assert_called_once_with(
+        resource_pool_repository_mock.list.assert_called_once_with(
             token=None, size=1
         )
         assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []
 
-    async def test_get_by_id(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
+    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -94,7 +87,7 @@ class TestResourcePoolsService:
         assert retrieved_resource_pool == resource_pool
 
     async def test_patch_not_found(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, db_connection: AsyncConnection
     ) -> None:
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.find_by_id = AsyncMock(return_value=None)
@@ -110,9 +103,7 @@ class TestResourcePoolsService:
                 ),
             )
 
-    async def test_patch(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
+    async def test_patch(self, db_connection: AsyncConnection) -> None:
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,

@@ -58,9 +58,7 @@ class ZonesService(Service):
         return await self.zones_repository.find_by_name(name)
 
     async def list(self, token: str | None, size: int) -> ListResult[Zone]:
-        return await self.zones_repository.list_with_token(
-            token=token, size=size
-        )
+        return await self.zones_repository.list(token=token, size=size)
 
     async def delete(
         self, zone_id: int, etag_if_match: str | None = None

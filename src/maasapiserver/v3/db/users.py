@@ -2,7 +2,6 @@ from sqlalchemy import select
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.db.tables import UserTable
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.users import UserRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
@@ -27,14 +26,7 @@ class UsersRepository(BaseRepository[User, UserRequest]):
             return None
         return User(**user._asdict())
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[User]:
-        raise Exception("Not implemented yet.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[User]:
+    async def list(self, token: str | None, size: int) -> ListResult[User]:
         pass
 
     async def update(self, resource: User) -> User:

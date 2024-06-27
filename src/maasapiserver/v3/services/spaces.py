@@ -23,6 +23,4 @@ class SpacesService(Service):
         )
 
     async def list(self, token: str | None, size: int) -> ListResult[Space]:
-        return await self.spaces_repository.list_with_token(
-            token=token, size=size
-        )
+        return await self.spaces_repository.list(token=token, size=size)

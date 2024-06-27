@@ -1,20 +1,20 @@
 import abc
 from dataclasses import dataclass
-from typing import Callable, Type, TypeVar
+from typing import Callable, Generic, Type, TypeVar
 
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.v3.api.models.responses.base import PaginatedResponse
+from maasapiserver.v3.api.models.responses.base import TokenPaginatedResponse
 from maasapiserver.v3.auth.jwt import UserRole
 from tests.maasapiserver.fixtures.db import Fixture
 
-T = TypeVar("T", bound=PaginatedResponse)
+T = TypeVar("T", bound=TokenPaginatedResponse)
 
 
 @dataclass
-class PaginatedEndpointTestConfig:
+class PaginatedEndpointTestConfig(Generic[T]):
     response_type: Type[T]
     create_resources_routine: Callable
     assert_routine: Callable
@@ -33,7 +33,7 @@ class EndpointDetails:
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class ApiCommonTests(abc.ABC):
-    INVALID_PAGINATION_TEST_DATA = [(1, 0), (0, 1), (-1, -1), (1, 1001)]
+    INVALID_PAGINATION_TEST_DATA = [(None, 0), (None, -1), (None, 1001)]
 
     @abc.abstractmethod
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
@@ -89,7 +89,7 @@ class ApiCommonTests(abc.ABC):
             )
             # for each test data
             metafunc.parametrize(
-                "page,size", self.INVALID_PAGINATION_TEST_DATA
+                "token,size", self.INVALID_PAGINATION_TEST_DATA
             )
         if metafunc.definition.originalname == "test_pagination_parameters":
             paginated_endpoints = list(
@@ -134,13 +134,13 @@ class ApiCommonTests(abc.ABC):
     async def test_pagination_endpoint_with_invalid_data(
         self,
         paginated_endpoint: EndpointDetails,
-        page: int,
+        token: str | None,
         size: int,
         authenticated_user_api_client_v3: AsyncClient,
     ) -> None:
         response = await authenticated_user_api_client_v3.request(
             paginated_endpoint.method,
-            f"{paginated_endpoint.path}?page={page}&size={size}",
+            f"{paginated_endpoint.path}?token={token}&size={size}",
         )
         assert response.status_code == 422
 
@@ -172,21 +172,12 @@ class ApiCommonTests(abc.ABC):
         )
         assert response.status_code == 200
 
-        typed_response = paginated_endpoint.pagination_config.response_type(
-            **response.json()
-        )
-        assert typed_response.total == size
-        assert len(typed_response.items) == size
-
-        for resource in created_resources:
-            paginated_endpoint.pagination_config.assert_routine(
-                resource, typed_response
-            )
-
-        for page in range(1, size // 2):
+        next_page_link = f"{paginated_endpoint.path}?size=2"
+        last_page = size // 2
+        for page in range(last_page):
             response = await api_client.request(
                 paginated_endpoint.method,
-                f"{paginated_endpoint.path}?page={page}&size=2",
+                next_page_link,
             )
             assert response.status_code == 200
             typed_response = (
@@ -194,9 +185,15 @@ class ApiCommonTests(abc.ABC):
                     **response.json()
                 )
             )
-            assert typed_response.total == size
-            assert (
-                len(typed_response.items) == 2
-                if page != size // 2
-                else (size % 2 or 2)
+            paginated_endpoint.pagination_config.assert_routine(
+                created_resources.pop(), typed_response
             )
+            paginated_endpoint.pagination_config.assert_routine(
+                created_resources.pop(), typed_response
+            )
+            next_page_link = typed_response.next
+            if page == last_page:
+                assert len(typed_response.items) == (size % 2 or 2)
+                assert next_page_link is None
+            else:
+                assert len(typed_response.items) == 2

@@ -3,7 +3,6 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.db.tables import BMCTable
 from maasapiserver.v3.api.models.requests.bmc import BmcRequest
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.bmc import Bmc
@@ -16,14 +15,7 @@ class BmcRepository(BaseRepository[Bmc, BmcRequest]):
     async def find_by_id(self, id: int) -> Bmc | None:
         raise Exception("Not implemented yet.")
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Bmc]:
-        raise Exception("Not implemented yet.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Bmc]:
+    async def list(self, token: str | None, size: int) -> ListResult[Bmc]:
         raise Exception("Not implemented yet.")
 
     async def update(self, resource: Bmc) -> Bmc:

@@ -20,8 +20,8 @@ from tests.maasapiserver.v3.db.base import RepositoryCommonTests
 
 class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
     @pytest.fixture
-    def _get_repository_instance(
-        self, db_connection
+    def repository_instance(
+        self, db_connection: AsyncConnection
     ) -> ResourcePoolRepository:
         return ResourcePoolRepository(db_connection)
 

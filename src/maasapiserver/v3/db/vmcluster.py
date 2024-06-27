@@ -2,7 +2,6 @@ from sqlalchemy import update
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.db.tables import VmClusterTable
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.vmcluster import VmClusterRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
@@ -17,11 +16,6 @@ class VmClustersRepository(BaseRepository[VmCluster, VmClusterRequest]):
         raise Exception("Not implemented yet.")
 
     async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[VmCluster]:
-        raise Exception("Not implemented yet.")
-
-    async def list_with_token(
         self, token: str | None, size: int
     ) -> ListResult[VmCluster]:
         pass

@@ -43,16 +43,6 @@ class HalResponse(GenericModel, Generic[HAL]):
 T = TypeVar("T", bound=HalResponse)
 
 
-class PaginatedResponse(GenericModel, Generic[T]):
-    """
-    Base class for paginated responses.
-    Derived classes should overwrite the items property
-    """
-
-    total: int
-    items: Sequence[T]
-
-
 class TokenPaginatedResponse(GenericModel, Generic[T]):
     """
     Base class for token-paginated responses.

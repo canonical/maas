@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
@@ -21,16 +21,61 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import ApiCommonTests, EndpointDetails
+from tests.maasapiserver.v3.api.base import (
+    ApiCommonTests,
+    EndpointDetails,
+    PaginatedEndpointTestConfig,
+)
 
 
 class TestZonesApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
+        def _assert_zone_in_list(
+            zone: Zone, zones_response: ZonesListResponse
+        ) -> None:
+            zone_response = next(
+                filter(
+                    lambda zone_response: zone.id == zone_response.id,
+                    zones_response.items,
+                )
+            )
+            assert zone.id == zone_response.id
+            assert zone.name == zone_response.name
+            assert zone.description == zone_response.description
+
+        async def create_pagination_test_resources(
+            fixture: Fixture, size: int
+        ) -> list[Zone]:
+            # The default zone is created by the migrations
+            created_zones = [
+                Zone(
+                    id=1,
+                    name="default",
+                    description="",
+                    created=datetime.now(timezone.utc),
+                    updated=datetime.now(timezone.utc),
+                )
+            ]
+            for i in range(size - 1):
+                created_zones.append(
+                    await create_test_zone(
+                        fixture, name=str(i), description=str(i)
+                    )
+                )
+            return created_zones
+
         return [
             EndpointDetails(
                 method="GET",
                 path=f"{V3_API_PREFIX}/zones",
                 user_role=UserRole.USER,
+                pagination_config=PaginatedEndpointTestConfig[
+                    ZonesListResponse
+                ](
+                    response_type=ZonesListResponse,
+                    create_resources_routine=create_pagination_test_resources,
+                    assert_routine=_assert_zone_in_list,
+                ),
             ),
             EndpointDetails(
                 method="GET",
@@ -48,54 +93,6 @@ class TestZonesApi(ApiCommonTests):
                 user_role=UserRole.ADMIN,
             ),
         ]
-
-    def _assert_zone_in_list(
-        self, zone: Zone, zones_response: ZonesListResponse
-    ) -> None:
-        zone_response = next(
-            filter(
-                lambda zone_response: zone.id == zone_response.id,
-                zones_response.items,
-            )
-        )
-        assert zone.id == zone_response.id
-        assert zone.name == zone_response.name
-        assert zone.description == zone_response.description
-
-    # GET /zones
-    async def test_list(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
-    ):
-        # The default zone is created by the migrations
-        created_zones = [
-            Zone(
-                id=1,
-                name="default",
-                description="",
-                created=datetime.datetime.utcnow(),
-                updated=datetime.datetime.utcnow(),
-            )
-        ]
-        for i in range(9):
-            created_zones.append(
-                await create_test_zone(
-                    fixture, name=str(i), description=str(i)
-                )
-            )
-
-        next_page_link = f"{V3_API_PREFIX}/zones?size=2"
-        for page in range(5):  # There should be 5 pages
-            response = await authenticated_user_api_client_v3.get(
-                next_page_link
-            )
-            zones_response = ZonesListResponse(**response.json())
-            assert zones_response.kind == "ZonesList"
-            assert len(zones_response.items) == 2
-            self._assert_zone_in_list(created_zones.pop(), zones_response)
-            self._assert_zone_in_list(created_zones.pop(), zones_response)
-            next_page_link = zones_response.next
-        # There was no next page
-        assert next_page_link is None
 
     # GET /zones/{zone_id}
     async def test_get_default(

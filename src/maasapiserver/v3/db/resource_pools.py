@@ -13,7 +13,6 @@ from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BaseExceptionDetail,
 )
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolRequest,
 )
@@ -62,11 +61,6 @@ class ResourcePoolRepository(
         return ResourcePool(**resource_pools._asdict())
 
     async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[ResourcePool]:
-        raise NotImplementedError()
-
-    async def list_with_token(
         self, token: str | None, size: int
     ) -> ListResult[ResourcePool]:
         stmt = (

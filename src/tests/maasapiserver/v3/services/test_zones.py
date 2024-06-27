@@ -14,6 +14,8 @@ from maasapiserver.common.models.exceptions import (
     PreconditionFailedException,
 )
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
+from maasapiserver.v3.db.zones import ZonesRepository
+from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.zones import Zone
 from maasapiserver.v3.services import (
     BmcService,
@@ -62,7 +64,7 @@ class TestZonesService:
         )
 
     async def test_delete_default_zone(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self, db_connection: AsyncConnection
     ) -> None:
         zones_service = ZonesService(db_connection)
         default_zone = await zones_service.get_by_name(DEFAULT_ZONE_NAME)
@@ -105,3 +107,19 @@ class TestZonesService:
         vmclusters_service_mock.move_to_zone.assert_called_once_with(
             created_zone.id, default_zone.id
         )
+
+    async def test_list(self, db_connection: AsyncConnection) -> None:
+        zones_repository_mock = Mock(ZonesRepository)
+        zones_repository_mock.list = AsyncMock(
+            return_value=ListResult[ZonesRepository](items=[], next_token=None)
+        )
+        resource_pools_service = ZonesService(
+            connection=db_connection,
+            zones_repository=zones_repository_mock,
+        )
+        resource_pools_list = await resource_pools_service.list(
+            token=None, size=1
+        )
+        zones_repository_mock.list.assert_called_once_with(token=None, size=1)
+        assert resource_pools_list.next_token is None
+        assert resource_pools_list.items == []

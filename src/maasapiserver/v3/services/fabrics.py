@@ -23,6 +23,4 @@ class FabricsService(Service):
         )
 
     async def list(self, token: str | None, size: int) -> ListResult[Fabric]:
-        return await self.fabrics_repository.list_with_token(
-            token=token, size=size
-        )
+        return await self.fabrics_repository.list(token=token, size=size)

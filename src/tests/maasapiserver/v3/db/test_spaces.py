@@ -13,7 +13,7 @@ from tests.maasapiserver.v3.db.base import RepositoryCommonTests
 
 class TestSpacesRepository(RepositoryCommonTests[Space]):
     @pytest.fixture
-    def _get_repository_instance(
+    def repository_instance(
         self, db_connection: AsyncConnection
     ) -> SpacesRepository:
         return SpacesRepository(db_connection)

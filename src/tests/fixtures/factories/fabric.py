@@ -1,14 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
+from maasapiserver.v3.models.fabrics import Fabric
 from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_fabric_entry(
     fixture: Fixture, **extra_details: dict[str, Any]
-) -> dict[str, Any]:
-    created_at = datetime.utcnow().astimezone()
-    updated_at = datetime.utcnow().astimezone()
+) -> Fabric:
+    created_at = datetime.now(timezone.utc)
+    updated_at = datetime.now(timezone.utc)
     fabric = {
         "created": created_at,
         "updated": updated_at,
@@ -19,4 +20,4 @@ async def create_test_fabric_entry(
         "maasserver_fabric",
         [fabric],
     )
-    return created_fabric
+    return Fabric(**created_fabric)

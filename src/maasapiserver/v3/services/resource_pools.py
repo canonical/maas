@@ -43,7 +43,7 @@ class ResourcePoolsService(Service):
     async def list(
         self, token: str | None, size: int
     ) -> ListResult[ResourcePool]:
-        return await self.resource_pools_repository.list_with_token(
+        return await self.resource_pools_repository.list(
             token=token, size=size
         )
 

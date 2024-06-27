@@ -24,7 +24,7 @@ async def create_test_vlan_entry(
 
     if not vlan.get("fabric_id"):
         fabric = await create_test_fabric_entry(fixture)
-        vlan["fabric_id"] = fabric["id"]
+        vlan["fabric_id"] = fabric.id
 
     if not vlan.get("vid"):
         for i in range(1, 4095):  # max vid is 4094

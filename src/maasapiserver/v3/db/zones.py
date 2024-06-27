@@ -12,7 +12,6 @@ from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BaseExceptionDetail,
 )
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
@@ -79,14 +78,7 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             return None
         return Zone(**zone._asdict())
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Zone]:
-        raise Exception("Not implemented. Use the token based pagination.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Zone]:
+    async def list(self, token: str | None, size: int) -> ListResult[Zone]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(ZoneTable.c.id))

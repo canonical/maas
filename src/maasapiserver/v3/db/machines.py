@@ -11,7 +11,6 @@ from maasapiserver.common.db.tables import (
     UserTable,
 )
 from maasapiserver.v3.api.models.requests.machines import MachineRequest
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.machines import Machine
@@ -25,14 +24,7 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
     async def find_by_id(self, id: int) -> Machine | None:
         raise Exception("Not implemented yet.")
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Machine]:
-        raise Exception("To be removed. Use list_with_token instead.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Machine]:
+    async def list(self, token: str | None, size: int) -> ListResult[Machine]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(NodeTable.c.id))

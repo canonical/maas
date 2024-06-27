@@ -7,7 +7,6 @@ from sqlalchemy import desc, select, Select
 from sqlalchemy.sql.operators import le
 
 from maasapiserver.common.db.tables import SpaceTable
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.api.models.requests.spaces import SpaceRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
@@ -24,14 +23,7 @@ class SpacesRepository(BaseRepository[Space, SpaceRequest]):
     async def find_by_name(self, name: str) -> Space | None:
         raise NotImplementedError()
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Space]:
-        raise Exception("Not implemented. Use the token based pagination.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Space]:
+    async def list(self, token: str | None, size: int) -> ListResult[Space]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(SpaceTable.c.id))

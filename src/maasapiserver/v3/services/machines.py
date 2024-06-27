@@ -20,6 +20,4 @@ class MachinesService(Service):
         )
 
     async def list(self, token: str | None, size: int) -> ListResult[Machine]:
-        return await self.machines_repository.list_with_token(
-            token=token, size=size
-        )
+        return await self.machines_repository.list(token=token, size=size)

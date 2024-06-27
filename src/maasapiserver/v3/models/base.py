@@ -17,8 +17,6 @@ class ListResult(Generic[T]):
     """
 
     items: Sequence[T]
-    # None if a token based pagination has been used. To be removed once we remove all the offsed based endpoints
-    total: Optional[int] = None
     # None if there is no next page
     next_token: Optional[str] = None
 

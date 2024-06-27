@@ -18,10 +18,10 @@ T = TypeVar("T", bound=MaasTimestampedBaseModel)
 class RepositoryCommonTests(abc.ABC, Generic[T]):
     @pytest.fixture
     @abc.abstractmethod
-    def _get_repository_instance(
+    def repository_instance(
         self, db_connection: AsyncConnection
     ) -> BaseRepository:
-        """Retrieves an instance of the repository under test.
+        """Fixtures for an instance of the repository under test.
 
         Returns:
             BaseRepository: An instance of the repository being tested.
@@ -43,15 +43,15 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
     async def test_list(
         self,
         page_size: int,
-        _get_repository_instance: BaseRepository,
+        repository_instance: BaseRepository,
         _setup_test_list: tuple[Sequence[T], int],
     ):
         created_objects, objects_count = _setup_test_list
-        repository = _get_repository_instance
+        repository = repository_instance
         total_pages = math.ceil(objects_count / page_size)
         current_token = None
         for page in range(1, total_pages + 1):
-            objects_results = await repository.list_with_token(
+            objects_results = await repository.list(
                 token=current_token, size=page_size
             )
             if page == total_pages:  # last page may have fewer elements

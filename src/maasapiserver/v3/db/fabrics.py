@@ -8,7 +8,6 @@ from sqlalchemy.sql.operators import le
 
 from maasapiserver.common.db.tables import FabricTable
 from maasapiserver.v3.api.models.requests.fabrics import FabricRequest
-from maasapiserver.v3.api.models.requests.query import PaginationParams
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.fabrics import Fabric
@@ -24,14 +23,7 @@ class FabricsRepository(BaseRepository[Fabric, FabricRequest]):
     async def find_by_name(self, name: str) -> Fabric | None:
         raise NotImplementedError()
 
-    async def list(
-        self, pagination_params: PaginationParams
-    ) -> ListResult[Fabric]:
-        raise Exception("Not implemented. Use the token based pagination.")
-
-    async def list_with_token(
-        self, token: str | None, size: int
-    ) -> ListResult[Fabric]:
+    async def list(self, token: str | None, size: int) -> ListResult[Fabric]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(FabricTable.c.id))
