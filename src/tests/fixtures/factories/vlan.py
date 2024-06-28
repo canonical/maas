@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 
 from maasapiserver.common.db.tables import VlanTable
 from tests.fixtures.factories.fabric import create_test_fabric_entry
@@ -27,19 +28,16 @@ async def create_test_vlan_entry(
         vlan["fabric_id"] = fabric.id
 
     if not vlan.get("vid"):
-        for i in range(1, 4095):  # max vid is 4094
-            stmt = (
-                select(
-                    VlanTable.c.vid,
-                )
-                .select_from(VlanTable)
-                .filter(
-                    VlanTable.c.fabric_id == vlan["fabric_id"],
-                    VlanTable.c.vid == i,
-                )
+        stmt = (
+            select(
+                postgresql.array_agg(VlanTable.c.vid).label("vids"),
             )
-            result = (await fixture.conn.execute(stmt)).one_or_none()
-            if not result:
+            .select_from(VlanTable)
+            .filter(VlanTable.c.fabric_id == vlan["fabric_id"])
+        )
+        result = (await fixture.conn.execute(stmt)).one()
+        for i in range(1, 4095):
+            if not result.vids or i not in result.vids:
                 vlan["vid"] = i
                 break
 

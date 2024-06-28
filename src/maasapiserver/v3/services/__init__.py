@@ -14,6 +14,7 @@ from maasapiserver.v3.services.secrets import (
 )
 from maasapiserver.v3.services.spaces import SpacesService
 from maasapiserver.v3.services.users import UsersService
+from maasapiserver.v3.services.vlans import VlansService
 from maasapiserver.v3.services.vmcluster import VmClustersService
 from maasapiserver.v3.services.zones import ZonesService
 
@@ -33,6 +34,7 @@ class ServiceCollectionV3:
     interfaces: InterfacesService
     fabrics: FabricsService
     spaces: SpacesService
+    vlans: VlansService
     users: UsersService
 
     @classmethod
@@ -64,4 +66,5 @@ class ServiceCollectionV3:
         services.interfaces = InterfacesService(connection=connection)
         services.fabrics = FabricsService(connection=connection)
         services.spaces = SpacesService(connection=connection)
+        services.vlans = VlansService(connection=connection)
         return services
