@@ -249,29 +249,29 @@ There are no exposed controls, and there is no need for users to take any action
 - Made the tool-tip message for "Automatically sync images" a bit more concise
 
 ## Back-end bug fixes
-[2055009](https://bugs.launchpad.net/maas/+bug/2055009)**^** : Default zone can not be renamed
-[2049508](https://bugs.launchpad.net/maas/+bug/2049508)**^** : MAAS has orphan ip addresses and dns records that are slowing down the entire service
-[2054377](https://bugs.launchpad.net/maas/+bug/2054377)**^** : Temporal worker pool configuration failure
-[2053033](https://bugs.launchpad.net/maas/+bug/2053033)**^** : Creating MAAS Virsh VM does not work (libvirt: error)
-[2052958](https://bugs.launchpad.net/maas/+bug/2052958)**^** : PPC64 machines without disk serial fail condense LUNs
-[2052503](https://bugs.launchpad.net/maas/+bug/2052503)**^** : Additional Power States in Redfish Schema
-[2049626](https://bugs.launchpad.net/maas/+bug/2049626)**^** : Failed to update NTP configuration
-[2044396](https://bugs.launchpad.net/maas/+bug/2044396)**^** : allow_dns accepts boolean instead of Int in the help
-[2046255](https://bugs.launchpad.net/maas/+bug/2046255)**^** : For every interface MAAS is adding an A record for the name <machine>.<domain>
-[2045228](https://bugs.launchpad.net/maas/+bug/2045228)**^** : DNS updates are consumed concurrently, leading to an incorrect nsupdate payload
-[2042645](https://bugs.launchpad.net/maas/+bug/2042645)**^** : Power management using ProxMox is broken
-[2040188](https://bugs.launchpad.net/maas/+bug/2040188)**^** : MAAS config option for IPMI cipher suite ID is not passed to bmc-config script
-[2042540](https://bugs.launchpad.net/maas/+bug/2042540)**^** : Machine sometimes revert to old status after power control
-[2041854](https://bugs.launchpad.net/maas/+bug/2041854)**^** : maas config-vault migrate failed due to region not restarting
-[2039455](https://bugs.launchpad.net/maas/+bug/2039455)**^** : Temporal system status traceback
-[2015411](https://bugs.launchpad.net/maas/+bug/2015411)**^** : StaticIPAddress matching query does not exist
-[1923315](https://bugs.launchpad.net/maas/+bug/1923315)**^** : MaaS API ignores osystem and distro parameters
-[1979058](https://bugs.launchpad.net/maas/+bug/1979058)**^** : "space" option still exists as available on Subnet API while being deprecated
-[2036759](https://bugs.launchpad.net/maas/+bug/2036759)**^** : Adding a custom MAAS sstreams image source without trailing / fails
-[2037420](https://bugs.launchpad.net/maas/+bug/2037420)**^** : MAAS metadata_url contains a domain name even when DNS resolution is disallowed
-[2029417](https://bugs.launchpad.net/maas/+bug/2029417)**^** : RPC failure to contact rack/region - operations on closed handler
-[1993916](https://bugs.launchpad.net/maas/+bug/1993916)**^** : ThinkSystem SR645 failed commissioning ERROR: Failed to commit `User3:Password': Invalid/Unsupported Config
-[1999152](https://bugs.launchpad.net/maas/+bug/1999152)**^** : websocket API support for stop_mode
-[2020397](https://bugs.launchpad.net/maas/+bug/2020397)**^** : Custom images which worked ok is not working with 3.2
-[2019216](https://bugs.launchpad.net/maas/+bug/2019216)**^** : Flaky test- dhcp notify test_sends_notification_over_socket_for_processing
-[2026283](https://bugs.launchpad.net/maas/+bug/2026283)**^** : TestDynamicDNSUpdate.test_as_reverse_record_update flaky test
+ - [2055009](https://bugs.launchpad.net/maas/+bug/2055009)**^** : Default zone can not be renamed
+ - [2049508](https://bugs.launchpad.net/maas/+bug/2049508)**^** : MAAS has orphan ip addresses and dns records that are slowing down the entire service
+ - [2054377](https://bugs.launchpad.net/maas/+bug/2054377)**^** : Temporal worker pool configuration failure
+ - [2053033](https://bugs.launchpad.net/maas/+bug/2053033)**^** : Creating MAAS Virsh VM does not work (libvirt: error)
+ - [2052958](https://bugs.launchpad.net/maas/+bug/2052958)**^** : PPC64 machines without disk serial fail condense LUNs
+ - [2052503](https://bugs.launchpad.net/maas/+bug/2052503)**^** : Additional Power States in Redfish Schema
+ - [2049626](https://bugs.launchpad.net/maas/+bug/2049626)**^** : Failed to update NTP configuration
+ - [2044396](https://bugs.launchpad.net/maas/+bug/2044396)**^** : allow_dns accepts boolean instead of Int in the help
+ - [2046255](https://bugs.launchpad.net/maas/+bug/2046255)**^** : For every interface MAAS is adding an A record for the name <machine>.<domain>
+ - [2045228](https://bugs.launchpad.net/maas/+bug/2045228)**^** : DNS updates are consumed concurrently, leading to an incorrect nsupdate payload
+ - [2042645](https://bugs.launchpad.net/maas/+bug/2042645)**^** : Power management using ProxMox is broken
+ - [2040188](https://bugs.launchpad.net/maas/+bug/2040188)**^** : MAAS config option for IPMI cipher suite ID is not passed to bmc-config script
+ - [2042540](https://bugs.launchpad.net/maas/+bug/2042540)**^** : Machine sometimes revert to old status after power control
+ - [2041854](https://bugs.launchpad.net/maas/+bug/2041854)**^** : maas config-vault migrate failed due to region not restarting
+ - [2039455](https://bugs.launchpad.net/maas/+bug/2039455)**^** : Temporal system status traceback
+ - [2015411](https://bugs.launchpad.net/maas/+bug/2015411)**^** : StaticIPAddress matching query does not exist
+ - [1923315](https://bugs.launchpad.net/maas/+bug/1923315)**^** : MaaS API ignores osystem and distro parameters
+ - [1979058](https://bugs.launchpad.net/maas/+bug/1979058)**^** : "space" option still exists as available on Subnet API while being deprecated
+ - [2036759](https://bugs.launchpad.net/maas/+bug/2036759)**^** : Adding a custom MAAS sstreams image source without trailing / fails
+ - [2037420](https://bugs.launchpad.net/maas/+bug/2037420)**^** : MAAS metadata_url contains a domain name even when DNS resolution is disallowed
+ - [2029417](https://bugs.launchpad.net/maas/+bug/2029417)**^** : RPC failure to contact rack/region - operations on closed handler
+ - [1993916](https://bugs.launchpad.net/maas/+bug/1993916)**^** : ThinkSystem SR645 failed commissioning ERROR: Failed to commit `User3:Password': Invalid/Unsupported Config
+ - [1999152](https://bugs.launchpad.net/maas/+bug/1999152)**^** : websocket API support for stop_mode
+ - [2020397](https://bugs.launchpad.net/maas/+bug/2020397)**^** : Custom images which worked ok is not working with 3.2
+ - [2019216](https://bugs.launchpad.net/maas/+bug/2019216)**^** : Flaky test- dhcp notify test_sends_notification_over_socket_for_processing
+ - [2026283](https://bugs.launchpad.net/maas/+bug/2026283)**^** : TestDynamicDNSUpdate.test_as_reverse_record_update flaky test
