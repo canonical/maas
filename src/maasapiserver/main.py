@@ -28,6 +28,7 @@ from maasapiserver.v3.api.handlers import APIv3
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
+    DjangoSessionAuthenticationProvider,
     LocalAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
@@ -78,7 +79,8 @@ async def create_app(
     app.add_middleware(
         V3AuthenticationMiddleware,
         providers_cache=AuthenticationProvidersCache(
-            [LocalAuthenticationProvider()]
+            jwt_authentication_providers=[LocalAuthenticationProvider()],
+            session_authentication_provider=DjangoSessionAuthenticationProvider(),
         ),
     )
 

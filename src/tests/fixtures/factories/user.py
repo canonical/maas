@@ -1,5 +1,7 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
+
+from django.core import signing
 
 from maasapiserver.v3.models.users import User
 from tests.maasapiserver.fixtures.db import Fixture
@@ -27,3 +29,30 @@ async def create_test_user(
         [user],
     )
     return User(**created_user)
+
+
+async def create_test_session(
+    fixture: Fixture,
+    user_id: int,
+    session_id: str = "a-b-c",
+    expire_date: datetime = datetime.utcnow() + timedelta(days=1),
+) -> None:
+    signer = signing.TimestampSigner(
+        "<UNUSED>",
+        salt="django.contrib.sessions.SessionStore",
+        algorithm="sha256",
+    )
+    session_data = signer.sign_object(
+        {
+            "_auth_user_id": str(user_id),
+        },
+        serializer=signing.JSONSerializer,
+    )
+    await fixture.create(
+        "django_session",
+        {
+            "session_key": session_id,
+            "expire_date": expire_date,
+            "session_data": session_data,
+        },
+    )

@@ -20,3 +20,6 @@ class UsersService(Service):
 
     async def get(self, username: str) -> User | None:
         return await self.users_repository.find_by_username(username)
+
+    async def get_by_session_id(self, sessionid: str) -> User | None:
+        return await self.users_repository.find_by_sessionid(sessionid)
