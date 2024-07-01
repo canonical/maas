@@ -1,3 +1,6 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import abc
 from collections.abc import Sequence
 import math
@@ -54,6 +57,7 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
             objects_results = await repository.list(
                 token=current_token, size=page_size
             )
+
             if page == total_pages:  # last page may have fewer elements
                 assert len(objects_results.items) == (
                     page_size - ((total_pages * page_size) % objects_count)

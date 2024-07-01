@@ -6,6 +6,7 @@ from maasapiserver.v3.api.handlers.machines import MachinesHandler
 from maasapiserver.v3.api.handlers.resource_pools import ResourcePoolHandler
 from maasapiserver.v3.api.handlers.root import RootHandler
 from maasapiserver.v3.api.handlers.spaces import SpacesHandler
+from maasapiserver.v3.api.handlers.subnets import SubnetsHandler
 from maasapiserver.v3.api.handlers.vlans import VlansHandler
 from maasapiserver.v3.api.handlers.zones import ZonesHandler
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -22,5 +23,6 @@ APIv3 = API(
         FabricsHandler(),
         SpacesHandler(),
         VlansHandler(),
+        SubnetsHandler(),
     ],
 )

@@ -13,6 +13,7 @@ from maasapiserver.v3.services.secrets import (
     SecretsServiceFactory,
 )
 from maasapiserver.v3.services.spaces import SpacesService
+from maasapiserver.v3.services.subnets import SubnetsService
 from maasapiserver.v3.services.users import UsersService
 from maasapiserver.v3.services.vlans import VlansService
 from maasapiserver.v3.services.vmcluster import VmClustersService
@@ -36,6 +37,7 @@ class ServiceCollectionV3:
     spaces: SpacesService
     vlans: VlansService
     users: UsersService
+    subnets: SubnetsService
 
     @classmethod
     async def produce(
@@ -67,4 +69,5 @@ class ServiceCollectionV3:
         services.fabrics = FabricsService(connection=connection)
         services.spaces = SpacesService(connection=connection)
         services.vlans = VlansService(connection=connection)
+        services.subnets = SubnetsService(connection=connection)
         return services
