@@ -262,7 +262,12 @@ def update_node_network_information(node, data, numa_nodes):
             interface.add_tag("sriov")
             interface.save(update_fields=["tags"])
 
-        if not link_connected:
+        if (
+            not link_connected
+            and not interface.ip_addresses.filter(
+                subnet__vlan=interface.vlan
+            ).exists()
+        ):
             # This interface is now disconnected.
             if interface.vlan is not None:
                 interface.vlan = None

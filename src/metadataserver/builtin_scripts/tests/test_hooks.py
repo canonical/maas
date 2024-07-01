@@ -931,6 +931,301 @@ SAMPLE_LXD_NETWORK_LP1939456 = {
     },
 }
 
+SAMPLE_LXD_RESOURCES_NETWORK_LP2067998 = {
+    "network": {
+        "cards": [
+            {
+                "driver": "thunder_bgx",
+                "driver_version": "1.0",
+                "numa_node": 0,
+                "pci_address": "0000:01:10.0",
+                "vendor": "Cavium, Inc.",
+                "vendor_id": "177d",
+                "product": "THUNDERX BGX (Common Ethernet Interface)",
+                "product_id": "a026",
+            },
+            {
+                "driver": "thunder_bgx",
+                "driver_version": "1.0",
+                "numa_node": 0,
+                "pci_address": "0000:01:10.1",
+                "vendor": "Cavium, Inc.",
+                "vendor_id": "177d",
+                "product": "THUNDERX BGX (Common Ethernet Interface)",
+                "product_id": "a026",
+            },
+            {
+                "numa_node": 0,
+                "pci_address": "0002:00:03.0",
+                "vendor": "Cavium, Inc.",
+                "vendor_id": "177d",
+                "product": "THUNDERX Traffic Network Switch",
+                "product_id": "a01f",
+            },
+            {
+                "driver": "nicpf",
+                "driver_version": "1.0",
+                "sriov": {
+                    "current_vfs": 30,
+                    "maximum_vfs": 128,
+                    "vfs": [
+                        {
+                            "driver": "nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0v0",
+                                    "address": "1c:1b:0d:0d:52:7c",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "pci_address": "0002:01:00.1",
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        },
+                        {
+                            "driver": "nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0v1",
+                                    "address": "1c:1b:0d:0d:52:7d",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "pci_address": "0002:01:00.2",
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        },
+                        {
+                            "driver": "nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0v2",
+                                    "address": "1c:1b:0d:0d:52:7e",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "pci_address": "0002:01:00.3",
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        },
+                        {
+                            "driver": "nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0v3",
+                                    "address": "1c:1b:0d:0d:52:7f",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "pci_address": "0002:01:00.4",
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        },
+                        {
+                            "driver": "nicvf",
+                            "driver_version": "1.0",
+                            "ports": [
+                                {
+                                    "id": "enP2p1s0v4",
+                                    "address": "1c:1b:0d:0d:52:80",
+                                    "port": 0,
+                                    "protocol": "ethernet",
+                                    "auto_negotiation": False,
+                                    "link_detected": False,
+                                }
+                            ],
+                            "numa_node": 0,
+                            "pci_address": "0002:01:00.5",
+                            "vendor": "Cavium, Inc.",
+                            "vendor_id": "177d",
+                            "product": "THUNDERX Network Interface Controller virtual function",
+                            "product_id": "a034",
+                        },
+                    ],
+                },
+                "numa_node": 0,
+                "pci_address": "0002:01:00.0",
+                "vendor": "Cavium, Inc.",
+                "vendor_id": "177d",
+                "product": "THUNDERX Network Interface Controller",
+                "product_id": "a01e",
+            },
+        ],
+        "total": 9,
+    }
+}
+
+SAMPLE_LXD_NETWORK_LP2067998 = {
+    "enP2p1s0v0": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "10.245.136.38",
+                "netmask": "21",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::1e1b:dff:fe0d:527c",
+                "netmask": "64",
+                "scope": "link",
+            },
+        ],
+        "counters": {
+            "bytes_received": 451919355,
+            "bytes_sent": 8388125,
+            "packets_received": 299935,
+            "packets_sent": 123321,
+        },
+        "hwaddr": "1c:1b:0d:0d:52:7c",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+    "enP2p1s0v1": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "10.245.136.40",
+                "netmask": "21",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::1e1b:dff:fe0d:527d",
+                "netmask": "64",
+                "scope": "link",
+            },
+        ],
+        "counters": {
+            "bytes_received": 1674,
+            "bytes_sent": 1676,
+            "packets_received": 17,
+            "packets_sent": 13,
+        },
+        "hwaddr": "1c:1b:0d:0d:52:7d",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+    "enP2p1s0v2": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "1c:1b:0d:0d:52:7e",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+    "enP2p1s0v3": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "1c:1b:0d:0d:52:7f",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+    "enP2p1s0v4": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "1c:1b:0d:0d:52:80",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+    "lo": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "127.0.0.1",
+                "netmask": "8",
+                "scope": "local",
+            },
+            {
+                "family": "inet6",
+                "address": "::1",
+                "netmask": "128",
+                "scope": "local",
+            },
+        ],
+        "counters": {
+            "bytes_received": 18242,
+            "bytes_sent": 18242,
+            "packets_received": 224,
+            "packets_sent": 224,
+        },
+        "hwaddr": "",
+        "mtu": 65536,
+        "state": "up",
+        "type": "loopback",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+        "ovn": None,
+    },
+}
 
 KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
@@ -4627,13 +4922,46 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
     def test_handles_disconnected_interfaces(self):
         node = factory.make_Node()
-        update_node_network_information(
-            node, make_lxd_output(), create_numa_nodes(node)
-        )
+        data = make_lxd_output()
+        data["networks"]["eth1"]["addresses"] = []
+        update_node_network_information(node, data, create_numa_nodes(node))
         eth1 = Interface.objects.get(
             node_config=node.current_config, name="eth1"
         )
         self.assertIsNone(eth1.vlan)
+
+    def test_should_not_reset_vlan_if_address_is_assigned_and_link_is_not_detected(
+        self,
+    ):
+        node = factory.make_Node(
+            with_boot_disk=False,
+            interface=True,
+            status=NODE_STATUS.COMMISSIONING,
+        )
+        subnet = factory.make_Subnet(cidr="10.245.136.0/24")
+        vlan = factory.make_VLAN()
+        existing_enP2p1s0v0 = factory.make_Interface(
+            name="enP2p1s0v0",
+            node=node,
+            mac_address="1c:1b:0d:0d:52:7c",
+            subnet=subnet,
+            vlan=vlan,
+        )
+        node.boot_interface = existing_enP2p1s0v0
+        node.save()
+
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources.update(SAMPLE_LXD_RESOURCES_NETWORK_LP2067998)
+        data = make_lxd_output(
+            resources=resources, networks=SAMPLE_LXD_NETWORK_LP2067998
+        )
+
+        update_node_network_information(node, data, create_numa_nodes(node))
+
+        enP2p1s0v0 = Interface.objects.get(
+            node_config=node.current_config, name="enP2p1s0v0"
+        )
+        self.assertEqual(enP2p1s0v0.vlan, existing_enP2p1s0v0.vlan)
 
     def test_disconnects_previously_connected_interface(self):
         node = factory.make_Node()
