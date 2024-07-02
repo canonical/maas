@@ -66,11 +66,6 @@ server {
         return 404;
     }
 
-    # block remote access to the v3 endpoints until authentication and authorization is implemented
-    location ^~ /MAAS/a/v3/ {
-        return 403;
-    }
-
     location /MAAS/a/ {
         proxy_pass http://apiserver;
     }
