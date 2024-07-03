@@ -4333,13 +4333,13 @@ class TestNode(MAASServerTestCase):
             comment=description,
         )
 
-    def test_mark_broken_releases_allocated_node(self):
+    def test_mark_broken_releases_node_leaves_owner(self):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         err_desc = factory.make_name("error-description")
         release = self.patch(node, "_release")
         node.mark_broken(user, err_desc)
-        self.assertIsNone(node.owner)
+        self.assertIsNotNone(node.owner)
         release.assert_called_once_with(user)
 
     def test_mark_fixed_sets_default_osystem_and_distro_series(self):

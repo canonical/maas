@@ -4015,7 +4015,6 @@ class Node(CleanSave, TimestampedModel):
         # release() normally sets the status to RELEASING and leaves the
         # owner in place, override that here as we're broken.
         self.update_status(NODE_STATUS.BROKEN)
-        self.owner = None
         self.error_description = comment if comment else ""
         self.save()
 
