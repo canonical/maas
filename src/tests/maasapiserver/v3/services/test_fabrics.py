@@ -1,6 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -30,3 +30,20 @@ class TestFabricsService:
         )
         assert fabrics_list.next_token is None
         assert fabrics_list.items == []
+
+    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+        now = datetime.utcnow()
+        expected_fabric = Fabric(
+            id=0, name="test", description="descr", created=now, updated=now
+        )
+        fabrics_repository_mock = Mock(FabricsRepository)
+        fabrics_repository_mock.find_by_id = AsyncMock(
+            return_value=expected_fabric
+        )
+        fabrics_service = FabricsService(
+            connection=db_connection,
+            fabrics_repository=fabrics_repository_mock,
+        )
+        fabric = await fabrics_service.get_by_id(id=1)
+        fabrics_repository_mock.find_by_id.assert_called_once_with(id=1)
+        assert expected_fabric == fabric

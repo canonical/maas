@@ -4,7 +4,7 @@
 from typing import Any
 
 from sqlalchemy import desc, select, Select
-from sqlalchemy.sql.operators import le
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import FabricTable
 from maasapiserver.v3.api.models.requests.fabrics import FabricRequest
@@ -18,7 +18,13 @@ class FabricsRepository(BaseRepository[Fabric, FabricRequest]):
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Fabric | None:
-        raise NotImplementedError()
+        stmt = self._select_all_statement().filter(eq(FabricTable.c.id, id))
+
+        result = await self.connection.execute(stmt)
+        fabric = result.first()
+        if not fabric:
+            return None
+        return Fabric(**fabric._asdict())
 
     async def find_by_name(self, name: str) -> Fabric | None:
         raise NotImplementedError()

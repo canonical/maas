@@ -42,6 +42,15 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
                 the repository and the total count of these objects.
         """
 
+    @pytest.fixture
+    @abc.abstractmethod
+    async def _created_instance(self, fixture: Fixture) -> T:
+        """Fixture used to setup the necessary environment for the `test_find_*` methods.
+
+        Returns:
+            T: a created object in the database ready to be retrieved.
+        """
+
     @pytest.mark.parametrize("page_size", range(1, 12))
     async def test_list(
         self,
@@ -77,8 +86,17 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
     async def test_create_duplicated(self):
         pass
 
-    async def test_find_by_id(self):
-        pass
+    async def test_find_by_id_not_found(
+        self, repository_instance: BaseRepository
+    ):
+        instance = await repository_instance.find_by_id(-1)
+        assert instance is None
+
+    async def test_find_by_id(
+        self, repository_instance: BaseRepository, _created_instance: T
+    ):
+        instance = await repository_instance.find_by_id(_created_instance.id)
+        assert instance == _created_instance
 
     async def test_delete(self):
         pass

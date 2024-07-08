@@ -130,7 +130,7 @@ class TestZonesApi(ApiCommonTests):
             },
         }
 
-    async def test_get_400(
+    async def test_get_404(
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:
         response = await authenticated_user_api_client_v3.get(

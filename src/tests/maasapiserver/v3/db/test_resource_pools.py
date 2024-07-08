@@ -39,6 +39,10 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
         )[::-1]
         return created_resource_pools, resource_pools_count
 
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> ResourcePool:
+        return await create_test_resource_pool(fixture)
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
@@ -74,24 +78,6 @@ class TestResourcePoolRepository:
                     description=created_resource_pools.description,
                 )
             )
-
-    async def test_find_by_id(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        resource_pools_repository = ResourcePoolRepository(db_connection)
-        created_resource_pools = await create_test_resource_pool(fixture)
-
-        resource_pools = await resource_pools_repository.find_by_id(
-            created_resource_pools.id
-        )
-        assert resource_pools.id == created_resource_pools.id
-        assert resource_pools.name == created_resource_pools.name
-        assert resource_pools.description == created_resource_pools.description
-        assert resource_pools.updated == created_resource_pools.updated
-        assert resource_pools.created == created_resource_pools.created
-
-        resource_pools = await resource_pools_repository.find_by_id(1234)
-        assert resource_pools is None
 
     async def test_update(
         self, db_connection: AsyncConnection, fixture: Fixture

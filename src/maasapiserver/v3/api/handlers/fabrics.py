@@ -5,11 +5,16 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+    NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
-from maasapiserver.v3.api.models.responses.fabrics import FabricsListResponse
+from maasapiserver.v3.api.models.responses.fabrics import (
+    FabricResponse,
+    FabricsListResponse,
+)
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -55,4 +60,39 @@ class FabricsHandler(Handler):
             f"{TokenPaginationParams.to_href_format(fabrics.next_token, token_pagination_params.size)}"
             if fabrics.next_token
             else None,
+        )
+
+    @handler(
+        path="/fabrics/{fabric_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": FabricResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_fabric(
+        self,
+        fabric_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        fabric = await services.fabrics.get_by_id(fabric_id)
+        if not fabric:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = fabric.etag()
+        return fabric.to_response(
+            self_base_hyperlink=f"{V3_API_PREFIX}/fabrics"
         )

@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from httpx import AsyncClient
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.models.responses.fabrics import FabricsListResponse
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -60,5 +62,64 @@ class TestFabricsApi(ApiCommonTests):
                     create_resources_routine=create_pagination_test_resources,
                     assert_routine=_assert_fabric_in_list,
                 ),
-            )
+            ),
+            EndpointDetails(
+                method="GET",
+                path=f"{V3_API_PREFIX}/fabrics/1",
+                user_role=UserRole.USER,
+            ),
         ]
+
+    # GET /fabric/{ID}
+    async def test_get_200(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        created_fabric = await create_test_fabric_entry(fixture)
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/fabrics/{created_fabric.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        assert response.json() == {
+            "kind": "Fabric",
+            "id": created_fabric.id,
+            "name": created_fabric.name,
+            "description": created_fabric.description,
+            "class_type": created_fabric.class_type,
+            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
+            "_embedded": None,
+            "vlans": {
+                "href": f"{V3_API_PREFIX}/vlans?filter=fabric_id eq {created_fabric.id}"
+            },
+            "_links": {
+                "self": {
+                    "href": f"{V3_API_PREFIX}/fabrics/{created_fabric.id}"
+                }
+            },
+        }
+
+    async def test_get_404(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/fabrics/100"
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_get_422(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/fabrics/xyz"
+        )
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422

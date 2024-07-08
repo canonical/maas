@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 import hashlib
-from typing import Generic, Optional, Sequence, TypeVar
+from typing import Any, Generic, Optional, Sequence, TypeVar
 
 from pydantic import BaseModel
 
@@ -23,6 +23,12 @@ class ListResult(Generic[T]):
 
 class MaasBaseModel(ABC, BaseModel):
     id: int
+
+    def __eq__(self, other: Any) -> bool:
+        # Pydantic is not comparing nested objects. This is the workaround to do it.
+        if other.__class__ is self.__class__:
+            return self.dict() == other.dict()
+        return False
 
     @abstractmethod
     def etag(self) -> str:

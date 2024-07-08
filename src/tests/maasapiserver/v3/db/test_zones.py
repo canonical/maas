@@ -35,6 +35,12 @@ class TestZonesRepo(RepositoryCommonTests[Zone]):
         ][::-1]
         return created_zones, zones_count
 
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Zone:
+        return await create_test_zone(
+            fixture, name="myzone", description="description"
+        )
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
@@ -68,22 +74,6 @@ class TestZonesRepository:
                     description=created_zone.description,
                 )
             )
-
-    async def test_find_by_id(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_repository = ZonesRepository(db_connection)
-        created_zone = await create_test_zone(fixture)
-
-        zone = await zones_repository.find_by_id(created_zone.id)
-        assert zone.id == created_zone.id
-        assert zone.name == created_zone.name
-        assert zone.description == created_zone.description
-        assert zone.updated == created_zone.updated
-        assert zone.created == created_zone.created
-
-        zone = await zones_repository.find_by_id(1234)
-        assert zone is None
 
     async def test_delete(
         self, db_connection: AsyncConnection, fixture: Fixture

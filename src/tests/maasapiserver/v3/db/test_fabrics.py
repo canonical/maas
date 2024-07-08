@@ -30,3 +30,9 @@ class TestFabricsRepository(RepositoryCommonTests[Fabric]):
             for i in range(fabrics_count)
         ][::-1]
         return created_fabrics, fabrics_count
+
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Fabric:
+        return await create_test_fabric_entry(
+            fixture, name=str("myfabric"), description=str("description")
+        )

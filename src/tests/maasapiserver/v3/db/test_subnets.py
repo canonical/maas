@@ -34,3 +34,27 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
             for i in range(subnets_count)
         ][::-1]
         return created_subnets, subnets_count
+
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Subnet:
+        return Subnet(
+            **(
+                await create_test_subnet_entry(
+                    fixture, name="name", description="description"
+                )
+            )
+        )
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id_not_found(
+        self, repository_instance: SubnetsRepository
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id(
+        self,
+        repository_instance: SubnetsRepository,
+        _created_instance: Subnet,
+    ):
+        pass

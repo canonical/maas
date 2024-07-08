@@ -36,6 +36,29 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         ][::-1]
         return created_machines, machine_count
 
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Machine:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+
+        return await create_test_machine(
+            fixture, description="description", bmc=bmc, user=user
+        )
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id_not_found(
+        self, repository_instance: MachinesRepository
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id(
+        self,
+        repository_instance: MachinesRepository,
+        _created_instance: Machine,
+    ):
+        pass
+
     async def test_list_only_machines_nodes_are_returned(
         self, repository_instance: MachinesRepository, fixture: Fixture
     ) -> None:

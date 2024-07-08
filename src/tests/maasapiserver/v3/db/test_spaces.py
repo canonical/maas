@@ -30,3 +30,23 @@ class TestSpacesRepository(RepositoryCommonTests[Space]):
             for i in range(spaces_count)
         ][::-1]
         return created_spaces, spaces_count
+
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Space:
+        return await create_test_space_entry(
+            fixture, name="name", description="description"
+        )
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id_not_found(
+        self, repository_instance: SpacesRepository
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id(
+        self,
+        repository_instance: SpacesRepository,
+        _created_instance: Space,
+    ):
+        pass

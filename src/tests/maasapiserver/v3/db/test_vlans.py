@@ -32,3 +32,24 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
             for i in range(vlans_count)
         ][::-1]
         return created_vlans, vlans_count
+
+    @pytest.fixture
+    async def _created_instance(self, fixture: Fixture) -> Vlan:
+        fabric = await create_test_fabric_entry(fixture)
+        return Vlan(
+            **(await create_test_vlan_entry(fixture, fabric_id=fabric.id))
+        )
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id_not_found(
+        self, repository_instance: VlansRepository
+    ):
+        pass
+
+    @pytest.mark.skip(reason="Not implemented yet")
+    async def test_find_by_id(
+        self,
+        repository_instance: VlansRepository,
+        _created_instance: Vlan,
+    ):
+        pass
