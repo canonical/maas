@@ -5,11 +5,16 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+    NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
-from maasapiserver.v3.api.models.responses.spaces import SpacesListResponse
+from maasapiserver.v3.api.models.responses.spaces import (
+    SpaceResponse,
+    SpacesListResponse,
+)
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -54,3 +59,36 @@ class SpacesHandler(Handler):
             if spaces.next_token
             else None,
         )
+
+    @handler(
+        path="/spaces/{space_id}",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": SpaceResponse,
+                "headers": {
+                    "ETag": {"description": "The ETag for the resource"}
+                },
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def get_space(
+        self,
+        space_id: int,
+        response: Response,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        space = await services.spaces.get_by_id(space_id)
+        if not space:
+            return NotFoundResponse()
+
+        response.headers["ETag"] = space.etag()
+        return space.to_response(self_base_hyperlink=f"{V3_API_PREFIX}/spaces")

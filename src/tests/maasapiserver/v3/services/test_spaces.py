@@ -1,6 +1,7 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -27,3 +28,20 @@ class TestSpacesService:
         spaces_repository_mock.list.assert_called_once_with(token=None, size=1)
         assert spaces_list.next_token is None
         assert spaces_list.items == []
+
+    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+        now = datetime.utcnow()
+        expected_space = Space(
+            id=0, name="test", description="descr", created=now, updated=now
+        )
+        spaces_repository_mock = Mock(SpacesRepository)
+        spaces_repository_mock.find_by_id = AsyncMock(
+            return_value=expected_space
+        )
+        spaces_service = SpacesService(
+            connection=db_connection,
+            spaces_repository=spaces_repository_mock,
+        )
+        space = await spaces_service.get_by_id(id=1)
+        spaces_repository_mock.find_by_id.assert_called_once_with(id=1)
+        assert expected_space == space

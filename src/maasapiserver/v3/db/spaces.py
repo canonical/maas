@@ -4,7 +4,7 @@
 from typing import Any
 
 from sqlalchemy import desc, select, Select
-from sqlalchemy.sql.operators import le
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import SpaceTable
 from maasapiserver.v3.api.models.requests.spaces import SpaceRequest
@@ -18,7 +18,13 @@ class SpacesRepository(BaseRepository[Space, SpaceRequest]):
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Space | None:
-        raise NotImplementedError()
+        stmt = self._select_all_statement().filter(eq(SpaceTable.c.id, id))
+
+        result = await self.connection.execute(stmt)
+        space = result.first()
+        if not space:
+            return None
+        return Space(**space._asdict())
 
     async def find_by_name(self, name: str) -> Space | None:
         raise NotImplementedError()
