@@ -82,6 +82,7 @@ from maasserver.api.regioncontrollers import (
     RegionControllerHandler,
     RegionControllersHandler,
 )
+from maasserver.api.reservedip import ReservedIpHandler, ReservedIpsHandler
 from maasserver.api.resourcepools import (
     ResourcePoolHandler,
     ResourcePoolsHandler,
@@ -277,6 +278,12 @@ subnet_handler = RestrictedResource(SubnetHandler, authentication=api_auth)
 subnets_handler = RestrictedResource(SubnetsHandler, authentication=api_auth)
 iprange_handler = RestrictedResource(IPRangeHandler, authentication=api_auth)
 ipranges_handler = RestrictedResource(IPRangesHandler, authentication=api_auth)
+reservedip_handler = RestrictedResource(
+    ReservedIpHandler, authentication=api_auth
+)
+reservedips_handler = RestrictedResource(
+    ReservedIpsHandler, authentication=api_auth
+)
 staticroute_handler = RestrictedResource(
     StaticRouteHandler, authentication=api_auth
 )
@@ -710,6 +717,16 @@ patterns += [
     re_path(r"^scripts/$", scripts_handler, name="scripts_handler"),
     re_path(
         r"^scripts/(?P<name>[^/]+)$", script_handler, name="script_handler"
+    ),
+    re_path(
+        r"^reservedips/$",
+        reservedips_handler,
+        name="reservedips_handler",
+    ),
+    re_path(
+        r"^reservedips/(?P<id>[^/]+)/$",
+        reservedip_handler,
+        name="reservedip_handler",
     ),
     re_path(
         r"^resourcepool/(?P<id>[^/]+)/$",

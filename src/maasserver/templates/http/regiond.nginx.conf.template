@@ -66,6 +66,12 @@ server {
         return 404;
     }
 
+    # block remote access to the reserved IP endpoints since the reservation
+    # mechanism is not implemented yet
+    location ^~ /MAAS/api/2.0/reservedips/ {
+        return 404;
+    }
+
     location /MAAS/a/ {
         proxy_pass http://apiserver;
     }

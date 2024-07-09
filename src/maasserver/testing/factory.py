@@ -86,6 +86,7 @@ from maasserver.models import (
     RegionControllerProcess,
     RegionControllerProcessEndpoint,
     RegionRackRPCConnection,
+    ReservedIP,
     ResourcePool,
     RootKey,
     Script,
@@ -1891,7 +1892,7 @@ class Factory(maastesting.factory.Factory):
         comment=None,
         user=None,
         alloc_type=None,
-    ):
+    ) -> IPRange:
         if alloc_type is None:
             alloc_type = (
                 IPRANGE_TYPE.RESERVED if user else IPRANGE_TYPE.DYNAMIC
@@ -2013,6 +2014,56 @@ class Factory(maastesting.factory.Factory):
             slash = random.randint(16, 20)  # Not too small.
             cidr = factory.make_ipv4_network(slash=slash)
         return self.make_managed_Subnet_for(cidr, dhcp=dhcp)
+
+    def make_ReservedIP(
+        self,
+        ip: str | None = None,
+        subnet: Subnet | None = None,
+        vlan: VLAN | None = None,
+        mac_address: str | None = None,
+        comment: str | None = None,
+    ) -> ReservedIP:
+        """Create and save and instance of a reserved IP for testing.
+        If no arguments are provided the ReservedIP is created with some
+        default values.
+        When using this method provide either IP with its subnet or none of
+        them.
+        """
+        if ip is None and subnet is None and vlan is None:
+            network = self.make_ipv4_network(slash="24")
+            router_address = IPAddress(network.first + 1)
+            subnet = self.make_Subnet(
+                cidr=str(network), gateway_ip=str(router_address)
+            )
+            vlan = subnet.vlan
+            ip = IPAddress(network.first + 2)
+
+            reserved_ip = ReservedIP(
+                ip=ip,
+                subnet=subnet,
+                vlan=vlan,
+                mac_address=mac_address,
+                comment=comment,
+            )
+            reserved_ip.save()
+
+            return reserved_ip
+
+        assert ip is not None
+        assert subnet is not None
+        if vlan is None:
+            vlan = subnet.vlan
+
+        reserved_ip = ReservedIP(
+            ip=ip,
+            subnet=subnet,
+            vlan=vlan,
+            mac_address=mac_address,
+            comment=comment,
+        )
+        reserved_ip.save()
+
+        return reserved_ip
 
     def make_Tag(
         self,

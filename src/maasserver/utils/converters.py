@@ -117,7 +117,7 @@ def round_size_to_nearest_block(size, block_size, round_up=True):
     return block_size * number_of_blocks
 
 
-def json_load_bytes(input: bytes, encoding=None):
+def json_load_bytes(input: bytes, encoding=None) -> dict:
     """Load JSON from `input`.
 
     :param input: Input data to convert from JSON.

@@ -34,6 +34,7 @@ __all__ = [
 ]
 
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from contextlib import contextmanager, ExitStack
 from functools import wraps
 from itertools import chain, islice, repeat, takewhile
@@ -1294,7 +1295,9 @@ class MAASQueriesMixin:
             foreign_object_map[current_id].append(foreign_id)
         return object_ids, foreign_object_map
 
-    def get_object_by_specifiers_or_raise(self, specifiers, **kwargs):
+    def get_object_by_specifiers_or_raise(
+        self, specifiers: int | str | dict | Iterable | None, **kwargs
+    ):
         """Gets an object using the given specifier(s).
 
         If the specifier is empty, raises Http400.
