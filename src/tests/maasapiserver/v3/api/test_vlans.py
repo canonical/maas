@@ -1,6 +1,9 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from httpx import AsyncClient
+
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.models.responses.vlans import VlansListResponse
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -36,7 +39,12 @@ class TestVlanApi(ApiCommonTests):
             assert vlan_response.fabric.href.endswith(
                 f"fabrics/{vlan.fabric_id}"
             )
-            assert vlan_response.space.href.endswith(f"spaces/{vlan.space_id}")
+            if vlan.space_id is None:
+                assert vlan_response.space is None
+            else:
+                assert vlan_response.space.href.endswith(
+                    f"spaces/{vlan.space_id}"
+                )
 
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
@@ -66,5 +74,72 @@ class TestVlanApi(ApiCommonTests):
                     create_resources_routine=create_pagination_test_resources,
                     assert_routine=_assert_vlan_in_list,
                 ),
-            )
+            ),
+            EndpointDetails(
+                method="GET",
+                path=f"{V3_API_PREFIX}/vlans/1",
+                user_role=UserRole.USER,
+            ),
         ]
+
+    # GET /spaces/{space_id}
+    async def test_get_200(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        fabric = await create_test_fabric_entry(fixture)
+        created_vlan = Vlan(
+            **(await create_test_vlan_entry(fixture, fabric_id=fabric.id))
+        )
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/vlans/{created_vlan.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        assert response.json() == {
+            "kind": "Vlan",
+            "id": created_vlan.id,
+            "vid": created_vlan.vid,
+            "name": created_vlan.name,
+            "description": created_vlan.description,
+            "mtu": created_vlan.mtu,
+            "dhcp_on": created_vlan.dhcp_on,
+            "external_dhcp": created_vlan.external_dhcp,
+            "primary_rack": created_vlan.primary_rack_id,
+            "secondary_rack": created_vlan.secondary_rack_id,
+            "relay_vlan": created_vlan.relay_vlan,
+            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
+            "_embedded": None,
+            "fabric": {
+                "href": f"{V3_API_PREFIX}/fabrics/{created_vlan.fabric_id}"
+            },
+            "space": None,
+            "_links": {
+                "self": {"href": f"{V3_API_PREFIX}/vlans/{created_vlan.id}"}
+            },
+        }
+
+    async def test_get_404(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/vlans/100"
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_get_422(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/vlans/xyz"
+        )
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422

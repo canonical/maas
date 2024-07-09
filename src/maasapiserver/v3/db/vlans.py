@@ -1,9 +1,8 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
 from sqlalchemy import desc, select
-from sqlalchemy.sql.operators import le
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import VlanTable
 from maasapiserver.v3.api.models.requests.vlans import VlanRequest
@@ -17,7 +16,13 @@ class VlansRepository(BaseRepository[Vlan, VlanRequest]):
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Vlan | None:
-        raise NotImplementedError()
+        stmt = select("*").filter(eq(VlanTable.c.id, id))
+
+        result = await self.connection.execute(stmt)
+        vlan = result.first()
+        if not vlan:
+            return None
+        return Vlan(**vlan._asdict())
 
     async def find_by_name(self, name: str) -> Vlan | None:
         raise NotImplementedError()

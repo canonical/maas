@@ -24,7 +24,7 @@ class VlanResponse(HalResponse[BaseHal]):
     secondary_rack: Optional[str]
     relay_vlan: Optional[int]
     fabric: BaseHref
-    space: BaseHref
+    space: Optional[BaseHref]
 
 
 class VlansListResponse(TokenPaginatedResponse[VlanResponse]):

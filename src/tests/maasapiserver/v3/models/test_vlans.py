@@ -24,7 +24,7 @@ class TestVlanModel:
             secondary_rack_id=None,
             relay_vlan=1,
             fabric_id=0,
-            space_id=None,
+            space_id=1,
         )
         vlan_response = vlan.to_response(f"{V3_API_PREFIX}/vlans")
         assert vlan.id == vlan_response.id

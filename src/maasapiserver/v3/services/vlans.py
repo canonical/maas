@@ -24,3 +24,6 @@ class VlansService(Service):
 
     async def list(self, token: str | None, size: int) -> ListResult[Vlan]:
         return await self.vlans_repository.list(token=token, size=size)
+
+    async def get_by_id(self, id: int) -> Vlan | None:
+        return await self.vlans_repository.find_by_id(id=id)

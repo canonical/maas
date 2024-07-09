@@ -39,17 +39,3 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
         return Vlan(
             **(await create_test_vlan_entry(fixture, fabric_id=fabric.id))
         )
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id_not_found(
-        self, repository_instance: VlansRepository
-    ):
-        pass
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id(
-        self,
-        repository_instance: VlansRepository,
-        _created_instance: Vlan,
-    ):
-        pass
