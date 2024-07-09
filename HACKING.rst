@@ -17,6 +17,23 @@ automatically reformat code.
 Prerequisites
 =============
 
+Canonical Contributor Agreement
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This step is only necessary if you intend to contribute your changes back to 
+the upstream.
+
+First, you need a ``launchpad-id``. You can get one by creating an account in
+Launchpad_. This will allow you to report issues, create your own fork of MAAS
+ and to submit *Merge Proposals*.
+
+After creating your account, you must sign the `Canonical Contributor License Agreement`_,
+as Canonical cannot use your contribution without an explicit permission.
+
+.. _Launchpad: https://launchpad.net/
+.. _`Canonical Contributor License Agreement`: https://ubuntu.com/legal/contributors/agreement
+
+
 Dependencies
 ^^^^^^^^^^^^
 
