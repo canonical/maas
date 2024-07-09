@@ -71,13 +71,14 @@ async def main() -> None:
                 configure_activity.get_rack_controller_vlans,
                 configure_activity.get_region_controller_endpoints,
                 # MSM connector activities
-                msm_activity.send_enrol,
                 msm_activity.check_enrol,
-                msm_activity.set_enrol,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,
-                msm_activity.send_heartbeat,
                 msm_activity.refresh_token,
+                msm_activity.send_enrol,
+                msm_activity.send_heartbeat,
+                msm_activity.set_enrol,
+                msm_activity.verify_token,
             ],
         ),
     ]

@@ -33,6 +33,11 @@ MSM_REFRESH_RETRY_INTERVAL = timedelta(minutes=1)
 MSM_POLL_INTERVAL = timedelta(minutes=1)
 MSM_SECRET = "msm-connector"
 
+MSM_ENROL_EP = "/site/v1/enrol"
+MSM_DETAIL_EP = "/site/v1/details"
+MSM_REFRESH_EP = "/site/v1/enrol/refresh"
+MSM_VERIFY_EP = "/site/v1/enrol/verify"
+
 
 @dataclasses.dataclass
 class MSMEnrolParam:
@@ -49,7 +54,6 @@ class MSMConnectorParam:
     url: str
     jwt: str
     rotation_interval_minutes: int = 0
-    jwt_refresh_url: str = ""
 
 
 @dataclasses.dataclass
@@ -70,7 +74,6 @@ class MSMHeartbeatParam:
     site_name: str
     site_url: str
     rotation_interval_minutes: int
-    jwt_refresh_url: str
     status: MachineStatsByStatus | None = None
 
 
@@ -78,8 +81,13 @@ class MSMHeartbeatParam:
 class MSMTokenRefreshParam:
     sm_url: str
     jwt: str
-    jwt_refresh_url: str
     rotation_interval_minutes: int
+
+
+@dataclasses.dataclass
+class MSMTokenVerifyParam:
+    sm_url: str
+    jwt: str
 
 
 class MSMConnectorActivity(ActivityBase):
@@ -173,6 +181,35 @@ class MSMConnectorActivity(ActivityBase):
                         f"got unexpected return code: HTTP {response.status}"
                     )
 
+    @activity.defn(name="msm-verify-token")
+    async def verify_token(self, input: MSMTokenVerifyParam) -> bool:
+        """Notify MSM that the new token was successfully installed.
+
+        Args:
+            input (MSMTokenVerifyParam): Token parameters
+
+        Returns:
+            bool: whether the new token is valid
+        """
+        headers = {
+            "Authorization": f"bearer {input.jwt}",
+        }
+        verify_url = (
+            urlparse(input.sm_url)._replace(path=MSM_VERIFY_EP).geturl()
+        )
+
+        async with self._session.get(verify_url, headers=headers) as response:
+            match response.status:
+                case 200:
+                    return True
+                case 401:
+                    activity.logger.error("Failed to verify token")
+                    return False
+                case _:
+                    raise ApplicationError(
+                        f"got unexpected return code: HTTP {response.status}"
+                    )
+
     @activity.defn(name="msm-set-enrol")
     async def set_enrol(self, input: MSMConnectorParam) -> None:
         """Set enrolment data in the DB.
@@ -191,7 +228,6 @@ class MSMConnectorActivity(ActivityBase):
                     "url": input.url,
                     "jwt": input.jwt,
                     "rotation_interval_minutes": input.rotation_interval_minutes,
-                    "jwt_refresh_url": input.jwt_refresh_url,
                 },
             )
 
@@ -267,8 +303,12 @@ class MSMConnectorActivity(ActivityBase):
             "machines_by_status": dataclasses.asdict(input.status),
         }
 
+        heartbeat_url = (
+            urlparse(input.sm_url)._replace(path=MSM_DETAIL_EP).geturl()
+        )
+
         async with self._session.post(
-            input.sm_url, json=data, headers=headers
+            heartbeat_url, json=data, headers=headers
         ) as response:
             match response.status:
                 case 200:
@@ -301,9 +341,10 @@ class MSMConnectorActivity(ActivityBase):
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
-        async with self._session.get(
-            input.jwt_refresh_url, headers=headers
-        ) as response:
+        refresh_url = (
+            urlparse(input.sm_url)._replace(path=MSM_REFRESH_EP).geturl()
+        )
+        async with self._session.get(refresh_url, headers=headers) as response:
             match response.status:
                 case 200:
                     data = await response.json()
@@ -379,22 +420,23 @@ class MSMEnrolSiteWorkflow:
             workflow.logger.error("enrolment cancelled by MSM")
             return
 
-        new_url = (
-            urlparse(input.url)._replace(path="/site/v1/details").geturl()
-        )
-        refresh_url = (
-            urlparse(input.url)
-            ._replace(path="/site/v1/enrol/refresh")
-            .geturl()
-        )
+        new_url = urlparse(input.url)._replace(path="").geturl()
         param.url = new_url
         param.jwt = new_jwt
         param.rotation_interval_minutes = rotation_interval_minutes
-        param.jwt_refresh_url = refresh_url
 
         await workflow.execute_activity(
             "msm-set-enrol",
             param,
+            start_to_close_timeout=MSM_TIMEOUT,
+        )
+
+        await workflow.execute_activity(
+            "msm-verify-token",
+            MSMTokenVerifyParam(
+                sm_url=new_url,
+                jwt=new_jwt,
+            ),
             start_to_close_timeout=MSM_TIMEOUT,
         )
 
@@ -406,7 +448,6 @@ class MSMEnrolSiteWorkflow:
                 site_name=input.site_name,
                 site_url=input.site_url,
                 rotation_interval_minutes=rotation_interval_minutes,
-                jwt_refresh_url=refresh_url,
             ),
             id="msm-heartbeat:region",
             id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
@@ -417,7 +458,6 @@ class MSMEnrolSiteWorkflow:
             MSMTokenRefreshParam(
                 sm_url=new_url,
                 jwt=new_jwt,
-                jwt_refresh_url=refresh_url,
                 rotation_interval_minutes=rotation_interval_minutes,
             ),
             id="msm-token-refresh:region",
@@ -523,10 +563,17 @@ class MSMTokenRefreshWorkflow:
                 url=input.sm_url,
                 jwt=new_token,
                 rotation_interval_minutes=rotation_interval_minutes,
-                jwt_refresh_url=input.jwt_refresh_url,
             )
             await workflow.execute_activity(
                 "msm-set-enrol",
                 param,
+                start_to_close_timeout=MSM_TIMEOUT,
+            )
+            await workflow.execute_activity(
+                "msm-verify-token",
+                MSMTokenVerifyParam(
+                    sm_url=input.sm_url,
+                    jwt=new_token,
+                ),
                 start_to_close_timeout=MSM_TIMEOUT,
             )

@@ -21,7 +21,11 @@ from maasapiserver.v3.services.secrets import LocalSecretsStorageService
 from maasserver.enum import NODE_STATUS
 from maastemporalworker.workflow.msm import (
     MachineStatsByStatus,
+    MSM_DETAIL_EP,
+    MSM_ENROL_EP,
+    MSM_REFRESH_EP,
     MSM_SECRET,
+    MSM_VERIFY_EP,
     MSMConnectorActivity,
     MSMConnectorParam,
     MSMEnrolParam,
@@ -30,19 +34,22 @@ from maastemporalworker.workflow.msm import (
     MSMHeartbeatWorkflow,
     MSMTokenRefreshParam,
     MSMTokenRefreshWorkflow,
+    MSMTokenVerifyParam,
 )
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.maasapiserver.fixtures.db import Fixture
 
 _MAAS_SITE_NAME = "maas-site"
 _MAAS_URL = "http://maas.local/"
-_MSM_ENROL_URL = "http://msm.local/site/v1/enrol"
-_MSM_DETAIL_URL = "http://msm.local/site/v1/details"
+_MSM_BASE_URL = "http://msm.local"
+_MSM_ENROL_URL = f"{_MSM_BASE_URL}{MSM_ENROL_EP}"
+_MSM_DETAIL_URL = f"{_MSM_BASE_URL}{MSM_DETAIL_EP}"
 _JWT_ENROL = "headers.claims.signature"
 _JWT_ACCESS = "headers.new-claims.signature"
 _CLUSTER_UUID = "abc-def"
 _JWT_ROTATION_INTERVAL = 0
-_JWT_REFRESH_URL = "http://msm.local/site/v1/enrol/refresh"
+_JWT_REFRESH_URL = f"{_MSM_BASE_URL}{MSM_REFRESH_EP}"
+_MSM_VERIFY_URL = f"{_MSM_BASE_URL}{MSM_VERIFY_EP}"
 
 
 @pytest.fixture
@@ -77,10 +84,9 @@ def hb_param() -> MSMHeartbeatParam:
     return MSMHeartbeatParam(
         site_name=_MAAS_SITE_NAME,
         site_url=_MAAS_URL,
-        sm_url=_MSM_DETAIL_URL,
+        sm_url=_MSM_BASE_URL,
         jwt=_JWT_ACCESS,
         rotation_interval_minutes=_JWT_ROTATION_INTERVAL,
-        jwt_refresh_url=_JWT_REFRESH_URL,
         status=MachineStatsByStatus(
             allocated=1,
             deployed=2,
@@ -91,10 +97,17 @@ def hb_param() -> MSMHeartbeatParam:
 @pytest.fixture
 def refresh_param() -> MSMTokenRefreshParam:
     return MSMTokenRefreshParam(
-        sm_url=_MSM_DETAIL_URL,
+        sm_url=_MSM_BASE_URL,
         jwt=_JWT_ACCESS,
-        jwt_refresh_url=_JWT_REFRESH_URL,
         rotation_interval_minutes=_JWT_ROTATION_INTERVAL,
+    )
+
+
+@pytest.fixture
+def verify_param() -> MSMTokenVerifyParam:
+    return MSMTokenVerifyParam(
+        sm_url=_MSM_BASE_URL,
+        jwt=_JWT_ACCESS,
     )
 
 
@@ -220,35 +233,31 @@ class TestMSMActivities:
 
     async def test_set_enrol(self, msm_act, secrets):
         param = MSMConnectorParam(
-            url=_MSM_DETAIL_URL,
+            url=_MSM_BASE_URL,
             jwt=_JWT_ACCESS,
             rotation_interval_minutes=_JWT_ROTATION_INTERVAL,
-            jwt_refresh_url=_JWT_REFRESH_URL,
         )
         env = ActivityEnvironment()
         await env.run(msm_act.set_enrol, param)
         cred = await secrets.get_composite_secret(f"global/{MSM_SECRET}")
-        assert cred["url"] == _MSM_DETAIL_URL
+        assert cred["url"] == _MSM_BASE_URL
         assert cred["jwt"] == _JWT_ACCESS
         assert cred["rotation_interval_minutes"] == _JWT_ROTATION_INTERVAL
-        assert cred["jwt_refresh_url"] == _JWT_REFRESH_URL
 
     async def test_get_enrol(self, msm_act, secrets):
         await secrets.set_composite_secret(
             f"global/{MSM_SECRET}",
             {
-                "url": _MSM_DETAIL_URL,
+                "url": _MSM_BASE_URL,
                 "jwt": _JWT_ACCESS,
                 "rotation_interval_minutes": _JWT_ROTATION_INTERVAL,
-                "jwt_refresh_url": _JWT_REFRESH_URL,
             },
         )
         env = ActivityEnvironment()
         secrets = await env.run(msm_act.get_enrol)
-        assert secrets["url"] == _MSM_DETAIL_URL
+        assert secrets["url"] == _MSM_BASE_URL
         assert secrets["jwt"] == _JWT_ACCESS
         assert secrets["rotation_interval_minutes"] == _JWT_ROTATION_INTERVAL
-        assert secrets["jwt_refresh_url"] == _JWT_REFRESH_URL
 
     async def test_get_heartbeat_data(self, msm_act, fixture: Fixture):
         for st in [
@@ -354,6 +363,18 @@ class TestMSMActivities:
         with pytest.raises(ApplicationError):
             await env.run(msm_act.refresh_token, hb_param)
 
+    async def test_verify_token(self, mocker, msm_act, verify_param):
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 200, None)
+        env = ActivityEnvironment()
+        ret = await env.run(msm_act.verify_token, verify_param)
+        mocked_session.get.assert_called_once()
+        args = mocked_session.get.call_args.args
+        kwargs = mocked_session.get.call_args.kwargs
+        assert ret
+        assert args[0] == _MSM_VERIFY_URL
+        assert _JWT_ACCESS in kwargs["headers"]["Authorization"]
+
 
 class TestMSMEnrolWorkflow:
     async def test_enrolment(self, enrol_param):
@@ -376,6 +397,11 @@ class TestMSMEnrolWorkflow:
         async def set_enrol(input: MSMConnectorParam) -> None:
             calls["msm-set-enrol"].append(replace(input))
 
+        @activity.defn(name="msm-verify-token")
+        async def verify_token(input: MSMTokenVerifyParam) -> bool:
+            calls["msm-verify-token"].append(replace(input))
+            return True
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -385,6 +411,7 @@ class TestMSMEnrolWorkflow:
                     send_enrol,
                     check_enrol,
                     set_enrol,
+                    verify_token,
                 ],
             ) as worker:
                 await env.client.execute_workflow(
@@ -399,9 +426,10 @@ class TestMSMEnrolWorkflow:
         assert calls["msm-check-enrol"][-1] == enrol_param
         cred = calls["msm-set-enrol"].pop()
         assert cred.jwt == _JWT_ACCESS
-        assert cred.url == _MSM_DETAIL_URL
+        assert cred.url == _MSM_BASE_URL
         assert cred.rotation_interval_minutes == _JWT_ROTATION_INTERVAL
-        assert cred.jwt_refresh_url == _JWT_REFRESH_URL
+        verify = calls["msm-verify-token"].pop()
+        assert verify.jwt == _JWT_ACCESS
 
     async def test_enrolment_fail(self, enrol_param):
         calls = defaultdict(list)
@@ -540,6 +568,11 @@ class TestMSMTokenRefreshWorkflow:
         async def set_enrol(input: MSMConnectorParam):
             calls["msm-set-enrol"].append(replace(input))
 
+        @activity.defn(name="msm-verify-token")
+        async def verify_token(input: MSMTokenVerifyParam) -> bool:
+            calls["msm-verify-token"].append(replace(input))
+            return True
+
         async with await WorkflowEnvironment.start_time_skipping() as env:
             async with Worker(
                 env.client,
@@ -548,6 +581,7 @@ class TestMSMTokenRefreshWorkflow:
                 activities=[
                     refresh_token,
                     set_enrol,
+                    verify_token,
                 ],
             ) as worker:
                 await env.client.execute_workflow(
@@ -559,6 +593,8 @@ class TestMSMTokenRefreshWorkflow:
         assert len(calls["msm-get-token-refresh"]) == 1
         assert len(calls["msm-set-enrol"]) == 1
         assert calls["msm-set-enrol"][0].jwt == "new_token"
+        verify = calls["msm-verify-token"].pop()
+        assert verify.jwt == "new_token"
 
     async def test_token_refresh_canceled_by_msm(self, refresh_param):
         calls = defaultdict(list)
