@@ -3,7 +3,7 @@
 
 from typing import Optional
 
-from pydantic.networks import IPvAnyAddress, IPvAnyNetwork
+from pydantic import IPvAnyAddress, IPvAnyNetwork
 
 from maasapiserver.v3.api.models.responses.base import BaseHal, BaseHref
 from maasapiserver.v3.api.models.responses.subnets import SubnetResponse

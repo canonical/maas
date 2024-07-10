@@ -2,11 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timezone
+from ipaddress import IPv4Address, IPv4Network
 
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.subnets import Subnet
 from maasserver.enum import RDNS_MODE
-from maastesting.factory import factory
 
 
 class TestSubnetModel:
@@ -16,9 +16,9 @@ class TestSubnetModel:
             id=1,
             name="my subnet",
             description="subnet description",
-            cidr=factory.make_ip4_or_6_network(),
+            cidr=IPv4Network("10.0.0.0/24"),
             rdns_mode=RDNS_MODE.DEFAULT,
-            gateway_ip=factory.make_ip_address(),
+            gateway_ip=IPv4Address("10.0.0.1"),
             dns_servers=[],
             allow_dns=True,
             allow_proxy=True,

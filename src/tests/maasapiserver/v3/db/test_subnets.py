@@ -44,17 +44,3 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
                 )
             )
         )
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id_not_found(
-        self, repository_instance: SubnetsRepository
-    ):
-        pass
-
-    @pytest.mark.skip(reason="Not implemented yet")
-    async def test_find_by_id(
-        self,
-        repository_instance: SubnetsRepository,
-        _created_instance: Subnet,
-    ):
-        pass

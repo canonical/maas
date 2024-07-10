@@ -4,7 +4,7 @@
 from typing import Any
 
 from sqlalchemy import desc, select, Select
-from sqlalchemy.sql.operators import le
+from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import SubnetTable
 from maasapiserver.v3.api.models.requests.subnets import SubnetRequest
@@ -18,7 +18,13 @@ class SubnetsRepository(BaseRepository[Subnet, SubnetRequest]):
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Subnet | None:
-        raise NotImplementedError()
+        stmt = self._select_all_statement().filter(eq(SubnetTable.c.id, id))
+
+        result = await self.connection.execute(stmt)
+        subnet = result.first()
+        if not subnet:
+            return None
+        return Subnet(**subnet._asdict())
 
     async def find_by_name(self, name: str) -> Subnet | None:
         raise NotImplementedError()

@@ -1,6 +1,9 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from httpx import AsyncClient
+
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.models.responses.subnets import SubnetsListResponse
 from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -65,5 +68,78 @@ class TestSubnetApi(ApiCommonTests):
                     create_resources_routine=create_pagination_test_resources,
                     assert_routine=_assert_subnet_in_list,
                 ),
-            )
+            ),
+            EndpointDetails(
+                method="GET",
+                path=f"{V3_API_PREFIX}/subnets/1",
+                user_role=UserRole.USER,
+            ),
         ]
+
+    # GET /subnets/{subnet_id}
+    async def test_get_200(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        created_subnet = Subnet(
+            **(
+                await create_test_subnet_entry(
+                    fixture, name="subnet", description="descr"
+                )
+            )
+        )
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/subnets/{created_subnet.id}"
+        )
+        assert response.status_code == 200
+        assert len(response.headers["ETag"]) > 0
+        assert response.json() == {
+            "kind": "Subnet",
+            "id": created_subnet.id,
+            "name": created_subnet.name,
+            "description": created_subnet.description,
+            "cidr": str(created_subnet.cidr),
+            "dns_servers": created_subnet.dns_servers,
+            "gateway_ip": created_subnet.gateway_ip,
+            "rdns_mode": created_subnet.rdns_mode,
+            "allow_proxy": created_subnet.allow_proxy,
+            "active_discovery": created_subnet.active_discovery,
+            "managed": created_subnet.managed,
+            "allow_dns": created_subnet.allow_dns,
+            "disabled_boot_architectures": created_subnet.disabled_boot_architectures,
+            # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
+            "_embedded": None,
+            "vlan": {
+                "href": f"{V3_API_PREFIX}/vlans?filter=subnet_id eq {created_subnet.id}"
+            },
+            "_links": {
+                "self": {
+                    "href": f"{V3_API_PREFIX}/subnets/{created_subnet.id}"
+                }
+            },
+        }
+
+    async def test_get_404(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/subnets/100"
+        )
+        assert response.status_code == 404
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
+
+    async def test_get_422(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/subnets/xyz"
+        )
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422

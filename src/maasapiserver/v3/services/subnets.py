@@ -24,3 +24,6 @@ class SubnetsService(Service):
 
     async def list(self, token: str | None, size: int) -> ListResult[Subnet]:
         return await self.subnets_repository.list(token=token, size=size)
+
+    async def get_by_id(self, id: int) -> Subnet | None:
+        return await self.subnets_repository.find_by_id(id=id)
