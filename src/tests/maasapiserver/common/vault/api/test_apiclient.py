@@ -37,7 +37,7 @@ class TestAsyncVaultApiClient:
             "wrap_info": None,
             "warnings": None,
             "auth": {
-                "client_token": "hvb.AAAAAQL-6XY0VtSVJreHr1tKcwsa4knMHJMiRhyQ6oWL0Q1sosxtbf04ktzR9gTXxsI5FhGEADVuqft6SchkvM9eJuSyf49PwbXkw-28BL3XTNacF-zNzOx1ScKnjYJIKSKKQ618OfPdE0EdwC0v0zp9Bj_CIAnx-j3vtMhIKO9Lo65VNuc8PG-uZimrbShohwZqB3K46VI9oIDJ",
+                "client_token": "mytoken",
                 "accessor": "",
                 "policies": ["default"],
                 "token_policies": ["default"],
@@ -106,7 +106,7 @@ class TestAsyncVaultApiClient:
                 "entity_id": "684fb4ca-7aec-e8f3-1183-23267b2bbcbf",
                 "expire_time": "2024-07-02T13:03:09Z",
                 "explicit_max_ttl": 0,
-                "id": "hvb.AAAAAQLLca5KVd7Av80ZNMeVKmkuUmLrBMwdqKGQLb-zgCxpvZf264K9ywfGkT-i6FND4NT3ttvIGZaiSvjP2guNbA4cZZMY1UvMCCVgvO9QHXDlfzLuNleSv95P1lvQXlEHQzf4MeQJygQvy8apIYHpoh3JgE-BfXWKmirSnzj9K0Z3oPZOE7qVrPu-xoLk6cM0xLdyZ6NgGXrU",
+                "id": "myid",
                 "issue_time": "2024-05-31T13:03:09Z",
                 "meta": {"role_name": "my-role"},
                 "num_uses": 0,
@@ -126,10 +126,7 @@ class TestAsyncVaultApiClient:
             "/v1/auth/token/lookup-self", status=200, payload=expected_response
         )
 
-        headers = {
-            "X-Vault-Token": "hvb.AAAAAQLLca5KVd7Av80ZNMeVKmkuUmLrBMwdqKGQLb-zgCxpvZf264K9ywfGkT"
-            "-i6FND4NT3ttvIGZaiSvjP2guNbA4cZZMY1UvMCCVgvO9QHXDlfzLuNleSv95P1lvQXlEHQzf4MeQJygQvy8apIYHpoh3JgE-BfXWKmirSnzj9K0Z3oPZOE7qVrPu-xoLk6cM0xLdyZ6NgGXrU"
-        }
+        headers = {"X-Vault-Token": "mytoken"}
         response = await client.token_lookup_self(headers=headers)
         assert response == TokenLookupSelfResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_with(
