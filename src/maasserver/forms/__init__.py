@@ -98,7 +98,6 @@ from maasserver.clusterrpc.driver_parameters import (
     get_driver_parameters,
     get_driver_types,
 )
-from maasserver.clusterrpc.osystems import validate_license_key
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -180,7 +179,10 @@ from maasserver.utils.osystems import (
     list_release_choices,
     validate_min_hwe_kernel,
 )
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import (
+    OperatingSystemRegistry,
+    validate_license_key,
+)
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
@@ -913,12 +915,20 @@ class MachineForm(NodeForm):
         if key == "":
             return ""
 
-        os_name = self.cleaned_data.get("osystem")
+        os_system = self.cleaned_data.get("osystem")
         series = self.cleaned_data.get("distro_series")
-        if os_name == "":
+        if os_system == "":
             return ""
 
-        if not validate_license_key(os_name, series, key):
+        try:
+            is_valid = validate_license_key(os_system, series, key)
+        except Exception:
+            # The original implementation (as RPC call) considers that any
+            # error raised during the key validation gets treated as the
+            # license key is invalid, independently of the type of error.
+            is_valid = False
+
+        if not is_valid:
             raise ValidationError("Invalid license key.")
         return key
 
@@ -2399,8 +2409,8 @@ class LicenseKeyForm(MAASModelForm):
     def clean(self):
         """Validate distro_series and osystem match, and license_key is valid
         for selected operating system and series."""
-        # Get the clean_data, check that all of the fields we need are
-        # present. If not then the form will error, so no reason to continue.
+        # Get the clean_data, check that all the fields we need are  present.
+        # If not then the form will error, so no reason to continue.
         cleaned_data = super().clean()
         required_fields = ["license_key", "osystem", "distro_series"]
         for field in required_fields:
@@ -2430,9 +2440,18 @@ class LicenseKeyForm(MAASModelForm):
         cleaned_key = cleaned_data["license_key"]
         cleaned_osystem = cleaned_data["osystem"]
         cleaned_series = cleaned_data["distro_series"]
-        if not validate_license_key(
-            cleaned_osystem, cleaned_series, cleaned_key
-        ):
+
+        try:
+            is_valid = validate_license_key(
+                cleaned_osystem, cleaned_series, cleaned_key
+            )
+        except Exception:
+            # The original implementation (as RPC call) considers that any
+            # error raised during the key validation gets treated as the
+            # license key is invalid, independently of the type of error.
+            is_valid = False
+
+        if not is_valid:
             raise ValidationError("Invalid license key.")
 
 

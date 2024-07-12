@@ -4,9 +4,10 @@
 """Osystem Drivers."""
 
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 
+from provisioningserver.rpc import exceptions
 from provisioningserver.utils.registry import Registry
 
 
@@ -38,11 +39,13 @@ Token = namedtuple("Token", ("consumer_key", "token_key", "token_secret"))
 class OperatingSystem(metaclass=ABCMeta):
     """Skeleton for an operating system."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self):
         """Name of the operating system."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def title(self):
         """Title of the operating system."""
 
@@ -127,14 +130,14 @@ class OperatingSystem(metaclass=ABCMeta):
         """
         return False
 
-    def validate_license_key(self, release, key):
+    def validate_license_key(self, release: str, key: str) -> bool:
         """Validate a license key for a release.
 
         This is only called if the release requires a license key.
 
         :param release: Release
         :param key: License key
-        :return: True if valid, false otherwise
+        :return: True if valid, False otherwise
         """
         raise NotImplementedError()
 
@@ -228,6 +231,20 @@ from provisioningserver.drivers.osystem.ubuntucore import (  # noqa:E402 isort:s
 from provisioningserver.drivers.osystem.windows import (  # noqa:E402 isort:skip
     WindowsOS,
 )
+
+
+def validate_license_key(osystem: str, release: str, key: str) -> bool:
+    """Validate a license key.
+
+    :raises NoSuchOperatingSystem: If ``osystem`` is not found.
+    """
+    try:
+        osystem = OperatingSystemRegistry[osystem]
+    except KeyError:
+        raise exceptions.NoSuchOperatingSystem(osystem)
+    else:
+        return osystem.validate_license_key(release, key)
+
 
 builtin_osystems = [
     UbuntuOS(),

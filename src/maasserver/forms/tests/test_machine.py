@@ -382,7 +382,7 @@ class TestMachineForm(MAASServerTestCase):
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
-        mock_validate_for = self.patch(forms, "validate_license_key_for")
+        mock_validate_for = self.patch(forms, "validate_license_key")
         mock_validate_for.return_value = False
         form = MachineForm(
             data={
@@ -406,7 +406,7 @@ class TestMachineForm(MAASServerTestCase):
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
-        mock_validate_for = self.patch(forms, "validate_license_key_for")
+        mock_validate_for = self.patch(forms, "validate_license_key")
         mock_validate_for.side_effect = NoConnectionsAvailable()
         form = MachineForm(
             data={
@@ -430,7 +430,7 @@ class TestMachineForm(MAASServerTestCase):
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
-        mock_validate_for = self.patch(forms, "validate_license_key_for")
+        mock_validate_for = self.patch(forms, "validate_license_key")
         mock_validate_for.side_effect = TimeoutError()
         form = MachineForm(
             data={
@@ -454,7 +454,7 @@ class TestMachineForm(MAASServerTestCase):
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
-        mock_validate_for = self.patch(forms, "validate_license_key_for")
+        mock_validate_for = self.patch(forms, "validate_license_key")
         mock_validate_for.side_effect = NoSuchOperatingSystem()
         form = MachineForm(
             data={

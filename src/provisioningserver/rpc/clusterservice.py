@@ -66,7 +66,6 @@ from provisioningserver.rpc.common import Ping, RPCProtocol
 from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
-from provisioningserver.rpc.osystems import validate_license_key
 from provisioningserver.rpc.power import (
     get_power_state,
     maybe_change_power_state,
@@ -289,15 +288,6 @@ class Cluster(RPCProtocol):
                 PowerDriverRegistry.get_schema(detect_missing_packages=False)
             )
         }
-
-    @cluster.ValidateLicenseKey.responder
-    def validate_license_key(self, osystem, release, key):
-        """validate_license_key()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ValidateLicenseKey`.
-        """
-        return {"is_valid": validate_license_key(osystem, release, key)}
 
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):

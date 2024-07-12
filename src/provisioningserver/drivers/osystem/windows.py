@@ -49,6 +49,10 @@ REQUIRE_LICENSE_KEY = [
     "win10ent",
 ]
 
+WINDOWS_LICENSE_KEY_PATTERN: re.Pattern = re.compile(
+    "^([A-Za-z0-9]{5}-){4}[A-Za-z0-9]{5}$"
+)
+
 
 class WindowsOS(OperatingSystem):
     """Windows operating system."""
@@ -72,9 +76,8 @@ class WindowsOS(OperatingSystem):
     def requires_license_key(self, release):
         return release in REQUIRE_LICENSE_KEY
 
-    def validate_license_key(self, release, key):
-        r = re.compile("^([A-Za-z0-9]{5}-){4}[A-Za-z0-9]{5}$")
-        return r.match(key)
+    def validate_license_key(self, release: str, key: str) -> bool:
+        return bool(WINDOWS_LICENSE_KEY_PATTERN.match(key))
 
     def compose_preseed(self, preseed_type, node, token, metadata_url):
         """Since this method exists in the WindowsOS class, it will be called

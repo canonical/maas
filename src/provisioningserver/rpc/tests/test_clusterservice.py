@@ -1911,55 +1911,6 @@ class TestClusterClientCheckerService(MAASTestCase):
         client._conn.transport.loseConnection.assert_called_once_with()
 
 
-class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.ValidateLicenseKey.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_calls_validate_license_key(self):
-        validate_license_key = self.patch(
-            clusterservice, "validate_license_key"
-        )
-        validate_license_key.return_value = factory.pick_bool()
-        arguments = {
-            "osystem": factory.make_name("osystem"),
-            "release": factory.make_name("release"),
-            "key": factory.make_name("key"),
-        }
-        observed = yield call_responder(
-            Cluster(), cluster.ValidateLicenseKey, arguments
-        )
-        expected = {"is_valid": validate_license_key.return_value}
-        self.assertEqual(expected, observed)
-        # The arguments are passed to the responder positionally.
-        validate_license_key.assert_called_once_with(
-            arguments["osystem"], arguments["release"], arguments["key"]
-        )
-
-    @inlineCallbacks
-    def test_exception_when_os_does_not_exist(self):
-        # A remote NoSuchOperatingSystem exception is re-raised locally.
-        validate_license_key = self.patch(
-            clusterservice, "validate_license_key"
-        )
-        validate_license_key.side_effect = exceptions.NoSuchOperatingSystem()
-        arguments = {
-            "osystem": factory.make_name("osystem"),
-            "release": factory.make_name("release"),
-            "key": factory.make_name("key"),
-        }
-        with TestCase.assertRaises(self, exceptions.NoSuchOperatingSystem):
-            yield call_responder(
-                Cluster(), cluster.ValidateLicenseKey, arguments
-            )
-
-
 class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
