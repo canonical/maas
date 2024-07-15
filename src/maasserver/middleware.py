@@ -416,10 +416,10 @@ class ExternalAuthInfoMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        request.external_auth_info = self._get_external_auth_info(request)
+        request.external_auth_info = self._get_external_auth_info()
         return self.get_response(request)
 
-    def _get_external_auth_info(self, request):
+    def _get_external_auth_info(self):
         config = SecretManager().get_composite_secret(
             "external-auth", default={}
         )
