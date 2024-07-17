@@ -251,9 +251,9 @@ def probe_proxmox_and_enlist(
         "power_pass": password,
         "power_token_name": token_name,
         "power_token_secret": token_secret,
-        "power_verify_ssl": SSL_INSECURE_YES
-        if verify_ssl
-        else SSL_INSECURE_NO,
+        "power_verify_ssl": (
+            SSL_INSECURE_YES if verify_ssl else SSL_INSECURE_NO
+        ),
     }
     mac_regex = re.compile(r"(([\dA-F]{2}[:]){5}[\dA-F]{2})", re.I)
 

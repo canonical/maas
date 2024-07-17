@@ -406,9 +406,9 @@ class TestDNSConfigModifications(TestDNSServer):
             factory.make_Domain(authoritative=False)
         node, static = self.create_node_with_static_ip(domain=domain)
         fake_serial = random.randint(1, 1000)
-        self.patch(
-            dns_config_module, "current_zone_serial"
-        ).return_value = fake_serial
+        self.patch(dns_config_module, "current_zone_serial").return_value = (
+            fake_serial
+        )
         serial, reloaded, domains = dns_update_all_zones(
             reload_timeout=RELOAD_TIMEOUT
         )
@@ -429,9 +429,9 @@ class TestDNSConfigModifications(TestDNSServer):
             factory.make_Domain(authoritative=False)
         node, static = self.create_node_with_static_ip(domain=domain)
         fake_serial = random.randint(1, 1000)
-        self.patch(
-            dns_config_module, "current_zone_serial"
-        ).return_value = fake_serial
+        self.patch(dns_config_module, "current_zone_serial").return_value = (
+            fake_serial
+        )
         reload_call = self.patch(dns_config_module, "bind_reload")
         serial1, reloaded, _ = dns_update_all_zones(
             reload_timeout=RELOAD_TIMEOUT

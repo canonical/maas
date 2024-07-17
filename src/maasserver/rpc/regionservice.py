@@ -754,11 +754,11 @@ class RegionServer(Region):
                 get_cluster_certificate
             )
             return {
-                "encrypted_cluster_certificate": encrypted_certificate.decode(
-                    "utf-8"
-                )
-                if encrypted_certificate
-                else None,
+                "encrypted_cluster_certificate": (
+                    encrypted_certificate.decode("utf-8")
+                    if encrypted_certificate
+                    else None
+                ),
                 "system_id": self.ident,
                 "uuid": GLOBAL_LABELS["maas_uuid"],
             }

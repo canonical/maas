@@ -142,7 +142,7 @@ class BootSourceSelectionsHandler(OperationsHandler):
 
     api_doc_section_name = "Boot source selections"
 
-    create = replace = update = delete = None
+    replace = update = delete = None
 
     @classmethod
     def resource_uri(cls, boot_source=None):

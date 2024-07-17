@@ -79,9 +79,9 @@ def _parse_tokens(char_list):
     index = 0
     dictionary_fragment = OrderedDict()
     new_char_list = copy.deepcopy(char_list)
-    if type(new_char_list) == str:
+    if isinstance(new_char_list, str):
         return new_char_list
-    if type(new_char_list) == OrderedDict:
+    if isinstance(new_char_list, OrderedDict):
         return new_char_list
     last_open = None
     continuous_line = False
@@ -133,11 +133,11 @@ def _parse_tokens(char_list):
             # If there are more than 1 'keywords' at new_char_list[index]
             # ex - "recursion no;"
             elif len(new_char_list[index].split()) >= 2:
-                if type(dictionary_fragment) == list:
+                if isinstance(dictionary_fragment, list):
                     raise ISCParseException("Syntax error")
-                dictionary_fragment[
-                    new_char_list[index].split()[0]
-                ] = " ".join(new_char_list[index].split()[1:])
+                dictionary_fragment[new_char_list[index].split()[0]] = (
+                    " ".join(new_char_list[index].split()[1:])
+                )
                 index += 1
 
             # If there is just 1 'keyword' at new_char_list[index]
@@ -145,7 +145,7 @@ def _parse_tokens(char_list):
             # fine)
             elif new_char_list[index] not in ["{", ";", "}"]:
                 key = new_char_list[index]
-                if type(dictionary_fragment) == list:
+                if isinstance(dictionary_fragment, list):
                     raise ISCParseException("Syntax error")
                 dictionary_fragment[key] = ""
                 index += 1
@@ -262,15 +262,15 @@ def make_isc_string(isc_dict, terminate=True):
         terminator = ";"
     else:
         terminator = ""
-    if type(isc_dict) == str:
+    if isinstance(isc_dict, str):
         return isc_dict
     isc_list = []
     for option in isc_dict:
-        if type(isc_dict[option]) == bool:
+        if isinstance(isc_dict[option], bool):
             isc_list.append(f"{option}{terminator}")
-        elif type(isc_dict[option]) == str or type(isc_dict[option]) == str:
+        elif isinstance(isc_dict[option], str):
             isc_list.append(f"{option} {isc_dict[option]}{terminator}")
-        elif type(isc_dict[option]) == list:
+        elif isinstance(isc_dict[option], list):
             new_list = []
             for item in isc_dict[option]:
                 new_list.append(make_isc_string(item, terminate=False))
@@ -278,10 +278,7 @@ def make_isc_string(isc_dict, terminate=True):
             isc_list.append(
                 "{} {{ {} }}{}".format(option, " ".join(new_list), terminator)
             )
-        elif (
-            type(isc_dict[option]) == OrderedDict
-            or type(isc_dict[option]) == dict
-        ):
+        elif isinstance(isc_dict[option], (OrderedDict, dict)):
             isc_list.append(
                 "%s { %s }%s"
                 % (option, make_isc_string(isc_dict[option]), terminator)

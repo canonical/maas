@@ -134,9 +134,11 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
         maaslog.info(
             "%s all %s entries."
             % (
-                "Cleared"
-                if user is None
-                else "User '%s' cleared" % (user.username),
+                (
+                    "Cleared"
+                    if user is None
+                    else "User '%s' cleared" % (user.username)
+                ),
                 what,
             )
         )
@@ -154,9 +156,11 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
             maaslog.info(
                 "%s%s."
                 % (
-                    "Cleared"
-                    if user is None
-                    else "User '%s' cleared" % (user.username),
+                    (
+                        "Cleared"
+                        if user is None
+                        else "User '%s' cleared" % (user.username)
+                    ),
                     f" neighbour entry: {ip} ({mac})",
                 )
             )

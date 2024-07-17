@@ -290,9 +290,7 @@ class TestVMCluster(MAASServerTestCase):
                 pool_type="ceph",
                 storage=storage_shared_total,
             )
-            disk_size = random.randint(
-                1 * 1024**3, storage_shared_total // 3
-            )
+            disk_size = random.randint(1 * 1024**3, storage_shared_total // 3)
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool1, size=disk_size
             )
@@ -421,9 +419,7 @@ class TestVMCluster(MAASServerTestCase):
                 path="/shared",
                 storage=storage_shared_total,
             )
-            disk_size = random.randint(
-                1 * 1024**3, storage_shared_total // 3
-            )
+            disk_size = random.randint(1 * 1024**3, storage_shared_total // 3)
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool1, size=disk_size
             )

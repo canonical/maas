@@ -31,9 +31,9 @@ def pytest_configure(config):
 @pytest.hookimpl(tryfirst=True)
 def pytest_load_initial_conftests(early_config, parser, args):
     if os.environ.get("DJANGO_SETTINGS_MODULE") is None:
-        os.environ[
-            "DJANGO_SETTINGS_MODULE"
-        ] = "maasserver.djangosettings.development"
+        os.environ["DJANGO_SETTINGS_MODULE"] = (
+            "maasserver.djangosettings.development"
+        )
 
     import django
     from django.conf import settings

@@ -481,9 +481,9 @@ class TestRepoDumper(MAASTestCase):
         dumper = RepoDumper(boot_images_dict)
         subarches = [factory.make_name("subarch") for _ in range(3)]
         item, _ = self.make_item(subarch=subarches.pop(), subarches=subarches)
-        self.patch(
-            download_descriptions, "products_exdata"
-        ).return_value = item
+        self.patch(download_descriptions, "products_exdata").return_value = (
+            item
+        )
         dumper.insert_item(
             sentinel.data,
             sentinel.src,
@@ -644,9 +644,9 @@ class TestRepoDumper(MAASTestCase):
         item, _ = self.make_item(
             arch="amd64", bootloader_type="uefi", os="grub-efi-signed"
         )
-        self.patch(
-            download_descriptions, "products_exdata"
-        ).return_value = item
+        self.patch(download_descriptions, "products_exdata").return_value = (
+            item
+        )
         dumper.insert_item(
             {
                 "bootloader_type": "uefi",
@@ -678,9 +678,9 @@ class TestRepoDumper(MAASTestCase):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict)
         item, _ = self.make_item(os="ubuntu")
-        self.patch(
-            download_descriptions, "products_exdata"
-        ).return_value = item
+        self.patch(download_descriptions, "products_exdata").return_value = (
+            item
+        )
         dumper.insert_item(
             {"os": "ubuntu"},
             sentinel.src,
@@ -697,9 +697,9 @@ class TestRepoDumper(MAASTestCase):
         boot_images_dict = BootImageMapping()
         dumper = RepoDumper(boot_images_dict, validate_products=False)
         item, _ = self.make_item(os="ubuntu")
-        self.patch(
-            download_descriptions, "products_exdata"
-        ).return_value = item
+        self.patch(download_descriptions, "products_exdata").return_value = (
+            item
+        )
         dumper.insert_item(
             {"os": "ubuntu"},
             sentinel.src,

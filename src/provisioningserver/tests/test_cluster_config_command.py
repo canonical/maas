@@ -73,9 +73,9 @@ class TestAddArguments(MAASTestCase):
                         parsed_param_name = param_name[2:].replace("-", "_")
 
                         if param_name not in test_arg_names:
-                            expected_args[
-                                parsed_param_name
-                            ] = default_arg_values[param_name]
+                            expected_args[parsed_param_name] = (
+                                default_arg_values[param_name]
+                            )
                         else:
                             expected_args[parsed_param_name] = observed_args[
                                 parsed_param_name

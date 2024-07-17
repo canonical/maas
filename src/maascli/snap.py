@@ -910,9 +910,11 @@ class cmd_config(SnapCommand):
             # Restart the pebble as its required.
             if restart_required:
                 perform_work(
-                    "Restarting services"
-                    if running_mode != "none"
-                    else "Stopping services",
+                    (
+                        "Restarting services"
+                        if running_mode != "none"
+                        else "Stopping services"
+                    ),
                     restart_pebble,
                 )
 

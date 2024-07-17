@@ -142,9 +142,9 @@ class TestInnerStartUp(MAASServerTestCase):
         self.versions_info = DebVersionsInfo(
             current={"version": "1:3.1.0-1234-g.deadbeef"}
         )
-        self.patch(
-            start_up, "get_versions_info"
-        ).return_value = self.versions_info
+        self.patch(start_up, "get_versions_info").return_value = (
+            self.versions_info
+        )
         temp_dir = Path(self.make_dir())
         self.patch(MAAS_SHARED_SECRET, "_path", lambda: temp_dir / "secret")
         MAAS_SECRET.set(factory.make_bytes())
@@ -275,9 +275,9 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test_logs_deprecation_notifications(self):
         self.patch(deprecations, "postgresql_major_version").return_value = 12
-        self.patch(
-            deprecations, "get_database_owner"
-        ).return_value = "postgres"
+        self.patch(deprecations, "get_database_owner").return_value = (
+            "postgres"
+        )
         mock_log = self.patch(start_up, "log")
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
@@ -379,9 +379,9 @@ class TestVaultMigrateDbCredentials(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.creds_path = factory.make_name("uuid")
-        self.patch(
-            start_up, "get_db_creds_vault_path"
-        ).return_value = self.creds_path
+        self.patch(start_up, "get_db_creds_vault_path").return_value = (
+            self.creds_path
+        )
 
     def test_does_nothing_when_on_disk_and_vault_disabled(self):
         db_name = factory.make_name("uuid")

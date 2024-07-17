@@ -76,9 +76,9 @@ class TestSSLKey(MAASServerTestCase):
         self.assertIsInstance(display, SafeString)
 
     def test_sslkey_display_is_HTML_safe(self):
-        self.patch(
-            sslkey_module, "find_ssl_common_name"
-        ).return_value = "<escape>"
+        self.patch(sslkey_module, "find_ssl_common_name").return_value = (
+            "<escape>"
+        )
         key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
         key = SSLKey(key=key_string, user=user)

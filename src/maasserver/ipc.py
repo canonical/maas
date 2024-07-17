@@ -420,9 +420,9 @@ class IPCMasterService(service.Service):
             def set_result(conn):
                 connid, *conn, created = conn
                 if created:
-                    self.connections[pid]["rpc"]["connections"][
-                        connid
-                    ] = tuple(conn)
+                    self.connections[pid]["rpc"]["connections"][connid] = (
+                        tuple(conn)
+                    )
                 else:
                     self.connections[pid]["rpc"]["burst_connections"][
                         connid

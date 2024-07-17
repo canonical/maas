@@ -4858,9 +4858,11 @@ class Node(CleanSave, TimestampedModel):
                     {
                         "address": link["ip_address"].ip,
                         "netmask": link["subnet"].netmask,
-                        "family": "inet"
-                        if link["subnet"].get_ip_version() == 4
-                        else "inet6",
+                        "family": (
+                            "inet"
+                            if link["subnet"].get_ip_version() == 4
+                            else "inet6"
+                        ),
                         "scope": "global",
                     }
                     for link in iface.get_links()

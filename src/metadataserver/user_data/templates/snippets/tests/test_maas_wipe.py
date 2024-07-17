@@ -202,9 +202,9 @@ class TestMAASWipe(MAASTestCase):
             }
             for _ in range(3)
         ]
-        self.patch(
-            maas_wipe, "get_hdparm_security_info"
-        ).side_effect = security_info
+        self.patch(maas_wipe, "get_hdparm_security_info").side_effect = (
+            security_info
+        )
         observed = get_disk_info()
         self.assertEqual(
             {disk_names[i]: security_info[i] for i in range(3)}, observed
@@ -420,9 +420,9 @@ class TestMAASWipe(MAASTestCase):
             }
             for _ in range(3)
         ]
-        self.patch(
-            maas_wipe, "get_nvme_security_info"
-        ).side_effect = security_info
+        self.patch(maas_wipe, "get_nvme_security_info").side_effect = (
+            security_info
+        )
         observed = get_disk_info()
         self.assertEqual(
             {disk_names[i]: security_info[i] for i in range(3)}, observed
@@ -720,9 +720,9 @@ class TestMAASWipe(MAASTestCase):
 
         # Fail to get disk info just to exit early.
         exception_type = factory.make_exception_type()
-        self.patch(
-            maas_wipe, "get_hdparm_security_info"
-        ).side_effect = exception_type()
+        self.patch(maas_wipe, "get_hdparm_security_info").side_effect = (
+            exception_type()
+        )
 
         self.assertRaises(exception_type, secure_erase_hdparm, dev_name)
         mock_check_output.assert_called_once_with(

@@ -50,8 +50,9 @@ def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
     """
 
     def wrapper(
-        authenticated_user: AuthenticatedUser
-        | None = Depends(get_authenticated_user),
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
         openapi_security_generator: None = Depends(oauth2_bearer_openapi),
     ) -> AuthenticatedUser:
         """

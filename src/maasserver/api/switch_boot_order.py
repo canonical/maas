@@ -26,6 +26,6 @@ class SwitchBootOrderHandler(OperationsHandler):
         data = request.data
         machine = Machine.objects.get(system_id=system_id)
         network_boot = data.get("network_boot", False)
-        if type(network_boot) == str:
+        if isinstance(network_boot, str):
             network_boot = json.loads(network_boot.lower())
         machine.set_boot_order(network_boot=network_boot)

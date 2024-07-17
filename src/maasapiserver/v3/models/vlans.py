@@ -36,9 +36,11 @@ class Vlan(MaasTimestampedBaseModel):
             secondary_rack=self.secondary_rack_id,
             relay_vlan=self.relay_vlan,
             fabric=BaseHref(href=f"{V3_API_PREFIX}/fabrics/{self.fabric_id}"),
-            space=BaseHref(href=f"{V3_API_PREFIX}/spaces/{self.space_id}")
-            if self.space_id
-            else None,
+            space=(
+                BaseHref(href=f"{V3_API_PREFIX}/spaces/{self.space_id}")
+                if self.space_id
+                else None
+            ),
             hal_links=BaseHal(
                 self=BaseHref(
                     href=f"{self_base_hyperlink.rstrip('/')}/{self.id}"

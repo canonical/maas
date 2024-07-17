@@ -1065,9 +1065,9 @@ class TestRequestCommissioningResults(MAASTransactionServerTestCase):
     async def test_request_commissioning_results_call(self):
         client = Mock()
         client.return_value = succeed(None)
-        self.patch(
-            vmhost_module, "getClientFromIdentifiers"
-        ).return_value = client
+        self.patch(vmhost_module, "getClientFromIdentifiers").return_value = (
+            client
+        )
         machine = await deferToDatabase(factory.make_Machine)
         pod = await deferToDatabase(factory.make_Pod, host=machine)
         power_params = await deferToDatabase(pod.get_power_parameters)

@@ -2681,16 +2681,16 @@ class TestProcessLXDResults(MAASServerTestCase):
             "devices": [pcie_device1, pcie_device2],
             "total": 2,
         }
-        lxd_output["resources"]["network"]["cards"][0][
-            "pci_address"
-        ] = pcie_device1["pci_address"]
-        lxd_output["resources"]["network"]["cards"][1][
-            "pci_address"
-        ] = pcie_device2["pci_address"]
-        lxd_output["resources"]["network"]["cards"][2][
-            "usb_address"
-        ] = "{}:{}".format(
-            usb_device["bus_address"], usb_device["device_address"]
+        lxd_output["resources"]["network"]["cards"][0]["pci_address"] = (
+            pcie_device1["pci_address"]
+        )
+        lxd_output["resources"]["network"]["cards"][1]["pci_address"] = (
+            pcie_device2["pci_address"]
+        )
+        lxd_output["resources"]["network"]["cards"][2]["usb_address"] = (
+            "{}:{}".format(
+                usb_device["bus_address"], usb_device["device_address"]
+            )
         )
         del lxd_output["resources"]["network"]["cards"][2]["pci_address"]
 
@@ -2713,13 +2713,13 @@ class TestProcessLXDResults(MAASServerTestCase):
             "devices": [pcie_device],
             "total": 1,
         }
-        lxd_output["resources"]["storage"]["disks"][0][
-            "pci_address"
-        ] = pcie_device["pci_address"]
-        lxd_output["resources"]["storage"]["disks"][1][
-            "usb_address"
-        ] = "{}:{}".format(
-            usb_device["bus_address"], usb_device["device_address"]
+        lxd_output["resources"]["storage"]["disks"][0]["pci_address"] = (
+            pcie_device["pci_address"]
+        )
+        lxd_output["resources"]["storage"]["disks"][1]["usb_address"] = (
+            "{}:{}".format(
+                usb_device["bus_address"], usb_device["device_address"]
+            )
         )
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
@@ -3011,13 +3011,13 @@ class TestProcessLXDResults(MAASServerTestCase):
         for k, v in modified_sample_lxd_data["resources"]["system"].items():
             if isinstance(v, dict):
                 for x, w in v.items():
-                    modified_sample_lxd_data["resources"]["system"][k][
-                        x
-                    ] = random.choice([None, "0123456789", "none"])
+                    modified_sample_lxd_data["resources"]["system"][k][x] = (
+                        random.choice([None, "0123456789", "none"])
+                    )
             else:
-                modified_sample_lxd_data["resources"]["system"][
-                    k
-                ] = random.choice([None, "0123456789", "none"])
+                modified_sample_lxd_data["resources"]["system"][k] = (
+                    random.choice([None, "0123456789", "none"])
+                )
         process_lxd_results(
             node, json.dumps(modified_sample_lxd_data).encode(), 0
         )

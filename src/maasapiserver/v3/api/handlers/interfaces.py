@@ -54,8 +54,10 @@ class InterfacesHandler(Handler):
                 )
                 for interface in interfaces.items
             ],
-            next=f"{V3_API_PREFIX}/machines/{node_id}/interfaces?"
-            f"{TokenPaginationParams.to_href_format(interfaces.next_token, token_pagination_params.size)}"
-            if interfaces.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/machines/{node_id}/interfaces?"
+                f"{TokenPaginationParams.to_href_format(interfaces.next_token, token_pagination_params.size)}"
+                if interfaces.next_token
+                else None
+            ),
         )

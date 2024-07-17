@@ -153,7 +153,7 @@ class SecretsServiceFactory:
     @classmethod
     async def produce(
         cls, connection: AsyncConnection, config_service: ConfigurationsService
-    ) -> (SecretsService):
+    ) -> SecretsService:
         """
         Produce a `SecretService` based on the configuration settings.
         This method checks if Vault integration is enabled by reading the configuration from the database.

@@ -48,9 +48,11 @@ class DjangoSessionAuthenticationProvider(AuthenticationProvider):
             )
         return AuthenticatedUser(
             username=user.username,
-            roles={UserRole.ADMIN, UserRole.USER}
-            if user.is_superuser
-            else {UserRole.USER},
+            roles=(
+                {UserRole.ADMIN, UserRole.USER}
+                if user.is_superuser
+                else {UserRole.USER}
+            ),
         )
 
 
@@ -119,9 +121,9 @@ class AuthenticationProvidersCache:
         return self.session_authentication_provider
 
     def add(self, provider: JWTAuthenticationProvider) -> None:
-        self.jwt_authentication_providers_cache[
-            provider.get_issuer()
-        ] = provider
+        self.jwt_authentication_providers_cache[provider.get_issuer()] = (
+            provider
+        )
 
     def size(self) -> int:
         return len(self.jwt_authentication_providers_cache)

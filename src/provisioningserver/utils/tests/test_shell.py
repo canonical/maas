@@ -184,9 +184,9 @@ class TestHasCommandAvailable(MAASTestCase):
 
     def test_returns_True_when_ExternalProcessError_not_raised(self):
         command = factory.make_name("cmd")
-        self.patch(
-            shell_module.shutil, "which"
-        ).return_value = f"/bin/{command}"
+        self.patch(shell_module.shutil, "which").return_value = (
+            f"/bin/{command}"
+        )
         self.assertTrue(has_command_available(command))
 
 
@@ -242,9 +242,9 @@ class TestGetEnvWithLocale(MAASTestCase):
             for _ in range(5)
         }
         expected = basis.copy()
-        expected["LANG"] = expected["LC_ALL"] = expected[
-            "LANGUAGE"
-        ] = "C.UTF-8"
+        expected["LANG"] = expected["LC_ALL"] = expected["LANGUAGE"] = (
+            "C.UTF-8"
+        )
         observed = get_env_with_locale(basis)
         self.assertEqual(expected, observed)
 
@@ -317,9 +317,9 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             for _ in range(5)
         }
         expected = basis.copy()
-        expected[b"LANG"] = expected[b"LC_ALL"] = expected[
-            b"LANGUAGE"
-        ] = b"C.UTF-8"
+        expected[b"LANG"] = expected[b"LC_ALL"] = expected[b"LANGUAGE"] = (
+            b"C.UTF-8"
+        )
         observed = get_env_with_bytes_locale(basis)
         self.assertEqual(expected, observed)
 

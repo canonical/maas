@@ -145,7 +145,7 @@ class TestFioTestRunCmd(MAASTestCase):
         results = fio.run_cmd(self.readwrite)
 
         self.assertEqual(self.mock_print.call_count, 3)
-        self.mock_print.assert_called_with(f"\n{'-'*80}\n")
+        self.mock_print.assert_called_with(f"\n{'-' * 80}\n")
         self.assertEqual({"bw": self.bw, "iops": self.iops}, results)
 
     def test_run_cmd_runs_cmd_and_exits_on_error(self):

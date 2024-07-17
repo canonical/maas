@@ -165,9 +165,9 @@ class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_doesnt_raises_other_errors(self):
         # Cause a random exception
-        self.patch(
-            leases_module, "update_lease"
-        ).side_effect = factory.make_exception()
+        self.patch(leases_module, "update_lease").side_effect = (
+            factory.make_exception()
+        )
 
         yield eventloop.start()
         try:

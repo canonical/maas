@@ -424,9 +424,9 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.fake_refresher.credentials.update(service.credentials)
         base_lxd_data = {factory.make_string(): factory.make_string()}
         base_lxd_output = json.dumps(base_lxd_data)
-        self.fake_refresher.stdout_content[
-            COMMISSIONING_OUTPUT_NAME
-        ] = base_lxd_output.encode("utf-8")
+        self.fake_refresher.stdout_content[COMMISSIONING_OUTPUT_NAME] = (
+            base_lxd_output.encode("utf-8")
+        )
         network_extra = {
             "interfaces": {
                 "eth0": {"type": "physical", "parents": [], "enabled": True},
@@ -436,9 +436,9 @@ class TestNetworksMonitoringService(MAASTestCase):
             "hints": {"my-hint": "foo"},
         }
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
-        self.patch(
-            service, "_get_topology_hints"
-        ).return_value = network_extra["hints"]
+        self.patch(service, "_get_topology_hints").return_value = (
+            network_extra["hints"]
+        )
 
         yield service.startService()
         service.clock.advance(0)
@@ -475,9 +475,9 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.fake_refresher.credentials.update(service.credentials)
         base_lxd_data = {factory.make_string(): factory.make_string()}
         base_lxd_output = json.dumps(base_lxd_data)
-        self.fake_refresher.stdout_content[
-            COMMISSIONING_OUTPUT_NAME
-        ] = base_lxd_output.encode("utf-8")
+        self.fake_refresher.stdout_content[COMMISSIONING_OUTPUT_NAME] = (
+            base_lxd_output.encode("utf-8")
+        )
         network_extra = {
             "interfaces": {
                 "eth0": {"type": "physical", "parents": [], "enabled": True},

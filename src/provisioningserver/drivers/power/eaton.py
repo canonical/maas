@@ -3,7 +3,6 @@
 Support for managing Eaton PDU outlets via SNMP.
 """
 
-
 import re
 from time import sleep
 

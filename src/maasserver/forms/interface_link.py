@@ -71,9 +71,9 @@ class InterfaceLinkForm(forms.Form):
         if self.instance.vlan is None or self.force is True:
             self.fields["subnet"].queryset = Subnet.objects.all()
         else:
-            self.fields[
-                "subnet"
-            ].queryset = self.instance.vlan.subnet_set.all()
+            self.fields["subnet"].queryset = (
+                self.instance.vlan.subnet_set.all()
+            )
 
     def clean(self):
         for interface in self.instance.children.all():

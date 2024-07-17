@@ -1305,9 +1305,11 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                 KnownHostInterface(
                     ifname=interface.name,
                     attach_name=interface.name,
-                    attach_type=InterfaceAttachType.BRIDGE
-                    if interface.type == INTERFACE_TYPE.BRIDGE
-                    else InterfaceAttachType.MACVLAN,
+                    attach_type=(
+                        InterfaceAttachType.BRIDGE
+                        if interface.type == INTERFACE_TYPE.BRIDGE
+                        else InterfaceAttachType.MACVLAN
+                    ),
                     dhcp_enabled=(
                         interface.vlan.dhcp_on
                         or interface.vlan.relay_vlan.dhcp_on

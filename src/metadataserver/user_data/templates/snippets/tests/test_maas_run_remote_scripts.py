@@ -218,9 +218,9 @@ def make_fake_os_path_exists(testcase, exists=True):
             return exists
         return orig_os_path_exists(path)
 
-    testcase.patch(
-        maas_run_remote_scripts.os.path, "exists"
-    ).side_effect = fake_os_path_exists
+    testcase.patch(maas_run_remote_scripts.os.path, "exists").side_effect = (
+        fake_os_path_exists
+    )
 
 
 class TestOutputAndSend(MAASTestCase):
@@ -1510,9 +1510,9 @@ class TestParseParameters(MAASTestCase):
         )
 
     def test_get_storage_model_from_udev(self):
-        self.patch(
-            maas_run_remote_scripts.os.path, "exists"
-        ).return_value = True
+        self.patch(maas_run_remote_scripts.os.path, "exists").return_value = (
+            True
+        )
         self.patch(
             maas_run_remote_scripts,
             "open",

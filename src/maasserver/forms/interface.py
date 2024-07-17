@@ -101,9 +101,9 @@ class InterfaceForm(MAASModelForm):
             raise ValueError(
                 "instance or node is required for the InterfaceForm"
             )
-        self.fields[
-            "parents"
-        ].queryset = self.node.current_config.interface_set.all()
+        self.fields["parents"].queryset = (
+            self.node.current_config.interface_set.all()
+        )
 
     def _get_validation_exclusions(self):
         # The instance is created just before this in django. The only way to

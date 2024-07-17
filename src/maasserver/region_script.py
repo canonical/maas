@@ -60,9 +60,9 @@ def run_django(is_snap, is_devenv):
             }
         )
     else:
-        os.environ[
-            "DJANGO_SETTINGS_MODULE"
-        ] = "maasserver.djangosettings.settings"
+        os.environ["DJANGO_SETTINGS_MODULE"] = (
+            "maasserver.djangosettings.settings"
+        )
 
     # Let Django do the rest.
     from django.core import management

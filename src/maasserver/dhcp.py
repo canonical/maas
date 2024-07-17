@@ -469,9 +469,9 @@ def make_subnet_config(
                     snippet.iprange.id, []
                 )
                 iprange_dhcp_snippets.append(make_dhcp_snippet(snippet))
-                ipranges_dhcp_snippets[
-                    snippet.iprange.id
-                ] = iprange_dhcp_snippets
+                ipranges_dhcp_snippets[snippet.iprange.id] = (
+                    iprange_dhcp_snippets
+                )
             else:
                 subnet_only_dhcp_snippets.append(snippet)
         subnets_dhcp_snippets = subnet_only_dhcp_snippets

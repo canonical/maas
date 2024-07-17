@@ -203,13 +203,13 @@ class PodForm(MAASModelForm):
             self.initial["tags"] = ",".join(instance.tags)
             self.initial["zone"] = instance.zone.name
             self.initial["pool"] = instance.pool.name
-            self.fields[
-                "default_storage_pool"
-            ].queryset = instance.storage_pools.all()
+            self.fields["default_storage_pool"].queryset = (
+                instance.storage_pools.all()
+            )
             if instance.default_storage_pool:
-                self.initial[
-                    "default_storage_pool"
-                ] = instance.default_storage_pool.pool_id
+                self.initial["default_storage_pool"] = (
+                    instance.default_storage_pool.pool_id
+                )
 
     def _clean_fields(self):
         """Override to dynamically add fields based on the value of `type`
@@ -651,9 +651,9 @@ class ComposeMachineForm(forms.Form):
             power_parameters = self.pod.get_power_parameters()
             # Update the default storage pool.
             if self.pod.default_storage_pool is not None:
-                power_parameters[
-                    "default_storage_pool_id"
-                ] = self.pod.default_storage_pool.pool_id
+                power_parameters["default_storage_pool_id"] = (
+                    self.pod.default_storage_pool.pool_id
+                )
 
             interfaces = get_known_host_interfaces(self.pod)
 

@@ -217,9 +217,11 @@ def _get_or_create_clustered_host(
 
 def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
     cluster, _ = VMCluster.objects.get_or_create(
-        name=vmhost.cluster.name
-        if vmhost.cluster
-        else discovered_cluster.name or vmhost.name,
+        name=(
+            vmhost.cluster.name
+            if vmhost.cluster
+            else discovered_cluster.name or vmhost.name
+        ),
         project=discovered_cluster.project,
         pool=vmhost.pool,
         zone=vmhost.zone,
@@ -259,9 +261,11 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
 async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
     def _transaction(discovered_cluster, discovered, vmhost, user):
         cluster, _ = VMCluster.objects.get_or_create(
-            name=vmhost.hints.cluster.name
-            if vmhost.cluster
-            else discovered_cluster.name or vmhost.name,
+            name=(
+                vmhost.hints.cluster.name
+                if vmhost.cluster
+                else discovered_cluster.name or vmhost.name
+            ),
             project=discovered_cluster.project,
             pool=vmhost.pool,
             zone=vmhost.zone,

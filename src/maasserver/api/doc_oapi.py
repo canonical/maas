@@ -112,7 +112,7 @@ def get_api_landing_page() -> dict[str, str | Any]:
 def get_api_endpoint() -> dict[str, str | Any]:
     """Return the API endpoint"""
     description = {
-        "openapi": "3.0.0",
+        "openapi": "3.1.0",
         "info": {
             "title": "MAAS HTTP API",
             "description": "This is the documentation for the API that lets you control and query MAAS. You can find out more about MAAS at [https://maas.io/](https://maas.io/).",
@@ -173,7 +173,7 @@ def _prettify(doc: str) -> str:
     doc = WHITESPACE.sub("\n", doc)
     doc = PUNCTUATION.sub(r"\1", doc)
     for idx, point in enumerate(POINTS):
-        doc = re.sub(rf"\n\s*\{point}", f"\n{' '*2*idx}{point}", doc)
+        doc = re.sub(rf"\n\s*\{point}", f"\n{' ' * 2 * idx}{point}", doc)
     return doc.strip()
 
 

@@ -723,9 +723,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(fields=["hostname", "architecture"])
         handler.user = factory.make_admin()
-        self.patch(
-            handler, "get_form_class"
-        ).return_value = AdminMachineWithMACAddressesForm
+        self.patch(handler, "get_form_class").return_value = (
+            AdminMachineWithMACAddressesForm
+        )
         json_obj = handler.create(
             {
                 "hostname": hostname,
@@ -741,9 +741,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         hostname = factory.make_name("hostname")
         arch = make_usable_architecture(self)
         handler = self.make_nodes_handler(fields=["hostname", "architecture"])
-        self.patch(
-            handler, "get_form_class"
-        ).return_value = AdminMachineWithMACAddressesForm
+        self.patch(handler, "get_form_class").return_value = (
+            AdminMachineWithMACAddressesForm
+        )
         self.assertRaises(
             HandlerPermissionError,
             handler.create,
@@ -1044,7 +1044,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         )
         self.assertEqual(3, len(result))
         for idx in range(3):
-            self.assertEqual(f"host-{2-idx}", result[idx]["hostname"])
+            self.assertEqual(f"host-{2 - idx}", result[idx]["hostname"])
 
 
 class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):

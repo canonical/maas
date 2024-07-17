@@ -2134,9 +2134,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 ]
             ),
         )
-        self.patch(
-            action.node, "start_rescue_mode"
-        ).side_effect = self.make_exception()
+        self.patch(action.node, "start_rescue_mode").side_effect = (
+            self.make_exception()
+        )
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
@@ -2157,9 +2157,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 ]
             ),
         )
-        self.patch(
-            action.node, "stop_rescue_mode"
-        ).side_effect = self.make_exception()
+        self.patch(action.node, "stop_rescue_mode").side_effect = (
+            self.make_exception()
+        )
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(

@@ -37,9 +37,9 @@ class TestRefresh(MAASTestCase):
         self.mock_running_in_snap = self.patch(refresh, "running_in_snap")
         self.mock_running_in_snap.return_value = True
         self.urlopen_calls = []
-        self.patch(
-            maas_api_helper.urllib.request, "urlopen"
-        ).side_effect = self._fake_urlopen
+        self.patch(maas_api_helper.urllib.request, "urlopen").side_effect = (
+            self._fake_urlopen
+        )
 
         self.tmpdir = self.useFixture(TempDirectory()).path
         self.patch(refresh, "SCRIPTS_BASE_PATH", self.tmpdir)

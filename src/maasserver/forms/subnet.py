@@ -134,9 +134,9 @@ class SubnetForm(MAASModelForm):
         vid = cleaned_data.get("vid", None)
         if fabric is None and vlan is None:
             if not vid:
-                cleaned_data[
-                    "vlan"
-                ] = Fabric.objects.get_default_fabric().get_default_vlan()
+                cleaned_data["vlan"] = (
+                    Fabric.objects.get_default_fabric().get_default_vlan()
+                )
             else:
                 vlan = get_one(
                     VLAN.objects.filter(

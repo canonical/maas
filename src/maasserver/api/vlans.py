@@ -107,7 +107,7 @@ class VlanHandler(OperationsHandler):
     """Manage a VLAN on a fabric."""
 
     api_doc_section_name = "VLAN"
-    create = update = None
+    create = None
     model = VLAN
     fields = DISPLAYED_VLAN_FIELDS
 

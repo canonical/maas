@@ -417,9 +417,11 @@ def update_vlan_interface(node, name, network, links):
         _hardware_sync_network_device_notify(
             node,
             interface,
-            HARDWARE_SYNC_ACTIONS.ADDED
-            if created
-            else HARDWARE_SYNC_ACTIONS.UPDATED,
+            (
+                HARDWARE_SYNC_ACTIONS.ADDED
+                if created
+                else HARDWARE_SYNC_ACTIONS.UPDATED
+            ),
         )
     elif vlan is not None and interface.vlan != vlan:
         interface.vlan = vlan

@@ -144,9 +144,9 @@ def make_subnet_config(
         "router_ip": factory.pick_ip_in_network(network),
         "pools": pools,
         "dhcp_snippets": dhcp_snippets,
-        "disabled_boot_architectures": disabled_boot_architectures
-        if disabled_boot_architectures
-        else [],
+        "disabled_boot_architectures": (
+            disabled_boot_architectures if disabled_boot_architectures else []
+        ),
     }
 
 

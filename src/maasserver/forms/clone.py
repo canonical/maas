@@ -57,14 +57,14 @@ class CloneForm(forms.Form):
         self.fields["source"].queryset = Machine.objects.get_nodes(
             self.user, NodePermission.view
         )
-        self.fields[
-            "destinations"
-        ].base_field.queryset = Machine.objects.get_nodes(
-            self.user,
-            NodePermission.admin,
-            from_nodes=Machine.objects.filter(
-                status__in={NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}
-            ),
+        self.fields["destinations"].base_field.queryset = (
+            Machine.objects.get_nodes(
+                self.user,
+                NodePermission.admin,
+                from_nodes=Machine.objects.filter(
+                    status__in={NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING}
+                ),
+            )
         )
 
     def clean(self):

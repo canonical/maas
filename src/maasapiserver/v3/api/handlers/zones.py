@@ -59,10 +59,12 @@ class ZonesHandler(Handler):
                 zone.to_response(f"{V3_API_PREFIX}/zones")
                 for zone in zones.items
             ],
-            next=f"{V3_API_PREFIX}/zones?"
-            f"{TokenPaginationParams.to_href_format(zones.next_token, token_pagination_params.size)}"
-            if zones.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/zones?"
+                f"{TokenPaginationParams.to_href_format(zones.next_token, token_pagination_params.size)}"
+                if zones.next_token
+                else None
+            ),
         )
 
     @handler(

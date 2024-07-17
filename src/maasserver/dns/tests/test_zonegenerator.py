@@ -883,15 +883,15 @@ class TestZoneGenerator(MAASServerTestCase):
                     for ip in record.ip_addresses.all()
                     if IPAddress(ip.ip) in network
                 ):
-                    mapping[
-                        f"{record.name}.{default_domain.name}"
-                    ] = HostnameIPMapping(
-                        None,
-                        record.address_ttl,
-                        ip_set,
-                        None,
-                        1,
-                        None,
+                    mapping[f"{record.name}.{default_domain.name}"] = (
+                        HostnameIPMapping(
+                            None,
+                            record.address_ttl,
+                            ip_set,
+                            None,
+                            1,
+                            None,
+                        )
                     )
             return mapping
 
@@ -1102,15 +1102,15 @@ class TestZoneGenerator(MAASServerTestCase):
                     )
                 )
                 if len(ip_set) > 0:
-                    mapping[
-                        f"{record.name}.{default_domain.name}"
-                    ] = HostnameIPMapping(
-                        None,
-                        record.address_ttl,
-                        ip_set,
-                        None,
-                        1,
-                        None,
+                    mapping[f"{record.name}.{default_domain.name}"] = (
+                        HostnameIPMapping(
+                            None,
+                            record.address_ttl,
+                            ip_set,
+                            None,
+                            1,
+                            None,
+                        )
                     )
             return mapping
 

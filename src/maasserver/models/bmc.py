@@ -1706,10 +1706,10 @@ class Pod(BMC):
                 from maasserver.models import ScriptSet
 
                 # ScriptResults will be created on upload.
-                update[
-                    "current_commissioning_script_set"
-                ] = ScriptSet.objects.create(
-                    node=node, result_type=RESULT_TYPE.COMMISSIONING
+                update["current_commissioning_script_set"] = (
+                    ScriptSet.objects.create(
+                        node=node, result_type=RESULT_TYPE.COMMISSIONING
+                    )
                 )
             if node.status != NODE_STATUS.DEPLOYED:
                 update["status"] = NODE_STATUS.DEPLOYED

@@ -838,9 +838,11 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         # The host has been upgraded to the expected type.
         self.assertEqual(
             region.node_type,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER
-            if host.is_rack_controller
-            else NODE_TYPE.REGION_CONTROLLER,
+            (
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER
+                if host.is_rack_controller
+                else NODE_TYPE.REGION_CONTROLLER
+            ),
         )
 
     def assertControllerNotDiscovered(self, region, host):
@@ -6329,10 +6331,10 @@ class TestPowerControlNode(MAASTransactionServerTestCase):
         d1 = defer.succeed(client2)
         self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
         self.patch(node_module, "getClientFromIdentifiers").return_value = d1
-        self.patch(
-            node_module, "power_query_all"
-        ).return_value = defer.succeed(
-            (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
+        self.patch(node_module, "power_query_all").return_value = (
+            defer.succeed(
+                (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
+            )
         )
 
         power_info = yield deferToDatabase(node.get_effective_power_info)
@@ -6563,9 +6565,9 @@ class TestDecomposeMachineMixin:
     def fake_rpc_client(self):
         client = Mock()
         client.return_value = defer.succeed({})
-        self.patch(
-            node_module, "getClientFromIdentifiers"
-        ).return_value = defer.succeed(client)
+        self.patch(node_module, "getClientFromIdentifiers").return_value = (
+            defer.succeed(client)
+        )
         return client
 
 
@@ -10332,9 +10334,9 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
                 missing_packages[-1],
             ]
         package_list = " and ".join(missing_packages)
-        self.patch(
-            node_module, "power_driver_check"
-        ).return_value = defer.succeed(missing_packages)
+        self.patch(node_module, "power_driver_check").return_value = (
+            defer.succeed(missing_packages)
+        )
 
         # Testing only allows one thread at a time, but the way we are testing
         # this would actually require multiple to be started at once. To
@@ -11010,9 +11012,9 @@ class TestRackController(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
-        self.patch(
-            crochet._eventloop.EventualResult, "wait"
-        ).side_effect = TimeoutError()
+        self.patch(crochet._eventloop.EventualResult, "wait").side_effect = (
+            TimeoutError()
+        )
 
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))
@@ -11026,9 +11028,9 @@ class TestRackController(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         fixture.makeCluster(rackcontroller, DisableAndShutoffRackd)
-        self.patch(
-            crochet._eventloop.EventualResult, "wait"
-        ).side_effect = ConnectionDone()
+        self.patch(crochet._eventloop.EventualResult, "wait").side_effect = (
+            ConnectionDone()
+        )
 
         rackcontroller.delete()
         self.assertIsNone(reload_object(rackcontroller))

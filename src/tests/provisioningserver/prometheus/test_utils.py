@@ -216,8 +216,7 @@ class TestPrometheusMetricsNew:
         assert label_call_args == [((obj,), {"param2": "baz"})]
 
     def test_failure_counter_increments_with_a_specific_exception(self):
-        class FailureCounterTestException(Exception):
-            ...
+        class FailureCounterTestException(Exception): ...  # noqa: E701
 
         definitions = [
             MetricDefinition(

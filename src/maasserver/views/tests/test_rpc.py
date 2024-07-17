@@ -21,9 +21,9 @@ TIMEOUT = get_testing_timeout()
 class TestRPCView(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
-        self.patch(
-            ipc, "get_all_interface_source_addresses"
-        ).return_value = set()
+        self.patch(ipc, "get_all_interface_source_addresses").return_value = (
+            set()
+        )
         load_builtin_scripts()
 
     def test_rpc_info_empty(self):

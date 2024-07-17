@@ -340,9 +340,9 @@ class TestAMTPowerDriver(MAASTestCase):
         _run_mock.assert_called_once_with(command, power_pass, stdin=None)
 
     def test_issue_wsman_has_config_file_from_snap(self):
-        self.patch(
-            amt_module.snap.SnapPaths, "from_environ"
-        ).return_value = SnapPaths(snap=Path("/snap/maas/current"))
+        self.patch(amt_module.snap.SnapPaths, "from_environ").return_value = (
+            SnapPaths(snap=Path("/snap/maas/current"))
+        )
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
         amt_power_driver = AMTPowerDriver()
@@ -423,9 +423,9 @@ class TestAMTPowerDriver(MAASTestCase):
         amt_power_driver = AMTPowerDriver()
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
-        self.patch(
-            amt_power_driver, "_issue_amttool_command"
-        ).return_value = b""
+        self.patch(amt_power_driver, "_issue_amttool_command").return_value = (
+            b""
+        )
         self.assertRaises(
             PowerActionError,
             amt_power_driver.amttool_query_state,

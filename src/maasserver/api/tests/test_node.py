@@ -805,9 +805,9 @@ class TestPowerMixin(APITestCase.ForUser):
     def test_POST_power_off_returns_503_when_power_already_in_progress(self):
         machine = factory.make_Node(owner=self.user)
         exc_text = factory.make_name("exc_text")
-        self.patch(
-            node_module.Machine, "stop"
-        ).side_effect = PowerActionAlreadyInProgress(exc_text)
+        self.patch(node_module.Machine, "stop").side_effect = (
+            PowerActionAlreadyInProgress(exc_text)
+        )
         response = self.client.post(
             self.get_node_uri(machine), {"op": "power_off"}
         )
@@ -876,9 +876,9 @@ class TestPowerMixin(APITestCase.ForUser):
         factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING, tags=["commissioning"]
         )
-        self.patch(
-            node_module.Node, "_power_control_node"
-        ).return_value = succeed(None)
+        self.patch(node_module.Node, "_power_control_node").return_value = (
+            succeed(None)
+        )
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             owner=factory.make_User(),

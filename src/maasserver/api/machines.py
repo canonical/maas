@@ -486,16 +486,16 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         for block_device in machine.current_config.blockdevice_set.all():
             for filesystem in block_device.filesystem_set.all():
                 if filesystem.filesystem_group is not None:
-                    fsgroup[
-                        filesystem.filesystem_group.id
-                    ] = filesystem.filesystem_group
+                    fsgroup[filesystem.filesystem_group.id] = (
+                        filesystem.filesystem_group
+                    )
             for ptable in block_device.partitiontable_set.all():
                 for partition in ptable.partitions.all():
                     for filesystem in partition.filesystem_set.all():
                         if filesystem.filesystem_group is not None:
-                            fsgroup[
-                                filesystem.filesystem_group.id
-                            ] = filesystem.filesystem_group
+                            fsgroup[filesystem.filesystem_group.id] = (
+                                filesystem.filesystem_group
+                            )
         return fsgroup.values()
 
     @classmethod
@@ -536,9 +536,9 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
                 for partition in ptable.partitions.all():
                     for filesystem in partition.filesystem_set.all():
                         if filesystem.cache_set is not None:
-                            sets[
-                                filesystem.cache_set.id
-                            ] = filesystem.cache_set
+                            sets[filesystem.cache_set.id] = (
+                                filesystem.cache_set
+                            )
         return [
             {
                 "system_id": machine.system_id,

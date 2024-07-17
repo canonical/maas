@@ -101,12 +101,16 @@ def update_lease(
             ip,
             mac,
             created,
-            " (lease time: %ss)" % lease_time
-            if lease_time is not None
-            else "",
-            " (hostname: %s)" % hostname
-            if _is_valid_hostname(hostname)
-            else "",
+            (
+                " (lease time: %ss)" % lease_time
+                if lease_time is not None
+                else ""
+            ),
+            (
+                " (hostname: %s)" % hostname
+                if _is_valid_hostname(hostname)
+                else ""
+            ),
         )
     )
 

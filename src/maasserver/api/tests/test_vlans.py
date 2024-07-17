@@ -74,9 +74,11 @@ class TestVlansAPI(APITestCase.ForUser):
                 ),
                 "dhcp_on": vlan.dhcp_on,
                 "external_dhcp": None,
-                "relay_vlan": serialize_vlan(vlan.relay_vlan)
-                if vlan.relay_vlan
-                else None,
+                "relay_vlan": (
+                    serialize_vlan(vlan.relay_vlan)
+                    if vlan.relay_vlan
+                    else None
+                ),
                 "space": vlan.space.name if vlan.space else "undefined",
                 "resource_uri": f"/MAAS/api/2.0/vlans/{vlan.id}/",
             }

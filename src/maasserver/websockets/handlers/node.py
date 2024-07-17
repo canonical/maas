@@ -403,10 +403,10 @@ class NodeHandler(TimestampedModelHandler):
             if hasattr(obj, "simple_status"):
                 data["simple_status"] = obj.simple_status
             else:
-                data[
-                    "simple_status"
-                ] = SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
-                    obj.status, SIMPLIFIED_NODE_STATUS.OTHER
+                data["simple_status"] = (
+                    SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
+                        obj.status, SIMPLIFIED_NODE_STATUS.OTHER
+                    )
                 )
 
         # Filters are only available on machines and devices.
@@ -531,9 +531,9 @@ class NodeHandler(TimestampedModelHandler):
                                     # This partition may be modified by the
                                     # user.
                                     continue
-                                partition[
-                                    "used_for"
-                                ] = "VMware ESXi OS partition"
+                                partition["used_for"] = (
+                                    "VMware ESXi OS partition"
+                                )
                                 partition["filesystem"] = {
                                     "id": -1,
                                     "label": "RESERVED",

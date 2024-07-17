@@ -56,10 +56,12 @@ class FabricsHandler(Handler):
                 fabric.to_response(f"{V3_API_PREFIX}/fabrics")
                 for fabric in fabrics.items
             ],
-            next=f"{V3_API_PREFIX}/fabrics?"
-            f"{TokenPaginationParams.to_href_format(fabrics.next_token, token_pagination_params.size)}"
-            if fabrics.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/fabrics?"
+                f"{TokenPaginationParams.to_href_format(fabrics.next_token, token_pagination_params.size)}"
+                if fabrics.next_token
+                else None
+            ),
         )
 
     @handler(

@@ -445,9 +445,9 @@ class ParametersForm(Form):
                 else:
                     clean_param = copy.deepcopy(result_params)
                     clean_param[param_name] = copy.deepcopy(param)
-                    clean_param[param_name][
-                        "value"
-                    ] = self._blockdevice_to_dict(bd)
+                    clean_param[param_name]["value"] = (
+                        self._blockdevice_to_dict(bd)
+                    )
                     ret.append(clean_param)
                     continue
 
@@ -533,9 +533,9 @@ class ParametersForm(Form):
                     for interface in interfaces:
                         clean_param = copy.deepcopy(result_params)
                         clean_param[param_name] = copy.deepcopy(param)
-                        clean_param[param_name][
-                            "value"
-                        ] = self._interface_to_dict(interface)
+                        clean_param[param_name]["value"] = (
+                            self._interface_to_dict(interface)
+                        )
                         ret.append(clean_param)
                     continue
 

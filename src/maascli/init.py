@@ -112,9 +112,11 @@ def add_create_admin_options(parser, suppress_help=False):
         "--admin-username",
         default=None,
         metavar="USERNAME",
-        help=argparse.SUPPRESS
-        if suppress_help
-        else "Username for the admin account.",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "Username for the admin account."
+        ),
     )
     parser.add_argument(
         "--admin-password",
@@ -130,9 +132,11 @@ def add_create_admin_options(parser, suppress_help=False):
         "--admin-email",
         default=None,
         metavar="EMAIL",
-        help=argparse.SUPPRESS
-        if suppress_help
-        else "Email address for the admin.",
+        help=(
+            argparse.SUPPRESS
+            if suppress_help
+            else "Email address for the admin."
+        ),
     )
     parser.add_argument(
         "--admin-ssh-import",

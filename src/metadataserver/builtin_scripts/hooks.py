@@ -620,9 +620,11 @@ def update_node_devices(
         (
             node_device.vendor_id,
             node_device.product_id,
-            node_device.pci_address
-            if node_device.bus == NODE_DEVICE_BUS.PCIE
-            else f"{node_device.bus_number}:{node_device.device_number}",
+            (
+                node_device.pci_address
+                if node_device.bus == NODE_DEVICE_BUS.PCIE
+                else f"{node_device.bus_number}:{node_device.device_number}"
+            ),
         ): node_device
         for node_device in node.current_config.nodedevice_set.all()
     }
@@ -942,9 +944,11 @@ def _hardware_sync_memory_notify(node, old_size):
         EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY,
         node,
         f"{human_readable_bytes(diff)} of memory",
-        HARDWARE_SYNC_ACTIONS.ADDED
-        if diff > 0
-        else HARDWARE_SYNC_ACTIONS.REMOVED,
+        (
+            HARDWARE_SYNC_ACTIONS.ADDED
+            if diff > 0
+            else HARDWARE_SYNC_ACTIONS.REMOVED
+        ),
     )
 
 

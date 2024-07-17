@@ -556,9 +556,9 @@ class TestBMC(MAASServerTestCase):
     def test_get_client_identifiers_returns_rack_controller_system_ids(self):
         rack_controllers = [factory.make_RackController() for _ in range(3)]
         bmc = factory.make_BMC()
-        self.patch(
-            bmc, "get_usable_rack_controllers"
-        ).return_value = rack_controllers
+        self.patch(bmc, "get_usable_rack_controllers").return_value = (
+            rack_controllers
+        )
         expected_system_ids = [rack.system_id for rack in rack_controllers]
         self.assertEqual(expected_system_ids, bmc.get_client_identifiers())
 
@@ -1707,17 +1707,17 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             parents=[eth0],
         )
         ip = factory.make_StaticIPAddress(subnet=subnet, interface=br0)
-        discovered_machine.interfaces[
-            0
-        ].attach_type = InterfaceAttachType.BRIDGE
+        discovered_machine.interfaces[0].attach_type = (
+            InterfaceAttachType.BRIDGE
+        )
         discovered_machine.interfaces[0].attach_name = br0.name
-        discovered_machine.interfaces[
-            1
-        ].attach_type = InterfaceAttachType.MACVLAN
+        discovered_machine.interfaces[1].attach_type = (
+            InterfaceAttachType.MACVLAN
+        )
         discovered_machine.interfaces[1].attach_name = eth1.name
-        discovered_machine.interfaces[
-            2
-        ].attach_type = InterfaceAttachType.MACVLAN
+        discovered_machine.interfaces[2].attach_type = (
+            InterfaceAttachType.MACVLAN
+        )
         discovered_machine.interfaces[2].attach_name = eth2.name
         pod = factory.make_Pod(ip_address=ip)
         # Skip commissioning on creation so that we can test that VLANs
@@ -2377,9 +2377,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 )
             ],
         )
-        discovered_machine.power_parameters[
-            "instance_name"
-        ] = factory.make_string()
+        discovered_machine.power_parameters["instance_name"] = (
+            factory.make_string()
+        )
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine]
         )
@@ -2503,9 +2503,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 )
             ],
         )
-        discovered_machine.power_parameters[
-            "instance_name"
-        ] = factory.make_string()
+        discovered_machine.power_parameters["instance_name"] = (
+            factory.make_string()
+        )
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine]
         )
@@ -3027,9 +3027,9 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
         pod = yield deferToDatabase(factory.make_Pod)
         machine = yield deferToDatabase(factory.make_Machine, bmc=pod)
         client = Mock()
-        self.patch(
-            bmc_module, "getClientFromIdentifiers"
-        ).return_value = client
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = (
+            client
+        )
         yield pod.async_delete()
         client.assert_not_called()
         machine = yield deferToDatabase(reload_object, machine)
@@ -3045,9 +3045,9 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
         machine2 = yield deferToDatabase(factory.make_Machine, bmc=pod)
         client = Mock()
         client.side_effect = lambda *args, **kwargs: succeed({"hints": None})
-        self.patch(
-            bmc_module, "getClientFromIdentifiers"
-        ).return_value = client
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = (
+            client
+        )
         yield pod.async_delete(decompose=True)
 
         power_parameters = yield deferToDatabase(pod.get_power_parameters)
@@ -3194,9 +3194,9 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
             succeed({"hints": sentinel.hints}),
             fail(PodProblem()),
         ]
-        self.patch(
-            bmc_module, "getClientFromIdentifiers"
-        ).return_value = client
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = (
+            client
+        )
         yield pod.async_delete(decompose=True)
         # All the machines should have been deleted.
         decomposable_machine_one = yield deferToDatabase(

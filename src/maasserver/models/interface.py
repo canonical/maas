@@ -937,9 +937,11 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because "
                     "it is an EUI-64 (SLAAC) address.",
                     address,
-                    " on " + self.node_config.node.fqdn
-                    if self.node_config
-                    else "",
+                    (
+                        " on " + self.node_config.node.fqdn
+                        if self.node_config
+                        else ""
+                    ),
                 )
                 continue
 
@@ -953,9 +955,11 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because it was found on "
                     "the same subnet as a previous address: %s.",
                     address,
-                    " on " + self.node_config.node.fqdn
-                    if self.node_config
-                    else "",
+                    (
+                        " on " + self.node_config.node.fqdn
+                        if self.node_config
+                        else ""
+                    ),
                     network,
                 )
                 continue

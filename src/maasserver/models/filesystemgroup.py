@@ -150,7 +150,7 @@ class BaseFilesystemGroupManager(Manager):
                 pass
             else:
                 idx = max(idx, name_idx)
-        return f"{prefix}{idx+1}"
+        return f"{prefix}{idx + 1}"
 
 
 class FilesystemGroupManager(BaseFilesystemGroupManager):

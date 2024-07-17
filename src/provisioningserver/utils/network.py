@@ -95,12 +95,12 @@ class MAASIPRange(IPRange):
             purpose = set()
         if end is None:
             end = start
-        if type(start) == IPRange:
+        if isinstance(start, IPRange):
             end = start.last
             start = start.first
         super().__init__(start, end, flags=flags)
         self.flags = flags
-        if type(purpose) != set:
+        if not isinstance(purpose, set):
             purpose = {purpose}
         self.purpose = purpose
 
@@ -536,7 +536,7 @@ class MAASIPSet(set):
             if "/" in outer_range:
                 outer_range = IPNetwork(outer_range)
         unused_ranges = []
-        if type(outer_range) == IPNetwork:
+        if isinstance(outer_range, IPNetwork):
             # Skip the network address, if this is a network
             prefixlen = outer_range.prefixlen
             if outer_range.version == 4 and prefixlen in (31, 32):
@@ -562,7 +562,7 @@ class MAASIPSet(set):
                 )
             candidate_start = used_range.last + 1
         # Skip the broadcast address, if this is an IPv4 network
-        if type(outer_range) == IPNetwork:
+        if isinstance(outer_range, IPNetwork):
             prefixlen = outer_range.prefixlen
             if outer_range.version == 4 and prefixlen not in (31, 32):
                 candidate_end = outer_range.last - 1

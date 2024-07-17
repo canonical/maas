@@ -1076,7 +1076,7 @@ class FilterNodeForm(forms.Form):
         return None
 
     def _set_zone_error(self, value, field):
-        if type(value) == list:
+        if isinstance(value, list):
             error_msg = "No such zone(s): %s." % ", ".join(value)
         else:
             error_msg = "No such zone: '%s'." % value
@@ -1099,7 +1099,7 @@ class FilterNodeForm(forms.Form):
         return values
 
     def _set_pool_error(self, value, field):
-        if type(value) == list:
+        if isinstance(value, list):
             error_msg = "No such pool(s): %s." % ", ".join(value)
         else:
             error_msg = "No such pool: '%s'." % value

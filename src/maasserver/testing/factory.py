@@ -894,11 +894,13 @@ class Factory(maastesting.factory.Factory):
             ip_addresses = [self.make_StaticIPAddress(**kwargs)]
         elif isinstance(ip_addresses, list):
             ip_addresses = [
-                self.make_StaticIPAddress(
-                    ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED
+                (
+                    self.make_StaticIPAddress(
+                        ip=ip, alloc_type=IPADDRESS_TYPE.USER_RESERVED
+                    )
+                    if not isinstance(ip, StaticIPAddress)
+                    else ip
                 )
-                if not isinstance(ip, StaticIPAddress)
-                else ip
                 for ip in ip_addresses
             ]
         dnsrr, _ = DNSResource.objects.get_or_create(

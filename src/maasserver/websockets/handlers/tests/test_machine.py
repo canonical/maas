@@ -316,9 +316,9 @@ class TestMachineHandlerUtils:
             "power_parameters": handler.dehydrate_power_parameters(
                 node.get_power_parameters()
             ),
-            "power_bmc_node_count": node.bmc.node_set.count()
-            if (node.bmc is not None)
-            else 0,
+            "power_bmc_node_count": (
+                node.bmc.node_set.count() if (node.bmc is not None) else 0
+            ),
             "power_state": node.power_state,
             "pxe_mac": (
                 ""
@@ -500,25 +500,25 @@ class TestMachineHandlerUtils:
                     HARDWARE_TYPE.CPU, None
                 )
             )
-            data[
-                "memory_test_status"
-            ] = handler.dehydrate_test_statuses_for_list(
-                handler._script_results_for_list.get(node.id, {}).get(
-                    HARDWARE_TYPE.MEMORY, None
+            data["memory_test_status"] = (
+                handler.dehydrate_test_statuses_for_list(
+                    handler._script_results_for_list.get(node.id, {}).get(
+                        HARDWARE_TYPE.MEMORY, None
+                    )
                 )
             )
-            data[
-                "network_test_status"
-            ] = handler.dehydrate_test_statuses_for_list(
-                handler._script_results_for_list.get(node.id, {}).get(
-                    HARDWARE_TYPE.NETWORK, None
+            data["network_test_status"] = (
+                handler.dehydrate_test_statuses_for_list(
+                    handler._script_results_for_list.get(node.id, {}).get(
+                        HARDWARE_TYPE.NETWORK, None
+                    )
                 )
             )
-            data[
-                "storage_test_status"
-            ] = handler.dehydrate_test_statuses_for_list(
-                handler._script_results_for_list.get(node.id, {}).get(
-                    HARDWARE_TYPE.STORAGE
+            data["storage_test_status"] = (
+                handler.dehydrate_test_statuses_for_list(
+                    handler._script_results_for_list.get(node.id, {}).get(
+                        HARDWARE_TYPE.STORAGE
+                    )
                 )
             )
 

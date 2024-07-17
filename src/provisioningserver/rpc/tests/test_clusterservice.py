@@ -1839,9 +1839,9 @@ class TestClusterClient(TestClusterClientBase):
         MAAS_ID.set(system_id)
         maas_url = factory.make_simple_http_url()
         hostname = "rackcontrol.example.com"
-        self.patch_autospec(
-            clusterservice, "gethostname"
-        ).return_value = hostname
+        self.patch_autospec(clusterservice, "gethostname").return_value = (
+            hostname
+        )
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
@@ -1968,9 +1968,9 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     @inlineCallbacks
     def test_power_on_can_propagate_UnknownPowerType(self):
-        self.patch(
-            clusterservice, "maybe_change_power_state"
-        ).side_effect = exceptions.UnknownPowerType
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
+            exceptions.UnknownPowerType
+        )
 
         with self.assertRaises(exceptions.UnknownPowerType):
             yield call_responder(
@@ -1986,9 +1986,9 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     @inlineCallbacks
     def test_power_on_can_propagate_NotImplementedError(self):
-        self.patch(
-            clusterservice, "maybe_change_power_state"
-        ).side_effect = NotImplementedError
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
+            NotImplementedError
+        )
 
         with self.assertRaises(NotImplementedError):
             yield call_responder(
@@ -2004,9 +2004,9 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     @inlineCallbacks
     def test_power_on_can_propagate_PowerActionFail(self):
-        self.patch(
-            clusterservice, "maybe_change_power_state"
-        ).side_effect = exceptions.PowerActionFail
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
+            exceptions.PowerActionFail
+        )
 
         with self.assertRaises(exceptions.PowerActionFail):
             yield call_responder(
@@ -2022,9 +2022,9 @@ class TestClusterProtocol_PowerOn_PowerOff_PowerCycle(MAASTestCase):
 
     @inlineCallbacks
     def test_power_on_can_propagate_PowerActionAlreadyInProgress(self):
-        self.patch(
-            clusterservice, "maybe_change_power_state"
-        ).side_effect = exceptions.PowerActionAlreadyInProgress
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
+            exceptions.PowerActionAlreadyInProgress
+        )
 
         with self.assertRaises(exceptions.PowerActionAlreadyInProgress):
             yield call_responder(

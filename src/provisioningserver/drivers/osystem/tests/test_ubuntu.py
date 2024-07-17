@@ -73,9 +73,9 @@ class TestUbuntuOS(MAASTestCase):
 
     def test_get_supported_commissioning_releases_excludes_non_lts(self):
         supported = ["precise", "trusty", "vivid", "wily", "xenial"]
-        self.patch_autospec(
-            UbuntuDistroInfo, "supported"
-        ).return_value = supported
+        self.patch_autospec(UbuntuDistroInfo, "supported").return_value = (
+            supported
+        )
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)
@@ -130,9 +130,9 @@ class TestUbuntuOS(MAASTestCase):
             "saucy",
             "utopic",
         ]
-        self.patch_autospec(
-            UbuntuDistroInfo, "unsupported"
-        ).return_value = unsupported
+        self.patch_autospec(UbuntuDistroInfo, "unsupported").return_value = (
+            unsupported
+        )
         osystem = UbuntuOS()
         releases = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(releases, list)

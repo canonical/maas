@@ -48,8 +48,10 @@ class MachinesHandler(Handler):
                 machine.to_response(f"{V3_API_PREFIX}/machines")
                 for machine in machines.items
             ],
-            next=f"{V3_API_PREFIX}/machines?"
-            f"{TokenPaginationParams.to_href_format(machines.next_token, token_pagination_params.size)}"
-            if machines.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/machines?"
+                f"{TokenPaginationParams.to_href_format(machines.next_token, token_pagination_params.size)}"
+                if machines.next_token
+                else None
+            ),
         )

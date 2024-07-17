@@ -951,9 +951,9 @@ class MachineForm(NodeForm):
             if osystem is not None:
                 key_required = get_release_requires_key(release)
                 self.data["osystem"] = osystem.name
-                self.data[
-                    "distro_series"
-                ] = f"{osystem.name}/{release.name}{key_required}"
+                self.data["distro_series"] = (
+                    f"{osystem.name}/{release.name}{key_required}"
+                )
             else:
                 self.data["distro_series"] = series
 
@@ -1819,9 +1819,9 @@ class DeployForm(ConfigForm):
         # don't want _load_initial called until the field has been added.
         Form.__init__(self, *args, **kwargs)
         self.fields["default_osystem"] = get_config_field("default_osystem")
-        self.fields[
-            "default_distro_series"
-        ] = self._get_default_distro_series_field_for_ui()
+        self.fields["default_distro_series"] = (
+            self._get_default_distro_series_field_for_ui()
+        )
         self._load_initials()
 
     def _get_default_distro_series_field_for_ui(self):
@@ -1889,9 +1889,9 @@ class UbuntuForm(Form):
     def _load_initials(self):
         """Load the initial values for the fields."""
         self.initial["main_archive"] = PackageRepository.get_main_archive().url
-        self.initial[
-            "ports_archive"
-        ] = PackageRepository.get_ports_archive().url
+        self.initial["ports_archive"] = (
+            PackageRepository.get_ports_archive().url
+        )
 
     def save(self, *args, **kwargs):
         """Save the content of the fields into the database.
@@ -3974,16 +3974,16 @@ class UpdateRaidForm(Form):
         self.fields["add_spare_partitions"].choices = add_partition_choices
 
         # Sets up the choices for removal fields.
-        self.fields[
-            "remove_block_devices"
-        ].choices = remove_block_device_choices
+        self.fields["remove_block_devices"].choices = (
+            remove_block_device_choices
+        )
         self.fields["remove_partitions"].choices = remove_partition_choices
-        self.fields[
-            "remove_spare_devices"
-        ].choices = remove_block_device_choices
-        self.fields[
-            "remove_spare_partitions"
-        ].choices = remove_partition_choices
+        self.fields["remove_spare_devices"].choices = (
+            remove_block_device_choices
+        )
+        self.fields["remove_spare_partitions"].choices = (
+            remove_partition_choices
+        )
 
     def save(self):
         """Save updates to the RAID.

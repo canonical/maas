@@ -160,9 +160,7 @@ def systemd_interval_to_calendar(interval):
     minute_interval = (
         f"00/{minutes}"
         if minutes
-        else "00"
-        if second_interval == "00"
-        else "*"
+        else "00" if second_interval == "00" else "*"
     )
 
     return f"*-*-* {hour_interval}:{minute_interval}:{second_interval}"

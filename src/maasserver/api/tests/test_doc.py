@@ -46,9 +46,9 @@ class TestGetAPIDescription(MAASTestCase):
 
     def test_adds_hash(self):
         self.patch(doc_module, "_describe_api").return_value = {}
-        self.patch(
-            doc_module, "_get_api_description_hash"
-        ).return_value = "abcd"
+        self.patch(doc_module, "_get_api_description_hash").return_value = (
+            "abcd"
+        )
         self.assertEqual(get_api_description(), {"hash": "abcd"})
 
     def test_cached(self):

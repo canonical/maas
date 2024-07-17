@@ -292,9 +292,9 @@ class TestServiceMonitor(MAASTestCase):
                 active_state, process_state
             )
         service_monitor = self.make_service_monitor(fake_services)
-        self.patch(
-            service_monitor, "ensureService"
-        ).side_effect = lambda name: succeed(expected_states[name])
+        self.patch(service_monitor, "ensureService").side_effect = (
+            lambda name: succeed(expected_states[name])
+        )
         observed = yield service_monitor.ensureServices()
         self.assertEqual(expected_states, observed)
 

@@ -54,10 +54,12 @@ class SpacesHandler(Handler):
                 space.to_response(f"{V3_API_PREFIX}/spaces")
                 for space in spaces.items
             ],
-            next=f"{V3_API_PREFIX}/spaces?"
-            f"{TokenPaginationParams.to_href_format(spaces.next_token, token_pagination_params.size)}"
-            if spaces.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/spaces?"
+                f"{TokenPaginationParams.to_href_format(spaces.next_token, token_pagination_params.size)}"
+                if spaces.next_token
+                else None
+            ),
         )
 
     @handler(

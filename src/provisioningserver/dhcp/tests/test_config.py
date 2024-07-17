@@ -126,9 +126,11 @@ def make_sample_params(test, ipv6=False, with_interface=False):
     for shared_network in sample_params["shared_networks"]:
         for subnet in shared_network["subnets"]:
             subnet["ntp_servers"] = [
-                server
-                if is_ip_address(server)
-                else random.choice(aliases_from_etc_hosts)
+                (
+                    server
+                    if is_ip_address(server)
+                    else random.choice(aliases_from_etc_hosts)
+                )
                 for server in subnet["ntp_servers"]
             ]
 

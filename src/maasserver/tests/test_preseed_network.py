@@ -490,9 +490,11 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                         "type": "physical",
                         "subnets": [
                             {
-                                "type": "dhcp4"
-                                if self.ip_version == 4
-                                else "dhcp6"
+                                "type": (
+                                    "dhcp4"
+                                    if self.ip_version == 4
+                                    else "dhcp6"
+                                )
                             }
                         ],
                     }
@@ -1151,7 +1153,7 @@ class TestNetplan(MAASServerTestCase):
         ovs_commands = [
             command
             for key, command in sorted(curtin_config["late_commands"].items())
-            if "openvswitch" in key and type(command) == list
+            if "openvswitch" in key and isinstance(command, list)
         ]
         self.assertNotEqual(len(ovs_commands), 0)
 

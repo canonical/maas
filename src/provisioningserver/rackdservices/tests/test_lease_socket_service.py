@@ -44,9 +44,9 @@ class TestLeaseSocketService(MAASTestCase):
     def patch_socket_path(self):
         path = self.make_dir()
         socket_path = os.path.join(path, "dhcpd.sock")
-        self.patch(
-            lease_socket_service, "get_socket_path"
-        ).return_value = socket_path
+        self.patch(lease_socket_service, "get_socket_path").return_value = (
+            socket_path
+        )
         return socket_path
 
     def patch_rpc_UpdateLeases(self):

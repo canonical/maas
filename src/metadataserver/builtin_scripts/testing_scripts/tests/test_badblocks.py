@@ -64,9 +64,9 @@ class TestRunBadBlocks(MAASTestCase):
         blocksize = random.randint(512, 4096)
         self.patch(badblocks, "get_block_size").return_value = blocksize
         parallel_blocks = random.randint(1, 50000)
-        self.patch(
-            badblocks, "get_parallel_blocks"
-        ).return_value = parallel_blocks
+        self.patch(badblocks, "get_parallel_blocks").return_value = (
+            parallel_blocks
+        )
         self.patch(os, "environ", {"RESULT_PATH": factory.make_name()})
         cmd = [
             "sudo",
@@ -113,9 +113,9 @@ class TestRunBadBlocks(MAASTestCase):
         blocksize = random.randint(512, 4096)
         self.patch(badblocks, "get_block_size").return_value = blocksize
         parallel_blocks = random.randint(1, 50000)
-        self.patch(
-            badblocks, "get_parallel_blocks"
-        ).return_value = parallel_blocks
+        self.patch(badblocks, "get_parallel_blocks").return_value = (
+            parallel_blocks
+        )
         cmd = [
             "sudo",
             "-n",

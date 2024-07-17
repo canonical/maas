@@ -109,9 +109,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(
-            service, "unregisterWorker"
-        ).side_effect = mock_unregisterWorker
+        self.patch(service, "unregisterWorker").side_effect = (
+            mock_unregisterWorker
+        )
 
         try:
             service.startService()
@@ -138,9 +138,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(
-            service, "unregisterWorker"
-        ).side_effect = mock_unregisterWorker
+        self.patch(service, "unregisterWorker").side_effect = (
+            mock_unregisterWorker
+        )
 
         try:
             service.startService()
@@ -167,9 +167,9 @@ class TestWorkersService(MAASTestCase):
             original_unregisterWorker(*args, **kwargs)
             dv.set(None)
 
-        self.patch(
-            service, "unregisterWorker"
-        ).side_effect = mock_unregisterWorker
+        self.patch(service, "unregisterWorker").side_effect = (
+            mock_unregisterWorker
+        )
 
         try:
             service.startService()

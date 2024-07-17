@@ -183,9 +183,11 @@ class ScriptForm(Form):
                 elif ptype == "choice":
                     # Support a Django choice list or a string list
                     choices = [
-                        set(choice)
-                        if isinstance(choice, (list, set, tuple))
-                        else (choice, choice)
+                        (
+                            set(choice)
+                            if isinstance(choice, (list, set, tuple))
+                            else (choice, choice)
+                        )
                         for choice in value.get("choices", [])
                     ]
                     self.fields[combined_name] = ChoiceField(

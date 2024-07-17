@@ -53,9 +53,11 @@ def login(request):
     return JsonResponse(
         {
             "authenticated": request.user.is_authenticated,
-            "external_auth_url": request.external_auth_info.url
-            if request.external_auth_info
-            else None,
+            "external_auth_url": (
+                request.external_auth_info.url
+                if request.external_auth_info
+                else None
+            ),
             "no_users": not UserProfile.objects.all_users().exists(),
         }
     )

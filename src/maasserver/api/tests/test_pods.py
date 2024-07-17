@@ -198,9 +198,9 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
 
     def test_create_lxd_default_project(self):
         self.patch(pods, "post_commit_do")
-        self.patch_autospec(
-            pods, "generate_certificate"
-        ).return_value = get_sample_cert()
+        self.patch_autospec(pods, "generate_certificate").return_value = (
+            get_sample_cert()
+        )
         discovered_pod, _, _ = self.fake_pod_discovery()
         ip = factory.make_ipv4_address()
         info = {

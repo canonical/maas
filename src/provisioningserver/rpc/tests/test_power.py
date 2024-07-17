@@ -404,10 +404,10 @@ class TestMaybeChangePowerState(MAASTestCase):
         self.useFixture(EventTypesAllRegistered())
         # Defer later won't run during the test so replace it with a
         # maybeDeferred.
-        self.patch(
-            power, "deferLater"
-        ).side_effect = lambda clock, delay, func, *args, **kwargs: maybeDeferred(
-            func, *args, **kwargs
+        self.patch(power, "deferLater").side_effect = (
+            lambda clock, delay, func, *args, **kwargs: maybeDeferred(
+                func, *args, **kwargs
+            )
         )
         self.patch(
             clusterservice, "get_all_interfaces_definition"

@@ -145,9 +145,9 @@ def get_lxd_machine_definition(request, include_profile=False):
         "config": {
             "limits.cpu": _get_cpu_limits(request),
             "limits.memory": str(request.memory * 1024**2),
-            "limits.memory.hugepages": "true"
-            if request.hugepages_backed
-            else "false",
+            "limits.memory.hugepages": (
+                "true" if request.hugepages_backed else "false"
+            ),
             # LP: 1867387 - Disable secure boot until its fixed in MAAS
             "security.secureboot": "false",
         },

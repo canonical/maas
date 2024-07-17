@@ -370,9 +370,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
     def test_processMessages_process_all_messages_in_the_queue(self):
         protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
-        self.patch_autospec(
-            protocol, "handleRequest"
-        ).return_value = NOT_DONE_YET
+        self.patch_autospec(protocol, "handleRequest").return_value = (
+            NOT_DONE_YET
+        )
         messages = [
             {"type": MSG_TYPE.REQUEST, "request_id": 1},
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
@@ -384,9 +384,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        self.patch_autospec(
-            protocol, "handleRequest"
-        ).return_value = NOT_DONE_YET
+        self.patch_autospec(protocol, "handleRequest").return_value = (
+            NOT_DONE_YET
+        )
         messages = [
             {"request_id": 1},
             {"type": MSG_TYPE.REQUEST, "request_id": 2},
@@ -402,9 +402,9 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol, _ = self.make_protocol()
         protocol.user = maas_factory.make_User()
         mock_loseConnection = self.patch_autospec(protocol, "loseConnection")
-        self.patch_autospec(
-            protocol, "handleRequest"
-        ).return_value = NOT_DONE_YET
+        self.patch_autospec(protocol, "handleRequest").return_value = (
+            NOT_DONE_YET
+        )
         messages = [
             {"type": MSG_TYPE.RESPONSE, "request_id": 1},
             {"type": MSG_TYPE.REQUEST, "request_id": 2},

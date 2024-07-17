@@ -54,10 +54,12 @@ class SubnetsHandler(Handler):
                 subnet.to_response(f"{V3_API_PREFIX}/subnets")
                 for subnet in subnets.items
             ],
-            next=f"{V3_API_PREFIX}/subnets?"
-            f"{TokenPaginationParams.to_href_format(subnets.next_token, token_pagination_params.size)}"
-            if subnets.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/subnets?"
+                f"{TokenPaginationParams.to_href_format(subnets.next_token, token_pagination_params.size)}"
+                if subnets.next_token
+                else None
+            ),
         )
 
     @handler(

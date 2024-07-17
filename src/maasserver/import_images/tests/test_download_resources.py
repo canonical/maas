@@ -224,9 +224,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_extract_archive_tar = self.patch(
             download_resources, "extract_archive_tar"
@@ -265,9 +265,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -303,9 +303,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -359,9 +359,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -397,9 +397,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -436,9 +436,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")
@@ -477,9 +477,9 @@ class TestRepoWriter(MAASTestCase):
         repo_writer = download_resources.RepoWriter(
             None, None, product_mapping
         )
-        self.patch(
-            download_resources, "products_exdata"
-        ).return_value = product
+        self.patch(download_resources, "products_exdata").return_value = (
+            product
+        )
         # Prevent MAAS from trying to actually write the file.
         mock_insert_file = self.patch(download_resources, "insert_file")
         mock_link_resources = self.patch(download_resources, "link_resources")

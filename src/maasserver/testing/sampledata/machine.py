@@ -61,9 +61,9 @@ def make_machines(
         if n % vmhost_ratio == 0:
             bmc = next(bmcs)
             instance_power_parameters = {
-                "instance_name"
-                if bmc.power_type == "lxd"
-                else "power_id": hostname
+                (
+                    "instance_name" if bmc.power_type == "lxd" else "power_id"
+                ): hostname
             }
         elif redfish_bmc:
             bmc = redfish_bmc

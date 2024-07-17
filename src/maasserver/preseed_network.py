@@ -355,9 +355,11 @@ class InterfaceConfiguration:
                     # the v1 YAML, but it's per-interface for the v2 YAML.
                     self._set_default_gateway(
                         subnet,
-                        v1_subnet_operation
-                        if self.version == 1
-                        else v2_config,
+                        (
+                            v1_subnet_operation
+                            if self.version == 1
+                            else v2_config
+                        ),
                     )
 
                     if "dns_nameservers" not in v1_subnet_operation:
@@ -368,12 +370,12 @@ class InterfaceConfiguration:
                             v2_nameservers["addresses"] = []
 
                     if subnet.allow_dns:
-                        v1_subnet_operation[
-                            "dns_search"
-                        ] = self.node_config.default_search_list
-                        v2_nameservers[
-                            "search"
-                        ] = self.node_config.default_search_list
+                        v1_subnet_operation["dns_search"] = (
+                            self.node_config.default_search_list
+                        )
+                        v2_nameservers["search"] = (
+                            self.node_config.default_search_list
+                        )
 
                         for ip in StaticIPAddress.objects.filter(
                             interface__node_config__node__in=[

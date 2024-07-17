@@ -1068,9 +1068,9 @@ class TestMetadataUserData(MAASServerTestCase):
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         user_data = factory.make_name("user data").encode("ascii")
-        self.patch(
-            api, "generate_user_data_for_poweroff"
-        ).return_value = user_data
+        self.patch(api, "generate_user_data_for_poweroff").return_value = (
+            user_data
+        )
         response = client.get(reverse("metadata-user-data", args=["latest"]))
         self.assertEqual("application/octet-stream", response["Content-Type"])
         self.assertIsInstance(response.content, bytes)
@@ -1554,17 +1554,17 @@ class TestMAASScripts(MAASServerTestCase):
             else:
                 content = script_result.script.script.data.encode()
                 md_item["script_version_id"] = script_result.script.script.id
-                md_item[
-                    "timeout_seconds"
-                ] = script_result.script.timeout.total_seconds()
+                md_item["timeout_seconds"] = (
+                    script_result.script.timeout.total_seconds()
+                )
                 md_item["parallel"] = script_result.script.parallel
                 md_item["hardware_type"] = script_result.script.hardware_type
                 md_item["parameters"] = script_result.parameters
                 md_item["packages"] = script_result.script.packages
                 md_item["for_hardware"] = script_result.script.for_hardware
-                md_item[
-                    "apply_configured_networking"
-                ] = script_result.script.apply_configured_networking
+                md_item["apply_configured_networking"] = (
+                    script_result.script.apply_configured_networking
+                )
 
             md_item["has_finished"] = (
                 script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING

@@ -34,11 +34,13 @@ class ImagesSyncProgressHandler(OperationsHandler):
             file.id: {
                 "sha256": file.sha256,
                 "size": file.size,
-                "sources": file.bootresourcefilesync_set.all().values_list(
-                    "region__system_id", flat=True
-                )
-                if with_sources
-                else [],
+                "sources": (
+                    file.bootresourcefilesync_set.all().values_list(
+                        "region__system_id", flat=True
+                    )
+                    if with_sources
+                    else []
+                ),
             }
             for file in qs
         }

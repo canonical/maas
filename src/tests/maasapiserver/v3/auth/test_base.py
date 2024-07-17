@@ -66,7 +66,7 @@ def auth_app(
         authenticated_user: Optional[AuthenticatedUser] = Depends(
             get_authenticated_user
         ),
-    ) -> (Optional[AuthenticatedUser]):
+    ) -> Optional[AuthenticatedUser]:
         return authenticated_user
 
     @app.post(

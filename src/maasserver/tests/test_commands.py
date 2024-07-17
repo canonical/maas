@@ -199,9 +199,9 @@ class TestCommands(MAASServerTestCase):
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
-        self.patch(
-            createadmin, "prompt_for_ssh_import"
-        ).return_value = ssh_import
+        self.patch(createadmin, "prompt_for_ssh_import").return_value = (
+            ssh_import
+        )
         self.patch(keysource_module.KeySource, "import_keys")
 
         call_command(

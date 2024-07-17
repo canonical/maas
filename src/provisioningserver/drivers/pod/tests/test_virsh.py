@@ -491,9 +491,7 @@ class VirshRunFake:
 
 def make_requested_machine():
     block_devices = [
-        RequestedMachineBlockDevice(
-            size=random.randint(1024**3, 4 * 1024**3)
-        )
+        RequestedMachineBlockDevice(size=random.randint(1024**3, 4 * 1024**3))
         for _ in range(3)
     ]
     interfaces = [RequestedMachineInterface() for _ in range(3)]
@@ -1403,9 +1401,9 @@ class TestVirshSSH(MAASTestCase):
             ),
             tags=[],
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertEqual(
             (pools[1].type, pools[1].name), conn.get_usable_pool(disk)
         )
@@ -1427,9 +1425,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available, tags=[selected_pool.name]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertEqual(
             (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk),
@@ -1452,9 +1450,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available + 1, tags=[selected_pool.name]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertRaises(PodInvalidResources, conn.get_usable_pool, disk)
 
     def test_get_usable_pool_filters_on_default_pool_id(self):
@@ -1474,9 +1472,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available, tags=[]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertEqual(
             (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk, selected_pool.id),
@@ -1499,9 +1497,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available + 1, tags=[]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertRaises(
             PodInvalidResources, conn.get_usable_pool, disk, selected_pool.id
         )
@@ -1523,9 +1521,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available, tags=[]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertEqual(
             (selected_pool.type, selected_pool.name),
             conn.get_usable_pool(disk, selected_pool.name),
@@ -1548,9 +1546,9 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=selected_pool.available + 1, tags=[]
         )
-        self.patch(
-            virsh.VirshSSH, "get_pod_storage_pools"
-        ).return_value = pools
+        self.patch(virsh.VirshSSH, "get_pod_storage_pools").return_value = (
+            pools
+        )
         self.assertRaises(
             PodInvalidResources, conn.get_usable_pool, disk, selected_pool.name
         )
@@ -1675,9 +1673,9 @@ class TestVirshSSH(MAASTestCase):
         volume_path = factory.make_name("/some/path/to_vol_serial")
         serial = os.path.basename(volume_path)
         device_name = factory.make_name("device")
-        self.patch(
-            virsh.VirshSSH, "get_volume_path"
-        ).return_value = volume_path
+        self.patch(virsh.VirshSSH, "get_volume_path").return_value = (
+            volume_path
+        )
         conn.attach_local_volume(domain, pool, volume_name, device_name)
         conn.run.assert_called_once_with(
             [
@@ -2100,12 +2098,12 @@ class TestVirshSSH(MAASTestCase):
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
-        self.patch(
-            virsh.VirshSSH, "_create_local_volume"
-        ).return_value = disk_info
-        self.patch(
-            virsh.VirshSSH, "get_domain_capabilities"
-        ).return_value = domain_params
+        self.patch(virsh.VirshSSH, "_create_local_volume").return_value = (
+            disk_info
+        )
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params
+        )
         mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
@@ -2164,12 +2162,12 @@ class TestVirshSSH(MAASTestCase):
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
-        self.patch(
-            virsh.VirshSSH, "_create_local_volume"
-        ).return_value = disk_info
-        self.patch(
-            virsh.VirshSSH, "get_domain_capabilities"
-        ).return_value = domain_params
+        self.patch(virsh.VirshSSH, "_create_local_volume").return_value = (
+            disk_info
+        )
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params
+        )
         mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
@@ -2228,12 +2226,12 @@ class TestVirshSSH(MAASTestCase):
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
-        self.patch(
-            virsh.VirshSSH, "_create_local_volume"
-        ).return_value = disk_info
-        self.patch(
-            virsh.VirshSSH, "get_domain_capabilities"
-        ).return_value = domain_params
+        self.patch(virsh.VirshSSH, "_create_local_volume").return_value = (
+            disk_info
+        )
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params
+        )
         mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname
@@ -2292,12 +2290,12 @@ class TestVirshSSH(MAASTestCase):
             "type": "kvm",
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
-        self.patch(
-            virsh.VirshSSH, "_create_local_volume"
-        ).return_value = disk_info
-        self.patch(
-            virsh.VirshSSH, "get_domain_capabilities"
-        ).return_value = domain_params
+        self.patch(virsh.VirshSSH, "_create_local_volume").return_value = (
+            disk_info
+        )
+        self.patch(virsh.VirshSSH, "get_domain_capabilities").return_value = (
+            domain_params
+        )
         mock_uuid = self.patch(virsh, "uuid4")
         mock_uuid.return_value = str(uuid4())
         domain_params["name"] = request.hostname

@@ -58,10 +58,12 @@ class ResourcePoolHandler(Handler):
                 resource_pools.to_response(f"{V3_API_PREFIX}/resource_pools")
                 for resource_pools in resource_pools.items
             ],
-            next=f"{V3_API_PREFIX}/resource_pools?"
-            f"{TokenPaginationParams.to_href_format(resource_pools.next_token, token_pagination_params.size)}"
-            if resource_pools.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/resource_pools?"
+                f"{TokenPaginationParams.to_href_format(resource_pools.next_token, token_pagination_params.size)}"
+                if resource_pools.next_token
+                else None
+            ),
         )
 
     @handler(

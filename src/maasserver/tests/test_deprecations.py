@@ -20,9 +20,9 @@ class TestGetDeprecations(MAASServerTestCase):
         )
 
     def test_wrong_database_owner(self):
-        self.patch(
-            deprecations, "get_database_owner"
-        ).return_value = "postgres"
+        self.patch(deprecations, "get_database_owner").return_value = (
+            "postgres"
+        )
         self.assertIn(
             DEPRECATIONS["WRONG_MAAS_DATABASE_OWNER"], get_deprecations()
         )

@@ -54,10 +54,12 @@ class VlansHandler(Handler):
                 vlan.to_response(f"{V3_API_PREFIX}/vlans")
                 for vlan in vlans.items
             ],
-            next=f"{V3_API_PREFIX}/vlans?"
-            f"{TokenPaginationParams.to_href_format(vlans.next_token, token_pagination_params.size)}"
-            if vlans.next_token
-            else None,
+            next=(
+                f"{V3_API_PREFIX}/vlans?"
+                f"{TokenPaginationParams.to_href_format(vlans.next_token, token_pagination_params.size)}"
+                if vlans.next_token
+                else None
+            ),
         )
 
     @handler(

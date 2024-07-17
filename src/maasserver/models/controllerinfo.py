@@ -74,9 +74,9 @@ class ControllerInfoManager(Manager):
                 {
                     "snap_revision": versions.current.revision,
                     "snap_cohort": versions.cohort,
-                    "update_origin": str(versions.channel)
-                    if versions.channel
-                    else "",
+                    "update_origin": (
+                        str(versions.channel) if versions.channel else ""
+                    ),
                 }
             )
         elif versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:

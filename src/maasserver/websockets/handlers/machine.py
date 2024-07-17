@@ -462,18 +462,18 @@ class MachineHandler(NodeHandler):
                     HARDWARE_TYPE.MEMORY, None
                 )
             )
-            data[
-                "network_test_status"
-            ] = self.dehydrate_test_statuses_for_list(
-                self._script_results_for_list.get(obj.id, {}).get(
-                    HARDWARE_TYPE.NETWORK, None
+            data["network_test_status"] = (
+                self.dehydrate_test_statuses_for_list(
+                    self._script_results_for_list.get(obj.id, {}).get(
+                        HARDWARE_TYPE.NETWORK, None
+                    )
                 )
             )
-            data[
-                "storage_test_status"
-            ] = self.dehydrate_test_statuses_for_list(
-                self._script_results_for_list.get(obj.id, {}).get(
-                    HARDWARE_TYPE.STORAGE
+            data["storage_test_status"] = (
+                self.dehydrate_test_statuses_for_list(
+                    self._script_results_for_list.get(obj.id, {}).get(
+                        HARDWARE_TYPE.STORAGE
+                    )
                 )
             )
 
