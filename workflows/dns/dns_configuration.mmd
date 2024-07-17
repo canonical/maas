@@ -1,0 +1,42 @@
+---
+title: DNS Configuration Workflow
+---
+flowchart TD
+    A[regiond starts] --> B(set workflow parameter 'force_reload' true)
+    C[service layer creates / updates / deletes DNS record] --> D(queue DNS change for update)
+    B --> E{is there a workflow execution queued?}
+    D --> E
+    E --> F(flush update queue into parent workflow execution)
+    F --> G(execute DNS configuration workflow for each region)
+    G --> H{does update require full reload?}
+    H -->|yes| I(fetch all DNS data from DB)
+    H -->|no| J(stat for updating zones' files)
+    J -->|files exist| K(fetch only DNS data that has changed from DB)
+    J -->|files do not exist| L(continue as full reload)
+    L --> I
+    I --> M{success?}
+    M -->|yes| N(rndc freeze)
+    M -->|no| I
+    N --> O{success?}
+    O -->|yes| P{have data to be templated?}
+    O -->|no| N
+    P -->|yes| Q(template DNS data into zone config files)
+    P -->|no| R
+    Q --> R(rndc thaw)
+    R --> S{success?}
+    S -->|yes| T(restart BIND)
+    S -->|no| R
+    T --> U{child workflow success?}
+    U -->|yes| V(query for updated SOA serial for each region)
+    U -->|no| T
+    V --> W{network failure?}
+    W -->|yes| V
+    W -->|no| X{serial match?}
+    X -->|yes| Y[done]
+    X -->|no| N 
+    K --> Z{success?}
+    Z -->|yes| AA(call nsupdate with updates)
+    Z -->|no| K
+    AA --> BB{child workflow success?}
+    BB -->|yes| U
+    BB -->|no| AA
