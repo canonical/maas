@@ -11,3 +11,8 @@ class MacaroonApiException(Exception):
     def __init__(self, status: int, message: str):
         super().__init__(message)
         self.status = status
+
+
+class SyncConflictException(Exception):
+    def __init__(self):
+        super().__init__()
