@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasapiserver.v3.services.auth import AuthService
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.configurations import ConfigurationsService
+from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasapiserver.v3.services.fabrics import FabricsService
 from maasapiserver.v3.services.interfaces import InterfacesService
 from maasapiserver.v3.services.machines import MachinesService
@@ -31,6 +32,7 @@ class ServiceCollectionV3:
     configurations: ConfigurationsService
     resource_pools: ResourcePoolsService
     auth: AuthService
+    external_auth: ExternalAuthService
     machines: MachinesService
     interfaces: InterfacesService
     fabrics: FabricsService
@@ -53,6 +55,10 @@ class ServiceCollectionV3:
             connection=connection,
             secrets_service=services.secrets,
             users_service=services.users,
+        )
+        services.external_auth = ExternalAuthService(
+            connection=connection,
+            secrets_service=services.secrets,
         )
         services.nodes = NodesService(connection=connection)
         services.vmclusters = VmClustersService(connection=connection)
