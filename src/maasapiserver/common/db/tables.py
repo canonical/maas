@@ -651,3 +651,12 @@ VaultSecretTable = Table(
     Column("path", Text, primary_key=True, unique=True),
     Column("deleted", Boolean, nullable=False),
 )
+
+RootKeyTable = Table(
+    "maasserver_rootkey",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("expiration", DateTime(timezone=True), nullable=False),
+)
