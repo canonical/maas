@@ -6,6 +6,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.models.exceptions import UnauthorizedException
+from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services import AuthService, SecretsService, UsersService
@@ -210,3 +211,43 @@ class TestAuthService:
         token = JWT.create("not_the_same_key", "test", []).encoded
         with pytest.raises(InvalidToken):
             await auth_service.decode_and_verify_token(token)
+
+    async def test_access_token(self, db_connection: AsyncConnection) -> None:
+        user = self._build_test_user()
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+
+        users_service_mock = Mock(UsersService)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        authenticated_user = AuthenticatedUser(
+            username=user.username, roles=[UserRole.USER]
+        )
+        token = await auth_service.access_token(authenticated_user)
+        assert len(token.encoded) > 0
+        assert token.subject == user.username
+        assert token.roles == [UserRole.USER]
+
+    async def test_access_token_admin(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        admin = self._build_test_user(is_superuser=True)
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_simple_secret = AsyncMock(return_value="123")
+
+        users_service_mock = Mock(UsersService)
+        auth_service = AuthService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            users_service=users_service_mock,
+        )
+        authenticated_user = AuthenticatedUser(
+            username=admin.username, roles=[UserRole.USER, UserRole.ADMIN]
+        )
+        token = await auth_service.access_token(authenticated_user)
+        assert len(token.encoded) > 0
+        assert token.subject == admin.username
+        assert token.roles == [UserRole.USER, UserRole.ADMIN]

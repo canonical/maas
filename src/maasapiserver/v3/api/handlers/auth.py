@@ -8,6 +8,12 @@ from maasapiserver.common.api.models.responses.errors import (
 )
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from maasapiserver.v3.auth.base import (
+    AuthenticatedUser,
+    check_permissions,
+    get_authenticated_user,
+)
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.services import ServiceCollectionV3
 
 
@@ -40,6 +46,34 @@ class AuthHandler(Handler):
         token = await services.auth.login(
             form_data.username, form_data.password
         )
+        return AccessTokenResponse(
+            token_type=self.TOKEN_TYPE, access_token=token.encoded
+        )
+
+    @handler(
+        path="/auth/access_token",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": AccessTokenResponse,
+            },
+            401: {"model": UnauthorizedBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def access_token(
+        self,
+        authenticated_user: AuthenticatedUser | None = Depends(
+            get_authenticated_user
+        ),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> AccessTokenResponse:
+        token = await services.auth.access_token(authenticated_user)
         return AccessTokenResponse(
             token_type=self.TOKEN_TYPE, access_token=token.encoded
         )

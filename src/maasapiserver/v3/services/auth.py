@@ -10,6 +10,7 @@ from maasapiserver.common.models.exceptions import (
     UnauthorizedException,
 )
 from maasapiserver.common.services._base import Service
+from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.auth.jwt import JWT, UserRole
 from maasapiserver.v3.services.secrets import SecretNotFound, SecretsService
 from maasapiserver.v3.services.users import UsersService
@@ -53,6 +54,14 @@ class AuthService(Service):
         )
         jwt_key = await self._get_or_create_cached_jwt_key()
         return JWT.create(jwt_key, user.username, roles)
+
+    async def access_token(self, authenticated_user: AuthenticatedUser) -> JWT:
+        jwt_key = await self._get_or_create_cached_jwt_key()
+        return JWT.create(
+            jwt_key,
+            authenticated_user.username,
+            list(authenticated_user.roles),
+        )
 
     async def decode_and_verify_token(self, token: str) -> JWT:
         jwt_key = await self._get_or_create_cached_jwt_key()
