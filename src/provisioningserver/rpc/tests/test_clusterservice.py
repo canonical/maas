@@ -108,6 +108,19 @@ from provisioningserver.utils.version import get_running_version
 TIMEOUT = get_testing_timeout()
 
 
+class TestClusterProtocol(MAASTestCase):
+    def test_unauthenticated_allowed_commands(self):
+        protocol = Cluster()
+        self.assertEqual(
+            [cluster.Authenticate.commandName],
+            protocol.unauthenticated_commands,
+        )
+
+    def test_default_auth_status(self):
+        protocol = Cluster()
+        self.assertEqual(False, protocol.auth_status.is_authenticated)
+
+
 class TestClusterProtocol_Identify(MAASTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 

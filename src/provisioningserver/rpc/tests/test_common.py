@@ -6,6 +6,7 @@ import random
 import re
 from unittest.mock import ANY, sentinel
 
+from testtools.monkey import MonkeyPatcher
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.internet.testing import StringTransport
@@ -21,6 +22,10 @@ from maastesting.twisted import (
 )
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import common
+from provisioningserver.rpc.common import (
+    ConnectionAuthStatus,
+    RPCUnauthorizedException,
+)
 from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
     FakeConnection,
@@ -246,6 +251,77 @@ class TestRPCProtocol(MAASTestCase):
         protocol.unhandledError(fake_failure)
 
         amp_unhandledError.assert_not_called()
+
+
+class TestConnectionAuthStatus(MAASTestCase):
+    def test_default_auth_status(self):
+        auth_status = ConnectionAuthStatus()
+        self.assertEqual(auth_status.is_authenticated, False)
+
+    def test_set_is_authenticated(self):
+        auth_status = ConnectionAuthStatus(True)
+        self.assertEqual(auth_status.is_authenticated, True)
+        auth_status.set_is_authenticated(False)
+        self.assertEqual(auth_status.is_authenticated, False)
+
+
+class TestSecuredRPCProtocol(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patcher = MonkeyPatcher()
+        self.patcher.add_patch(
+            #
+            common.RPCProtocol,
+            "dispatchCommand",
+            (lambda *args, **kwargs: True),
+        )
+
+    def test_unauthenticated_connection_is_dropped(self):
+        protocol = common.SecuredRPCProtocol(
+            unauthenticated_commands=[],
+            auth_status=ConnectionAuthStatus(False),
+        )
+        protocol.makeConnection(StringTransport())
+
+        seq = b"%d" % random.randrange(0, 2**32)
+        cmd = factory.make_string().encode("ascii")
+        box = amp.AmpBox(_ask=seq, _command=cmd)
+        self.assertRaises(
+            RPCUnauthorizedException, protocol.dispatchCommand, box
+        )
+
+    def test_authenticated_connection(self):
+        protocol = common.SecuredRPCProtocol(
+            unauthenticated_commands=[], auth_status=ConnectionAuthStatus(True)
+        )
+        protocol.makeConnection(StringTransport())
+
+        seq = b"%d" % random.randrange(0, 2**32)
+        cmd = factory.make_string().encode("ascii")
+        box = amp.AmpBox(_ask=seq, _command=cmd)
+
+        self.patcher.patch()
+        try:
+            self.assertEqual(protocol.dispatchCommand(box), True)
+        finally:
+            self.patcher.restore()
+
+    def test_unauthenticated_command(self):
+        cmd = factory.make_string()
+        protocol = common.SecuredRPCProtocol(
+            unauthenticated_commands=[cmd.encode("ascii")],
+            auth_status=ConnectionAuthStatus(False),
+        )
+        protocol.makeConnection(StringTransport())
+
+        seq = b"%d" % random.randrange(0, 2**32)
+        box = amp.AmpBox(_ask=seq, _command=cmd.encode("ascii"))
+
+        self.patcher.patch()
+        try:
+            self.assertEqual(protocol.dispatchCommand(box), True)
+        finally:
+            self.patcher.restore()
 
 
 class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):

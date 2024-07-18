@@ -62,7 +62,11 @@ from provisioningserver.rpc import (
     pods,
     region,
 )
-from provisioningserver.rpc.common import Ping, RPCProtocol
+from provisioningserver.rpc.common import (
+    ConnectionAuthStatus,
+    Ping,
+    SecuredRPCProtocol,
+)
 from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
@@ -250,12 +254,20 @@ def check_ip_address(request):
     return done
 
 
-class Cluster(RPCProtocol):
+class Cluster(SecuredRPCProtocol):
     """The RPC protocol supported by a cluster controller.
 
     This can be used on the client or server end of a connection; once a
     connection is established, AMP is symmetric.
     """
+
+    def __init__(
+        self, auth_status: ConnectionAuthStatus = ConnectionAuthStatus()
+    ):
+        super().__init__(
+            unauthenticated_commands=[cluster.Authenticate.commandName],
+            auth_status=auth_status,
+        )
 
     @cluster.Identify.responder
     def identify(self):
@@ -878,7 +890,7 @@ class ClusterClient(Cluster):
     service = None
 
     def __init__(self, address, eventloop, service):
-        super().__init__()
+        super().__init__(auth_status=ConnectionAuthStatus())
         self.address = address
         self.eventloop = eventloop
         self.service = service
@@ -991,6 +1003,7 @@ class ClusterClient(Cluster):
         d_authenticate = self.authenticateRegion()
         self.authenticated.observe(d_authenticate)
         authenticated = yield d_authenticate
+        self.auth_status.set_is_authenticated(authenticated)
 
         if authenticated:
             log.msg("Event-loop '%s' authenticated." % self.ident)
