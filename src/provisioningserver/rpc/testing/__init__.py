@@ -29,7 +29,10 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClient,
     ClusterClientService,
 )
-from provisioningserver.rpc.common import RPCProtocol
+from provisioningserver.rpc.common import (
+    ConnectionAuthStatus,
+    SecuredRPCProtocol,
+)
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.twisted import asynchronous, callOut
@@ -417,7 +420,9 @@ def make_amp_protocol_factory(*commands):
     """Make a new protocol factory based on `RPCProtocol`."""
 
     def __init__(self):
-        super(cls, self).__init__()
+        super(cls, self).__init__(
+            unauthenticated_commands=[], auth_status=ConnectionAuthStatus(True)
+        )
         self._commandDispatch = self._commandDispatch.copy()
         for command in commands:
             command_name = command.commandName.decode("ascii")
@@ -432,6 +437,6 @@ def make_amp_protocol_factory(*commands):
             self._commandDispatch[command.commandName] = (command, responder)
 
     name = next(amp_protocol_factory_names)
-    cls = type(name, (RPCProtocol,), {"__init__": __init__})
+    cls = type(name, (SecuredRPCProtocol,), {"__init__": __init__})
 
     return cls

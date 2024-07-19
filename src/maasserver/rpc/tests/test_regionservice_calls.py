@@ -78,6 +78,18 @@ def transactional_reload_object(obj):
     return reload_object(obj)
 
 
+class TestRegionProtocol(MAASTestCase):
+    def test_unauthenticated_allowed_commands(self):
+        protocol = Region()
+        self.assertEqual(
+            [Authenticate.commandName], protocol.unauthenticated_commands
+        )
+
+    def test_default_auth_status(self):
+        protocol = Region()
+        self.assertEqual(False, protocol.auth_status.is_authenticated)
+
+
 class TestRegionProtocol_Identify(MAASTestCase):
     def test_identify_is_registered(self):
         protocol = Region()

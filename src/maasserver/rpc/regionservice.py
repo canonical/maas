@@ -59,7 +59,10 @@ from provisioningserver.prometheus.metrics import (
     PROMETHEUS_METRICS,
 )
 from provisioningserver.rpc import cluster, common, exceptions, region
-from provisioningserver.rpc.common import RPCProtocol
+from provisioningserver.rpc.common import (
+    ConnectionAuthStatus,
+    SecuredRPCProtocol,
+)
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.security import calculate_digest, fernet_encrypt_psk
 from provisioningserver.utils.events import EventGroup
@@ -75,12 +78,20 @@ from provisioningserver.utils.version import get_running_version
 log = LegacyLogger()
 
 
-class Region(RPCProtocol):
+class Region(SecuredRPCProtocol):
     """The RPC protocol supported by a region controller.
 
     This can be used on the client or server end of a connection; once a
     connection is established, AMP is symmetric.
     """
+
+    def __init__(
+        self, auth_status: ConnectionAuthStatus = ConnectionAuthStatus(False)
+    ):
+        super().__init__(
+            unauthenticated_commands=[region.Authenticate.commandName],
+            auth_status=auth_status,
+        )
 
     @region.Identify.responder
     def identify(self):
@@ -613,6 +624,9 @@ class RegionServer(Region):
     :ivar ident: The identity (e.g. UUID) of the remote cluster.
     """
 
+    def __init__(self):
+        super().__init__(auth_status=ConnectionAuthStatus())
+
     factory = None
     connid = None
     ident = None
@@ -802,8 +816,25 @@ class RegionServer(Region):
     def connectionMade(self):
         super().connectionMade()
         self.connid = str(uuid.uuid4())
+
+        def trust_connection(authenticated: bool):
+            if authenticated:
+                log.info(
+                    f"Connection {self.connid} is trusted and ready to respond/serve commands."
+                )
+            else:
+                log.info(
+                    f"Connection {self.connid} is NOT trusted and will be dropped."
+                )
+            # If the authentication process is successful, we allow to execute rpc calls from now on
+            self.auth_status.set_is_authenticated(authenticated)
+
         if self.factory.service.running:
-            return self.performHandshake().addErrback(self.handshakeFailed)
+            return (
+                self.performHandshake()
+                .addCallback(trust_connection)
+                .addErrback(self.handshakeFailed)
+            )
         else:
             self.transport.loseConnection()
 

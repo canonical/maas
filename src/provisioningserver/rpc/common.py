@@ -23,6 +23,10 @@ log = LegacyLogger()
 undefined = object()
 
 
+class RPCUnauthorizedException(Exception):
+    """Raised by commands that require an authenticated connection"""
+
+
 class Identify(amp.Command):
     """Request the identity of the remote side, e.g. its UUID.
 
@@ -308,6 +312,16 @@ class RPCProtocol(amp.AMP):
         def coerce_error(failure):
             if failure.check(amp.RemoteAmpError):
                 return failure
+            elif failure.check(RPCUnauthorizedException):
+                return Failure(
+                    amp.RemoteAmpError(
+                        amp.ERROR,
+                        b"The command %s requires an authenticated connection"
+                        % box[amp.COMMAND],
+                        fatal=False,
+                        local=failure,
+                    )
+                )
             else:
                 command = box[amp.COMMAND]
                 command_ref = make_command_ref(box)
@@ -369,3 +383,38 @@ class RPCProtocol(amp.AMP):
         :py:class:`~provisioningserver.rpc.common.Ping`.
         """
         return {}
+
+
+class ConnectionAuthStatus:
+    def __init__(self, is_authenticated: bool = False):
+        self.is_authenticated = is_authenticated
+
+    def set_is_authenticated(self, is_authenticated: bool):
+        self.is_authenticated = is_authenticated
+
+
+class SecuredRPCProtocol(RPCProtocol):
+    def __init__(
+        self,
+        unauthenticated_commands: list[bytes],
+        auth_status: ConnectionAuthStatus,
+    ):
+        super().__init__()
+        self.unauthenticated_commands = unauthenticated_commands
+        self.auth_status = auth_status
+
+    def dispatchCommand(self, box):
+        """
+        By default, we require that the connection has performed the authentication handshake before serving any RPC call.
+        Only some commands should not require an authenticated connection, such as the Authenticate command that is used during the
+        handshake.
+        """
+        cmd = box[amp.COMMAND]
+        if (
+            cmd in self.unauthenticated_commands
+            or self.auth_status.is_authenticated
+        ):
+            return super().dispatchCommand(box)
+        raise RPCUnauthorizedException(
+            "The RPC command requires authentication. Please ensure you have authenticated first."
+        )

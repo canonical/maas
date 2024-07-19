@@ -23,14 +23,15 @@ from zope.interface import implementer
 
 from maasserver import eventloop, security
 from maasserver.models.node import RackController
-from maasserver.rpc import getClientFor, rackcontrollers
-from maasserver.rpc.regionservice import RegionServer
+from maasserver.rpc import getClientFor, rackcontrollers, regionservice
+from maasserver.rpc.testing.doubles import AuthenticatedRegionServer
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
 )
 from maastesting import get_testing_timeout
 from provisioningserver.rpc import cluster, clusterservice, region
+from provisioningserver.rpc.common import ConnectionAuthStatus
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
     call_responder,
@@ -52,7 +53,9 @@ def get_service_in_eventloop(name):
 class FakeConnection:
     def __init__(self, ident):
         super().__init__()
-        self.protocol = clusterservice.Cluster()
+        self.protocol = clusterservice.Cluster(
+            auth_status=ConnectionAuthStatus(is_authenticated=True)
+        )
         self.ident = ident
 
     def callRemote(self, cmd, **arguments):
@@ -144,7 +147,9 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
         :return: py:class:`twisted.test.iosim.IOPump`
         """
-        server_factory = Factory.forProtocol(RegionServer)
+        # Use a RegionServer with a trusted connection by default so that in the tests we don't have to
+        # authenticate the connection every time.
+        server_factory = Factory.forProtocol(AuthenticatedRegionServer)
         server_factory.service = self.rpc
         server = server_factory.buildProtocol(addr=None)
         return iosim.connect(
@@ -285,6 +290,13 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         patcher = MonkeyPatcher()
         patcher.add_patch(
             rackcontrollers, "register", (lambda *args, **kwargs: registered)
+        )
+        # Just for the sake of setting up the test environment easily and quickly,
+        # we bypass the authentication here.
+        patcher.add_patch(
+            regionservice.RegionServer,
+            "authenticateCluster",
+            (lambda *args, **kwargs: True),
         )
 
         # Register the rack controller with the region.
