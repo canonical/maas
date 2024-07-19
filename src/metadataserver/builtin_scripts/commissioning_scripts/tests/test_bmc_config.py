@@ -1304,6 +1304,100 @@ class TestRedfish(MAASTestCase):
             ),
         )
 
+    def test_get_manager_id_missing_token(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        response = textwrap.dedent(
+            """\
+            HTTP/1.1 201 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock = self.FakeSocket(response)
+        response = urllib.request.http.client.HTTPResponse(sock)
+        response.begin()
+
+        mock_urlopen.return_value = response
+
+        self.assertIsNone(self.redfish.get_manager_id())
+
+    def test_get_manager_id_not_200(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        response = textwrap.dedent(
+            """\
+            HTTP/1.1 401 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock = self.FakeSocket(response)
+        response = urllib.request.http.client.HTTPResponse(sock)
+        response.begin()
+
+        mock_urlopen.return_value = response
+
+        self.assertIsNone(self.redfish.get_manager_id())
+
+    def test_get_manager_id(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        managers_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"Members":[{"@odata.id":"/redfish/v1/Managers/1"}]}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_managers = self.FakeSocket(managers_data)
+        response_managers = urllib.request.http.client.HTTPResponse(
+            sock_response_managers
+        )
+        response_managers.begin()
+
+        mock_urlopen.side_effect = (
+            response_token,
+            response_managers,
+        )
+
+        self.assertEqual("1", self.redfish.get_manager_id())
+
     def test_get_bmc_ip_missing_token(self):
         self.redfish.username = "maas"
         self.redfish.password = "password"
@@ -1358,6 +1452,7 @@ class TestRedfish(MAASTestCase):
         self.redfish_ip = "127.0.0.1"
         self.redfish_port = "443"
         self.patch(self.redfish, "_detect").return_value = True
+        self.patch(self.redfish, "get_manager_id").return_value = "1"
 
         mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
         token_data = textwrap.dedent(
@@ -1367,6 +1462,16 @@ class TestRedfish(MAASTestCase):
             Content-Type: application/json; charset="utf-8"
             X-Auth-Token: token
             Connection: close"""
+        ).encode()
+
+        interfaces_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"Members":[{"@odata.id":"/redfish/v1/Managers/1/EthernetInterfaces/1"}]}"""
         ).encode()
 
         address_data = textwrap.dedent(
@@ -1385,13 +1490,23 @@ class TestRedfish(MAASTestCase):
         )
         response_token.begin()
 
+        sock_response_interfaces = self.FakeSocket(interfaces_data)
+        response_interfaces = urllib.request.http.client.HTTPResponse(
+            sock_response_interfaces
+        )
+        response_interfaces.begin()
+
         sock_response_address = self.FakeSocket(address_data)
         response_address = urllib.request.http.client.HTTPResponse(
             sock_response_address
         )
         response_address.begin()
 
-        mock_urlopen.side_effect = (response_token, response_address)
+        mock_urlopen.side_effect = (
+            response_token,
+            response_interfaces,
+            response_address,
+        )
 
         self.assertEqual("127.0.0.1", self.redfish.get_bmc_ip())
 
@@ -1493,6 +1608,22 @@ class TestRedfish(MAASTestCase):
             factory.make_exception_type((bmc_config.ConfigurationError,))
         )
         self.assertFalse(self.redfish.detected())
+
+    def test_get_credentials(self):
+        ip = factory.make_ip_address()
+        self.patch(self.redfish, "get_bmc_ip").return_value = ip
+        self.redfish.username = factory.make_name("username")
+        self.redfish.password = factory.make_name("password")
+        self.patch(self.redfish, "get_manager_id").return_value = "1"
+        self.assertEqual(
+            {
+                "power_address": ip,
+                "power_user": self.redfish.username,
+                "power_pass": self.redfish.password,
+                "node_id": "1",
+            },
+            self.redfish.get_credentials(),
+        )
 
     def test_missing_dmidecode_exception(self):
         self.patch(bmc_config, "which").return_value = None

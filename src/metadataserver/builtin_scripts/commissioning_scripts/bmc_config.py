@@ -66,6 +66,7 @@ import glob
 import ipaddress
 import json
 import os
+from os.path import basename
 import platform
 import random
 import re
@@ -932,6 +933,7 @@ class Redfish(IPMIBase):
         self._bmc_config = {}
 
     _bmc_ip = None
+    _manager_id = None
     _redfish_ip = None
     _redfish_port = None
 
@@ -1069,6 +1071,61 @@ class Redfish(IPMIBase):
             print(f"ERROR: Redfish configuration failed. {err}")
             return False
 
+    def _get_manager_id(self):
+        credentials = {
+            "UserName": self.username,
+            "Password": self.password,
+        }
+
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/SessionService/Sessions"
+        req = urllib.request.Request(
+            url,
+            json.dumps(credentials).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        response = urllib.request.urlopen(
+            req, context=ssl._create_unverified_context()
+        )
+        if response.status not in [200, 201]:
+            print(
+                f"WARNING: Failed to get token. {response.status} {response.getheaders()} {response.read()}"
+            )
+            return
+
+        token = response.getheader("X-Auth-Token")
+        if token is None:
+            print(
+                f"WARNING: Missing X-Auth-Token header. {response.getheaders()}"
+            )
+            return
+
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers"
+        req = urllib.request.Request(url)
+        req.add_header("X-Auth-Token", token)
+        response = urllib.request.urlopen(
+            req, context=ssl._create_unverified_context()
+        )
+        if response.status != 200:
+            print(
+                f"WARNING: Failed to read Managers info. {response.status} {response.getheaders()} {response.read()}"
+            )
+            return
+
+        response = json.loads(response.read().decode())
+        managers = response.get("Members")
+        if not managers or len(managers) == 0:
+            print(
+                f"WARNING: Missing Redfish Managers Collection. {response.read()}"
+            )
+            return
+        manager = managers[0].get("@odata.id").rstrip("/")
+        return basename(manager)
+
+    def get_manager_id(self):
+        if self._manager_id is None:
+            self._manager_id = self._get_manager_id()
+        return self._manager_id
+
     def _get_bmc_ip(self):
         credentials = {
             "UserName": self.username,
@@ -1084,9 +1141,9 @@ class Redfish(IPMIBase):
         response = urllib.request.urlopen(
             req, context=ssl._create_unverified_context()
         )
-        if response.status != 200:
+        if response.status not in [200, 201]:
             print(
-                f"WARNING: Failed to get token. {response.getheaders()} {response.read()}"
+                f"WARNING: Failed to get token. {response.status} {response.getheaders()} {response.read()}"
             )
             return
 
@@ -1097,7 +1154,7 @@ class Redfish(IPMIBase):
             )
             return
 
-        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers/1/EthernetInterfaces/NIC"
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers/{self._manager_id}/EthernetInterfaces"
         req = urllib.request.Request(url)
         req.add_header("X-Auth-Token", token)
         response = urllib.request.urlopen(
@@ -1105,21 +1162,62 @@ class Redfish(IPMIBase):
         )
         if response.status != 200:
             print(
-                f"WARNING: Failed to read NIC info. {response.getheaders()} {response.read()}"
+                f"WARNING: Failed to read Interfaces info. {response.status} {response.getheaders()} {response.read()}"
             )
             return
 
         response = json.loads(response.read().decode())
-        addresses = response.get("IPv4Addresses")
-        if not addresses or len(addresses) == 0:
-            print(f"WARNING: Missinng Redfish IPv4 Address. {response.read()}")
+        interfaces = response.get("Members")
+        if not interfaces or len(interfaces) == 0:
+            print(
+                f"WARNING: Missing Redfish Manager Interfaces. {response.read()}"
+            )
             return
+
+        for interface in interfaces:
+            url = f"https://{self._redfish_ip}:{self._redfish_port}{interface['@odata.id']}"
+            req = urllib.request.Request(url)
+            req.add_header("X-Auth-Token", token)
+            response = urllib.request.urlopen(
+                req, context=ssl._create_unverified_context()
+            )
+            if response.status != 200:
+                print(
+                    f"WARNING: Failed to read {interface['@odata.id']} info. {response.status} {response.getheaders()} {response.read()}"
+                )
+                return
+
+            response = json.loads(response.read().decode())
+            addresses = response.get("IPv4Addresses")
+            if not addresses or len(addresses) == 0:
+                print(
+                    f"WARNING: Missing Redfish IPv4 Address. {response.read()}"
+                )
+                return
+
+            for ip in addresses:
+                if (
+                    not ip["Address"]
+                    or ip["Address"] in ["0.0.0.0", "16.1.15.1"]
+                    or ip["Address"].startswith("169.254")
+                ):
+                    continue
         return addresses[0].get("Address")
 
     def get_bmc_ip(self):
         if self._bmc_ip is None:
+            self._manager_id = self.get_manager_id()
             self._bmc_ip = self._get_bmc_ip()
         return self._bmc_ip
+
+    def get_credentials(self):
+        """Return the BMC credentials for MAAS to use the BMC."""
+        return {
+            "power_address": self.get_bmc_ip(),
+            "power_user": self.username if self.username else "",
+            "power_pass": self.password if self.password else "",
+            "node_id": self.get_manager_id(),
+        }
 
 
 def detect_and_configure(args, bmc_config_path):
