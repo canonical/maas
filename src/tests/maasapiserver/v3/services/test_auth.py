@@ -71,7 +71,7 @@ class TestAuthService:
         token = await auth_service.login(admin.username, "test")
         assert len(token.encoded) > 0
         assert token.subject == admin.username
-        assert token.roles == [UserRole.USER, UserRole.ADMIN]
+        assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}
 
     async def test_login_unauthorized(
         self, db_connection: AsyncConnection
@@ -224,7 +224,7 @@ class TestAuthService:
             users_service=users_service_mock,
         )
         authenticated_user = AuthenticatedUser(
-            username=user.username, roles=[UserRole.USER]
+            username=user.username, roles={UserRole.USER}
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0
@@ -245,9 +245,9 @@ class TestAuthService:
             users_service=users_service_mock,
         )
         authenticated_user = AuthenticatedUser(
-            username=admin.username, roles=[UserRole.USER, UserRole.ADMIN]
+            username=admin.username, roles={UserRole.USER, UserRole.ADMIN}
         )
         token = await auth_service.access_token(authenticated_user)
         assert len(token.encoded) > 0
         assert token.subject == admin.username
-        assert token.roles == [UserRole.USER, UserRole.ADMIN]
+        assert set(token.roles) == {UserRole.USER, UserRole.ADMIN}
