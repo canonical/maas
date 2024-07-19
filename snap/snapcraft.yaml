@@ -192,6 +192,7 @@ parts:
       lib/python3.*/site-packages/usr/sbin/*: usr/sbin/
       lib/python3.*/site-packages/usr/share/*: usr/share/
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
+      usr/lib/*-linux-gnu/blas/*: usr/lib/
     stage:
       - bin
       - -bin/activate*
