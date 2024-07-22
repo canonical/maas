@@ -6,7 +6,9 @@ from macaroonbakery._utils import raw_urlsafe_b64encode
 from macaroonbakery.bakery import (
     canonical_ops,
     LATEST_VERSION,
+    Macaroon,
     macaroon_version,
+    Op,
     Oven,
     VerificationError,
 )
@@ -25,7 +27,7 @@ class AsyncOven(Oven):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def macaroon(self, version, expiry, caveats, ops):
+    async def macaroon(self, version, expiry, caveats, ops) -> Macaroon:
         """Takes a macaroon with the given version from the oven,
         associates it with the given operations and attaches the given caveats.
         There must be at least one operation specified.
@@ -64,7 +66,7 @@ class AsyncOven(Oven):
         await m.add_caveats(caveats, self.key, self.locator)
         return m
 
-    async def macaroon_ops(self, macaroons):
+    async def macaroon_ops(self, macaroons) -> tuple[list[Op], list[str]]:
         """This method makes the oven satisfy the MacaroonOpStore protocol
         required by the Checker class.
 

@@ -4,16 +4,12 @@
 from datetime import datetime, timedelta
 import json
 import os
-from unittest import mock, TestCase
+from unittest import mock
 
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 from macaroonbakery._utils import visit_page_with_browser
-from macaroonbakery.bakery import (
-    IdentityError,
-    SimpleIdentity,
-    VerificationError,
-)
+from macaroonbakery.bakery import SimpleIdentity, VerificationError
 from macaroonbakery.httpbakery import WebBrowserInteractor
 from macaroonbakery.httpbakery.agent import Agent, AgentInteractor, AuthInfo
 import requests
@@ -21,10 +17,8 @@ import requests
 import maasserver.macaroon_auth
 from maasserver.macaroon_auth import (
     _candid_login,
-    _get_authentication_caveat,
     _get_bakery_client,
     _get_macaroon_private_key,
-    _IDClient,
     APIError,
     CandidClient,
     external_auth_enabled,
@@ -63,35 +57,6 @@ class TestExternalAuthEnabled(MAASServerTestCase):
             {"rbac-url": "http://rbac.example.com"},
         )
         self.assertTrue(external_auth_enabled())
-
-
-class TestIDClient(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        self.client = _IDClient("https://example.com")
-
-    def test_declared_entity(self):
-        identity = self.client.declared_identity(None, {"username": "user"})
-        self.assertEqual(identity.id(), "user")
-
-    def test_declared_entity_no_username(self):
-        self.assertRaises(
-            IdentityError,
-            self.client.declared_identity,
-            None,
-            {"other": "stuff"},
-        )
-
-    def test_identity_from_context(self):
-        _, [caveat] = self.client.identity_from_context(None)
-        self.assertEqual(caveat.location, "https://example.com")
-        self.assertEqual(caveat.condition, "is-authenticated-user")
-
-    def test_identity_from_context_with_domain(self):
-        client = _IDClient("https://example.com", auth_domain="mydomain")
-        _, [caveat] = client.identity_from_context(None)
-        self.assertEqual(caveat.location, "https://example.com")
-        self.assertEqual(caveat.condition, "is-authenticated-user @mydomain")
 
 
 class TestCandidClient(MAASServerTestCase):
@@ -904,25 +869,6 @@ class TestMacaroonDischargeRequest(
         response = self.client.get("/accounts/discharge-request/")
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.content, b"User login not allowed")
-
-
-class TestGetAuthenticationCaveat(TestCase):
-    def test_caveat(self):
-        caveat = _get_authentication_caveat(
-            "https://example.com", domain="mydomain"
-        )
-        self.assertEqual(caveat.location, "https://example.com")
-        self.assertEqual(caveat.condition, "is-authenticated-user @mydomain")
-
-    def test_caveat_no_domain(self):
-        caveat = _get_authentication_caveat("https://example.com")
-        self.assertEqual(caveat.location, "https://example.com")
-        self.assertEqual(caveat.condition, "is-authenticated-user")
-
-    def test_caveat_empty_domain(self):
-        caveat = _get_authentication_caveat("https://example.com", domain="")
-        self.assertEqual(caveat.location, "https://example.com")
-        self.assertEqual(caveat.condition, "is-authenticated-user")
 
 
 class TestGetBakeryClient(MAASTestCase):
