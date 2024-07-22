@@ -1,7 +1,7 @@
 [Unit]
 Description=MAAS Region Controller
 Documentation=https://maas.io/docs/
-Requires=network-online.target
+Requires=network-online.target maas-apiserver.service
 After=network-online.target
 ConditionPathExists=/etc/maas/regiond.conf
 
