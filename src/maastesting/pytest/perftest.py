@@ -134,10 +134,15 @@ class QueryCounter(PerfTracer):
 
     _count = 0
     _time = 0.0
+    _orig_debug = None
 
     def __enter__(self):
+        from django.conf import settings
         from django.db import reset_queries
 
+        self._orig_debug = settings.DEBUG
+        # Django logs SQL queries only if debug is True.
+        settings.DEBUG = True
         reset_queries()
         return self
 
@@ -145,12 +150,15 @@ class QueryCounter(PerfTracer):
         if exc_type is not None:
             return
 
+        from django.conf import settings
         from django.db import connection
 
         self._count = len(connection.queries)
         self._time = float(
             sum((float(entry["time"]) for entry in connection.queries))
         )
+        settings.DEBUG = self._orig_debug
+        self._orig_debug = None
 
     def results(self):
         return {"query_count": self._count, "query_time": self._time}
