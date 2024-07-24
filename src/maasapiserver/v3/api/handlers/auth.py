@@ -9,11 +9,11 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
 from maasapiserver.v3.auth.base import (
-    AuthenticatedUser,
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.auth.jwt import UserRole
+from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.services import ServiceCollectionV3
 
 

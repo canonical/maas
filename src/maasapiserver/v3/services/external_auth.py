@@ -1,13 +1,15 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import timedelta
 from functools import lru_cache
 import os
 
-from macaroonbakery import bakery, checkers
+from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery.bakery._store import RootKeyStore
 from pymacaroons import Macaroon
 from sqlalchemy.ext.asyncio import AsyncConnection
+from starlette.datastructures import Headers
 
 from maasapiserver.common.auth.checker import AsyncChecker
 from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
@@ -29,6 +31,8 @@ from maasapiserver.v3.services.secrets import SecretsService
 from maasapiserver.v3.services.users import UsersService
 from maasserver.macaroons import _IDClient
 from provisioningserver.security import to_bin, to_hex
+
+MACAROON_LIFESPAN = timedelta(days=1)
 
 
 @lru_cache
@@ -118,6 +122,7 @@ class ExternalAuthService(Service, RootKeyStore):
                 ]
             )
         auth_checker = macaroon_bakery.checker.auth(macaroons)
+
         try:
             auth_info = await auth_checker.allow(
                 ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
@@ -237,3 +242,17 @@ class ExternalAuthService(Service, RootKeyStore):
         await self.secrets_service.delete(
             path=self.ROOTKEY_MATERIAL_SECRET_FORMAT % id
         )
+
+    async def generate_discharge_macaroon(
+        self,
+        macaroon_bakery: bakery.Bakery,
+        caveats: list[checkers.Caveat],
+        ops: list[bakery.Op],
+        req_headers: Headers | None = None,
+    ) -> bakery.Macaroon:
+        bakery_version = httpbakery.request_version(req_headers or {})
+        expiration = utcnow() + MACAROON_LIFESPAN
+        macaroon = await macaroon_bakery.oven.macaroon(
+            bakery_version, expiration, caveats, ops
+        )
+        return macaroon

@@ -1,3 +1,4 @@
+from macaroonbakery.bakery import Macaroon
 from pydantic import BaseModel
 
 
@@ -52,3 +53,13 @@ class PreconditionFailedException(BaseException):
 class ServiceUnavailableException(BaseException):
     def __init__(self, details: list[BaseExceptionDetail] | None = None):
         super().__init__("The service is not available.", details)
+
+
+class DischargeRequiredException(BaseException):
+    def __init__(
+        self,
+        macaroon: Macaroon,
+        details: list[BaseExceptionDetail] | None = None,
+    ):
+        super().__init__("Macaroon discharge required.", details)
+        self.macaroon = macaroon

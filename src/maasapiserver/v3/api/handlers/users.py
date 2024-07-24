@@ -17,11 +17,11 @@ from maasapiserver.common.models.exceptions import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.responses.users import UserInfoResponse
 from maasapiserver.v3.auth.base import (
-    AuthenticatedUser,
     check_permissions,
     get_authenticated_user,
 )
 from maasapiserver.v3.auth.jwt import UserRole
+from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.services import ServiceCollectionV3
 
 

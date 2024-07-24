@@ -9,6 +9,7 @@ from starlette.responses import Response
 from maasapiserver.common.api.models.responses.errors import (
     BadRequestResponse,
     ConflictResponse,
+    DischargeRequiredErrorResponse,
     ForbiddenResponse,
     InternalServerErrorResponse,
     NotFoundResponse,
@@ -21,6 +22,7 @@ from maasapiserver.common.models.exceptions import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,
+    DischargeRequiredException,
     ForbiddenException,
     NotFoundException,
     PreconditionFailedException,
@@ -61,6 +63,9 @@ class ExceptionMiddleware(BaseHTTPMiddleware):
         except UnauthorizedException as e:
             logger.debug(e)
             return UnauthorizedResponse(e.details)
+        except DischargeRequiredException as e:
+            logger.debug(e)
+            return DischargeRequiredErrorResponse(e.macaroon)
         except ForbiddenException as e:
             logger.debug(e)
             return ForbiddenResponse(e.details)

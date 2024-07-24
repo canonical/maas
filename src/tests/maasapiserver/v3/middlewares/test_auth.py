@@ -15,7 +15,6 @@ from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.common.models.exceptions import UnauthorizedException
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
-from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
@@ -26,6 +25,7 @@ from maasapiserver.v3.middlewares.auth import (
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.models.users import User
 from tests.fixtures.factories.user import create_test_session, create_test_user
 from tests.maasapiserver.fixtures.db import Fixture

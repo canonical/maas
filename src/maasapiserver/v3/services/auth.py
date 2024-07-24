@@ -10,8 +10,8 @@ from maasapiserver.common.models.exceptions import (
     UnauthorizedException,
 )
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.auth.base import AuthenticatedUser
 from maasapiserver.v3.auth.jwt import JWT, UserRole
+from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.services.secrets import SecretNotFound, SecretsService
 from maasapiserver.v3.services.users import UsersService
 

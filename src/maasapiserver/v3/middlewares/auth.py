@@ -17,9 +17,10 @@ from maasapiserver.common.models.exceptions import (
     BaseExceptionDetail,
     UnauthorizedException,
 )
-from maasapiserver.v3.auth.base import AuthenticatedUser
+from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.models.auth import AuthenticatedUser
 
 logger = logging.getLogger()
 
@@ -106,7 +107,7 @@ class MacaroonAuthenticationProvider:
         """
         user = await request.state.services.external_auth.login(
             macaroons=macaroons,
-            request_absolute_uri=self._extract_absolute_uri(request),
+            request_absolute_uri=extract_absolute_uri(request),
         )
         return AuthenticatedUser(
             username=user.username,
@@ -114,14 +115,6 @@ class MacaroonAuthenticationProvider:
             #  accordingly here. For the time being, we consider everybody as a simple user.
             roles={UserRole.USER},
         )
-
-    def _extract_absolute_uri(self, request: Request):
-        if (
-            "x-forwarded-host" in request.headers
-            and "x-forwarded-proto" in request.headers
-        ):
-            return f"{request.headers.get('x-forwarded-proto')}://{request.headers.get('x-forwarded-host')}/"
-        return request.base_url
 
     def extract_macaroons(self, request: Request) -> list[list[Macaroon]]:
         def decode_macaroon(data) -> list[Macaroon] | None:
