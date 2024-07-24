@@ -1,9 +1,10 @@
 from datetime import datetime
-from typing import Any, AsyncIterator, Iterator
+from typing import Any, AsyncIterator, Callable, Iterator
 from unittest.mock import AsyncMock, Mock
 
 from fastapi import FastAPI, Request
 from httpx import AsyncClient
+from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
@@ -21,12 +22,27 @@ from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
     DjangoSessionAuthenticationProvider,
     LocalAuthenticationProvider,
+    MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasapiserver.v3.models.users import User
 from tests.fixtures.factories.user import create_test_session, create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
+
+
+def _make_user(is_superuser: bool = False) -> User:
+    return User(
+        id=0,
+        username="test",
+        password="password",
+        is_superuser=is_superuser,
+        first_name="name",
+        last_name="last_name",
+        is_staff=False,
+        is_active=True,
+        date_joined=datetime.utcnow(),
+    )
 
 
 @pytest.fixture
@@ -42,6 +58,7 @@ def auth_app(
         providers_cache=AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
             session_authentication_provider=DjangoSessionAuthenticationProvider(),
+            macaroon_authentication_provider=MacaroonAuthenticationProvider(),
         ),
     )
     app.add_middleware(ServicesMiddleware)
@@ -194,6 +211,38 @@ class TestV3AuthenticationMiddleware:
         assert authenticated_admin.username == "admin"
         assert authenticated_admin.roles == {UserRole.ADMIN, UserRole.USER}
 
+    async def test_authentication_with_macaroons(self) -> None:
+        macaroon_auth_provider_mock = Mock(MacaroonAuthenticationProvider)
+        macaroons_mock = [[Mock(Macaroon)]]
+        macaroon_auth_provider_mock.extract_macaroons = Mock(
+            return_value=macaroons_mock
+        )
+        authenticated_user = AuthenticatedUser(
+            username="admin", roles={UserRole.USER, UserRole.ADMIN}
+        )
+        macaroon_auth_provider_mock.authenticate = AsyncMock(
+            return_value=authenticated_user
+        )
+
+        authentication_providers_cache = AuthenticationProvidersCache(
+            jwt_authentication_providers=None,
+            session_authentication_provider=None,
+            macaroon_authentication_provider=macaroon_auth_provider_mock,
+        )
+        auth_middleware = V3AuthenticationMiddleware(
+            app=None, providers_cache=authentication_providers_cache
+        )
+
+        request_mock = Mock(Request)
+        request_mock.headers = {}
+        request_mock.cookies = {}
+        call_next_mock = AsyncMock(Callable)
+
+        await auth_middleware.dispatch(request_mock, call_next_mock)
+        assert request_mock.state.authenticated_user == authenticated_user
+        call_next_mock.assert_called_once_with(request_mock)
+        macaroon_auth_provider_mock.authenticate.assert_called_once()
+
 
 class TestAuthenticationProvidersCache:
     def test_constructor(self) -> None:
@@ -202,13 +251,16 @@ class TestAuthenticationProvidersCache:
         assert cache.get_session_provider() is None
 
         session_provider = DjangoSessionAuthenticationProvider()
+        macaroon_provider = MacaroonAuthenticationProvider()
         cache = AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
             session_authentication_provider=session_provider,
+            macaroon_authentication_provider=macaroon_provider,
         )
         assert cache.size() == 1
         assert cache.get(LocalAuthenticationProvider.get_issuer()) is not None
         assert cache.get_session_provider() is session_provider
+        assert cache.get_macaroon_provider() is macaroon_provider
 
     def test_get(self):
         provider = LocalAuthenticationProvider()
@@ -236,23 +288,11 @@ class TestAuthenticationProvidersCache:
 
 
 class TestDjangoSessionAuthenticationProvider:
-    def _make_user(self, is_superuser: bool = False) -> User:
-        return User(
-            id=0,
-            username="test",
-            password="password",
-            is_superuser=is_superuser,
-            first_name="name",
-            last_name="last_name",
-            is_staff=False,
-            is_active=True,
-            date_joined=datetime.utcnow(),
-        )
 
     async def test_dispatch(self) -> None:
         sessionid = "test"
 
-        user = self._make_user()
+        user = _make_user()
         request = Mock(Request)
         request.state.services.users.get_by_session_id = AsyncMock(
             return_value=user
@@ -267,7 +307,7 @@ class TestDjangoSessionAuthenticationProvider:
     async def test_dispatch_admin(self) -> None:
         sessionid = "test"
 
-        user = self._make_user(is_superuser=True)
+        user = _make_user(is_superuser=True)
         request = Mock(Request)
         request.state.services.users.get_by_session_id = AsyncMock(
             return_value=user
@@ -313,3 +353,95 @@ class TestLocalAuthenticationProvider:
         provider = LocalAuthenticationProvider()
         with pytest.raises(UnauthorizedException):
             await provider.authenticate(request, "")
+
+
+class TestMacaroonAuthenticationProvider:
+    MACAROON = "W3siaWRlbnRpZmllciI6ICJBd29RUWh2MUVQM1YtTHR2Zkg2RmJ5MF80UklCT1JvT0NnVnNiMmRwYmhJRmJHOW5hVzQiLCAic2lnbmF0dXJlIjogIjk0NDUzMmVjODYxZGJiNDFiNjBlNDdlOWE1Y2IzODFiMDc5MjU3MDJhYTVkNGI0MTYzYTJkZDEzZWRmMTYzZjEiLCAibG9jYXRpb24iOiAiaHR0cDovL2xvY2FsaG9zdDo1MjQwLyIsICJjYXZlYXRzIjogW3siY2lkIjogInRpbWUtYmVmb3JlIDIwMjQtMDctMjJUMDY6Mzc6NTQuMjA1MTc3WiJ9LCB7ImNpZCI6ICJleUpVYUdseVpGQmhjblI1VUhWaWJHbGpTMlY1SWpvZ0luTXhkMVZhVFdGMlUydFNUalZwYzJKYVdYUmhNRll5Y3pFd1JtMHhlSEkxZW1oc1ZFVklWVVF6UVhjOUlpd2dJa1pwY25OMFVHRnlkSGxRZFdKc2FXTkxaWGtpT2lBaWRXczJlbnBPYmt4SFUxRjJlRVZzYml0NmRsUnJlVkZtYWtOU1pIZFpXSEZaYkdwd2FuZFRXUzluUlQwaUxDQWlUbTl1WTJVaU9pQWlWME5EV1hKb1psVTVaVU5JZGsxaVZETm1jWFJaY25Odk4wWkdZMlp5ZEhRaUxDQWlTV1FpT2lBaWN6VmlValExWlV3ME4wNVBhazloVTBOQlp6aEtZa013ZHpVcldrMTNVWFpUTUcxUlJEWlhkRXgzVVV4M1ZGUlZTV1ZTTlU1VWJWRXJlblo0V1dKeVRscGFNMmhGY1cxa09IWnFRbWczTUdSbVkwNUpiMFI1YTBaQ2FERk1Nall4YTFKcWJETm1XRmhNWWtwbVdYaG9MeXRZTmtsNk9GTm1aa2sxWlRsQ1dtSXZOWFZLVERNMFBTSjkiLCAidmlkIjogIm1CdjlHOGFhRllEb1VsQVhIS0NIS014dWhsdmo0c3o0Qld2cUJCb1NtUlRvXzhuNlNwN3BkdlAtZU9iUnVraWllX1ZZR2dRZzB4OXRfWm9fMndVVW14R0FaMENyaHJJSCIsICJjbCI6ICJodHRwOi8vMTAuMC4xLjIzOjUwMDAvYXV0aCJ9XX0seyJpZGVudGlmaWVyIjogImV5SlVhR2x5WkZCaGNuUjVVSFZpYkdsalMyVjVJam9nSW5NeGQxVmFUV0YyVTJ0U1RqVnBjMkphV1hSaE1GWXljekV3Um0weGVISTFlbWhzVkVWSVZVUXpRWGM5SWl3Z0lrWnBjbk4wVUdGeWRIbFFkV0pzYVdOTFpYa2lPaUFpZFdzMmVucE9ia3hIVTFGMmVFVnNiaXQ2ZGxScmVWRm1ha05TWkhkWldIRlpiR3B3YW5kVFdTOW5SVDBpTENBaVRtOXVZMlVpT2lBaVYwTkRXWEpvWmxVNVpVTklkazFpVkRObWNYUlpjbk52TjBaR1kyWnlkSFFpTENBaVNXUWlPaUFpY3pWaVVqUTFaVXcwTjA1UGFrOWhVME5CWnpoS1lrTXdkelVyV2sxM1VYWlRNRzFSUkRaWGRFeDNVVXgzVkZSVlNXVlNOVTVVYlZFcmVuWjRXV0p5VGxwYU0yaEZjVzFrT0hacVFtZzNNR1JtWTA1SmIwUjVhMFpDYURGTU1qWXhhMUpxYkRObVdGaE1Za3BtV1hob0x5dFlOa2w2T0ZObVprazFaVGxDV21Jdk5YVktURE0wUFNKOSIsICJzaWduYXR1cmUiOiAiNDE2ZDYyN2VjNWI0ZTk3Nzc1MTY0ZTQ3ZGVkY2I2ODc0MDkyZmJiOGRlMjU0MzgzNzc1OGQxMWI3YTg3YjliNCIsICJjYXZlYXRzIjogW3siY2lkIjogImRlY2xhcmVkIHVzZXJuYW1lIGFkbWluIn1dfV0="
+
+    async def test_dispatch_with_headers(self) -> None:
+
+        user = _make_user()
+        request = Mock(Request)
+        request.state.services.external_auth.login = AsyncMock(
+            return_value=user
+        )
+        request.headers = {
+            "x-forwarded-host": "localhost:5240",
+            "x-forwarded-proto": "http",
+        }
+
+        provider = MacaroonAuthenticationProvider()
+        macaroons = [[Mock(Macaroon)]]
+        user = await provider.authenticate(request, macaroons)
+
+        assert user.username == "test"
+        assert user.roles == {UserRole.USER}
+        request.state.services.external_auth.login.assert_called_once_with(
+            macaroons=macaroons, request_absolute_uri="http://localhost:5240/"
+        )
+
+    async def test_dispatch_without_headers(self) -> None:
+        user = _make_user()
+        request = Mock(Request)
+        request.state.services.external_auth.login = AsyncMock(
+            return_value=user
+        )
+        request.headers = {}
+        request.base_url = "http://test:5240/"
+
+        provider = MacaroonAuthenticationProvider()
+        macaroons = [[Mock(Macaroon)]]
+        user = await provider.authenticate(request, macaroons)
+
+        assert user.username == "test"
+        assert user.roles == {UserRole.USER}
+        request.state.services.external_auth.login.assert_called_once_with(
+            macaroons=macaroons, request_absolute_uri="http://test:5240/"
+        )
+
+    async def test_dispatch_invalid_macaroon_raises_exception(self) -> None:
+        request = Mock(Request)
+        request.state.services.external_auth.login = AsyncMock(
+            side_effect=UnauthorizedException(details=[])
+        )
+        request.headers = {}
+        request.base_url = "http://test:5240/"
+
+        provider = MacaroonAuthenticationProvider()
+        macaroons = [[Mock(Macaroon)]]
+
+        with pytest.raises(UnauthorizedException):
+            await provider.authenticate(request, macaroons)
+
+    def _check_macaroons(self, macaroons: list[list[Macaroon]]):
+        assert len(macaroons) == 1
+        assert len(macaroons[0]) == 2
+        assert macaroons[0][0].location == "http://localhost:5240/"
+        assert macaroons[0][1].location == ""
+        assert macaroons[0][0].version == 1
+        assert macaroons[0][1].version == 1
+
+    async def test_extract_macaroons(self) -> None:
+        request = Mock(Request)
+        request.cookies = {"macaroon-maas": self.MACAROON}
+        request.headers = {}
+
+        provider = MacaroonAuthenticationProvider()
+        macaroons_from_cookies = provider.extract_macaroons(request)
+        self._check_macaroons(macaroons_from_cookies)
+
+        request = Mock(Request)
+        request.cookies = {}
+        request.headers = {"Macaroons": self.MACAROON}
+
+        provider = MacaroonAuthenticationProvider()
+        macaroons_from_headers = provider.extract_macaroons(request)
+        self._check_macaroons(macaroons_from_headers)
+
+        request = Mock(Request)
+        request.cookies = {}
+        request.headers = {}
+
+        provider = MacaroonAuthenticationProvider()
+        no_macaroons = provider.extract_macaroons(request)
+        assert no_macaroons == []

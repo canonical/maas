@@ -59,6 +59,7 @@ class ServiceCollectionV3:
         services.external_auth = ExternalAuthService(
             connection=connection,
             secrets_service=services.secrets,
+            users_service=services.users,
         )
         services.nodes = NodesService(connection=connection)
         services.vmclusters = VmClustersService(connection=connection)

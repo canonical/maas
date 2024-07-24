@@ -1,12 +1,22 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+from functools import lru_cache
 import os
 
-from macaroonbakery import bakery
+from macaroonbakery import bakery, checkers
 from macaroonbakery.bakery._store import RootKeyStore
+from pymacaroons import Macaroon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.auth.checker import AsyncChecker
+from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
+from maasapiserver.common.auth.oven import AsyncOven
+from maasapiserver.common.models.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasapiserver.common.models.exceptions import (
+    BaseExceptionDetail,
+    UnauthorizedException,
+)
 from maasapiserver.common.services._base import Service
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import (
@@ -14,12 +24,24 @@ from maasapiserver.v3.auth.external_auth import (
     ExternalAuthType,
 )
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
+from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services.secrets import SecretsService
+from maasapiserver.v3.services.users import UsersService
+from maasserver.macaroons import _IDClient
 from provisioningserver.security import to_bin, to_hex
+
+
+@lru_cache
+def get_third_party_locator(auth_endpoint: str):
+    return AsyncThirdPartyLocator(
+        allow_insecure=not auth_endpoint.startswith("https:")
+    )
 
 
 # We need to implement RootKeyStore because we pass this service to the Macaroon Auth Checker
 class ExternalAuthService(Service, RootKeyStore):
+    # TODO: MAASENG-3538 implement an ExternalAuthServiceFactory to cache the external_auth_config, keys and other things that
+    #  do not need to be refetched from the DB.
 
     EXTERNAL_AUTH_SECRET_PATH = "global/external-auth"
     BAKERY_KEY_SECRET_PATH = "global/macaroon-key"
@@ -32,10 +54,12 @@ class ExternalAuthService(Service, RootKeyStore):
         self,
         connection: AsyncConnection,
         secrets_service: SecretsService,
+        users_service: UsersService,
         external_auth_repository: ExternalAuthRepository | None = None,
     ):
         super().__init__(connection)
         self.secrets_service = secrets_service
+        self.users_service = users_service
         self.external_auth_repository = (
             external_auth_repository or ExternalAuthRepository(connection)
         )
@@ -72,6 +96,84 @@ class ExternalAuthService(Service, RootKeyStore):
             domain=auth_domain,
             admin_group=auth_admin_group,
         )
+
+    async def login(
+        self, macaroons: list[list[Macaroon]], request_absolute_uri: str
+    ) -> User | None:
+        macaroon_bakery = await self._get_bakery(request_absolute_uri)
+        return await self._login(macaroons, macaroon_bakery)
+
+    async def _login(
+        self,
+        macaroons: list[list[Macaroon]],
+        macaroon_bakery: bakery.Bakery | None,
+    ) -> User | None:
+        if not macaroon_bakery:
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="Macaroon based authentication is not enabled on this server.",
+                    )
+                ]
+            )
+        auth_checker = macaroon_bakery.checker.auth(macaroons)
+        try:
+            auth_info = await auth_checker.allow(
+                ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
+            )
+        except (bakery.DischargeRequiredError, bakery.PermissionDenied):
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="The macaroons provided are not valid.",
+                    )
+                ]
+            )
+
+        user = await self.users_service.get(username=auth_info.identity.id())
+        if not user:
+            # TODO: MAASENG-3537 If a user is not found with the username from the
+            #  identity, it's created.
+            raise UnauthorizedException(
+                details=[
+                    BaseExceptionDetail(
+                        type=INVALID_TOKEN_VIOLATION_TYPE,
+                        message="V3 API can't create a local user for a macaroon identity yet.",
+                    )
+                ]
+            )
+        return user
+
+    async def _get_bakery(
+        self, request_absolute_uri: str
+    ) -> bakery.Bakery | None:
+        external_auth_config = await self.get_external_auth()
+        if not external_auth_config:
+            return None
+        auth_endpoint = external_auth_config.url
+        auth_domain = external_auth_config.domain
+        base_bakery = bakery.Bakery()
+        base_checker = checkers.Checker()
+        oven = AsyncOven(
+            key=await self.get_or_create_bakery_key(),
+            location=request_absolute_uri,
+            locator=get_third_party_locator(auth_endpoint),
+            namespace=base_checker.namespace(),
+            root_keystore_for_ops=lambda ops: self,
+            ops_store=None,
+        )
+        base_bakery._oven = oven
+        base_bakery._checker = AsyncChecker(
+            checker=base_checker,
+            authorizer=bakery.ACLAuthorizer(
+                get_acl=lambda ctx, op: [bakery.EVERYONE]
+            ),
+            identity_client=_IDClient(auth_endpoint, auth_domain=auth_domain),
+            macaroon_opstore=oven,
+        )
+        return base_bakery
 
     async def get_or_create_bakery_key(self) -> bakery.PrivateKey:
         key = await self.secrets_service.get_simple_secret(

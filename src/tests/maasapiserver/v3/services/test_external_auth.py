@@ -5,15 +5,22 @@ from datetime import timedelta
 import os
 from unittest.mock import AsyncMock, Mock
 
-from macaroonbakery import bakery
+from macaroonbakery import bakery, checkers
+from macaroonbakery.bakery import AuthInfo
+from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.auth.checker import AsyncAuthChecker, AsyncChecker
+from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
+from maasapiserver.common.auth.oven import AsyncOven
+from maasapiserver.common.models.exceptions import UnauthorizedException
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import ExternalAuthType
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
 from maasapiserver.v3.models.external_auth import RootKey
-from maasapiserver.v3.services import SecretsService
+from maasapiserver.v3.models.users import User
+from maasapiserver.v3.services import SecretsService, UsersService
 from maasapiserver.v3.services.external_auth import ExternalAuthService
 from provisioningserver.security import to_bin, to_hex
 
@@ -35,6 +42,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -61,6 +69,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -78,6 +87,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         external_auth = await external_auth_service.get_external_auth()
@@ -94,6 +104,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         bakery_key = await external_auth_service.get_or_create_bakery_key()
@@ -117,6 +128,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
         bakery_key = await external_auth_service.get_or_create_bakery_key()
@@ -161,6 +173,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -179,6 +192,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
+            users_service=Mock(UsersService),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -199,6 +213,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey = await external_auth_service.get(b"1")
@@ -225,6 +240,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey, key_id = await external_auth_service.root_key()
@@ -271,6 +287,7 @@ class TestExternalAuthService:
         external_auth_service = ExternalAuthService(
             Mock(AsyncConnection),
             secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
             external_auth_repository=external_auth_repository_mock,
         )
         retrieved_rootkey, key_id = await external_auth_service.root_key()
@@ -295,3 +312,142 @@ class TestExternalAuthService:
 
         assert to_bin(hex_os_urandom) == retrieved_rootkey
         assert key_id == b"2"
+
+    async def test_login_external_auth_not_enabled(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_composite_secret = AsyncMock(return_value={})
+
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+        with pytest.raises(UnauthorizedException) as exc:
+            await external_auth_service.login(
+                [[Mock(Macaroon)]], "http://localhost:5000/"
+            )
+        assert (
+            exc.value.details[0].message
+            == "Macaroon based authentication is not enabled on this server."
+        )
+
+    async def test_login_external_auth_invalid_macaroon(self) -> None:
+        checker_mock = Mock(AsyncAuthChecker)
+        checker_mock.allow = AsyncMock(
+            side_effect=bakery.DischargeRequiredError(None, None, None)
+        )
+
+        macaroon_bakery = Mock(bakery.Bakery)
+        macaroon_bakery.checker.auth = Mock(return_value=checker_mock)
+
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=Mock(SecretsService),
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+        with pytest.raises(UnauthorizedException) as exc:
+            await external_auth_service._login(
+                [[Mock(Macaroon)]], macaroon_bakery
+            )
+        assert (
+            exc.value.details[0].message
+            == "The macaroons provided are not valid."
+        )
+        checker_mock.allow.assert_called_once_with(
+            ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
+        )
+
+    async def test_login_external_auth_is_valid(self) -> None:
+        checker_mock = Mock(AsyncAuthChecker)
+        checker_mock.allow = AsyncMock(
+            return_value=AuthInfo(
+                identity=bakery.SimpleIdentity(user="admin"), macaroons=None
+            )
+        )
+
+        macaroon_bakery_mock = Mock(bakery.Bakery)
+        macaroon_bakery_mock.checker.auth = Mock(return_value=checker_mock)
+
+        fake_user = User(
+            id=0,
+            username="admin",
+            password="",
+            is_superuser=False,
+            first_name="",
+            last_name="",
+            is_staff=False,
+            is_active=True,
+            date_joined=utcnow(),
+        )
+
+        users_service_mock = Mock(UsersService)
+        users_service_mock.get = AsyncMock(return_value=fake_user)
+
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=Mock(SecretsService),
+            users_service=users_service_mock,
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        user = await external_auth_service._login(
+            [[Mock(Macaroon)]], macaroon_bakery_mock
+        )
+        assert user == fake_user
+        users_service_mock.get.assert_called_once_with(username="admin")
+
+    async def test_get_bakery_if_external_auth_is_not_configured(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_composite_secret = AsyncMock(return_value={})
+
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        bakery_instance = await external_auth_service._get_bakery(
+            "http://localhost:5000/"
+        )
+        assert bakery_instance is None
+
+    async def test_get_bakery(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        # get the external auth config
+        secrets_service_mock.get_composite_secret = AsyncMock(
+            return_value={
+                "key": "mykey",
+                "url": "",
+                "user": "admin@candid",
+                "domain": "",
+                "rbac-url": "http://10.0.1.23:5000",
+                "admin-group": "admin",
+            }
+        )
+
+        # get the bakery key
+        secrets_service_mock.get_simple_secret = AsyncMock(
+            return_value="SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        )
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        bakery_instance = await external_auth_service._get_bakery(
+            "http://localhost:5000/"
+        )
+        assert bakery_instance is not None
+        assert isinstance(bakery_instance.checker, AsyncChecker)
+        assert isinstance(bakery_instance.oven, AsyncOven)
+        assert bakery_instance.oven.key == bakery.PrivateKey.deserialize(
+            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        )
+        assert isinstance(bakery_instance.oven.locator, AsyncThirdPartyLocator)
+        assert bakery_instance.oven.locator._allow_insecure is True
+        assert bakery_instance.oven.location == "http://localhost:5000/"

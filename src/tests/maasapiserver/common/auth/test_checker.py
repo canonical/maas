@@ -11,7 +11,7 @@ import pytest
 from maasapiserver.common.auth.checker import AsyncChecker
 from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
 from maasapiserver.common.auth.oven import AsyncOven
-from maasserver.auth.macaroons import _IDClient
+from maasserver.macaroons import _IDClient
 from provisioningserver.security import to_bin
 
 

@@ -30,6 +30,7 @@ from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
     DjangoSessionAuthenticationProvider,
     LocalAuthenticationProvider,
+    MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
@@ -81,6 +82,7 @@ async def create_app(
         providers_cache=AuthenticationProvidersCache(
             jwt_authentication_providers=[LocalAuthenticationProvider()],
             session_authentication_provider=DjangoSessionAuthenticationProvider(),
+            macaroon_authentication_provider=MacaroonAuthenticationProvider(),
         ),
     )
 

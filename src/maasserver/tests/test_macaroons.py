@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from macaroonbakery.bakery import IdentityError
 
-from maasserver.auth.macaroons import _get_authentication_caveat, _IDClient
+from maasserver.macaroons import _get_authentication_caveat, _IDClient
 from maasserver.testing.testcase import MAASServerTestCase
 
 
