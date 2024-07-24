@@ -36,6 +36,11 @@ else:
 
 maaslog = get_maas_logger("drivers.power.hmcz")
 
+VERIFY_SSL_YES = "y"
+VERIFY_SSL_NO = "n"
+
+VERIFY_SSL_CHOICES = [[VERIFY_SSL_NO, "No"], [VERIFY_SSL_YES, "Yes"]]
+
 
 class HMCZPowerDriver(PowerDriver):
     name = "hmcz"
@@ -59,6 +64,14 @@ class HMCZPowerDriver(PowerDriver):
             scope=SETTING_SCOPE.NODE,
             required=True,
         ),
+        make_setting_field(
+            "power_verify_ssl",
+            "Verify certificate presented by the HMC during SSL/TLS handshake",
+            field_type="choice",
+            required=True,
+            choices=VERIFY_SSL_CHOICES,
+            default=VERIFY_SSL_YES,
+        ),
     ]
     ip_extractor = make_ip_extractor("power_address")
 
@@ -73,6 +86,7 @@ class HMCZPowerDriver(PowerDriver):
             context["power_address"],
             context["power_user"],
             context["power_pass"],
+            verify_cert=context.get("power_verify_ssl", "y") == VERIFY_SSL_YES,
         )
         partition_name = context["power_partition_name"]
         client = Client(session)
@@ -227,6 +241,7 @@ def probe_hmcz_and_enlist(
     accept_all: bool = False,
     domain: str = None,
     prefix_filter: str = None,
+    verify_ssl: bool = True,
 ):
     """Extracts all of the VMs from an HMC for Z and enlists them into MAAS.
 
@@ -237,8 +252,9 @@ def probe_hmcz_and_enlist(
     :param accept_all: If True, commission enlisted nodes.
     :param domain: What domain discovered machines to be apart of.
     :param prefix_filter: only enlist nodes that have the prefix.
+    :param verify_ssl: Whether SSL connections should be verified.
     """
-    session = Session(hostname, username, password)
+    session = Session(hostname, username, password, verify_cert=verify_ssl)
     client = Client(session)
     # Each HMC manages one or more CPCs(Central Processor Complex). Iterate
     # over all CPCs to find all partitions to add.
@@ -265,6 +281,11 @@ def probe_hmcz_and_enlist(
                     "power_user": username,
                     "power_pass": password,
                     "power_partition_name": partition.name,
+                    "power_verify_ssl": (
+                        VERIFY_SSL_NO
+                        if verify_ssl is False
+                        else VERIFY_SSL_YES
+                    ),
                 },
                 domain,
                 partition.name,

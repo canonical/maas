@@ -623,6 +623,7 @@ class Cluster(SecuredRPCProtocol):
                 accept_all,
                 domain,
                 prefix_filter,
+                verify_ssl,
             )
             d.addErrback(partial(catch_probe_and_enlist_error, "hmcz"))
         elif chassis_type == "vmware":
