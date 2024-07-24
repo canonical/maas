@@ -1,9 +1,10 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+import ssl
 from urllib.parse import urlparse
 
-from aiohttp import ClientSession, CookieJar
+from aiohttp import ClientSession, CookieJar, TCPConnector
 from macaroonbakery import bakery
 from macaroonbakery.httpbakery import BAKERY_PROTOCOL_HEADER, ThirdPartyLocator
 
@@ -24,10 +25,13 @@ class AsyncThirdPartyLocator(ThirdPartyLocator):
         @param allow_insecure: By default it refuses to use insecure URLs.
         """
         super().__init__(allow_insecure=allow_insecure)
+        context = ssl.create_default_context()
+        tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,
             trust_env=True,
             cookie_jar=CookieJar(unsafe=True),
+            connector=tcp_conn,
         )
 
     async def third_party_info(self, loc):

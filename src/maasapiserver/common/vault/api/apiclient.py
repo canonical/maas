@@ -1,9 +1,10 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
+import ssl
 from typing import Dict
 
-from aiohttp import ClientResponse, ClientSession
+from aiohttp import ClientResponse, ClientSession, TCPConnector
 
 from maasapiserver.common.vault.api.models.exceptions import (
     VaultAuthenticationException,
@@ -28,7 +29,9 @@ class AsyncVaultApiClient:
         self,
         base_url: str,
     ):
-        self._session = ClientSession(base_url=base_url)
+        context = ssl.create_default_context()
+        tcp_conn = TCPConnector(ssl=context)
+        self._session = ClientSession(base_url=base_url, connector=tcp_conn)
 
     @classmethod
     def build_headers_with_token(cls, token: str) -> Dict[str, str]:

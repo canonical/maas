@@ -8,10 +8,11 @@ MAAS Site Manager Connector workflows
 import asyncio
 import dataclasses
 from datetime import timedelta
+import ssl
 from typing import Any
 from urllib.parse import urlparse
 
-from aiohttp import ClientSession, ClientTimeout
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.functions import count
@@ -99,7 +100,11 @@ class MSMConnectorActivity(ActivityBase):
 
     def _create_session(self) -> ClientSession:
         timeout = ClientTimeout(total=60 * 60, sock_read=120)
-        return ClientSession(trust_env=True, timeout=timeout)
+        context = ssl.create_default_context()
+        tcp_conn = TCPConnector(ssl=context)
+        return ClientSession(
+            trust_env=True, timeout=timeout, connector=tcp_conn
+        )
 
     @activity.defn(name="msm-send-enrol")
     async def send_enrol(

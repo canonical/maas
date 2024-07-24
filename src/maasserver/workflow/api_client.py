@@ -1,7 +1,8 @@
 import random
+import ssl
 from typing import Any
 
-from aiohttp import ClientSession, ClientTimeout, UnixConnector
+from aiohttp import ClientSession, ClientTimeout, TCPConnector, UnixConnector
 
 from apiclient.maas_client import MAASOAuth
 from maasserver.models.user import get_creds_tuple
@@ -32,7 +33,14 @@ class MAASAPIClient:
         if self.user_agent:
             headers["User-Agent"] = self.user_agent
         timeout = ClientTimeout(total=60 * 60, sock_read=120)
-        return ClientSession(trust_env=True, timeout=timeout, headers=headers)
+        context = ssl.create_default_context()
+        tcp_conn = TCPConnector(ssl=context)
+        return ClientSession(
+            trust_env=True,
+            timeout=timeout,
+            headers=headers,
+            connector=tcp_conn,
+        )
 
     @property
     def unix_session(self) -> ClientSession:

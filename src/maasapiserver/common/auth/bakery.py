@@ -11,10 +11,17 @@ from collections import namedtuple
 import copy
 from http.cookies import SimpleCookie
 import ipaddress
+import ssl
 from typing import Awaitable, Callable
 from urllib.parse import urljoin, urlparse
 
-from aiohttp import ClientResponse, ClientSession, ContentTypeError, CookieJar
+from aiohttp import (
+    ClientResponse,
+    ClientSession,
+    ContentTypeError,
+    CookieJar,
+    TCPConnector,
+)
 from macaroonbakery import _utils as utils
 from macaroonbakery import bakery, checkers, httpbakery
 from macaroonbakery.bakery._discharge import (
@@ -115,10 +122,13 @@ class HttpBakeryAsyncClient:
 
     def __init__(self, interaction_methods=None, key=None):
         # we need unsafe=True to save cookies from IPs
+        context = ssl.create_default_context()
+        tcp_conn = TCPConnector(ssl=context)
         self._session = ClientSession(
             headers=self.BAKERY_HEADERS,
             trust_env=True,
             cookie_jar=CookieJar(unsafe=True),
+            connector=tcp_conn,
         )
         if interaction_methods is None:
             interaction_methods = []
