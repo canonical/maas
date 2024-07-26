@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import json
 import random
 import typing
-from unittest.mock import Mock
+from unittest.mock import call, Mock
 
 import pytest
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
@@ -426,9 +426,19 @@ class TestHMCZPowerDriver(MAASTestCase):
     @inlineCallbacks
     def test_set_boot_order_storage_volume(self):
         # zhmcclient_mock doesn't support storage groups.
-        serial = factory.make_UUID()
+        serial = "PHAX852069487P8CGN "
+        uuid = "600507681081001D4800000000000083"
+        uri = factory.make_UUID()
+
+        mock_storage_volume = Mock()
+        mock_storage_volume.properties = {
+            "serial-number": serial,
+        }
+        mock_storage_volume.uri = uri
         mock_storage_group = Mock()
-        mock_storage_group.storage_volumes.find.return_value.uri = serial
+        mock_storage_group.storage_volumes.list.return_value = [
+            mock_storage_volume
+        ]
         mock_partition = Mock()
         mock_partition.list_attached_storage_groups.return_value = [
             mock_storage_group,
@@ -445,7 +455,7 @@ class TestHMCZPowerDriver(MAASTestCase):
                     "name": factory.make_name("name"),
                     "id_path": factory.make_name("id_path"),
                     "model": factory.make_name("model"),
-                    "serial": serial,
+                    "serial": serial.strip().lower(),
                 }
             ]
             + [
@@ -457,12 +467,86 @@ class TestHMCZPowerDriver(MAASTestCase):
             ],
         )
 
-        mock_partition.update_properties.assert_called_once_with(
-            {
-                "boot-device": "storage-volume",
-                "boot-storage-volume": serial,
-            }
+        mock_storage_volume.properties = {
+            "uuid": uuid,
+        }
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(),
+            [
+                {
+                    "id": random.randint(0, 100),
+                    "name": factory.make_name("name"),
+                    "id_path": factory.make_name("id_path"),
+                    "model": factory.make_name("model"),
+                    "serial": uuid.strip().lower(),
+                }
+            ]
+            + [
+                {
+                    factory.make_name("key"): factory.make_name("value")
+                    for _ in range(5)
+                }
+                for _ in range(5)
+            ],
         )
+
+        mock_partition.update_properties.assert_has_calls(
+            [
+                call(
+                    {
+                        "boot-device": "storage-volume",
+                        "boot-storage-volume": uri,
+                    }
+                ),
+                call(
+                    {
+                        "boot-device": "storage-volume",
+                        "boot-storage-volume": uri,
+                    }
+                ),
+            ]
+        )
+
+    @inlineCallbacks
+    def test_set_boot_order_storage_volume_no_storage(self):
+        # zhmcclient_mock doesn't support storage groups.
+        mock_storage_volume = Mock()
+        mock_storage_volume.properties = {
+            "serial-number": "PHAX852069487P8CGN ",
+        }
+        mock_storage_group = Mock()
+        mock_storage_group.storage_volumes.list.return_value = [
+            mock_storage_volume
+        ]
+        mock_partition = Mock()
+        mock_partition.list_attached_storage_groups.return_value = [
+            mock_storage_group,
+        ]
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value = mock_partition
+
+        with pytest.raises(PowerError):
+            yield self.hmcz.set_boot_order(
+                None,
+                self.make_context(),
+                [
+                    {
+                        "id": random.randint(0, 100),
+                        "name": factory.make_name("name"),
+                        "id_path": factory.make_name("id_path"),
+                        "model": factory.make_name("model"),
+                        "serial": "serial-not-in-hmcz",
+                    }
+                ]
+                + [
+                    {
+                        factory.make_name("key"): factory.make_name("value")
+                        for _ in range(5)
+                    }
+                    for _ in range(5)
+                ],
+            )
 
     @inlineCallbacks
     def test_set_boot_order_waits_for_starting_state(self):
