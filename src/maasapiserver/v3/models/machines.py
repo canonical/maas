@@ -22,7 +22,7 @@ class Machine(MaasTimestampedBaseModel):
     locked: bool
     cpu_count: int
     status: MachineStatusEnum
-    power_type: PowerTypeEnum
+    power_type: Optional[PowerTypeEnum]
     fqdn: str
 
     def to_response(self, self_base_hyperlink: str) -> MachineResponse:

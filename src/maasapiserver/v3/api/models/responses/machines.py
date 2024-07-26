@@ -41,7 +41,7 @@ class MachineResponse(HalResponse[BaseHal]):
     locked: bool
     cpu_count: int
     status: MachineStatusEnum
-    power_type: PowerTypeEnum
+    power_type: Optional[PowerTypeEnum]
     fqdn: str
 
 
