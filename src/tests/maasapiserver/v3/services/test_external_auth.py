@@ -6,7 +6,7 @@ import os
 from unittest.mock import AsyncMock, Mock
 
 from macaroonbakery import bakery, checkers
-from macaroonbakery.bakery import AuthInfo
+from macaroonbakery.bakery import AuthInfo, DischargeRequiredError
 from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -348,14 +348,10 @@ class TestExternalAuthService:
             users_service=Mock(UsersService),
             external_auth_repository=Mock(ExternalAuthRepository),
         )
-        with pytest.raises(UnauthorizedException) as exc:
+        with pytest.raises(DischargeRequiredError):
             await external_auth_service._login(
                 [[Mock(Macaroon)]], macaroon_bakery
             )
-        assert (
-            exc.value.details[0].message
-            == "The macaroons provided are not valid."
-        )
         checker_mock.allow.assert_called_once_with(
             ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
         )
@@ -410,7 +406,7 @@ class TestExternalAuthService:
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
-        bakery_instance = await external_auth_service._get_bakery(
+        bakery_instance = await external_auth_service.get_bakery(
             "http://localhost:5000/"
         )
         assert bakery_instance is None
@@ -440,7 +436,7 @@ class TestExternalAuthService:
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
-        bakery_instance = await external_auth_service._get_bakery(
+        bakery_instance = await external_auth_service.get_bakery(
             "http://localhost:5000/"
         )
         assert bakery_instance is not None
@@ -483,7 +479,7 @@ class TestExternalAuthService:
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
-        bakery_instance = await external_auth_service._get_bakery(
+        bakery_instance = await external_auth_service.get_bakery(
             "http://localhost:5000/"
         )
 
@@ -549,7 +545,7 @@ class TestExternalAuthService:
             external_auth_repository=Mock(ExternalAuthRepository),
         )
 
-        bakery_instance = await external_auth_service._get_bakery(
+        bakery_instance = await external_auth_service.get_bakery(
             "http://localhost:5000/"
         )
 

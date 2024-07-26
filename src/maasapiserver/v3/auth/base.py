@@ -78,7 +78,7 @@ def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
             if (
                 external_auth_info := await services.external_auth.get_external_auth()
             ):
-                macaroon_bakery = await services.external_auth._get_bakery(
+                macaroon_bakery = await services.external_auth.get_bakery(
                     extract_absolute_uri(request)
                 )
 

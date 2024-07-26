@@ -4,6 +4,12 @@ from unittest.mock import AsyncMock, Mock
 
 from fastapi import FastAPI, Request
 from httpx import AsyncClient
+from macaroonbakery import bakery, checkers
+from macaroonbakery.bakery import (
+    DischargeRequiredError,
+    PermissionDenied,
+    VerificationError,
+)
 from pymacaroons import Macaroon
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -12,9 +18,17 @@ from starlette.responses import Response
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
-from maasapiserver.common.models.exceptions import UnauthorizedException
+from maasapiserver.common.models.exceptions import (
+    DischargeRequiredException,
+    ForbiddenException,
+    UnauthorizedException,
+)
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from maasapiserver.v3.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
@@ -399,10 +413,10 @@ class TestMacaroonAuthenticationProvider:
             macaroons=macaroons, request_absolute_uri="http://test:5240/"
         )
 
-    async def test_dispatch_invalid_macaroon_raises_exception(self) -> None:
+    async def test_dispatch_forbidden_macaroon_raises_exception(self) -> None:
         request = Mock(Request)
         request.state.services.external_auth.login = AsyncMock(
-            side_effect=UnauthorizedException(details=[])
+            side_effect=PermissionDenied()
         )
         request.headers = {}
         request.base_url = "http://test:5240/"
@@ -410,8 +424,84 @@ class TestMacaroonAuthenticationProvider:
         provider = MacaroonAuthenticationProvider()
         macaroons = [[Mock(Macaroon)]]
 
-        with pytest.raises(UnauthorizedException):
+        with pytest.raises(ForbiddenException):
             await provider.authenticate(request, macaroons)
+
+    async def test_dispatch_invalid_macaroon_generates_discharge_macaroon(
+        self,
+    ) -> None:
+        request = Mock(Request)
+        request.state.services.external_auth.login = AsyncMock(
+            side_effect=VerificationError()
+        )
+        bakery_mock = Mock(bakery.Bakery)
+        request.state.services.external_auth.get_bakery = AsyncMock(
+            return_value=bakery_mock
+        )
+
+        request.state.services.external_auth.get_external_auth = AsyncMock(
+            return_value=ExternalAuthConfig(
+                type=ExternalAuthType.RBAC,
+                url="http://test/",
+                domain="",
+                admin_group="admin",
+            )
+        )
+
+        macaroon_mock = Mock(bakery.Macaroon)
+        request.state.services.external_auth.generate_discharge_macaroon = (
+            AsyncMock(return_value=macaroon_mock)
+        )
+
+        request.headers = {}
+        request.base_url = "http://test:5240/"
+
+        provider = MacaroonAuthenticationProvider()
+        with pytest.raises(DischargeRequiredException) as exc:
+            await provider.authenticate(request, [[Mock(Macaroon)]])
+        assert exc.value.macaroon == macaroon_mock
+        request.state.services.external_auth.generate_discharge_macaroon.assert_called_once_with(
+            macaroon_bakery=bakery_mock,
+            caveats=[
+                checkers.Caveat(
+                    "is-authenticated-user", location="http://test/"
+                )
+            ],
+            ops=[bakery.LOGIN_OP],
+            req_headers=request.headers,
+        )
+
+    async def test_dispatch_unverified_macaroon_generates_discharge_macaroon(
+        self,
+    ) -> None:
+        request = Mock(Request)
+        cavs = [checkers.Caveat("is-authenticated", location="http://test/")]
+        ops = [bakery.LOGIN_OP]
+        request.state.services.external_auth.login = AsyncMock(
+            side_effect=DischargeRequiredError(msg="", cavs=cavs, ops=ops)
+        )
+        bakery_mock = Mock(bakery.Bakery)
+        request.state.services.external_auth.get_bakery = AsyncMock(
+            return_value=bakery_mock
+        )
+        macaroon_mock = Mock(bakery.Macaroon)
+        request.state.services.external_auth.generate_discharge_macaroon = (
+            AsyncMock(return_value=macaroon_mock)
+        )
+
+        request.headers = {}
+        request.base_url = "http://test:5240/"
+
+        provider = MacaroonAuthenticationProvider()
+        with pytest.raises(DischargeRequiredException) as exc:
+            await provider.authenticate(request, [[Mock(Macaroon)]])
+        assert exc.value.macaroon == macaroon_mock
+        request.state.services.external_auth.generate_discharge_macaroon.assert_called_once_with(
+            macaroon_bakery=bakery_mock,
+            caveats=cavs,
+            ops=ops,
+            req_headers=request.headers,
+        )
 
     def _check_macaroons(self, macaroons: list[list[Macaroon]]):
         assert len(macaroons) == 1

@@ -104,7 +104,7 @@ class ExternalAuthService(Service, RootKeyStore):
     async def login(
         self, macaroons: list[list[Macaroon]], request_absolute_uri: str
     ) -> User | None:
-        macaroon_bakery = await self._get_bakery(request_absolute_uri)
+        macaroon_bakery = await self.get_bakery(request_absolute_uri)
         return await self._login(macaroons, macaroon_bakery)
 
     async def _login(
@@ -123,19 +123,11 @@ class ExternalAuthService(Service, RootKeyStore):
             )
         auth_checker = macaroon_bakery.checker.auth(macaroons)
 
-        try:
-            auth_info = await auth_checker.allow(
-                ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
-            )
-        except (bakery.DischargeRequiredError, bakery.PermissionDenied):
-            raise UnauthorizedException(
-                details=[
-                    BaseExceptionDetail(
-                        type=INVALID_TOKEN_VIOLATION_TYPE,
-                        message="The macaroons provided are not valid.",
-                    )
-                ]
-            )
+        # This might raise DischargeRequiredError, VerificationError or PermissionDenied. The caller has
+        # to handle them accordingly.
+        auth_info = await auth_checker.allow(
+            ctx=checkers.AuthContext(), ops=[bakery.LOGIN_OP]
+        )
 
         user = await self.users_service.get(username=auth_info.identity.id())
         if not user:
@@ -151,7 +143,7 @@ class ExternalAuthService(Service, RootKeyStore):
             )
         return user
 
-    async def _get_bakery(
+    async def get_bakery(
         self, request_absolute_uri: str
     ) -> bakery.Bakery | None:
         external_auth_config = await self.get_external_auth()

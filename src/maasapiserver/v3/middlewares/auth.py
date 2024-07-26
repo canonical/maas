@@ -6,21 +6,28 @@ from typing import Awaitable, Callable, Dict, Sequence
 from fastapi import Request, Response
 from jose import jwt
 from jose.exceptions import JWTError
+from macaroonbakery import bakery
 import macaroonbakery._utils as utils
 from pymacaroons import Macaroon
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from maasapiserver.common.models.constants import INVALID_TOKEN_VIOLATION_TYPE
+from maasapiserver.common.models.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+)
 from maasapiserver.common.models.exceptions import (
     BadRequestException,
     BaseExceptionDetail,
+    DischargeRequiredException,
+    ForbiddenException,
     UnauthorizedException,
 )
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.auth import AuthenticatedUser
+from maasserver.macaroons import _get_macaroon_caveats_ops
 
 logger = logging.getLogger()
 
@@ -105,16 +112,52 @@ class MacaroonAuthenticationProvider:
         """
         Returns the authenticated user. Raise an exception if the macaroon is not valid, is expired or is invalid.
         """
-        user = await request.state.services.external_auth.login(
-            macaroons=macaroons,
-            request_absolute_uri=extract_absolute_uri(request),
-        )
+        try:
+            user = await request.state.services.external_auth.login(
+                macaroons=macaroons,
+                request_absolute_uri=extract_absolute_uri(request),
+            )
+        except bakery.DischargeRequiredError as err:
+            await self._raise_discharge_exception(
+                request, err.cavs(), err.ops()
+            )
+        except bakery.VerificationError:
+            external_auth_info = (
+                await request.state.services.external_auth.get_external_auth()
+            )
+            caveats, ops = _get_macaroon_caveats_ops(
+                external_auth_info.url, external_auth_info.domain
+            )
+            await self._raise_discharge_exception(request, caveats, ops)
+        except bakery.PermissionDenied:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message="Missing permissions in the macaroons provided.",
+                    )
+                ]
+            )
         return AuthenticatedUser(
             username=user.username,
             # TODO: MAASENG-3539 we have to use the Candid/RBAC client to fetch the groups of the user and set the roles
             #  accordingly here. For the time being, we consider everybody as a simple user.
             roles={UserRole.USER},
         )
+
+    async def _raise_discharge_exception(self, request, caveats, ops):
+        macaroon_bakery = (
+            await request.state.services.external_auth.get_bakery(
+                extract_absolute_uri(request)
+            )
+        )
+        discharge_macaroon = await request.state.services.external_auth.generate_discharge_macaroon(
+            macaroon_bakery=macaroon_bakery,
+            caveats=caveats,
+            ops=ops,
+            req_headers=request.headers,
+        )
+        raise DischargeRequiredException(macaroon=discharge_macaroon)
 
     def extract_macaroons(self, request: Request) -> list[list[Macaroon]]:
         def decode_macaroon(data) -> list[Macaroon] | None:
