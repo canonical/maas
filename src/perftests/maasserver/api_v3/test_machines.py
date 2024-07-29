@@ -4,30 +4,34 @@
 import math
 from urllib.parse import parse_qs, urlparse
 
-from django.contrib.auth.hashers import make_password
-from django.db import transaction
-import pytest
+from sqlalchemy import func, select
 
-from maasapiserver.client import APIServerClient
+from maasapiserver.common.db.tables import NodeTable
 from maasapiserver.v3.api.models.requests.query import MAX_PAGE_SIZE
-from maasserver.models import Machine
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maasserver.enum import NODE_TYPE
 
 
-@pytest.mark.allow_transactions
-def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
-    maas_user.password = make_password("test", hasher="pbkdf2_sha256")
-    maas_user.save()
-    transaction.commit()
-    api_client = APIServerClient("", version=3)
-    resp = api_client.post(
-        "auth/login", data={"username": maas_user.username, "password": "test"}
+async def get_machine_count(conn):
+    stmt = (
+        select(func.count())
+        .select_from(NodeTable)
+        .where(NodeTable.c.node_type == NODE_TYPE.MACHINE)
     )
-    token = resp.json()["access_token"]
-    headers = {"Authorization": "bearer " + token}
+    result = await conn.execute(stmt)
+    return result.scalar()
 
+
+async def test_perf_list_machines_APIv3_endpoint(
+    perf,
+    authenticated_admin_api_client_v3,
+    db_connection,
+):
+    api_client = authenticated_admin_api_client_v3
     # This should test the APIv3 calls that are used to load
     # the machine listing page on the initial page load.
-    machine_count = Machine.objects.all().count()
+    machine_count = await get_machine_count(db_connection)
+
     expected_items = machine_count if machine_count < 50 else 50
     response = None
     with perf.record("test_perf_list_machines_APIv3_endpoint"):
@@ -37,27 +41,23 @@ def test_perf_list_machines_APIv3_endpoint(perf, maas_user, maasapiserver):
             "size": 50,
         }
 
-        response = api_client.get("machines", headers=headers, params=params)
+        response = await api_client.get(
+            f"{V3_API_PREFIX}/machines", params=params
+        )
 
-    assert response.ok
+    assert response.status_code == 200
     assert len(response.json()["items"]) == expected_items
 
 
-@pytest.mark.allow_transactions
-def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
-    maas_user.password = make_password("test", hasher="pbkdf2_sha256")
-    maas_user.save()
-    transaction.commit()
-    api_client = APIServerClient("", version=3)
-    resp = api_client.post(
-        "auth/login", data={"username": maas_user.username, "password": "test"}
-    )
-    token = resp.json()["access_token"]
-    headers = {"Authorization": "bearer " + token}
-
+async def test_perf_list_machines_APIv3_endpoint_all(
+    perf,
+    authenticated_admin_api_client_v3,
+    db_connection,
+):
+    api_client = authenticated_admin_api_client_v3
     # How long would it take to list all the machines using the
     # APIv3 without any pagination.
-    machine_count = Machine.objects.all().count()
+    machine_count = await get_machine_count(db_connection)
     machine_pages = math.ceil(machine_count / MAX_PAGE_SIZE)
     responses = [None] * machine_pages
     with perf.record("test_perf_list_machines_APIv3_endpoint_all"):
@@ -66,11 +66,12 @@ def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
         token = None
         for page in range(machine_pages):
             params = {
-                "token": token,
                 "size": MAX_PAGE_SIZE,
             }
-            response = api_client.get(
-                "machines", headers=headers, params=params
+            if token:
+                params["token"] = token
+            response = await api_client.get(
+                f"{V3_API_PREFIX}/machines", params=params
             )
             responses[page] = response
             if next_page := response.json()["next"]:
@@ -78,5 +79,5 @@ def test_perf_list_machines_APIv3_endpoint_all(perf, maas_user, maasapiserver):
             else:
                 token = None
     assert token is None
-    assert all([r.ok for r in responses])
+    assert all([r.status_code == 200 for r in responses])
     assert sum([len(r.json()["items"]) for r in responses]) == machine_count

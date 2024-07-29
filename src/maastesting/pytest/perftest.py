@@ -136,6 +136,10 @@ class QueryCounter(PerfTracer):
     _time = 0.0
     _orig_debug = None
 
+    def __init__(self, test_name):
+        super().__init__(test_name)
+        self._sqlalchemy_counter = SQLAlchemyQueryCounter()
+
     def __enter__(self):
         from django.conf import settings
         from django.db import reset_queries
@@ -144,6 +148,7 @@ class QueryCounter(PerfTracer):
         # Django logs SQL queries only if debug is True.
         settings.DEBUG = True
         reset_queries()
+        self._sqlalchemy_counter.install()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -157,11 +162,54 @@ class QueryCounter(PerfTracer):
         self._time = float(
             sum((float(entry["time"]) for entry in connection.queries))
         )
+        self._count += self._sqlalchemy_counter.count
+        self._time += self._sqlalchemy_counter.time
+
         settings.DEBUG = self._orig_debug
         self._orig_debug = None
+        self._sqlalchemy_counter.remove()
 
     def results(self):
         return {"query_count": self._count, "query_time": self._time}
+
+
+class SQLAlchemyQueryCounter:
+
+    count = 0
+    time = 0.0
+
+    def before_cursor_execute(
+        self, conn, cursor, statement, parameters, context, executemany
+    ):
+        conn.info.setdefault("query_start_time", []).append(
+            time.perf_counter()
+        )
+
+    def after_cursor_execute(
+        self, conn, cursor, statement, parameters, context, executemany
+    ):
+        query_time = time.perf_counter() - conn.info["query_start_time"].pop(
+            -1
+        )
+        self.count += 1
+        self.time += query_time
+
+    def install(self):
+        from sqlalchemy.engine import Engine
+        from sqlalchemy.event import listen
+
+        listen(Engine, "before_cursor_execute", self.before_cursor_execute)
+        listen(Engine, "after_cursor_execute", self.after_cursor_execute)
+        return self
+
+    def remove(self):
+        from sqlalchemy.engine import Engine
+        from sqlalchemy.event import remove
+
+        remove(Engine, "before_cursor_execute", self.before_cursor_execute)
+        remove(Engine, "after_cursor_execute", self.after_cursor_execute)
+        self.count = 0
+        self.time = 0.0
 
 
 @perf_tracer
