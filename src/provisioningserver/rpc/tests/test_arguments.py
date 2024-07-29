@@ -5,7 +5,6 @@
 
 
 import random
-import zlib
 
 import attr
 import netaddr
@@ -126,37 +125,6 @@ class TestAmpList(MAASTestCase):
         self.assertIsInstance(encoded, bytes)
         decoded = argument.fromStringProto(encoded, proto=None)
         self.assertEqual(example, decoded)
-
-
-class TestCompressedAmpList(MAASTestCase):
-    def test_round_trip(self):
-        argument = arguments.CompressedAmpList([("thing", amp.Unicode())])
-        example = [{"thing": factory.make_name("thing")}]
-        encoded = argument.toStringProto(example, proto=None)
-        self.assertIsInstance(encoded, bytes)
-        decoded = argument.fromStringProto(encoded, proto=None)
-        self.assertEqual(example, decoded)
-
-    def test_compression_is_worth_it(self):
-        argument = arguments.CompressedAmpList(
-            [("ip", amp.Unicode()), ("mac", amp.Unicode())]
-        )
-        # Create 3500 leases. We can get up to ~3750 and still satisfy the
-        # post-conditions, but the randomness means we can't be sure about
-        # test stability that close to the limit.
-        leases = [
-            {
-                "ip": factory.make_ipv4_address(),
-                "mac": factory.make_mac_address(),
-            }
-            for _ in range(3500)
-        ]
-        encoded_compressed = argument.toStringProto(leases, proto=None)
-        encoded_uncompressed = zlib.decompress(encoded_compressed)
-        # The encoded leases compress to less than half the size of the
-        # uncompressed leases, and under the AMP message limit of 64k.
-        self.assertLess(len(encoded_compressed), len(encoded_uncompressed) / 2)
-        self.assertLess(len(encoded_compressed), 2**16)
 
 
 class TestIPAddress(MAASTestCase):
