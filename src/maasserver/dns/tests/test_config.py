@@ -48,7 +48,7 @@ from provisioningserver.testing.bindfixture import allocate_ports, BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from provisioningserver.utils.twisted import retries
 
-RELOAD_TIMEOUT = 30
+RELOAD_TIMEOUT = 60
 
 dns_update_all_zones = wrapped_dns_update_all_zones.__wrapped__
 

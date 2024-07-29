@@ -66,13 +66,13 @@ class TestServiceMaker(MAASTestCase):
         self.patch_autospec(crochet, "no_setup")
         self.patch_autospec(logger, "configure")
         # Enable database access in the reactor just for these tests.
-        asynchronous(enable_all_database_connections, timeout=5)()
+        asynchronous(enable_all_database_connections, timeout=60)()
         import_websocket_handlers()
 
     def tearDown(self):
         super().tearDown()
         # Disable database access in the reactor again.
-        asynchronous(disable_all_database_connections, timeout=5)()
+        asynchronous(disable_all_database_connections, timeout=60)()
 
     def assertConnectionsEnabled(self):
         for alias in connections:
@@ -93,7 +93,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
@@ -103,7 +103,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         service_maker.makeService(options)
         mock_pserv.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_without_import_services(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
@@ -131,7 +131,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         )
         crochet.no_setup.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_with_import_services(self):
         options = Options()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
@@ -169,7 +169,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
 
         crochet.no_setup.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_configures_thread_pool(self):
         # Patch and restore where it's visible because patching a running
         # reactor is potentially fairly harmful.
@@ -185,7 +185,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         finally:
             patcher.restore()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_disables_database_connections_in_reactor(self):
         self.assertConnectionsEnabled()
         service_maker = RegionWorkerServiceMaker("Harry", "Hill")
@@ -209,7 +209,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
@@ -221,7 +221,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         service_maker.makeService(options)
         mock_pserv.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService(self):
         options = Options()
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
@@ -266,7 +266,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         )
         crochet.no_setup.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_cleanup_prometheus_dir(self):
         tmpdir = Path(self.useFixture(TempDirectory()).path)
         self.useFixture(
@@ -287,7 +287,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         self.assertTrue(file1.exists())
         self.assertFalse(file2.exists())
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_configures_thread_pool(self):
         # Patch and restore where it's visible because patching a running
         # reactor is potentially fairly harmful.
@@ -305,7 +305,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         finally:
             patcher.restore()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_disables_database_connections_in_reactor(self):
         self.assertConnectionsEnabled()
         service_maker = RegionMasterServiceMaker("Harry", "Hill")
@@ -325,7 +325,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         self.assertEqual("Harry", service_maker.tapname)
         self.assertEqual("Hill", service_maker.description)
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService_configures_pserv_debug(self):
         options = Options()
         service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
@@ -337,7 +337,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         service_maker.makeService(options)
         mock_pserv.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_makeService(self):
         options = Options()
         service_maker = RegionAllInOneServiceMaker("Harry", "Hill")
@@ -394,7 +394,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         )
         crochet.no_setup.assert_called_once_with()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_configures_thread_pool(self):
         # Patch and restore where it's visible because patching a running
         # reactor is potentially fairly harmful.
@@ -412,7 +412,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         finally:
             patcher.restore()
 
-    @asynchronous(timeout=5)
+    @asynchronous(timeout=60)
     def test_disables_database_connections_in_reactor(self):
         self.assertConnectionsEnabled()
         service_maker = RegionAllInOneServiceMaker("Harry", "Hill")

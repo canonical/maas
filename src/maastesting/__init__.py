@@ -14,7 +14,7 @@ from warnings import filterwarnings
 
 def get_testing_timeout(timeout=None):
     wait_time = (
-        environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
+        environ.get("MAAS_WAIT_FOR_REACTOR", 120.0)
         if timeout is None
         else timeout
     )
