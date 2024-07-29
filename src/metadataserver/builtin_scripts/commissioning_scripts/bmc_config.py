@@ -556,8 +556,10 @@ class IPMI(IPMIBase):
         # this one.
 
         if not self._check_ciphers_enabled():
-            print("ERROR: No cipher enabled!", file=sys.stderr)
-            sys.exit(1)
+            # We can't detect any suitable cipher. We still continue,
+            # since we don't trust that the BMC reports all the
+            # ciphers that actually are usable.
+            print("WARNING: No cipher enabled!", file=sys.stderr)
 
         self._config_ipmi_lan_channel_settings()
         self._config_lan_conf_auth()
