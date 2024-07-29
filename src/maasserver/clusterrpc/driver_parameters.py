@@ -36,7 +36,11 @@ from django import forms
 from jsonschema import validate
 
 from maasserver.config_forms import DictCharField
-from maasserver.fields import MACAddressFormField
+from maasserver.fields import (
+    LXDAddressField,
+    MACAddressFormField,
+    VirshAddressField,
+)
 from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.drivers import (
     MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
@@ -52,6 +56,9 @@ FIELD_TYPE_MAPPINGS = {
     "multiple_choice": forms.MultipleChoiceField,
     # This is used on the API so a password field is just a char field.
     "password": forms.CharField,
+    "ip_address": forms.GenericIPAddressField,
+    "virsh_address": VirshAddressField,
+    "lxd_address": LXDAddressField,
 }
 
 

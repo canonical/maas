@@ -35,7 +35,12 @@ class DLIPowerDriver(PowerDriver):
         make_setting_field(
             "outlet_id", "Outlet ID", scope=SETTING_SCOPE.NODE, required=True
         ),
-        make_setting_field("power_address", "Power address", required=True),
+        make_setting_field(
+            "power_address",
+            "Power address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
             "power_pass", "Power password", field_type="password", secret=True

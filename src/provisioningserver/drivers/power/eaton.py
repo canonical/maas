@@ -33,7 +33,12 @@ class EatonPowerDriver(PowerDriver):
     can_set_boot_order = False
     description = "Eaton PDU"
     settings = [
-        make_setting_field("power_address", "IP for Eaton PDU", required=True),
+        make_setting_field(
+            "power_address",
+            "IP for Eaton PDU",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field(
             "node_outlet",
             "Eaton PDU node outlet number (1-24)",

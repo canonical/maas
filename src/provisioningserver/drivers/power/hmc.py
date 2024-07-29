@@ -37,7 +37,12 @@ class HMCPowerDriver(PowerDriver):
     can_set_boot_order = False
     description = "IBM Hardware Management Console (HMC) for PowerPC"
     settings = [
-        make_setting_field("power_address", "IP for HMC", required=True),
+        make_setting_field(
+            "power_address",
+            "IP for HMC",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "HMC username"),
         make_setting_field(
             "power_pass", "HMC password", field_type="password", secret=True

@@ -29,7 +29,12 @@ class WedgePowerDriver(PowerDriver):
     can_set_boot_order = False
     description = "Facebook's Wedge"
     settings = [
-        make_setting_field("power_address", "IP address", required=True),
+        make_setting_field(
+            "power_address",
+            "IP address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
             "power_pass", "Power password", field_type="password", secret=True

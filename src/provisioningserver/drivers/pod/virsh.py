@@ -1277,7 +1277,12 @@ class VirshPodDriver(PodDriver):
     can_probe = True
     can_set_boot_order = False
     settings = [
-        make_setting_field("power_address", "Address", required=True),
+        make_setting_field(
+            "power_address",
+            "Address",
+            field_type="virsh_address",
+            required=True,
+        ),
         make_setting_field(
             "power_pass",
             "Password (optional)",

@@ -210,7 +210,12 @@ class RECSPowerDriver(PowerDriver):
         make_setting_field(
             "node_id", "Node ID", scope=SETTING_SCOPE.NODE, required=True
         ),
-        make_setting_field("power_address", "Power address", required=True),
+        make_setting_field(
+            "power_address",
+            "Power address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_port", "Power port"),
         make_setting_field("power_user", "Power user"),
         make_setting_field(

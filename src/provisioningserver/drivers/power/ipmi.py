@@ -276,7 +276,12 @@ class IPMIPowerDriver(PowerDriver):
             default=IPMI_BOOT_TYPE.DEFAULT,
             required=False,
         ),
-        make_setting_field("power_address", "IP address", required=True),
+        make_setting_field(
+            "power_address",
+            "IP address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "Power user"),
         make_setting_field(
             "power_pass", "Power password", field_type="password", secret=True

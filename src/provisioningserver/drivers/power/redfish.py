@@ -163,7 +163,12 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
     name = "redfish"
     description = "Redfish"
     settings = [
-        make_setting_field("power_address", "Redfish address", required=True),
+        make_setting_field(
+            "power_address",
+            "Redfish address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "Redfish user", required=True),
         make_setting_field(
             "power_pass",

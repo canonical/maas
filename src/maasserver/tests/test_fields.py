@@ -14,6 +14,7 @@ from maasserver.fields import (
     IPPortListFormField,
     LargeObjectField,
     LargeObjectFile,
+    LXDAddressField,
     MODEL_NAME_VALIDATOR,
     NodeChoiceField,
     SubnetListFormField,
@@ -21,6 +22,7 @@ from maasserver.fields import (
     URLOrPPAFormField,
     URLOrPPAValidator,
     VersionedTextFileField,
+    VirshAddressField,
 )
 from maasserver.models import Node, VersionedTextFile
 from maasserver.testing.factory import factory
@@ -818,3 +820,123 @@ class TestSystemdIntervalField(MAASServerTestCase):
         value = "1 year"
         field = SystemdIntervalField()
         self.assertRaises(ValidationError, field.clean, value)
+
+
+class TestVirshAddressField(MAASTestCase):
+    def test_accepts_ipv4(self):
+        ip = factory.make_ip_address(ipv6=False)
+        self.assertEqual(ip, VirshAddressField().clean(ip))
+
+    def test_accepts_ipv6(self):
+        ips = [
+            "[::1]",
+            "::1",
+            "ff06::c3",
+            "0:0:0:0:0:ffff:192.1.56.10",
+            "::ffff:12.12.12.12",
+            factory.make_ip_address(ipv6=True),
+        ]
+        for ip in ips:
+            self.assertEqual(ip, VirshAddressField().clean(ip))
+
+    def test_accepts_complete_uri(self):
+        driver = ["xen", "qemu", "test"]
+        transport = "ssh"
+        user = factory.make_name()
+        host = factory.make_hostname()
+        port = "8080"
+        path = {factory.make_name()}
+        param = factory.make_name()
+        for d in driver:
+            uri = f"{d}+{transport}://{user}@{host}:{port}/{path}?{param}"
+            self.assertEqual(uri, VirshAddressField().clean(uri))
+
+    def test_rejects_invalid_ipv4_address(self):
+        ip = "12.34.56.999"
+        error = self.assertRaises(
+            ValidationError, VirshAddressField().clean, ip
+        )
+        self.assertEqual("Enter a valid virsh address.", error.message)
+
+    def test_rejects_invalid_ipv6_address(self):
+        ips = ["fe80::abcde", "fe800:0:0:0:abcdfe:0"]
+        for ip in ips:
+            error = self.assertRaises(
+                ValidationError, VirshAddressField().clean, ip
+            )
+            self.assertEqual("Enter a valid virsh address.", error.message)
+
+    def test_rejects_invalid_transport(self):
+        transport, hostname = factory.make_name(), factory.make_hostname()
+        uri = f"{transport}://{hostname}"
+        error = self.assertRaises(
+            ValidationError, VirshAddressField().clean, uri
+        )
+        self.assertEqual("Enter a valid virsh address.", error.message)
+
+
+class TestLXDAddressField(MAASTestCase):
+    def test_accepts_ipv4(self):
+        ip = factory.make_ip_address(ipv6=False)
+        self.assertEqual(ip, LXDAddressField().clean(ip))
+
+    def test_accepts_ipv6(self):
+        ips = [
+            "[::1]",
+            "::1",
+            "ff06::c3",
+            "0:0:0:0:0:ffff:192.1.56.10",
+            "::ffff:12.12.12.12",
+            factory.make_ip_address(ipv6=True),
+        ]
+        for ip in ips:
+            self.assertEqual(ip, LXDAddressField().clean(ip))
+
+    def test_accepts_ipv4_with_port(self):
+        ip = factory.make_ip_address(ipv6=False)
+        ip_port = f"{ip}:8443"
+        self.assertEqual(ip_port, LXDAddressField().clean(ip_port))
+
+    def test_accepts_ipv6_with_port(self):
+        ips = [
+            "[::1]",
+            "::1",
+            "ff06::c3",
+            "0:0:0:0:0:ffff:192.1.56.10",
+            "::ffff:12.12.12.12",
+            factory.make_ip_address(ipv6=True),
+        ]
+        for ip in ips:
+            ip_port = f"{ip}:8443"
+            self.assertEqual(ip_port, LXDAddressField().clean(ip_port))
+
+    def test_accepts_http_https_uri(self):
+        schemes = ["http", "https"]
+        hostname = factory.make_hostname()
+        port = 8443
+        for scheme in schemes:
+            uri = f"{scheme}://{hostname}:{port}"
+            self.assertEqual(uri, LXDAddressField().clean(uri))
+
+    def test_rejects_invalid_ipv4_address(self):
+        ip = "12.34.56.999"
+        error = self.assertRaises(ValidationError, LXDAddressField().clean, ip)
+        self.assertEqual("Enter a valid LXD address.", error.message)
+
+    def test_rejects_invalid_ipv6_address(self):
+        ips = ["fe80::abcde", "fe800:0:0:0:abcdfe:0"]
+        for ip in ips:
+            error = self.assertRaises(
+                ValidationError, LXDAddressField().clean, ip
+            )
+            self.assertEqual("Enter a valid LXD address.", error.message)
+
+    def test_rejects_invalid_scheme(self):
+        scheme = factory.make_name()
+        host = factory.make_hostname()
+        port = 8443
+        uri = f"{scheme}://{host}:{port}"
+        error = self.assertRaises(
+            ValidationError, LXDAddressField().clean, uri
+        )
+        self.assertEqual("Enter a valid LXD address.", error.message)

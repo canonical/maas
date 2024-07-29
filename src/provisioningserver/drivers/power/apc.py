@@ -48,7 +48,12 @@ class APCPowerDriver(PowerDriver):
     can_set_boot_order = False
     description = "American Power Conversion (APC) PDU"
     settings = [
-        make_setting_field("power_address", "IP for APC PDU", required=True),
+        make_setting_field(
+            "power_address",
+            "IP for APC PDU",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field(
             "node_outlet",
             "APC PDU node outlet number (1-16)",

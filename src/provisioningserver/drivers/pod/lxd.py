@@ -190,7 +190,12 @@ class LXDPodDriver(PodDriver):
     can_set_boot_order = False
     description = "LXD (virtual systems)"
     settings = [
-        make_setting_field("power_address", "LXD address", required=True),
+        make_setting_field(
+            "power_address",
+            "LXD address",
+            field_type="lxd_address",
+            required=True,
+        ),
         make_setting_field(
             "instance_name",
             "Instance name",

@@ -31,6 +31,12 @@ from maasserver.utils.orm import get_one, validate_in_transaction
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
 
+HOSTNAME_RE = r"((([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9\.]))+([A-Za-z]|[A-Za-z][A-Za-z0-9\-]*[A-Za-z0-9]))"
+IPV4_RE = r"((?:0|25[0-5]|2[0-4]\d|1\d?\d?|[1-9]\d?)(?:\.(?:0|25[0-5]|2[0-4]\d|1\d?\d?|[1-9]\d?)){3})"
+IPV6_RE = (
+    rf"((?:\[)?([a-f0-9:]{{1,4}}:+)+(([a-f0-9]{{1,4}}(?:\])?)|{IPV4_RE}))"
+)
+
 # supported input MAC formats
 MAC_FIELD_RE = re.compile(
     r"^"
@@ -51,6 +57,44 @@ MAC_VALIDATOR = RegexValidator(
     regex=MAC_RE, message="'%(value)s' is not a valid MAC address."
 )
 MAC_SPLIT_RE = re.compile(r"[-:.]")
+
+# Remote virsh uris general form:
+# driver[+transport]://[username@][hostname][:port]/[path][?extraparameters]
+VIRSH_ADDR_RE = re.compile(
+    r"^"
+    r"(((xen|qemu|test)"  # driver
+    r"(?:\+\w+)?"  # +transport
+    r"://"
+    r"(?:\w+@)?"  # username@
+    rf"(?:{HOSTNAME_RE}|"  # hostname, or
+    rf"{IPV4_RE}|"  # ipv4, or
+    rf"{IPV6_RE})?"  # ipv6
+    r"(?::\d{2,5})?"  # :port
+    r"(?:[/?][^\s]*)?)"  # path + parameters
+    r"|"
+    rf"{IPV4_RE}"  # could also be only a ipv4/ipv6 address
+    rf"|{IPV6_RE})"
+    r"$"
+)
+
+VIRSH_ADDR_FIELD_VALIDATOR = RegexValidator(
+    regex=VIRSH_ADDR_RE, message="Enter a valid virsh address."
+)
+
+
+LXD_ADDR_RE = re.compile(
+    r"^"
+    r"(?:(http|https)://)?"
+    rf"({HOSTNAME_RE}|"  # hostname, or
+    rf"{IPV4_RE}|"  # ipv4, or
+    rf"{IPV6_RE})"  # ipv6
+    r"(?::\d{2,5})?"  # port
+    r"$"
+)
+
+LXD_ADDR_FIELD_VALIDATOR = RegexValidator(
+    regex=LXD_ADDR_RE, message="Enter a valid LXD address."
+)
 
 
 def normalise_macaddress(mac: str) -> str:
@@ -672,3 +716,25 @@ class SystemdIntervalField(forms.CharField):
             )
         else:
             return value
+
+
+class VirshAddressField(forms.CharField):
+    """Virsh address form field"""
+
+    def validate(self, value):
+        if value:
+            VIRSH_ADDR_FIELD_VALIDATOR(value)
+
+    def clean(self, value):
+        return super().clean(value)
+
+
+class LXDAddressField(forms.CharField):
+    """LXD address form field"""
+
+    def validate(self, value):
+        if value:
+            LXD_ADDR_FIELD_VALIDATOR(value)
+
+    def clean(self, value):
+        return super().clean(value)

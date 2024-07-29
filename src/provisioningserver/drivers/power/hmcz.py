@@ -49,7 +49,12 @@ class HMCZPowerDriver(PowerDriver):
     can_set_boot_order = True
     description = "IBM Hardware Management Console (HMC) for Z"
     settings = [
-        make_setting_field("power_address", "HMC Address", required=True),
+        make_setting_field(
+            "power_address",
+            "HMC Address",
+            field_type="ip_address",
+            required=True,
+        ),
         make_setting_field("power_user", "HMC username", required=True),
         make_setting_field(
             "power_pass",

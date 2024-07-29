@@ -2524,6 +2524,39 @@ class TestMachineAPI(APITestCase.ForUser):
             "", reload_object(machine).get_power_parameters()["power_pass"]
         )
 
+    def test_PUT_updates_power_parameters_invaild_ip_address(self):
+        self.become_admin()
+        power_parameters = {
+            "power_address": factory.make_ip_address(),
+            "power_id": factory.make_name("power_id"),
+            "power_pass": factory.make_name("power_pass"),
+        }
+        machine = factory.make_Node(
+            owner=self.user,
+            architecture=make_usable_architecture(self),
+            power_type="ipmi",
+            power_parameters=power_parameters,
+        )
+        ip_address = "123"
+        response = self.client.put(
+            self.get_machine_uri(machine),
+            {"power_parameters_power_address": ip_address},
+        )
+        self.assertEqual(
+            (
+                http.client.BAD_REQUEST,
+                {
+                    "power_parameters": [
+                        "IP address: Enter a valid IPv4 or IPv6 address."
+                    ]
+                },
+            ),
+            (response.status_code, json_load_bytes(response.content)),
+        )
+        self.assertEqual(
+            power_parameters, reload_object(machine).get_power_parameters()
+        )
+
     def test_PUT_sets_zone(self):
         self.become_admin()
         new_zone = factory.make_Zone()
