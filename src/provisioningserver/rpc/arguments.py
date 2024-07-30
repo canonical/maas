@@ -5,6 +5,8 @@
 
 from collections.abc import Mapping
 import importlib
+from io import BytesIO
+from itertools import count
 import json
 import urllib.parse
 import zlib
@@ -177,6 +179,40 @@ class CompressedAmpList(AmpList):
     zlib. This can be useful when there's a lot of repetition in the list
     being transmitted.
     """
+
+    CHUNK_MAX = 0xFFFF
+
+    def fromBox(self, name, strings, objects, proto):
+        st = self.retrieve(strings, name, proto)
+        nk = amp._wireNameToPythonIdentifier(name)
+        if self.optional and st is None:
+            objects[nk] = None
+        else:
+            buffer = BytesIO(st)
+            for counter in count(2):
+                chunk = strings.get(f"{name.decode()}.{counter}".encode())
+                if chunk is None:
+                    break
+                buffer.write(chunk)
+            objects[nk] = self.fromStringProto(buffer.getvalue(), proto)
+
+    def toBox(self, name, strings, objects, proto):
+        obj = self.retrieve(
+            objects, amp._wireNameToPythonIdentifier(name), proto
+        )
+        if self.optional and obj is None:
+            return
+
+        buf = BytesIO(self.toStringProto(obj, proto))
+        firstChunk = buf.read(CompressedAmpList.CHUNK_MAX)
+        strings[name] = firstChunk
+        counter = 2
+        while True:
+            nextChunk = buf.read(CompressedAmpList.CHUNK_MAX)
+            if not nextChunk:
+                break
+            strings[f"{name.decode()}.{counter}".encode()] = nextChunk
+            counter += 1
 
     def toStringProto(self, inObject, proto):
         toStringProto = super().toStringProto
