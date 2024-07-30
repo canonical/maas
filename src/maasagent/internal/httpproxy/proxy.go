@@ -202,7 +202,6 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 // we want to dispatch our request and apply certain rewrite rules.
 func (p *Proxy) rewriteRequest() func(pr *httputil.ProxyRequest) {
 	return func(pr *httputil.ProxyRequest) {
-		rand.Seed(time.Now().Unix())
 		//nolint:gosec // usage of math/rand is ok here
 		target := p.targets[rand.Intn(len(p.targets))]
 
