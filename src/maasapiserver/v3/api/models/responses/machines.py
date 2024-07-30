@@ -7,6 +7,7 @@ from maasapiserver.v3.api.models.responses.base import (
     TokenPaginatedResponse,
 )
 from maasserver.enum import NODE_STATUS_CHOICES
+from metadataserver.enum import HARDWARE_TYPE_CHOICES
 from provisioningserver.drivers.pod.lxd import LXDPodDriver
 from provisioningserver.drivers.pod.virsh import VirshPodDriver
 from provisioningserver.drivers.power.registry import power_drivers
@@ -22,6 +23,13 @@ PowerTypeEnum = Enum(
             str(driver.name).lower(): str(driver.name).lower()
             for driver in power_drivers + [LXDPodDriver(), VirshPodDriver()]
         }
+    ),
+)
+
+HardwareDeviceTypeEnum = Enum(
+    "HardwareDeviceType",
+    dict(
+        {str(name).lower(): int(code) for code, name in HARDWARE_TYPE_CHOICES}
     ),
 )
 
@@ -47,3 +55,20 @@ class MachineResponse(HalResponse[BaseHal]):
 
 class MachinesListResponse(TokenPaginatedResponse[MachineResponse]):
     kind = "MachinesList"
+
+
+class UsbDeviceResponse(HalResponse[BaseHal]):
+    kind = "MachineHardwareDevice"
+    id: int
+    type: HardwareDeviceTypeEnum
+    vendor_id: int
+    product_id: int
+    vendor_name: str
+    product_name: str
+    commissioning_driver: str
+    bus_number: int
+    device_number: int
+
+
+class UsbDevicesListResponse(TokenPaginatedResponse[UsbDeviceResponse]):
+    kind = "MachineHardwareDevicesList"

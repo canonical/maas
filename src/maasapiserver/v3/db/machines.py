@@ -1,20 +1,22 @@
 from typing import Any
 
-from sqlalchemy import desc, select, Select
+from sqlalchemy import and_, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.tables import (
     BMCTable,
     DomainTable,
+    NodeConfigTable,
+    NodeDeviceTable,
     NodeTable,
     UserTable,
 )
 from maasapiserver.v3.api.models.requests.machines import MachineRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.machines import Machine
-from maasserver.enum import NODE_TYPE
+from maasapiserver.v3.models.machines import Machine, UsbDevice
+from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
 
 
 class MachinesRepository(BaseRepository[Machine, MachineRequest]):
@@ -47,6 +49,63 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
 
     async def delete(self, id: int) -> None:
         raise Exception("Not implemented yet.")
+
+    async def list_machine_usb_devices(
+        self, system_id: str, token: str | None, size: int
+    ) -> ListResult[UsbDevice]:
+        stmt = (
+            self._list_devices_statement(system_id)
+            .order_by(desc(NodeDeviceTable.c.id))
+            .where(eq(NodeDeviceTable.c.bus, NODE_DEVICE_BUS.USB))
+            .limit(size + 1)
+        )
+        if token is not None:
+            stmt = stmt.where(le(NodeDeviceTable.c.id, int(token)))
+
+        result = (await self.connection.execute(stmt)).all()
+        next_token = None
+        if len(result) > size:  # There is another page
+            next_token = result.pop().id
+
+        return ListResult[UsbDevice](
+            items=[UsbDevice(**row._asdict()) for row in result],
+            next_token=next_token,
+        )
+
+    def _list_devices_statement(self, system_id: str) -> Select[Any]:
+        return (
+            select(
+                NodeDeviceTable.c.id,
+                NodeDeviceTable.c.created,
+                NodeDeviceTable.c.updated,
+                NodeDeviceTable.c.bus,
+                NodeDeviceTable.c.hardware_type,
+                NodeDeviceTable.c.vendor_id,
+                NodeDeviceTable.c.product_id,
+                NodeDeviceTable.c.vendor_name,
+                NodeDeviceTable.c.product_name,
+                NodeDeviceTable.c.commissioning_driver,
+                NodeDeviceTable.c.bus_number,
+                NodeDeviceTable.c.device_number,
+                NodeDeviceTable.c.pci_address,
+                NodeDeviceTable.c.numa_node_id,
+                NodeDeviceTable.c.physical_blockdevice_id,
+                NodeDeviceTable.c.physical_interface_id,
+                NodeDeviceTable.c.node_config_id,
+            )
+            .select_from(NodeDeviceTable)
+            .join(
+                NodeConfigTable,
+                eq(NodeConfigTable.c.id, NodeDeviceTable.c.node_config_id),
+            )
+            .join(NodeTable, eq(NodeTable.c.id, NodeConfigTable.c.node_id))
+            .where(
+                and_(
+                    eq(NodeTable.c.system_id, system_id),
+                    eq(NodeConfigTable.c.id, NodeTable.c.current_config_id),
+                )
+            )
+        )
 
     def _select_all_statement(self) -> Select[Any]:
         return (

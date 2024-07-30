@@ -2,9 +2,11 @@ from typing import Optional
 
 from maasapiserver.v3.api.models.responses.base import BaseHal, BaseHref
 from maasapiserver.v3.api.models.responses.machines import (
+    HardwareDeviceTypeEnum,
     MachineResponse,
     MachineStatusEnum,
     PowerTypeEnum,
+    UsbDeviceResponse,
 )
 from maasapiserver.v3.models.base import MaasTimestampedBaseModel
 
@@ -48,3 +50,45 @@ class Machine(MaasTimestampedBaseModel):
                 )
             ),
         )
+
+
+class HardwareDevice(MaasTimestampedBaseModel):
+    # TODO: move HARDWARE_TYPE to enum and change the type here
+    hardware_type: HardwareDeviceTypeEnum = HardwareDeviceTypeEnum.node
+    vendor_id: int
+    # TODO: add validator?
+    product_id: int
+    vendor_name: str
+    product_name: str
+    commissioning_driver: str
+    bus_number: int
+    device_number: int
+    # numa_node_id: int
+    # physical_interface_id: Optional[int]
+    # physical_blockdevice_id: Optional[int]
+    # node_config_id: int
+
+
+class UsbDevice(HardwareDevice):
+
+    def to_response(self, self_base_hyperlink: str) -> UsbDeviceResponse:
+        return UsbDeviceResponse(
+            id=self.id,
+            type=self.hardware_type,
+            vendor_id=self.vendor_id,
+            product_id=self.product_id,
+            vendor_name=self.vendor_name,
+            product_name=self.product_name,
+            commissioning_driver=self.commissioning_driver,
+            bus_number=self.bus_number,
+            device_number=self.device_number,
+            hal_links=BaseHal(
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{self.id}"
+                )
+            ),
+        )
+
+
+class PciDevice(HardwareDevice):
+    pci_address: str

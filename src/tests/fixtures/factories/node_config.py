@@ -4,7 +4,11 @@ from typing import Any
 from sqlalchemy import update
 
 from maasapiserver.common.db.tables import NodeTable
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.models.machines import UsbDevice
+from maasserver.enum import NODE_DEVICE_BUS
 from maastesting.factory import factory
+from metadataserver.enum import HARDWARE_TYPE
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -44,3 +48,50 @@ async def create_test_node_config_entry(
         node["current_config_id"] = created_config["id"]
 
     return created_config
+
+
+# TODO: create a NumaNode model and return it instead of dict
+async def create_test_numa_node(
+    fixture: Fixture, node: dict[str, Any]
+) -> dict[str, Any]:
+    now = utcnow()
+    numa_node = {
+        "created": now,
+        "updated": now,
+        "index": 0,
+        "memory": 16384,
+        "cores": [0, 1, 2, 3, 4, 5, 6, 7],
+        "node_id": node["id"],
+    }
+    [numa_node] = await fixture.create("maasserver_numanode", [numa_node])
+    return numa_node
+
+
+async def create_test_usb_device(
+    fixture: Fixture,
+    numa_node: dict[str, Any],
+    config: dict[str, Any],
+    **extra_details: Any,
+) -> UsbDevice:
+    now = utcnow()
+    device = {
+        "created": now,
+        "updated": now,
+        "bus": NODE_DEVICE_BUS.USB,
+        "hardware_type": HARDWARE_TYPE.NODE,
+        "vendor_id": "0000",
+        "product_id": "0000",
+        "vendor_name": "vendor",
+        "product_name": "product",
+        "commissioning_driver": "commissioning driver",
+        "bus_number": 0,
+        "device_number": 0,
+        "pci_address": None,
+        "numa_node_id": numa_node["id"],
+        "physical_blockdevice_id": None,
+        "physical_interface_id": None,
+        "node_config_id": config["id"],
+    }
+    device.update(**extra_details)
+    [device] = await fixture.create("maasserver_nodedevice", [device])
+    return UsbDevice(**device)

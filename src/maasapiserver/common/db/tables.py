@@ -118,9 +118,9 @@ NumaNodeTable = Table(
     Column("id", BigInteger, primary_key=True, unique=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("index", Text, nullable=False),
+    Column("index", Integer, nullable=False),
     Column("memory", Integer, nullable=False),
-    Column("cores", Integer, nullable=False),
+    Column("cores", ARRAY(Integer), nullable=False),
     Column(
         "node_id",
         BigInteger,
@@ -180,7 +180,7 @@ NodeConfigTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("name", Text, nullable=False),
     Column(
-        "node_id", BigInteger, ForeignKey("maasserver_zone.id"), nullable=False
+        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
     ),
 )
 
@@ -659,4 +659,59 @@ RootKeyTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("expiration", DateTime(timezone=True), nullable=False),
+)
+
+NodeDeviceTable = Table(
+    "maasserver_nodedevice",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+    Column("bus", Integer, nullable=False),
+    Column("hardware_type", Integer, nullable=False),
+    Column("vendor_id", String(4), nullable=False),
+    Column("product_id", String(4), nullable=False),
+    Column("vendor_name", String(256), nullable=False),
+    Column("product_name", String(256), nullable=False),
+    Column("commissioning_driver", String(256), nullable=False),
+    Column("bus_number", Integer, nullable=False),
+    Column("device_number", Integer, nullable=False),
+    Column("pci_address", String(64), nullable=True),
+    Column(
+        "numa_node_id",
+        BigInteger,
+        ForeignKey("maasserver_numanode.id"),
+        nullable=False,
+    ),
+    Column(
+        "physical_blockdevice_id",
+        BigInteger,
+        ForeignKey("maasserver_physicalblockdevice.id"),
+        nullable=True,
+    ),
+    Column(
+        "physical_interface_id",
+        BigInteger,
+        ForeignKey("maasserver_interface.id"),
+        nullable=True,
+    ),
+    Column(
+        "node_config_id",
+        BigInteger,
+        ForeignKey("maasserver_nodeconfig.id"),
+        nullable=False,
+    ),
+)
+
+NodeDeviceVpdTable = Table(
+    "maasserver_nodedevicevpd",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("key", Text, nullable=False),
+    Column("value", Text, nullable=False),
+    Column(
+        "node_device_id",
+        ForeignKey("maasserver_nodedevice.id"),
+        nullable=False,
+    ),
 )
