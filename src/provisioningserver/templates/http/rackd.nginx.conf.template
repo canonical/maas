@@ -10,6 +10,10 @@ upstream maas-agent-httpproxy {
     server unix:{{maas_agent_httpproxy_socket_path}};
 }
 
+upstream maas-agent-metrics {
+  server unix:{{maas_agent_metrics_socket_path}};
+}
+
 server {
     listen [::]:5248;
     listen 5248;
@@ -50,6 +54,10 @@ server {
         proxy_set_header X-Original-URI $request_uri;
         proxy_set_header X-Original-Remote-IP $remote_addr;
         proxy_pass http://maas-agent-httpproxy;
+    }
+
+    location /metrics/agent {
+        proxy_pass http://maas-agent-metrics/metrics;
     }
 
     location = /log {

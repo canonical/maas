@@ -20,15 +20,22 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"syscall"
 	"time"
 
 	backoff "github.com/cenkalti/backoff/v4"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel/exporters/prometheus"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
@@ -57,6 +64,9 @@ type config struct {
 		CacheSize int64  `yaml:"cache_size"`
 	} `yaml:"httpproxy"`
 	Controllers []string `yaml:"controllers,flow"`
+	Metrics     struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"metrics"`
 }
 
 // setupLogger sets the global logger with the provided logLevel.
@@ -214,7 +224,47 @@ func getCertificatesDir() string {
 	return "/var/lib/maas/certificates"
 }
 
+func setupMetrics(meterProvider *metric.MeterProvider) error {
+	exporter, err := prometheus.New()
+	if err != nil {
+		return err
+	}
+
+	socketPath := path.Join(getRunDir(), "agent-metrics.sock")
+
+	*meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+
+	//nolint:govet // false positive
+	if err := syscall.Unlink(socketPath); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	listener, err := net.Listen("unix", socketPath)
+	if err != nil {
+		return err
+	}
+
+	//nolint:gosec // we know what we are doing here and we need 0660
+	if err := os.Chmod(socketPath, 0660); err != nil {
+		return err
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", promhttp.Handler())
+
+	server := &http.Server{
+		Handler:           mux,
+		ReadHeaderTimeout: 60 * time.Second,
+	}
+
+	return server.Serve(listener)
+}
+
 func Run() int {
+	fatal := make(chan error)
+
 	cfg, err := getConfig()
 	if err != nil {
 		fmt.Printf("Failed starting MAAS Agent: %s", err)
@@ -228,6 +278,12 @@ func Run() int {
 	}
 
 	setupLogger(cfg.LogLevel)
+
+	var meterProvider metric.MeterProvider
+
+	// TODO: make this configurable?
+	// if cfg.Metrics.Enabled {
+	go func() { fatal <- setupMetrics(&meterProvider) }()
 
 	cert, ca, err := getClusterCert()
 	if err != nil {
@@ -301,8 +357,6 @@ func Run() int {
 		log.Err(err).Msg("Workflow configure-agent failed")
 		return 1
 	}
-
-	fatal := make(chan error)
 
 	go func() {
 		fatal <- workerPool.Error()
