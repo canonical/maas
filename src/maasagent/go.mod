@@ -15,6 +15,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.28.0
 	go.temporal.io/api v1.36.0
 	go.temporal.io/sdk v1.28.1
+	go.temporal.io/sdk/contrib/opentelemetry v0.6.0
 	golang.org/x/net v0.27.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d

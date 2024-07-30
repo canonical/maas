@@ -37,6 +37,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.temporal.io/sdk/client"
+	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
 
@@ -128,7 +129,8 @@ func getClusterCert() (tls.Certificate, *x509.CertPool, error) {
 // secret is used for EncryptionCodec (AES) to encrypt input/output (payloads)
 // cert, ca are used to setup mTLS
 func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
-	ca *x509.CertPool, endpoints []string) (client.Client, error) {
+	ca *x509.CertPool, endpoints []string,
+	metrics temporalotel.MetricsHandler) (client.Client, error) {
 	// Encryption Codec required for Temporal Workflow's payload encoding
 	codec, err := codec.NewEncryptionCodec([]byte(secret))
 	if err != nil {
@@ -161,6 +163,7 @@ func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 						ServerName: "maas",
 					},
 				},
+				MetricsHandler: metrics,
 			})
 		}, retry,
 	)
@@ -291,7 +294,10 @@ func Run() int {
 		return 1
 	}
 
-	temporalClient, err := getTemporalClient(cfg.SystemID, []byte(cfg.Secret), cert, ca, cfg.Controllers)
+	temporalClient, err := getTemporalClient(cfg.SystemID, []byte(cfg.Secret),
+		cert, ca, cfg.Controllers, temporalotel.NewMetricsHandler(
+			temporalotel.MetricsHandlerOptions{
+				Meter: meterProvider.Meter("maas.agent.temporal")}))
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal client error")
 		return 1
