@@ -31,6 +31,7 @@ class TestMachineModel:
             status=MachineStatusEnum.new,
             power_type=None,
             fqdn="maas.local",
+            hostname="hostname",
         )
 
         response = machine.to_response(f"{V3_API_PREFIX}/machines")

@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import delete, desc, insert, select, Select
 from sqlalchemy.sql.operators import eq, le
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import DefaultResourceTable, ZoneTable
 from maasapiserver.common.models.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
@@ -78,7 +79,10 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             return None
         return Zone(**zone._asdict())
 
-    async def list(self, token: str | None, size: int) -> ListResult[Zone]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Zone]:
+        # TODO: use the query for the filters
         stmt = (
             self._select_all_statement()
             .order_by(desc(ZoneTable.c.id))

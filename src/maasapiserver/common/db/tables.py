@@ -322,6 +322,7 @@ EventTable = Table(
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("description", Text, nullable=False),
+    Column("action", Text, nullable=False),
     Column(
         "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=True
     ),
@@ -347,7 +348,7 @@ EventTypeTable = Table(
     Column("id", BigInteger, primary_key=True),
     Column("created", DateTime(timezone=True), nullable=False),
     Column("updated", DateTime(timezone=True), nullable=False),
-    Column("name", String(255), nullable=False),
+    Column("name", String(255), nullable=False, unique=True),
     Column("description", String(255), nullable=False),
     Column("level", Integer, nullable=False),
 )

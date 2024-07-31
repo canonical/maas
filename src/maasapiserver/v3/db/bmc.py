@@ -1,6 +1,7 @@
 from sqlalchemy import update
 from sqlalchemy.sql.operators import eq
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import BMCTable
 from maasapiserver.v3.api.models.requests.bmc import BmcRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -15,7 +16,9 @@ class BmcRepository(BaseRepository[Bmc, BmcRequest]):
     async def find_by_id(self, id: int) -> Bmc | None:
         raise Exception("Not implemented yet.")
 
-    async def list(self, token: str | None, size: int) -> ListResult[Bmc]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Bmc]:
         raise Exception("Not implemented yet.")
 
     async def update(self, resource: Bmc) -> Bmc:

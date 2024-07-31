@@ -4,6 +4,7 @@ from django.core import signing
 from sqlalchemy import select
 from sqlalchemy.sql.operators import and_, eq, gt
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import SessionTable, UserTable
 from maasapiserver.v3.api.models.requests.users import UserRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -72,7 +73,10 @@ class UsersRepository(BaseRepository[User, UserRequest]):
             return None
         return User(**row._asdict())
 
-    async def list(self, token: str | None, size: int) -> ListResult[User]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[User]:
+        # TODO: use the query for the filters
         pass
 
     async def update(self, resource: User) -> User:

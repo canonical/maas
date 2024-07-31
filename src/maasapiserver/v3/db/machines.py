@@ -4,6 +4,7 @@ from sqlalchemy import and_, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import (
     BMCTable,
     DomainTable,
@@ -26,7 +27,10 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
     async def find_by_id(self, id: int) -> Machine | None:
         raise Exception("Not implemented yet.")
 
-    async def list(self, token: str | None, size: int) -> ListResult[Machine]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Machine]:
+        # TODO: use the query for the filters
         stmt = (
             self._select_all_statement()
             .order_by(desc(NodeTable.c.id))
@@ -125,6 +129,7 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
                 NodeTable.c.locked,
                 NodeTable.c.cpu_count,
                 NodeTable.c.status,
+                NodeTable.c.hostname,
                 BMCTable.c.power_type,
                 func.concat(
                     NodeTable.c.hostname, ".", DomainTable.c.name

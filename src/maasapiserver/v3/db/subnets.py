@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import desc, select, Select
 from sqlalchemy.sql.operators import eq, le
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import SubnetTable
 from maasapiserver.v3.api.models.requests.subnets import SubnetRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -29,7 +30,10 @@ class SubnetsRepository(BaseRepository[Subnet, SubnetRequest]):
     async def find_by_name(self, name: str) -> Subnet | None:
         raise NotImplementedError()
 
-    async def list(self, token: str | None, size: int) -> ListResult[Subnet]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Subnet]:
+        # TODO: use the query for the filters
         stmt = (
             self._select_all_statement()
             .order_by(desc(SubnetTable.c.id))

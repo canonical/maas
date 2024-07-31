@@ -4,6 +4,7 @@
 from sqlalchemy import desc, select
 from sqlalchemy.sql.operators import eq, le
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import VlanTable
 from maasapiserver.v3.api.models.requests.vlans import VlanRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -27,7 +28,10 @@ class VlansRepository(BaseRepository[Vlan, VlanRequest]):
     async def find_by_name(self, name: str) -> Vlan | None:
         raise NotImplementedError()
 
-    async def list(self, token: str | None, size: int) -> ListResult[Vlan]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Vlan]:
+        # TODO: use the query for the filters
         stmt = (
             select("*")
             .select_from(VlanTable)

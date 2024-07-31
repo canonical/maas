@@ -5,6 +5,7 @@ from sqlalchemy import desc, insert, select, Select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.operators import eq, le
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import ResourcePoolTable
 from maasapiserver.common.models.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
@@ -61,8 +62,9 @@ class ResourcePoolRepository(
         return ResourcePool(**resource_pools._asdict())
 
     async def list(
-        self, token: str | None, size: int
+        self, token: str | None, size: int, query: FilterQuery | None = None
     ) -> ListResult[ResourcePool]:
+        # TODO: use the query for the filters
         stmt = (
             self._select_all_statement()
             .order_by(desc(ResourcePoolTable.c.id))

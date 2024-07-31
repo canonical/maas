@@ -26,6 +26,7 @@ class Machine(MaasTimestampedBaseModel):
     status: MachineStatusEnum
     power_type: Optional[PowerTypeEnum]
     fqdn: str
+    hostname: str
 
     def to_response(self, self_base_hyperlink: str) -> MachineResponse:
         return MachineResponse(

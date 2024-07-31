@@ -1,6 +1,7 @@
 from sqlalchemy import update
 from sqlalchemy.sql.operators import eq
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import VmClusterTable
 from maasapiserver.v3.api.models.requests.vmcluster import VmClusterRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -16,9 +17,9 @@ class VmClustersRepository(BaseRepository[VmCluster, VmClusterRequest]):
         raise Exception("Not implemented yet.")
 
     async def list(
-        self, token: str | None, size: int
+        self, token: str | None, size: int, query: FilterQuery | None = None
     ) -> ListResult[VmCluster]:
-        pass
+        raise Exception("Not implemented yet.")
 
     async def update(self, resource: VmCluster) -> VmCluster:
         raise Exception("Not implemented yet.")

@@ -3,6 +3,7 @@ from typing import Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.v3.models.base import ListResult
 
 T = TypeVar("T")
@@ -23,7 +24,9 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def list(self, token: str | None, size: int) -> ListResult[T]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[T]:
         pass
 
     @abstractmethod

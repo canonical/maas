@@ -1,6 +1,7 @@
 from sqlalchemy import update
 from sqlalchemy.sql.operators import eq
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import NodeTable
 from maasapiserver.v3.api.models.requests.nodes import NodeRequest
 from maasapiserver.v3.db.base import BaseRepository
@@ -15,7 +16,9 @@ class NodesRepository(BaseRepository[Node, NodeRequest]):
     async def find_by_id(self, id: int) -> Node | None:
         raise Exception("Not implemented yet.")
 
-    async def list(self, token: str | None, size: int) -> ListResult[Node]:
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery | None = None
+    ) -> ListResult[Node]:
         raise Exception("Not implemented yet.")
 
     async def update(self, resource: Node) -> Node:
