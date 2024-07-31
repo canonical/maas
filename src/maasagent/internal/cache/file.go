@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"sync"
+	"sync/atomic"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 )
@@ -59,12 +60,12 @@ type FileCache struct {
 	// max cache size
 	maxSize int64
 	// current cache size
-	size int64
+	size atomic.Int64
 	// required to track if the size of LRU cache (index) should be increased.
 	// This is expected to happen because we limit our cache based on the
 	// disk space size and not on the items size.
-	indexSize int
-	mutex     sync.Mutex
+	indexSize atomic.Int64
+	mutex     sync.RWMutex
 }
 
 // NewFileCache instantiates a new instance of FileCache.
@@ -80,19 +81,20 @@ func NewFileCache(maxSize int64, dir string, options ...FileCacheOption) (*FileC
 	}
 
 	cache := &FileCache{
-		// This is just a starting default number. It doesn't limit anything
-		// because cache is limited by maxSize property.
-		indexSize: 50,
-		dir:       dir,
-		maxSize:   maxSize,
-		progress:  map[string]struct{}{},
+		dir:      dir,
+		maxSize:  maxSize,
+		progress: map[string]struct{}{},
 	}
+
+	// This is just a starting default number. It doesn't limit anything
+	// because cache is limited by maxSize property.
+	cache.indexSize.Store(40)
 
 	for _, opt := range options {
 		opt(cache)
 	}
 
-	index, err := lru.New[string, string](cache.indexSize)
+	index, err := lru.New[string, string](int(cache.indexSize.Load()))
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +119,9 @@ type FileCacheOption func(*FileCache)
 
 // WithIndexSize allows to set maximum index size.
 // Normally this is required only in tests.
-func WithIndexSize(i int) FileCacheOption {
+func WithIndexSize(i int64) FileCacheOption {
 	return func(c *FileCache) {
-		c.indexSize = i
+		c.indexSize.Store(i)
 	}
 }
 
@@ -135,21 +137,26 @@ func (c *FileCache) Get(key string) (io.ReadSeekCloser, error) {
 func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error) {
 	// Because of the cleanup logic that happens in defer func() we have to use
 	// named return variable here, so we can return error happened during cleanup.
-	c.mutex.Lock()
+	c.mutex.RLock()
 
-	if _, ok := c.progress[key]; ok {
-		c.mutex.Unlock()
+	_, ok := c.progress[key]
+	c.mutex.RUnlock()
+
+	if ok {
+		// There might be a situation when same key is being set by multiple clients.
+		// We don't want to block parallel calls with a global lock, so we simply
+		// return an error indicating an ongoing set operation for the same key,
+		// so the client can retry the operation.
 		return ErrKeySetInProgress
 	}
 
 	defer func() {
-		if !errors.Is(err, ErrKeySetInProgress) {
-			c.mutex.Lock()
-			delete(c.progress, key)
-			c.mutex.Unlock()
-		}
+		c.mutex.Lock()
+		delete(c.progress, key)
+		c.mutex.Unlock()
 	}()
 
+	c.mutex.Lock()
 	c.progress[key] = struct{}{}
 	c.mutex.Unlock()
 
@@ -157,24 +164,19 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 		return ErrNegativeSize
 	}
 
-	c.mutex.Lock()
-
-	_, ok := c.index.Get(key)
-	c.mutex.Unlock()
-
+	_, ok = c.index.Get(key)
 	if ok {
 		return ErrKeyExist
 	}
 
-	if valueSize > c.maxSize && c.size+valueSize > c.maxSize {
+	if valueSize > c.maxSize && c.size.Load()+valueSize > c.maxSize {
 		return ErrCacheSizeExceeded
 	}
 
 	filePath := path.Join(c.dir, key)
 	// Remove oldest files in order to fit new item into cache.
-	for c.size+valueSize > c.maxSize {
+	for c.size.Load()+valueSize > c.maxSize {
 		c.mutex.Lock()
-
 		err = c.evict()
 		c.mutex.Unlock()
 
@@ -191,57 +193,54 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 	}
 
 	defer func() {
-		if err != nil {
-			c.mutex.Lock()
+		origErr := err
+		closeErr := f.Close()
 
-			closeErr := f.Close()
-			if closeErr != nil {
-				err = errors.Join(err, closeErr)
-			}
+		if closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
 
+		if origErr != nil {
 			removeErr := os.Remove(filePath)
 			if removeErr != nil && !errors.Is(err, fs.ErrNotExist) {
 				err = errors.Join(err, removeErr)
 			}
 
-			c.size -= valueSize
-
-			c.mutex.Unlock()
+			c.size.Add(-1 * valueSize)
 		}
 	}()
 
+	c.size.Add(valueSize)
+
 	n, err := io.Copy(f, value)
-	if err != nil || n != valueSize {
+	if err != nil {
 		return fmt.Errorf("failed to write value: %w", err)
+	}
+
+	if n != valueSize {
+		return fmt.Errorf("failed to write value: %d of %d bytes copied", n, valueSize)
 	}
 
 	if err = f.Sync(); err != nil {
 		return err
 	}
 
-	c.mutex.Lock()
-	c.size += valueSize
-
 	// Extend the size of LRU cache if we hit maxSize.
 	// This is expected to happen because we limit our cache based on the
 	// disk space size.
 
-	if c.index.Len()+1 > c.indexSize {
-		c.indexSize += c.indexSize
-		c.index.Resize(c.indexSize)
+	if c.index.Len()+1 > int(c.indexSize.Load()) {
+		c.indexSize.Add(c.indexSize.Load())
+		c.index.Resize(int(c.indexSize.Load()))
 	}
 
 	// Return value is not checked, because index always grows.
 	c.index.Add(key, filePath)
-	c.mutex.Unlock()
 
 	return nil
 }
 
 func (c *FileCache) get(key string) (io.ReadSeekCloser, error) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	v, ok := c.index.Get(key)
 	if !ok {
 		return nil, ErrKeyDoesntExist
@@ -265,7 +264,7 @@ func (c *FileCache) evict() error {
 		return err
 	}
 
-	c.size -= stat.Size()
+	c.size.Add(-1 * stat.Size())
 	c.index.Remove(key)
 
 	return nil
@@ -295,8 +294,9 @@ func (c *FileCache) reindex() error {
 			return err
 		}
 
-		c.size += stat.Size()
-		if c.size > c.maxSize {
+		c.size.Add(stat.Size())
+
+		if c.size.Load() > c.maxSize {
 			return ErrCacheSizeExceeded
 		}
 

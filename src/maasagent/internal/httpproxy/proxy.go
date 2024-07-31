@@ -184,7 +184,9 @@ func (p *Proxy) modifyResponse() func(*http.Response) error {
 				log.Warn().Err(err).Msg("Failed to cache value")
 				// XXX: can we do anything with this error?
 				_, err := io.Copy(io.Discard, pr)
-				log.Warn().Err(err).Msg("Failed to discard io.Pipe")
+				if err != nil {
+					log.Warn().Err(err).Msg("Failed to discard io.Pipe")
+				}
 			}
 		}()
 

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -186,7 +187,7 @@ func TestFileCacheAdd(t *testing.T) {
 				},
 			},
 			out: func(cache *FileCache) bool {
-				return cache.indexSize == 2 && cache.index.Len() == 2
+				return cache.indexSize.Load() == 2 && cache.index.Len() == 2
 			},
 			err: nil,
 		},
@@ -205,7 +206,7 @@ func TestFileCacheAdd(t *testing.T) {
 				},
 			},
 			out: func(cache *FileCache) bool {
-				return cache.indexSize == 1 && cache.index.Len() == 1
+				return cache.indexSize.Load() == 1 && cache.index.Len() == 1
 			},
 			err: nil,
 		},
@@ -352,7 +353,7 @@ func newLockedReader() lockedReader {
 
 func (r *lockedReader) Read(b []byte) (int, error) {
 	<-r.ch
-	return 1, errors.New("oops")
+	return 1, io.EOF
 }
 
 func (r *lockedReader) unlock() {
@@ -369,17 +370,22 @@ func TestFileCacheConcurrentSet(t *testing.T) {
 	key := "key"
 
 	ch := make(chan error)
+
 	go func() {
-		ch <- cache.Set(key, &lr, 1)
+		if err := cache.Set(key, &lr, 1); err != nil {
+			ch <- err
+		}
 	}()
 
 	go func() {
-		ch <- cache.Set(key, &lr, 1)
+		if err := cache.Set(key, &lr, 1); err != nil {
+			ch <- err
+		}
 	}()
 
 	assert.Error(t, ErrKeySetInProgress, <-ch)
+
 	lr.unlock()
-	<-ch
 }
 
 func TestFileCacheConcurrentGetSet(t *testing.T) {
@@ -389,19 +395,17 @@ func TestFileCacheConcurrentGetSet(t *testing.T) {
 	}
 
 	lr := newLockedReader()
-	key := "key"
-
-	ch := make(chan error)
-	go func() {
-		ch <- cache.Set(key, &lr, 1)
-	}()
 
 	go func() {
-		_, err := cache.Get(key)
-		ch <- err
+		cache.Set("key1", &lr, 1)
 	}()
 
-	assert.Error(t, ErrKeySetInProgress, <-ch)
+	v := []byte("x")
+	err = cache.Set("key2", bytes.NewReader(v), int64(len(v)))
+	assert.NoError(t, err)
+
+	_, err = cache.Get("key2")
+	assert.NoError(t, err)
+
 	lr.unlock()
-	<-ch
 }
