@@ -182,6 +182,50 @@ def files(*patterns):
 
 
 APIClient = files("src/apiclient/**/*.py")
+
+APIServer = files("src/maasapiserver/**/*.py")
+
+APIServerRule = Rule(
+    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow(
+        "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
+    ),
+    Allow("aiohttp|aiohttp.**"),
+    Allow("asyncpg|asyncpg.**"),
+    Allow("fastapi|fastapi.**"),
+    Allow("jose|jose.**"),
+    Allow("maasapiserver|maasapiserver.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("maasserver.config.**"),
+    Allow("maasserver.enum.**"),
+    Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
+    Allow("maasserver.macaroons._IDClient"),
+    Allow("maasservicelayer|maasservicelayer.**"),
+    Allow("macaroonbakery|macaroonbakery.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("metadataserver.enum.**"),
+    Allow("netaddr|netaddr.**"),
+    Allow("prometheus_client|prometheus_client.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("provisioningserver.drivers.**"),
+    Allow("provisioningserver.path.get_maas_data_path"),
+    Allow("provisioningserver.prometheus.utils.**"),
+    Allow("provisioningserver.security.**"),
+    Allow("provisioningserver.utils.env.MAAS_UUID"),
+    Allow("provisioningserver.utils.ipaddr.get_machine_default_gateway_ip"),
+    Allow("pydantic|pydantic.**"),
+    Allow("pymacaroons|pymacaroons.**"),
+    # TODO: Remove when we move the APIClient to maasserver
+    Allow("requests|requests.**"),
+    Allow("requests_unixsocket.Session"),
+    Allow("sqlalchemy|sqlalchemy.**"),
+    Allow("starlette|starlette.**"),
+    Allow("uvicorn"),
+    Allow("yaml"),
+    Allow("yarl|yarl.**"),
+    Allow(StandardLibraries),
+)
+
 MAASCLI = files("src/maascli/**/*.py")
 
 
@@ -301,10 +345,12 @@ RegionControllerRule = Rule(
     Allow("jose|jose.**"),
     Allow("jsonschema|jsonschema.**"),
     Allow("lxml|lxml.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver|maasapiserver.**"),
     Allow("maascli.init.**"),
     Allow("maascli.utils.parse_docstring"),
     Allow("maasserver|maasserver.**"),
+    Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.workflow.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("markupsafe|markupsafe.**"),
@@ -338,14 +384,22 @@ RegionControllerWorkerRule = Rule(
     Allow("aiofiles|aiofiles.**"),
     Allow("aiohttp|aiohttp.**"),
     Allow("jose|jose.**"),
+    # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
     Allow("maasserver.enum.**"),
     Allow("maasserver.workflow.**"),
+    Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.**"),
     Allow("netaddr|netaddr.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow("temporalio|temporalio.**"),
     Allow("yaml"),
+    Allow(StandardLibraries),
+)
+
+ServiceLayer = files("src/maasservicelayer/**/*.py")
+
+ServiceLayerRule = Rule(
     Allow(StandardLibraries),
 )
 
@@ -413,6 +467,13 @@ checks = [
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
+    ),
+    #
+    # API Server
+    #
+    (
+        APIServer,
+        APIServerRule,
     ),
     #
     # MAAS CLI
@@ -523,6 +584,13 @@ checks = [
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
+    ),
+    #
+    # Service layer
+    #
+    (
+        ServiceLayer,
+        ServiceLayerRule,
     ),
     #
     # Temporal Worker

@@ -1,10 +1,9 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
-from datetime import datetime, timedelta
+
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any
-
-import pytz
 
 from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
 from maasapiserver.common.vault.api.models.requests import (
@@ -157,7 +156,7 @@ class AsyncVaultManager:
         has_expired = (
             not self._cached_token
             or self._cached_token_expire_time
-            <= (datetime.now(pytz.utc) - TOKEN_BEFORE_EXPIRY_LIMIT)
+            <= (datetime.now(timezone.utc) - TOKEN_BEFORE_EXPIRY_LIMIT)
         )
         logger.debug("Vault access token was not set or has expired.")
         return has_expired
