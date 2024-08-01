@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+from urllib.parse import parse_qs, urlparse
 
 from httpx import AsyncClient
 
@@ -106,3 +107,12 @@ class TestEventsApi(ApiCommonTests):
         )
         events_response = EventsListResponse(**response.json())
         assert len(events_response.items) == 0
+
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/events?system_id=0&system_id=1&size=1"
+        )
+        events_response = EventsListResponse(**response.json())
+        assert len(events_response.items) == 1
+        next_link_params = parse_qs(urlparse(events_response.next).query)
+        assert set(next_link_params["system_id"]) == {"0", "1"}
+        assert next_link_params["size"][0] == "1"

@@ -24,6 +24,14 @@ class EventsFiltersParams(BaseModel):
             EventsFilterQueryBuilder().with_system_ids(self.system_ids).build()
         )
 
+    def to_href_format(self) -> str:
+        if self.system_ids:
+            tokens = [
+                f"system_id={system_id}" for system_id in self.system_ids
+            ]
+            return "&".join(tokens)
+        return ""
+
 
 class EventRequest(NamedBaseModel):
     # TODO

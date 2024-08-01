@@ -49,15 +49,18 @@ class EventsHandler(Handler):
             size=token_pagination_params.size,
             query=filters.to_query(),
         )
+        next_link = None
+        if events.next_token:
+            next_link = (
+                f"{V3_API_PREFIX}/events?"
+                f"{TokenPaginationParams.to_href_format(events.next_token, token_pagination_params.size)}"
+            )
+            if query_filters := filters.to_href_format():
+                next_link += f"&{query_filters}"
         return EventsListResponse(
             items=[
                 event.to_response(f"{V3_API_PREFIX}/events")
                 for event in events.items
             ],
-            next=(
-                f"{V3_API_PREFIX}/events?"
-                f"{TokenPaginationParams.to_href_format(events.next_token, token_pagination_params.size)}"
-                if events.next_token
-                else None
-            ),
+            next=next_link,
         )
