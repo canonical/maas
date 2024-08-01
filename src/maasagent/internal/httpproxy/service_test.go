@@ -42,9 +42,9 @@ func getRegionEndpointsActivity(_ context.Context) (getRegionEndpointsResult, er
 }
 
 func TestConfigurationWorkflow(t *testing.T) {
-	// HTTPProxyService Configure workflow might be called multiple times,
+	// HTTPProxyService configuration workflow might be called multiple times,
 	// and we want to ensure that there is no state that we could depend on, or
-	// that would lead to errors if Configure workflow is invoked multiple times
+	// that would lead to errors if configuration workflow is invoked multiple times
 	svc := NewHTTPProxyService(t.TempDir(), cache.NewFakeFileCache())
 
 	upstream := httptest.NewServer(http.HandlerFunc(
@@ -54,8 +54,8 @@ func TestConfigurationWorkflow(t *testing.T) {
 
 	// Start subsequent calls in their own t.Run(),
 	// otherwise Temporal tests will panic with:
-	//   Current TestWorkflowEnvironment is used to execute Configure.
-	//   Please create a new TestWorkflowEnvironment for Configure.
+	//   Current TestWorkflowEnvironment is used to execute ConfigurationWorkflows.
+	//   Please create a new TestWorkflowEnvironment for ConfigurationWorkflows.
 	// Call it several times, just to ensure we have nothing in the state that we
 	// would depend on.
 	for i := 0; i < 3; i++ {
@@ -73,7 +73,9 @@ func TestConfigurationWorkflow(t *testing.T) {
 				mock.Anything).Return(
 				getRegionEndpointsResult{Endpoints: []string{upstream.URL}}, nil)
 
-			env.ExecuteWorkflow(svc.Configure(), t.Name())
+			env.ExecuteWorkflow(svc.ConfigurationWorkflows()["configure-httpproxy-service"],
+				t.Name())
+
 			assert.NoError(t, env.GetWorkflowError())
 
 			httpc := http.Client{
@@ -119,7 +121,9 @@ func TestConfigurationWorkflowWithUnreachableEndpoint(t *testing.T) {
 			nonExistingEndpoint.String(),
 		}}, nil)
 
-	env.ExecuteWorkflow(svc.Configure(), t.Name())
+	env.ExecuteWorkflow(svc.ConfigurationWorkflows()["configure-httpproxy-service"],
+		t.Name())
+
 	assert.Error(t, env.GetWorkflowError())
 	assert.ErrorContains(t, env.GetWorkflowError(), "targets cannot be empty")
 }

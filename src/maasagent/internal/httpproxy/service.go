@@ -74,20 +74,16 @@ func NewHTTPProxyService(socketDir string, cache Cache) *HTTPProxyService {
 	return &HTTPProxyService{cache: cache, socketPath: socketPath}
 }
 
-// ConfiguratorName returns a name that will be used to register Configure
-// method as Temporal workflow.
-func (s *HTTPProxyService) ConfiguratorName() string {
-	return "configure-httpproxy-service"
-}
-
 type getRegionEndpointsResult struct {
 	Endpoints []string `json:"endpoints"`
 }
 
-// Configure represents a Temporal workflow that is capable for configuring
-// Agent HTTP proxy service.
-func (s *HTTPProxyService) Configure() interface{} {
-	return s.configure
+func (s *HTTPProxyService) ConfigurationWorkflows() map[string]interface{} {
+	return map[string]interface{}{"configure-httpproxy-service": s.configure}
+}
+
+func (s *HTTPProxyService) ConfigurationActivities() map[string]interface{} {
+	return map[string]interface{}{}
 }
 
 func (s *HTTPProxyService) configure(ctx tworkflow.Context, systemID string) error {

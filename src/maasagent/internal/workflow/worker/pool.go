@@ -31,11 +31,14 @@ var (
 )
 
 // Configurator is an interface that wraps configuration methods.
-// Configure will be registered as a Temporal workflow for service configuration.
+// Provided activities and workflows will be registered on the main worker.
 type Configurator interface {
-	// Configure is an entrypoint. It is registered as a Temporal workflow.
-	Configure() interface{}
-	ConfiguratorName() string
+	// ConfigurationWorkflows should return a collection of functions to be registered
+	// as Temporal workflows for service configuration.
+	ConfigurationWorkflows() map[string]interface{}
+	// ConfigurationActivities should return a collection of functions to be registered
+	// as Temporal activities for service configuration.
+	ConfigurationActivities() map[string]interface{}
 }
 
 type workerConstructor func(client.Client, string, worker.Options) worker.Worker
@@ -51,7 +54,8 @@ type WorkerPool struct {
 	main              worker.Worker
 	workerConstructor workerConstructor
 	workers           map[string][]worker.Worker
-	configurators     map[string]interface{}
+	workflows         map[string]interface{}
+	activities        map[string]interface{}
 	systemID          string
 	taskQueue         string
 	mutex             sync.Mutex
@@ -67,7 +71,8 @@ func NewWorkerPool(systemID string, client client.Client,
 		taskQueue:         fmt.Sprintf("%s@main", systemID),
 		client:            client,
 		workers:           make(map[string][]worker.Worker),
-		configurators:     make(map[string]interface{}),
+		workflows:         make(map[string]interface{}),
+		activities:        make(map[string]interface{}),
 		workerConstructor: defaultWorkerConstructor,
 	}
 
@@ -84,10 +89,19 @@ func NewWorkerPool(systemID string, client client.Client,
 		OnFatalError: func(err error) { pool.fatal <- err },
 	})
 
-	for k, configurator := range pool.configurators {
+	for k, configurator := range pool.workflows {
 		pool.main.RegisterWorkflowWithOptions(
 			configurator,
 			workflow.RegisterOptions{
+				Name: k,
+			},
+		)
+	}
+
+	for k, configurator := range pool.activities {
+		pool.main.RegisterActivityWithOptions(
+			configurator,
+			activity.RegisterOptions{
 				Name: k,
 			},
 		)
@@ -180,6 +194,12 @@ func WithWorkerConstructor(fn workerConstructor) WorkerPoolOption {
 // WithConfigurator adds Configurator that will be registered as a workflow
 func WithConfigurator(configurator Configurator) WorkerPoolOption {
 	return func(p *WorkerPool) {
-		p.configurators[configurator.ConfiguratorName()] = configurator.Configure()
+		for k, v := range configurator.ConfigurationWorkflows() {
+			p.workflows[k] = v
+		}
+
+		for k, v := range configurator.ConfigurationActivities() {
+			p.activities[k] = v
+		}
 	}
 }

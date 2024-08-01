@@ -53,16 +53,12 @@ func NewPowerService(systemID string, pool *worker.WorkerPool) *PowerService {
 	}
 }
 
-// ConfiguratorName returns a name that will be used to register Configure
-// method as Temporal workflow.
-func (s *PowerService) ConfiguratorName() string {
-	return "configure-power-service"
+func (s *PowerService) ConfigurationWorkflows() map[string]interface{} {
+	return map[string]interface{}{"configure-power-service": s.configure}
 }
 
-// Configure represents a Temporal workflow that is capable for configuring
-// Agent Power management service.
-func (s *PowerService) Configure() interface{} {
-	return s.configure
+func (s *PowerService) ConfigurationActivities() map[string]interface{} {
+	return map[string]interface{}{}
 }
 
 func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
