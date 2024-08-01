@@ -13,8 +13,12 @@ from maasapiserver.common.models.exceptions import (
     PreconditionFailedException,
 )
 from maasapiserver.common.services._base import Service
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
-from maasapiserver.v3.db.zones import ZonesRepository
+from maasapiserver.v3.db.zones import (
+    ZoneCreateOrUpdateResourceBuilder,
+    ZonesRepository,
+)
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.zones import Zone
 from maasapiserver.v3.services.bmc import BmcService
@@ -50,7 +54,16 @@ class ZonesService(Service):
         )
 
     async def create(self, zone_request: ZoneRequest) -> Zone:
-        return await self.zones_repository.create(zone_request)
+        now = utcnow()
+        resource = (
+            ZoneCreateOrUpdateResourceBuilder()
+            .with_name(zone_request.name)
+            .with_description(zone_request.description)
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+        return await self.zones_repository.create(resource)
 
     async def get_by_id(self, id: int) -> Optional[Zone]:
         return await self.zones_repository.find_by_id(id)

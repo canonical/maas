@@ -13,8 +13,7 @@ from maasapiserver.common.db.tables import (
     EventTypeTable,
     NodeTable,
 )
-from maasapiserver.v3.api.models.requests.events import EventRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.events import Event
 
@@ -33,12 +32,12 @@ class EventsFilterQueryBuilder(FilterQueryBuilder):
         return self
 
 
-class EventsRepository(BaseRepository[Event, EventRequest]):
-    async def create(self, request: EventRequest) -> Event:
-        raise Exception("Not implemented yet.")
+class EventsRepository(BaseRepository[Event]):
+    async def create(self, resource: CreateOrUpdateResource) -> Event:
+        raise NotImplementedError("Not implemented yet.")
 
     async def find_by_id(self, id: int) -> Event | None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     async def list(
         self, token: str | None, size: int, query: FilterQuery | None = None
@@ -64,11 +63,11 @@ class EventsRepository(BaseRepository[Event, EventRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Event) -> Event:
-        raise Exception("Not implemented yet.")
+    async def update(self, id: int, resource: CreateOrUpdateResource) -> Event:
+        raise NotImplementedError("Not implemented yet.")
 
     async def delete(self, id: int) -> None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     def _select_all_statement(self) -> Select[Any]:
         return (

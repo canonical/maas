@@ -13,19 +13,18 @@ from maasapiserver.common.db.tables import (
     NodeTable,
     UserTable,
 )
-from maasapiserver.v3.api.models.requests.machines import MachineRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.machines import Machine, UsbDevice
 from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
 
 
-class MachinesRepository(BaseRepository[Machine, MachineRequest]):
-    async def create(self, request: MachineRequest) -> Machine:
-        raise Exception("Not implemented yet.")
+class MachinesRepository(BaseRepository[Machine]):
+    async def create(self, resource: CreateOrUpdateResource) -> Machine:
+        raise NotImplementedError("Not implemented yet.")
 
     async def find_by_id(self, id: int) -> Machine | None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     async def list(
         self, token: str | None, size: int, query: FilterQuery | None = None
@@ -48,11 +47,13 @@ class MachinesRepository(BaseRepository[Machine, MachineRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Machine) -> Machine:
-        raise Exception("Not implemented yet.")
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Machine:
+        raise NotImplementedError("Not implemented yet.")
 
     async def delete(self, id: int) -> None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     async def list_machine_usb_devices(
         self, system_id: str, token: str | None, size: int

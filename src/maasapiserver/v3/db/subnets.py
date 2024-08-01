@@ -8,14 +8,13 @@ from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import SubnetTable
-from maasapiserver.v3.api.models.requests.subnets import SubnetRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.subnets import Subnet
 
 
-class SubnetsRepository(BaseRepository[Subnet, SubnetRequest]):
-    async def create(self, request: SubnetRequest) -> Subnet:
+class SubnetsRepository(BaseRepository[Subnet]):
+    async def create(self, resource: CreateOrUpdateResource) -> Subnet:
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Subnet | None:
@@ -51,7 +50,9 @@ class SubnetsRepository(BaseRepository[Subnet, SubnetRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Subnet) -> Subnet:
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Subnet:
         raise NotImplementedError()
 
     async def delete(self, id: int) -> None:

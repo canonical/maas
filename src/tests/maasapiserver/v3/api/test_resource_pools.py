@@ -6,8 +6,8 @@ import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolPatchRequest,
     ResourcePoolRequest,
+    ResourcePoolUpdateRequest,
 )
 from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolResponse,
@@ -87,7 +87,7 @@ class TestResourcePoolApi(ApiCommonTests):
                 user_role=UserRole.ADMIN,
             ),
             EndpointDetails(
-                method="PATCH",
+                method="PUT",
                 path=f"{V3_API_PREFIX}/resource_pools/1",
                 user_role=UserRole.ADMIN,
             ),
@@ -184,71 +184,72 @@ class TestResourcePoolApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == error_code
 
-    async def test_patch(
+    async def test_put(
         self,
         authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
     ) -> None:
         resource_pool = await create_test_resource_pool(fixture=fixture)
-        patch_resource_pool_request = ResourcePoolPatchRequest(
+        update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
-        response = await authenticated_admin_api_client_v3.patch(
+        response = await authenticated_admin_api_client_v3.put(
             f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
-            json=jsonable_encoder(patch_resource_pool_request),
+            json=jsonable_encoder(update_resource_pool_request),
         )
         assert response.status_code == 200
 
-        patch_resource_pool = ResourcePoolResponse(**response.json())
-        assert patch_resource_pool.id == resource_pool.id
-        assert patch_resource_pool.name == patch_resource_pool_request.name
+        update_resource_pool = ResourcePoolResponse(**response.json())
+        assert update_resource_pool.id == resource_pool.id
+        assert update_resource_pool.name == update_resource_pool_request.name
         assert (
-            patch_resource_pool.description
-            == patch_resource_pool_request.description
+            update_resource_pool.description
+            == update_resource_pool_request.description
         )
-        assert patch_resource_pool.created.astimezone(
+        assert update_resource_pool.created.astimezone(
             timezone.utc
         ) == resource_pool.created.astimezone(timezone.utc)
-        assert patch_resource_pool.updated.astimezone(
+        assert update_resource_pool.updated.astimezone(
             timezone.utc
         ) >= resource_pool.updated.astimezone(timezone.utc)
 
-        patch_resource_pool_request2 = ResourcePoolPatchRequest(
-            description="new description"
+        update_resource_pool_request2 = ResourcePoolUpdateRequest(
+            name=update_resource_pool_request.name,
+            description="new description",
         )
-        response = await authenticated_admin_api_client_v3.patch(
+        response = await authenticated_admin_api_client_v3.put(
             f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
             json=jsonable_encoder(
-                patch_resource_pool_request2, exclude_none=True
+                update_resource_pool_request2, exclude_none=True
             ),
         )
         assert response.status_code == 200
 
-        patch_resource_pool2 = ResourcePoolResponse(**response.json())
-        assert patch_resource_pool2.id == resource_pool.id
-        assert patch_resource_pool2.name == patch_resource_pool_request.name
+        update_resource_pool2 = ResourcePoolResponse(**response.json())
+        assert update_resource_pool2.id == resource_pool.id
+        assert update_resource_pool2.name == update_resource_pool_request.name
         assert (
-            patch_resource_pool2.description
-            == patch_resource_pool_request2.description
+            update_resource_pool2.description
+            == update_resource_pool_request2.description
         )
-        assert patch_resource_pool2.created.astimezone(
+        assert update_resource_pool2.created.astimezone(
             timezone.utc
-        ) == patch_resource_pool.created.astimezone(timezone.utc)
-        assert patch_resource_pool2.updated.astimezone(
+        ) == update_resource_pool.created.astimezone(timezone.utc)
+        assert update_resource_pool2.updated.astimezone(
             timezone.utc
-        ) >= patch_resource_pool.updated.astimezone(timezone.utc)
+        ) >= update_resource_pool.updated.astimezone(timezone.utc)
 
-    async def test_patch_unexisting(
+    async def test_put_unexisting(
         self,
         authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
     ) -> None:
-        patch_resource_pool_request = ResourcePoolPatchRequest(
+        update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
-        response = await authenticated_admin_api_client_v3.patch(
+        response = await authenticated_admin_api_client_v3.put(
             f"{V3_API_PREFIX}/resource_pools/1000",
-            json=jsonable_encoder(patch_resource_pool_request),
+            json=jsonable_encoder(update_resource_pool_request),
         )
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
@@ -265,14 +266,14 @@ class TestResourcePoolApi(ApiCommonTests):
             (422, {"name": "my$pool", "description": "test"}),
         ],
     )
-    async def test_patch_invalid(
+    async def test_put_invalid(
         self,
         authenticated_admin_api_client_v3: AsyncClient,
         fixture: Fixture,
         error_code: int,
         request_data: dict[str, str],
     ) -> None:
-        response = await authenticated_admin_api_client_v3.patch(
+        response = await authenticated_admin_api_client_v3.put(
             f"{V3_API_PREFIX}/resource_pools/0", json=request_data
         )
         assert response.status_code == error_code

@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.models.exceptions import NotFoundException
 from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolPatchRequest,
     ResourcePoolRequest,
+    ResourcePoolUpdateRequest,
 )
 from maasapiserver.v3.db.resource_pools import ResourcePoolRepository
 from maasapiserver.v3.models.base import ListResult
@@ -39,7 +39,18 @@ class TestResourcePoolsService:
             name=resource_pool.name, description=resource_pool.description
         )
         created_resource_pool = await resource_pools_service.create(request)
-        resource_pool_repository_mock.create.assert_called_once_with(request)
+        assert (
+            resource_pool_repository_mock.create.mock_calls[0]
+            .args[0]
+            .get_values()["name"]
+            == "test"
+        )
+        assert (
+            resource_pool_repository_mock.create.mock_calls[0]
+            .args[0]
+            .get_values()["description"]
+            == "description"
+        )
         assert created_resource_pool is not None
 
     async def test_list(self, db_connection: AsyncConnection) -> None:
@@ -90,20 +101,22 @@ class TestResourcePoolsService:
         self, db_connection: AsyncConnection
     ) -> None:
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
-        resource_pool_repository_mock.find_by_id = AsyncMock(return_value=None)
+        resource_pool_repository_mock.update = AsyncMock(
+            side_effect=NotFoundException()
+        )
         resource_pools_service = ResourcePoolsService(
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
         )
         with pytest.raises(NotFoundException):
-            await resource_pools_service.patch(
+            await resource_pools_service.update(
                 id=1000,
-                patch_request=ResourcePoolPatchRequest(
+                patch_request=ResourcePoolUpdateRequest(
                     name="name", description="description"
                 ),
             )
 
-    async def test_patch(self, db_connection: AsyncConnection) -> None:
+    async def test_update(self, db_connection: AsyncConnection) -> None:
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -127,14 +140,27 @@ class TestResourcePoolsService:
             connection=db_connection,
             resource_pools_repository=resource_pool_repository_mock,
         )
-        updated_resource_pool = await resource_pools_service.patch(
+        updated_resource_pool = await resource_pools_service.update(
             id=resource_pool.id,
-            patch_request=ResourcePoolPatchRequest(
+            patch_request=ResourcePoolUpdateRequest(
                 name=patch_resource_pool.name,
                 description=patch_resource_pool.description,
             ),
         )
-        resource_pool_repository_mock.update.assert_called_once_with(
-            patch_resource_pool
+        assert (
+            resource_pool_repository_mock.update.mock_calls[0].args[0]
+            == resource_pool.id
+        )
+        assert (
+            resource_pool_repository_mock.update.mock_calls[0]
+            .args[1]
+            .get_values()["name"]
+            == patch_resource_pool.name
+        )
+        assert (
+            resource_pool_repository_mock.update.mock_calls[0]
+            .args[1]
+            .get_values()["description"]
+            == patch_resource_pool.description
         )
         assert updated_resource_pool == patch_resource_pool

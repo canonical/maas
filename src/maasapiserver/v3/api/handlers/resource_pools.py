@@ -10,8 +10,8 @@ from maasapiserver.common.api.models.responses.errors import (
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolPatchRequest,
     ResourcePoolRequest,
+    ResourcePoolUpdateRequest,
 )
 from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolResponse,
@@ -137,7 +137,7 @@ class ResourcePoolHandler(Handler):
 
     @handler(
         path="/resource_pools/{resource_pool_id}",
-        methods=["PATCH"],
+        methods=["PUT"],
         tags=TAGS,
         responses={
             200: {
@@ -155,14 +155,14 @@ class ResourcePoolHandler(Handler):
             Depends(check_permissions(required_roles={UserRole.ADMIN}))
         ],
     )
-    async def patch_resource_pool(
+    async def update_resource_pool(
         self,
         resource_pool_id: int,
         response: Response,
-        resource_pool_request: ResourcePoolPatchRequest,
+        resource_pool_request: ResourcePoolUpdateRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        resource_pool = await services.resource_pools.patch(
+        resource_pool = await services.resource_pools.update(
             resource_pool_id, resource_pool_request
         )
         response.headers["ETag"] = resource_pool.etag()

@@ -3,29 +3,30 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import VmClusterTable
-from maasapiserver.v3.api.models.requests.vmcluster import VmClusterRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.vmcluster import VmCluster
 
 
-class VmClustersRepository(BaseRepository[VmCluster, VmClusterRequest]):
-    async def create(self, request: VmClusterRequest) -> VmCluster:
-        raise Exception("Not implemented yet.")
+class VmClustersRepository(BaseRepository[VmCluster]):
+    async def create(self, resource: CreateOrUpdateResource) -> VmCluster:
+        raise NotImplementedError("Not implemented yet.")
 
     async def find_by_id(self, id: int) -> VmCluster | None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     async def list(
         self, token: str | None, size: int, query: FilterQuery | None = None
     ) -> ListResult[VmCluster]:
         raise Exception("Not implemented yet.")
 
-    async def update(self, resource: VmCluster) -> VmCluster:
-        raise Exception("Not implemented yet.")
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> VmCluster:
+        raise NotImplementedError("Not implemented yet.")
 
     async def delete(self, id: int) -> None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:
         stmt = (

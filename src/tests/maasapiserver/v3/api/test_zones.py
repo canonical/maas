@@ -242,7 +242,7 @@ class TestZonesApi(ApiCommonTests):
         assert error_response.code == 409
         assert len(error_response.details) == 1
         assert error_response.details[0].type == "UniqueConstraintViolation"
-        assert "already exists" in error_response.details[0].message
+        assert "already exist" in error_response.details[0].message
 
     @pytest.mark.parametrize(
         "zone_request",

@@ -12,7 +12,7 @@ class ResourcePoolRequest(NamedBaseModel):
     description: str
 
 
-class ResourcePoolPatchRequest(OptionalNamedBaseModel):
+class ResourcePoolUpdateRequest(OptionalNamedBaseModel):
     description: Optional[str]
 
     @validator("description")

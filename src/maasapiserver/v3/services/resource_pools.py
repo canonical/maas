@@ -2,19 +2,16 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.constants import (
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
 from maasapiserver.common.services._base import Service
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolPatchRequest,
     ResourcePoolRequest,
+    ResourcePoolUpdateRequest,
 )
-from maasapiserver.v3.db.resource_pools import ResourcePoolRepository
+from maasapiserver.v3.db.resource_pools import (
+    ResourcePoolCreateOrUpdateResourceBuilder,
+    ResourcePoolRepository,
+)
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.resource_pools import ResourcePool
 
@@ -33,9 +30,16 @@ class ResourcePoolsService(Service):
     async def create(
         self, resource_pool_request: ResourcePoolRequest
     ) -> ResourcePool:
-        return await self.resource_pools_repository.create(
-            resource_pool_request
+        now = utcnow()
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name(resource_pool_request.name)
+            .with_description(resource_pool_request.description)
+            .with_created(now)
+            .with_updated(now)
+            .build()
         )
+        return await self.resource_pools_repository.create(resource)
 
     async def get_by_id(self, id: int) -> Optional[ResourcePool]:
         return await self.resource_pools_repository.find_by_id(id)
@@ -47,20 +51,15 @@ class ResourcePoolsService(Service):
             token=token, size=size
         )
 
-    async def patch(
-        self, id: int, patch_request: ResourcePoolPatchRequest
+    async def update(
+        self, id: int, patch_request: ResourcePoolUpdateRequest
     ) -> ResourcePool:
-        resource_pool = await self.get_by_id(id)
-        if not resource_pool:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"Resource pool with id '{id}' does not exist.",
-                    )
-                ]
-            )
-        resource_pool = resource_pool.copy(
-            update=patch_request.dict(exclude_none=True)
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name(patch_request.name)
+            .with_description(patch_request.description)
+            .with_updated(utcnow())
+            .build()
         )
-        return await self.resource_pools_repository.update(resource_pool)
+
+        return await self.resource_pools_repository.update(id, resource)

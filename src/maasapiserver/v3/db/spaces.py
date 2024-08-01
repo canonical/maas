@@ -8,14 +8,13 @@ from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import SpaceTable
-from maasapiserver.v3.api.models.requests.spaces import SpaceRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.spaces import Space
 
 
-class SpacesRepository(BaseRepository[Space, SpaceRequest]):
-    async def create(self, request: SpaceRequest) -> Space:
+class SpacesRepository(BaseRepository[Space]):
+    async def create(self, resource: CreateOrUpdateResource) -> Space:
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Space | None:
@@ -51,7 +50,7 @@ class SpacesRepository(BaseRepository[Space, SpaceRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Space) -> Space:
+    async def update(self, id: int, resource: CreateOrUpdateResource) -> Space:
         raise NotImplementedError()
 
     async def delete(self, id: int) -> None:

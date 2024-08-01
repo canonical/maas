@@ -1,22 +1,57 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from datetime import datetime
+from typing import Any, Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.db.filters import FilterQuery
+from maasapiserver.common.models.constants import (
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
+from maasapiserver.common.models.exceptions import (
+    AlreadyExistsException,
+    BaseExceptionDetail,
+)
 from maasapiserver.v3.models.base import ListResult
 
 T = TypeVar("T")
 
-K = TypeVar("K")
+
+class CreateOrUpdateResource(dict):
+
+    def get_values(self) -> dict[str, Any]:
+        return self
+
+    def set_value(self, key: str, value: Any) -> None:
+        self[key] = value
 
 
-class BaseRepository(ABC, Generic[T, K]):
+class CreateOrUpdateResourceBuilder(ABC):
+    """
+    Every repository should provide a builder for their entity objects.
+    """
+
+    def __init__(self):
+        self._request = CreateOrUpdateResource()
+
+    def with_created(self, value: datetime) -> "CreateOrUpdateResourceBuilder":
+        self._request.set_value("created", value)
+        return self
+
+    def with_updated(self, value: datetime) -> "CreateOrUpdateResourceBuilder":
+        self._request.set_value("updated", value)
+        return self
+
+    def build(self) -> CreateOrUpdateResource:
+        return self._request
+
+
+class BaseRepository(ABC, Generic[T]):
     def __init__(self, connection: AsyncConnection):
         self.connection = connection
 
     @abstractmethod
-    async def create(self, request: K) -> T:
+    async def create(self, resource: CreateOrUpdateResource) -> T:
         pass
 
     @abstractmethod
@@ -30,7 +65,7 @@ class BaseRepository(ABC, Generic[T, K]):
         pass
 
     @abstractmethod
-    async def update(self, resource: T) -> T:
+    async def update(self, id: int, resource: CreateOrUpdateResource) -> T:
         pass
 
     @abstractmethod
@@ -39,3 +74,13 @@ class BaseRepository(ABC, Generic[T, K]):
         If no resource with such `id` is found, silently ignore it and return `None` in any case.
         """
         pass
+
+    def _raise_already_existing_exception(self):
+        raise AlreadyExistsException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+                    message="A resource with such identifiers already exist.",
+                )
+            ]
+        )

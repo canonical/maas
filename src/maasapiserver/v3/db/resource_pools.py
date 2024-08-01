@@ -1,23 +1,23 @@
-from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import desc, insert, select, Select, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import ResourcePoolTable
 from maasapiserver.common.models.constants import (
-    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
 from maasapiserver.common.models.exceptions import (
-    AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
 )
-from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolRequest,
+from maasapiserver.v3.db.base import (
+    BaseRepository,
+    CreateOrUpdateResource,
+    CreateOrUpdateResourceBuilder,
 )
-from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.resource_pools import ResourcePool
 
@@ -30,9 +30,21 @@ RESOURCE_POOLS_FIELDS = (
 )
 
 
-class ResourcePoolRepository(
-    BaseRepository[ResourcePool, ResourcePoolRequest]
-):
+class ResourcePoolCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
+    def with_name(
+        self, value: str
+    ) -> "ResourcePoolCreateOrUpdateResourceBuilder":
+        self._request.set_value(ResourcePoolTable.c.name.name, value)
+        return self
+
+    def with_description(
+        self, value: str
+    ) -> "ResourcePoolCreateOrUpdateResourceBuilder":
+        self._request.set_value(ResourcePoolTable.c.description.name, value)
+        return self
+
+
+class ResourcePoolRepository(BaseRepository[ResourcePool]):
     async def find_by_id(self, id: int) -> Optional[ResourcePool]:
         stmt = self._select_all_statement().where(
             eq(ResourcePoolTable.c.id, id)
@@ -42,22 +54,16 @@ class ResourcePoolRepository(
                 return ResourcePool(**resource_pools._asdict())
         return None
 
-    async def create(self, request: ResourcePoolRequest) -> ResourcePool:
-        now = datetime.utcnow()
+    async def create(self, resource: CreateOrUpdateResource) -> ResourcePool:
         stmt = (
             insert(ResourcePoolTable)
             .returning(*RESOURCE_POOLS_FIELDS)
-            .values(
-                name=request.name,
-                description=request.description,
-                updated=now,
-                created=now,
-            )
+            .values(**resource.get_values())
         )
         try:
             result = await self.connection.execute(stmt)
         except IntegrityError:
-            self._raise_constraint_violation(request.name)
+            self._raise_already_existing_exception()
         resource_pools = result.one()
         return ResourcePool(**resource_pools._asdict())
 
@@ -84,31 +90,31 @@ class ResourcePoolRepository(
         )
 
     async def delete(self, id: int) -> None:
-        raise Exception("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
-    async def update(self, resource_pool: ResourcePool) -> ResourcePool:
-        resource_pool.updated = datetime.utcnow()
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> ResourcePool:
         stmt = (
             update(ResourcePoolTable)
-            .where(eq(ResourcePoolTable.c.id, resource_pool.id))
+            .where(eq(ResourcePoolTable.c.id, id))
             .returning(*RESOURCE_POOLS_FIELDS)
-            .values(**resource_pool.dict())
+            .values(**resource.get_values())
         )
         try:
             new_resource_pool = (await self.connection.execute(stmt)).one()
         except IntegrityError:
-            self._raise_constraint_violation(resource_pool.name)
+            self._raise_already_existing_exception()
+        except NoResultFound:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"Resource pool with id '{id}' does not exist.",
+                    )
+                ]
+            )
         return ResourcePool(**new_resource_pool._asdict())
 
     def _select_all_statement(self) -> Select[Any]:
         return select(*RESOURCE_POOLS_FIELDS).select_from(ResourcePoolTable)
-
-    def _raise_constraint_violation(self, name: str):
-        raise AlreadyExistsException(
-            details=[
-                BaseExceptionDetail(
-                    type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
-                    message=f"An entity named '{name}' already exists.",
-                )
-            ]
-        )

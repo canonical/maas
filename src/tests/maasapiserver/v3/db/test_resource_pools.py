@@ -1,14 +1,17 @@
-from datetime import datetime, timezone
+from datetime import timezone
 
 import pytest
-from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.exceptions import AlreadyExistsException
-from maasapiserver.v3.api.models.requests.resource_pools import (
-    ResourcePoolRequest,
+from maasapiserver.common.models.exceptions import (
+    AlreadyExistsException,
+    NotFoundException,
 )
-from maasapiserver.v3.db.resource_pools import ResourcePoolRepository
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.db.resource_pools import (
+    ResourcePoolCreateOrUpdateResourceBuilder,
+    ResourcePoolRepository,
+)
 from maasapiserver.v3.models.resource_pools import ResourcePool
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
@@ -16,6 +19,26 @@ from tests.fixtures.factories.resource_pools import (
 )
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.db.base import RepositoryCommonTests
+
+
+class TestResourcePoolCreateOrUpdateResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name("test")
+            .with_description("descr")
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+
+        assert resource.get_values() == {
+            "name": "test",
+            "description": "descr",
+            "created": now,
+            "updated": now,
+        }
 
 
 class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
@@ -48,12 +71,15 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
 @pytest.mark.asyncio
 class TestResourcePoolRepository:
     async def test_create(self, db_connection: AsyncConnection) -> None:
-        now = datetime.utcnow()
+        now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)
         created_resource_pools = await resource_pools_repository.create(
-            ResourcePoolRequest(
-                name="my_resource_pool", description="my description"
-            )
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name("my_resource_pool")
+            .with_description("my description")
+            .with_created(now)
+            .with_updated(now)
+            .build()
         )
         assert created_resource_pools.id
         assert created_resource_pools.name == "my_resource_pool"
@@ -68,15 +94,18 @@ class TestResourcePoolRepository:
     async def test_create_duplicated(
         self, db_connection: AsyncConnection, fixture: Fixture
     ) -> None:
+        now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)
         created_resource_pools = await create_test_resource_pool(fixture)
 
         with pytest.raises(AlreadyExistsException):
             await resource_pools_repository.create(
-                ResourcePoolRequest(
-                    name=created_resource_pools.name,
-                    description=created_resource_pools.description,
-                )
+                ResourcePoolCreateOrUpdateResourceBuilder()
+                .with_name(created_resource_pools.name)
+                .with_description(created_resource_pools.description)
+                .with_created(now)
+                .with_updated(now)
+                .build()
             )
 
     async def test_update(
@@ -84,10 +113,17 @@ class TestResourcePoolRepository:
     ) -> None:
         resource_pools_repository = ResourcePoolRepository(db_connection)
         created_resource_pool = await create_test_resource_pool(fixture)
-        updated_request = created_resource_pool.copy()
-        updated_request.name = "new name"
-        updated_request.description = "new description"
-        updated_pools = await resource_pools_repository.update(updated_request)
+        now = utcnow()
+        updated_resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name("new name")
+            .with_description("new description")
+            .with_updated(now)
+            .build()
+        )
+        updated_pools = await resource_pools_repository.update(
+            created_resource_pool.id, updated_resource
+        )
         # unchanged
         assert updated_pools.id == created_resource_pool.id
         assert updated_pools.created == created_resource_pool.created
@@ -107,20 +143,30 @@ class TestResourcePoolRepository:
             fixture, name="test2"
         )
 
-        updated_resource_pool = created_resource_pool.copy(
-            update={"id": created_resource_pool2.id}
+        now = utcnow()
+        updated_resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name(created_resource_pool.name)
+            .with_updated(now)
+            .build()
         )
+
         with pytest.raises(AlreadyExistsException):
-            await resource_pools_repository.update(updated_resource_pool)
+            await resource_pools_repository.update(
+                created_resource_pool2.id, updated_resource
+            )
 
     async def test_update_nonexistent(
         self, db_connection: AsyncConnection
     ) -> None:
-        now = datetime.utcnow()
+        now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)
-        resource_pool = ResourcePool(
-            id=1000, name="test", description="test", created=now, updated=now
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name("test")
+            .with_description("test")
+            .with_updated(now)
+            .build()
         )
-
-        with pytest.raises(NoResultFound):
-            await resource_pools_repository.update(resource_pool)
+        with pytest.raises(NotFoundException):
+            await resource_pools_repository.update(1000, resource)

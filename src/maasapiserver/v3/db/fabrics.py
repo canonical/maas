@@ -8,14 +8,13 @@ from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import FabricTable
-from maasapiserver.v3.api.models.requests.fabrics import FabricRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.fabrics import Fabric
 
 
-class FabricsRepository(BaseRepository[Fabric, FabricRequest]):
-    async def create(self, request: FabricRequest) -> Fabric:
+class FabricsRepository(BaseRepository[Fabric]):
+    async def create(self, resource: CreateOrUpdateResource) -> Fabric:
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Fabric | None:
@@ -51,7 +50,9 @@ class FabricsRepository(BaseRepository[Fabric, FabricRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Fabric) -> Fabric:
+    async def update(
+        self, id: int, resource: CreateOrUpdateResource
+    ) -> Fabric:
         raise NotImplementedError()
 
     async def delete(self, id: int) -> None:

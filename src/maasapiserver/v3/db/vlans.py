@@ -6,14 +6,13 @@ from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import VlanTable
-from maasapiserver.v3.api.models.requests.vlans import VlanRequest
-from maasapiserver.v3.db.base import BaseRepository
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.vlans import Vlan
 
 
-class VlansRepository(BaseRepository[Vlan, VlanRequest]):
-    async def create(self, request: VlanRequest) -> Vlan:
+class VlansRepository(BaseRepository[Vlan]):
+    async def create(self, resource: CreateOrUpdateResource) -> Vlan:
         raise NotImplementedError()
 
     async def find_by_id(self, id: int) -> Vlan | None:
@@ -50,7 +49,7 @@ class VlansRepository(BaseRepository[Vlan, VlanRequest]):
             next_token=next_token,
         )
 
-    async def update(self, resource: Vlan) -> Vlan:
+    async def update(self, id: int, resource: CreateOrUpdateResource) -> Vlan:
         raise NotImplementedError()
 
     async def delete(self, id: int) -> None:
