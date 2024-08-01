@@ -5,7 +5,7 @@
 
 This helps start up a background event loop (using Twisted, via crochet)
 to handle communications with Cluster Controllers, and any other tasks
-that are not tied to an HTTP reqoest.
+that are not tied to an HTTP request.
 
 .. py:data:: loop
 

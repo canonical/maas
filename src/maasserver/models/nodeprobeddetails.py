@@ -16,6 +16,7 @@ import base64
 
 from django.db import connection
 
+from maasserver.models import Node
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
@@ -54,7 +55,7 @@ def get_single_probed_details(node):
     return details_template
 
 
-def get_probed_details(nodes):
+def get_probed_details(nodes: list[Node]) -> dict[str, dict[str, str]]:
     """Return details of the nodes in the given list.
 
     :return: A ``{system_id: {...details...}, ...}`` map, where the

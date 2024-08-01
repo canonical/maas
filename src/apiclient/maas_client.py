@@ -187,7 +187,7 @@ class MAASClient:
     is equivalent to `"nodes/%s" % node_id`.
     """
 
-    def __init__(self, auth, dispatcher, base_url, insecure=False):
+    def __init__(self, auth: MAASOAuth, dispatcher: MAASDispatcher, base_url: str, insecure: bool = False):
         """Intialise the client.
 
         :param auth: A `MAASOAuth` to sign requests.

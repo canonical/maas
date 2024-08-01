@@ -3,6 +3,8 @@
 
 """Populate what nodes are associated with a tag."""
 
+from __future__ import annotations
+
 __all__ = [
     "populate_tag_for_multiple_nodes",
     "populate_tags",
@@ -11,7 +13,9 @@ __all__ = [
 
 from functools import partial
 from math import ceil
+from typing import TYPE_CHECKING
 
+from django.db.models.query import QuerySet
 from django.db.transaction import TransactionManagementError
 from lxml import etree
 from twisted.internet.defer import DeferredList
@@ -42,6 +46,9 @@ from provisioningserver.utils import classify
 from provisioningserver.utils.twisted import asynchronous, FOREVER, synchronous
 from provisioningserver.utils.xpath import try_match_xpath
 
+if TYPE_CHECKING:
+    from maasserver.models import Tag
+
 maaslog = get_maas_logger("tags")
 log = LegacyLogger()
 
@@ -68,7 +75,7 @@ def chunk_list(items, num_chunks):
 
 
 @synchronous
-def populate_tags(tag):
+def populate_tags(tag: Tag):
     """Evaluate `tag` for all nodes.
 
     This returns a `Deferred` that will fire when all tags have been
@@ -93,7 +100,7 @@ def populate_tags(tag):
 
     clients = getAllClients()
     if len(clients) == 0:
-        # We have no clients so we need to do the work locally.
+        # We have no clients, so we need to do the work locally.
         @transactional
         def _populate_tag():
             return populate_tag_for_multiple_nodes(tag, Node.objects.all())
@@ -102,7 +109,7 @@ def populate_tags(tag):
     else:
         # Split the work between the connected rack controllers.
         @transactional
-        def _generate_work():
+        def _generate_work() -> list[dict]:
             node_ids = Node.objects.all().values_list("system_id", flat=True)
             node_ids = [{"system_id": node_id} for node_id in node_ids]
             chunked_node_ids = list(chunk_list(node_ids, len(clients)))
@@ -141,14 +148,14 @@ def _get_or_create_auth_token(user):
 
 
 @asynchronous(timeout=FOREVER)
-def _do_populate_tags(clients):
+def _do_populate_tags(clients: list[dict]) -> list[DeferredList]:
     """Send RPC calls to each rack controller, requesting evaluation of tags.
 
     :param clients: List of connected rack controllers that EvaluateTag
         will be called.
     """
 
-    def call_client(client_info):
+    def call_client(client_info: dict):
         client = client_info["client"]
         return client(
             EvaluateTag,
@@ -216,15 +223,17 @@ def populate_tags_for_single_node(tags, node):
 
 
 @synchronous
-def populate_tag_for_multiple_nodes(tag, nodes, batch_size=DEFAULT_BATCH_SIZE):
-    """Reevaluate a single tag for a multiple nodes.
+def populate_tag_for_multiple_nodes(
+    tag: Tag, nodes: QuerySet, batch_size: int = DEFAULT_BATCH_SIZE
+) -> None:
+    """Reevaluate a single tag for multiple nodes.
 
     Presumably this tag's expression has recently changed. Use `populate_tags`
     when many nodes need reevaluating AND there are rack controllers available
     to which to farm-out work. Use this only when many nodes need reevaluating
     locally, i.e. when there are no rack controllers connected.
     """
-    # Same expression, multuple documents: compile expression with XPath.
+    # Same expression, multiple documents: compile expression with XPath.
     xpath = etree.XPath(tag.definition, namespaces=tag_nsmap)
     # The XML details documents can be large so work in batches.
     for batch in gen_batches(nodes, batch_size):

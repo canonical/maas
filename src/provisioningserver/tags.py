@@ -15,6 +15,7 @@ import urllib.request
 import bson
 from lxml import etree
 
+from apiclient.maas_client import MAASClient
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
@@ -65,7 +66,9 @@ def process_response(response):
         return content
 
 
-def get_details_for_nodes(client, system_ids):
+def get_details_for_nodes(
+    client: MAASClient, system_ids: list[str]
+) -> dict[str, bytes]:
     """Retrieve details for a set of nodes.
 
     :param client: MAAS client
@@ -81,7 +84,7 @@ def get_details_for_nodes(client, system_ids):
 
 
 def post_updated_nodes(
-    client, rack_id, tag_name, tag_definition, added, removed
+    client: MAASClient, rack_id, tag_name, tag_definition, added, removed
 ):
     """Update the nodes relevant for a particular tag.
 
@@ -266,7 +269,7 @@ def gen_batches(things, batch_size):
     return (things[s] for s in slices)
 
 
-def gen_node_details(client, batches):
+def gen_node_details(client: MAASClient, batches):
     """Fetch node details.
 
     This lazily fetches data in batches, but this detail is hidden
@@ -281,7 +284,7 @@ def gen_node_details(client, batches):
 
 
 def process_all(
-    client,
+    client: MAASClient,
     rack_id,
     tag_name,
     tag_definition,
@@ -319,17 +322,18 @@ def process_node_tags(
     tag_name,
     tag_definition,
     tag_nsmap,
-    client,
+    client: MAASClient,
     batch_size=None,
 ):
     """Update the nodes for a new/changed tag definition.
 
     :param rack_id: System ID for the rack controller.
     :param nodes: List of nodes to process tags for.
-    :param client: A `MAASClient` used to fetch the node's details via
-        calls to the web API.
     :param tag_name: Name of the tag to update nodes for
     :param tag_definition: Tag definition
+    :param tag_nsmap: The namespace map as used by LXML's ETree library.
+    :param client: A `MAASClient` used to fetch the node's details via
+        calls to the web API.
     :param batch_size: Size of batch
     """
     # We evaluate this early, so we can fail before sending a bunch of data to

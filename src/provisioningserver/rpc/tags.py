@@ -16,7 +16,7 @@ def evaluate_tag(
     tag_name,
     tag_definition,
     tag_nsmap,
-    credentials,
+    credentials: tuple[str, str, str],
     maas_url,
 ):
     """Evaluate `tag_definition` against this cluster's nodes' details.
@@ -25,7 +25,7 @@ def evaluate_tag(
     :param nodes: List of nodes to evaluate.
     :param tag_name: The name of the tag, used for logging.
     :param tag_definition: The XPath expression of the tag.
-    :param tag_nsmap: The namespace map as used by LXML's ETree library.
+    :param tag_nsmap: The namespace map used by the LXML's ETree library.
     :param credentials: A 3-tuple of OAuth credentials.
     :param maas_url: URL of the MAAS API.
     """
