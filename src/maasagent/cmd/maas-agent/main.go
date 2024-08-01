@@ -36,6 +36,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/converter"
@@ -348,10 +349,12 @@ func Run() int {
 	}
 
 	workflowOptions := client.StartWorkflowOptions{
+		ID:        fmt.Sprintf("configure-agent:%s", cfg.SystemID),
 		TaskQueue: "region",
 		// If we failed to execute this workflow in 120 seconds, then something bad
 		// happened and we don't want to keep it in a task queue (will be cancelled)
 		WorkflowExecutionTimeout: 120 * time.Second,
+		WorkflowIDReusePolicy:    enums.WORKFLOW_ID_REUSE_POLICY_TERMINATE_IF_RUNNING,
 	}
 
 	workflowRun, err := temporalClient.ExecuteWorkflow(ctx, workflowOptions,
