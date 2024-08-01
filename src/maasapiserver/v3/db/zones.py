@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import delete, desc, insert, select, Select
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery
+from maasapiserver.common.db.filters import FilterQuery, FilterQueryBuilder
 from maasapiserver.common.db.tables import DefaultResourceTable, ZoneTable
 from maasapiserver.common.models.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
@@ -17,6 +17,13 @@ from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.db.base import BaseRepository
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.zones import Zone
+
+
+class ZonesFilterQueryBuilder(FilterQueryBuilder):
+    def with_ids(self, ids: list[int] | None) -> FilterQueryBuilder:
+        if ids is not None:
+            self.query.add_clause(ZoneTable.c.id.in_(ids))
+        return self
 
 
 class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
@@ -88,6 +95,10 @@ class ZonesRepository(BaseRepository[Zone, ZoneRequest]):
             .order_by(desc(ZoneTable.c.id))
             .limit(size + 1)  # Retrieve one more element to get the next token
         )
+
+        if query:
+            stmt = stmt.where(*query.get_clauses())
+
         if token is not None:
             stmt = stmt.where(le(ZoneTable.c.id, int(token)))
 

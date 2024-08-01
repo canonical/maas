@@ -8,7 +8,7 @@ from maasapiserver.common.db.tables import ZoneTable
 from maasapiserver.common.models.exceptions import AlreadyExistsException
 from maasapiserver.v3.api.models.requests.zones import ZoneRequest
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maasapiserver.v3.db.zones import ZonesRepository
+from maasapiserver.v3.db.zones import ZonesFilterQueryBuilder, ZonesRepository
 from maasapiserver.v3.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
@@ -45,6 +45,24 @@ class TestZonesRepo(RepositoryCommonTests[Zone]):
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestZonesRepository:
+    async def test_list_with_filters(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        created_zone = await create_test_zone(fixture)
+
+        zones_repository = ZonesRepository(db_connection)
+
+        query = ZonesFilterQueryBuilder().with_ids([1]).build()
+        zones = await zones_repository.list(None, 20, query)
+        assert len(zones.items) == 1
+        assert zones.items[0].id == 1
+
+        query = (
+            ZonesFilterQueryBuilder().with_ids([1, created_zone.id]).build()
+        )
+        zones = await zones_repository.list(None, 20, query)
+        assert len(zones.items) == 2
+
     async def test_create(self, db_connection: AsyncConnection) -> None:
         now = datetime.utcnow()
         zones_repository = ZonesRepository(db_connection)

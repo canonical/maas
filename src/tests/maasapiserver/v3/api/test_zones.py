@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from urllib.parse import parse_qs, urlparse
 
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
@@ -93,6 +94,42 @@ class TestZonesApi(ApiCommonTests):
                 user_role=UserRole.ADMIN,
             ),
         ]
+
+    # GET /zones with filters
+    async def test_list_with_filters(
+        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    ) -> None:
+
+        created_zone = await create_test_zone(fixture, name="test")
+
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/zones?id={created_zone.id}"
+        )
+        assert response.status_code == 200
+        zones_response = ZonesListResponse(**response.json())
+        assert len(zones_response.items) == 1
+        assert zones_response.items[0].id == created_zone.id
+
+        # Get also the default zone
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/zones?id={created_zone.id}&id=1"
+        )
+        assert response.status_code == 200
+        zones_response = ZonesListResponse(**response.json())
+        assert len(zones_response.items) == 2
+
+        # Get also the default zone
+        response = await authenticated_user_api_client_v3.get(
+            f"{V3_API_PREFIX}/zones?id={created_zone.id}&id=1&size=1"
+        )
+        assert response.status_code == 200
+        zones_response = ZonesListResponse(**response.json())
+        assert len(zones_response.items) == 1
+        assert zones_response.next is not None
+        next_link_params = parse_qs(urlparse(zones_response.next).query)
+        assert set(next_link_params["id"]) == {"1", str(created_zone.id)}
+        assert next_link_params["size"][0] == "1"
+        assert next_link_params["token"][0] == "1"
 
     # GET /zones/{zone_id}
     async def test_get_default(

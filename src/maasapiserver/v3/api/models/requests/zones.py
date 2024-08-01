@@ -1,8 +1,29 @@
 from typing import Optional
 
-from pydantic import Field, validator
+from fastapi import Query
+from pydantic import BaseModel, Field, validator
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.v3.api.models.requests.base import NamedBaseModel
+
+
+class ZonesFiltersParams(BaseModel):
+
+    ids: Optional[list[int]] = Field(
+        Query(default=None, title="Filter by zone id", alias="id")
+    )
+
+    def to_query(self) -> FilterQuery:
+        # TODO: When the db layer will have removed all the dependencies from the api move this import at module level
+        from maasapiserver.v3.db.zones import ZonesFilterQueryBuilder
+
+        return ZonesFilterQueryBuilder().with_ids(self.ids).build()
+
+    def to_href_format(self) -> str:
+        if self.ids:
+            tokens = [f"id={zone_id}" for zone_id in self.ids]
+            return "&".join(tokens)
+        return ""
 
 
 class ZoneRequest(NamedBaseModel):

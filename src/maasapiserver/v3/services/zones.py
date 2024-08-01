@@ -2,6 +2,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.models.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -57,8 +58,12 @@ class ZonesService(Service):
     async def get_by_name(self, name: str) -> Optional[Zone]:
         return await self.zones_repository.find_by_name(name)
 
-    async def list(self, token: str | None, size: int) -> ListResult[Zone]:
-        return await self.zones_repository.list(token=token, size=size)
+    async def list(
+        self, token: str | None, size: int, query: FilterQuery
+    ) -> ListResult[Zone]:
+        return await self.zones_repository.list(
+            token=token, size=size, query=query
+        )
 
     async def delete(
         self, zone_id: int, etag_if_match: str | None = None

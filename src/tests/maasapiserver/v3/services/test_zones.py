@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
+from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.db.tables import ZoneTable
 from maasapiserver.common.models.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
@@ -117,9 +118,12 @@ class TestZonesService:
             connection=db_connection,
             zones_repository=zones_repository_mock,
         )
+        query_mock = Mock(FilterQuery)
         resource_pools_list = await resource_pools_service.list(
-            token=None, size=1
+            token=None, size=1, query=query_mock
         )
-        zones_repository_mock.list.assert_called_once_with(token=None, size=1)
+        zones_repository_mock.list.assert_called_once_with(
+            token=None, size=1, query=query_mock
+        )
         assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []
