@@ -17,6 +17,7 @@ package cache
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata/metricdatatest"
 )
 
 func TestNewFileCache(t *testing.T) {
@@ -408,4 +415,81 @@ func TestFileCacheConcurrentGetSet(t *testing.T) {
 	assert.NoError(t, err)
 
 	lr.unlock()
+}
+
+func TestFileCacheMetrics(t *testing.T) {
+	metricReader := metric.NewManualReader()
+	meterProvider := metric.NewMeterProvider(metric.WithReader(metricReader))
+
+	cache, err := NewFileCache(1, t.TempDir(),
+		WithMetricMeter(meterProvider.Meter("test")))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	v := []byte("x")
+
+	_ = cache.Set("key1", bytes.NewReader(v), int64(len(v)))
+	_, _ = cache.Get("key1")
+	_ = cache.Set("key2", bytes.NewReader(v), int64(len(v)))
+	_, _ = cache.Get("key2")
+	_, _ = cache.Get("key1")
+
+	expected := metricdata.ScopeMetrics{
+		Scope: instrumentation.Scope{
+			Name: "test",
+		},
+
+		Metrics: []metricdata.Metrics{
+			{
+				Name: "cache.size",
+				Unit: "byte",
+				Data: metricdata.Gauge[int64]{
+					DataPoints: []metricdata.DataPoint[int64]{
+						{
+							Attributes: attribute.NewSet(attribute.String("type", "current")),
+							Value:      1,
+						},
+						{
+							Attributes: attribute.NewSet(attribute.String("type", "max")),
+							Value:      1,
+						},
+					},
+				},
+			},
+			{
+				Name: "cache.usage",
+				Unit: "{count}",
+				Data: metricdata.Sum[int64]{
+					DataPoints: []metricdata.DataPoint[int64]{
+						{
+							Attributes: attribute.NewSet(attribute.String("type", "hits")),
+							Value:      3,
+						},
+						{
+							Attributes: attribute.NewSet(attribute.String("type", "misses")),
+							Value:      1,
+						},
+						{
+							Attributes: attribute.NewSet(attribute.String("type", "errors")),
+							Value:      0,
+						},
+					},
+					Temporality: metricdata.CumulativeTemporality,
+					IsMonotonic: true,
+				},
+			},
+		},
+	}
+
+	rm := metricdata.ResourceMetrics{}
+	err = metricReader.Collect(context.Background(), &rm)
+	assert.NoError(t, err)
+	require.Len(t, rm.ScopeMetrics, 1)
+
+	metricdatatest.AssertEqual(
+		t,
+		expected,
+		rm.ScopeMetrics[0],
+		metricdatatest.IgnoreTimestamp())
 }

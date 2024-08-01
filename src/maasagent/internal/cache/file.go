@@ -16,6 +16,7 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,8 @@ import (
 	"sync/atomic"
 
 	lru "github.com/hashicorp/golang-lru/v2"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 const (
@@ -44,6 +47,12 @@ var (
 	ErrKeySetInProgress     = errors.New("key set is in progress")
 	ErrNegativeSize         = errors.New("value size is negative")
 )
+
+type fileCacheStats struct {
+	hits   atomic.Int64
+	misses atomic.Int64
+	errors atomic.Int64
+}
 
 // FileCache implements a file system backed cache, which makes it possible
 // to store values as files on disk. Total cache size is specified by the
@@ -65,6 +74,7 @@ type FileCache struct {
 	// This is expected to happen because we limit our cache based on the
 	// disk space size and not on the items size.
 	indexSize atomic.Int64
+	stats     fileCacheStats
 	mutex     sync.RWMutex
 }
 
@@ -84,6 +94,7 @@ func NewFileCache(maxSize int64, dir string, options ...FileCacheOption) (*FileC
 		dir:      dir,
 		maxSize:  maxSize,
 		progress: map[string]struct{}{},
+		stats:    fileCacheStats{},
 	}
 
 	// This is just a starting default number. It doesn't limit anything
@@ -122,6 +133,43 @@ type FileCacheOption func(*FileCache)
 func WithIndexSize(i int64) FileCacheOption {
 	return func(c *FileCache) {
 		c.indexSize.Store(i)
+	}
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+
+	return v
+}
+
+// WithMetricMeter allows to set OpenTelemetry metric.Meter
+// to collect cache stats.
+func WithMetricMeter(meter metric.Meter) FileCacheOption {
+	return func(c *FileCache) {
+		hits := attribute.String("type", "hits")
+		misses := attribute.String("type", "misses")
+		errors := attribute.String("type", "errors")
+
+		must(meter.Int64ObservableCounter("cache.usage",
+			metric.WithUnit("{count}"),
+			metric.WithInt64Callback(func(_ context.Context, o metric.Int64Observer) error {
+				o.Observe(c.stats.hits.Load(), metric.WithAttributes(hits))
+				o.Observe(c.stats.misses.Load(), metric.WithAttributes(misses))
+				o.Observe(c.stats.errors.Load(), metric.WithAttributes(errors))
+
+				return nil
+			})))
+
+		must(meter.Int64ObservableGauge("cache.size",
+			metric.WithUnit("byte"),
+			metric.WithInt64Callback(func(_ context.Context, o metric.Int64Observer) error {
+				o.Observe(c.size.Load(), metric.WithAttributes(attribute.String("type", "current")))
+				o.Observe(c.maxSize, metric.WithAttributes(attribute.String("type", "max")))
+
+				return nil
+			})))
 	}
 }
 
@@ -228,7 +276,6 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 	// Extend the size of LRU cache if we hit maxSize.
 	// This is expected to happen because we limit our cache based on the
 	// disk space size.
-
 	if c.index.Len()+1 > int(c.indexSize.Load()) {
 		c.indexSize.Add(c.indexSize.Load())
 		c.index.Resize(int(c.indexSize.Load()))
@@ -241,13 +288,21 @@ func (c *FileCache) set(key string, value io.Reader, valueSize int64) (err error
 }
 
 func (c *FileCache) get(key string) (io.ReadSeekCloser, error) {
+	c.stats.hits.Add(1)
+
 	v, ok := c.index.Get(key)
 	if !ok {
+		c.stats.misses.Add(1)
 		return nil, ErrKeyDoesntExist
 	}
 
 	//nolint:gosec // gosec wants string literal file arguments
-	return os.OpenFile(v, os.O_RDONLY, 0600)
+	file, err := os.OpenFile(v, os.O_RDONLY, 0600)
+	if err != nil {
+		c.stats.errors.Add(1)
+	}
+
+	return file, err
 }
 
 // evict removes the oldest item from cache.

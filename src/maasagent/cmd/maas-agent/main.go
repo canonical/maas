@@ -305,14 +305,18 @@ func Run() int {
 
 	var workerPool worker.WorkerPool
 
-	cache, err := cache.NewFileCache(cfg.HTTPProxy.CacheSize, cfg.HTTPProxy.CacheDir)
+	httpProxyCache, err := cache.NewFileCache(
+		cfg.HTTPProxy.CacheSize,
+		cfg.HTTPProxy.CacheDir,
+		cache.WithMetricMeter(meterProvider.Meter("maas.agent.httpproxy")),
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("HTTP Proxy cache initialisation error")
 		return 1
 	}
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
-	httpProxyService := httpproxy.NewHTTPProxyService(runDir, cache)
+	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
