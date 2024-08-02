@@ -7,15 +7,15 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
-from maasapiserver.common.vault.api.models.exceptions import (
+from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
+from maasservicelayer.vault.api.models.exceptions import (
     VaultAuthenticationException,
 )
-from maasapiserver.common.vault.api.models.requests import (
+from maasservicelayer.vault.api.models.requests import (
     AppRoleLoginRequest,
     KvV2WriteRequest,
 )
-from maasapiserver.common.vault.api.models.responses import (
+from maasservicelayer.vault.api.models.responses import (
     AppRoleLoginDetailResponse,
     AppRoleLoginResponse,
     KvV2ReadDetailResponse,
@@ -25,7 +25,7 @@ from maasapiserver.common.vault.api.models.responses import (
     TokenLookupSelfDetailResponse,
     TokenLookupSelfResponse,
 )
-from maasapiserver.common.vault.manager import AsyncVaultManager
+from maasservicelayer.vault.manager import AsyncVaultManager
 
 
 def get_base_response_dict() -> dict[str, Any]:

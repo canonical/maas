@@ -5,11 +5,6 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
-from maasapiserver.common.vault.api.models.exceptions import (
-    VaultNotFoundException,
-)
-from maasapiserver.common.vault.manager import AsyncVaultManager
 from maasapiserver.v3.services import ConfigurationsService
 from maasapiserver.v3.services.secrets import (
     LocalSecretsStorageService,
@@ -18,6 +13,9 @@ from maasapiserver.v3.services.secrets import (
     SecretsServiceFactory,
     VaultSecretsService,
 )
+from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
+from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
+from maasservicelayer.vault.manager import AsyncVaultManager
 from tests.maasapiserver.fixtures.db import Fixture
 
 

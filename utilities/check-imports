@@ -401,6 +401,9 @@ ServiceLayer = files("src/maasservicelayer/**/*.py")
 
 ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
+    Allow("aiohttp|aiohttp.**"),
+    Allow("maasservicelayer|maasservicelayer.**"),
+    Allow("pydantic|pydantic.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow(StandardLibraries),
 )

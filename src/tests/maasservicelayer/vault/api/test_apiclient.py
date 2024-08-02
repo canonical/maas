@@ -5,18 +5,18 @@ from typing import Type
 
 import pytest
 
-from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
-from maasapiserver.common.vault.api.models.exceptions import (
+from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
+from maasservicelayer.vault.api.models.exceptions import (
     VaultAuthenticationException,
     VaultException,
     VaultNotFoundException,
     VaultPermissionsException,
 )
-from maasapiserver.common.vault.api.models.requests import (
+from maasservicelayer.vault.api.models.requests import (
     AppRoleLoginRequest,
     KvV2WriteRequest,
 )
-from maasapiserver.common.vault.api.models.responses import (
+from maasservicelayer.vault.api.models.responses import (
     AppRoleLoginResponse,
     KvV2ReadResponse,
     KvV2WriteResponse,

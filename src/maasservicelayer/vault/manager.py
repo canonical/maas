@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any
 
-from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
-from maasapiserver.common.vault.api.models.requests import (
+from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
+from maasservicelayer.vault.api.models.requests import (
     AppRoleLoginRequest,
     KvV2WriteRequest,
 )

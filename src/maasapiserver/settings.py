@@ -5,13 +5,11 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
-from maasapiserver.common.vault.api.models.exceptions import (
-    VaultNotFoundException,
-)
-from maasapiserver.common.vault.manager import AsyncVaultManager
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasservicelayer.db import DatabaseConfig
+from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
+from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
+from maasservicelayer.vault.manager import AsyncVaultManager
 from provisioningserver.path import get_maas_data_path
 
 logger = logging.getLogger(__name__)
