@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.common.models.exceptions import (
     DischargeRequiredException,
@@ -41,6 +40,7 @@ from maasapiserver.v3.middlewares.auth import (
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.models.users import User
+from maasservicelayer.db import Database
 from tests.fixtures.factories.user import create_test_session, create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 

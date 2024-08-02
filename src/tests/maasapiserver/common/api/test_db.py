@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.api.base import API, Handler, handler
 from maasapiserver.common.api.db import db_conn
-from maasapiserver.common.db import Database
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
+from maasservicelayer.db import Database
 
 METADATA = MetaData()
 

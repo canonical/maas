@@ -3,10 +3,10 @@ from typing import Any
 
 from sqlalchemy import update
 
-from maasapiserver.common.db.tables import NodeTable
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.models.machines import UsbDevice
 from maasserver.enum import NODE_DEVICE_BUS
+from maasservicelayer.db.tables import NodeTable
 from maastesting.factory import factory
 from metadataserver.enum import HARDWARE_TYPE
 from tests.maasapiserver.fixtures.db import Fixture

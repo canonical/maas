@@ -4,8 +4,6 @@ from sqlalchemy import delete, desc, insert, select, Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery, FilterQueryBuilder
-from maasapiserver.common.db.tables import DefaultResourceTable, ZoneTable
 from maasapiserver.v3.db.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -13,6 +11,8 @@ from maasapiserver.v3.db.base import (
 )
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.zones import Zone
+from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
+from maasservicelayer.db.tables import DefaultResourceTable, ZoneTable
 
 
 class ZoneCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):

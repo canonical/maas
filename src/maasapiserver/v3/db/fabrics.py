@@ -6,11 +6,11 @@ from typing import Any
 from sqlalchemy import desc, select, Select
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import FabricTable
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.fabrics import Fabric
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import FabricTable
 
 
 class FabricsRepository(BaseRepository[Fabric]):

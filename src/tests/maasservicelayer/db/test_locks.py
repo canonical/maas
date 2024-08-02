@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.locks.db import DatabaseLockBase, StartupLock
+from maasservicelayer.db.locks import DatabaseLockBase, StartupLock
 
 
 class DatabaseLockBaseImpl(DatabaseLockBase):

@@ -4,11 +4,11 @@ from django.core import signing
 from sqlalchemy import select
 from sqlalchemy.sql.operators import and_, eq, gt
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import SessionTable, UserTable
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.users import User
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import SessionTable, UserTable
 
 
 class UsersRepository(BaseRepository[User]):

@@ -4,8 +4,6 @@ from sqlalchemy import desc, insert, select, Select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import ResourcePoolTable
 from maasapiserver.common.models.constants import (
     UNEXISTING_RESOURCE_VIOLATION_TYPE,
 )
@@ -20,6 +18,8 @@ from maasapiserver.v3.db.base import (
 )
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.resource_pools import ResourcePool
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import ResourcePoolTable
 
 RESOURCE_POOLS_FIELDS = (
     ResourcePoolTable.c.id,

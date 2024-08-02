@@ -4,11 +4,11 @@
 from sqlalchemy import desc, select
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import VlanTable
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.vlans import Vlan
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import VlanTable
 
 
 class VlansRepository(BaseRepository[Vlan]):

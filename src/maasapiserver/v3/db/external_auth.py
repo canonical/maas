@@ -8,9 +8,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import and_, eq, ge, le
 
-from maasapiserver.common.db.tables import RootKeyTable
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.models.external_auth import RootKey
+from maasservicelayer.db.tables import RootKeyTable
 
 
 class ExternalAuthRepository:

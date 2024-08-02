@@ -400,6 +400,8 @@ RegionControllerWorkerRule = Rule(
 ServiceLayer = files("src/maasservicelayer/**/*.py")
 
 ServiceLayerRule = Rule(
+    Allow("asyncpg|asyncpg.**"),
+    Allow("sqlalchemy|sqlalchemy.**"),
     Allow(StandardLibraries),
 )
 

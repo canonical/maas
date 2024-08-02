@@ -6,10 +6,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
 
-from maasapiserver.common.db import Database
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maasservicelayer.db import Database
 
 
 @pytest.fixture

@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
-from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.v3.api.models.requests.base import NamedBaseModel
+from maasservicelayer.db.filters import FilterQuery
 
 
 class ZonesFiltersParams(BaseModel):

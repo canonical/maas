@@ -7,15 +7,11 @@ from sqlalchemy import case, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le, ne, or_
 
-from maasapiserver.common.db.filters import FilterQuery, FilterQueryBuilder
-from maasapiserver.common.db.tables import (
-    EventTable,
-    EventTypeTable,
-    NodeTable,
-)
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.events import Event
+from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
+from maasservicelayer.db.tables import EventTable, EventTypeTable, NodeTable
 
 
 class EventsFilterQueryBuilder(FilterQueryBuilder):

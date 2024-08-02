@@ -23,9 +23,9 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
-from maasapiserver.common.db import Database
-from maasapiserver.common.db.tables import NodeTable
 from maasserver.enum import NODE_STATUS, NODE_TYPE
+from maasservicelayer.db import Database
+from maasservicelayer.db.tables import NodeTable
 from maastemporalworker.workflow.activity import ActivityBase
 
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)

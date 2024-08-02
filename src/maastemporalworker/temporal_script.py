@@ -5,9 +5,9 @@ import asyncio
 from logging import getLogger
 import signal
 
-from maasapiserver.common.db import Database
 from maasapiserver.settings import read_config
 from maasserver.workflow.worker import Worker as TemporalWorker
+from maasservicelayer.db import Database
 from maastemporalworker.workflow.commission import CommissionNWorkflow
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,

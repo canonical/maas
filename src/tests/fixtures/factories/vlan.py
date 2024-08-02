@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.dialects import postgresql
 
-from maasapiserver.common.db.tables import VlanTable
+from maasservicelayer.db.tables import VlanTable
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.maasapiserver.fixtures.db import Fixture
 

@@ -5,8 +5,8 @@ from asyncpg import Connection
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from maasapiserver.common.db import Database
-from maasapiserver.common.listeners.postgres import (
+from maasservicelayer.db import Database
+from maasservicelayer.db.listeners import (
     PostgresListener,
     PostgresListenersTaskFactory,
 )

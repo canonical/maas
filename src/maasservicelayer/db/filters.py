@@ -1,7 +1,7 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-import abc
+from abc import ABC
 
 from sqlalchemy.sql.operators import ColumnOperators
 
@@ -21,7 +21,7 @@ class FilterQuery:
         return self.clauses
 
 
-class FilterQueryBuilder(abc.ABC):
+class FilterQueryBuilder(ABC):
     """
     In the repositories you might want to extend this builder so to keep a consistent approach across
     all the repositories.

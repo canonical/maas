@@ -8,13 +8,13 @@ from httpx import AsyncClient, Headers
 from macaroonbakery import bakery
 import pytest
 
-from maasapiserver.common.db import Database
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
 from maasapiserver.v2.models.entities.user import User
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.db import Database
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 

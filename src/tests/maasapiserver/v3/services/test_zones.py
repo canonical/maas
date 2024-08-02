@@ -4,8 +4,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import ZoneTable
 from maasapiserver.common.models.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -24,6 +22,8 @@ from maasapiserver.v3.services import (
     VmClustersService,
     ZonesService,
 )
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import ZoneTable
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 

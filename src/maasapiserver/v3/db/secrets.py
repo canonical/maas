@@ -6,8 +6,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
-from maasapiserver.common.db.tables import SecretTable
 from maasapiserver.v3.models.secrets import Secret
+from maasservicelayer.db.tables import SecretTable
 
 
 class SecretsRepository:

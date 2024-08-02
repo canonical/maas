@@ -8,11 +8,6 @@ import uvicorn
 
 from maasapiserver.common.api.handlers import APICommon
 from maasapiserver.common.constants import API_PREFIX
-from maasapiserver.common.db import Database
-from maasapiserver.common.listeners.postgres import (
-    PostgresListenersTaskFactory,
-)
-from maasapiserver.common.locks.db import StartupLock
 from maasapiserver.common.middlewares.db import (
     DatabaseMetricsMiddleware,
     TransactionMiddleware,
@@ -34,6 +29,9 @@ from maasapiserver.v3.middlewares.auth import (
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
+from maasservicelayer.db import Database
+from maasservicelayer.db.listeners import PostgresListenersTaskFactory
+from maasservicelayer.db.locks import StartupLock
 
 logger = logging.getLogger(__name__)
 

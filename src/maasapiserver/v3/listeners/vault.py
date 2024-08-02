@@ -7,7 +7,7 @@ import signal
 
 from asyncpg import Connection
 
-from maasapiserver.common.listeners.postgres import PostgresListener
+from maasservicelayer.db.listeners import PostgresListener
 
 logger = logging.getLogger(__name__)
 

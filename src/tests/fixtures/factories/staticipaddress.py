@@ -5,8 +5,8 @@ from typing import Any
 from netaddr import IPAddress, IPNetwork
 from sqlalchemy import select
 
-from maasapiserver.common.db.tables import StaticIPAddressTable
 from maasserver.enum import IPADDRESS_TYPE
+from maasservicelayer.db.tables import StaticIPAddressTable
 from tests.maasapiserver.fixtures.db import Fixture
 
 

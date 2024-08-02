@@ -16,9 +16,9 @@ from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 import yaml
 
-from maasapiserver.common.db import Database
 from maasapiserver.v3.services.secrets import LocalSecretsStorageService
 from maasserver.enum import NODE_STATUS
+from maasservicelayer.db import Database
 from maastemporalworker.workflow.msm import (
     MachineStatsByStatus,
     MSM_DETAIL_EP,

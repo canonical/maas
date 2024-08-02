@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db import Database
-from maasapiserver.common.db.tables import VlanTable
+from maasservicelayer.db import Database
+from maasservicelayer.db.tables import VlanTable
 from maastemporalworker.workflow.configure import (
     ConfigureAgentActivity,
     GetRackControllerVLANsInput,

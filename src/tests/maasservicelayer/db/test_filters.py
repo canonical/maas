@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 from sqlalchemy import ColumnOperators
 
-from maasapiserver.common.db.filters import FilterQuery
+from maasservicelayer.db.filters import FilterQuery
 
 
 class TestFilterQuery:

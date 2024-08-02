@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
+from maasservicelayer.db import Database
 
 
 @pytest.fixture

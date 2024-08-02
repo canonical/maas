@@ -4,7 +4,6 @@ from typing import Any, Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.models.constants import (
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
@@ -13,6 +12,7 @@ from maasapiserver.common.models.exceptions import (
     BaseExceptionDetail,
 )
 from maasapiserver.v3.models.base import ListResult
+from maasservicelayer.db.filters import FilterQuery
 
 T = TypeVar("T")
 

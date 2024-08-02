@@ -5,16 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.tables import (  # TODO; VlanTable,
+from maasapiserver.v3.models.base import ListResult
+from maasapiserver.v3.models.interfaces import Interface, Link
+from maasserver.enum import IPADDRESS_TYPE
+from maasservicelayer.db.tables import (  # TODO; VlanTable,
     InterfaceIPAddressTable,
     InterfaceTable,
     NodeConfigTable,
     NodeTable,
     StaticIPAddressTable,
 )
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.interfaces import Interface, Link
-from maasserver.enum import IPADDRESS_TYPE
 
 
 def build_interface_links(

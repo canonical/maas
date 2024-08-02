@@ -7,7 +7,8 @@ from sqlalchemy import or_, select
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
-from maasapiserver.common.db.tables import (
+from maasserver.enum import NODE_TYPE
+from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
     NodeConfigTable,
@@ -16,7 +17,6 @@ from maasapiserver.common.db.tables import (
     SubnetTable,
     VlanTable,
 )
-from maasserver.enum import NODE_TYPE
 from maastemporalworker.workflow.activity import ActivityBase
 
 DEFAULT_CONFIGURE_ACTIVITY_TIMEOUT = timedelta(seconds=10)

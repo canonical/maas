@@ -5,37 +5,16 @@ import os
 from pathlib import Path
 from typing import Optional
 
-from sqlalchemy import URL
-
 from maasapiserver.common.vault.api.apiclient import AsyncVaultApiClient
 from maasapiserver.common.vault.api.models.exceptions import (
     VaultNotFoundException,
 )
 from maasapiserver.common.vault.manager import AsyncVaultManager
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
+from maasservicelayer.db import DatabaseConfig
 from provisioningserver.path import get_maas_data_path
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class DatabaseConfig:
-    name: str
-    host: str
-    username: str | None = None
-    password: str | None = None
-    port: int | None = None
-
-    @property
-    def dsn(self) -> URL:
-        return URL.create(
-            "postgresql+asyncpg",
-            host=self.host,
-            port=self.port,
-            database=self.name,
-            username=self.username,
-            password=self.password,
-        )
 
 
 @dataclass

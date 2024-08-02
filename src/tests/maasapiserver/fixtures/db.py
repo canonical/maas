@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import ColumnOperators
 
-from maasapiserver.common.db import Database
-from maasapiserver.common.db.tables import METADATA
 from maasapiserver.common.middlewares.db import TransactionMiddleware
 from maasapiserver.settings import Config, DatabaseConfig
+from maasservicelayer.db import Database
+from maasservicelayer.db.tables import METADATA
 from maastesting.pytest.database import cluster_stash
 
 

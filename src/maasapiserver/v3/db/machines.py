@@ -4,8 +4,12 @@ from sqlalchemy import and_, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import (
+from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
+from maasapiserver.v3.models.base import ListResult
+from maasapiserver.v3.models.machines import Machine, UsbDevice
+from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import (
     BMCTable,
     DomainTable,
     NodeConfigTable,
@@ -13,10 +17,6 @@ from maasapiserver.common.db.tables import (
     NodeTable,
     UserTable,
 )
-from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.machines import Machine, UsbDevice
-from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
 
 
 class MachinesRepository(BaseRepository[Machine]):

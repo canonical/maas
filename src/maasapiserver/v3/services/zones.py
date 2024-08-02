@@ -2,7 +2,6 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db.filters import FilterQuery
 from maasapiserver.common.models.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
     ETAG_PRECONDITION_VIOLATION_TYPE,
@@ -24,6 +23,7 @@ from maasapiserver.v3.models.zones import Zone
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.nodes import NodesService
 from maasapiserver.v3.services.vmcluster import VmClustersService
+from maasservicelayer.db.filters import FilterQuery
 
 
 class ZonesService(Service):

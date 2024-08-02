@@ -7,11 +7,11 @@ from pydantic import BaseModel
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.exceptions import (
     ExceptionHandlers,
     ExceptionMiddleware,
 )
+from maasservicelayer.db import Database
 
 
 class DummyRequest(BaseModel):

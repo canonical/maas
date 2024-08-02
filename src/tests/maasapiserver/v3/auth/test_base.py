@@ -10,7 +10,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from maasapiserver.common.db import Database
 from maasapiserver.common.models.exceptions import (
     DischargeRequiredException,
     ForbiddenException,
@@ -24,6 +23,7 @@ from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasapiserver.v3.models.auth import AuthenticatedUser
+from maasservicelayer.db import Database
 
 
 class AuthTestMiddleware(BaseHTTPMiddleware):

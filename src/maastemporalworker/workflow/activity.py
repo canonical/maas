@@ -3,7 +3,7 @@ from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db import Database
+from maasservicelayer.db import Database
 
 
 class ActivityBase:

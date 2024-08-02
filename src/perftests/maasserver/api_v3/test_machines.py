@@ -6,10 +6,10 @@ from urllib.parse import parse_qs, urlparse
 
 from sqlalchemy import func, select
 
-from maasapiserver.common.db.tables import NodeTable
 from maasapiserver.v3.api.models.requests.query import MAX_PAGE_SIZE
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasserver.enum import NODE_TYPE
+from maasservicelayer.db.tables import NodeTable
 
 
 async def get_machine_count(conn):

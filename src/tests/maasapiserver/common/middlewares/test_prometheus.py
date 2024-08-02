@@ -9,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.api.handlers import APICommon
 from maasapiserver.common.constants import API_PREFIX
-from maasapiserver.common.db import Database
 from maasapiserver.common.middlewares.db import DatabaseMetricsMiddleware
 from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
+from maasservicelayer.db import Database
 
 
 @pytest.fixture

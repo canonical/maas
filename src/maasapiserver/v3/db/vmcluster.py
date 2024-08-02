@@ -1,11 +1,11 @@
 from sqlalchemy import update
 from sqlalchemy.sql.operators import eq
 
-from maasapiserver.common.db.filters import FilterQuery
-from maasapiserver.common.db.tables import VmClusterTable
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.vmcluster import VmCluster
+from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.tables import VmClusterTable
 
 
 class VmClustersRepository(BaseRepository[VmCluster]):

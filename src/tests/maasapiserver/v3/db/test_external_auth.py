@@ -7,9 +7,9 @@ from operator import eq
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.db.tables import RootKeyTable
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
+from maasservicelayer.db.tables import RootKeyTable
 from tests.fixtures.factories.external_auth import create_rootkey
 from tests.maasapiserver.fixtures.db import Fixture
 
