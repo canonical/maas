@@ -20,31 +20,6 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestVlanApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_vlan_in_list(
-            vlan: Vlan, vlans_response: VlansListResponse
-        ):
-            vlan_response = next(
-                filter(lambda resp: resp.id == vlan.id, vlans_response.items)
-            )
-            assert vlan.id == vlan_response.id
-            assert vlan.vid == vlan_response.vid
-            assert vlan.name == vlan_response.name
-            assert vlan.description == vlan_response.description
-            assert vlan.mtu == vlan_response.mtu
-            assert vlan.dhcp_on == vlan_response.dhcp_on
-            assert vlan.external_dhcp == vlan_response.external_dhcp
-            assert vlan.primary_rack_id == vlan_response.primary_rack
-            assert vlan.secondary_rack_id == vlan_response.secondary_rack
-            assert vlan.relay_vlan == vlan_response.relay_vlan
-            assert vlan_response.fabric.href.endswith(
-                f"fabrics/{vlan.fabric_id}"
-            )
-            if vlan.space_id is None:
-                assert vlan_response.space is None
-            else:
-                assert vlan_response.space.href.endswith(
-                    f"spaces/{vlan.space_id}"
-                )
 
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
@@ -68,11 +43,10 @@ class TestVlanApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/vlans",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    VlansListResponse
+                    Vlan, VlansListResponse
                 ](
                     response_type=VlansListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_vlan_in_list,
                 ),
             ),
             EndpointDetails(
@@ -82,7 +56,7 @@ class TestVlanApi(ApiCommonTests):
             ),
         ]
 
-    # GET /spaces/{space_id}
+    # GET /vlans/{vlan_id}
     async def test_get_200(
         self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
     ) -> None:

@@ -22,20 +22,6 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestEventsApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_event_in_list(
-            event: Event, events_response: EventsListResponse
-        ) -> None:
-            event_response = next(
-                filter(
-                    lambda x: event.id == x.id,
-                    events_response.items,
-                )
-            )
-            assert event_response is not None
-            assert (
-                event.to_response(f"{V3_API_PREFIX}/events") == event_response
-            )
-
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
         ) -> list[Event]:
@@ -60,11 +46,10 @@ class TestEventsApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/events",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    EventsListResponse
+                    Event, EventsListResponse
                 ](
                     response_type=EventsListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_event_in_list,
                 ),
             ),
         ]

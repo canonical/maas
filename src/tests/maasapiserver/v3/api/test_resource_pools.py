@@ -30,31 +30,22 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestResourcePoolApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_resource_pool_in_list(
-            resource_pool: ResourcePool,
-            resource_pools_response: ResourcePoolsListResponse,
-        ) -> None:
-            rp_response = next(
-                filter(
-                    lambda resp: resp.id == resource_pool.id,
-                    resource_pools_response.items,
-                )
-            )
-            assert resource_pool.id == rp_response.id
-            assert resource_pool.name == rp_response.name
-            assert resource_pool.description == rp_response.description
-
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
         ) -> list[ResourcePool]:
             # The default resource pool is created by the migrations
+            # and it has the following timestamp hardcoded in the test sql dump,
+            # see src/maasserver/testing/inital.maas_test.sql:12611
+            ts = datetime(
+                2021, 11, 19, 12, 40, 56, 904770, tzinfo=timezone.utc
+            )
             created_resource_pools = [
                 ResourcePool(
                     id=0,
                     name="default",
                     description="Default pool",
-                    created=datetime.now(timezone.utc),
-                    updated=datetime.now(timezone.utc),
+                    created=ts,
+                    updated=ts,
                 )
             ]
             if size > 1:
@@ -69,11 +60,10 @@ class TestResourcePoolApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/resource_pools",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    ResourcePoolsListResponse
+                    ResourcePool, ResourcePoolsListResponse
                 ](
                     response_type=ResourcePoolsListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_resource_pool_in_list,
                 ),
             ),
             EndpointDetails(

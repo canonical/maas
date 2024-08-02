@@ -19,30 +19,6 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestSubnetApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_subnet_in_list(
-            subnet: Subnet, subnets_response: SubnetsListResponse
-        ):
-            subnet_response = next(
-                filter(
-                    lambda resp: resp.id == subnet.id, subnets_response.items
-                )
-            )
-            assert subnet.id == subnet_response.id
-            assert subnet.name == subnet_response.name
-            assert subnet.description == subnet_response.description
-            assert subnet.cidr == subnet_response.cidr
-            assert subnet.dns_servers == subnet_response.dns_servers
-            assert subnet.gateway_ip == subnet_response.gateway_ip
-            assert subnet.rdns_mode == subnet_response.rdns_mode
-            assert subnet.allow_proxy == subnet_response.allow_proxy
-            assert subnet.active_discovery == subnet_response.active_discovery
-            assert subnet.managed == subnet_response.managed
-            assert subnet.allow_dns == subnet_response.allow_dns
-            assert (
-                subnet.disabled_boot_architectures
-                == subnet_response.disabled_boot_architectures
-            )
-
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
         ) -> list[Subnet]:
@@ -62,11 +38,10 @@ class TestSubnetApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/subnets",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    SubnetsListResponse
+                    Subnet, SubnetsListResponse
                 ](
                     response_type=SubnetsListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_subnet_in_list,
                 ),
             ),
             EndpointDetails(

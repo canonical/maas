@@ -19,23 +19,6 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestFabricsApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_fabric_in_list(
-            fabric: Fabric, fabrics_response: FabricsListResponse
-        ) -> None:
-            fabric_response = next(
-                filter(
-                    lambda fabric_response: fabric.id == fabric_response.id,
-                    fabrics_response.items,
-                )
-            )
-            assert fabric.id == fabric_response.id
-            assert fabric.name == fabric_response.name
-            assert fabric.description == fabric_response.description
-            assert fabric.class_type == fabric_response.class_type
-            assert fabric_response.vlans.href.endswith(
-                f"/vlans?filter=fabric_id eq {fabric.id}"
-            )
-
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
         ) -> list[Fabric]:
@@ -57,11 +40,10 @@ class TestFabricsApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/fabrics",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    FabricsListResponse
+                    Fabric, FabricsListResponse
                 ](
                     response_type=FabricsListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_fabric_in_list,
                 ),
             ),
             EndpointDetails(

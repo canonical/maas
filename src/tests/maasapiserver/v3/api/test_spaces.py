@@ -19,16 +19,6 @@ from tests.maasapiserver.v3.api.base import (
 
 class TestSpaceApi(ApiCommonTests):
     def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        def _assert_space_in_list(
-            space: Space, spaces_response: SpacesListResponse
-        ):
-            space_response = next(
-                filter(lambda resp: resp.id == space.id, spaces_response.items)
-            )
-            assert space.id == space_response.id
-            assert space.name == space_response.name
-            assert space.description == space_response.description
-
         async def create_pagination_test_resources(
             fixture: Fixture, size: int
         ) -> list[Space]:
@@ -46,11 +36,10 @@ class TestSpaceApi(ApiCommonTests):
                 path=f"{V3_API_PREFIX}/spaces",
                 user_role=UserRole.USER,
                 pagination_config=PaginatedEndpointTestConfig[
-                    SpacesListResponse
+                    Space, SpacesListResponse
                 ](
                     response_type=SpacesListResponse,
                     create_resources_routine=create_pagination_test_resources,
-                    assert_routine=_assert_space_in_list,
                 ),
             ),
             EndpointDetails(
