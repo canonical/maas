@@ -20,16 +20,15 @@ class TestSpacesRepository(RepositoryCommonTests[Space]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Space], int]:
-        spaces_count = 10
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Space]:
         created_spaces = [
             await create_test_space_entry(
                 fixture, name=str(i), description=str(i)
             )
-            for i in range(spaces_count)
-        ][::-1]
-        return created_spaces, spaces_count
+            for i in range(num_objects)
+        ]
+        return created_spaces
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Space:

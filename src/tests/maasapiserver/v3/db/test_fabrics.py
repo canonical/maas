@@ -20,16 +20,15 @@ class TestFabricsRepository(RepositoryCommonTests[Fabric]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Fabric], int]:
-        fabrics_count = 10
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Fabric]:
         created_fabrics = [
             await create_test_fabric_entry(
                 fixture, name=str(i), description=str(i)
             )
-            for i in range(fabrics_count)
-        ][::-1]
-        return created_fabrics, fabrics_count
+            for i in range(num_objects)
+        ]
+        return created_fabrics
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Fabric:

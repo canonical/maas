@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -50,17 +50,25 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[ResourcePool], int]:
-        resource_pools_count = 10
-        # The "default" resource pool with id=0 is created at startup with the migrations.
-        # By consequence, we create resource_pools_count-1 resource pools here.
-        created_resource_pools = (
-            await create_n_test_resource_pools(
-                fixture, size=resource_pools_count - 1
+        self, fixture: Fixture, num_objects: int
+    ) -> list[ResourcePool]:
+        # The default resource pool is created by the migrations
+        # and it has the following timestamp hardcoded in the test sql dump,
+        # see src/maasserver/testing/inital.maas_test.sql:12611
+        ts = datetime(2021, 11, 19, 12, 40, 56, 904770, tzinfo=timezone.utc)
+        created_resource_pools = [
+            ResourcePool(
+                id=0,
+                name="default",
+                description="Default pool",
+                created=ts,
+                updated=ts,
             )
-        )[::-1]
-        return created_resource_pools, resource_pools_count
+        ]
+        created_resource_pools.extend(
+            await create_n_test_resource_pools(fixture, size=num_objects - 1)
+        )
+        return created_resource_pools
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> ResourcePool:

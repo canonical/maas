@@ -20,9 +20,8 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Subnet], int]:
-        subnets_count = 10
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Subnet]:
         created_subnets = [
             Subnet(
                 **(
@@ -31,9 +30,9 @@ class TestSubnetsRepository(RepositoryCommonTests[Subnet]):
                     )
                 )
             )
-            for i in range(subnets_count)
-        ][::-1]
-        return created_subnets, subnets_count
+            for i in range(num_objects)
+        ]
+        return created_subnets
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Subnet:

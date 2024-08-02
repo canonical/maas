@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -48,16 +48,32 @@ class TestZonesRepo(RepositoryCommonTests[Zone]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Zone], int]:
-        zones_count = 10
-        # The "default" zone with id=1 is created at startup with the migrations.
-        # By consequence, we create zones_size-1 zones here.
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Zone]:
+        # The default zone is created by the migration and it has the following
+        # timestamp hardcoded in the test sql dump,
+        # see src/maasserver/testing/inital.maas_test.sql:12804
+        ts = datetime(2021, 11, 19, 12, 40, 43, 705399, tzinfo=timezone.utc)
         created_zones = [
-            (await create_test_zone(fixture, name=str(i), description=str(i)))
-            for i in range(0, zones_count - 1)
-        ][::-1]
-        return created_zones, zones_count
+            Zone(
+                id=1,
+                name="default",
+                description="",
+                created=ts,
+                updated=ts,
+            )
+        ]
+        created_zones.extend(
+            [
+                (
+                    await create_test_zone(
+                        fixture, name=str(i), description=str(i)
+                    )
+                )
+                for i in range(0, num_objects - 1)
+            ]
+        )
+        return created_zones
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Zone:

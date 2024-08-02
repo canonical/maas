@@ -25,21 +25,20 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Machine], int]:
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Machine]:
         bmc = await create_test_bmc(fixture)
         user = await create_test_user(fixture)
 
-        machine_count = 10
         created_machines = [
             (
                 await create_test_machine(
                     fixture, description=str(i), bmc=bmc, user=user
                 )
             )
-            for i in range(machine_count)
-        ][::-1]
-        return created_machines, machine_count
+            for i in range(num_objects)
+        ]
+        return created_machines
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Machine:

@@ -60,11 +60,10 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Event], int]:
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Event]:
 
         event_type = await create_test_event_type_entry(fixture)
-        event_count = 10
         created_events = [
             (
                 await create_test_event_entry(
@@ -75,9 +74,9 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
                     user_agent=str(i),
                 )
             )
-            for i in range(event_count)
-        ][::-1]
-        return created_events, event_count
+            for i in range(num_objects)
+        ]
+        return created_events
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Event:

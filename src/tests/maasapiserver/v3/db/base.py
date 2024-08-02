@@ -33,8 +33,8 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
     @pytest.fixture
     @abc.abstractmethod
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[Sequence[T], int]:
+        self, fixture: Fixture, num_objects: int
+    ) -> Sequence[T]:
         """Fixture used to setup the necessary environment for the `test_list` method.
 
         Returns:
@@ -51,16 +51,18 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
             T: a created object in the database ready to be retrieved.
         """
 
+    @pytest.mark.parametrize("num_objects", [10])
     @pytest.mark.parametrize("page_size", range(1, 12))
     async def test_list(
         self,
         page_size: int,
         repository_instance: BaseRepository,
-        _setup_test_list: tuple[Sequence[T], int],
+        _setup_test_list: Sequence[T],
+        num_objects: int,
     ):
-        created_objects, objects_count = _setup_test_list
+        created_objects = _setup_test_list
         repository = repository_instance
-        total_pages = math.ceil(objects_count / page_size)
+        total_pages = math.ceil(num_objects / page_size)
         current_token = None
         for page in range(1, total_pages + 1):
             objects_results = await repository.list(
@@ -68,16 +70,16 @@ class RepositoryCommonTests(abc.ABC, Generic[T]):
             )
 
             if page == total_pages:  # last page may have fewer elements
-                assert len(objects_results.items) == (
-                    page_size - ((total_pages * page_size) % objects_count)
+                elements_count = page_size - (
+                    (total_pages * page_size) % num_objects
                 )
+                assert len(objects_results.items) == elements_count
+                for _ in range(elements_count):
+                    assert created_objects.pop() in objects_results.items
             else:
                 assert len(objects_results.items) == page_size
-
-            for obj in created_objects[
-                ((page - 1) * page_size) : ((page * page_size))
-            ]:
-                assert obj in objects_results.items
+                for _ in range(page_size):
+                    assert created_objects.pop() in objects_results.items
             current_token = objects_results.next_token
 
     async def test_create(self):

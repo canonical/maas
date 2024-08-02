@@ -21,17 +21,16 @@ class TestVlansRepository(RepositoryCommonTests[Vlan]):
 
     @pytest.fixture
     async def _setup_test_list(
-        self, fixture: Fixture
-    ) -> tuple[list[Vlan], int]:
+        self, fixture: Fixture, num_objects: int
+    ) -> list[Vlan]:
         fabric = await create_test_fabric_entry(fixture)
-        vlans_count = 10
         created_vlans = [
             Vlan(
                 **(await create_test_vlan_entry(fixture, fabric_id=fabric.id))
             )
-            for i in range(vlans_count)
-        ][::-1]
-        return created_vlans, vlans_count
+            for _ in range(num_objects)
+        ]
+        return created_vlans
 
     @pytest.fixture
     async def _created_instance(self, fixture: Fixture) -> Vlan:
