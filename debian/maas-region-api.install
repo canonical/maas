@@ -22,3 +22,6 @@ usr/bin/maas-apiserver usr/sbin
 # Install Region Temporal Worker
 debian/tmp/usr/lib/python3*/dist-packages/maastemporalworker
 usr/bin/maas-temporal-worker usr/sbin
+
+# Install maasservicelayer
+debian/tmp/usr/lib/python3*/dist-packages/maasservicelayer
