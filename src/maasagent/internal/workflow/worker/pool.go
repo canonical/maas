@@ -170,6 +170,11 @@ func (p *WorkerPool) RemoveWorkers(group string) {
 	}
 }
 
+func (p *WorkerPool) RegisterActivityWithOptions(a interface{},
+	options activity.RegisterOptions) {
+	p.main.RegisterActivityWithOptions(a, options)
+}
+
 // WorkerPoolOption allows to set additional WorkerPool options
 type WorkerPoolOption func(*WorkerPool)
 

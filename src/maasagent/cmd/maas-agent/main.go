@@ -43,6 +43,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"maas.io/core/src/maasagent/internal/cache"
+	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
 	"maas.io/core/src/maasagent/internal/power"
 	wflog "maas.io/core/src/maasagent/internal/workflow/log"
@@ -318,11 +319,13 @@ func Run() int {
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
+	dhcpService := dhcp.NewDHCPService(cfg.SystemID)
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),
 		worker.WithConfigurator(powerService),
 		worker.WithConfigurator(httpProxyService),
+		worker.WithConfigurator(dhcpService),
 	)
 
 	workerPoolBackoff := backoff.NewExponentialBackOff()

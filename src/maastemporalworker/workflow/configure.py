@@ -153,6 +153,11 @@ class ConfigureAgentParam:
     system_id: str
 
 
+@dataclass
+class ConfigureDHCPServiceParam:
+    enabled: bool
+
+
 def _format_endpoint(ip: str) -> str:
     addr = IPAddress(ip)
     if addr.version == 4:
@@ -184,6 +189,15 @@ class ConfigureAgentWorkflow:
             "configure-httpproxy-service",
             param.system_id,
             id=f"configure-httpproxy-service:{param.system_id}",
+            task_queue=f"{param.system_id}@agent:main",
+            retry_policy=RetryPolicy(maximum_attempts=1),
+        )
+
+        # TODO:fetch configuration before executing workflow
+        await workflow.execute_child_workflow(
+            "configure-dhcp-service",
+            ConfigureDHCPServiceParam(enabled=True),
+            id=f"configure-dhcp-service:{param.system_id}",
             task_queue=f"{param.system_id}@agent:main",
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
