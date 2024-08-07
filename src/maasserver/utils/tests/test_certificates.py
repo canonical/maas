@@ -115,7 +115,7 @@ class TestGetSLLCertificate(MAASServerTestCase):
         (cert, _) = get_ssl_certificate("https://launchpad.net")
         self.assertEqual("launchpad.net", cert.get_subject().CN)
         self.assertEqual(
-            "R3",
+            "R10",
             cert.get_issuer().CN,
         )
         self.assertEqual("Let's Encrypt", cert.get_issuer().O)
