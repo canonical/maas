@@ -1,103 +1,139 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+
+from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qs, urlparse
 
 from httpx import AsyncClient
+import pytest
 
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.models.responses.events import EventsListResponse
-from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.models.events import Event
-from tests.fixtures.factories.events import (
-    create_test_event_entry,
-    create_test_event_type_entry,
+from maasapiserver.v3.models.base import ListResult
+from maasapiserver.v3.models.events import (
+    EndpointChoicesEnum,
+    Event,
+    EventType,
+    LoggingLevelEnum,
 )
-from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import (
-    ApiCommonTests,
-    EndpointDetails,
-    PaginatedEndpointTestConfig,
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasapiserver.v3.services.events import EventsService
+from tests.maasapiserver.v3.api.base import ApiCommonTests, Endpoint
+
+TEST_EVENT_TYPE = EventType(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    name="TYPE_TEST",
+    description="A test type",
+    level=LoggingLevelEnum.AUDIT.value,
+)
+
+TEST_EVENT = Event(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    type=TEST_EVENT_TYPE,
+    node_system_id="1",
+    node_hostname="",
+    user_id=None,
+    owner="",
+    ip_address=None,
+    endpoint=EndpointChoicesEnum.API.value,
+    user_agent="",
+    description="",
+    action="test",
+)
+
+TEST_EVENT_2 = Event(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    type=TEST_EVENT_TYPE,
+    node_system_id="2",
+    node_hostname="",
+    user_id=None,
+    owner="",
+    ip_address=None,
+    endpoint=EndpointChoicesEnum.API.value,
+    user_agent="",
+    description="",
+    action="test",
 )
 
 
 class TestEventsApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        async def create_pagination_test_resources(
-            fixture: Fixture, size: int
-        ) -> list[Event]:
-            event_type = await create_test_event_type_entry(fixture)
-            created_events = [
-                (
-                    await create_test_event_entry(
-                        fixture,
-                        event_type=event_type,
-                        description=str(i),
-                        node_hostname=str(i),
-                        user_agent=str(i),
-                    )
-                )
-                for i in range(size)
-            ]
-            return created_events
+    BASE_PATH = f"{V3_API_PREFIX}/events"
 
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
         return [
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/events",
-                user_role=UserRole.USER,
-                pagination_config=PaginatedEndpointTestConfig[
-                    Event, EventsListResponse
-                ](
-                    response_type=EventsListResponse,
-                    create_resources_routine=create_pagination_test_resources,
-                ),
-            ),
+            Endpoint(method="GET", path=self.BASE_PATH),
         ]
 
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
     async def test_list_filters(
-        self, fixture: Fixture, authenticated_user_api_client_v3: AsyncClient
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        event_type = await create_test_event_type_entry(fixture)
-        for i in range(3):
-            await create_test_event_entry(
-                fixture, event_type=event_type, node_system_id=str(i)
-            )
 
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/events?system_id=0"
+        services_mock.events = Mock(EventsService)
+        services_mock.events.list = AsyncMock(
+            side_effect=[
+                ListResult[Event](items=[TEST_EVENT], next_token=None),
+                ListResult[Event](items=[TEST_EVENT_2], next_token=None),
+                ListResult[Event](
+                    items=[TEST_EVENT_2, TEST_EVENT], next_token=None
+                ),
+                ListResult[Event](
+                    items=[TEST_EVENT_2], next_token=str(TEST_EVENT.id)
+                ),
+            ]
+        )
+
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
         assert len(events_response.items) == 1
-        assert events_response.items[0].node_system_id == "0"
+        assert (
+            events_response.items[0].node_system_id
+            == TEST_EVENT.node_system_id
+        )
 
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/events?system_id=1"
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?system_id={TEST_EVENT_2.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
         assert len(events_response.items) == 1
-        assert events_response.items[0].node_system_id == "1"
+        assert (
+            events_response.items[0].node_system_id
+            == TEST_EVENT_2.node_system_id
+        )
 
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/events?system_id=0&system_id=2"
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}&system_id={TEST_EVENT_2.node_system_id}"
         )
         events_response = EventsListResponse(**response.json())
         assert len(events_response.items) == 2
         assert set(map(lambda x: x.node_system_id, events_response.items)) == {
-            "0",
-            "2",
+            TEST_EVENT.node_system_id,
+            TEST_EVENT_2.node_system_id,
         }
 
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/events?system_id=3"
-        )
-        events_response = EventsListResponse(**response.json())
-        assert len(events_response.items) == 0
-
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/events?system_id=0&system_id=1&size=1"
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}?system_id={TEST_EVENT.node_system_id}&system_id={TEST_EVENT_2.node_system_id}&size=1"
         )
         events_response = EventsListResponse(**response.json())
         assert len(events_response.items) == 1
         next_link_params = parse_qs(urlparse(events_response.next).query)
-        assert set(next_link_params["system_id"]) == {"0", "1"}
+        assert set(next_link_params["system_id"]) == {
+            TEST_EVENT.node_system_id,
+            TEST_EVENT_2.node_system_id,
+        }
         assert next_link_params["size"][0] == "1"

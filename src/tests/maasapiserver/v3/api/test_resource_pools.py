@@ -1,10 +1,21 @@
-from datetime import datetime, timezone
+from datetime import timezone
+from unittest.mock import AsyncMock, Mock
 
 from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.common.models.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
+from maasapiserver.common.models.exceptions import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.requests.resource_pools import (
     ResourcePoolRequest,
     ResourcePoolUpdateRequest,
@@ -13,132 +24,163 @@ from maasapiserver.v3.api.models.responses.resource_pools import (
     ResourcePoolResponse,
     ResourcePoolsListResponse,
 )
-from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.resource_pools import ResourcePool
-from tests.fixtures.factories.resource_pools import (
-    create_n_test_resource_pools,
-    create_test_resource_pool,
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasapiserver.v3.services.resource_pools import ResourcePoolsService
+from tests.maasapiserver.v3.api.base import ApiCommonTests, Endpoint
+
+TEST_RESOURCE_POOL = ResourcePool(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    name="test_resource_pool",
+    description="test_description",
 )
-from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import (
-    ApiCommonTests,
-    EndpointDetails,
-    PaginatedEndpointTestConfig,
+TEST_RESOURCE_POOL_2 = ResourcePool(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    name="test_resource_pool_2",
+    description="test_description_2",
 )
 
 
 class TestResourcePoolApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        async def create_pagination_test_resources(
-            fixture: Fixture, size: int
-        ) -> list[ResourcePool]:
-            # The default resource pool is created by the migrations
-            # and it has the following timestamp hardcoded in the test sql dump,
-            # see src/maasserver/testing/inital.maas_test.sql:12611
-            ts = datetime(
-                2021, 11, 19, 12, 40, 56, 904770, tzinfo=timezone.utc
-            )
-            created_resource_pools = [
-                ResourcePool(
-                    id=0,
-                    name="default",
-                    description="Default pool",
-                    created=ts,
-                    updated=ts,
-                )
-            ]
-            if size > 1:
-                created_resource_pools.extend(
-                    await create_n_test_resource_pools(fixture, size - 1)
-                )
-            return created_resource_pools
+    BASE_PATH = f"{V3_API_PREFIX}/resource_pools"
 
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
         return [
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/resource_pools",
-                user_role=UserRole.USER,
-                pagination_config=PaginatedEndpointTestConfig[
-                    ResourcePool, ResourcePoolsListResponse
-                ](
-                    response_type=ResourcePoolsListResponse,
-                    create_resources_routine=create_pagination_test_resources,
-                ),
-            ),
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/resource_pools/1",
-                user_role=UserRole.USER,
-            ),
-            EndpointDetails(
-                method="POST",
-                path=f"{V3_API_PREFIX}/resource_pools",
-                user_role=UserRole.ADMIN,
-            ),
-            EndpointDetails(
-                method="PUT",
-                path=f"{V3_API_PREFIX}/resource_pools/1",
-                user_role=UserRole.ADMIN,
-            ),
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
 
-    async def test_get(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return [
+            Endpoint(method="POST", path=self.BASE_PATH),
+            Endpoint(method="PUT", path=f"{self.BASE_PATH}/1"),
+        ]
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        created_resource_pools = await create_test_resource_pool(fixture)
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/resource_pools/{created_resource_pools.id}"
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.list = AsyncMock(
+            return_value=ListResult[ResourcePool](
+                items=[TEST_RESOURCE_POOL], next_token=None
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        resource_pools_response = ResourcePoolsListResponse(**response.json())
+        assert len(resource_pools_response.items) == 1
+        assert resource_pools_response.next is None
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.list = AsyncMock(
+            return_value=ListResult[ResourcePool](
+                items=[TEST_RESOURCE_POOL_2],
+                next_token=str(TEST_RESOURCE_POOL.id),
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        resource_pools_response = ResourcePoolsListResponse(**response.json())
+        assert len(resource_pools_response.items) == 1
+        assert (
+            resource_pools_response.next
+            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_RESOURCE_POOL.id), size='1')}"
+        )
+
+    async def test_get_200(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.get_by_id = AsyncMock(
+            return_value=(TEST_RESOURCE_POOL)
+        )
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
             "kind": "ResourcePool",
-            "id": created_resource_pools.id,
-            "name": created_resource_pools.name,
-            "description": created_resource_pools.description,
-            "created": created_resource_pools.created.isoformat(),
-            "updated": created_resource_pools.updated.isoformat(),
+            "id": TEST_RESOURCE_POOL.id,
+            "name": TEST_RESOURCE_POOL.name,
+            "description": TEST_RESOURCE_POOL.description,
+            "created": TEST_RESOURCE_POOL.created.isoformat(),
+            "updated": TEST_RESOURCE_POOL.updated.isoformat(),
             "_embedded": None,
             "_links": {
-                "self": {
-                    "href": f"{V3_API_PREFIX}/resource_pools/{created_resource_pools.id}"
-                }
+                "self": {"href": f"{self.BASE_PATH}/{TEST_RESOURCE_POOL.id}"}
             },
         }
 
-    @pytest.mark.parametrize("id,error", [("100", 404), ("xyz", 422)])
-    async def test_get_invalid(
+    async def test_get_404(
         self,
-        authenticated_user_api_client_v3: AsyncClient,
-        id: str,
-        error: int,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/resource_pools/{id}"
-        )
-        assert response.status_code == error
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.get_by_id = AsyncMock(return_value=None)
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
+        assert response.status_code == 404
         assert "ETag" not in response.headers
 
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
-        assert error_response.code == error
+        assert error_response.code == 404
 
-    async def test_create(
+    async def test_get_422(
         self,
-        authenticated_admin_api_client_v3: AsyncClient,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.get_by_id = AsyncMock(
+            side_effect=(RequestValidationError(errors=[]))
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
+        assert response.status_code == 422
+        assert "ETag" not in response.headers
+
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 422
+
+    async def test_post_201(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
     ) -> None:
         resource_pool_request = ResourcePoolRequest(
-            name="new_resource pool", description="new_pool_description"
+            name=TEST_RESOURCE_POOL.name,
+            description=TEST_RESOURCE_POOL.description,
         )
-        response = await authenticated_admin_api_client_v3.post(
-            f"{V3_API_PREFIX}/resource_pools",
-            json=jsonable_encoder(resource_pool_request),
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.create = AsyncMock(
+            return_value=TEST_RESOURCE_POOL
+        )
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
         )
         assert response.status_code == 201
         assert len(response.headers["ETag"]) > 0
         resource_pools_response = ResourcePoolResponse(**response.json())
-        assert resource_pools_response.id > 1
+        assert resource_pools_response.id == TEST_RESOURCE_POOL.id
         assert resource_pools_response.name == resource_pool_request.name
         assert (
             resource_pools_response.description
@@ -146,51 +188,61 @@ class TestResourcePoolApi(ApiCommonTests):
         )
         assert (
             resource_pools_response.hal_links.self.href
-            == f"{V3_API_PREFIX}/resource_pools/{resource_pools_response.id}"
+            == f"{self.BASE_PATH}/{resource_pools_response.id}"
         )
 
     @pytest.mark.parametrize(
-        "error_code,request_data",
+        "resource_pool_request",
         [
-            (422, {"name": None}),
-            (422, {"description": None}),
-            (422, {"name": "", "description": "test"}),
-            (422, {"name": "-my_pool", "description": "test"}),
-            (422, {"name": "my$pool", "description": "test"}),
+            {"name": None},
+            {"description": None},
+            {"name": "", "description": "test"},
+            {"name": "-my_pool", "description": "test"},
+            {"name": "my$pool", "description": "test"},
         ],
     )
-    async def test_create_invalid(
+    async def test_post_422(
         self,
-        authenticated_admin_api_client_v3: AsyncClient,
-        error_code: int,
-        request_data: dict[str, str],
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        resource_pool_request: dict[str, str],
     ) -> None:
-        response = await authenticated_admin_api_client_v3.post(
-            f"{V3_API_PREFIX}/resource_pools", json=request_data
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.create = AsyncMock(
+            side_effect=ValueError("Invalid entity name.")
         )
-        assert response.status_code == error_code
+        response = await mocked_api_client_admin.post(
+            self.BASE_PATH, json=resource_pool_request
+        )
+        assert response.status_code == 422
 
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
-        assert error_response.code == error_code
+        assert error_response.code == 422
 
-    async def test_put(
+    async def test_put_200(
         self,
-        authenticated_admin_api_client_v3: AsyncClient,
-        fixture: Fixture,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
     ) -> None:
-        resource_pool = await create_test_resource_pool(fixture=fixture)
+        updated_rp = TEST_RESOURCE_POOL
+        updated_rp.name = "newname"
+        updated_rp.description = "new description"
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.update = AsyncMock(
+            return_value=updated_rp
+        )
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
-        response = await authenticated_admin_api_client_v3.put(
-            f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/{str(TEST_RESOURCE_POOL.id)}",
             json=jsonable_encoder(update_resource_pool_request),
         )
         assert response.status_code == 200
 
         update_resource_pool = ResourcePoolResponse(**response.json())
-        assert update_resource_pool.id == resource_pool.id
+        assert update_resource_pool.id == TEST_RESOURCE_POOL.id
         assert update_resource_pool.name == update_resource_pool_request.name
         assert (
             update_resource_pool.description
@@ -198,72 +250,61 @@ class TestResourcePoolApi(ApiCommonTests):
         )
         assert update_resource_pool.created.astimezone(
             timezone.utc
-        ) == resource_pool.created.astimezone(timezone.utc)
+        ) == TEST_RESOURCE_POOL.created.astimezone(timezone.utc)
         assert update_resource_pool.updated.astimezone(
             timezone.utc
-        ) >= resource_pool.updated.astimezone(timezone.utc)
+        ) >= TEST_RESOURCE_POOL.updated.astimezone(timezone.utc)
 
-        update_resource_pool_request2 = ResourcePoolUpdateRequest(
-            name=update_resource_pool_request.name,
-            description="new description",
-        )
-        response = await authenticated_admin_api_client_v3.put(
-            f"{V3_API_PREFIX}/resource_pools/{resource_pool.id}",
-            json=jsonable_encoder(
-                update_resource_pool_request2, exclude_none=True
-            ),
-        )
-        assert response.status_code == 200
-
-        update_resource_pool2 = ResourcePoolResponse(**response.json())
-        assert update_resource_pool2.id == resource_pool.id
-        assert update_resource_pool2.name == update_resource_pool_request.name
-        assert (
-            update_resource_pool2.description
-            == update_resource_pool_request2.description
-        )
-        assert update_resource_pool2.created.astimezone(
-            timezone.utc
-        ) == update_resource_pool.created.astimezone(timezone.utc)
-        assert update_resource_pool2.updated.astimezone(
-            timezone.utc
-        ) >= update_resource_pool.updated.astimezone(timezone.utc)
-
-    async def test_put_unexisting(
+    async def test_put_404(
         self,
-        authenticated_admin_api_client_v3: AsyncClient,
-        fixture: Fixture,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
     ) -> None:
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.update = AsyncMock(
+            side_effect=NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message="Resource pool with id 1000 does not exist.",
+                    )
+                ]
+            )
+        )
         update_resource_pool_request = ResourcePoolUpdateRequest(
             name="newname", description="new description"
         )
-        response = await authenticated_admin_api_client_v3.put(
-            f"{V3_API_PREFIX}/resource_pools/1000",
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1000",
             json=jsonable_encoder(update_resource_pool_request),
         )
+
         assert response.status_code == 404
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.code == 404
 
     @pytest.mark.parametrize(
-        "error_code,request_data",
+        "resource_pool_request",
         [
-            (422, {"name": None}),
-            (422, {"description": None}),
-            (422, {"name": "", "description": "test"}),
-            (422, {"name": None, "description": "test"}),
-            (422, {"name": "-my_pool", "description": "test"}),
-            (422, {"name": "my$pool", "description": "test"}),
+            {"name": None},
+            {"description": None},
+            {"name": "", "description": "test"},
+            {"name": None, "description": "test"},
+            {"name": "-my_pool", "description": "test"},
+            {"name": "my$pool", "description": "test"},
         ],
     )
-    async def test_put_invalid(
+    async def test_put_422(
         self,
-        authenticated_admin_api_client_v3: AsyncClient,
-        fixture: Fixture,
-        error_code: int,
-        request_data: dict[str, str],
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+        resource_pool_request: dict[str, str],
     ) -> None:
-        response = await authenticated_admin_api_client_v3.put(
-            f"{V3_API_PREFIX}/resource_pools/0", json=request_data
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.update = AsyncMock(
+            side_effect=(RequestValidationError(errors=[]))
         )
-        assert response.status_code == error_code
+        response = await mocked_api_client_admin.put(
+            f"{self.BASE_PATH}/1", json=resource_pool_request
+        )
+        assert response.status_code == 422

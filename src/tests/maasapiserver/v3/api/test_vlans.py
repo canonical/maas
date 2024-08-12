@@ -1,103 +1,149 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from unittest.mock import AsyncMock, Mock
+
+from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
+import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.responses.vlans import VlansListResponse
-from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.vlans import Vlan
-from tests.fixtures.factories.fabric import create_test_fabric_entry
-from tests.fixtures.factories.vlan import create_test_vlan_entry
-from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import (
-    ApiCommonTests,
-    EndpointDetails,
-    PaginatedEndpointTestConfig,
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasapiserver.v3.services.vlans import VlansService
+from tests.maasapiserver.v3.api.base import ApiCommonTests, Endpoint
+
+TEST_VLAN = Vlan(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    vid=1,
+    name="test_vlan",
+    description="test_description",
+    mtu=1500,
+    dhcp_on=False,
+    external_dhcp=None,
+    primary_rack_id=None,
+    secondary_rack_id=None,
+    relay_vlan=None,
+    fabric_id=1,
+    space_id=None,
+)
+
+TEST_VLAN_2 = Vlan(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    vid=2,
+    name="test_vlan_2",
+    description="test_description_2",
+    mtu=1500,
+    dhcp_on=False,
+    external_dhcp=None,
+    primary_rack_id=None,
+    secondary_rack_id=None,
+    relay_vlan=None,
+    fabric_id=2,
+    space_id=None,
 )
 
 
 class TestVlanApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> list[EndpointDetails]:
+    BASE_PATH = f"{V3_API_PREFIX}/vlans"
 
-        async def create_pagination_test_resources(
-            fixture: Fixture, size: int
-        ) -> list[Vlan]:
-            fabric = await create_test_fabric_entry(fixture)
-            created_vlans = [
-                Vlan(
-                    **(
-                        await create_test_vlan_entry(
-                            fixture, fabric_id=fabric.id
-                        )
-                    )
-                )
-                for i in range(size)
-            ]
-            return created_vlans
-
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
         return [
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/vlans",
-                user_role=UserRole.USER,
-                pagination_config=PaginatedEndpointTestConfig[
-                    Vlan, VlansListResponse
-                ](
-                    response_type=VlansListResponse,
-                    create_resources_routine=create_pagination_test_resources,
-                ),
-            ),
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/vlans/1",
-                user_role=UserRole.USER,
-            ),
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.list = AsyncMock(
+            return_value=ListResult[Vlan](items=[TEST_VLAN], next_token=None)
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        vlans_response = VlansListResponse(**response.json())
+        assert len(vlans_response.items) == 1
+        assert vlans_response.next is None
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.list = AsyncMock(
+            return_value=ListResult[Vlan](
+                items=[TEST_VLAN_2], next_token=str(TEST_VLAN.id)
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        vlans_response = VlansListResponse(**response.json())
+        assert len(vlans_response.items) == 1
+        assert (
+            vlans_response.next
+            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_VLAN.id), size='1')}"
+        )
 
     # GET /vlans/{vlan_id}
     async def test_get_200(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        fabric = await create_test_fabric_entry(fixture)
-        created_vlan = Vlan(
-            **(await create_test_vlan_entry(fixture, fabric_id=fabric.id))
-        )
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/vlans/{created_vlan.id}"
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id = AsyncMock(return_value=TEST_VLAN)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_VLAN.id}"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
             "kind": "Vlan",
-            "id": created_vlan.id,
-            "vid": created_vlan.vid,
-            "name": created_vlan.name,
-            "description": created_vlan.description,
-            "mtu": created_vlan.mtu,
-            "dhcp_on": created_vlan.dhcp_on,
-            "external_dhcp": created_vlan.external_dhcp,
-            "primary_rack": created_vlan.primary_rack_id,
-            "secondary_rack": created_vlan.secondary_rack_id,
-            "relay_vlan": created_vlan.relay_vlan,
+            "id": TEST_VLAN.id,
+            "vid": TEST_VLAN.vid,
+            "name": TEST_VLAN.name,
+            "description": TEST_VLAN.description,
+            "mtu": TEST_VLAN.mtu,
+            "dhcp_on": TEST_VLAN.dhcp_on,
+            "external_dhcp": TEST_VLAN.external_dhcp,
+            "primary_rack": TEST_VLAN.primary_rack_id,
+            "secondary_rack": TEST_VLAN.secondary_rack_id,
+            "relay_vlan": TEST_VLAN.relay_vlan,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "fabric": {
-                "href": f"{V3_API_PREFIX}/fabrics/{created_vlan.fabric_id}"
+                "href": f"{V3_API_PREFIX}/fabrics/{TEST_VLAN.fabric_id}"
             },
             "space": None,
-            "_links": {
-                "self": {"href": f"{V3_API_PREFIX}/vlans/{created_vlan.id}"}
-            },
+            "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_VLAN.id}"}},
         }
 
     async def test_get_404(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/vlans/100"
-        )
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id = AsyncMock(return_value=None)
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -106,11 +152,15 @@ class TestVlanApi(ApiCommonTests):
         assert error_response.code == 404
 
     async def test_get_422(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/vlans/xyz"
+        services_mock.vlans = Mock(VlansService)
+        services_mock.vlans.get_by_id = AsyncMock(
+            side_effect=RequestValidationError(errors=[])
         )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 

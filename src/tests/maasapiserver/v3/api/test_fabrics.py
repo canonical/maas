@@ -1,92 +1,127 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from unittest.mock import AsyncMock, Mock
+
+from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
+import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.responses.fabrics import FabricsListResponse
-from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.fabrics import Fabric
-from tests.fixtures.factories.fabric import create_test_fabric_entry
-from tests.maasapiserver.fixtures.db import Fixture
-from tests.maasapiserver.v3.api.base import (
-    ApiCommonTests,
-    EndpointDetails,
-    PaginatedEndpointTestConfig,
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasapiserver.v3.services.fabrics import FabricsService
+from tests.maasapiserver.v3.api.base import ApiCommonTests, Endpoint
+
+TEST_FABRIC = Fabric(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    name="test_fabric",
+    description="test_description",
+    class_type=None,
+)
+TEST_FABRIC_2 = Fabric(
+    id=2,
+    created=utcnow(),
+    updated=utcnow(),
+    name="test_fabric_2",
+    description="test_description_2",
+    class_type=None,
 )
 
 
 class TestFabricsApi(ApiCommonTests):
-    def get_endpoints_configuration(self) -> list[EndpointDetails]:
-        async def create_pagination_test_resources(
-            fixture: Fixture, size: int
-        ) -> list[Fabric]:
-            created_fabrics = []
-            for i in range(size):
-                created_fabrics.append(
-                    await create_test_fabric_entry(
-                        fixture,
-                        name=str(i),
-                        description=str(i),
-                        class_type=str(i),
-                    )
-                )
-            return created_fabrics
+    BASE_PATH = f"{V3_API_PREFIX}/fabrics"
 
+    @pytest.fixture
+    def user_endpoints(self) -> list[Endpoint]:
         return [
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/fabrics",
-                user_role=UserRole.USER,
-                pagination_config=PaginatedEndpointTestConfig[
-                    Fabric, FabricsListResponse
-                ](
-                    response_type=FabricsListResponse,
-                    create_resources_routine=create_pagination_test_resources,
-                ),
-            ),
-            EndpointDetails(
-                method="GET",
-                path=f"{V3_API_PREFIX}/fabrics/1",
-                user_role=UserRole.USER,
-            ),
+            Endpoint(method="GET", path=self.BASE_PATH),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1"),
         ]
+
+    @pytest.fixture
+    def admin_endpoints(self) -> list[Endpoint]:
+        return []
+
+    async def test_list_no_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.list = AsyncMock(
+            return_value=ListResult[Fabric](
+                items=[TEST_FABRIC], next_token=None
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        fabrics_response = FabricsListResponse(**response.json())
+        assert len(fabrics_response.items) == 1
+        assert fabrics_response.next is None
+
+    async def test_list_other_page(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.list = AsyncMock(
+            return_value=ListResult[Fabric](
+                items=[TEST_FABRIC_2], next_token=str(TEST_FABRIC.id)
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        assert response.status_code == 200
+        fabrics_response = FabricsListResponse(**response.json())
+        assert len(fabrics_response.items) == 1
+        assert (
+            fabrics_response.next
+            == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_FABRIC.id), size='1')}"
+        )
 
     # GET /fabric/{ID}
     async def test_get_200(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        created_fabric = await create_test_fabric_entry(fixture)
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/fabrics/{created_fabric.id}"
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.get_by_id = AsyncMock(return_value=TEST_FABRIC)
+        response = await mocked_api_client_user.get(
+            f"{self.BASE_PATH}/{TEST_FABRIC.id}"
         )
         assert response.status_code == 200
         assert len(response.headers["ETag"]) > 0
         assert response.json() == {
             "kind": "Fabric",
-            "id": created_fabric.id,
-            "name": created_fabric.name,
-            "description": created_fabric.description,
-            "class_type": created_fabric.class_type,
+            "id": TEST_FABRIC.id,
+            "name": TEST_FABRIC.name,
+            "description": TEST_FABRIC.description,
+            "class_type": TEST_FABRIC.class_type,
             # TODO: FastAPI response_model_exclude_none not working. We need to fix this before making the api public
             "_embedded": None,
             "vlans": {
-                "href": f"{V3_API_PREFIX}/vlans?filter=fabric_id eq {created_fabric.id}"
+                "href": f"{V3_API_PREFIX}/vlans?filter=fabric_id eq {TEST_FABRIC.id}"
             },
-            "_links": {
-                "self": {
-                    "href": f"{V3_API_PREFIX}/fabrics/{created_fabric.id}"
-                }
-            },
+            "_links": {"self": {"href": f"{self.BASE_PATH}/{TEST_FABRIC.id}"}},
         }
 
     async def test_get_404(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/fabrics/100"
-        )
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.get_by_id = AsyncMock(return_value=None)
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/100")
         assert response.status_code == 404
         assert "ETag" not in response.headers
 
@@ -95,11 +130,15 @@ class TestFabricsApi(ApiCommonTests):
         assert error_response.code == 404
 
     async def test_get_422(
-        self, authenticated_user_api_client_v3: AsyncClient, fixture: Fixture
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
     ) -> None:
-        response = await authenticated_user_api_client_v3.get(
-            f"{V3_API_PREFIX}/fabrics/xyz"
+        services_mock.fabrics = Mock(FabricsService)
+        services_mock.fabrics.get_by_id = AsyncMock(
+            side_effect=RequestValidationError(errors=[])
         )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}/xyz")
         assert response.status_code == 422
         assert "ETag" not in response.headers
 

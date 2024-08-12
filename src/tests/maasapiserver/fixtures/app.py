@@ -1,22 +1,176 @@
 from datetime import datetime, timedelta
-from typing import AsyncIterator, Iterator
+from typing import AsyncIterator, Awaitable, Callable, Iterator
+from unittest.mock import AsyncMock, Mock
 
 from aioresponses import aioresponses
 from django.core import signing
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
+from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient, Headers
 from macaroonbakery import bakery
 import pytest
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
+from maasapiserver.common.middlewares.exceptions import (
+    ExceptionHandlers,
+    ExceptionMiddleware,
+)
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
-from maasapiserver.v2.models.entities.user import User
+from maasapiserver.v3.api.handlers import APIv3
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
+from maasapiserver.v3.auth.base import AuthenticatedUser
+from maasapiserver.v3.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
+from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.models.users import User
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasservicelayer.db import Database
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
+
+RBAC_URL = "http://rbac.example.com"
+
+
+def create_app_with_mocks(
+    mocked_services: ServiceCollectionV3,
+    roles: set[UserRole] | None = None,
+    external_auth: bool = False,
+):
+    class InjectServicesMocks(BaseHTTPMiddleware):
+        async def dispatch(
+            self,
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]],
+        ) -> Response:
+            request.state.services = mocked_services
+            request.state.services.external_auth = Mock(ExternalAuthService)
+            request.state.services.external_auth.get_external_auth = (
+                AsyncMock()
+            )
+            if external_auth:
+                request.state.services.external_auth.get_external_auth.return_value = ExternalAuthConfig(
+                    type=ExternalAuthType.RBAC,
+                    url=RBAC_URL,
+                    domain="",
+                    admin_group="",
+                )
+            else:
+                request.state.services.external_auth.get_external_auth.return_value = (
+                    None
+                )
+            return await call_next(request)
+
+    class InjectUserInRequest(BaseHTTPMiddleware):
+        async def dispatch(
+            self,
+            request: Request,
+            call_next: Callable[[Request], Awaitable[Response]],
+        ) -> Response:
+            if roles:
+                request.state.authenticated_user = AuthenticatedUser(
+                    username="username", roles=roles
+                )
+            else:
+                request.state.authenticated_user = None
+            return await call_next(request)
+
+    app = FastAPI(
+        title="MAASAPIServer",
+        name="maasapiserver",
+    )
+    api = APIv3
+
+    app.add_middleware(InjectUserInRequest)
+    app.add_middleware(InjectServicesMocks)
+    app.add_middleware(ExceptionMiddleware)
+    app.add_exception_handler(
+        RequestValidationError, ExceptionHandlers.validation_exception_handler
+    )
+    api.register(app.router)
+    return app
+
+
+@pytest.fixture
+def services_mock():
+    yield Mock(ServiceCollectionV3)
+
+
+@pytest.fixture
+def app_with_mocked_services(services_mock: ServiceCollectionV3):
+    yield create_app_with_mocks(services_mock)
+
+
+@pytest.fixture
+def app_with_mocked_services_admin(services_mock: ServiceCollectionV3):
+    yield create_app_with_mocks(services_mock, {UserRole.USER, UserRole.ADMIN})
+
+
+@pytest.fixture
+def app_with_mocked_services_user(services_mock: ServiceCollectionV3):
+    yield create_app_with_mocks(services_mock, {UserRole.USER})
+
+
+@pytest.fixture
+def app_with_mocked_services_rbac(services_mock: ServiceCollectionV3):
+    yield create_app_with_mocks(services_mock, external_auth=True)
+
+
+@pytest.fixture
+async def mocked_api_client(
+    app_with_mocked_services: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services, base_url="http://test"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_user(
+    app_with_mocked_services_user: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services_user, base_url="http://test"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_admin(
+    app_with_mocked_services_admin: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services_admin, base_url="http://test"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_session_id(
+    app_with_mocked_services_user: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services_user, base_url="http://test"
+    ) as client:
+        client.cookies.set("sessionid", "fakesessionid")
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_rbac(
+    app_with_mocked_services_rbac: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services_rbac, base_url="http://test"
+    ) as client:
+        yield client
 
 
 @pytest.fixture
