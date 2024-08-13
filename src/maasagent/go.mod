@@ -3,12 +3,14 @@ module maas.io/core/src/maasagent
 go 1.21
 
 require (
+	github.com/canonical/pebble v1.10.2
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/google/gopacket v1.1.19
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/packetcap/go-pcap v0.0.0-20230509084824-080a85fb093e
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.29.1
+	github.com/snapcore/snapd v0.0.0-20240809001815-e5ab8c2c8bae
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel v1.28.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.50.0
@@ -34,6 +36,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -58,4 +61,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
 	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
+	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
