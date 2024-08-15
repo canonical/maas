@@ -23,19 +23,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLeaseHeap(t *testing.T) {
-	table := []struct {
-		Name string
-		Push []Notification
-		Pop  []Notification
+func TestNotificationQueue(t *testing.T) {
+	testcases := map[string]struct {
+		in  []*Notification
+		out []*Notification
 	}{
-		{
-			Name: "receive_notifications_out_of_order",
-			Push: []Notification{
+		"receive notifications out of order": {
+			in: []*Notification{
 				{
-					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
-					IP:        net.ParseIP("10.0.0.1"),
-					Timestamp: 3, // Reporting leases in the order they were created is important, so here we test receiving them out of order
+					MAC: net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x01},
+					IP:  net.ParseIP("10.0.0.1"),
+					// Reporting leases in the order they were created is important,
+					// so here we test receiving them out of order
+					Timestamp: 3,
 				},
 				{
 					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x02},
@@ -53,7 +53,7 @@ func TestLeaseHeap(t *testing.T) {
 					Timestamp: 0,
 				},
 			},
-			Pop: []Notification{
+			out: []*Notification{
 				{
 					MAC:       net.HardwareAddr{0x01, 0x01, 0x01, 0x01, 0x01, 0x04},
 					IP:        net.ParseIP("10.0.0.4"),
@@ -78,22 +78,24 @@ func TestLeaseHeap(t *testing.T) {
 		},
 	}
 
-	for _, tcase := range table {
-		t.Run(tcase.Name, func(tt *testing.T) {
-			lh := NewLeaseHeap()
+	for name, tc := range testcases {
+		tc := tc
 
-			for _, p := range tcase.Push {
-				heap.Push(lh, p)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			queue := NewNotificationQueue()
+
+			for _, x := range tc.in {
+				heap.Push(queue, x)
 			}
 
-			for _, p := range tcase.Pop {
-				result := heap.Pop(lh)
+			for _, p := range tc.out {
+				res := heap.Pop(queue)
 
-				notification, ok := result.(Notification)
+				notification, _ := res.(*Notification)
 
-				assert.True(tt, ok, "expected popped result to be a Notification")
-
-				assert.Equal(tt, notification, p)
+				assert.Equal(t, notification, p)
 			}
 		})
 	}
