@@ -20,7 +20,7 @@ async def create_test_machine(
         owner_id=user.id,
         osystem="ubuntu",
         distro_series="jammy",
-        archtecture="amd64",
+        architecture="amd64",
         hwe_kernel="hwe-22.04",
         **extra_details,
     )
