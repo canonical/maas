@@ -3,14 +3,15 @@ from typing import Any
 
 from django.core import signing
 
-from maasapiserver.v3.models.users import User
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.models.users import User, UserProfile
 from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_user(
     fixture: Fixture, **extra_details: dict[str, Any]
 ) -> User:
-    date_joined = datetime.utcnow().astimezone()
+    date_joined = utcnow()
 
     user = {
         "username": "myusername",
@@ -35,7 +36,7 @@ async def create_test_session(
     fixture: Fixture,
     user_id: int,
     session_id: str = "a-b-c",
-    expire_date: datetime = datetime.utcnow() + timedelta(days=1),
+    expire_date: datetime = utcnow() + timedelta(days=1),
 ) -> None:
     signer = signing.TimestampSigner(
         "<UNUSED>",
@@ -56,3 +57,20 @@ async def create_test_session(
             "session_data": session_data,
         },
     )
+
+
+async def create_test_user_profile(
+    fixture: Fixture, user_id: int, **extra_details: dict[str, Any]
+) -> UserProfile:
+    user_profile = {
+        "completed_intro": True,
+        "auth_last_check": None,
+        "is_local": False,
+        "user_id": user_id,
+    }
+
+    user_profile.update(extra_details)
+    [created_profile] = await fixture.create(
+        "maasserver_userprofile", [user_profile]
+    )
+    return UserProfile(**created_profile)

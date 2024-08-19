@@ -650,6 +650,15 @@ UserTable = Table(
     Column("date_joined", DateTime(timezone=True), nullable=False),
 )
 
+UserProfileTable = Table(
+    "maasserver_userprofile",
+    METADATA,
+    Column("id", Integer, primary_key=True, unique=True),
+    Column("completed_intro", Boolean, nullable=False),
+    Column("auth_last_check", DateTime(timezone=True), nullable=True),
+    Column("is_local", Boolean, nullable=False),
+    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=False),
+)
 
 VaultSecretTable = Table(
     "maasserver_vaultsecret",

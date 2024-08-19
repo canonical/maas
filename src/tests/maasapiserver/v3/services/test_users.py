@@ -31,3 +31,14 @@ class TestUsersService:
         users_repository_mock.find_by_sessionid.assert_called_once_with(
             "sessionid"
         )
+
+    async def test_get_user_profile(self) -> None:
+        users_repository_mock = Mock(UsersRepository)
+        users_repository_mock.get_user_profile = AsyncMock()
+        users_service = UsersService(
+            Mock(AsyncConnection), users_repository=users_repository_mock
+        )
+        await users_service.get_user_profile(username="username")
+        users_repository_mock.get_user_profile.assert_called_once_with(
+            "username"
+        )

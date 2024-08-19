@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.db.users import UsersRepository
-from maasapiserver.v3.models.users import User
+from maasapiserver.v3.models.users import User, UserProfile
 
 
 class UsersService(Service):
@@ -23,3 +23,6 @@ class UsersService(Service):
 
     async def get_by_session_id(self, sessionid: str) -> User | None:
         return await self.users_repository.find_by_sessionid(sessionid)
+
+    async def get_user_profile(self, username: str) -> UserProfile | None:
+        return await self.users_repository.get_user_profile(username)

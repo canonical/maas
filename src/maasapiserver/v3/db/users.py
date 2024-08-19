@@ -6,9 +6,13 @@ from sqlalchemy.sql.operators import and_, eq, gt
 
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.users import User
+from maasapiserver.v3.models.users import User, UserProfile
 from maasservicelayer.db.filters import FilterQuery
-from maasservicelayer.db.tables import SessionTable, UserTable
+from maasservicelayer.db.tables import (
+    SessionTable,
+    UserProfileTable,
+    UserTable,
+)
 
 
 class UsersRepository(BaseRepository[User]):
@@ -77,6 +81,20 @@ class UsersRepository(BaseRepository[User]):
     ) -> ListResult[User]:
         # TODO: use the query for the filters
         pass
+
+    async def get_user_profile(self, username: str) -> UserProfile | None:
+        stmt = (
+            select(UserProfileTable.columns)
+            .select_from(UserProfileTable)
+            .join(UserTable, eq(UserProfileTable.c.user_id, UserTable.c.id))
+            .where(eq(UserTable.c.username, username))
+            .limit(1)
+        )
+        row = (await self.connection.execute(stmt)).one_or_none()
+        print(row)
+        if not row:
+            return None
+        return UserProfile(**row._asdict())
 
     async def update(self, id: int, resource: CreateOrUpdateResource) -> User:
         raise NotImplementedError("Not implemented yet.")
