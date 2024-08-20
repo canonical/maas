@@ -1,10 +1,22 @@
 from datetime import datetime
 
 from django.core import signing
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
-from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
+from maasapiserver.common.models.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
+from maasapiserver.common.models.exceptions import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasapiserver.v3.db.base import (
+    BaseRepository,
+    CreateOrUpdateResource,
+    CreateOrUpdateResourceBuilder,
+)
 from maasapiserver.v3.models.base import ListResult
 from maasapiserver.v3.models.users import User, UserProfile
 from maasservicelayer.db.filters import FilterQuery
@@ -13,6 +25,36 @@ from maasservicelayer.db.tables import (
     UserProfileTable,
     UserTable,
 )
+
+
+class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
+    # TODO: add other fields
+    def with_last_name(
+        self, value: str
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.last_name.name, value)
+        return self
+
+    def with_is_active(
+        self, value: bool
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.is_active.name, value)
+        return self
+
+    def with_is_superuser(
+        self, value: bool
+    ) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.is_superuser.name, value)
+        return self
+
+
+class UserProfileCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
+    # TODO: add other fields
+    def with_auth_last_check(
+        self, value: datetime
+    ) -> "UserProfileCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserProfileTable.c.auth_last_check.name, value)
+        return self
 
 
 class UsersRepository(BaseRepository[User]):
@@ -91,13 +133,55 @@ class UsersRepository(BaseRepository[User]):
             .limit(1)
         )
         row = (await self.connection.execute(stmt)).one_or_none()
-        print(row)
         if not row:
             return None
         return UserProfile(**row._asdict())
 
     async def update(self, id: int, resource: CreateOrUpdateResource) -> User:
-        raise NotImplementedError("Not implemented yet.")
+        stmt = (
+            update(UserTable)
+            .where(eq(UserTable.c.id, id))
+            .returning(UserTable.columns)
+            .values(**resource.get_values())
+        )
+        try:
+            updated_user = (await self.connection.execute(stmt)).one()
+        except IntegrityError:
+            self._raise_already_existing_exception()
+        except NoResultFound:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"User with id '{id}' does not exist.",
+                    )
+                ]
+            )
+        return User(**updated_user._asdict())
+
+    async def update_profile(
+        self, user_id: int, resource: CreateOrUpdateResource
+    ) -> UserProfile:
+        stmt = (
+            update(UserProfileTable)
+            .where(eq(UserProfileTable.c.user_id, user_id))
+            .returning(UserProfileTable.columns)
+            .values(**resource.get_values())
+        )
+        try:
+            updated_profile = (await self.connection.execute(stmt)).one()
+        except IntegrityError:
+            self._raise_already_existing_exception()
+        except NoResultFound:
+            raise NotFoundException(
+                details=[
+                    BaseExceptionDetail(
+                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                        message=f"User with id '{id}' does not exist.",
+                    )
+                ]
+            )
+        return UserProfile(**updated_profile._asdict())
 
     async def delete(self, id: int) -> None:
         raise NotImplementedError("Not implemented yet.")

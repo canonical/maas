@@ -3,7 +3,12 @@ import datetime
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.users import UsersRepository
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.db.users import (
+    UserCreateOrUpdateResourceBuilder,
+    UserProfileCreateOrUpdateResourceBuilder,
+    UsersRepository,
+)
 from tests.fixtures.factories.user import (
     create_test_session,
     create_test_user,
@@ -62,3 +67,27 @@ class TestUsersRepository:
         assert (
             await users_repository.get_user_profile(user.username)
         ) == user_profile
+
+    async def test_update(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        user = await create_test_user(fixture)
+        users_repository = UsersRepository(db_connection)
+        builder = UserCreateOrUpdateResourceBuilder()
+        builder.with_last_name("test")
+        updated_user = await users_repository.update(user.id, builder.build())
+        assert updated_user.last_name == "test"
+
+    async def test_update_profile(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        now = utcnow()
+        user = await create_test_user(fixture)
+        await create_test_user_profile(fixture, user.id)
+        users_repository = UsersRepository(db_connection)
+        builder = UserProfileCreateOrUpdateResourceBuilder()
+        builder.with_auth_last_check(now)
+        updated_profile = await users_repository.update_profile(
+            user.id, builder.build()
+        )
+        assert updated_profile.auth_last_check == now

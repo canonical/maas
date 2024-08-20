@@ -11,7 +11,7 @@ class User(MaasBaseModel):
     password: str
     is_superuser: bool
     first_name: str
-    last_name: str
+    last_name: Optional[str]
     is_staff: bool
     is_active: bool
     date_joined: datetime
