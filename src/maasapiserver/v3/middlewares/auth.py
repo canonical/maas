@@ -1,4 +1,5 @@
 import abc
+from datetime import timedelta
 import json
 import logging
 from typing import Awaitable, Callable, Dict, Sequence
@@ -12,9 +13,16 @@ from pymacaroons import Macaroon
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from maasapiserver.common.auth.macaroon_client import (
+    CandidAsyncClient,
+    RbacAsyncClient,
+)
+from maasapiserver.common.auth.models.exceptions import MacaroonApiException
+from maasapiserver.common.auth.models.responses import ValidateUserResponse
 from maasapiserver.common.models.constants import (
     INVALID_TOKEN_VIOLATION_TYPE,
     MISSING_PERMISSIONS_VIOLATION_TYPE,
+    USER_EXTERNAL_VALIDATION_FAILED,
 )
 from maasapiserver.common.models.exceptions import (
     BadRequestException,
@@ -23,13 +31,26 @@ from maasapiserver.common.models.exceptions import (
     ForbiddenException,
     UnauthorizedException,
 )
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.common.utils.http import extract_absolute_uri
+from maasapiserver.v3.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasapiserver.v3.db.users import (
+    UserCreateOrUpdateResourceBuilder,
+    UserProfileCreateOrUpdateResourceBuilder,
+)
 from maasapiserver.v3.models.auth import AuthenticatedUser
+from maasapiserver.v3.models.users import User
 from maasserver.macaroons import _get_macaroon_caveats_ops
+from maasservicelayer.constants import SYSTEM_USERS
 
 logger = logging.getLogger()
+
+EXTERNAL_USER_CHECK_INTERVAL = timedelta(hours=1)
 
 
 class AuthenticationProvider(abc.ABC):
@@ -138,11 +159,25 @@ class MacaroonAuthenticationProvider:
                     )
                 ]
             )
+
+        user = await self.validate_user_external_auth(request, user)
+        if user is None or user.is_active is False:
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=USER_EXTERNAL_VALIDATION_FAILED,
+                        message="External auth user validation failed.",
+                    )
+                ]
+            )
+
         return AuthenticatedUser(
             username=user.username,
-            # TODO: MAASENG-3539 we have to use the Candid/RBAC client to fetch the groups of the user and set the roles
-            #  accordingly here. For the time being, we consider everybody as a simple user.
-            roles={UserRole.USER},
+            roles=(
+                {UserRole.ADMIN, UserRole.USER}
+                if user.is_superuser
+                else {UserRole.USER}
+            ),
         )
 
     async def _raise_discharge_exception(self, request, caveats, ops):
@@ -178,6 +213,129 @@ class MacaroonAuthenticationProvider:
             for h in macaroon_header.split(","):
                 mss.append(decode_macaroon(h))
         return mss
+
+    async def validate_user_external_auth(
+        self,
+        request: Request,
+        user: User,
+        force_check: bool = False,
+    ) -> User | None:
+        """
+        Check if the user is valid through Candid or Rbac.
+
+        Returns:
+            User: if the check was successfull
+            None: otherwise
+        """
+        auth_config: ExternalAuthConfig = (
+            await request.state.services.external_auth.get_external_auth()
+        )
+        user_profile = await request.state.services.users.get_user_profile(
+            user.username
+        )
+
+        now = utcnow()
+
+        if user.username in SYSTEM_USERS:
+            # Don't perform the check for system users
+            return user
+        no_check = (
+            user_profile.auth_last_check
+            and (user_profile.auth_last_check + EXTERNAL_USER_CHECK_INTERVAL)
+            > now
+        )
+        if no_check and not force_check:
+            return user
+
+        try:
+            match auth_config.type:
+                case ExternalAuthType.CANDID:
+                    client = (
+                        await request.state.services.external_auth.get_candid_client()
+                    )
+                    validate_user_response = await self._validate_user_candid(
+                        client, auth_config, user.username
+                    )
+
+                case ExternalAuthType.RBAC:
+                    client = (
+                        await request.state.services.external_auth.get_rbac_client()
+                    )
+                    validate_user_response = await self._validate_user_rbac(
+                        client, user.username
+                    )
+        except MacaroonApiException:
+            return None
+
+        user_builder = UserCreateOrUpdateResourceBuilder()
+        if validate_user_response.active ^ user.is_active:
+            user_builder.with_is_active(validate_user_response.active)
+        if validate_user_response.fullname is not None:
+            user_builder.with_last_name(validate_user_response.fullname)
+        if validate_user_response.email is not None:
+            user_builder.with_email(validate_user_response.email)
+
+        user_builder.with_is_superuser(validate_user_response.superuser)
+        user = await request.state.services.users.update(
+            user.id, user_builder.build()
+        )
+
+        profile_builder = UserProfileCreateOrUpdateResourceBuilder()
+        profile_builder.with_auth_last_check(now)
+        user_profile = await request.state.services.users.update_profile(
+            user.id, profile_builder.build()
+        )
+        return user
+
+    async def _validate_user_candid(
+        self,
+        client: CandidAsyncClient,
+        auth_config: ExternalAuthConfig,
+        username: str,
+    ) -> ValidateUserResponse:
+        try:
+            groups_response = await client.get_groups(username)
+            user_details = await client.get_user_details(username)
+        except MacaroonApiException:
+            raise
+
+        if auth_config.admin_group:
+            superuser = auth_config.admin_group in groups_response.groups
+        else:
+            superuser = True
+        return ValidateUserResponse(
+            **user_details.dict(), active=True, superuser=superuser
+        )
+
+    async def _validate_user_rbac(
+        self,
+        client: RbacAsyncClient,
+        username: str,
+    ) -> ValidateUserResponse:
+        try:
+            admin_response = await client.allowed_for_user(
+                "maas", username, "admin"
+            )
+            superuser = admin_response.permissions[0].access_all
+            pools_response = await client.allowed_for_user(
+                "resource-pool",
+                username,
+                ["view", "view-all", "deploy-machines", "admin-machines"],
+            )
+            access_to_pools = any(
+                [
+                    r.resources or r.access_all
+                    for r in pools_response.permissions
+                ]
+            )
+            user_details = await client.get_user_details(username)
+        except MacaroonApiException:
+            raise
+        return ValidateUserResponse(
+            **user_details.dict(),
+            active=(superuser or access_to_pools),
+            superuser=superuser,
+        )
 
 
 class AuthenticationProvidersCache:

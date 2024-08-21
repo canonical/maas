@@ -15,6 +15,11 @@ class UserDetailsResponse(BaseModel):
     email: Optional[str]
 
 
+class ValidateUserResponse(UserDetailsResponse):
+    active: bool
+    superuser: bool
+
+
 class GetGroupsResponse(BaseModel):
     groups: Sequence[str]
 

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timedelta
 from typing import Any, AsyncIterator, Callable, Iterator
 from unittest.mock import AsyncMock, Mock
 
@@ -16,12 +16,24 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.common.auth.macaroon_client import (
+    CandidAsyncClient,
+    RbacAsyncClient,
+)
+from maasapiserver.common.auth.models.exceptions import MacaroonApiException
+from maasapiserver.common.auth.models.responses import (
+    AllowedForUserResponse,
+    GetGroupsResponse,
+    PermissionResourcesMapping,
+    UserDetailsResponse,
+)
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.common.models.exceptions import (
     DischargeRequiredException,
     ForbiddenException,
     UnauthorizedException,
 )
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
 from maasapiserver.v3.auth.external_auth import (
@@ -33,6 +45,7 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
     DjangoSessionAuthenticationProvider,
+    EXTERNAL_USER_CHECK_INTERVAL,
     LocalAuthenticationProvider,
     MacaroonAuthenticationProvider,
     V3AuthenticationMiddleware,
@@ -40,8 +53,14 @@ from maasapiserver.v3.middlewares.auth import (
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.models.users import User
+from maasapiserver.v3.services import ServiceCollectionV3
+from maasservicelayer.constants import NODE_INIT_USERNAME, WORKER_USERNAME
 from maasservicelayer.db import Database
-from tests.fixtures.factories.user import create_test_session, create_test_user
+from tests.fixtures.factories.user import (
+    create_test_session,
+    create_test_user,
+    create_test_user_profile,
+)
 from tests.maasapiserver.fixtures.db import Fixture
 
 
@@ -55,7 +74,7 @@ def _make_user(is_superuser: bool = False) -> User:
         last_name="last_name",
         is_staff=False,
         is_active=True,
-        date_joined=datetime.utcnow(),
+        date_joined=utcnow(),
     )
 
 
@@ -386,6 +405,7 @@ class TestMacaroonAuthenticationProvider:
 
         provider = MacaroonAuthenticationProvider()
         macaroons = [[Mock(Macaroon)]]
+        provider.validate_user_external_auth = AsyncMock(return_value=user)
         user = await provider.authenticate(request, macaroons)
 
         assert user.username == "test"
@@ -405,6 +425,7 @@ class TestMacaroonAuthenticationProvider:
 
         provider = MacaroonAuthenticationProvider()
         macaroons = [[Mock(Macaroon)]]
+        provider.validate_user_external_auth = AsyncMock(return_value=user)
         user = await provider.authenticate(request, macaroons)
 
         assert user.username == "test"
@@ -535,3 +556,375 @@ class TestMacaroonAuthenticationProvider:
         provider = MacaroonAuthenticationProvider()
         no_macaroons = provider.extract_macaroons(request)
         assert no_macaroons == []
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+class TestValidateUserExternalAuthCandid:
+
+    @pytest.fixture(autouse=True)
+    async def prepare(self, db_connection: AsyncConnection, enable_candid):
+        self.client = Mock(CandidAsyncClient)
+        self.client.get_user_details = AsyncMock(
+            return_value=UserDetailsResponse(
+                username="myusername",
+                fullname="last",
+                email="myusername@candid.example.com",
+            )
+        )
+        self.request = Mock(Request)
+        self.request.state.services = await ServiceCollectionV3.produce(
+            db_connection
+        )
+        self.request.state.services.external_auth.get_candid_client = (
+            AsyncMock(return_value=self.client)
+        )
+        self.provider = MacaroonAuthenticationProvider()
+        self.default_last_check = (
+            utcnow() - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10)
+        )
+
+    async def test_interval_not_expired(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        last_check = utcnow() - timedelta(minutes=10)
+        extra_details = {"auth_last_check": last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.get_groups.assert_not_called()
+
+    async def test_valid_user_check(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        self.client.get_groups = AsyncMock(
+            return_value=GetGroupsResponse(groups=["group1", "group2"])
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_superuser is False
+        assert validated_user.is_active is True
+        assert validated_user.email == "myusername@candid.example.com"
+        user_profile_updated = (
+            await self.request.state.services.users.get_user_profile(
+                validated_user.username
+            )
+        )
+        assert user_profile_updated.auth_last_check > self.default_last_check
+        self.client.get_groups.assert_called_once_with(validated_user.username)
+        self.client.get_user_details.assert_called_once_with(
+            validated_user.username
+        )
+
+    async def test_valid_user_check_admin(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+
+        self.client.get_groups = AsyncMock(
+            return_value=GetGroupsResponse(
+                groups=["group1", "group2", "admin"]
+            )
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_superuser is True
+        assert validated_user.is_active is True
+        assert validated_user.email == "myusername@candid.example.com"
+        self.client.get_groups.assert_called_once_with(user.username)
+        self.client.get_user_details.assert_called_once_with(user.username)
+
+    async def test_system_user_valid_no_check(self, fixture: Fixture):
+        extra_details = {"username": WORKER_USERNAME}
+        user = await create_test_user(fixture, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.get_groups.assert_not_called()
+
+        extra_details = {"username": NODE_INIT_USERNAME}
+        user = await create_test_user(fixture, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.get_groups.assert_not_called()
+
+    async def test_valid_inactive_user_is_active(self, fixture: Fixture):
+        extra_details = {"is_active": False}
+        user = await create_test_user(fixture, **extra_details)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        self.client.get_groups = AsyncMock(
+            return_value=GetGroupsResponse(groups=["group1", "group2"])
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_superuser is False
+        assert validated_user.is_active is True
+        assert validated_user.email == "myusername@candid.example.com"
+        user_profile_updated = (
+            await self.request.state.services.users.get_user_profile(
+                validated_user.username
+            )
+        )
+        assert user_profile_updated.auth_last_check > self.default_last_check
+        self.client.get_groups.assert_called_once_with(user.username)
+        self.client.get_user_details.assert_called_once_with(user.username)
+
+    async def test_invalid_user_check(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        self.client.get_groups = AsyncMock(
+            side_effect=MacaroonApiException(404, "user not found")
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is None
+        # fetch the user from the db to verify it's still active
+        user = await self.request.state.services.users.get(user.username)
+        assert user.is_active is True
+        self.client.get_groups.assert_called_once_with(user.username)
+
+
+@pytest.mark.usefixtures("ensuremaasdb")
+class TestValidateUserExternalAuthRbac:
+
+    @pytest.fixture(autouse=True)
+    async def prepare(self, db_connection: AsyncConnection, enable_rbac):
+        self.client = Mock(RbacAsyncClient)
+        self.client.get_user_details = AsyncMock(
+            return_value=UserDetailsResponse(
+                username="myusername",
+                fullname="last",
+                email="myusername@rbac.example.com",
+            )
+        )
+        self.request = Mock(Request)
+        self.request.state.services = await ServiceCollectionV3.produce(
+            db_connection
+        )
+        self.request.state.services.external_auth.get_rbac_client = AsyncMock(
+            return_value=self.client
+        )
+        self.provider = MacaroonAuthenticationProvider()
+        self.default_last_check = (
+            utcnow() - EXTERNAL_USER_CHECK_INTERVAL - timedelta(minutes=10)
+        )
+
+    async def test_interval_not_expired(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        last_check = utcnow() - timedelta(minutes=10)
+        extra_details = {"auth_last_check": last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.allowed_for_user.assert_not_called()
+
+    async def test_valid_user_check_has_pools_access(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        # not an admin, but has permission on pools
+        self.client.allowed_for_user.side_effect = [
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="admin", resources=[]
+                    )
+                ]
+            ),
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="view", resources=["1", "2"]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="view-all", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="deploy-machines", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="admin-machines", resources=[]
+                    ),
+                ]
+            ),
+        ]
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_active is True
+        assert validated_user.is_superuser is False
+        assert validated_user.email == "myusername@rbac.example.com"
+
+    async def test_valid_user_check_has_admin_access(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        # admin, but no permissions on pools
+        self.client.allowed_for_user.side_effect = [
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="admin", resources=[""]
+                    )
+                ]
+            ),
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="view", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="view-all", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="deploy-machines", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="admin-machines", resources=[]
+                    ),
+                ]
+            ),
+        ]
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_active is True
+        assert validated_user.is_superuser is True
+        assert validated_user.email == "myusername@rbac.example.com"
+
+    async def test_valid_user_no_permission(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        self.client.allowed_for_user.side_effect = [
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="admin", resources=[]
+                    )
+                ]
+            ),
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="view", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="view-all", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="deploy-machines", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="admin-machines", resources=[]
+                    ),
+                ]
+            ),
+        ]
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_active is False
+        assert validated_user.is_superuser is False
+        assert validated_user.email == "myusername@rbac.example.com"
+
+    async def test_system_user_valid_no_check(self, fixture: Fixture):
+        extra_details = {"username": "MAAS"}
+        user = await create_test_user(fixture, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.allowed_for_user.assert_not_called()
+
+        extra_details = {"username": "maas-init-node"}
+        user = await create_test_user(fixture, **extra_details)
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        self.client.allowed_for_user.assert_not_called()
+
+    async def test_valid_inactive_user_is_active(self, fixture: Fixture):
+        extra_details = {"is_active": False}
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        self.client.allowed_for_user.side_effect = [
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="admin", resources=[]
+                    )
+                ]
+            ),
+            AllowedForUserResponse(
+                permissions=[
+                    PermissionResourcesMapping(
+                        permission="view", resources=["1", "2"]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="view-all", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="deploy-machines", resources=[]
+                    ),
+                    PermissionResourcesMapping(
+                        permission="admin-machines", resources=[]
+                    ),
+                ]
+            ),
+        ]
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is not None
+        assert validated_user.is_active is True
+
+    async def test_failed_permission_check(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        # not an admin, but has permission on pools
+        self.client.allowed_for_user.side_effect = MacaroonApiException(
+            500, "fail!"
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is None
+        self.client.allowed_for_user.assert_called_once_with(
+            "maas", user.username, "admin"
+        )
+
+    async def test_failed_user_details_check(self, fixture: Fixture):
+        user = await create_test_user(fixture)
+        extra_details = {"auth_last_check": self.default_last_check}
+        await create_test_user_profile(fixture, user.id, **extra_details)
+        # not an admin, but has permission on pools
+        self.client.get_user_details.side_effect = MacaroonApiException(
+            500, "fail!"
+        )
+        validated_user = await self.provider.validate_user_external_auth(
+            self.request, user
+        )
+        assert validated_user is None
+        self.client.get_user_details.assert_called_once_with(user.username)

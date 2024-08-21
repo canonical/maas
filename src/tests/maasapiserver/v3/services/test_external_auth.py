@@ -97,6 +97,52 @@ class TestExternalAuthService:
         )
         assert external_auth is None
 
+    async def test_get_auth_info(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_composite_secret = AsyncMock(
+            return_value={
+                "key": "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw=",
+                "url": "http://10.0.1.23:8081/",
+                "user": "admin@candid",
+                "domain": "",
+                "rbac-url": "",
+                "admin-group": "admin",
+            }
+        )
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+        auth_info = await external_auth_service.get_auth_info()
+        assert auth_info is not None
+        assert auth_info.agents[0].url == "http://10.0.1.23:8081/"
+        assert auth_info.agents[0].username == "admin@candid"
+        assert auth_info.key == bakery.PrivateKey.deserialize(
+            "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        )
+        secrets_service_mock.get_composite_secret.assert_called_once_with(
+            path="global/external-auth", default=None
+        )
+
+    async def test_get_auth_info_not_enabled(self) -> None:
+        secrets_service_mock = Mock(SecretsService)
+        secrets_service_mock.get_composite_secret = AsyncMock(
+            return_value=None
+        )
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+        auth_info = await external_auth_service.get_auth_info()
+        assert auth_info is None
+        secrets_service_mock.get_composite_secret.assert_called_once_with(
+            path="global/external-auth", default=None
+        )
+
     async def test_get_or_create_bakery_key(self) -> None:
         key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
         expected_bakery_key = bakery.PrivateKey.deserialize(key)

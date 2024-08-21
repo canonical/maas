@@ -47,6 +47,10 @@ class UserCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
         self._request.set_value(UserTable.c.is_superuser.name, value)
         return self
 
+    def with_email(self, value: str) -> "UserCreateOrUpdateResourceBuilder":
+        self._request.set_value(UserTable.c.email.name, value)
+        return self
+
 
 class UserProfileCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
     # TODO: add other fields

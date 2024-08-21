@@ -17,6 +17,36 @@ from tests.fixtures.factories.user import (
 from tests.maasapiserver.fixtures.db import Fixture
 
 
+class TestUserCreateOrUpdateResourceBuilder:
+    def test_builder(self) -> None:
+        resource = (
+            UserCreateOrUpdateResourceBuilder()
+            .with_last_name("test")
+            .with_email("test@example.com")
+            .with_is_active(True)
+            .with_is_superuser(False)
+            .build()
+        )
+
+        assert resource.get_values() == {
+            "last_name": "test",
+            "email": "test@example.com",
+            "is_active": True,
+            "is_superuser": False,
+        }
+
+
+class TestUserProfileCreateOrUpdateResourceBuilder:
+    def test_builder(self) -> None:
+        now = utcnow()
+        resource = (
+            UserProfileCreateOrUpdateResourceBuilder()
+            .with_auth_last_check(now)
+            .build()
+        )
+        assert resource.get_values() == {"auth_last_check": now}
+
+
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestUsersRepository:

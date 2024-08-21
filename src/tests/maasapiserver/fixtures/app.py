@@ -322,6 +322,29 @@ async def enable_rbac(fixture: Fixture, mock_aioresponse) -> None:
 
 
 @pytest.fixture
+async def enable_candid(fixture: Fixture) -> None:
+    """
+    Enable candid by inserting the config in the db.
+    """
+    candid_url = "http://candid.example.com"
+    now = utcnow()
+    external_auth_config = {
+        "path": "global/external-auth",
+        "created": now,
+        "updated": now,
+        "value": {
+            "key": "mykey",
+            "url": candid_url,
+            "user": "admin@candid",
+            "domain": "",
+            "rbac-url": "",
+            "admin-group": "admin",
+        },
+    }
+    await fixture.create("maasserver_secret", [external_auth_config])
+
+
+@pytest.fixture
 def mock_aioresponse():
     with aioresponses() as m:
         yield m
