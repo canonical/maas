@@ -14,7 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasapiserver.common.auth.checker import AsyncAuthChecker, AsyncChecker
 from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
 from maasapiserver.common.auth.oven import AsyncOven
-from maasapiserver.common.models.exceptions import UnauthorizedException
+from maasapiserver.common.models.exceptions import (
+    DischargeRequiredException,
+    UnauthorizedException,
+)
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import ExternalAuthType
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
@@ -631,3 +634,42 @@ class TestExternalAuthService:
             macaroon.third_party_caveats()[0].location
             == "http://10.0.1.23:5000/auth"
         )
+
+    async def test_raise_discharge_exception(self):
+        secrets_service_mock = Mock(SecretsService)
+        # get the external auth config
+        secrets_service_mock.get_composite_secret = AsyncMock(
+            return_value={
+                "key": "mykey",
+                "url": "",
+                "user": "admin@candid",
+                "domain": "",
+                "rbac-url": "http://10.0.1.23:5000",
+                "admin-group": "admin",
+            }
+        )
+
+        os_urandom = b"\xf2\x92\x8b\x04G|@\x9fRP\xcb\xd6\x8d\xad\xee\x88A\xa4T\x9d\xe5Rx\xc6o\x1bc\x1e*\xb3\xfe}"
+        hex_os_urandom = to_hex(os_urandom)
+        bakery_key = "SOgnhQ+dcZuCGm03boCauHK4KB3PiK8xi808mq49lpw="
+        # There are 2 subsequent calls to get_simple_secret:
+        # - the first one will get the bakery key
+        # - the second one will get the material key
+        secrets_service_mock.get_simple_secret = AsyncMock(
+            side_effect=[bakery_key, hex_os_urandom]
+        )
+        external_auth_service = ExternalAuthService(
+            Mock(AsyncConnection),
+            secrets_service=secrets_service_mock,
+            users_service=Mock(UsersService),
+            external_auth_repository=Mock(ExternalAuthRepository),
+        )
+
+        external_auth_info = await external_auth_service.get_external_auth()
+
+        with pytest.raises(DischargeRequiredException) as exc_info:
+            await external_auth_service.raise_discharge_required_exception(
+                external_auth_info, "http://test"
+            )
+
+        assert exc_info.value.args[0] == "Macaroon discharge required."

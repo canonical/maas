@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 
 from maasapiserver.common.api.base import Handler, handler
@@ -6,6 +6,7 @@ from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedBodyResponse,
     ValidationErrorBodyResponse,
 )
+from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
 from maasapiserver.v3.auth.base import (
@@ -40,9 +41,18 @@ class AuthHandler(Handler):
     )
     async def login(
         self,
+        request: Request,
         services: ServiceCollectionV3 = Depends(services),
         form_data: OAuth2PasswordRequestForm = Depends(),
     ) -> AccessTokenResponse:
+        if (
+            external_auth_info := await request.state.services.external_auth.get_external_auth()
+        ):
+            await request.state.services.external_auth.raise_discharge_required_exception(
+                external_auth_info,
+                extract_absolute_uri(request),
+                request.headers,
+            )
         token = await services.auth.login(
             form_data.username, form_data.password
         )

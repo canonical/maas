@@ -1,8 +1,10 @@
-from unittest.mock import AsyncMock, Mock
+from json import dumps as _dumps
+from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi.exceptions import RequestValidationError
 from httpx import AsyncClient
 from jose import jwt
+from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
@@ -11,6 +13,7 @@ from maasapiserver.common.models.constants import (
 )
 from maasapiserver.common.models.exceptions import (
     BaseExceptionDetail,
+    DischargeRequiredException,
     UnauthorizedException,
 )
 from maasapiserver.v3.api.models.responses.oauth2 import AccessTokenResponse
@@ -18,6 +21,7 @@ from maasapiserver.v3.auth.jwt import JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.auth import AuthService
+from maasapiserver.v3.services.external_auth import ExternalAuthService
 
 
 @pytest.mark.asyncio
@@ -61,6 +65,33 @@ class TestAuthApi:
         )
 
         assert response.status_code == 422
+
+    async def test_post_discharge_required_exception(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+        services_mock.external_auth.raise_discharge_required_exception = (
+            AsyncMock(
+                side_effect=DischargeRequiredException(macaroon=Mock(Macaroon))
+            )
+        )
+
+        # we have to mock json.dumps as it doesn't know how to deal with Mock objects
+        def custom_json_dumps(*args, **kwargs):
+            return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
+
+        with patch("json.dumps", custom_json_dumps):
+            response = await mocked_api_client_rbac.post(
+                f"{self.BASE_PATH}/login",
+                data={"username": "username", "password": "test"},
+            )
+
+        services_mock.external_auth.raise_discharge_required_exception.assert_called_once()
+        assert response.status_code == 401
+        json_response = response.json()
+        assert json_response["Code"] == "macaroon discharge required"
 
     async def test_post_wrong_credentials(
         self,

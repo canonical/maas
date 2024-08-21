@@ -9,7 +9,6 @@ from maasapiserver.common.models.constants import (
 )
 from maasapiserver.common.models.exceptions import (
     BaseExceptionDetail,
-    DischargeRequiredException,
     ForbiddenException,
     UnauthorizedException,
 )
@@ -20,7 +19,6 @@ from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.models.auth import AuthenticatedUser
 from maasapiserver.v3.services import ServiceCollectionV3
-from maasserver.macaroons import _get_macaroon_caveats_ops
 
 # This is used just to generate the openapi spec with the security annotations.
 oauth2_bearer_openapi = OpenapiOAuth2PasswordBearer(
@@ -78,22 +76,11 @@ def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
             if (
                 external_auth_info := await services.external_auth.get_external_auth()
             ):
-                macaroon_bakery = await services.external_auth.get_bakery(
-                    extract_absolute_uri(request)
+                await services.external_auth.raise_discharge_required_exception(
+                    external_auth_info,
+                    extract_absolute_uri(request),
+                    request.headers,
                 )
-
-                caveats, ops = _get_macaroon_caveats_ops(
-                    external_auth_info.url, external_auth_info.domain
-                )
-                macaroon = (
-                    await services.external_auth.generate_discharge_macaroon(
-                        macaroon_bakery=macaroon_bakery,
-                        caveats=caveats,
-                        ops=ops,
-                        req_headers=request.headers,
-                    )
-                )
-                raise DischargeRequiredException(macaroon=macaroon)
 
             raise UnauthorizedException(
                 details=[

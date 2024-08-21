@@ -7,6 +7,7 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
+from maasapiserver.common.models.exceptions import DischargeRequiredException
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.models.responses.users import UserInfoResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
@@ -98,12 +99,11 @@ class TestUsersApi:
         mocked_api_client_rbac: AsyncClient,
     ) -> None:
         """If external auth is enabled make sure we receive a discharge required response"""
-        discharge_macaroon = Macaroon("root_key", "id")
-
         services_mock.external_auth = Mock(ExternalAuthService)
-        services_mock.external_auth.get_bakery = AsyncMock(return_value=None)
-        services_mock.external_auth.generate_discharge_macaroon = AsyncMock(
-            return_value=(discharge_macaroon)
+        services_mock.external_auth.raise_discharge_required_exception = (
+            AsyncMock(
+                side_effect=DischargeRequiredException(macaroon=Mock(Macaroon))
+            )
         )
 
         # we have to mock json.dumps as it doesn't know how to deal with Mock objects
