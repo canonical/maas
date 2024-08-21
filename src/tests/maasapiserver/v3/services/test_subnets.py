@@ -15,10 +15,10 @@ from maasapiserver.v3.services.subnets import SubnetsService
 from maasserver.enum import RDNS_MODE
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestSubnetsService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         subnets_repository_mock = Mock(SubnetsRepository)
         subnets_repository_mock.list = AsyncMock(
             return_value=ListResult[Subnet](items=[], next_token=None)
@@ -34,7 +34,8 @@ class TestSubnetsService:
         assert subnets_list.next_token is None
         assert subnets_list.items == []
 
-    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+    async def test_get_by_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         expected_subnet = Subnet(
             id=0,

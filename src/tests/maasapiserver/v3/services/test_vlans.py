@@ -13,10 +13,10 @@ from maasapiserver.v3.models.vlans import Vlan
 from maasapiserver.v3.services.vlans import VlansService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestVlansService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         vlans_repository_mock = Mock(VlansRepository)
         vlans_repository_mock.list = AsyncMock(
             return_value=ListResult[Vlan](items=[], next_token=None)
@@ -29,7 +29,8 @@ class TestVlansService:
         assert vlans_list.next_token is None
         assert vlans_list.items == []
 
-    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+    async def test_get_by_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         expected_vlan = Vlan(
             id=0,

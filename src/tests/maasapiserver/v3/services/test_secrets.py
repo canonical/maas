@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasapiserver.common.utils.date import utcnow
+from maasapiserver.v3.db.secrets import SecretsRepository
+from maasapiserver.v3.models.secrets import Secret
 from maasapiserver.v3.services import ConfigurationsService
 from maasapiserver.v3.services.secrets import (
     LocalSecretsStorageService,
@@ -16,7 +19,6 @@ from maasapiserver.v3.services.secrets import (
 from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import AsyncVaultManager
-from tests.maasapiserver.fixtures.db import Fixture
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +29,6 @@ def prepare():
     SecretsServiceFactory.clear()
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class SecretsServiceTestSuite:
     DEFAULT_SECRET = "secret"
@@ -35,24 +36,24 @@ class SecretsServiceTestSuite:
     DEFAULT_PATH = "mypath"
 
     @abc.abstractmethod
-    def get_vault_service(self, connection) -> SecretsService:
+    def get_vault_service(self) -> SecretsService:
         pass
 
     # simple secrets
-    async def test_get_not_path_not_found(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_get_not_path_not_found(self) -> None:
+        vault_service = self.get_vault_service()
         with pytest.raises(SecretNotFound):
             await vault_service.get_simple_secret(self.DEFAULT_PATH)
 
-    async def test_get_returns_default_if_path_not_found(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_get_returns_default_if_path_not_found(self) -> None:
+        vault_service = self.get_vault_service()
         retrieved_secret = await vault_service.get_simple_secret(
             self.DEFAULT_PATH, default=self.DEFAULT_SECRET
         )
         assert retrieved_secret == self.DEFAULT_SECRET
 
-    async def test_set_and_get_simple_secret(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_set_and_get_simple_secret(self) -> None:
+        vault_service = self.get_vault_service()
         await vault_service.set_simple_secret(
             self.DEFAULT_PATH, self.DEFAULT_SECRET
         )
@@ -61,9 +62,9 @@ class SecretsServiceTestSuite:
         )
         assert retrieved_secret == self.DEFAULT_SECRET
 
-    async def test_set_updates_simple_secret(self, db_connection):
+    async def test_set_updates_simple_secret(self) -> None:
         updated_secret = "supersecret"
-        vault_service = self.get_vault_service(db_connection)
+        vault_service = self.get_vault_service()
         await vault_service.set_simple_secret(
             self.DEFAULT_PATH, self.DEFAULT_SECRET
         )
@@ -76,22 +77,22 @@ class SecretsServiceTestSuite:
         assert retrieved_secret == updated_secret
 
     # composite secrets
-    async def test_get_composite_secret_path_not_found(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_get_composite_secret_path_not_found(self) -> None:
+        vault_service = self.get_vault_service()
         with pytest.raises(SecretNotFound):
             await vault_service.get_composite_secret(self.DEFAULT_PATH)
 
     async def test_get_composite_secret_returns_default_if_path_not_found(
-        self, db_connection
-    ):
-        vault_service = self.get_vault_service(db_connection)
+        self,
+    ) -> None:
+        vault_service = self.get_vault_service()
         retrieved_secret = await vault_service.get_composite_secret(
             self.DEFAULT_PATH, default=self.DEFAULT_COMPOSITE_SECRET
         )
         assert retrieved_secret == self.DEFAULT_COMPOSITE_SECRET
 
-    async def test_set_and_get_composite_secret(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_set_and_get_composite_secret(self) -> None:
+        vault_service = self.get_vault_service()
         await vault_service.set_composite_secret(
             self.DEFAULT_PATH, self.DEFAULT_COMPOSITE_SECRET
         )
@@ -100,9 +101,9 @@ class SecretsServiceTestSuite:
         )
         assert retrieved_secret == self.DEFAULT_COMPOSITE_SECRET
 
-    async def test_set_updates_composite_secret(self, db_connection):
+    async def test_set_updates_composite_secret(self) -> None:
         updated_secret = {"mynewdata": [1, 2, 3, 4]}
-        vault_service = self.get_vault_service(db_connection)
+        vault_service = self.get_vault_service()
         await vault_service.set_composite_secret(
             self.DEFAULT_PATH, self.DEFAULT_COMPOSITE_SECRET
         )
@@ -115,8 +116,8 @@ class SecretsServiceTestSuite:
         assert retrieved_secret == updated_secret
 
     # delete
-    async def test_delete(self, db_connection):
-        vault_service = self.get_vault_service(db_connection)
+    async def test_delete(self) -> None:
+        vault_service = self.get_vault_service()
         await vault_service.set_composite_secret(
             self.DEFAULT_PATH, self.DEFAULT_COMPOSITE_SECRET
         )
@@ -129,9 +130,29 @@ class SecretsServiceTestSuite:
             await vault_service.get_composite_secret(self.DEFAULT_PATH)
 
 
+class SecretsRepositoryMock(SecretsRepository):
+    def __init__(self, connection):
+        super().__init__(connection)
+        self.storage = {}
+
+    async def create_or_update(self, path: str, value: dict[str, Any]) -> None:
+        now = utcnow()
+        secret = Secret(path=path, created=now, updated=now, value=value)
+        self.storage[path] = secret
+
+    async def get(self, path: str) -> Secret | None:
+        return self.storage.get(path)
+
+    async def delete(self, path: str) -> None:
+        del self.storage[path]
+
+
 class TestLocalSecretStorageService(SecretsServiceTestSuite):
-    def get_vault_service(self, connection) -> SecretsService:
-        return LocalSecretsStorageService(connection)
+    def get_vault_service(self) -> SecretsService:
+        connection = Mock(AsyncConnection)
+        return LocalSecretsStorageService(
+            connection, secrets_repository=SecretsRepositoryMock(connection)
+        )
 
 
 class AsyncVaultManagerMock(AsyncVaultManager):
@@ -159,7 +180,8 @@ class AsyncVaultManagerMock(AsyncVaultManager):
 
 @pytest.mark.asyncio
 class TestVaultSecretService(SecretsServiceTestSuite):
-    def get_vault_service(self, connection) -> SecretsService:
+    def get_vault_service(self) -> SecretsService:
+        connection = Mock(AsyncConnection)
         return VaultSecretsService(
             connection=connection, vault_manager=AsyncVaultManagerMock()
         )
@@ -167,17 +189,19 @@ class TestVaultSecretService(SecretsServiceTestSuite):
 
 @pytest.mark.asyncio
 class TestSecretServiceFactory:
-    async def test_with_default_settings(self, db_connection: AsyncConnection):
+    async def test_with_default_settings(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        configuration_service_mock = Mock(ConfigurationsService)
+        configuration_service_mock.get = AsyncMock(return_value=None)
         assert SecretsServiceFactory.IS_VAULT_ENABLED is None
         vault_service = await SecretsServiceFactory.produce(
-            db_connection, ConfigurationsService(db_connection)
+            db_connection, configuration_service_mock
         )
         assert SecretsServiceFactory.IS_VAULT_ENABLED is False
         assert isinstance(vault_service, LocalSecretsStorageService)
 
-    async def test_with_vault_enabled(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ):
+    async def test_with_vault_enabled(self) -> None:
+        db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get = AsyncMock(return_value=True)
         vault_service = await SecretsServiceFactory.produce(
@@ -186,9 +210,8 @@ class TestSecretServiceFactory:
         assert SecretsServiceFactory.IS_VAULT_ENABLED is True
         assert isinstance(vault_service, VaultSecretsService)
 
-    async def test_with_vault_disabled(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ):
+    async def test_with_vault_disabled(self) -> None:
+        db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get = AsyncMock(return_value=False)
         vault_service = await SecretsServiceFactory.produce(
@@ -197,7 +220,8 @@ class TestSecretServiceFactory:
         assert SecretsServiceFactory.IS_VAULT_ENABLED is False
         assert isinstance(vault_service, LocalSecretsStorageService)
 
-    async def test_clear(self, db_connection: AsyncConnection):
+    async def test_clear(self) -> None:
+        db_connection = Mock(AsyncConnection)
         configuration_service_mock = Mock(ConfigurationsService)
         configuration_service_mock.get = AsyncMock(return_value=False)
         await SecretsServiceFactory.produce(

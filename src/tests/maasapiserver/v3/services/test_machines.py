@@ -12,10 +12,10 @@ from maasapiserver.v3.models.machines import Machine, PciDevice, UsbDevice
 from maasapiserver.v3.services.machines import MachinesService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestMachinesService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list = AsyncMock(
             return_value=ListResult[Machine](items=[], next_token=None)
@@ -31,9 +31,8 @@ class TestMachinesService:
         assert machines_list.next_token is None
         assert machines_list.items == []
 
-    async def test_list_machine_usb_devices(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_list_machine_usb_devices(self) -> None:
+        db_connection = Mock(AsyncConnection)
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_usb_devices = AsyncMock(
             return_value=ListResult[UsbDevice](items=[], next_token=None)

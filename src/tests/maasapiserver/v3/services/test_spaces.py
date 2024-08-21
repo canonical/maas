@@ -13,10 +13,10 @@ from maasapiserver.v3.models.spaces import Space
 from maasapiserver.v3.services.spaces import SpacesService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestSpacesService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         spaces_repository_mock = Mock(SpacesRepository)
         spaces_repository_mock.list = AsyncMock(
             return_value=ListResult[Space](items=[], next_token=None)
@@ -29,7 +29,8 @@ class TestSpacesService:
         assert spaces_list.next_token is None
         assert spaces_list.items == []
 
-    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+    async def test_get_by_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         expected_space = Space(
             id=0, name="test", description="descr", created=now, updated=now

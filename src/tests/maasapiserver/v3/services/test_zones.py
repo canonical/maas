@@ -2,7 +2,6 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.operators import eq
 
 from maasapiserver.common.models.constants import (
     CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
@@ -12,6 +11,7 @@ from maasapiserver.common.models.exceptions import (
     BadRequestException,
     PreconditionFailedException,
 )
+from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasapiserver.v3.db.zones import ZonesRepository
 from maasapiserver.v3.models.base import ListResult
@@ -23,93 +23,133 @@ from maasapiserver.v3.services import (
     ZonesService,
 )
 from maasservicelayer.db.filters import FilterQuery
-from maasservicelayer.db.tables import ZoneTable
-from tests.fixtures.factories.zone import create_test_zone
-from tests.maasapiserver.fixtures.db import Fixture
+
+DEFAULT_ZONE = Zone(
+    id=1,
+    name=DEFAULT_ZONE_NAME,
+    description="",
+    created=utcnow(),
+    updated=utcnow(),
+)
+
+TEST_ZONE = Zone(
+    id=4,
+    name="test_zone",
+    description="test_description",
+    created=utcnow(),
+    updated=utcnow(),
+)
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestZonesService:
-    async def test_delete(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_service = ZonesService(db_connection)
-        created_zone = await create_test_zone(fixture)
-        assert created_zone.id is not None
+    async def test_delete(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.delete = AsyncMock()
+        zones_repository.delete.return_value = None
+        zones_repository.find_by_id = AsyncMock()
+        zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
+        zones_service = ZonesService(
+            db_connection, zones_repository=zones_repository
+        )
 
-        await zones_service.delete(created_zone.id)
-        assert (await zones_service.get_by_id(created_zone.id)) is None
+        await zones_service.delete(TEST_ZONE.id)
+        assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
 
-    async def test_delete_etag(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_service = ZonesService(db_connection)
-        created_zone = await create_test_zone(fixture)
-        assert created_zone.id is not None
+    async def test_delete_etag(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.delete = AsyncMock()
+        zones_repository.delete.return_value = None
+        zones_repository.find_by_id = AsyncMock()
+        zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
+        zones_service = ZonesService(
+            db_connection, zones_repository=zones_repository
+        )
 
-        await zones_service.delete(created_zone.id, created_zone.etag())
-        assert (await zones_service.get_by_id(created_zone.id)) is None
+        Zone.etag = Mock()
+        Zone.etag.return_value = "my-etag"
 
-    async def test_delete_etag_fail(
-        self, db_connection: AsyncConnection, fixture: Fixture
-    ) -> None:
-        zones_service = ZonesService(db_connection)
-        created_zone = await create_test_zone(fixture)
-        assert created_zone.id is not None
+        await zones_service.delete(TEST_ZONE.id, "my-etag")
+        assert (await zones_service.get_by_id(TEST_ZONE.id)) is None
+
+    async def test_delete_etag_fail(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.find_by_id = AsyncMock()
+        zones_repository.find_by_id.return_value = TEST_ZONE
+        zones_service = ZonesService(
+            db_connection, zones_repository=zones_repository
+        )
+
+        Zone.etag = Mock()
+        Zone.etag.return_value = "my-etag"
 
         with pytest.raises(PreconditionFailedException) as excinfo:
-            await zones_service.delete(created_zone.id, "")
+            await zones_service.delete(TEST_ZONE.id, "wrong-etag")
         assert (
             excinfo.value.details[0].type == ETAG_PRECONDITION_VIOLATION_TYPE
         )
 
-    async def test_delete_default_zone(
-        self, db_connection: AsyncConnection
-    ) -> None:
-        zones_service = ZonesService(db_connection)
-        default_zone = await zones_service.get_by_name(DEFAULT_ZONE_NAME)
+    async def test_delete_default_zone(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.find_by_id = AsyncMock()
+        zones_repository.find_by_id.return_value = DEFAULT_ZONE
+        zones_repository.get_default_zone = AsyncMock()
+        zones_repository.get_default_zone.return_value = DEFAULT_ZONE
+        zones_service = ZonesService(
+            db_connection, zones_repository=zones_repository
+        )
+
         with pytest.raises(BadRequestException) as excinfo:
-            await zones_service.delete(default_zone.id)
+            await zones_service.delete(DEFAULT_ZONE.id)
         assert (
             excinfo.value.details[0].type
             == CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE
         )
 
     async def test_delete_related_objects_are_moved_to_default_zone(
-        self, db_connection: AsyncConnection, fixture: Fixture
+        self,
     ) -> None:
+        db_connection = Mock(AsyncConnection)
         nodes_service_mock = Mock(NodesService)
         nodes_service_mock.move_to_zone = AsyncMock()
         bmc_service_mock = Mock(BmcService)
         bmc_service_mock.move_to_zone = AsyncMock()
         vmclusters_service_mock = Mock(VmClustersService)
         vmclusters_service_mock.move_to_zone = AsyncMock()
+        zones_repository = Mock(ZonesRepository)
+        zones_repository.find_by_id = AsyncMock()
+        zones_repository.find_by_id.return_value = TEST_ZONE
+        zones_repository.get_default_zone = AsyncMock()
+        zones_repository.get_default_zone.return_value = DEFAULT_ZONE
+        zones_repository.delete = AsyncMock()
+        zones_repository.delete.return_value = None
 
         zones_service = ZonesService(
             db_connection,
             nodes_service=nodes_service_mock,
             bmc_service=bmc_service_mock,
             vmcluster_service=vmclusters_service_mock,
+            zones_repository=zones_repository,
         )
 
-        [default_zone] = await fixture.get_typed(
-            ZoneTable.name, Zone, eq(ZoneTable.c.name, DEFAULT_ZONE_NAME)
-        )
-        created_zone = await create_test_zone(fixture)
-        await zones_service.delete(created_zone.id)
+        await zones_service.delete(TEST_ZONE.id)
 
         nodes_service_mock.move_to_zone.assert_called_once_with(
-            created_zone.id, default_zone.id
+            TEST_ZONE.id, DEFAULT_ZONE.id
         )
         bmc_service_mock.move_to_zone.assert_called_once_with(
-            created_zone.id, default_zone.id
+            TEST_ZONE.id, DEFAULT_ZONE.id
         )
         vmclusters_service_mock.move_to_zone.assert_called_once_with(
-            created_zone.id, default_zone.id
+            TEST_ZONE.id, DEFAULT_ZONE.id
         )
 
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         zones_repository_mock = Mock(ZonesRepository)
         zones_repository_mock.list = AsyncMock(
             return_value=ListResult[ZonesRepository](items=[], next_token=None)

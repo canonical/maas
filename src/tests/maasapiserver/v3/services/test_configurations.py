@@ -9,16 +9,14 @@ from maasapiserver.v3.models.configurations import Configuration
 from maasapiserver.v3.services import ConfigurationsService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class ConfigurationsServiceTestSuite:
     @pytest.mark.parametrize(
         "value",
         ["test", True, {"test": {"name": "myname", "age": 18}}, 1234, None],
     )
-    async def test_get(
-        self, db_connection: AsyncConnection, value: Any
-    ) -> None:
+    async def test_get(self, value: Any) -> None:
+        db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
         configurations_repository_mock.get = AsyncMock(
             return_value=Configuration(id=1, name="test", value=value)
@@ -29,9 +27,8 @@ class ConfigurationsServiceTestSuite:
         )
         assert value == configurations_service.get("test")
 
-    async def test_unexisting_get(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_unexisting_get(self) -> None:
+        db_connection = Mock(AsyncConnection)
         configurations_repository_mock = Mock(ConfigurationsRepository)
         configurations_repository_mock.get = AsyncMock(return_value=None)
         configurations_service = ConfigurationsService(

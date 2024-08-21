@@ -12,10 +12,10 @@ from maasapiserver.v3.db.users import (
 from maasapiserver.v3.services import UsersService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestUsersService:
-    async def test_get(self, db_connection: AsyncConnection) -> None:
+    async def test_get(self) -> None:
+        db_connection = Mock(AsyncConnection)
         users_repository_mock = Mock(UsersRepository)
         users_repository_mock.find_by_username = AsyncMock()
         users_service = UsersService(
@@ -24,9 +24,8 @@ class TestUsersService:
         await users_service.get("test")
         users_repository_mock.find_by_username.assert_called_once_with("test")
 
-    async def test_get_by_session_id(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_get_by_session_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         users_repository_mock = Mock(UsersRepository)
         users_repository_mock.find_by_sessionid = AsyncMock()
         users_service = UsersService(

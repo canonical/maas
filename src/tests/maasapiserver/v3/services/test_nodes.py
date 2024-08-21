@@ -7,10 +7,10 @@ from maasapiserver.v3.db.nodes import NodesRepository
 from maasapiserver.v3.services import NodesService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestNodesService:
-    async def test_move_to_zone(self, db_connection: AsyncConnection) -> None:
+    async def test_move_to_zone(self) -> None:
+        db_connection = Mock(AsyncConnection)
         nodes_repository_mock = Mock(NodesRepository)
         nodes_repository_mock.move_to_zone = AsyncMock()
         nodes_service = NodesService(

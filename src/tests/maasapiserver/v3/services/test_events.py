@@ -12,10 +12,10 @@ from maasapiserver.v3.models.events import Event
 from maasapiserver.v3.services.events import EventsService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestEventsService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         events_repository_mock = Mock(EventsRepository)
         events_repository_mock.list = AsyncMock(
             return_value=ListResult[Event](items=[], next_token=None)

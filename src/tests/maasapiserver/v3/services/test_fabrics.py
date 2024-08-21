@@ -12,10 +12,10 @@ from maasapiserver.v3.models.fabrics import Fabric
 from maasapiserver.v3.services.fabrics import FabricsService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestFabricsService:
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         fabrics_repository_mock = Mock(FabricsRepository)
         fabrics_repository_mock.list = AsyncMock(
             return_value=ListResult[Fabric](items=[], next_token=None)
@@ -31,7 +31,8 @@ class TestFabricsService:
         assert fabrics_list.next_token is None
         assert fabrics_list.items == []
 
-    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+    async def test_get_by_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         expected_fabric = Fabric(
             id=0, name="test", description="descr", created=now, updated=now

@@ -15,10 +15,10 @@ from maasapiserver.v3.models.resource_pools import ResourcePool
 from maasapiserver.v3.services import ResourcePoolsService
 
 
-@pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestResourcePoolsService:
-    async def test_create(self, db_connection: AsyncConnection) -> None:
+    async def test_create(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -53,7 +53,8 @@ class TestResourcePoolsService:
         )
         assert created_resource_pool is not None
 
-    async def test_list(self, db_connection: AsyncConnection) -> None:
+    async def test_list(self) -> None:
+        db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.list = AsyncMock(
             return_value=ListResult[ResourcePool](items=[], next_token=None)
@@ -71,7 +72,8 @@ class TestResourcePoolsService:
         assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []
 
-    async def test_get_by_id(self, db_connection: AsyncConnection) -> None:
+    async def test_get_by_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
@@ -97,9 +99,8 @@ class TestResourcePoolsService:
         )
         assert retrieved_resource_pool == resource_pool
 
-    async def test_patch_not_found(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_patch_not_found(self) -> None:
+        db_connection = Mock(AsyncConnection)
         resource_pool_repository_mock = Mock(ResourcePoolRepository)
         resource_pool_repository_mock.update = AsyncMock(
             side_effect=NotFoundException()
@@ -116,7 +117,8 @@ class TestResourcePoolsService:
                 ),
             )
 
-    async def test_update(self, db_connection: AsyncConnection) -> None:
+    async def test_update(self) -> None:
+        db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
         resource_pool = ResourcePool(
             id=1,
