@@ -482,6 +482,7 @@ class FakeCommissioningData:
                             "cores": [],
                         }
                     ],
+                    "total": self.cores,
                 },
                 "memory": {
                     "hugepages_total": 0,

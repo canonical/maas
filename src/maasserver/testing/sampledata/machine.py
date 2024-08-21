@@ -25,6 +25,8 @@ def make_machine_infos(count: int, hostname_prefix: str):
         FakeCommissioningData(
             server_name=f"{hostname_prefix}{n:05}",
             kernel_architecture=next(architectures),
+            cores=(n % 10) + 1,
+            memory=((n % 10) + 1) * 1024,
         )
         for n in range_one(count)
     ]
