@@ -72,3 +72,21 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
 
 class UsbDevicesListResponse(TokenPaginatedResponse[UsbDeviceResponse]):
     kind = "MachineHardwareDevicesList"
+
+
+class PciDeviceResponse(HalResponse[BaseHal]):
+    kind = "MachinePciDevice"
+    id: int
+    type: HardwareDeviceTypeEnum
+    vendor_id: int
+    product_id: int
+    vendor_name: str
+    product_name: str
+    commissioning_driver: str
+    bus_number: int
+    device_number: int
+    pci_address: str
+
+
+class PciDevicesListResponse(TokenPaginatedResponse[UsbDeviceResponse]):
+    kind = "MachinePciDevicesList"

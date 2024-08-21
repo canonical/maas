@@ -7,7 +7,7 @@ from maasapiserver.v3.api.models.responses.machines import (
     MachineStatusEnum,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.models.machines import Machine, UsbDevice
+from maasapiserver.v3.models.machines import Machine, PciDevice, UsbDevice
 
 
 class TestMachineModel:
@@ -86,3 +86,45 @@ class TestUsbDeviceModel:
         assert response.commissioning_driver == device.commissioning_driver
         assert response.bus_number == device.bus_number
         assert response.device_number == device.device_number
+        assert (
+            response.hal_links.self.href
+            == f"{V3_API_PREFIX}/machines/y7nwea/usb_devices/{device.id}"
+        )
+
+
+class TestPciDeviceModel:
+    def test_to_response(self) -> None:
+        now = utcnow()
+        device = PciDevice(
+            id=1,
+            created=now,
+            updated=now,
+            hardware_type=HardwareDeviceTypeEnum.node,
+            vendor_id=0000,
+            product_id=0000,
+            vendor_name="vendor",
+            product_name="product",
+            commissioning_driver="driver",
+            bus_number=0,
+            device_number=0,
+            pci_address="",
+        )
+
+        response = device.to_response(
+            f"{V3_API_PREFIX}/machines/y7nwea/pci_devices"
+        )
+
+        assert response.id == device.id
+        assert response.type == device.hardware_type
+        assert response.vendor_id == device.vendor_id
+        assert response.product_id == device.product_id
+        assert response.vendor_name == device.vendor_name
+        assert response.product_name == device.product_name
+        assert response.commissioning_driver == device.commissioning_driver
+        assert response.bus_number == device.bus_number
+        assert response.device_number == device.device_number
+        assert response.pci_address == device.pci_address
+        assert (
+            response.hal_links.self.href
+            == f"{V3_API_PREFIX}/machines/y7nwea/pci_devices/{device.id}"
+        )

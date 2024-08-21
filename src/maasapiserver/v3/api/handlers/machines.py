@@ -8,6 +8,7 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.api.models.requests.query import TokenPaginationParams
 from maasapiserver.v3.api.models.responses.machines import (
     MachinesListResponse,
+    PciDevicesListResponse,
     UsbDevicesListResponse,
 )
 from maasapiserver.v3.auth.base import check_permissions
@@ -97,6 +98,48 @@ class MachinesHandler(Handler):
                 f"{V3_API_PREFIX}/machines/{system_id}/usb_devices?"
                 f"{TokenPaginationParams.to_href_format(usb_devices.next_token, token_pagination_params.size)}"
                 if usb_devices.next_token
+                else None
+            ),
+        )
+
+    @handler(
+        path="/machines/{system_id}/pci_devices",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": PciDevicesListResponse,
+            },
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.USER}))
+        ],
+    )
+    async def list_machine_pci_devices(
+        self,
+        system_id: str,
+        token_pagination_params: TokenPaginationParams = Depends(),
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        pci_devices = await services.machines.list_machine_pci_devices(
+            system_id=system_id,
+            token=token_pagination_params.token,
+            size=token_pagination_params.size,
+        )
+        return PciDevicesListResponse(
+            items=[
+                device.to_response(
+                    f"{V3_API_PREFIX}/machines/{system_id}/pci_devices"
+                )
+                for device in pci_devices.items
+            ],
+            next=(
+                f"{V3_API_PREFIX}/machines/{system_id}/pci_devices?"
+                f"{TokenPaginationParams.to_href_format(pci_devices.next_token, token_pagination_params.size)}"
+                if pci_devices.next_token
                 else None
             ),
         )

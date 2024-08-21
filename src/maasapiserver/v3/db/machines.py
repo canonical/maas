@@ -6,7 +6,7 @@ from sqlalchemy.sql.operators import eq, le
 
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
 from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.machines import Machine, UsbDevice
+from maasapiserver.v3.models.machines import Machine, PciDevice, UsbDevice
 from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
 from maasservicelayer.db.filters import FilterQuery
 from maasservicelayer.db.tables import (
@@ -74,6 +74,28 @@ class MachinesRepository(BaseRepository[Machine]):
 
         return ListResult[UsbDevice](
             items=[UsbDevice(**row._asdict()) for row in result],
+            next_token=next_token,
+        )
+
+    async def list_machine_pci_devices(
+        self, system_id: str, token: str | None, size: int
+    ) -> ListResult[PciDevice]:
+        stmt = (
+            self._list_devices_statement(system_id)
+            .order_by(desc(NodeDeviceTable.c.id))
+            .where(eq(NodeDeviceTable.c.bus, NODE_DEVICE_BUS.PCIE))
+            .limit(size + 1)
+        )
+        if token is not None:
+            stmt = stmt.where(le(NodeDeviceTable.c.id, int(token)))
+
+        result = (await self.connection.execute(stmt)).all()
+        next_token = None
+        if len(result) > size:  # There is another page
+            next_token = result.pop().id
+
+        return ListResult[PciDevice](
+            items=[PciDevice(**row._asdict()) for row in result],
             next_token=next_token,
         )
 

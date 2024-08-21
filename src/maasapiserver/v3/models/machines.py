@@ -5,6 +5,7 @@ from maasapiserver.v3.api.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachineResponse,
     MachineStatusEnum,
+    PciDeviceResponse,
     PowerTypeEnum,
     UsbDeviceResponse,
 )
@@ -93,3 +94,22 @@ class UsbDevice(HardwareDevice):
 
 class PciDevice(HardwareDevice):
     pci_address: str
+
+    def to_response(self, self_base_hyperlink: str) -> PciDeviceResponse:
+        return PciDeviceResponse(
+            id=self.id,
+            type=self.hardware_type,
+            vendor_id=self.vendor_id,
+            product_id=self.product_id,
+            vendor_name=self.vendor_name,
+            product_name=self.product_name,
+            commissioning_driver=self.commissioning_driver,
+            bus_number=self.bus_number,
+            device_number=self.device_number,
+            pci_address=self.pci_address,
+            hal_links=BaseHal(
+                self=BaseHref(
+                    href=f"{self_base_hyperlink.rstrip('/')}/{self.id}"
+                )
+            ),
+        )

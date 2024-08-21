@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import update
 
 from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.models.machines import UsbDevice
+from maasapiserver.v3.models.machines import PciDevice, UsbDevice
 from maasserver.enum import NODE_DEVICE_BUS
 from maasservicelayer.db.tables import NodeTable
 from maastesting.factory import factory
@@ -95,3 +95,33 @@ async def create_test_usb_device(
     device.update(**extra_details)
     [device] = await fixture.create("maasserver_nodedevice", [device])
     return UsbDevice(**device)
+
+
+async def create_test_pci_device(
+    fixture: Fixture,
+    numa_node: dict[str, Any],
+    config: dict[str, Any],
+    **extra_details: Any,
+) -> PciDevice:
+    now = utcnow()
+    device = {
+        "created": now,
+        "updated": now,
+        "bus": NODE_DEVICE_BUS.PCIE,
+        "hardware_type": HARDWARE_TYPE.NODE,
+        "vendor_id": "0000",
+        "product_id": "0000",
+        "vendor_name": "vendor",
+        "product_name": "product",
+        "commissioning_driver": "commissioning driver",
+        "bus_number": 0,
+        "device_number": 0,
+        "pci_address": "0000:00:00.0",
+        "numa_node_id": numa_node["id"],
+        "physical_blockdevice_id": None,
+        "physical_interface_id": None,
+        "node_config_id": config["id"],
+    }
+    device.update(**extra_details)
+    [device] = await fixture.create("maasserver_nodedevice", [device])
+    return PciDevice(**device)

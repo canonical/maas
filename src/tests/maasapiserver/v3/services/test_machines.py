@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.machines import MachinesRepository
 from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.machines import Machine, UsbDevice
+from maasapiserver.v3.models.machines import Machine, PciDevice, UsbDevice
 from maasapiserver.v3.services.machines import MachinesService
 
 
@@ -50,3 +50,23 @@ class TestMachinesService:
         )
         assert usb_devices_list.next_token is None
         assert usb_devices_list.items == []
+
+    async def test_list_machine_pci_devices(
+        self, db_connection: AsyncConnection
+    ) -> None:
+        machines_repository_mock = Mock(MachinesRepository)
+        machines_repository_mock.list_machine_pci_devices = AsyncMock(
+            return_value=ListResult[PciDevice](items=[], next_token=None)
+        )
+        machines_service = MachinesService(
+            connection=db_connection,
+            machines_repository=machines_repository_mock,
+        )
+        pci_devices_list = await machines_service.list_machine_pci_devices(
+            system_id="dummy", token=None, size=1
+        )
+        machines_repository_mock.list_machine_pci_devices.assert_called_once_with(
+            system_id="dummy", token=None, size=1
+        )
+        assert pci_devices_list.next_token is None
+        assert pci_devices_list.items == []
