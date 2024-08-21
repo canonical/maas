@@ -5,7 +5,7 @@
 from os import getpid
 from socket import gethostname
 
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
@@ -16,6 +16,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    pause,
 )
 
 log = LegacyLogger()
@@ -403,6 +404,25 @@ class SecuredRPCProtocol(RPCProtocol):
         self.unauthenticated_commands = unauthenticated_commands
         self.auth_status = auth_status
 
+    @inlineCallbacks
+    def _is_connection_trusted(self):
+        retry = 0
+        # There is a 2 way handshake between the rack and the region. In some cases the rackd might start
+        # sending commands to the region before the region has completed the handshake.
+        # For this reason we retry 5 times with exponential backoff before considering the connection not trusted.
+        while retry < 5:
+            if self.auth_status.is_authenticated:
+                returnValue(True)
+            else:
+                # Exponential backoff
+                sleep_time = ((2**retry) - 1) / 2
+                log.debug(
+                    f"Connection not trusted yet. Retry in {sleep_time} seconds"
+                )
+                yield pause(sleep_time)
+            retry += 1
+        returnValue(False)
+
     def dispatchCommand(self, box):
         """
         By default, we require that the connection has performed the authentication handshake before serving any RPC call.
@@ -410,11 +430,18 @@ class SecuredRPCProtocol(RPCProtocol):
         handshake.
         """
         cmd = box[amp.COMMAND]
-        if (
-            cmd in self.unauthenticated_commands
-            or self.auth_status.is_authenticated
-        ):
+        if cmd in self.unauthenticated_commands:
             return super().dispatchCommand(box)
-        raise RPCUnauthorizedException(
-            "The RPC command requires authentication. Please ensure you have authenticated first."
-        )
+
+        super_dispatch = super().dispatchCommand
+
+        def _dispatch_command_if_trusted(is_authenticated: bool):
+            if is_authenticated:
+                return super_dispatch(box)
+            raise RPCUnauthorizedException(
+                "The RPC command requires authentication. Please ensure you have authenticated first."
+            )
+
+        d = self._is_connection_trusted()
+        d.addCallback(_dispatch_command_if_trusted)
+        return d
