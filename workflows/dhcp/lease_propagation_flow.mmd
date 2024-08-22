@@ -3,15 +3,11 @@ title: Lease Propagation Workflow
 ---
 flowchart TD
     A[maas-agent receives a lease] --> B(queue lease in memory)
-    C[regiond starts] --> D(begin long execution of lease workflow)
-    D --> E(wait for signal with lease data)
-    B --> F(3 second interval)
-    F --> G(send signal with lease data)
-    G --> E
-    E --> H(create or update lease data in DB)
-    H --> I{success?}
-    I -->|yes| J{events growing large?}
-    I -->|no| H
-    J -->|yes| K(continue as new)
-    J -->|no| E
-    K --> E
+    B --> C(3 second interval)
+    C --> D(agent local activity: send local Go channel message to trigger lease flush)
+    D --> E(outside of workflow: flush lease queue and POST data to region, hold onto lease data)
+    E --> F(region activity: verify lease with latest data has been persisted)
+    F --> G{success?}
+    G -->|yes| H(agent local activity: send local Go channel message to drop lease data)
+    G -->|no| D
+    H --> I[done]
