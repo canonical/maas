@@ -33,6 +33,7 @@ from maasserver.utils.certificates import (
 )
 from maasserver.utils.orm import (
     get_psycopg2_exception,
+    post_commit_do,
     transactional,
     with_connection,
 )
@@ -147,7 +148,7 @@ def _get_certificate_from_database(
 
 def _create_cluster_certificate_if_necessary(
     client: VaultClient | None = None,
-) -> None:
+) -> Certificate:
     # Use the vault if configured.
     secret_manager = SecretManager(client)
 
@@ -178,13 +179,7 @@ def _create_cluster_certificate_if_necessary(
         }
         secret_manager.set_composite_secret("cluster-certificate", secrets)
 
-    # If the certificates are not on the disk yet store them.
-    if not get_maas_cluster_cert_paths():
-        store_maas_cluster_cert_tuple(
-            private_key=cluster_certificate.private_key_pem().encode(),
-            certificate=cluster_certificate.certificate_pem().encode(),
-            cacerts=cluster_certificate.ca_certificates_pem().encode(),
-        )
+    return cluster_certificate
 
 
 @asynchronous(timeout=FOREVER)
@@ -287,7 +282,19 @@ def inner_start_up(master=False):
         if client is not None:
             migrate_db_credentials_if_necessary(client)
 
-        _create_cluster_certificate_if_necessary(client)
+        certificate = _create_cluster_certificate_if_necessary(client)
+
+        def _store_certificates_on_disk(cluster_certificate: Certificate):
+            # If the certificates are not on the disk yet store them.
+            if not get_maas_cluster_cert_paths():
+                store_maas_cluster_cert_tuple(
+                    private_key=cluster_certificate.private_key_pem().encode(),
+                    certificate=cluster_certificate.certificate_pem().encode(),
+                    cacerts=cluster_certificate.ca_certificates_pem().encode(),
+                )
+
+        # Write the certificates on the disk only after the transaction is committed
+        post_commit_do(_store_certificates_on_disk, certificate)
 
         ControllerInfo.objects.filter(node_id=node.id).update(
             vault_configured=bool(client)
