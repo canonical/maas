@@ -39,4 +39,4 @@ def make_events(
                 )
             )
 
-    Event.objects.bulk_create(events)
+    Event.objects.bulk_create(events, batch_size=1000)
