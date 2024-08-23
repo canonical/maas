@@ -128,6 +128,9 @@ class DNSResourcesHandler(OperationsHandler):
         """@description-title List resources
         @description List all resources for the specified criteria.
 
+        @param (string) "fqdn" [required=false] Restricts the listing to
+        entries for the fqdn.
+
         @param (string) "domain" [required=false] Restricts the listing to
         entries for the domain.
 

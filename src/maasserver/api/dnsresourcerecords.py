@@ -31,6 +31,9 @@ class DNSResourceRecordsHandler(OperationsHandler):
         """@description-title List all DNS resource records
         @description List all DNS resource records.
 
+        @param (string) "fqdn" [required=false] Restricts the listing to
+        entries for the fqdn.
+
         @param (string) "domain" [required=false] Restricts the listing to
         entries for the domain.
 
