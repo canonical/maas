@@ -21,6 +21,10 @@ from maastemporalworker.workflow.msm import (
     MSMTokenRefreshWorkflow,
     MSMWithdrawWorkflow,
 )
+from maastemporalworker.workflow.tag_evaluation import (
+    TagEvaluationActivity,
+    TagEvaluationWorkflow,
+)
 
 log = getLogger()
 
@@ -49,6 +53,7 @@ async def main() -> None:
 
     configure_activity = ConfigureAgentActivity(db)
     msm_activity = MSMConnectorActivity(db)
+    tag_evaluation_activity = TagEvaluationActivity(db)
 
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
@@ -65,6 +70,8 @@ async def main() -> None:
                 MSMWithdrawWorkflow,
                 MSMHeartbeatWorkflow,
                 MSMTokenRefreshWorkflow,
+                # Tag Evaluation workflows
+                TagEvaluationWorkflow,
             ],
             activities=[
                 # Configuration activities
@@ -79,6 +86,8 @@ async def main() -> None:
                 msm_activity.send_heartbeat,
                 msm_activity.set_enrol,
                 msm_activity.verify_token,
+                # Tag evaluation activities
+                tag_evaluation_activity.evaluate_tag,
             ],
         ),
     ]

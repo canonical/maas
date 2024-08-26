@@ -26,7 +26,6 @@ from twisted.python.threadable import isInIOThread
 from twisted.web.client import Headers
 from zope.interface.verify import verifyObject
 
-from apiclient.creds import convert_tuple_to_string
 from apiclient.utils import ascii_url
 from maastesting import get_testing_timeout
 from maastesting.factory import factory
@@ -72,7 +71,7 @@ from provisioningserver.rpc import (
     pods,
 )
 from provisioningserver.rpc import power as power_module
-from provisioningserver.rpc import region, tags
+from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
@@ -2523,90 +2522,6 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
                 }
             ],
             response["errors"],
-        )
-
-
-class TestClusterProtocol_EvaluateTag(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def test_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(cluster.EvaluateTag.commandName)
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_happy_path(self):
-        self.useFixture(ClusterConfigurationFixture())
-        # Prevent real work being done, which would involve HTTP calls.
-        self.patch_autospec(tags, "process_node_tags")
-        rack_id = factory.make_name("rack")
-
-        nodes = [{"system_id": factory.make_name("node")} for _ in range(3)]
-
-        conn_cluster = Cluster()
-        conn_cluster.service = MagicMock()
-        conn_cluster.service.maas_url = factory.make_simple_http_url()
-
-        response = yield call_responder(
-            conn_cluster,
-            cluster.EvaluateTag,
-            {
-                "system_id": rack_id,
-                "tag_name": "all-nodes",
-                "tag_definition": "//*",
-                "tag_nsmap": [
-                    {"prefix": "foo", "uri": "http://foo.example.com/"}
-                ],
-                "credentials": "abc:def:ghi",
-                "nodes": nodes,
-            },
-        )
-
-        self.assertEqual({}, response)
-
-    @inlineCallbacks
-    def test_calls_through_to_evaluate_tag_helper(self):
-        evaluate_tag = self.patch_autospec(clusterservice, "evaluate_tag")
-
-        tag_name = factory.make_name("tag-name")
-        tag_definition = factory.make_name("tag-definition")
-        tag_ns_prefix = factory.make_name("tag-ns-prefix")
-        tag_ns_uri = factory.make_name("tag-ns-uri")
-
-        consumer_key = factory.make_name("ckey")
-        resource_token = factory.make_name("rtok")
-        resource_secret = factory.make_name("rsec")
-        credentials = convert_tuple_to_string(
-            (consumer_key, resource_token, resource_secret)
-        )
-        rack_id = factory.make_name("rack")
-        nodes = [{"system_id": factory.make_name("node")} for _ in range(3)]
-
-        conn_cluster = Cluster()
-        conn_cluster.service = MagicMock()
-        conn_cluster.service.maas_url = factory.make_simple_http_url()
-
-        yield call_responder(
-            conn_cluster,
-            cluster.EvaluateTag,
-            {
-                "system_id": rack_id,
-                "tag_name": tag_name,
-                "tag_definition": tag_definition,
-                "tag_nsmap": [{"prefix": tag_ns_prefix, "uri": tag_ns_uri}],
-                "credentials": credentials,
-                "nodes": nodes,
-            },
-        )
-
-        evaluate_tag.assert_called_once_with(
-            rack_id,
-            nodes,
-            tag_name,
-            tag_definition,
-            {tag_ns_prefix: tag_ns_uri},
-            (consumer_key, resource_token, resource_secret),
-            conn_cluster.service.maas_url,
         )
 
 

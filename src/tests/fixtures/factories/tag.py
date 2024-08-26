@@ -30,12 +30,13 @@ async def create_test_tag_entry(
     - name: this is the name of the tag, and can be used as human friendly
       identifier due to its uniqueness constraint.
       Examples of names are: tag-101, arm64_machine, testing
-    - definition: this is a XPATH string that allows MAAS automatically
-      matching the tag with a node. The expression is matched against the
-      `stdout` of some scripts run in the node during commissioning.
-      Examples of definitions are: //node,  //vendor[text()="Vendor X"]
+    - definition: this is an XPath expression that allows MAAS to automatically
+      match the tag with a node. The expression is evaluated against the
+      `stdout` of some of the scripts that run in the node during
+      commissioning.
+      Examples of definitions are: //node, //vendor[text()="Vendor X"]
 
-    Note that even if both argument can be empty strings, that could defeat
+    Note that even if both arguments can be empty strings, that would defeat
     the purpose of defining the tag.
 
     Learn more about tagging in https://maas.io/docs

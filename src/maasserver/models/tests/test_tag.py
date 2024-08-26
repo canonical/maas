@@ -1,17 +1,15 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 from django.core.exceptions import ValidationError
-from twisted.internet import reactor
 
 from maasserver import populate_tags
 from maasserver.models import tag as tag_module
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.threads import deferToDatabase
 
 
 class TagTest(MAASServerTestCase):
@@ -93,51 +91,53 @@ class TestTagIsDefined(MAASServerTestCase):
 
 
 class TestTagPopulateNodesLater(MAASServerTestCase):
-    def test_populates_if_tag_is_defined(self):
-        post_commit_do = self.patch(tag_module, "post_commit_do")
 
-        tag = Tag(name=factory.make_name("tag"), definition="//foo")
-        tag.save(populate=False)
+    def test_tag_is_populated_when_tag_is_defined(self):
+        mock_reactor = self.patch(tag_module, "reactor")
+        mock_reactor.callLater = Mock()
+        tag_1 = Tag(name=factory.make_name("tag_1"), definition="//foo")
+        tag_2 = Tag(name=factory.make_name("tag_2"), definition="//foo")
 
-        self.assertTrue(tag.is_defined)
-        post_commit_do.assert_not_called()
-        tag._populate_nodes_later()
-        post_commit_do.assert_called_once_with(
-            reactor.callLater,
-            0,
-            deferToDatabase,
-            populate_tags.populate_tags,
-            tag,
-        )
+        # when tag is saved with populate=False, and the tag is defined (not
+        # empty or different in case of updating the tag)
+        tag_1.save(populate=False)
+        # then the tag evaluation does get triggered
+        mock_reactor.callLater.assert_not_called()
+
+        # when tag is saved with populate=True, and the tag is defined (not
+        # empty or different in case of updating the tag)
+        tag_2.save()
+        # then the tag evaluation gets triggered
+        self.assertTrue(tag_2.is_defined)
+        mock_reactor.callLater.assert_called_once()
 
     def test_does_nothing_if_tag_is_not_defined(self):
-        post_commit_do = self.patch(tag_module, "post_commit_do")
-
+        mock_reactor = self.patch(tag_module, "reactor")
+        mock_reactor.callLater = Mock()
         tag = Tag(name=factory.make_name("tag"), definition="")
+
+        # when tag is saved with populate=False, and the tag is not defined
+        # (empty or the same definition in case of updating the tag)
         tag.save(populate=False)
 
+        # then the tag evaluation does not get triggered
         self.assertFalse(tag.is_defined)
-        post_commit_do.assert_not_called()
+        mock_reactor.callLater.assert_not_called()
         tag._populate_nodes_later()
-        post_commit_do.assert_not_called()
+        mock_reactor.callLater.assert_not_called()
 
     def test_does_not_clear_node_set_before_populating(self):
-        post_commit_do = self.patch(tag_module, "post_commit_do")
-
+        mock_reactor = self.patch(tag_module, "reactor")
+        mock_reactor.callLater = Mock()
         tag = Tag(name=factory.make_name("tag"), definition="//foo")
+
         tag.save(populate=False)
 
         nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
         tag._populate_nodes_later()
         self.assertCountEqual(nodes, tag.node_set.all())
-        post_commit_do.assert_called_once_with(
-            reactor.callLater,
-            0,
-            deferToDatabase,
-            populate_tags.populate_tags,
-            tag,
-        )
+        mock_reactor.callLater.assert_called_once()
 
     def test_later_is_the_default(self):
         tag = Tag(name=factory.make_name("tag"))

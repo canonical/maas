@@ -1,19 +1,22 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Node objects."""
-
+"""Definition of the Tag data model."""
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import CharField, TextField
 from lxml import etree
+from temporalio.common import WorkflowIDReusePolicy
 from twisted.internet import reactor
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import post_commit_do
-from maasserver.utils.threads import deferToDatabase
+from maasserver.workflow import start_workflow
+from maastemporalworker.workflow.tag_evaluation import TagEvaluationParam
+from provisioningserver.logger import get_maas_logger
+
+maaslog = get_maas_logger("tag")
 
 
 class Tag(CleanSave, TimestampedModel):
@@ -25,7 +28,7 @@ class Tag(CleanSave, TimestampedModel):
     :ivar comment: A long-form description for humans about what this tag is
         trying to accomplish.
     :ivar kernel_opts: Optional kernel command-line parameters string to be
-        used in the PXE config for nodes with this tags.
+        used in the PXE config for nodes with this tag.
     :ivar objects: The :class:`TagManager`.
     """
 
@@ -55,21 +58,67 @@ class Tag(CleanSave, TimestampedModel):
     def __str__(self):
         return self.name
 
+    @property
+    def is_defined(self):
+        return bool(self.definition.strip())
+
+    def clean(self):
+        self.clean_definition()
+
+    def clean_definition(self):
+        if self.is_defined:
+            try:
+                etree.XPath(self.definition)
+            except etree.XPathSyntaxError as e:
+                msg = f"Invalid XPath expression: {e}"
+                raise ValidationError({"definition": [msg]})
+
+    def save(self, *args, populate=True, **kwargs):
+        """Save this tag.
+
+        :param populate: Whether to call `populate_nodes` if the definition has
+            changed.
+        """
+        super().save(*args, **kwargs)
+        maaslog.info("Tag (id=%d) has been saved.", self.id)
+
+        if populate and (self.definition != self._original_definition):
+            self.populate_nodes()
+        self._original_definition = self.definition
+
+    def populate_nodes(self):
+        """Find all nodes that match this tag, and update them.
+
+        By default, node population is deferred.
+        """
+        return self._populate_nodes_later()
+
     def _populate_nodes_later(self):
         """Find all nodes that match this tag, and update them, later.
 
-        This schedules population to happen post-commit, without waiting for
-        its outcome.
+        This schedules population to happen without waiting for its outcome.
         """
-        # Avoid circular imports.
-        from maasserver.populate_tags import populate_tags
-
         if self.is_defined:
-            # Schedule repopulate to happen after commit. This thread does not
-            # wait for it to complete.
-            post_commit_do(
-                reactor.callLater, 0, deferToDatabase, populate_tags, self
-            )
+            # This thread does not wait for it to complete.
+            reactor.callLater(0, self._update_tag_node_relations)
+
+    def _update_tag_node_relations(self) -> None:
+        """
+        Evaluate a tag searching for matches between the tag provided and the
+        nodes in MAAS.
+        """
+        maaslog.info(
+            "Tag (id=%d) is being evaluated against all nodes.", self.id
+        )
+        param = TagEvaluationParam(self.id, self.definition)
+
+        start_workflow(
+            workflow_name="tag-evaluation",
+            workflow_id="tag-evaluation",
+            task_queue="region",
+            id_reuse_policy=WorkflowIDReusePolicy.TERMINATE_IF_RUNNING,
+            param=param,
+        )
 
     def _populate_nodes_now(self):
         """Find all nodes that match this tag, and update them, now.
@@ -85,36 +134,3 @@ class Tag(CleanSave, TimestampedModel):
             # Do the work here and now in this thread. This is probably a
             # terrible mistake... unless you're testing.
             populate_tag_for_multiple_nodes(self, Node.objects.all())
-
-    def populate_nodes(self):
-        """Find all nodes that match this tag, and update them.
-
-        By default, node population is deferred.
-        """
-        return self._populate_nodes_later()
-
-    def clean_definition(self):
-        if self.is_defined:
-            try:
-                etree.XPath(self.definition)
-            except etree.XPathSyntaxError as e:
-                msg = f"Invalid XPath expression: {e}"
-                raise ValidationError({"definition": [msg]})
-
-    def clean(self):
-        self.clean_definition()
-
-    def save(self, *args, populate=True, **kwargs):
-        """Save this tag.
-
-        :param populate: Whether or not to call `populate_nodes` if the
-            definition has changed.
-        """
-        super().save(*args, **kwargs)
-        if populate and (self.definition != self._original_definition):
-            self.populate_nodes()
-        self._original_definition = self.definition
-
-    @property
-    def is_defined(self):
-        return bool(self.definition.strip())

@@ -30,7 +30,6 @@ from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
-from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from provisioningserver import concurrency
 from provisioningserver.certificates import (
@@ -74,7 +73,6 @@ from provisioningserver.rpc.power import (
     get_power_state,
     maybe_change_power_state,
 )
-from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
@@ -525,36 +523,6 @@ class Cluster(SecuredRPCProtocol):
             return {}
         else:
             return tls.get_tls_parameters_for_cluster()
-
-    @cluster.EvaluateTag.responder
-    def evaluate_tag(
-        self,
-        system_id,
-        tag_name,
-        tag_definition,
-        tag_nsmap,
-        credentials,
-        nodes,
-    ):
-        """evaluate_tag()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.EvaluateTag`.
-        """
-        # It's got to run in a thread because it does blocking IO.
-        d = deferToThread(
-            evaluate_tag,
-            system_id,
-            nodes,
-            tag_name,
-            tag_definition,
-            # Transform tag_nsmap into a format that LXML likes.
-            {entry["prefix"]: entry["uri"] for entry in tag_nsmap},
-            # Parse the credential string into a 3-tuple.
-            convert_string_to_tuple(credentials),
-            self.service.maas_url,
-        )
-        return d.addCallback(lambda _: {})
 
     @cluster.AddChassis.responder
     def add_chassis(

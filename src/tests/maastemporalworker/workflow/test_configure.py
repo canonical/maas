@@ -1,3 +1,6 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -28,7 +31,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("maasdb")
 class TestConfigureAgentActivity:
-    async def test_get_rack_contorller_vlans_no_rack_controller(
+    async def test_get_rack_controller_vlans_no_rack_controller(
         self, db: Database, db_connection: AsyncConnection
     ):
         configure_activities = ConfigureAgentActivity(

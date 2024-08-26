@@ -117,7 +117,7 @@ def asynchronous(func=undefined, *, timeout=undefined):
                 raise ValueError("timeout must be >= 0, not %d" % timeout)
         elif timeout is not FOREVER:
             raise ValueError(
-                f"timeout must an int, float, or undefined, not {timeout!r}"
+                f"timeout must be an int, float, or undefined, not {timeout!r}"
             )
 
     func_in_reactor = run_in_reactor(func)

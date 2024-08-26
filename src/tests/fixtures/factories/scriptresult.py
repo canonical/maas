@@ -18,21 +18,20 @@ async def create_test_scriptresult_entry(
     Create an entry in the ScriptResultTable. This function must be used only
     for testing.
 
-    A script result entry contains information about the outcome of running a
+    Each script result entry contains information with the results of running a
     script in a node controlled by MAAS.
-    When a script runs, it does as part of a set of scripts that can have one
-    or more scripts. This set of scripts are stored in the ScriptSetTable.
-    Some of these scripts, such as maas-lshw used for tag evaluation, can be
+    When a script runs, it does it as part of a collection of scripts. The
+    information about that collection is stored in the ScriptSetTable.
+    Some of these scripts, such as maas-lshw (used for tag evaluation), can be
     found in src/provisioningserver/refresh/.
 
     In order to create a script result entry, the following parameters should
     be defined:
-    - script_set_id: every script must belong to a script set that gathers one
-      or more scripts based on their purpose. This field contains the ID of the
-      script set where the script belongs to.
+    - script_set_id: reference to the entry of the ScriptSetTable. This entry
+      contains the information about the script set where the script belong to.
 
-    Note that due to the testing purpose of this function, node_id is not
-    validated against the Node table. It is up to the user to decide how to
+    Note that due to the testing purpose of this function, script_set_id is not
+    validated against the ScriptSetTable. It is up to the user to decide how to
     proceed.
     """
     created_at = datetime.utcnow().astimezone()

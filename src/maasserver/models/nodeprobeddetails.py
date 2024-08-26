@@ -6,22 +6,27 @@
 For example, hardware information as reported by ``lshw`` and network
 topology information derived from LLDP.
 """
+from __future__ import annotations
+
+import base64
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from maasserver.models.node import Node
+
+from django.db import connection
+
+from metadataserver.enum import SCRIPT_STATUS
+from provisioningserver.refresh.node_info_scripts import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+)
 
 __all__ = [
     "get_probed_details",
     "get_single_probed_details",
     "script_output_nsmap",
 ]
-import base64
-
-from django.db import connection
-
-from maasserver.models import Node
-from metadataserver.enum import SCRIPT_STATUS
-from provisioningserver.refresh.node_info_scripts import (
-    LLDP_OUTPUT_NAME,
-    LSHW_OUTPUT_NAME,
-)
 
 # A map of commissioning script output names to their detail
 # namespaces. These namespaces are used in the return values from
@@ -30,7 +35,7 @@ from provisioningserver.refresh.node_info_scripts import (
 script_output_nsmap = {LLDP_OUTPUT_NAME: "lldp", LSHW_OUTPUT_NAME: "lshw"}
 
 
-def get_single_probed_details(node):
+def get_single_probed_details(node: Node) -> dict[str, bytes]:
     """Return details of the node.
 
     Currently this consists of the node's ``lshw`` XML dump and an
@@ -55,7 +60,7 @@ def get_single_probed_details(node):
     return details_template
 
 
-def get_probed_details(nodes: list[Node]) -> dict[str, dict[str, str]]:
+def get_probed_details(nodes: list[Node]) -> dict[str, dict[str, bytes]]:
     """Return details of the nodes in the given list.
 
     :return: A ``{system_id: {...details...}, ...}`` map, where the

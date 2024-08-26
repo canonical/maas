@@ -362,30 +362,6 @@ class ValidateDHCPv6Config(_ValidateDHCPConfig):
     """
 
 
-class EvaluateTag(amp.Command):
-    """Evaluate a tag against the list of nodes.
-
-    :since: 2.0
-    """
-
-    arguments = [
-        # System ID for rack controller.
-        (b"system_id", amp.Unicode()),
-        (b"tag_name", amp.Unicode()),
-        (b"tag_definition", amp.Unicode()),
-        (
-            b"tag_nsmap",
-            AmpList([(b"prefix", amp.Unicode()), (b"uri", amp.Unicode())]),
-        ),
-        # A 3-part credential string for the web API.
-        (b"credentials", amp.Unicode()),
-        # List of nodes the rack controller should evaluate.
-        (b"nodes", AmpList([(b"system_id", amp.Unicode())])),
-    ]
-    response = []
-    errors = []
-
-
 class AddChassis(amp.Command):
     """Probe and enlist the chassis which a rack controller can connect to.
 

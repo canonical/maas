@@ -5,20 +5,10 @@
 
 
 from collections import OrderedDict
-from functools import partial
-import http.client
-import json
-import urllib.error
-import urllib.parse
-import urllib.request
 
-import bson
 from lxml import etree
 
-from apiclient.maas_client import MAASClient
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import classify
-from provisioningserver.utils.xpath import try_match_xpath
 
 log = LegacyLogger()
 maaslog = get_maas_logger("tag_processing")
@@ -32,101 +22,9 @@ maaslog = get_maas_logger("tag_processing")
 DEFAULT_BATCH_SIZE = 100
 
 
-def process_response(response):
-    """All responses should be httplib.OK.
-
-    The response should contain a BSON document (content-type
-    application/bson) or a JSON document (content-type application/json). If
-    so, the document will be decoded and the result returned, otherwise the
-    raw binary content will be returned.
-
-    :param response: The result of MAASClient.get/post/etc.
-    :type response: urllib.request.addinfourl (a file-like object that has a
-        .code attribute.)
-
-    """
-    if response.code != http.client.OK:
-        text_status = http.client.responses.get(response.code, "<unknown>")
-        message = "%s, expected 200 OK" % text_status
-        raise urllib.error.HTTPError(
-            response.url, response.code, message, response.headers, response.fp
-        )
-    content = response.read()
-    content_type = response.headers.get_content_type()
-    if content_type == "application/bson":
-        return bson.BSON(content).decode()
-    elif content_type == "application/json":
-        content_charset = response.headers.get_content_charset()
-        return json.loads(
-            content.decode(
-                "utf-8" if content_charset is None else content_charset
-            )
-        )
-    else:
-        return content
-
-
-def get_details_for_nodes(
-    client: MAASClient, system_ids: list[str]
-) -> dict[str, bytes]:
-    """Retrieve details for a set of nodes.
-
-    :param client: MAAS client
-    :param system_ids: List of UUIDs of systems for which to fetch LLDP data
-    :return: Dictionary mapping node UUIDs to details, e.g. LLDP output
-    """
-    details = {}
-    for system_id in system_ids:
-        path = "/MAAS/api/2.0/nodes/%s/" % system_id
-        data = process_response(client.get(path, op="details"))
-        details[system_id] = data
-    return details
-
-
-def post_updated_nodes(
-    client: MAASClient, rack_id, tag_name, tag_definition, added, removed
-):
-    """Update the nodes relevant for a particular tag.
-
-    :param client: MAAS client
-    :param rack_id: System ID for rack controller
-    :param tag_name: Name of tag
-    :param tag_definition: Definition of the tag, used to assure that the work
-        being done matches the current value.
-    :param added: Set of nodes to add
-    :param removed: Set of nodes to remove
-    """
-    path = f"/MAAS/api/2.0/tags/{tag_name}/"
-    log.debug(
-        "Updating nodes for {name}, adding {adding} removing {removing}",
-        name=tag_name,
-        adding=added,
-        removing=removed,
-    )
-    try:
-        return process_response(
-            client.post(
-                path,
-                op="update_nodes",
-                as_json=True,
-                rack_controller=rack_id,
-                definition=tag_definition,
-                add=added,
-                remove=removed,
-            )
-        )
-    except urllib.error.HTTPError as e:
-        if e.code == http.client.CONFLICT:
-            if e.fp is not None:
-                msg = e.fp.read()
-            else:
-                msg = e.msg
-            maaslog.info("Got a CONFLICT while updating tag: %s", msg)
-            return {}
-        raise
-
-
-def _details_prepare_merge(details):
+def _details_prepare_merge(
+    details: dict[str, bytes]
+) -> tuple[dict[str, bytes], etree._Element]:
     # We may mutate the details later, so copy now to prevent
     # affecting the caller's data.
     details = details.copy()
@@ -148,7 +46,9 @@ def _details_prepare_merge(details):
     return details, root
 
 
-def _details_make_backwards_compatible(details, root):
+def _details_make_backwards_compatible(
+    details: dict[str, bytes], root: etree._Element
+) -> tuple[dict[str, bytes], etree._Element]:
     # For backward-compatibilty, if lshw details are available, these
     # should form the root of the composite document.
     xmldata = details.get("lshw")
@@ -168,7 +68,9 @@ def _details_make_backwards_compatible(details, root):
     return details, root
 
 
-def _details_do_merge(details, root):
+def _details_do_merge(
+    details: dict[str, bytes], root: etree._Element
+) -> etree._Element:
     # Merge the remaining details into the composite document.
     for namespace in sorted(details):
         xmldata = details[namespace]
@@ -192,7 +94,7 @@ def _details_do_merge(details, root):
     return etree.ElementTree(root)
 
 
-def merge_details(details):
+def merge_details(details: dict[str, bytes]) -> etree._Element:
     """Merge node details into a single XML document.
 
     `details` should be of the form::
@@ -215,7 +117,7 @@ def merge_details(details):
     return _details_do_merge(details, root)
 
 
-def merge_details_cleanly(details):
+def merge_details_cleanly(details: dict[str, bytes]) -> etree._Element:
     """Merge node details into a single XML document.
 
     `details` should be of the form::
@@ -267,85 +169,3 @@ def gen_batches(things, batch_size):
     """
     slices = gen_batch_slices(len(things), batch_size)
     return (things[s] for s in slices)
-
-
-def gen_node_details(client: MAASClient, batches):
-    """Fetch node details.
-
-    This lazily fetches data in batches, but this detail is hidden
-    from callers.
-
-    :return: An iterator of ``(system-id, details-document)`` tuples.
-    """
-    get_details = partial(get_details_for_nodes, client)
-    for batch in batches:
-        for system_id, details in get_details(batch).items():
-            yield system_id, merge_details(details)
-
-
-def process_all(
-    client: MAASClient,
-    rack_id,
-    tag_name,
-    tag_definition,
-    system_ids,
-    xpath,
-    batch_size=None,
-):
-    log.debug(
-        "Processing {nums} system_ids for tag {name}.",
-        nums=len(system_ids),
-        name=tag_name,
-    )
-
-    if batch_size is None:
-        batch_size = DEFAULT_BATCH_SIZE
-
-    batches = gen_batches(system_ids, batch_size)
-    node_details = gen_node_details(client, batches)
-    nodes_matched, nodes_unmatched = classify(
-        partial(try_match_xpath, xpath, logger=maaslog), node_details
-    )
-    post_updated_nodes(
-        client,
-        rack_id,
-        tag_name,
-        tag_definition,
-        nodes_matched,
-        nodes_unmatched,
-    )
-
-
-def process_node_tags(
-    rack_id,
-    nodes,
-    tag_name,
-    tag_definition,
-    tag_nsmap,
-    client: MAASClient,
-    batch_size=None,
-):
-    """Update the nodes for a new/changed tag definition.
-
-    :param rack_id: System ID for the rack controller.
-    :param nodes: List of nodes to process tags for.
-    :param tag_name: Name of the tag to update nodes for
-    :param tag_definition: Tag definition
-    :param tag_nsmap: The namespace map as used by LXML's ETree library.
-    :param client: A `MAASClient` used to fetch the node's details via
-        calls to the web API.
-    :param batch_size: Size of batch
-    """
-    # We evaluate this early, so we can fail before sending a bunch of data to
-    # the server
-    xpath = etree.XPath(tag_definition, namespaces=tag_nsmap)
-    system_ids = [node["system_id"] for node in nodes]
-    process_all(
-        client,
-        rack_id,
-        tag_name,
-        tag_definition,
-        system_ids,
-        xpath,
-        batch_size=batch_size,
-    )
