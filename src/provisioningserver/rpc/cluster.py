@@ -23,7 +23,6 @@ __all__ = [
     "ScanNetworks",
     "ValidateDHCPv4Config",
     "ValidateDHCPv6Config",
-    "ValidateLicenseKey",
 ]
 
 from twisted.protocols import amp
@@ -50,21 +49,6 @@ class DescribePowerTypes(amp.Command):
     arguments = []
     response = [(b"power_types", StructureAsJSON())]
     errors = []
-
-
-class ValidateLicenseKey(amp.Command):
-    """Validate an OS license key.
-
-    :since: 1.7
-    """
-
-    arguments = [
-        (b"osystem", amp.Unicode()),
-        (b"release", amp.Unicode()),
-        (b"key", amp.Unicode()),
-    ]
-    response = [(b"is_valid", amp.Boolean())]
-    errors = {exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem"}
 
 
 class PowerDriverCheck(amp.Command):
