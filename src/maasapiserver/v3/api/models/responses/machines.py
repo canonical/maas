@@ -61,8 +61,8 @@ class UsbDeviceResponse(HalResponse[BaseHal]):
     kind = "MachineHardwareDevice"
     id: int
     type: HardwareDeviceTypeEnum
-    vendor_id: int
-    product_id: int
+    vendor_id: str
+    product_id: str
     vendor_name: str
     product_name: str
     commissioning_driver: str
@@ -78,8 +78,8 @@ class PciDeviceResponse(HalResponse[BaseHal]):
     kind = "MachinePciDevice"
     id: int
     type: HardwareDeviceTypeEnum
-    vendor_id: int
-    product_id: int
+    vendor_id: str
+    product_id: str
     vendor_name: str
     product_name: str
     commissioning_driver: str

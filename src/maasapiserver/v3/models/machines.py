@@ -1,4 +1,7 @@
+import re
 from typing import Optional
+
+from pydantic import validator
 
 from maasapiserver.v3.api.models.responses.base import BaseHal, BaseHref
 from maasapiserver.v3.api.models.responses.machines import (
@@ -10,6 +13,9 @@ from maasapiserver.v3.api.models.responses.machines import (
     UsbDeviceResponse,
 )
 from maasapiserver.v3.models.base import MaasTimestampedBaseModel
+
+# PCIE and USB vendor and product ids are represented as a 2 byte hex string
+DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 
 
 class Machine(MaasTimestampedBaseModel):
@@ -57,9 +63,8 @@ class Machine(MaasTimestampedBaseModel):
 class HardwareDevice(MaasTimestampedBaseModel):
     # TODO: move HARDWARE_TYPE to enum and change the type here
     hardware_type: HardwareDeviceTypeEnum = HardwareDeviceTypeEnum.node
-    vendor_id: int
-    # TODO: add validator?
-    product_id: int
+    vendor_id: str
+    product_id: str
     vendor_name: str
     product_name: str
     commissioning_driver: str
@@ -69,6 +74,12 @@ class HardwareDevice(MaasTimestampedBaseModel):
     # physical_interface_id: Optional[int]
     # physical_blockdevice_id: Optional[int]
     # node_config_id: int
+
+    @validator("vendor_id", "product_id")
+    def validate_hex_ids(cls, id):
+        if not DEVICE_ID_REGEX.match(id):
+            raise ValueError("Must be an 8 byte hex value")
+        return id
 
 
 class UsbDevice(HardwareDevice):
