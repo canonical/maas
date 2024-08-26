@@ -26,6 +26,7 @@ def generate(
 ):
     from metadataserver.builtin_scripts import load_builtin_scripts
 
+    from .devices import make_pci_devices
     from .event import make_event_types, make_events
     from .machine import make_machine_infos, make_machines
     from .network import make_network_interfaces, make_networks
@@ -94,6 +95,9 @@ def generate(
     machines = make_machines(
         machine_infos, vmhosts, tags, users, redfish_address
     )
+
+    LOGGER.info("creating 5 pci devices per machine")
+    make_pci_devices(machines)
 
     LOGGER.info(f"creating {OWNERDATA_PER_MACHINE_COUNT} owner data")
     make_ownerdata(OWNERDATA_PER_MACHINE_COUNT, ownerdata_prefix, machines)
