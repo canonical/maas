@@ -7,7 +7,9 @@ from maasserver.enum import BMC_TYPE
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-async def create_test_bmc(fixture: Fixture, **extra_details: Any) -> Bmc:
+async def create_test_bmc_entry(
+    fixture: Fixture, **extra_details: Any
+) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
     bmc = {
@@ -32,4 +34,10 @@ async def create_test_bmc(fixture: Fixture, **extra_details: Any) -> Bmc:
         "maasserver_bmc",
         [bmc],
     )
+    return created_bmc
+
+
+async def create_test_bmc(fixture: Fixture, **extra_details: Any) -> Bmc:
+    created_bmc = await create_test_bmc_entry(fixture, **extra_details)
+
     return Bmc(**created_bmc)

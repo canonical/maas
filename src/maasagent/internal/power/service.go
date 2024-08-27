@@ -18,6 +18,7 @@ package power
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -93,10 +94,11 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	}
 
 	activities := map[string]interface{}{
-		"power-on":    s.PowerOn,
-		"power-off":   s.PowerOff,
-		"power-query": s.PowerQuery,
-		"power-cycle": s.PowerCycle,
+		"power-on":       s.PowerOn,
+		"power-off":      s.PowerOff,
+		"power-query":    s.PowerQuery,
+		"power-cycle":    s.PowerCycle,
+		"set-boot-order": s.SetBootOrder,
 	}
 
 	// TODO: register workflows once they are moved to the Agent
@@ -125,10 +127,15 @@ func (s *PowerService) configure(ctx tworkflow.Context, systemID string) error {
 	return nil
 }
 
-// PowerOnParam is the activity parameter for power management of a host
-type PowerOnParam struct {
+// PowerParam is a generic activity parameter for power management of a host
+type PowerParam struct {
 	DriverOpts map[string]interface{} `json:"driver_opts"`
 	DriverType string                 `json:"driver_type"`
+}
+
+// PowerOnParam is the activity parameter for power management of a host
+type PowerOnParam struct {
+	PowerParam
 }
 
 // PowerOnResult is the result of power action
@@ -138,8 +145,7 @@ type PowerOnResult struct {
 
 // PowerOffParam is the activity parameter for power management of a host
 type PowerOffParam struct {
-	DriverOpts map[string]interface{} `json:"driver_opts"`
-	DriverType string                 `json:"driver_type"`
+	PowerParam
 }
 
 // PowerOffResult is the result of power action
@@ -149,8 +155,7 @@ type PowerOffResult struct {
 
 // PowerCycleParam is the activity parameter for power management of a host
 type PowerCycleParam struct {
-	DriverOpts map[string]interface{} `json:"driver_opts"`
-	DriverType string                 `json:"driver_type"`
+	PowerParam
 }
 
 // PowerCycleResult is the result of power action
@@ -160,8 +165,7 @@ type PowerCycleResult struct {
 
 // PowerQueryParam is the activity parameter for power management of a host
 type PowerQueryParam struct {
-	DriverOpts map[string]interface{} `json:"driver_opts"`
-	DriverType string                 `json:"driver_type"`
+	PowerParam
 }
 
 // PowerQueryResult is the result of power action
@@ -223,7 +227,23 @@ func (s *PowerService) PowerQuery(ctx context.Context, param PowerQueryParam) (*
 	return &PowerQueryResult{State: out}, nil
 }
 
-func powerCommand(ctx context.Context, action, driver string, opts map[string]interface{}) (string, error) {
+type SetBootOrderParam struct {
+	SystemID    string                   `json:"system_id"`
+	PowerParams PowerParam               `json:"power_param"`
+	Order       []map[string]interface{} `json:"order"`
+}
+
+func (s *PowerService) SetBootOrder(ctx context.Context, param SetBootOrderParam) error {
+	log := activity.GetLogger(ctx)
+
+	log.Info("setting boot order of " + param.SystemID)
+
+	_, err := powerCommand(ctx, "set-boot-order", param.PowerParams.DriverType, param.PowerParams.DriverOpts)
+
+	return err
+}
+
+func powerCommand(ctx context.Context, action, driver string, opts map[string]interface{}, bootOrder ...map[string]interface{}) (string, error) {
 	log := activity.GetLogger(ctx)
 
 	maasPowerCLI, err := exec.LookPath(powerCLIExecutableName())
@@ -237,6 +257,23 @@ func powerCommand(ctx context.Context, action, driver string, opts map[string]in
 	formattedOpts := fmtPowerOpts(opts)
 
 	args := append([]string{action, driver}, formattedOpts...)
+
+	if action == "set-boot-order" {
+		bootOrderStr := make([]string, len(bootOrder))
+
+		for i, device := range bootOrder {
+			var dev []byte
+
+			dev, err = json.Marshal(device)
+			if err != nil {
+				return "", err
+			}
+
+			bootOrderStr[i] = string(dev)
+		}
+
+		args = append(args, "--order", "'"+strings.Join(bootOrderStr, ",")+"'")
+	}
 
 	log.Debug("Executing MAAS power CLI", tag.Builder().KV("args", args).KeyVals...)
 

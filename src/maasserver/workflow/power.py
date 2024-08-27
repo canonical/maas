@@ -22,11 +22,7 @@ class PowerAction(Enum):
 
 
 @dataclass
-class PowerOnParam:
-    """
-    Parameters required by the PowerOn workflow
-    """
-
+class PowerParam:
     system_id: str
 
     # XXX: should be removed, once we can fetch everything by system_id
@@ -34,6 +30,15 @@ class PowerOnParam:
     driver_type: str
     driver_opts: dict[str, Any]
     task_queue: str
+
+
+@dataclass
+class PowerOnParam(PowerParam):
+    """
+    Parameters required by the PowerOn workflow
+    """
+
+    pass
 
 
 @dataclass
@@ -46,18 +51,12 @@ class PowerOnResult:
 
 
 @dataclass
-class PowerOffParam:
+class PowerOffParam(PowerParam):
     """
     Parameters required by the PowerOff workflow
     """
 
-    system_id: str
-
-    # XXX: should be removed, once we can fetch everything by system_id
-    # inside workflow itself and pass to the underlying PowerOff activity.
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
+    pass
 
 
 @dataclass
@@ -70,18 +69,12 @@ class PowerOffResult:
 
 
 @dataclass
-class PowerCycleParam:
+class PowerCycleParam(PowerParam):
     """
     Parameters required by the PowerCycle workflow
     """
 
-    system_id: str
-
-    # XXX: should be removed, once we can fetch everything by system_id
-    # inside workflow itself and pass to the underlying PowerCycle activity.
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
+    pass
 
 
 @dataclass
@@ -94,19 +87,13 @@ class PowerCycleResult:
 
 
 @dataclass
-class PowerQueryParam:
+class PowerQueryParam(PowerParam):
     """
 
     Parameters required by the PowerQuery workflow
     """
 
-    system_id: str
-
-    # XXX: should be removed, once we can fetch everything by system_id
-    # inside workflow itself and pass to the underlying PowerQuery activity.
-    driver_type: str
-    driver_opts: dict[str, Any]
-    task_queue: str
+    pass
 
 
 @dataclass

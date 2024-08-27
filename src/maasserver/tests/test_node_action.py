@@ -22,13 +22,9 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES_DICT,
 )
 from maasserver.exceptions import NodeActionError
-from maasserver.models import (
-    Config,
-    Event,
-    ScriptSet,
-    signals,
-    StaticIPAddress,
-)
+from maasserver.models import Config, Event
+from maasserver.models import node as node_module
+from maasserver.models import ScriptSet, signals, StaticIPAddress
 from maasserver.models.signals.testing import SignalsDisabled
 import maasserver.node_action as node_action_module
 from maasserver.node_action import (
@@ -536,6 +532,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             request.user = admin
 
         node_stop = self.patch_autospec(node, "_stop")
+        temporal_stop = self.patch(node_module, "stop_workflow")
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
 
@@ -557,6 +554,7 @@ class TestAbortAction(MAASTransactionServerTestCase):
             self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
         node_stop.assert_called_once_with(admin)
+        temporal_stop.assert_called_once_with(f"deploy:{node.system_id}")
 
     def test_Abort_aborts_testing(self):
         """Makes sure a TESTING node is returned to previous status after an
@@ -1053,6 +1051,7 @@ class TestDeployActionTransactional(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         factory.make_RegionController()
+        self.patch(node_module.Node, "_temporal_deploy")
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()

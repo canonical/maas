@@ -119,3 +119,25 @@ async def query_workflow(workflow_id: str, query_id: str) -> Any:
         return await hdl.query(query_id)
     except RPCError:
         return None
+
+
+@temporal_wrapper
+async def signal_workflow(
+    workflow_id: str,
+    signal_channel: str,
+    *args: list[Any],
+    **kwargs: dict[str, Any],
+) -> None:
+    temporal_client = await get_client_async()
+    hdl = temporal_client.get_workflow_handle(workflow_id=workflow_id)
+    try:
+        hdl.signal(signal_channel, *args, **kwargs)
+    except RPCError:
+        return None
+
+
+@temporal_wrapper
+async def stop_workflow(workflow_id: str):
+    client = await get_client_async()
+    hdl = await client.get_workflow_handle(workflow_id=workflow_id)
+    await hdl.cancel()

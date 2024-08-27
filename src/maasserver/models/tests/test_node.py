@@ -871,6 +871,7 @@ class TestNode(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
+        self.patch_autospec(Node, "_temporal_deploy")
 
     def disable_node_query(self):
         self.addCleanup(node_query.signals.enable)
@@ -2376,9 +2377,11 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
         self.patch(Node, "_stop").return_value = None
+        stop_workflow = self.patch(node_module, "stop_workflow")
         with post_commit_hooks:
             node.abort_deploying(admin)
         events = Event.objects.filter(node=node).order_by("id")
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
         self.assertEqual(
             events[0].type.name, EVENT_TYPES.REQUEST_NODE_ABORT_DEPLOYMENT
         )
@@ -2392,9 +2395,11 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_stop").return_value = None
         self.patch_autospec(Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
+        stop_workflow = self.patch(node_module, "stop_workflow")
         abort_all_tests = self.patch_autospec(Node, "_abort_all_tests")
         with post_commit_hooks:
             node.abort_deploying(admin)
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
         abort_all_tests.assert_called_once_with(
             node.current_installation_script_set_id
         )
@@ -2406,9 +2411,11 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_stop").return_value = None
         self.patch_autospec(Node, "_clear_status_expires")
         self.patch(Node, "_set_status")
+        stop_workflow = self.patch(node_module, "stop_workflow")
         mock_clear_resources = self.patch(Node, "_clear_deployment_resources")
         with post_commit_hooks:
             node.abort_deploying(admin)
+        stop_workflow.assert_called_once_with(f"deploy:{node.system_id}")
         mock_clear_resources.assert_called_once_with(node_id)
 
     def test_abort_operation_raises_exception_for_unsupported_state(self):
@@ -8868,6 +8875,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
+        self.patch(Node, "_temporal_deploy")
 
     def make_acquired_node_with_interface(
         self,
@@ -9716,7 +9724,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
         )
 
         mock_claim_auto_ips = self.patch(Node, "_claim_auto_ips")
-        mock_power_control = self.patch(Node, "_power_control_node")
 
         node.start(user)
 
@@ -9725,9 +9732,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         # Calls _claim_auto_ips.
         mock_claim_auto_ips.assert_called_once()
-
-        # Calls _power_control_node when power_cycle.
-        mock_power_control.assert_called_once_with(ANY, "power_cycle", ANY, [])
 
     def test_claims_auto_ips_when_script_needs_it(self):
         user = factory.make_User()
@@ -9787,26 +9791,6 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         mock_claim_auto_ips.assert_not_called()
 
-    def test_includes_boot_order_when_supported_by_power_driver(self):
-        user = factory.make_User()
-        on = factory.pick_bool()
-        node = self.make_acquired_node_with_interface(
-            user,
-            power_type="hmcz",
-            power_state=POWER_STATE.ON if on else POWER_STATE.OFF,
-        )
-        self.patch(Node, "_claim_auto_ips")
-        mock_power_control = self.patch(Node, "_power_control_node")
-
-        node.start(user)
-
-        mock_power_control.assert_called_once_with(
-            ANY,
-            "power_cycle" if on else "power_on",
-            node.get_effective_power_info(),
-            node._get_boot_order(True),
-        )
-
     def test_manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
@@ -9818,24 +9802,19 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         mock_power_control.assert_not_called()
 
-    def test_adds_callbacks_and_errbacks_to_post_commit(self):
+    def test_adds_errbacks_to_post_commit(self):
         user = factory.make_User()
-        node = self.make_acquired_node_with_interface(user)
+        node = factory.make_Node(
+            status=NODE_STATUS.NEW, architecture="amd64/generic"
+        )
         old_status = node.status
 
+        self.patch(Node, "validate_bootresource_exists_for_action")
         post_commit_defer = self.patch(node_module, "post_commit")
         mock_power_control = self.patch(Node, "_power_control_node")
         mock_power_control.return_value = post_commit_defer
 
         node.start(user)
-
-        # Adds callback to set status expires.
-        post_commit_defer.addCallback.assert_called_once_with(
-            callOutToDatabase,
-            Node._set_status_expires,
-            node.system_id,
-            NODE_STATUS.DEPLOYING,
-        )
 
         # Adds errback to reset status and release auto ips.
         post_commit_defer.addErrback.assert_has_calls(
@@ -9846,27 +9825,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
                     user,
                     old_status,
                 ),
-                call(callOutToDatabase, node.release_interface_config),
             ),
         )
-
-    def test_calls_power_cycle_when_cycling_allowed(self):
-        user = factory.make_User()
-        node = self.make_acquired_node_with_interface(
-            user, power_state=POWER_STATE.ON
-        )
-
-        post_commit_defer = self.patch(node_module, "post_commit")
-        mock_power_control = self.patch(Node, "_power_control_node")
-        mock_power_control.return_value = post_commit_defer
-
-        # Power cycling is allowed when starting deployment. This node is
-        # allocated and the power_state is ON. Power cycle should be called
-        # instead of power_on.
-        node.start(user)
-
-        # Calls _power_control_node when power_cycle.
-        mock_power_control.assert_called_once_with(ANY, "power_cycle", ANY, [])
 
     def test_aborts_all_scripts_and_logs(self):
         user = factory.make_User()

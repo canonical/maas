@@ -168,8 +168,13 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
-from maasserver.workflow import execute_workflow
-from maasserver.workflow.power import convert_power_action_to_power_workflow
+from maasserver.workflow import execute_workflow, start_workflow, stop_workflow
+from maasserver.workflow.power import (
+    convert_power_action_to_power_workflow,
+    get_temporal_task_queue_for_bmc,
+    PowerParam,
+)
+from maastemporalworker.workflow.deploy import DeployNParam, DeployParam
 from metadataserver.enum import (
     RESULT_TYPE,
     SCRIPT_STATUS,
@@ -2823,6 +2828,8 @@ class Node(CleanSave, TimestampedModel):
             )
 
         try:
+            stop_workflow(f"deploy:{self.system_id}")
+
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
@@ -5698,7 +5705,9 @@ class Node(CleanSave, TimestampedModel):
             user, event, action="start", comment=comment
         )
         return self._start(
-            user, user_data, allow_power_cycle=allow_power_cycle
+            user,
+            user_data,
+            allow_power_cycle=allow_power_cycle,
         )
 
     def _get_bmc_client_connection_info(self, *args, **kwargs):
@@ -5771,42 +5780,8 @@ class Node(CleanSave, TimestampedModel):
             status__in=SCRIPT_STATUS_RUNNING_OR_PENDING
         ).update(status=SCRIPT_STATUS.ABORTED, updated=now())
 
-    @transactional
-    def _start(
-        self,
-        user: User,
-        user_data: bytes | None = None,
-        old_status=None,
-        allow_power_cycle: bool = False,
-        config=None,
-    ) -> Deferred | None:
-        """Request on given user's behalf that the node be started up.
-
-        :param user: Requesting user.
-        :type user: User_
-        :param user_data: Optional blob of user-data to be made available to
-            the node through the metadata service. If not given, any previous
-            user data is used.
-        :type user_data: unicode
-
-        :raise StaticIPAddressExhaustion: if there are not enough IP addresses
-            left in the static range for this node to get all the addresses it
-            needs.
-        :raise PermissionDenied: If `user` does not have permission to
-            start this node.
-
-        :return: a `Deferred` which contains the post-commit tasks that are
-            required to run to start the node. This is already registered as a
-            post-commit hook; it should not be added a second time. If it has
-            not been possible to start the node because the power controller
-            does not support it, `None` will be returned. The node must be
-            powered on manually.
-        """
-        from maasserver.models import BootResource, NodeUserData
-
-        if not user.has_perm(NodePermission.edit, self):
-            # You can't start a node you don't own unless you're an admin.
-            raise PermissionDenied()
+    def validate_bootresource_exists_for_action(self, config=None):
+        from maasserver.models import BootResource
 
         # Validate that the operating system being booted and deployed are
         # available before booting. Checks for the allocated and deployed
@@ -5860,15 +5835,87 @@ class Node(CleanSave, TimestampedModel):
                         f"for {arch}/{platform} is unavailable."
                     )
 
+    def set_user_data(self, user_data: bytes | None = None) -> None:
+        from maasserver.models import NodeUserData
+
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, user_data)
 
+    def _temporal_deploy(self, _, d: Deferred) -> Deferred:
+        power_info = self.get_effective_power_info()
+        dd = start_workflow(
+            "deploy-n",
+            param=DeployNParam(
+                params=[
+                    DeployParam(
+                        system_id=str(self.system_id),
+                        power_params=PowerParam(
+                            system_id=str(self.system_id),
+                            driver_type=str(power_info.power_type),
+                            driver_opts=dict(power_info.power_parameters),
+                            task_queue=str(
+                                get_temporal_task_queue_for_bmc(self)
+                            ),
+                        ),
+                        ephemeral_deploy=bool(self.ephemeral_deploy),
+                        can_set_boot_order=bool(power_info.can_set_boot_order),
+                        task_queue="region",
+                    ),
+                ],
+            ),
+            task_queue="region",
+        )
+        if not dd.called:
+            return dd
+        return d
+
+    @transactional
+    def _start(
+        self,
+        user: User,
+        user_data: bytes | None = None,
+        old_status=None,
+        allow_power_cycle: bool = False,
+        config=None,
+    ) -> Deferred | None:
+        """Request on given user's behalf that the node be started up.
+
+        :param user: Requesting user.
+        :type user: User_
+        :param user_data: Optional blob of user-data to be made available to
+            the node through the metadata service. If not given, any previous
+            user data is used.
+        :type user_data: unicode
+
+        :raise StaticIPAddressExhaustion: if there are not enough IP addresses
+            left in the static range for this node to get all the addresses it
+            needs.
+        :raise PermissionDenied: If `user` does not have permission to
+            start this node.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to start the node. This is already registered as a
+            post-commit hook; it should not be added a second time. If it has
+            not been possible to start the node because the power controller
+            does not support it, `None` will be returned. The node must be
+            powered on manually.
+        """
+
+        if not user.has_perm(NodePermission.edit, self):
+            # You can't start a node you don't own unless you're an admin.
+            raise PermissionDenied()
+
+        self.validate_bootresource_exists_for_action(config=config)
+
+        self.set_user_data(user_data=user_data)
+
         # Auto IP allocation and power on action are attached to the
         # post commit of the transaction.
         d = post_commit()
         claimed_ips = False
+        needs_power_call = True
 
         @inlineCallbacks
         def claim_auto_ips(_):
@@ -5876,13 +5923,14 @@ class Node(CleanSave, TimestampedModel):
 
         if self.status == NODE_STATUS.ALLOCATED:
             old_status = self.status
-            # Claim AUTO IP addresses for the node if it's ALLOCATED.
-            # The current state being ALLOCATED is our indication that the node
-            # is being deployed for the first time.
+            set_deployment_timeout = False  # handled by temporal
             d.addCallback(claim_auto_ips)
-            set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
+            needs_power_call = False
+
+            d.addCallback(self._temporal_deploy, d)
+
         elif self.status in COMMISSIONING_LIKE_STATUSES:
             if old_status is None:
                 old_status = self.status
@@ -5905,6 +5953,9 @@ class Node(CleanSave, TimestampedModel):
             # and will already be in a DEPLOYED state.
             set_deployment_timeout = True
             self._start_deployment()
+            needs_power_call = False
+
+            d.addCallback(self._temporal_deploy, d)
         else:
             set_deployment_timeout = False
 
@@ -5915,20 +5966,21 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return None
 
-        if power_info.can_set_boot_order:
-            boot_order = self._get_boot_order()
-        else:
-            boot_order = []
+        if needs_power_call:
+            if power_info.can_set_boot_order:
+                boot_order = self._get_boot_order()
+            else:
+                boot_order = []
 
-        # Request that the node be powered on post-commit.
-        if self.power_state == POWER_STATE.ON and allow_power_cycle:
-            d = self._power_control_node(
-                d, POWER_WORKFLOW_ACTIONS.CYCLE, power_info, boot_order
-            )
-        else:
-            d = self._power_control_node(
-                d, POWER_WORKFLOW_ACTIONS.ON, power_info, boot_order
-            )
+            # Request that the node be powered on post-commit.
+            if self.power_state == POWER_STATE.ON and allow_power_cycle:
+                d = self._power_control_node(
+                    d, POWER_WORKFLOW_ACTIONS.CYCLE, power_info, boot_order
+                )
+            else:
+                d = self._power_control_node(
+                    d, POWER_WORKFLOW_ACTIONS.ON, power_info, boot_order
+                )
 
         # Set the deployment timeout so the node is marked failed after
         # a period of time.
@@ -5952,6 +6004,7 @@ class Node(CleanSave, TimestampedModel):
         # auto IP addresses.
         if claimed_ips:
             d.addErrback(callOutToDatabase, self.release_interface_config)
+
         return d
 
     @transactional

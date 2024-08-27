@@ -339,6 +339,7 @@ class TestStatusWorkerService(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(SignalsDisabled("power"))
+        self.patch(api_twisted_module, "signal_workflow")
 
     def processMessage(self, node, payload):
         worker = StatusWorkerService(sentinel.dbtasks)

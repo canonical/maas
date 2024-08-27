@@ -91,6 +91,11 @@ async def _run(reactor, args, driver_registry=PowerDriverRegistry):
         await driver.cycle(None, context)
     elif command == "off":
         await driver.off(None, context)
+    elif command == "set-boot-order" and driver.can_set_boot_order:
+        order = []
+        if hasattr(args, "order"):
+            order = args.order.split(",")
+        await driver.set_boot_order(None, context, order)
 
     # Always show the status, which covers the 'status' command option and
     # gives the user feedback for any other commands.

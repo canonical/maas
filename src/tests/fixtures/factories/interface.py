@@ -50,13 +50,14 @@ async def create_test_interface(
     )
 
 
-async def create_test_interface_entry(
+async def create_test_interface_dict(
     fixture: Fixture,
     node: dict[str, Any] | None = None,
     ips: list[dict[str, Any]] | None = None,
     vlan: dict[str, Any] | None = None,
+    boot_iface: bool | None = None,
     **extra_details: dict[str, Any],
-) -> Interface:
+) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
     interface = {
@@ -103,19 +104,37 @@ async def create_test_interface_entry(
 
     if ips:
         created_interface["links"] = sorted(
-            [
-                Link(
-                    **{
-                        "id": ip["id"],
-                        "ip_type": ip["alloc_type"],
-                        "ip_address": ip["ip"],
-                        "ip_subnet": ip["subnet_id"],
-                    }
-                )
-                for ip in ips
-            ],
-            key=lambda link: link.id,
-            reverse=True,
+            [ip for ip in ips], key=lambda ip: ip["id"], reverse=True
         )
+
+    return created_interface
+
+
+async def create_test_interface_entry(
+    fixture: Fixture,
+    node: dict[str, Any] | None = None,
+    ips: list[dict[str, Any]] | None = None,
+    vlan: dict[str, Any] | None = None,
+    **extra_details: dict[str, Any],
+) -> Interface:
+    created_interface = await create_test_interface_dict(
+        fixture, node, ips, vlan, **extra_details
+    )
+
+    created_interface["links"] = sorted(
+        [
+            Link(
+                **{
+                    "id": ip["id"],
+                    "ip_type": ip["alloc_type"],
+                    "ip_address": ip["ip"],
+                    "ip_subnet": ip["subnet_id"],
+                }
+            )
+            for ip in created_interface.get("links", [])
+        ],
+        key=lambda link: link.id,
+        reverse=True,
+    )
 
     return Interface(**created_interface)

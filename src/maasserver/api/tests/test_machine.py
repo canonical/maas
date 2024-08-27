@@ -111,6 +111,7 @@ class TestMachineAPI(APITestCase.ForUser):
         super().setUp()
         self.region = factory.make_RegionController()
         self.patch(node_module.Node, "_pc_power_control_node")
+        self.patch(node_module.Node, "_temporal_deploy")
 
     def test_handler_path(self):
         self.assertEqual(

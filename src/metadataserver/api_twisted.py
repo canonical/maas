@@ -28,6 +28,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maasserver.vmhost import discover_and_sync_vmhost
+from maasserver.workflow import signal_workflow
 from metadataserver import logger
 from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
@@ -497,6 +498,12 @@ class StatusWorkerService(TimerService):
                 ):
                     save_node = True
                     _create_vmhost_for_deployment(node)
+
+                if not failed and activity_name == "modules-final":
+                    signal_workflow(
+                        f"deploy-{node.system_id}", "netboot-finished"
+                    )
+
             elif node.status == NODE_STATUS.DISK_ERASING:
                 if failed:
                     node.mark_failed(
