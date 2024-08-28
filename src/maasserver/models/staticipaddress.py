@@ -1072,7 +1072,9 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     iface.vlan = subnet.vlan
                     iface.save()
 
-    def render_json(self, with_username=False, with_summary=False):
+    def render_json(
+        self, with_username: bool = False, with_summary: bool = False
+    ) -> dict:
         """Render a representation of this `StaticIPAddress` object suitable
         for converting to JSON. Includes optional parameters wherever a join
         would be implied by including a specific piece of information."""

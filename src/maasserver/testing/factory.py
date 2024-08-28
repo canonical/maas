@@ -1245,7 +1245,7 @@ class Factory(maastesting.factory.Factory):
         cidr=None,
         hostname=None,
         **kwargs,
-    ):
+    ) -> StaticIPAddress:
         """Create and return a StaticIPAddress model object.
 
         If a non-None `interface` is passed, connect this IP address to the

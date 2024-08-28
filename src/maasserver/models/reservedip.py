@@ -69,8 +69,8 @@ class ReservedIPManager(Manager, MAASQueriesMixin):
 class ReservedIP(CleanSave, TimestampedModel):
     """Reserved IP model.
 
-    (Django) model containing the fields and behaviours of the reserved IPs
-    data.
+    As (Django) model, this class contains the fields and behaviours of the
+    reserved IPs data.
     """
 
     objects = ReservedIPManager()

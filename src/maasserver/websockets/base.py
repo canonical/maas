@@ -14,10 +14,12 @@ import asyncio
 from functools import reduce, wraps
 from operator import attrgetter
 
+from django.contrib.auth.models import User
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, F, Model, Q
+from django.http import QueryDict
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 from twisted.internet.threads import deferToThread
@@ -189,7 +191,7 @@ class Handler(metaclass=HandlerMetaclass):
 
     """
 
-    def __init__(self, user, cache, request, session_id=""):
+    def __init__(self, user: User, cache: dict, request, session_id=""):
         self.user = user
         self.cache = cache
         self.request = request
@@ -200,7 +202,7 @@ class Handler(metaclass=HandlerMetaclass):
             self.cache["loaded_pks"] = set()
         self.api_client = APIServerClient(session_id)
 
-    def full_dehydrate(self, obj, for_list=False):
+    def full_dehydrate(self, obj, for_list: bool = False) -> dict:
         """Convert the given object into a dictionary.
 
         :param for_list: True when the object is being converted to belong
@@ -245,7 +247,7 @@ class Handler(metaclass=HandlerMetaclass):
         # Return the data after the final dehydrate.
         return self.dehydrate(obj, data, for_list=for_list)
 
-    def dehydrate(self, obj, data, for_list=False):
+    def dehydrate(self, obj, data: dict, for_list: bool = False) -> dict:
         """Add any extra info to the `data` before finalizing the final object.
 
         :param obj: object being dehydrated.
@@ -335,7 +337,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return obj
 
-    def _get_object(self, params, permission=None):
+    def _get_object(self, params: dict, permission=None):
         """Get object by using the `pk` in `params`."""
         if self._meta.pk not in params:
             raise HandlerValidationError(
@@ -355,7 +357,7 @@ class Handler(metaclass=HandlerMetaclass):
                 raise HandlerPermissionError()
         return obj
 
-    def get_object(self, params, permission=None):
+    def get_object(self, params: dict, permission=None):
         """Get object by using the `pk` in `params`."""
         return self._get_object(params, permission=permission)
 
@@ -389,7 +391,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return self._meta.form
 
-    def preprocess_form(self, action, params):
+    def preprocess_form(self, action, params: dict) -> QueryDict:
         """Process the `params` to before passing the data to the form.
 
         Default implementation just converts `params` to a `QueryDict`.
@@ -739,12 +741,12 @@ class Handler(metaclass=HandlerMetaclass):
         self._load_extra_data_before_dehydrate([obj], False)
         return self.full_dehydrate(obj)
 
-    def create(self, params):
+    def create(self, params: dict) -> dict:
         """Create the object from data."""
         obj = self._create(params)
         return self.full_dehydrate(obj)
 
-    def _create(self, params):
+    def _create(self, params: dict):
         # Create by using form. `create_permission` is not used with form,
         # permission checks should be done in the form.
         form_class = self.get_form_class("create")
@@ -785,13 +787,13 @@ class Handler(metaclass=HandlerMetaclass):
         obj.save()
         return obj
 
-    def update(self, params):
+    def update(self, params: dict) -> dict:
         """Update the object."""
         obj = self.get_object(params)
         obj = self._update(obj, params)
         return self.full_dehydrate(obj)
 
-    def _update(self, obj, params):
+    def _update(self, obj, params: dict):
         # Update by using form. `edit_permission` is not used when form
         # is used to update. The form should define the permissions.
         form_class = self.get_form_class("update")

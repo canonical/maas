@@ -134,7 +134,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
         LIMIT 1
         """
 
-    def get_best_subnet_for_ip(self, ip):
+    def get_best_subnet_for_ip(self, ip: str) -> Subnet | None:
         """Find the most-specific managed Subnet the specified IP address
         belongs to."""
         ip = IPAddress(ip)
@@ -844,8 +844,8 @@ class Subnet(CleanSave, TimestampedModel):
         return free_ips
 
     def render_json_for_related_ips(
-        self, with_username=True, with_summary=True
-    ):
+        self, with_username: bool = True, with_summary: bool = True
+    ) -> list:
         """Render a representation of this subnet's related IP addresses,
         suitable for converting to JSON. Optionally exclude user and node
         information."""

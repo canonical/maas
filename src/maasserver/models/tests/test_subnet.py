@@ -1143,7 +1143,7 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         self.assertEqual(9, count)
 
 
-class TestRenderJSONForRelatedReservedIPs(MAASServerTestCase):
+class TestRenderJSONForReservedIPs(MAASServerTestCase):
     def test_sorts_by_ip_address(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
         ReservedIP(
@@ -1176,6 +1176,27 @@ class TestRenderJSONForRelatedReservedIPs(MAASServerTestCase):
                     )
                 )
             )
+
+    def test_render_reserved_ips(self):
+        subnet = factory.make_Subnet(cidr="10.0.0.0/24")
+        ReservedIP(
+            ip="10.0.0.53",
+            subnet=subnet,
+        ).save()
+        ReservedIP(
+            ip="10.0.0.67",
+            mac_address="00:11:22:33:44:55",
+            subnet=subnet,
+        ).save()
+
+        result = subnet.render_json_for_related_reserved_ips()
+
+        self.assertEqual(result[0]["ip"], "10.0.0.53")
+        self.assertEqual(result[0]["mac_address"], None)
+        self.assertEqual(result[0]["node_summary"], {})
+        self.assertEqual(result[1]["ip"], "10.0.0.67")
+        self.assertEqual(result[1]["mac_address"], "00:11:22:33:44:55")
+        self.assertEqual(result[1]["node_summary"], {})
 
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):

@@ -436,7 +436,9 @@ class Factory:
             "Could not find available IP in static range"
         )
 
-    def pick_ip_in_network(self, network, *, but_not=EMPTY_SET):
+    def pick_ip_in_network(
+        self, network: IPNetwork, *, but_not=EMPTY_SET
+    ) -> str:
         excluded_set = IPSet()
         for exclusion in but_not:
             if isinstance(exclusion, str):

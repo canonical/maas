@@ -45,7 +45,9 @@ class SubnetHandler(TimestampedModelHandler):
             return ""
         return " ".join(sorted(dns_servers))
 
-    def dehydrate(self, subnet, data, for_list=False):
+    def dehydrate(
+        self, subnet: Subnet, data: dict, for_list: bool = False
+    ) -> dict:
         full_range = subnet.get_iprange_usage(
             cached_staticroutes=self.cache.get("staticroutes")
         )
@@ -59,6 +61,10 @@ class SubnetHandler(TimestampedModelHandler):
             data["ip_addresses"] = subnet.render_json_for_related_ips(
                 with_username=True, with_summary=True
             )
+            data["reserved_ip_addresses"] = (
+                subnet.render_json_for_related_reserved_ips()
+            )
+
         return data
 
     def update(self, parameters):

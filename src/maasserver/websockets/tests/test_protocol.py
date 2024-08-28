@@ -772,6 +772,7 @@ ALL_HANDLERS = {
     "notification",
     "packagerepository",
     "pod",
+    "reservedip",
     "resourcepool",
     "script",
     "service",
