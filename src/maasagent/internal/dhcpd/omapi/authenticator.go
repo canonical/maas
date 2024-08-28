@@ -17,76 +17,56 @@ package omapi
 
 import (
 	"crypto/hmac"
+	"encoding/base64"
+
 	//nolint:gosec // gosec flags MD5 as weak crypto, but it is required for omapi
 	"crypto/md5"
-	"errors"
 	"hash"
 )
 
-var (
-	ErrInvalidAuthType = errors.New("invalid authentication type")
-	ErrNoAuth          = errors.New("the given message is not authenticated properly")
-)
-
-var (
-	authenticatorFactory func(string) Authenticator
-)
-
-type Authenticator interface {
-	Sign(msg []byte) (string, error)
-	Obj() MessageMap
-}
-
-func NewAuthenticator(secret string) Authenticator {
-	if authenticatorFactory != nil {
-		return authenticatorFactory(secret)
-	}
-
-	return NewHMACMD5Authenticator("omapi_key", secret)
-}
-
-type NoopAuthenticator struct{}
-
-func (n *NoopAuthenticator) Sign(msg []byte) (string, error) {
-	return "", nil
-}
-
-func (n *NoopAuthenticator) Obj() MessageMap {
-	return make(MessageMap)
-}
-
-func NewNoopAuthenticator(secret string) Authenticator {
-	return &NoopAuthenticator{}
-}
-
 type HMACMD5Authenticator struct {
-	obj    MessageMap
 	hasher hash.Hash
-	secret string
+	object map[string][]byte
+	authID uint32
 }
 
-func NewHMACMD5Authenticator(name string, secret string) Authenticator {
-	obj := make(MessageMap)
+func NewHMACMD5Authenticator(name string, secret string) HMACMD5Authenticator {
+	object := make(map[string][]byte)
 
-	//nolint:errcheck,gosec //these strings will always succeed, no need to complicate constructor with error handling
-	obj.SetValue("algorithm", "HMAC-MD5.SIG-ALG.REG.INT.")
-	//nolint:errcheck,gosec //these strings will always succeed, no need to complicate constructor with error handling
-	obj.SetValue("name", name)
+	object["algorithm"] = []byte("hmac-md5.SIG-ALG.REG.INT.")
+	object["name"] = []byte(name)
 
-	hasher := hmac.New(md5.New, []byte(secret))
+	key, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		panic(err)
+	}
 
-	return &HMACMD5Authenticator{
-		secret: secret,
-		obj:    obj,
-		hasher: hasher,
+	return HMACMD5Authenticator{
+		object: object,
+		hasher: hmac.New(md5.New, key),
 	}
 }
 
-func (h *HMACMD5Authenticator) Sign(msg []byte) (string, error) {
-	b := h.hasher.Sum(msg)
-	return string(b), nil
+func (h *HMACMD5Authenticator) AuthLen() uint32 {
+	return 16
 }
 
-func (h *HMACMD5Authenticator) Obj() MessageMap {
-	return h.obj
+func (h *HMACMD5Authenticator) Sign(data []byte) []byte {
+	h.hasher.Write(data)
+	signature := h.hasher.Sum(nil)
+	defer h.hasher.Reset()
+
+	return signature
+}
+
+func (h *HMACMD5Authenticator) Object() map[string][]byte {
+	return h.object
+}
+
+func (h *HMACMD5Authenticator) AuthID() uint32 {
+	return h.authID
+}
+
+func (h *HMACMD5Authenticator) SetAuthID(i uint32) {
+	h.authID = i
 }
