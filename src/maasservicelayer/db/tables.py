@@ -768,3 +768,46 @@ VirtualBlockDeviceTable = Table(
     ),
     Column("uuid", Text, nullable=False, unique=True),
 )
+
+IPRangeTable = Table(
+    "maasserver_iprange",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
+    Column("type", String(20), nullable=False, unique=False),
+    Column("start_ip", INET, nullable=False, unique=False),
+    Column("end_ip", INET, nullable=False, unique=False),
+    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
+
+ReservedIPTable = Table(
+    "maasserver_reservedip",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column(
+        "vlan_id",
+        BigInteger,
+        ForeignKey("maasserver_vlan.id"),
+        nullable=False,
+        unique=False,
+    ),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+        unique=False,
+    ),
+    Column("ip", INET, nullable=False, unique=True),
+    Column("mac_address", Text, nullable=True, unique=False),
+    Column("comment", String(255), nullable=True, unique=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
