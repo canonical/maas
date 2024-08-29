@@ -139,5 +139,5 @@ async def signal_workflow(
 @temporal_wrapper
 async def stop_workflow(workflow_id: str):
     client = await get_client_async()
-    hdl = await client.get_workflow_handle(workflow_id=workflow_id)
+    hdl = client.get_workflow_handle(workflow_id=workflow_id)
     await hdl.cancel()
