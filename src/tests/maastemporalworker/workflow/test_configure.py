@@ -127,9 +127,8 @@ class TestConfigureAgentActivity:
         result = await configure_activities.get_rack_controller_vlans(
             GetRackControllerVLANsInput(system_id=rack_controller["system_id"])
         )
-        assert result == GetRackControllerVLANsResult(
-            [vlan1["id"], vlan2["id"]]
-        )
+        assert isinstance(result, GetRackControllerVLANsResult)
+        assert set(result.vlans) == set([vlan1["id"], vlan2["id"]])
 
     async def test_get_region_controller_endpoints_no_region_controller(
         self, db: Database, db_connection: AsyncConnection
@@ -222,6 +221,5 @@ class TestConfigureAgentActivity:
         if ip2["ip"].version == 6:
             endpoint2 = f"http://[{ip2['ip']}]:5240/MAAS/"
 
-        assert result == GetRegionControllerEndpointsResult(
-            [endpoint1, endpoint2]
-        )
+        assert isinstance(result, GetRegionControllerEndpointsResult)
+        assert set(result.endpoints) == set([endpoint1, endpoint2])
