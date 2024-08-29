@@ -14,9 +14,7 @@ if [ ! -e "$SNAP_DATA/proxy/maas-proxy.conf" ]; then
 fi
 
 # Ensure that the cache is initialized.
-if [ ! -d "$SNAP_COMMON/proxy/cache/00" ]; then
-    squid -z -d 5 -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
-fi
+squid -z -d 5 -N -f "$SNAP_DATA/proxy/maas-proxy.conf"
 
 # Start squid, force kill it when the script is terminated. Squid sometimes
 # (most of the time) just does not want to die.
