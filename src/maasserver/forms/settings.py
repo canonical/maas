@@ -19,6 +19,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from maasserver.bootresources import IMPORT_RESOURCES_SERVICE_PERIOD
+from maasserver.enum import INTERFACE_LINK_TYPE_CHOICES
 from maasserver.fields import (
     HostListFormField,
     IPListFormField,
@@ -532,6 +533,18 @@ CONFIG_ITEMS = {
                 "When enabled, each rack will scan subnets enabled for active "
                 "mapping. This helps ensure discovery information is accurate "
                 "and complete."
+            ),
+        },
+    },
+    "default_boot_interface_link_type": {
+        "default": "auto",
+        "form": forms.ChoiceField,
+        "form_kwargs": {
+            "label": "Default boot interface IP Mode",
+            "choices": INTERFACE_LINK_TYPE_CHOICES,
+            "help_text": (
+                "IP Mode that is applied to the boot interface on a node when "
+                "it is commissioned."
             ),
         },
     },

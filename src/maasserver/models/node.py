@@ -4910,8 +4910,8 @@ class Node(CleanSave, TimestampedModel):
         """Set the networking configuration to the default for this node.
 
         The networking configuration is set to an initial configuration where
-        the boot interface is set to AUTO and all other interfaces are set
-        to LINK_UP.
+        the boot interface is set to default_boot_interface_link_type and all
+        other interfaces are set to LINK_UP.
 
         This is done after commissioning has finished.
         """
@@ -4932,8 +4932,8 @@ class Node(CleanSave, TimestampedModel):
         # Clear the configuration, so that we can call this method
         # multiple times.
         self._clear_networking_configuration()
-        # Set AUTO mode on the boot interface.
-        auto_set = False
+        # Set default_boot_interface_link_type mode on the boot interface.
+        default_set = False
         discovered_addresses = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet__isnull=False
         )
@@ -4941,13 +4941,16 @@ class Node(CleanSave, TimestampedModel):
             ip_address.subnet for ip_address in discovered_addresses
         }
         for subnet in subnets_to_link:
-            boot_interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
-            auto_set = True
-        if not auto_set:
-            # Failed to set AUTO mode on the boot interface. Lets force an
-            # AUTO on a subnet that is on the same VLAN as the
-            # interface. If that fails we just set the interface to DHCP with
-            # no subnet defined.
+            boot_interface.link_subnet(
+                Config.objects.get_config("default_boot_interface_link_type"),
+                subnet,
+            )
+            default_set = True
+        if not default_set:
+            # Failed to set default_boot_interface_link_type mode on the boot
+            # interface. Lets force an AUTO on a subnet that is on the same
+            # VLAN as the interface. If that fails we just set the interface
+            # to DHCP with no subnet defined.
             boot_interface.force_auto_or_dhcp_link()
 
         # Set LINK_UP mode on all the other enabled interfaces.

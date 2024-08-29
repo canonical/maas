@@ -88,6 +88,8 @@ def get_default_config():
         "network_discovery": "enabled",
         "active_discovery_interval": _timedelta_to_whole_seconds(hours=3),
         "active_discovery_last_scan": 0,
+        # IP Mode setting
+        "default_boot_interface_link_type": "auto",
         # RPC configuration.
         "rpc_shared_secret": None,
         "uuid": None,

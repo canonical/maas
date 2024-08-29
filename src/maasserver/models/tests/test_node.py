@@ -38,6 +38,7 @@ from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     INTERFACE_LINK_TYPE,
+    INTERFACE_LINK_TYPE_CHOICES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
@@ -7901,7 +7902,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             AssertionError, machine.set_initial_networking_configuration
         )
 
-    def test_set_initial_networking_configuration_auto_on_boot_nic(self):
+    def test_set_initial_networking_configuration_default_on_boot_nic(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         boot_interface = node.get_boot_interface()
         subnet = (
@@ -7912,13 +7913,29 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             .subnet
         )
         node._clear_networking_configuration()
-        node.set_initial_networking_configuration()
+
+        @transactional
+        def set_initial_networking_configuration():
+            node.set_initial_networking_configuration()
+
+        set_initial_networking_configuration()
         boot_interface = reload_object(boot_interface)
-        auto_ip = boot_interface.ip_addresses.filter(
-            alloc_type=IPADDRESS_TYPE.AUTO
+        default_mode = Config.objects.get_config(
+            "default_boot_interface_link_type"
+        )
+        if default_mode == INTERFACE_LINK_TYPE.AUTO:
+            alloc_type = IPADDRESS_TYPE.AUTO
+        elif default_mode == INTERFACE_LINK_TYPE.DHCP:
+            alloc_type = IPADDRESS_TYPE.DHCP
+        elif default_mode == INTERFACE_LINK_TYPE.LINK_UP:
+            alloc_type = IPADDRESS_TYPE.STICKY
+        elif default_mode == INTERFACE_LINK_TYPE.STATIC:
+            alloc_type = IPADDRESS_TYPE.STICKY
+        default_ip = boot_interface.ip_addresses.filter(
+            alloc_type=alloc_type
         ).first()
-        self.assertIsNotNone(auto_ip)
-        self.assertEqual(subnet, auto_ip.subnet)
+        self.assertIsNotNone(default_ip)
+        self.assertEqual(subnet, default_ip.subnet)
 
     def test_set_initial_networking_configuration_auto_on_managed_subnet(self):
         node = factory.make_Node()
@@ -7967,12 +7984,23 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             .subnet
         )
         boot_interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
-        node.set_initial_networking_configuration()
+
+        @transactional
+        def set_initial_networking_configuration():
+            node.set_initial_networking_configuration()
+
+        set_initial_networking_configuration()
         boot_interface = reload_object(boot_interface)
         auto_ips = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO
         )
-        self.assertEqual(1, auto_ips.count())
+        default_link_type = Config.objects.get_config(
+            "default_boot_interface_link_type"
+        )
+        count_should_be = (
+            1 if default_link_type == INTERFACE_LINK_TYPE.AUTO else 0
+        )
+        self.assertEqual(count_should_be, auto_ips.count())
 
     def test_restore_commissioned_network_interfaces(self):
         node = factory.make_Node()
@@ -7996,8 +8024,13 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
+
         # reset network intefaces from commissioning data
-        node.restore_network_interfaces()
+        @transactional
+        def restore_network_interfaces():
+            node.restore_network_interfaces()
+
+        restore_network_interfaces()
         self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
             [
@@ -8059,8 +8092,13 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
+
         # reset network intefaces from commissioning data
-        node.restore_network_interfaces()
+        @transactional
+        def restore_network_interfaces():
+            node.restore_network_interfaces()
+
+        restore_network_interfaces()
         self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
             [
@@ -8091,7 +8129,12 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
-        node.restore_network_interfaces()
+
+        @transactional
+        def restore_network_interfaces():
+            node.restore_network_interfaces()
+
+        restore_network_interfaces()
 
         # If extra interfaces are added, they will be removed when
         # calling restore_network_interfaces().
@@ -8107,7 +8150,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         )
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        node.restore_network_interfaces()
+        restore_network_interfaces()
         self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
             [
@@ -8149,6 +8192,94 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             iface_name,
             [iface.name for iface in node.current_config.interface_set.all()],
         )
+
+    def test_initial_networking_configuration_with_all_interface_link_types(
+        self,
+    ):
+        for interface_link_type in INTERFACE_LINK_TYPE_CHOICES:
+            Config.objects.set_config(
+                "default_boot_interface_link_type", interface_link_type[0]
+            )
+            self.test_set_initial_networking_configuration_default_on_boot_nic()
+            self.test_set_initial_networking_configuration_no_multiple_auto_ips()
+
+    def test_restore_commissioned_network_interfaces_with_interface_link_type_auto(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "auto")
+        self.test_restore_commissioned_network_interfaces()
+
+    def test_restore_commissioned_network_interfaces_with_interface_link_type_dhcp(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "dhcp")
+        self.test_restore_commissioned_network_interfaces()
+
+    def test_restore_commissioned_network_interfaces_with_interface_link_type_link_up(
+        self,
+    ):
+        Config.objects.set_config(
+            "default_boot_interface_link_type", "link_up"
+        )
+        self.test_restore_commissioned_network_interfaces()
+
+    def test_restore_commissioned_network_interfaces_with_interface_link_type_static(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "static")
+        self.test_restore_commissioned_network_interfaces()
+
+    def test_restore_network_interfaces_ignores_stderr_with_interface_link_type_auto(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "auto")
+        self.test_restore_network_interfaces_ignores_stderr()
+
+    def test_restore_network_interfaces_ignores_stderr_with_interface_link_type_dhcp(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "dhcp")
+        self.test_restore_network_interfaces_ignores_stderr()
+
+    def test_restore_network_interfaces_ignores_stderr_with_interface_link_type_link_up(
+        self,
+    ):
+        Config.objects.set_config(
+            "default_boot_interface_link_type", "link_up"
+        )
+        self.test_restore_network_interfaces_ignores_stderr()
+
+    def test_restore_network_interfaces_ignores_stderr_with_interface_link_type_static(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "static")
+        self.test_restore_network_interfaces_ignores_stderr()
+
+    def test_restore_network_interfaces_extra_with_interface_link_type_auto(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "auto")
+        self.test_restore_network_interfaces_extra()
+
+    def test_restore_network_interfaces_extra_with_interface_link_type_dhcp(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "dhcp")
+        self.test_restore_network_interfaces_extra()
+
+    def test_restore_network_interfaces_extra_with_interface_link_type_link_up(
+        self,
+    ):
+        Config.objects.set_config(
+            "default_boot_interface_link_type", "link_up"
+        )
+        self.test_restore_network_interfaces_extra()
+
+    def test_restore_network_interfaces_extra_with_interface_link_type_static(
+        self,
+    ):
+        Config.objects.set_config("default_boot_interface_link_type", "static")
+        self.test_restore_network_interfaces_extra()
 
 
 class TestGetGatewaysByPriority(MAASServerTestCase):
