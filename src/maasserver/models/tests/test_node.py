@@ -873,6 +873,9 @@ class TestNode(MAASServerTestCase):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
         self.patch_autospec(Node, "_temporal_deploy")
+        self.patch_autospec(
+            node_module, "get_temporal_task_queue_for_bmc"
+        ).return_value = ""
 
     def disable_node_query(self):
         self.addCleanup(node_query.signals.enable)
@@ -9007,6 +9010,9 @@ class TestNode_Start(MAASTransactionServerTestCase):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
         self.patch(Node, "_temporal_deploy")
+        self.patch_autospec(
+            node_module, "get_temporal_task_queue_for_bmc"
+        ).return_value = ""
 
     def make_acquired_node_with_interface(
         self,
@@ -9193,6 +9199,21 @@ class TestNode_Start(MAASTransactionServerTestCase):
             action="start",
             comment=None,
         )
+
+    def test_start_fetches_db_objects_outside_of_defer_chain(self):
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            owner,
+            power_type="manual",
+        )
+        factory.make_usable_boot_resource(
+            name="ubuntu/jammy", architecture=node.architecture
+        )
+        get_task_queue = self.patch(
+            node_module, "get_temporal_task_queue_for_bmc"
+        )
+        node.start(owner)
+        get_task_queue.assert_called_once_with(node)
 
     def test_treats_ipv4_mapped_address_as_ipv4(self):
         admin = factory.make_admin()

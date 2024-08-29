@@ -5846,8 +5846,9 @@ class Node(CleanSave, TimestampedModel):
         # node; the user may choose to start it manually.
         NodeUserData.objects.set_user_data(self, user_data)
 
-    def _temporal_deploy(self, _, d: Deferred) -> Deferred:
-        power_info = self.get_effective_power_info()
+    def _temporal_deploy(
+        self, _, d: Deferred, power_info: PowerInfo, task_queue: str
+    ) -> Deferred:
         dd = start_workflow(
             "deploy-n",
             param=DeployNParam(
@@ -5858,9 +5859,7 @@ class Node(CleanSave, TimestampedModel):
                             system_id=str(self.system_id),
                             driver_type=str(power_info.power_type),
                             driver_opts=dict(power_info.power_parameters),
-                            task_queue=str(
-                                get_temporal_task_queue_for_bmc(self)
-                            ),
+                            task_queue=task_queue,
                         ),
                         ephemeral_deploy=bool(self.ephemeral_deploy),
                         can_set_boot_order=bool(power_info.can_set_boot_order),
@@ -5920,6 +5919,8 @@ class Node(CleanSave, TimestampedModel):
         claimed_ips = False
         needs_power_call = True
 
+        power_info = self.get_effective_power_info()
+
         @inlineCallbacks
         def claim_auto_ips(_):
             yield self._claim_auto_ips()
@@ -5931,8 +5932,9 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             claimed_ips = True
             needs_power_call = False
+            task_queue = str(get_temporal_task_queue_for_bmc(self))
 
-            d.addCallback(self._temporal_deploy, d)
+            d.addCallback(self._temporal_deploy, d, power_info, task_queue)
 
         elif self.status in COMMISSIONING_LIKE_STATUSES:
             if old_status is None:
@@ -5958,11 +5960,12 @@ class Node(CleanSave, TimestampedModel):
             self._start_deployment()
             needs_power_call = False
 
-            d.addCallback(self._temporal_deploy, d)
+            task_queue = str(get_temporal_task_queue_for_bmc(self))
+
+            d.addCallback(self._temporal_deploy, d, power_info, task_queue)
         else:
             set_deployment_timeout = False
 
-        power_info = self.get_effective_power_info()
         if not power_info.can_be_started:
             # The node can't be powered on by MAAS, so return early.
             # Everything we've done up to this point is still valid;
