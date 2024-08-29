@@ -309,7 +309,7 @@ class Certificate(NamedTuple):
         )
 
 
-def _get_cluster_certificates_path() -> Path:
+def get_cluster_certificates_path() -> Path:
     maas_root = os.getenv("MAAS_ROOT", "/var/lib/maas")
     return Path(maas_root) / "certificates"
 
@@ -317,7 +317,7 @@ def _get_cluster_certificates_path() -> Path:
 def get_maas_cluster_cert_paths() -> tuple[str, str, str] | None:
     """Return a 2-tuple with certificate and private key paths for the cluster certificates."""
 
-    cert_dir = _get_cluster_certificates_path()
+    cert_dir = get_cluster_certificates_path()
     private_key = cert_dir / "cluster.key"
     certificate = cert_dir / "cluster.pem"
     cacerts = cert_dir / "cacerts.pem"
@@ -337,7 +337,7 @@ def store_maas_cluster_cert_tuple(
     Stores the private key and the certificate on the disk.
     """
 
-    cert_dir = _get_cluster_certificates_path()
+    cert_dir = get_cluster_certificates_path()
     atomic_write(
         private_key,
         cert_dir / "cluster.key",

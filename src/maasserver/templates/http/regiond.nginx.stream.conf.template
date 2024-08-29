@@ -1,0 +1,8 @@
+# -*- mode: nginx -*-
+
+server {
+    listen [::]:{{http_port}};
+    listen {{http_port}};
+    proxy_pass unix:{{internalapiserver_socket_path}};
+}
+

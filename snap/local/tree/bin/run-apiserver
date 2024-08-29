@@ -7,6 +7,7 @@ export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"
 export MAAS_APISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/apiserver-http.sock"
+export MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH="$SNAP_DATA/internalapiserver-http.sock"
 export MAAS_REGION_CONFIG="$SNAP_DATA/regiond.conf"
 
 exec "$SNAP/bin/maas-apiserver"

@@ -207,6 +207,7 @@ APIServerRule = Rule(
     Allow("netaddr|netaddr.**"),
     Allow("prometheus_client|prometheus_client.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
+    Allow("provisioningserver.certificates.*"),
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.path.get_maas_data_path"),
     Allow("provisioningserver.prometheus.utils.**"),
@@ -432,6 +433,7 @@ TestHelpersRule = Rule(
     Allow("django|django.**"),
     Allow("maasserver|maasserver.**"),
     Allow("provisioningserver.utils.env.**"),
+    Allow("provisioningserver.certificates.*"),
     Allow("netaddr|netaddr.**"),
     Allow("twisted.**"),
     Allow("wrapt"),

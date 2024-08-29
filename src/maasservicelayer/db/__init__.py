@@ -31,5 +31,9 @@ class Database:
     def __init__(self, config: DatabaseConfig, echo: bool = False):
         self.config = config
         self.engine = create_async_engine(
-            config.dsn, echo=echo, isolation_level="REPEATABLE READ"
+            config.dsn,
+            echo=echo,
+            isolation_level="REPEATABLE READ",
+            # Limit the connection pool size to 3 for the time being.
+            pool_size=3,
         )

@@ -108,6 +108,23 @@ class RegionHTTPService(Service):
         target_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(rendered, target_path, overwrite=True, mode=0o644)
 
+        # Configuration for internal apiserver
+        template = load_template("http", "regiond.nginx.stream.conf.template")
+        internalapiserver_socket_path = os.getenv(
+            "MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH",
+            get_maas_data_path("internalapiserver-http.sock"),
+        )
+        environ = {
+            "http_port": 5242,
+            "internalapiserver_socket_path": internalapiserver_socket_path,
+        }
+        rendered = template.substitute(environ).encode()
+        target_path = Path(
+            compose_http_config_path("regiond.nginx.stream.conf")
+        )
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(rendered, target_path, overwrite=True, mode=0o644)
+
     def _create_cert_files(self, cert):
         certs_dir = Path(get_http_config_dir()) / "certs"
         certs_dir.mkdir(parents=True, exist_ok=True)

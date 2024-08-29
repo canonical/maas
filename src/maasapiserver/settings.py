@@ -32,6 +32,16 @@ def api_service_socket_path() -> Path:
     )
 
 
+def internal_api_service_socket_path() -> Path:
+    """Return the path of the socket for the service."""
+    return Path(
+        os.getenv(
+            "MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH",
+            get_maas_data_path("internalapiserver-http.sock"),
+        )
+    )
+
+
 async def _get_default_db_config(
     config: RegionConfiguration,
 ) -> DatabaseConfig:

@@ -70,10 +70,12 @@ class TestRegionHTTPService(
 
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
         service = http.RegionHTTPService()
-        self.patch(http, "compose_http_config_path").return_value = str(
-            nginx_conf
-        )
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
 
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
@@ -94,26 +96,36 @@ class TestRegionHTTPService(
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
+        nginx_stream_config = nginx_stream_conf.read_text()
+        self.assertIn("listen 5242;", nginx_stream_config)
+        self.assertIn(
+            f"proxy_pass unix:{data_path}/internalapiserver-http.sock;",
+            nginx_stream_config,
+        )
+
     def test_configure_in_snap(self):
         cert = get_sample_cert_with_cacerts()
+        data_path = os.getenv("MAAS_DATA")
         self.patch(
             os,
             "environ",
             {
                 "SNAP": "/snap/maas/5443",
                 "MAAS_HTTP_CONFIG_DIR": os.getenv("MAAS_DATA"),
-                "MAAS_DATA": os.getenv("MAAS_DATA"),
+                "MAAS_DATA": data_path,
             },
         )
         http.REGIOND_SOCKET_PATH = "/snap/maas/maas-regiond-webapp.sock"
-        boot_resources_dir = f"{os.getenv('MAAS_DATA')}/image-storage"
+        boot_resources_dir = f"{data_path}/image-storage"
 
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
         service = http.RegionHTTPService()
-        self.patch(http, "compose_http_config_path").return_value = str(
-            nginx_conf
-        )
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
 
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
@@ -135,14 +147,23 @@ class TestRegionHTTPService(
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
         self.assertIn(f"root {boot_resources_dir};", nginx_config)
 
+        nginx_stream_config = nginx_stream_conf.read_text()
+        self.assertIn("listen 5242;", nginx_stream_config)
+        self.assertIn(
+            f"proxy_pass unix:{data_path}/internalapiserver-http.sock;",
+            nginx_stream_config,
+        )
+
     def test_configure_https_also_has_http_server(self):
         cert = get_sample_cert_with_cacerts()
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        nginx_stream_conf = Path(tempdir) / "regiond.nginx.stream.conf"
         service = http.RegionHTTPService()
-        self.patch(http, "compose_http_config_path").return_value = str(
-            nginx_conf
-        )
+        self.patch(http, "compose_http_config_path").side_effect = [
+            str(nginx_conf),
+            str(nginx_stream_conf),
+        ]
 
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")

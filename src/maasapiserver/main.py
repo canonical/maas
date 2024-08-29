@@ -1,6 +1,7 @@
 import asyncio
 from functools import partial
 import logging
+import ssl
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -17,9 +18,15 @@ from maasapiserver.common.middlewares.exceptions import (
     ExceptionMiddleware,
 )
 from maasapiserver.common.middlewares.prometheus import PrometheusMiddleware
-from maasapiserver.settings import api_service_socket_path, Config, read_config
+from maasapiserver.settings import (
+    api_service_socket_path,
+    Config,
+    internal_api_service_socket_path,
+    read_config,
+)
 from maasapiserver.v2.api.handlers import APIv2
 from maasapiserver.v3.api.handlers import APIv3
+from maasapiserver.v3.api.handlers.internal import APIv3Internal
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,
@@ -32,6 +39,7 @@ from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.db import Database
 from maasservicelayer.db.listeners import PostgresListenersTaskFactory
 from maasservicelayer.db.locks import StartupLock
+from provisioningserver.certificates import get_maas_cluster_cert_paths
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +56,14 @@ async def wait_for_startup(db: Database):
                 await asyncio.sleep(5)
 
 
-async def create_app(
+async def prepare_app(
     config: Config,
     transaction_middleware_class: type = TransactionMiddleware,
     # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
     db: Database = None,
+    add_authentication_middleware: bool = True,
+    app_title: str = "APIServer",
+    app_name: str = "apiserver",
 ) -> FastAPI:
     """Create the FastAPI application."""
 
@@ -63,8 +74,8 @@ async def create_app(
     await wait_for_startup(db)
 
     app = FastAPI(
-        title="MAASAPIServer",
-        name="maasapiserver",
+        title=app_title,
+        name=app_name,
         openapi_url=f"{API_PREFIX}/openapi.json",
         # The SwaggerUI page is provided by the APICommon router.
         docs_url=None,
@@ -75,14 +86,15 @@ async def create_app(
     app.add_middleware(PrometheusMiddleware)
     app.add_middleware(DatabaseMetricsMiddleware, db=db)
 
-    app.add_middleware(
-        V3AuthenticationMiddleware,
-        providers_cache=AuthenticationProvidersCache(
-            jwt_authentication_providers=[LocalAuthenticationProvider()],
-            session_authentication_provider=DjangoSessionAuthenticationProvider(),
-            macaroon_authentication_provider=MacaroonAuthenticationProvider(),
-        ),
-    )
+    if add_authentication_middleware:
+        app.add_middleware(
+            V3AuthenticationMiddleware,
+            providers_cache=AuthenticationProvidersCache(
+                jwt_authentication_providers=[LocalAuthenticationProvider()],
+                session_authentication_provider=DjangoSessionAuthenticationProvider(),
+                macaroon_authentication_provider=MacaroonAuthenticationProvider(),
+            ),
+        )
 
     app.add_middleware(ServicesMiddleware)
     app.add_middleware(transaction_middleware_class, db=db)
@@ -94,8 +106,6 @@ async def create_app(
     )
 
     APICommon.register(app.router)
-    APIv2.register(app.router)
-    APIv3.register(app.router)
 
     # Event handlers
     app.add_event_handler(
@@ -110,7 +120,52 @@ async def create_app(
     return app
 
 
-def run(app_config: Config | None = None):
+async def create_app(
+    config: Config,
+    transaction_middleware_class: type = TransactionMiddleware,
+    # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
+    db: Database = None,
+) -> FastAPI:
+
+    app = await prepare_app(
+        config,
+        transaction_middleware_class,
+        db,
+        True,
+        "MAASAPIServer",
+        "maasapiserver",
+    )
+    APIv2.register(app.router)
+    APIv3.register(app.router)
+    return app
+
+
+async def create_internal_app(
+    config: Config,
+    transaction_middleware_class: type = TransactionMiddleware,
+    # In the tests the database is created in the fixture, so we need to inject it here as a parameter.
+    db: Database = None,
+) -> FastAPI:
+    # DO NOT add the authentication middleware. We enable MTLS at uvicorn level.
+    app = await prepare_app(
+        config,
+        transaction_middleware_class,
+        db,
+        False,
+        "MAASInternalAPIServer",
+        "maasinternalapiserver",
+    )
+    APIv3Internal.register(app.router)
+    return app
+
+
+def run(app_config: Config | None = None, start_internal_server: bool = True):
+    """
+    Run the user and the internal server in the same event loop.
+    The internal server has uvicorn configured so to enable MTLS. All the internal endpoints are not authenticated at API level
+    because they rely on the fact that uvicorn is providing security on top. For this reason, DO NOT include the v3Internal
+    router in the user app!
+    """
     loop = asyncio.new_event_loop()
 
     if app_config is None:
@@ -120,13 +175,37 @@ def run(app_config: Config | None = None):
         level=logging.DEBUG if app_config.debug else logging.INFO
     )
 
-    app = loop.run_until_complete(create_app(config=app_config))
+    servers_tasks = []
 
-    server_config = uvicorn.Config(
-        app,
+    # User app
+    user_app = loop.run_until_complete(create_app(config=app_config))
+    user_server_config = uvicorn.Config(
+        user_app, loop=loop, proxy_headers=True, uds=api_service_socket_path()
+    )
+    user_server = uvicorn.Server(user_server_config)
+    servers_tasks.append(user_server.serve())
+
+    # Internal app
+    internal_app = loop.run_until_complete(
+        create_internal_app(config=app_config)
+    )
+
+    cert, key, cacerts = get_maas_cluster_cert_paths()
+    internal_server_config = uvicorn.Config(
+        internal_app,
         loop=loop,
         proxy_headers=True,
-        uds=api_service_socket_path(),
+        uds=internal_api_service_socket_path(),
+        ssl_keyfile=key,
+        ssl_certfile=cert,
+        ssl_ca_certs=cacerts,
+        ssl_cert_reqs=ssl.CERT_REQUIRED,
     )
-    server = uvicorn.Server(server_config)
-    loop.run_until_complete(server.serve())
+    internal_server = uvicorn.Server(internal_server_config)
+
+    async def run_servers():
+        return await asyncio.gather(
+            user_server.serve(), internal_server.serve()
+        )
+
+    loop.run_until_complete(run_servers())

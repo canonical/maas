@@ -313,3 +313,6 @@ layout:
     bind: $SNAP/etc/freeipmi
   /root:
     bind: $SNAP_DATA/root
+  # Needed for nginx to enable SSL passthrough
+  /usr/lib/nginx/modules:
+     bind: $SNAP/usr/lib/nginx/modules

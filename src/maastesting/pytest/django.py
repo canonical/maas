@@ -1,6 +1,7 @@
 import datetime
 from multiprocessing import Process
 import os
+import pathlib
 import time
 
 from django.db import transaction
@@ -14,6 +15,17 @@ from maasserver.djangosettings import development
 from maasserver.testing.resources import close_all_connections
 from maasserver.utils.orm import enable_all_database_connections
 from maastesting.pytest.database import cluster_stash
+from provisioningserver.certificates import (
+    get_cluster_certificates_path,
+    store_maas_cluster_cert_tuple,
+)
+
+
+def read_test_data(filename: str) -> bytes:
+    with open(
+        pathlib.Path(f"src/maastesting/pytest/test_data/{filename}"), "rb"
+    ) as f:
+        return f.read()
 
 
 @pytest.hookimpl(tryfirst=False)
@@ -91,11 +103,22 @@ def maasapiserver(maasdb, tmpdir):
     os.environ["MAAS_APISERVER_HTTP_SOCKET_PATH"] = os.path.join(
         tmpdir, "maas-apiserver.socket"
     )
+    os.environ["MAAS_INTERNALAPISERVER_HTTP_SOCKET_PATH"] = os.path.join(
+        tmpdir, "maas-internalapiserver.socket"
+    )
+    # Store the certificates on the tmpdir so that we can start the internal apiserver
+    certificates_path = get_cluster_certificates_path()
+    pathlib.Path(certificates_path).mkdir(parents=True, exist_ok=True)
+    store_maas_cluster_cert_tuple(
+        private_key=read_test_data("cluster.key"),
+        certificate=read_test_data("cluster.pem"),
+        cacerts=read_test_data("cacerts.pem"),
+    )
 
     server_process = Process(target=lambda: run(config), args=(), daemon=True)
     server_process.start()
 
-    timeout = datetime.datetime.utcnow() + datetime.timedelta(seconds=30)
+    timeout = datetime.datetime.utcnow() + datetime.timedelta(seconds=5)
     ready = False
 
     while not ready and datetime.datetime.utcnow() < timeout:
