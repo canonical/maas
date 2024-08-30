@@ -10,7 +10,7 @@ from maasapiserver.v3.services import ConfigurationsService
 
 
 @pytest.mark.asyncio
-class ConfigurationsServiceTestSuite:
+class TestConfigurationsService:
     @pytest.mark.parametrize(
         "value",
         ["test", True, {"test": {"name": "myname", "age": 18}}, 1234, None],
@@ -25,7 +25,7 @@ class ConfigurationsServiceTestSuite:
             connection=db_connection,
             configurations_repository=configurations_repository_mock,
         )
-        assert value == configurations_service.get("test")
+        assert value == await configurations_service.get("test")
 
     async def test_unexisting_get(self) -> None:
         db_connection = Mock(AsyncConnection)
@@ -35,4 +35,4 @@ class ConfigurationsServiceTestSuite:
             connection=db_connection,
             configurations_repository=configurations_repository_mock,
         )
-        assert configurations_service.get("test") is None
+        assert await configurations_service.get("test") is None
