@@ -388,7 +388,6 @@ class MachineHandler(NodeHandler):
         if obj.is_machine or not for_list:
             data["pxe_mac"] = ""
             data["vlan"] = None
-            data["power_type"] = None
             data["ip_addresses"] = None
             if getattr(obj, "pxe_mac", None):
                 data["pxe_mac"] = str(obj.pxe_mac)
@@ -399,7 +398,6 @@ class MachineHandler(NodeHandler):
                     data["pxe_mac"] = "%s" % boot_interface.mac_address
                     data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
             if data["pxe_mac"] != "":
-                data["power_type"] = obj.power_type
                 data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
 
         # Needed for machines to show up in the Pod details page.

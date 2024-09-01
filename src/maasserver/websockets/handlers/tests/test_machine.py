@@ -320,6 +320,7 @@ class TestMachineHandlerUtils:
             if (node.bmc is not None)
             else 0,
             "power_state": node.power_state,
+            "power_type": node.power_type,
             "pxe_mac": (
                 ""
                 if boot_interface is None
