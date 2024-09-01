@@ -7,13 +7,15 @@ import re
 from unittest.mock import ANY, sentinel
 
 from testtools.monkey import MonkeyPatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.protocol import connectionDone
 from twisted.internet.testing import StringTransport
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
+from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
     always_fail_with,
@@ -266,6 +268,10 @@ class TestConnectionAuthStatus(MAASTestCase):
 
 
 class TestSecuredRPCProtocol(MAASTestCase):
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
+
     def setUp(self):
         super().setUp()
         self.patcher = MonkeyPatcher()
@@ -276,6 +282,7 @@ class TestSecuredRPCProtocol(MAASTestCase):
             (lambda *args, **kwargs: True),
         )
 
+    @inlineCallbacks
     def test_unauthenticated_connection_is_dropped(self):
         protocol = common.SecuredRPCProtocol(
             unauthenticated_commands=[],
@@ -286,10 +293,23 @@ class TestSecuredRPCProtocol(MAASTestCase):
         seq = b"%d" % random.randrange(0, 2**32)
         cmd = factory.make_string().encode("ascii")
         box = amp.AmpBox(_ask=seq, _command=cmd)
-        self.assertRaises(
-            RPCUnauthorizedException, protocol.dispatchCommand, box
+        self.patcher.add_patch(
+            # do not sleep. No need to slow down the tests
+            common,
+            "pause",
+            (lambda *args, **kwargs: True),
         )
+        self.patcher.patch()
+        try:
+            with self.assertRaisesRegex(
+                RPCUnauthorizedException,
+                "The RPC command requires authentication. ",
+            ):
+                yield protocol.dispatchCommand(box)
+        finally:
+            self.patcher.restore()
 
+    @inlineCallbacks
     def test_authenticated_connection(self):
         protocol = common.SecuredRPCProtocol(
             unauthenticated_commands=[], auth_status=ConnectionAuthStatus(True)
@@ -302,10 +322,12 @@ class TestSecuredRPCProtocol(MAASTestCase):
 
         self.patcher.patch()
         try:
-            self.assertEqual(protocol.dispatchCommand(box), True)
+            result = yield protocol.dispatchCommand(box)
+            self.assertEqual(result, True)
         finally:
             self.patcher.restore()
 
+    @inlineCallbacks
     def test_unauthenticated_command(self):
         cmd = factory.make_string()
         protocol = common.SecuredRPCProtocol(
@@ -319,7 +341,51 @@ class TestSecuredRPCProtocol(MAASTestCase):
 
         self.patcher.patch()
         try:
-            self.assertEqual(protocol.dispatchCommand(box), True)
+            result = yield protocol.dispatchCommand(box)
+            self.assertEqual(result, True)
+        finally:
+            self.patcher.restore()
+
+    @inlineCallbacks
+    def test_connection_is_trusted_after_retries(self):
+        cmd = factory.make_string()
+        auth_status = ConnectionAuthStatus(False)
+        protocol = common.SecuredRPCProtocol(
+            unauthenticated_commands=[],
+            auth_status=auth_status,
+        )
+        protocol.makeConnection(StringTransport())
+
+        seq = b"%d" % random.randrange(0, 2**32)
+        box = amp.AmpBox(_ask=seq, _command=cmd.encode("ascii"))
+
+        class Pauser:
+            def __init__(self):
+                self.retry = 0
+                self.calls = []
+
+            def mock(self, time):
+                self.retry += 1
+                # At the last try, simulate that the connection become trusted
+                if self.retry == 4:
+                    auth_status.set_is_authenticated(True)
+                self.calls.append(time)
+
+        pauser = Pauser()
+
+        self.patcher.add_patch(
+            # Do not sleep and mock the connection status change.
+            common,
+            "pause",
+            (lambda time: pauser.mock(time)),
+        )
+        self.patcher.patch()
+        try:
+            result = yield protocol.dispatchCommand(box)
+            self.assertEqual(result, True)
+            self.assertEqual(pauser.retry, 4)
+            # exponential backoff
+            self.assertEqual(pauser.calls, [0.0, 0.5, 1.5, 3.5])
         finally:
             self.patcher.restore()
 
