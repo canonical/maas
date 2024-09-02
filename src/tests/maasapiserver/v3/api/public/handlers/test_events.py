@@ -7,7 +7,6 @@ from urllib.parse import parse_qs, urlparse
 from httpx import AsyncClient
 import pytest
 
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.responses.events import (
     EventsListResponse,
 )
@@ -21,6 +20,7 @@ from maasservicelayer.models.events import (
     EventType,
     LoggingLevelEnum,
 )
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,

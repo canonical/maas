@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.spaces import SpacesRepository
 from maasapiserver.v3.services.spaces import SpacesService
+from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.spaces import Space
 

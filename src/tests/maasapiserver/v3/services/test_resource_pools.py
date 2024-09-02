@@ -4,13 +4,15 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.exceptions import NotFoundException
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
     ResourcePoolUpdateRequest,
 )
-from maasapiserver.v3.db.resource_pools import ResourcePoolRepository
 from maasapiserver.v3.services import ResourcePoolsService
+from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolRepository,
+)
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
 

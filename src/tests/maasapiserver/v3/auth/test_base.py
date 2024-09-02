@@ -10,11 +10,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from maasapiserver.common.models.exceptions import (
-    DischargeRequiredException,
-    ForbiddenException,
-    UnauthorizedException,
-)
 from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
@@ -23,6 +18,11 @@ from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
+from maasservicelayer.exceptions.catalog import (
+    DischargeRequiredException,
+    ForbiddenException,
+    UnauthorizedException,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 
 

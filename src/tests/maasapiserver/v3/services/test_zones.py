@@ -3,17 +3,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.constants import (
-    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
-    ETAG_PRECONDITION_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BadRequestException,
-    PreconditionFailedException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maasapiserver.v3.db.zones import ZonesRepository
 from maasapiserver.v3.services import (
     BmcService,
     NodesService,
@@ -21,8 +11,18 @@ from maasapiserver.v3.services import (
     ZonesService,
 )
 from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.repositories.zones import ZonesRepository
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
+from maasservicelayer.utils.date import utcnow
 
 DEFAULT_ZONE = Zone(
     id=1,

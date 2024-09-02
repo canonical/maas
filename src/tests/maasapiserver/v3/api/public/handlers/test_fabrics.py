@@ -8,7 +8,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -20,6 +19,7 @@ from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.fabrics import FabricsService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,

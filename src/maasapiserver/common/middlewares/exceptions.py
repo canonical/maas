@@ -18,7 +18,7 @@ from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedResponse,
     ValidationErrorResponse,
 )
-from maasapiserver.common.models.exceptions import (
+from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
     BaseExceptionDetail,

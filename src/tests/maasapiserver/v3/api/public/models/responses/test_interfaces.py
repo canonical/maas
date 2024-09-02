@@ -3,7 +3,6 @@
 
 from netaddr import IPAddress
 
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.responses.interfaces import (
     InterfaceResponse,
     InterfaceTypeEnum,
@@ -12,6 +11,7 @@ from maasapiserver.v3.api.public.models.responses.interfaces import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasserver.enum import IPADDRESS_TYPE
 from maasservicelayer.models.interfaces import Interface, Link
+from maasservicelayer.utils.date import utcnow
 
 link = Link(
     id=1,

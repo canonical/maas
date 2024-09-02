@@ -4,7 +4,7 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.db.vlans import VlansRepository
+from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 

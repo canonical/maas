@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.bmc import BmcRepository
 from maasapiserver.v3.services import VmClustersService
+from maasservicelayer.db.repositories.bmc import BmcRepository
 
 
 @pytest.mark.asyncio

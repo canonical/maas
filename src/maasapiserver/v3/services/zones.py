@@ -1,29 +1,32 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.constants import (
-    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
-    ETAG_PRECONDITION_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BadRequestException,
-    BaseExceptionDetail,
-    PreconditionFailedException,
-)
 from maasapiserver.common.services._base import Service
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.zones import ZoneRequest
-from maasapiserver.v3.db.zones import (
-    ZoneCreateOrUpdateResourceBuilder,
-    ZonesRepository,
-)
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.nodes import NodesService
 from maasapiserver.v3.services.vmcluster import VmClustersService
 from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.repositories.zones import (
+    ZoneCreateOrUpdateResourceBuilder,
+    ZonesRepository,
+)
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
+from maasservicelayer.utils.date import utcnow
 
 
 class ZonesService(Service):

@@ -4,8 +4,8 @@
 from datetime import timedelta
 from typing import Any
 
-from maasapiserver.common.utils.date import utcnow
 from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 

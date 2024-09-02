@@ -11,14 +11,6 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.models.constants import (
-    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    DischargeRequiredException,
-    UnauthorizedException,
-)
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
@@ -27,6 +19,14 @@ from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.auth import AuthService
 from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasservicelayer.auth.jwt import JWT, UserRole
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    DischargeRequiredException,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+)
 
 
 @pytest.mark.asyncio

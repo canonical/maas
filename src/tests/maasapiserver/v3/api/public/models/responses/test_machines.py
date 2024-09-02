@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachineResponse,
@@ -11,6 +10,7 @@ from maasapiserver.v3.api.public.models.responses.machines import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.utils.date import utcnow
 
 
 class TestMachineResponse:

@@ -10,14 +10,14 @@ from macaroonbakery.bakery import Macaroon
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.models.exceptions import DischargeRequiredException
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.responses.users import UserInfoResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasapiserver.v3.services.users import UsersService
+from maasservicelayer.exceptions.catalog import DischargeRequiredException
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio

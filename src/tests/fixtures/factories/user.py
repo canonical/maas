@@ -3,8 +3,8 @@ from typing import Any
 
 from django.core import signing
 
-from maasapiserver.common.utils.date import utcnow
 from maasservicelayer.models.users import User, UserProfile
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 

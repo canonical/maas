@@ -4,7 +4,7 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.db.spaces import SpacesRepository
+from maasservicelayer.db.repositories.spaces import SpacesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.spaces import Space
 

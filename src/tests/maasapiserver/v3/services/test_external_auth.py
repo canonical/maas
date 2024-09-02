@@ -14,18 +14,20 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasapiserver.common.auth.checker import AsyncAuthChecker, AsyncChecker
 from maasapiserver.common.auth.locator import AsyncThirdPartyLocator
 from maasapiserver.common.auth.oven import AsyncOven
-from maasapiserver.common.models.exceptions import (
-    DischargeRequiredException,
-    UnauthorizedException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import ExternalAuthType
-from maasapiserver.v3.db.external_auth import ExternalAuthRepository
 from maasapiserver.v3.services import SecretsService, UsersService
 from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasserver.macaroons import _get_macaroon_caveats_ops
+from maasservicelayer.db.repositories.external_auth import (
+    ExternalAuthRepository,
+)
+from maasservicelayer.exceptions.catalog import (
+    DischargeRequiredException,
+    UnauthorizedException,
+)
 from maasservicelayer.models.external_auth import RootKey
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 from provisioningserver.security import to_bin, to_hex
 
 

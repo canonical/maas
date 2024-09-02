@@ -222,7 +222,7 @@ class MSMConnectorActivity(ActivityBase):
         Args:
             input (MSMConnectorParam): MSM connection data
         """
-        from maasapiserver.v3.db.secrets import SecretsRepository
+        from maasservicelayer.db.repositories.secrets import SecretsRepository
 
         async with self.start_transaction() as tx:
             # TODO add Vault support
@@ -243,7 +243,7 @@ class MSMConnectorActivity(ActivityBase):
         Args:
             input (MSMConnectorParam): MSM connection data
         """
-        from maasapiserver.v3.db.secrets import SecretsRepository
+        from maasservicelayer.db.repositories.secrets import SecretsRepository
 
         async with self.start_transaction() as tx:
             repo = SecretsRepository(tx)

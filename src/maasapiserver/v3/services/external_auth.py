@@ -19,23 +19,25 @@ from maasapiserver.common.auth.macaroon_client import (
     RbacAsyncClient,
 )
 from maasapiserver.common.auth.oven import AsyncOven
-from maasapiserver.common.models.constants import INVALID_TOKEN_VIOLATION_TYPE
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    DischargeRequiredException,
-    UnauthorizedException,
-)
 from maasapiserver.common.services._base import Service
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasapiserver.v3.db.external_auth import ExternalAuthRepository
 from maasapiserver.v3.services.secrets import SecretsService
 from maasapiserver.v3.services.users import UsersService
 from maasserver.macaroons import _get_macaroon_caveats_ops, _IDClient
+from maasservicelayer.db.repositories.external_auth import (
+    ExternalAuthRepository,
+)
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    DischargeRequiredException,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import INVALID_TOKEN_VIOLATION_TYPE
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)

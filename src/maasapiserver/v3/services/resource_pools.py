@@ -1,19 +1,22 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
     ResourcePoolUpdateRequest,
 )
-from maasapiserver.v3.db.resource_pools import (
+from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
     ResourcePoolRepository,
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
+from maasservicelayer.utils.date import utcnow
 
 
 class ResourcePoolsService(Service):

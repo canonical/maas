@@ -1,9 +1,14 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
-from maasapiserver.v3.db.configurations import ConfigurationsRepository
+from maasservicelayer.db.repositories.configurations import (
+    ConfigurationsRepository,
+)
 
 
 class ConfigurationsService(Service):

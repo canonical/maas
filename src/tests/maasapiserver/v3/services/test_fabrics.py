@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.fabrics import FabricsRepository
 from maasapiserver.v3.services.fabrics import FabricsService
+from maasservicelayer.db.repositories.fabrics import FabricsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
 

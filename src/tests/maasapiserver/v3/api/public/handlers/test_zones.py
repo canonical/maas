@@ -10,18 +10,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.models.constants import (
-    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
-    ETAG_PRECONDITION_VIOLATION_TYPE,
-    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    AlreadyExistsException,
-    BadRequestException,
-    BaseExceptionDetail,
-    PreconditionFailedException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -33,8 +21,20 @@ from maasapiserver.v3.api.public.models.responses.zones import (
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME, V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.zones import ZonesService
+from maasservicelayer.exceptions.catalog import (
+    AlreadyExistsException,
+    BadRequestException,
+    BaseExceptionDetail,
+    PreconditionFailedException,
+)
+from maasservicelayer.exceptions.constants import (
+    CANNOT_DELETE_DEFAULT_ZONE_VIOLATION_TYPE,
+    ETAG_PRECONDITION_VIOLATION_TYPE,
+    UNIQUE_CONSTRAINT_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,

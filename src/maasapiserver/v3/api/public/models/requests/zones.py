@@ -18,7 +18,9 @@ class ZonesFiltersParams(BaseModel):
 
     def to_query(self) -> FilterQuery:
         # TODO: When the db layer will have removed all the dependencies from the api move this import at module level
-        from maasapiserver.v3.db.zones import ZonesFilterQueryBuilder
+        from maasservicelayer.db.repositories.zones import (
+            ZonesFilterQueryBuilder,
+        )
 
         return ZonesFilterQueryBuilder().with_ids(self.ids).build()
 

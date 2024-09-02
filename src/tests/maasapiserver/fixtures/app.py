@@ -16,7 +16,6 @@ from maasapiserver.common.middlewares.exceptions import (
     ExceptionHandlers,
     ExceptionMiddleware,
 )
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.main import create_app
 from maasapiserver.settings import Config
 from maasapiserver.v3.api.public.handlers import APIv3
@@ -34,6 +33,7 @@ from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 

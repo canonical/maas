@@ -1,3 +1,6 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 import abc
 from typing import Any
 
@@ -5,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.settings import get_region_vault_manager
-from maasapiserver.v3.db.secrets import SecretsRepository
 from maasapiserver.v3.services.configurations import ConfigurationsService
+from maasservicelayer.db.repositories.secrets import SecretsRepository
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
 from maasservicelayer.vault.manager import AsyncVaultManager
 

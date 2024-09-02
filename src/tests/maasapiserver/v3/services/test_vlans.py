@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.vlans import VlansRepository
 from maasapiserver.v3.services.vlans import VlansService
+from maasservicelayer.db.repositories.vlans import VlansRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
 

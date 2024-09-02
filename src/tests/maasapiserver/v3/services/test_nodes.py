@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.nodes import NodesRepository
 from maasapiserver.v3.services import NodesService
+from maasservicelayer.db.repositories.nodes import NodesRepository
 
 
 @pytest.mark.asyncio

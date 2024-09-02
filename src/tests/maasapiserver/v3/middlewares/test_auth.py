@@ -28,12 +28,6 @@ from maasapiserver.common.auth.models.responses import (
     UserDetailsResponse,
 )
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
-from maasapiserver.common.models.exceptions import (
-    DischargeRequiredException,
-    ForbiddenException,
-    UnauthorizedException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
@@ -56,8 +50,14 @@ from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.constants import NODE_INIT_USERNAME, WORKER_USERNAME
 from maasservicelayer.db import Database
+from maasservicelayer.exceptions.catalog import (
+    DischargeRequiredException,
+    ForbiddenException,
+    UnauthorizedException,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
     create_test_session,
     create_test_user,

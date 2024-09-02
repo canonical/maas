@@ -408,6 +408,7 @@ ServiceLayerRule = Rule(
         "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
     ),
     Allow("jose|jose.**"),
+    Allow("macaroonbakery|macaroonbakery.**"),
     # TODO: Refactor the enums and move them to the service layer
     Allow("maasserver.enum.**"),
     Allow("maasservicelayer|maasservicelayer.**"),

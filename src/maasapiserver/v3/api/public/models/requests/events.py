@@ -18,7 +18,9 @@ class EventsFiltersParams(BaseModel):
 
     def to_query(self) -> FilterQuery:
         # TODO: When the db layer will have removed all the dependencies from the api move this import at module level
-        from maasapiserver.v3.db.events import EventsFilterQueryBuilder
+        from maasservicelayer.db.repositories.events import (
+            EventsFilterQueryBuilder,
+        )
 
         return (
             EventsFilterQueryBuilder().with_system_ids(self.system_ids).build()

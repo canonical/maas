@@ -1,18 +1,21 @@
+#  Copyright 2024 Canonical Ltd.  This software is licensed under the
+#  GNU Affero General Public License version 3 (see the file LICENSE).
+
 import os
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.constants import (
-    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    UnauthorizedException,
-)
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.services.secrets import SecretNotFound, SecretsService
 from maasapiserver.v3.services.users import UsersService
 from maasservicelayer.auth.jwt import JWT, UserRole
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 
 

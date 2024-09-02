@@ -4,8 +4,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.v3.db.configurations import ConfigurationsRepository
 from maasapiserver.v3.services import ConfigurationsService
+from maasservicelayer.db.repositories.configurations import (
+    ConfigurationsRepository,
+)
 from maasservicelayer.models.configurations import Configuration
 
 

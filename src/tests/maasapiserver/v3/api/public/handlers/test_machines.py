@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, Mock
 from httpx import AsyncClient
 import pytest
 
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -22,6 +21,7 @@ from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.machines import MachinesService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,

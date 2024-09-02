@@ -3,21 +3,21 @@ import typing
 from fastapi import Depends
 from starlette.requests import Request
 
-from maasapiserver.common.models.constants import (
-    MISSING_PERMISSIONS_VIOLATION_TYPE,
-    NOT_AUTHENTICATED_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    ForbiddenException,
-    UnauthorizedException,
-)
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ForbiddenException,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+    NOT_AUTHENTICATED_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 
 # This is used just to generate the openapi spec with the security annotations.

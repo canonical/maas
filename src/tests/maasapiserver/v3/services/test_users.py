@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.db.users import (
+from maasapiserver.v3.services import UsersService
+from maasservicelayer.db.repositories.users import (
     UserCreateOrUpdateResourceBuilder,
     UserProfileCreateOrUpdateResourceBuilder,
     UsersRepository,
 )
-from maasapiserver.v3.services import UsersService
+from maasservicelayer.utils.date import utcnow
 
 
 @pytest.mark.asyncio

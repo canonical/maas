@@ -19,34 +19,34 @@ from maasapiserver.common.auth.macaroon_client import (
 )
 from maasapiserver.common.auth.models.exceptions import MacaroonApiException
 from maasapiserver.common.auth.models.responses import ValidateUserResponse
-from maasapiserver.common.models.constants import (
-    INVALID_TOKEN_VIOLATION_TYPE,
-    MISSING_PERMISSIONS_VIOLATION_TYPE,
-    USER_EXTERNAL_VALIDATION_FAILED,
-)
-from maasapiserver.common.models.exceptions import (
-    BadRequestException,
-    BaseExceptionDetail,
-    DischargeRequiredException,
-    ForbiddenException,
-    UnauthorizedException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.db.users import (
-    UserCreateOrUpdateResourceBuilder,
-    UserProfileCreateOrUpdateResourceBuilder,
-)
 from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.constants import SYSTEM_USERS
+from maasservicelayer.db.repositories.users import (
+    UserCreateOrUpdateResourceBuilder,
+    UserProfileCreateOrUpdateResourceBuilder,
+)
+from maasservicelayer.exceptions.catalog import (
+    BadRequestException,
+    BaseExceptionDetail,
+    DischargeRequiredException,
+    ForbiddenException,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    INVALID_TOKEN_VIOLATION_TYPE,
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+    USER_EXTERNAL_VALIDATION_FAILED,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
+from maasservicelayer.utils.date import utcnow
 
 logger = logging.getLogger()
 

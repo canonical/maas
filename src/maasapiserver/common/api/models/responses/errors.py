@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from starlette import status
 from starlette.responses import JSONResponse
 
-from maasapiserver.common.models.exceptions import BaseExceptionDetail
+from maasservicelayer.exceptions.catalog import BaseExceptionDetail
 
 
 class ErrorBodyResponse(BaseModel):

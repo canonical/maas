@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasapiserver.common.models.exceptions import UnauthorizedException
 from maasapiserver.v3.services import AuthService, SecretsService, UsersService
 from maasapiserver.v3.services.secrets import SecretNotFound
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.exceptions.catalog import UnauthorizedException
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
 

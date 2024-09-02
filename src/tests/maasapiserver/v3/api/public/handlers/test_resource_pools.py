@@ -10,14 +10,6 @@ from httpx import AsyncClient
 import pytest
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.models.constants import (
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
-from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -32,8 +24,16 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasapiserver.v3.services.resource_pools import ResourcePoolsService
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    NotFoundException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
+)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
+from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
     Endpoint,

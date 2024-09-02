@@ -7,13 +7,6 @@ from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
     UnauthorizedBodyResponse,
 )
-from maasapiserver.common.models.constants import (
-    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
-)
-from maasapiserver.common.models.exceptions import (
-    BaseExceptionDetail,
-    UnauthorizedException,
-)
 from maasapiserver.v3.api import services
 from maasapiserver.v3.api.public.models.responses.users import UserInfoResponse
 from maasapiserver.v3.auth.base import (
@@ -22,6 +15,13 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    UnauthorizedException,
+)
+from maasservicelayer.exceptions.constants import (
+    UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
+)
 from maasservicelayer.models.auth import AuthenticatedUser
 
 
