@@ -40,7 +40,6 @@ BlockDeviceTable = Table(
     ),
 )
 
-
 BMCTable = Table(
     "maasserver_bmc",
     METADATA,
@@ -84,7 +83,6 @@ BMCTable = Table(
     Column("created_by_commissioning", Boolean, nullable=True),
 )
 
-
 ConfigTable = Table(
     "maasserver_config",
     METADATA,
@@ -92,7 +90,6 @@ ConfigTable = Table(
     Column("name", String(255), nullable=False, unique=True),
     Column("value", JSONB, nullable=True),
 )
-
 
 DefaultResourceTable = Table(
     "maasserver_defaultresource",
@@ -105,7 +102,6 @@ DefaultResourceTable = Table(
     ),
 )
 
-
 DomainTable = Table(
     "maasserver_domain",
     METADATA,
@@ -116,7 +112,6 @@ DomainTable = Table(
     Column("authoritative", Boolean, nullable=True),
     Column("ttl", Integer, nullable=True),
 )
-
 
 EventTable = Table(
     "maasserver_event",
@@ -144,7 +139,6 @@ EventTable = Table(
     Column("user_id", Integer, nullable=True),
 )
 
-
 EventTypeTable = Table(
     "maasserver_eventtype",
     METADATA,
@@ -155,7 +149,6 @@ EventTypeTable = Table(
     Column("description", String(255), nullable=False),
     Column("level", Integer, nullable=False),
 )
-
 
 FabricTable = Table(
     "maasserver_fabric",
@@ -215,6 +208,23 @@ InterfaceTable = Table(
     ),
 )
 
+IPRangeTable = Table(
+    "maasserver_iprange",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+    ),
+    Column("type", String(20), nullable=False, unique=False),
+    Column("start_ip", INET, nullable=False, unique=False),
+    Column("end_ip", INET, nullable=False, unique=False),
+    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=True),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
 
 NodeConfigTable = Table(
     "maasserver_nodeconfig",
@@ -227,7 +237,6 @@ NodeConfigTable = Table(
         "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
     ),
 )
-
 
 NodeDeviceTable = Table(
     "maasserver_nodedevice",
@@ -283,7 +292,6 @@ NodeDeviceVpdTable = Table(
         nullable=False,
     ),
 )
-
 
 NodeTable = Table(
     "maasserver_node",
@@ -413,7 +421,6 @@ NumaNodeTable = Table(
     ),
 )
 
-
 PhysicalBlockDeviceTable = Table(
     "maasserver_physicalblockdevice",
     METADATA,
@@ -435,6 +442,31 @@ PhysicalBlockDeviceTable = Table(
     ),
 )
 
+ReservedIPTable = Table(
+    "maasserver_reservedip",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column(
+        "vlan_id",
+        BigInteger,
+        ForeignKey("maasserver_vlan.id"),
+        nullable=False,
+        unique=False,
+    ),
+    Column(
+        "subnet_id",
+        BigInteger,
+        ForeignKey("maasserver_subnet.id"),
+        nullable=False,
+        unique=False,
+    ),
+    Column("ip", INET, nullable=False, unique=True),
+    Column("mac_address", Text, nullable=True, unique=False),
+    Column("comment", String(255), nullable=True, unique=False),
+    Column("created", DateTime(timezone=True), nullable=False),
+    Column("updated", DateTime(timezone=True), nullable=False),
+)
+
 ResourcePoolTable = Table(
     "maasserver_resourcepool",
     METADATA,
@@ -453,21 +485,6 @@ RootKeyTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
     Column("expiration", DateTime(timezone=True), nullable=False),
 )
-
-
-ScriptSetTable = Table(
-    "maasserver_scriptset",
-    METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True),
-    Column("last_ping", DateTime(timezone=True), nullable=True),
-    Column("result_type", Integer, nullable=False),
-    Column(
-        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
-    ),
-    Column("power_state_before_transition", String(10), nullable=False),
-    Column("tags", Text, nullable=True),
-)
-
 
 ScriptResultTable = Table(
     "maasserver_scriptresult",
@@ -518,6 +535,19 @@ ScriptResultTable = Table(
     ),
 )
 
+ScriptSetTable = Table(
+    "maasserver_scriptset",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("last_ping", DateTime(timezone=True), nullable=True),
+    Column("result_type", Integer, nullable=False),
+    Column(
+        "node_id", BigInteger, ForeignKey("maasserver_node.id"), nullable=False
+    ),
+    Column("power_state_before_transition", String(10), nullable=False),
+    Column("tags", Text, nullable=True),
+)
+
 ScriptTable = Table(
     "maasserver_script",
     METADATA,
@@ -549,7 +579,6 @@ ScriptTable = Table(
     Column("apply_configured_networking", Boolean, nullable=False),
 )
 
-
 SecretTable = Table(
     "maasserver_secret",
     METADATA,
@@ -559,7 +588,6 @@ SecretTable = Table(
     Column("value", JSONB, nullable=False),
 )
 
-
 SessionTable = Table(
     "django_session",
     METADATA,
@@ -567,7 +595,6 @@ SessionTable = Table(
     Column("session_data", Text, nullable=False),
     Column("expire_date", DateTime(timezone=True), nullable=False),
 )
-
 
 SpaceTable = Table(
     "maasserver_space",
@@ -598,7 +625,6 @@ StaticIPAddressTable = Table(
     Column("temp_expires_on", DateTime(timezone=True), nullable=True),
 )
 
-
 SubnetTable = Table(
     "maasserver_subnet",
     METADATA,
@@ -621,7 +647,6 @@ SubnetTable = Table(
     Column("disabled_boot_architectures", ARRAY(String(64)), nullable=False),
 )
 
-
 TagTable = Table(
     "maasserver_tag",
     METADATA,
@@ -632,6 +657,16 @@ TagTable = Table(
     Column("definition", Text, nullable=False),
     Column("comment", Text, nullable=False),
     Column("kernel_opts", Text, nullable=False),
+)
+
+UserProfileTable = Table(
+    "maasserver_userprofile",
+    METADATA,
+    Column("id", Integer, primary_key=True, unique=True),
+    Column("completed_intro", Boolean, nullable=False),
+    Column("auth_last_check", DateTime(timezone=True), nullable=True),
+    Column("is_local", Boolean, nullable=False),
+    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=False),
 )
 
 UserTable = Table(
@@ -650,23 +685,12 @@ UserTable = Table(
     Column("date_joined", DateTime(timezone=True), nullable=False),
 )
 
-UserProfileTable = Table(
-    "maasserver_userprofile",
-    METADATA,
-    Column("id", Integer, primary_key=True, unique=True),
-    Column("completed_intro", Boolean, nullable=False),
-    Column("auth_last_check", DateTime(timezone=True), nullable=True),
-    Column("is_local", Boolean, nullable=False),
-    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=False),
-)
-
 VaultSecretTable = Table(
     "maasserver_vaultsecret",
     METADATA,
     Column("path", Text, primary_key=True, unique=True),
     Column("deleted", Boolean, nullable=False),
 )
-
 
 VersionedTextFileTable = Table(
     "maasserver_versionedtextfile",
@@ -684,6 +708,23 @@ VersionedTextFileTable = Table(
     ),
 )
 
+VirtualBlockDeviceTable = Table(
+    "maasserver_virtualblockdevice",
+    METADATA,
+    Column(
+        "blockdevice_ptr_id",
+        BigInteger,
+        ForeignKey("maasserver_blockdevice.id"),
+        nullable=False,
+    ),
+    Column(
+        "filesystem_ptr_id",
+        BigInteger,
+        ForeignKey("maasserver_filesystem.id"),
+        nullable=False,
+    ),
+    Column("uuid", Text, nullable=False, unique=True),
+)
 
 VlanTable = Table(
     "maasserver_vlan",
@@ -751,63 +792,5 @@ ZoneTable = Table(
     Column("updated", DateTime(timezone=True), nullable=False),
 )
 
-VirtualBlockDeviceTable = Table(
-    "maasserver_virtualblockdevice",
-    METADATA,
-    Column(
-        "blockdevice_ptr_id",
-        BigInteger,
-        ForeignKey("maasserver_blockdevice.id"),
-        nullable=False,
-    ),
-    Column(
-        "filesystem_ptr_id",
-        BigInteger,
-        ForeignKey("maasserver_filesystem.id"),
-        nullable=False,
-    ),
-    Column("uuid", Text, nullable=False, unique=True),
-)
-
-IPRangeTable = Table(
-    "maasserver_iprange",
-    METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True),
-    Column(
-        "subnet_id",
-        BigInteger,
-        ForeignKey("maasserver_subnet.id"),
-        nullable=False,
-    ),
-    Column("type", String(20), nullable=False, unique=False),
-    Column("start_ip", INET, nullable=False, unique=False),
-    Column("end_ip", INET, nullable=False, unique=False),
-    Column("user_id", BigInteger, ForeignKey("auth_user.id"), nullable=True),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-)
-
-ReservedIPTable = Table(
-    "maasserver_reservedip",
-    METADATA,
-    Column("id", BigInteger, primary_key=True, unique=True),
-    Column(
-        "vlan_id",
-        BigInteger,
-        ForeignKey("maasserver_vlan.id"),
-        nullable=False,
-        unique=False,
-    ),
-    Column(
-        "subnet_id",
-        BigInteger,
-        ForeignKey("maasserver_subnet.id"),
-        nullable=False,
-        unique=False,
-    ),
-    Column("ip", INET, nullable=False, unique=True),
-    Column("mac_address", Text, nullable=True, unique=False),
-    Column("comment", String(255), nullable=True, unique=False),
-    Column("created", DateTime(timezone=True), nullable=False),
-    Column("updated", DateTime(timezone=True), nullable=False),
-)
+# Before you are going to add something to this file, please ensure that
+# you keep things in alphabetical order!
