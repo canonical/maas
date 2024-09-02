@@ -151,6 +151,9 @@ class TestInnerStartUp(MAASServerTestCase):
         self.create_cluster_certificate_mock = self.patch(
             start_up, "_create_cluster_certificate_if_necessary"
         )
+        self.store_maas_cluster_cert_tuple_mock = self.patch(
+            start_up, "store_maas_cluster_cert_tuple"
+        )
 
     def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:
@@ -374,6 +377,41 @@ class TestInnerStartUp(MAASServerTestCase):
         assert StaticIPAddress.objects.all().count() == 5
         assert Interface.objects.all().count() == 5
 
+    def test_start_up_stores_certificates_on_disk(self):
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+
+        # The certificates are stored on the disk
+        self.store_maas_cluster_cert_tuple_mock.assert_called_once()
+
+    def test_startup_not_storing_certificates_if_exception_is_raised(self):
+        self.patch(
+            start_up, "initialize_image_storage"
+        ).side_effect = factory.make_exception("boom")
+
+        try:
+            with post_commit_hooks:
+                start_up.inner_start_up(master=True)
+        except Exception:
+            # The certificates are stored on the disk
+            self.store_maas_cluster_cert_tuple_mock.assert_not_called()
+        else:
+            self.fail("No exceptions were raised.")
+
+    def test_startup_raise_exception_in_post_commit(self):
+        self.store_maas_cluster_cert_tuple_mock.side_effect = [
+            factory.make_exception("Boom!"),
+        ]
+
+        try:
+            with post_commit_hooks:
+                start_up.inner_start_up(master=True)
+        except Exception:
+            # Exceptions raised in the post_commit are catchable.
+            pass
+        else:
+            self.fail("No exceptions were raised.")
+
 
 class TestVaultMigrateDbCredentials(MAASServerTestCase):
     def setUp(self):
@@ -520,8 +558,6 @@ class TestCreateClusterCertificate(MAASServerTestCase):
         self.useFixture(MAASUUIDFixture(str(uuid4())))
 
     def test_create_and_store_certificates(self):
-        # No certificates on the disk
-        self.assertIsNone(get_maas_cluster_cert_paths())
         secret_manager = SecretManager()
         # No certificates on the database
         self.assertRaises(
@@ -536,7 +572,6 @@ class TestCreateClusterCertificate(MAASServerTestCase):
         )
 
         _create_cluster_certificate_if_necessary()
-        self.assertIsNotNone(get_maas_cluster_cert_paths())
 
         maasca_secret = secret_manager.get_composite_secret(
             "maas-ca-certificate"
@@ -582,7 +617,16 @@ class TestCreateClusterCertificate(MAASServerTestCase):
         }
         secret_manager.set_composite_secret("cluster-certificate", secrets)
 
-        _create_cluster_certificate_if_necessary()
-
-        # The certificates are stored on the disk
-        self.assertIsNotNone(get_maas_cluster_cert_paths())
+        retrieved_certificate = _create_cluster_certificate_if_necessary()
+        self.assertEqual(
+            cluster_certificate.private_key_pem().encode(),
+            retrieved_certificate.private_key_pem().encode(),
+        )
+        self.assertEqual(
+            cluster_certificate.certificate_pem().encode(),
+            retrieved_certificate.certificate_pem().encode(),
+        )
+        self.assertEqual(
+            cluster_certificate.ca_certificates_pem().encode(),
+            retrieved_certificate.ca_certificates_pem().encode(),
+        )
