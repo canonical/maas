@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from maasapiserver.v3.models.fabrics import Fabric
+from maasservicelayer.models.fabrics import Fabric
 from tests.maasapiserver.fixtures.db import Fixture
 
 

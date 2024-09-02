@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.vlans import VlansRepository
-from maasapiserver.v3.models.vlans import Vlan
+from maasservicelayer.models.vlans import Vlan
 from tests.fixtures.factories.fabric import create_test_fabric_entry
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture

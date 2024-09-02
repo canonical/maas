@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasapiserver.v3.models.zones import Zone
+from maasservicelayer.models.zones import Zone
 from tests.maasapiserver.fixtures.db import Fixture
 
 

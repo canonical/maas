@@ -7,9 +7,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.machines import MachinesRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.machines import Machine, PciDevice, UsbDevice
 from maasapiserver.v3.services.machines import MachinesService
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 
 
 @pytest.mark.asyncio

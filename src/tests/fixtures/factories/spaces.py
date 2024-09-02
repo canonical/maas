@@ -6,7 +6,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from maasapiserver.v3.models.spaces import Space
+from maasservicelayer.models.spaces import Space
 from tests.maasapiserver.fixtures.db import Fixture
 
 

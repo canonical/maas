@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.db.base import CreateOrUpdateResource
 from maasapiserver.v3.db.users import UsersRepository
-from maasapiserver.v3.models.users import User, UserProfile
+from maasservicelayer.models.users import User, UserProfile
 
 
 class UsersService(Service):

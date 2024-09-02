@@ -4,9 +4,9 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasapiserver.v3.db.nodes import NodesRepository
-from maasapiserver.v3.models.nodes import Node
-from maasapiserver.v3.models.zones import Zone
 from maasservicelayer.db.tables import NodeTable, ZoneTable
+from maasservicelayer.models.nodes import Node
+from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture

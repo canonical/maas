@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.db.events import EventsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.events import Event
 from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.events import Event
 
 
 class EventsService(Service):

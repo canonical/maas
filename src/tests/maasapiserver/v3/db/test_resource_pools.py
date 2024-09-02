@@ -12,7 +12,7 @@ from maasapiserver.v3.db.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
     ResourcePoolRepository,
 )
-from maasapiserver.v3.models.resource_pools import ResourcePool
+from maasservicelayer.models.resource_pools import ResourcePool
 from tests.fixtures.factories.resource_pools import (
     create_n_test_resource_pools,
     create_test_resource_pool,

@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.machines import MachinesRepository
-from maasapiserver.v3.models.machines import Machine
+from maasservicelayer.models.machines import Machine
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
 from tests.fixtures.factories.node import create_test_region_controller_entry

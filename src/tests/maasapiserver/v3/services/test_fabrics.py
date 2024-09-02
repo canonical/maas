@@ -7,9 +7,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.fabrics import FabricsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.fabrics import Fabric
 from maasapiserver.v3.services.fabrics import FabricsService
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.fabrics import Fabric
 
 
 @pytest.mark.asyncio

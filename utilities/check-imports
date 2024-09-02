@@ -187,11 +187,9 @@ APIServer = files("src/maasapiserver/**/*.py")
 
 APIServerRule = Rule(
     # TODO: Remove when we finally move everything to the maasservicelayer
-    Allow(
-        "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
-    ),
     Allow("aiohttp|aiohttp.**"),
     Allow("asyncpg|asyncpg.**"),
+    Allow("django.core.*"),
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
     Allow("maasapiserver|maasapiserver.**"),
@@ -406,7 +404,15 @@ ServiceLayer = files("src/maasservicelayer/**/*.py")
 ServiceLayerRule = Rule(
     Allow("asyncpg|asyncpg.**"),
     Allow("aiohttp|aiohttp.**"),
+    Allow(
+        "django.core.signing|django.contrib.auth.hashers.PBKDF2PasswordHasher"
+    ),
+    Allow("jose|jose.**"),
+    # TODO: Refactor the enums and move them to the service layer
+    Allow("maasserver.enum.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
+    Allow("metadataserver.enum.*"),
+    Allow("provisioningserver.drivers.**"),
     Allow("pydantic|pydantic.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
     Allow(StandardLibraries),

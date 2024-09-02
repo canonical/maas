@@ -19,11 +19,11 @@ from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
 )
-from maasapiserver.v3.auth.jwt import UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
-from maasapiserver.v3.models.auth import AuthenticatedUser
+from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
+from maasservicelayer.models.auth import AuthenticatedUser
 
 
 class AuthTestMiddleware(BaseHTTPMiddleware):

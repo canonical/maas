@@ -4,8 +4,8 @@ from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
 from maasapiserver.v3.db.bmc import BmcRepository
-from maasapiserver.v3.models.zones import Zone
 from maasservicelayer.db.tables import BMCTable, ZoneTable
+from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture

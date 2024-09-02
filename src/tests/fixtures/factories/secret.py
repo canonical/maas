@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasapiserver.v3.models.secrets import Secret
+from maasservicelayer.models.secrets import Secret
 from tests.maasapiserver.fixtures.db import Fixture
 
 

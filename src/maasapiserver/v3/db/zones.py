@@ -9,10 +9,10 @@ from maasapiserver.v3.db.base import (
     CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
 )
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.zones import Zone
 from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
 from maasservicelayer.db.tables import DefaultResourceTable, ZoneTable
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.zones import Zone
 
 
 class ZoneCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):

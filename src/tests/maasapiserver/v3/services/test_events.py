@@ -7,9 +7,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.events import EventsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.events import Event
 from maasapiserver.v3.services.events import EventsService
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.events import Event
 
 
 @pytest.mark.asyncio

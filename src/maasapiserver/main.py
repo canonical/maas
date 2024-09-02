@@ -1,3 +1,6 @@
+# Copyright 2023-2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
 from functools import partial
 import logging
@@ -25,8 +28,8 @@ from maasapiserver.settings import (
     read_config,
 )
 from maasapiserver.v2.api.handlers import APIv2
-from maasapiserver.v3.api.handlers import APIv3
-from maasapiserver.v3.api.handlers.internal import APIv3Internal
+from maasapiserver.v3.api.internal.handlers import APIv3Internal
+from maasapiserver.v3.api.public.handlers import APIv3
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
 from maasapiserver.v3.middlewares.auth import (
     AuthenticationProvidersCache,

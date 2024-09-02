@@ -16,10 +16,10 @@ from maasapiserver.v3.db.base import (
     CreateOrUpdateResource,
     CreateOrUpdateResourceBuilder,
 )
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.resource_pools import ResourcePool
 from maasservicelayer.db.filters import FilterQuery
 from maasservicelayer.db.tables import ResourcePoolTable
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.resource_pools import ResourcePool
 
 RESOURCE_POOLS_FIELDS = (
     ResourcePoolTable.c.id,

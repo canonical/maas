@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.subnets import SubnetsRepository
-from maasapiserver.v3.models.subnets import Subnet
+from maasservicelayer.models.subnets import Subnet
 from tests.fixtures.factories.subnet import create_test_subnet_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.db.base import RepositoryCommonTests

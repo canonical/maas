@@ -37,16 +37,16 @@ from maasapiserver.v3.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.db.users import (
     UserCreateOrUpdateResourceBuilder,
     UserProfileCreateOrUpdateResourceBuilder,
 )
-from maasapiserver.v3.models.auth import AuthenticatedUser
-from maasapiserver.v3.models.users import User
 from maasserver.macaroons import _get_macaroon_caveats_ops
+from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
 from maasservicelayer.constants import SYSTEM_USERS
+from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.users import User
 
 logger = logging.getLogger()
 

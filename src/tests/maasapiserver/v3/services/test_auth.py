@@ -6,11 +6,11 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.models.exceptions import UnauthorizedException
-from maasapiserver.v3.auth.jwt import InvalidToken, JWT, UserRole
-from maasapiserver.v3.models.auth import AuthenticatedUser
-from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services import AuthService, SecretsService, UsersService
 from maasapiserver.v3.services.secrets import SecretNotFound
+from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.users import User
 
 
 @pytest.fixture(autouse=True)

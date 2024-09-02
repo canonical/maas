@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasapiserver.v3.models.resource_pools import ResourcePool
+from maasservicelayer.models.resource_pools import ResourcePool
 from tests.maasapiserver.fixtures.db import Fixture
 
 

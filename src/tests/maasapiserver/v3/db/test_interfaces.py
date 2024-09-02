@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.interfaces import InterfaceRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.interfaces import Interface
 from maasserver.enum import IPADDRESS_TYPE
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.interfaces import Interface
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.interface import (
     create_test_interface,

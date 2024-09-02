@@ -8,10 +8,10 @@ from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le, ne, or_
 
 from maasapiserver.v3.db.base import BaseRepository, CreateOrUpdateResource
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.events import Event
 from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
 from maasservicelayer.db.tables import EventTable, EventTypeTable, NodeTable
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.events import Event
 
 
 class EventsFilterQueryBuilder(FilterQueryBuilder):

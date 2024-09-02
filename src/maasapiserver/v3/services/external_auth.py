@@ -32,10 +32,10 @@ from maasapiserver.v3.auth.external_auth import (
     ExternalAuthType,
 )
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
-from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services.secrets import SecretsService
 from maasapiserver.v3.services.users import UsersService
 from maasserver.macaroons import _get_macaroon_caveats_ops, _IDClient
+from maasservicelayer.models.users import User
 from provisioningserver.security import to_bin, to_hex
 
 MACAROON_LIFESPAN = timedelta(days=1)

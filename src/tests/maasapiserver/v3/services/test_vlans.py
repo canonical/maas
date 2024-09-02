@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.vlans import VlansRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.vlans import Vlan
 from maasapiserver.v3.services.vlans import VlansService
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.vlans import Vlan
 
 
 @pytest.mark.asyncio

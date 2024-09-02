@@ -12,8 +12,8 @@ from maasapiserver.v3.db.zones import (
     ZonesFilterQueryBuilder,
     ZonesRepository,
 )
-from maasapiserver.v3.models.zones import Zone
 from maasservicelayer.db.tables import ZoneTable
+from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.db.base import RepositoryCommonTests

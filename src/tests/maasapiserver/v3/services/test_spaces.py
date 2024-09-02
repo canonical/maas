@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.spaces import SpacesRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.spaces import Space
 from maasapiserver.v3.services.spaces import SpacesService
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.spaces import Space
 
 
 @pytest.mark.asyncio

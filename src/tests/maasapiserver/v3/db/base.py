@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.base import BaseRepository
-from maasapiserver.v3.models.base import MaasTimestampedBaseModel
+from maasservicelayer.models.base import MaasTimestampedBaseModel
 from tests.maasapiserver.fixtures.db import Fixture
 
 T = TypeVar("T", bound=MaasTimestampedBaseModel)

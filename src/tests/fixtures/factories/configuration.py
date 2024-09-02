@@ -1,6 +1,6 @@
 from typing import Any
 
-from maasapiserver.v3.models.configurations import Configuration
+from maasservicelayer.models.configurations import Configuration
 from tests.maasapiserver.fixtures.db import Fixture
 
 

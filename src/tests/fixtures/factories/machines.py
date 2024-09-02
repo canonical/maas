@@ -1,9 +1,9 @@
 from typing import Any
 
-from maasapiserver.v3.api.models.responses.machines import PowerTypeEnum
-from maasapiserver.v3.models.bmc import Bmc
-from maasapiserver.v3.models.machines import Machine
-from maasapiserver.v3.models.users import User
+from maasapiserver.v3.api.public.models.responses.machines import PowerTypeEnum
+from maasservicelayer.models.bmc import Bmc
+from maasservicelayer.models.machines import Machine
+from maasservicelayer.models.users import User
 from tests.fixtures.factories.node import create_test_machine_entry
 from tests.maasapiserver.fixtures.db import Fixture
 

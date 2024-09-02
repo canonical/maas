@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.db.fabrics import FabricsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.fabrics import Fabric
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.fabrics import Fabric
 
 
 class FabricsService(Service):

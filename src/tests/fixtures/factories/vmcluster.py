@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasapiserver.v3.models.vmcluster import VmCluster
+from maasservicelayer.models.vmcluster import VmCluster
 from tests.maasapiserver.fixtures.db import Fixture
 
 

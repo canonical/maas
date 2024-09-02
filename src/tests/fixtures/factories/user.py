@@ -4,7 +4,7 @@ from typing import Any
 from django.core import signing
 
 from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.models.users import User, UserProfile
+from maasservicelayer.models.users import User, UserProfile
 from tests.maasapiserver.fixtures.db import Fixture
 
 

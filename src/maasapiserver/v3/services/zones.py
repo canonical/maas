@@ -13,17 +13,17 @@ from maasapiserver.common.models.exceptions import (
 )
 from maasapiserver.common.services._base import Service
 from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.api.models.requests.zones import ZoneRequest
+from maasapiserver.v3.api.public.models.requests.zones import ZoneRequest
 from maasapiserver.v3.db.zones import (
     ZoneCreateOrUpdateResourceBuilder,
     ZonesRepository,
 )
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.zones import Zone
 from maasapiserver.v3.services.bmc import BmcService
 from maasapiserver.v3.services.nodes import NodesService
 from maasapiserver.v3.services.vmcluster import VmClustersService
 from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.zones import Zone
 
 
 class ZonesService(Service):

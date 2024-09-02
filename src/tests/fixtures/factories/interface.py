@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasapiserver.v3.models.interfaces import Interface, Link
+from maasservicelayer.models.interfaces import Interface, Link
 from maastesting.factory import factory
 from tests.fixtures.factories.node_config import create_test_node_config_entry
 from tests.fixtures.factories.staticipaddress import (

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.api.models.requests.resource_pools import (
+from maasapiserver.v3.api.public.models.requests.resource_pools import (
     ResourcePoolRequest,
     ResourcePoolUpdateRequest,
 )
@@ -12,8 +12,8 @@ from maasapiserver.v3.db.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
     ResourcePoolRepository,
 )
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.resource_pools import ResourcePool
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.resource_pools import ResourcePool
 
 
 class ResourcePoolsService(Service):

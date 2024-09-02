@@ -9,10 +9,10 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.subnets import SubnetsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.subnets import Subnet
 from maasapiserver.v3.services.subnets import SubnetsService
 from maasserver.enum import RDNS_MODE
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.subnets import Subnet
 
 
 @pytest.mark.asyncio

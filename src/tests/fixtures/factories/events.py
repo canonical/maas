@@ -1,13 +1,13 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from maasapiserver.v3.models.events import (
+from maasservicelayer.models.events import (
     EndpointChoicesEnum,
     Event,
     EventType,
     LoggingLevelEnum,
 )
-from maasapiserver.v3.models.machines import Machine
+from maasservicelayer.models.machines import Machine
 from tests.maasapiserver.fixtures.db import Fixture
 
 

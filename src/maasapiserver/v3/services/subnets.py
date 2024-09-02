@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.common.services._base import Service
 from maasapiserver.v3.db.subnets import SubnetsRepository
-from maasapiserver.v3.models.base import ListResult
-from maasapiserver.v3.models.subnets import Subnet
+from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.subnets import Subnet
 
 
 class SubnetsService(Service):

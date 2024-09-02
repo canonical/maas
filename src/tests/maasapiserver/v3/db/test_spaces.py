@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.db.spaces import SpacesRepository
-from maasapiserver.v3.models.spaces import Space
+from maasservicelayer.models.spaces import Space
 from tests.fixtures.factories.spaces import create_test_space_entry
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasapiserver.v3.db.base import RepositoryCommonTests

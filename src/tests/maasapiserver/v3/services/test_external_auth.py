@@ -21,11 +21,11 @@ from maasapiserver.common.models.exceptions import (
 from maasapiserver.common.utils.date import utcnow
 from maasapiserver.v3.auth.external_auth import ExternalAuthType
 from maasapiserver.v3.db.external_auth import ExternalAuthRepository
-from maasapiserver.v3.models.external_auth import RootKey
-from maasapiserver.v3.models.users import User
 from maasapiserver.v3.services import SecretsService, UsersService
 from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasserver.macaroons import _get_macaroon_caveats_ops
+from maasservicelayer.models.external_auth import RootKey
+from maasservicelayer.models.users import User
 from provisioningserver.security import to_bin, to_hex
 
 

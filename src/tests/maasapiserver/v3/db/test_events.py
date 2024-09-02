@@ -10,9 +10,9 @@ from maasapiserver.v3.db.events import (
     EventsFilterQueryBuilder,
     EventsRepository,
 )
-from maasapiserver.v3.models.events import Event
 from maasservicelayer.db._debug import CompiledQuery
 from maasservicelayer.db.tables import EventTable, NodeTable
+from maasservicelayer.models.events import Event
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.events import (
     create_test_event_entry,

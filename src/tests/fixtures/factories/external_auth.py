@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any
 
 from maasapiserver.common.utils.date import utcnow
-from maasapiserver.v3.models.external_auth import RootKey
+from maasservicelayer.models.external_auth import RootKey
 from tests.maasapiserver.fixtures.db import Fixture
 
 
