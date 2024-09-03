@@ -11,8 +11,6 @@ from maasapiserver.v3.api.public.models.responses.events import (
     EventsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.events import EventsService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import (
     EndpointChoicesEnum,
@@ -20,6 +18,8 @@ from maasservicelayer.models.events import (
     EventType,
     LoggingLevelEnum,
 )
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.events import EventsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

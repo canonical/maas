@@ -24,8 +24,12 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolCreateOrUpdateResourceBuilder,
+)
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.date import utcnow
 
 
 class ResourcePoolHandler(Handler):
@@ -100,9 +104,16 @@ class ResourcePoolHandler(Handler):
         resource_pool_request: ResourcePoolRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        resource_pool = await services.resource_pools.create(
-            resource_pool_request
+        now = utcnow()
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name(resource_pool_request.name)
+            .with_description(resource_pool_request.description)
+            .with_created(now)
+            .with_updated(now)
+            .build()
         )
+        resource_pool = await services.resource_pools.create(resource)
         response.headers["ETag"] = resource_pool.etag()
         return ResourcePoolResponse.from_model(
             resource_pool=resource_pool,
@@ -172,8 +183,15 @@ class ResourcePoolHandler(Handler):
         resource_pool_request: ResourcePoolUpdateRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        resource = (
+            ResourcePoolCreateOrUpdateResourceBuilder()
+            .with_name(resource_pool_request.name)
+            .with_description(resource_pool_request.description)
+            .with_updated(utcnow())
+            .build()
+        )
         resource_pool = await services.resource_pools.update(
-            resource_pool_id, resource_pool_request
+            resource_pool_id, resource
         )
         response.headers["ETag"] = resource_pool.etag()
         return ResourcePoolResponse.from_model(

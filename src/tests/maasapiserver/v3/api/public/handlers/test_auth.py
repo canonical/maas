@@ -15,9 +15,6 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.auth import AuthService
-from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasservicelayer.auth.jwt import JWT, UserRole
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -27,6 +24,9 @@ from maasservicelayer.exceptions.catalog import (
 from maasservicelayer.exceptions.constants import (
     UNEXISTING_USER_OR_INVALID_CREDENTIALS_VIOLATION_TYPE,
 )
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.auth import AuthService
+from maasservicelayer.services.external_auth import ExternalAuthService
 
 
 @pytest.mark.asyncio

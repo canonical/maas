@@ -13,20 +13,24 @@ from pymacaroons import Macaroon
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from maasapiserver.common.auth.macaroon_client import (
-    CandidAsyncClient,
-    RbacAsyncClient,
-)
-from maasapiserver.common.auth.models.exceptions import MacaroonApiException
-from maasapiserver.common.auth.models.responses import ValidateUserResponse
 from maasapiserver.common.utils.http import extract_absolute_uri
-from maasapiserver.v3.auth.external_auth import (
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maasserver.macaroons import _get_macaroon_caveats_ops
+from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasapiserver.v3.constants import V3_API_PREFIX
-from maasserver.macaroons import _get_macaroon_caveats_ops
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.macaroons.macaroon_client import (
+    CandidAsyncClient,
+    RbacAsyncClient,
+)
+from maasservicelayer.auth.macaroons.models.exceptions import (
+    MacaroonApiException,
+)
+from maasservicelayer.auth.macaroons.models.responses import (
+    ValidateUserResponse,
+)
 from maasservicelayer.constants import SYSTEM_USERS
 from maasservicelayer.db.repositories.users import (
     UserCreateOrUpdateResourceBuilder,

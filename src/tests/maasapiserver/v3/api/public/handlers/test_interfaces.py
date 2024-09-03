@@ -15,11 +15,11 @@ from maasapiserver.v3.api.public.models.responses.interfaces import (
     InterfaceTypeEnum,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.interfaces import InterfacesService
 from maasserver.enum import IPADDRESS_TYPE
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.interfaces import InterfacesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

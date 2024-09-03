@@ -7,7 +7,6 @@ from maasapiserver.common.utils.http import extract_absolute_uri
 from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
@@ -19,6 +18,7 @@ from maasservicelayer.exceptions.constants import (
     NOT_AUTHENTICATED_VIOLATION_TYPE,
 )
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.services import ServiceCollectionV3
 
 # This is used just to generate the openapi spec with the security annotations.
 oauth2_bearer_openapi = OpenapiOAuth2PasswordBearer(

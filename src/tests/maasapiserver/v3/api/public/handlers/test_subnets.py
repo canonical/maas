@@ -15,11 +15,11 @@ from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.subnets import SubnetsService
 from maasserver.enum import RDNS_MODE
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.subnets import SubnetsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

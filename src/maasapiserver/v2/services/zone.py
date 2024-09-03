@@ -1,9 +1,9 @@
 from sqlalchemy import func, select
 
-from maasapiserver.common.services._base import Service
 from maasapiserver.v2.models.entities.zone import Zone
 from maasserver.enum import NODE_TYPE
 from maasservicelayer.db.tables import NodeTable, ZoneTable
+from maasservicelayer.services._base import Service
 
 
 class ZoneService(Service):

@@ -22,8 +22,6 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.resource_pools import ResourcePoolsService
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -33,6 +31,8 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

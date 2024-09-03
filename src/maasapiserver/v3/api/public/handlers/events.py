@@ -20,8 +20,8 @@ from maasapiserver.v3.api.public.models.responses.events import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.services import ServiceCollectionV3
 
 
 class EventsHandler(Handler):

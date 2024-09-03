@@ -12,11 +12,11 @@ import pytest
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.responses.users import UserInfoResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.external_auth import ExternalAuthService
-from maasapiserver.v3.services.users import UsersService
 from maasservicelayer.exceptions.catalog import DischargeRequiredException
 from maasservicelayer.models.users import User
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.external_auth import ExternalAuthService
+from maasservicelayer.services.users import UsersService
 from maasservicelayer.utils.date import utcnow
 
 

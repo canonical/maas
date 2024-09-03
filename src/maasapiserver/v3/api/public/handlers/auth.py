@@ -18,9 +18,9 @@ from maasapiserver.v3.auth.base import (
     check_permissions,
     get_authenticated_user,
 )
-from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.services import ServiceCollectionV3
 
 
 class AuthHandler(Handler):

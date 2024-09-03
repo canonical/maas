@@ -1,15 +1,15 @@
+# Copyright 2023-2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 from dataclasses import dataclass
-from functools import lru_cache
 import logging
 import os
 from pathlib import Path
-from typing import Optional
 
 from maasserver.config import get_db_creds_vault_path, RegionConfiguration
 from maasservicelayer.db import DatabaseConfig
-from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
 from maasservicelayer.vault.api.models.exceptions import VaultNotFoundException
-from maasservicelayer.vault.manager import AsyncVaultManager
+from maasservicelayer.vault.manager import get_region_vault_manager
 from provisioningserver.path import get_maas_data_path
 
 logger = logging.getLogger(__name__)
@@ -101,23 +101,3 @@ async def read_config() -> Config:
         debug_queries = False
         debug = False
     return Config(db=database_config, debug_queries=debug_queries, debug=debug)
-
-
-@lru_cache()
-def get_region_vault_manager() -> Optional[AsyncVaultManager]:
-    """Return an AsyncVaultManager properly configured according to the region configuration.
-
-    If configuration options for Vault are not set, None is returned.
-    """
-    with RegionConfiguration.open() as config:
-        if not all(
-            (config.vault_url, config.vault_approle_id, config.vault_secret_id)
-        ):
-            return None
-        return AsyncVaultManager(
-            vault_api_client=AsyncVaultApiClient(base_url=config.vault_url),
-            role_id=config.vault_approle_id,
-            secret_id=config.vault_secret_id,
-            secrets_base_path=config.vault_secrets_path,
-            secrets_mount=config.vault_secrets_mount,
-        )

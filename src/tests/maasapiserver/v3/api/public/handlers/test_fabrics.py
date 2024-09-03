@@ -15,10 +15,10 @@ from maasapiserver.v3.api.public.models.responses.fabrics import (
     FabricsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.fabrics import FabricsService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.fabrics import Fabric
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.fabrics import FabricsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

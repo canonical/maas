@@ -7,7 +7,7 @@ import signal
 import pytest
 
 from maasapiserver.v3.listeners.vault import VaultMigrationPostgresListener
-from maasapiserver.v3.services import SecretsServiceFactory
+from maasservicelayer.services import SecretsServiceFactory
 
 
 @pytest.fixture(autouse=True)

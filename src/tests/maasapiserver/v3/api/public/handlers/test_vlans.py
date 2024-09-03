@@ -15,10 +15,10 @@ from maasapiserver.v3.api.public.models.responses.vlans import (
     VlansListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.vlans import VlansService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.vlans import Vlan
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.vlans import VlansService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

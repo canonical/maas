@@ -2,9 +2,11 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 import logging
 from typing import Any
 
+from maasserver.config import RegionConfiguration
 from maasservicelayer.vault.api.apiclient import AsyncVaultApiClient
 from maasservicelayer.vault.api.models.requests import (
     AppRoleLoginRequest,
@@ -163,3 +165,23 @@ class AsyncVaultManager:
 
     def _secret_path(self, path: str) -> str:
         return f"{self._secrets_base_path}/{path}"
+
+
+@lru_cache()
+def get_region_vault_manager() -> AsyncVaultManager | None:
+    """Return an AsyncVaultManager properly configured according to the region configuration.
+
+    If configuration options for Vault are not set, None is returned.
+    """
+    with RegionConfiguration.open() as config:
+        if not all(
+            (config.vault_url, config.vault_approle_id, config.vault_secret_id)
+        ):
+            return None
+        return AsyncVaultManager(
+            vault_api_client=AsyncVaultApiClient(base_url=config.vault_url),
+            role_id=config.vault_approle_id,
+            secret_id=config.vault_secret_id,
+            secrets_base_path=config.vault_secrets_path,
+            secrets_mount=config.vault_secrets_mount,
+        )

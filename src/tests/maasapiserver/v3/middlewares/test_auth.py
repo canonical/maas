@@ -16,25 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.responses import Response
 
 from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
-from maasapiserver.common.auth.macaroon_client import (
-    CandidAsyncClient,
-    RbacAsyncClient,
-)
-from maasapiserver.common.auth.models.exceptions import MacaroonApiException
-from maasapiserver.common.auth.models.responses import (
-    AllowedForUserResponse,
-    GetGroupsResponse,
-    PermissionResourcesMapping,
-    UserDetailsResponse,
-)
 from maasapiserver.common.middlewares.exceptions import ExceptionMiddleware
 from maasapiserver.v2.constants import V2_API_PREFIX
 from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
-)
-from maasapiserver.v3.auth.external_auth import (
-    ExternalAuthConfig,
-    ExternalAuthType,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasapiserver.v3.middlewares.auth import (
@@ -46,8 +31,24 @@ from maasapiserver.v3.middlewares.auth import (
     V3AuthenticationMiddleware,
 )
 from maasapiserver.v3.middlewares.services import ServicesMiddleware
-from maasapiserver.v3.services import ServiceCollectionV3
+from maasservicelayer.auth.external_auth import (
+    ExternalAuthConfig,
+    ExternalAuthType,
+)
 from maasservicelayer.auth.jwt import InvalidToken, JWT, UserRole
+from maasservicelayer.auth.macaroons.macaroon_client import (
+    CandidAsyncClient,
+    RbacAsyncClient,
+)
+from maasservicelayer.auth.macaroons.models.exceptions import (
+    MacaroonApiException,
+)
+from maasservicelayer.auth.macaroons.models.responses import (
+    AllowedForUserResponse,
+    GetGroupsResponse,
+    PermissionResourcesMapping,
+    UserDetailsResponse,
+)
 from maasservicelayer.constants import NODE_INIT_USERNAME, WORKER_USERNAME
 from maasservicelayer.db import Database
 from maasservicelayer.exceptions.catalog import (
@@ -57,6 +58,7 @@ from maasservicelayer.exceptions.catalog import (
 )
 from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.models.users import User
+from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
     create_test_session,

@@ -3,7 +3,7 @@
 
 from starlette.requests import Request
 
-from maasapiserver.v3.services import ServiceCollectionV3
+from maasservicelayer.services import ServiceCollectionV3
 
 
 def services(

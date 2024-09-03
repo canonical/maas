@@ -197,7 +197,6 @@ APIServerRule = Rule(
     Allow("maasserver.config.**"),
     Allow("maasserver.enum.**"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
-    Allow("maasserver.macaroons._IDClient"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
@@ -209,7 +208,6 @@ APIServerRule = Rule(
     Allow("provisioningserver.drivers.**"),
     Allow("provisioningserver.path.get_maas_data_path"),
     Allow("provisioningserver.prometheus.utils.**"),
-    Allow("provisioningserver.security.**"),
     Allow("provisioningserver.utils.env.MAAS_UUID"),
     Allow("provisioningserver.utils.ipaddr.get_machine_default_gateway_ip"),
     Allow("pydantic|pydantic.**"),
@@ -221,7 +219,6 @@ APIServerRule = Rule(
     Allow("starlette|starlette.**"),
     Allow("uvicorn"),
     Allow("yaml"),
-    Allow("yarl|yarl.**"),
     Allow(StandardLibraries),
 )
 
@@ -410,12 +407,19 @@ ServiceLayerRule = Rule(
     Allow("jose|jose.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     # TODO: Refactor the enums and move them to the service layer
+    Allow("maasserver.config.RegionConfiguration"),
     Allow("maasserver.enum.**"),
+    Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
+    Allow("maasserver.macaroons._IDClient"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("metadataserver.enum.*"),
     Allow("provisioningserver.drivers.**"),
+    Allow("provisioningserver.security.**"),
     Allow("pydantic|pydantic.**"),
+    Allow("pymacaroons|pymacaroons.**"),
     Allow("sqlalchemy|sqlalchemy.**"),
+    Allow("starlette.datastructures.Headers"),
+    Allow("yarl|yarl.**"),
     Allow(StandardLibraries),
 )
 

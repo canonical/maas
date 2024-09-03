@@ -4,7 +4,6 @@ from sqlalchemy import case, desc, distinct, or_, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql.expression import ColumnOperators, func
 
-from maasapiserver.common.services._base import Service
 from maasapiserver.v2.models.entities.machine import (
     IPAddress,
     Machine,
@@ -50,6 +49,7 @@ from maasservicelayer.db.tables import (
     VlanTable,
     ZoneTable,
 )
+from maasservicelayer.services._base import Service
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
 
 # TODO: can't import it from maasserver due to django runtime

@@ -6,7 +6,7 @@ from starlette.responses import Response
 from starlette.types import ASGIApp
 
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
+from maasservicelayer.services import ServiceCollectionV3
 
 
 async def services(

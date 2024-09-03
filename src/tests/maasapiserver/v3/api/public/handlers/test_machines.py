@@ -17,10 +17,10 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     UsbDevicesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.machines import MachinesService
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,

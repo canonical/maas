@@ -3,9 +3,9 @@ from datetime import datetime
 from django.core import signing
 from sqlalchemy import select
 
-from maasapiserver.common.services._base import Service
 from maasapiserver.v2.models.entities.user import User
 from maasservicelayer.db.tables import SessionTable, UserTable
+from maasservicelayer.services._base import Service
 
 
 class UserService(Service):

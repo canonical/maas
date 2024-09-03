@@ -28,8 +28,12 @@ from maasapiserver.v3.api.public.models.responses.zones import (
 )
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.repositories.zones import (
+    ZoneCreateOrUpdateResourceBuilder,
+)
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.utils.date import utcnow
 
 
 class ZonesHandler(Handler):
@@ -106,7 +110,16 @@ class ZonesHandler(Handler):
         zone_request: ZoneRequest,
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
-        zone = await services.zones.create(zone_request)
+        now = utcnow()
+        resource = (
+            ZoneCreateOrUpdateResourceBuilder()
+            .with_name(zone_request.name)
+            .with_description(zone_request.description)
+            .with_created(now)
+            .with_updated(now)
+            .build()
+        )
+        zone = await services.zones.create(resource)
         response.headers["ETag"] = zone.etag()
         return ZoneResponse.from_model(
             zone=zone, self_base_hyperlink=f"{V3_API_PREFIX}/zones"

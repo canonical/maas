@@ -23,16 +23,16 @@ from maasapiserver.v3.api.public.models.responses.oauth2 import (
     AccessTokenResponse,
 )
 from maasapiserver.v3.auth.base import AuthenticatedUser
-from maasapiserver.v3.auth.external_auth import (
+from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.auth.external_auth import (
     ExternalAuthConfig,
     ExternalAuthType,
 )
-from maasapiserver.v3.constants import V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.external_auth import ExternalAuthService
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db import Database
 from maasservicelayer.models.users import User
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.external_auth import ExternalAuthService
 from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture

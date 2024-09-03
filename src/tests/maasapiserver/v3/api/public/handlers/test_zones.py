@@ -19,8 +19,6 @@ from maasapiserver.v3.api.public.models.responses.zones import (
     ZonesListResponse,
 )
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME, V3_API_PREFIX
-from maasapiserver.v3.services import ServiceCollectionV3
-from maasapiserver.v3.services.zones import ZonesService
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BadRequestException,
@@ -34,6 +32,8 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
+from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services.zones import ZonesService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
     ApiCommonTests,
