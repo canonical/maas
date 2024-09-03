@@ -4,7 +4,7 @@
 """Boot Methods."""
 
 
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractmethod
 from errno import ENOENT
 from functools import lru_cache
 from io import BytesIO
@@ -147,27 +147,33 @@ class BootMethod(metaclass=ABCMeta):
     # Bootloader files to symlink into the root tftp directory.
     bootloader_files = []
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def name(self):
         """Name of the boot method."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def bios_boot_method(self):
         """Method used by the bios to boot. E.g. `pxe`."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def template_subdir(self):
         """Name of template sub-directory."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def bootloader_arches(self):
         """Arches for which this boot method is for."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def bootloader_path(self):
         """Relative path from `path_prefix` to boot loader."""
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def arch_octet(self):
         """Architecture type that supports this method. Used for the
         dhcpd.conf file that is generated. Must be in the format XX:XX.
@@ -175,7 +181,8 @@ class BootMethod(metaclass=ABCMeta):
         dhcpv6-parameters.xhtml#processor-architecture
         """
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def user_class(self):
         """User class that supports this method. Used for the
         dhcpd.conf file that is generated."""
