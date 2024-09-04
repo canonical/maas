@@ -210,6 +210,22 @@ class TestCmdInit(MAASTestCase):
             }
         )
 
+    def test_init_snap_clears_certificates_dir(self):
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
+
+        self.mock_read_input.side_effect = [
+            "postgres://maas:pwd@localhost/db",
+            "http://localhost:5240/MAAS",
+        ]
+        self.mock_clear_certificates_dir = self.patch(
+            snap, "clear_certificates_dir"
+        )
+        options = self.parser.parse_args(["region+rack"])
+        self.cmd(options)
+        self.mock_clear_certificates_dir.assert_called_once()
+
     def test_init_db_parse_error(self):
         self.patch(snap, "print_msg")
         self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
@@ -573,6 +589,19 @@ class TestCmdInit(MAASTestCase):
         exc = factory.make_exception()
         prepare_mock.side_effect = [exc]
         self.assertRaises(type(exc), snap.get_vault_settings, options)
+
+    def test_clear_certificates_dir(self):
+        maas_data = self.make_dir()
+        self.certificates_dir = Path(maas_data) / "certificates"
+        self.certificates_dir.mkdir()
+        self.useFixture(EnvironmentVariableFixture("MAAS_ROOT", maas_data))
+
+        fake_cert = self.certificates_dir / "test.pem"
+        fake_cert.write_text("test")
+
+        self.assertTrue(fake_cert.exists())
+        snap.clear_certificates_dir()
+        self.assertFalse(fake_cert.exists())
 
 
 class TestCmdStatus(MAASTestCase):
