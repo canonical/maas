@@ -30,7 +30,7 @@ from provisioningserver.drivers.power import PowerActionError, PowerDriver
 from provisioningserver.drivers.power.utils import WebClientContextFactory
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import asynchronous, pause
 
 maaslog = get_maas_logger("drivers.power.redfish")
 
@@ -65,8 +65,35 @@ class RedfishPowerDriverBase(PowerDriver):
             }
         )
 
-    @asynchronous
+    @inlineCallbacks
     def redfish_request(self, method, uri, headers=None, bodyProducer=None):
+        retries = 0
+        while True:
+            # Exponential backoff
+            sleep_time = ((2**retries) - 1) / 2
+            yield pause(sleep_time)
+            try:
+                return (
+                    yield self._redfish_request(
+                        method, uri, headers, bodyProducer
+                    )
+                )
+            except Exception as e:
+                # Retry up to 6 times
+                if retries == 5:
+                    maaslog.error(
+                        "Maximum number of retries reached. Giving up!"
+                    )
+                    raise e
+                maaslog.info(
+                    "Power action failure: %s. This is the try number %d out of 6.",
+                    e,
+                    retries,
+                )
+                retries += 1
+
+    @asynchronous
+    def _redfish_request(self, method, uri, headers=None, bodyProducer=None):
         """Send the redfish request and return the response."""
         agent = RedirectAgent(
             Agent(reactor, contextFactory=WebClientContextFactory())

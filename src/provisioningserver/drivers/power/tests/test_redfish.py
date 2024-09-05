@@ -163,6 +163,11 @@ class TestRedfishPowerDriver(MAASTestCase):
         timeout=get_testing_timeout()
     )
 
+    def setUp(self):
+        super().setUp()
+        # No need to wait
+        self.patch(redfish_module, "pause").return_value = succeed(None)
+
     def test_missing_packages(self):
         # there's nothing to check for, just confirm it returns []
         driver = RedfishPowerDriver()
@@ -403,11 +408,11 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_headers = Mock()
         expected_headers.code = HTTPStatus.OK
         expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
         )
         mock_readBody = self.patch(redfish_module, "readBody")
-        mock_readBody.return_value = succeed(b'{"invalid": "json"')
+        mock_readBody.side_effect = lambda _: succeed(b'{"invalid": "json"')
         with self.assertRaisesRegex(
             PowerActionError,
             "^Redfish request failed from a JSON parse error: ",
@@ -426,15 +431,15 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_headers = Mock()
         expected_headers.code = HTTPStatus.OK
         expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
         )
         mock_readBody = self.patch(redfish_module, "readBody")
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode("utf-8"),
             code=HTTPStatus.OK,
         )
-        mock_readBody.return_value = fail(error)
+        mock_readBody.side_effect = lambda _: fail(error)
         expected_response = SAMPLE_JSON_SYSTEMS
 
         response, headers = yield driver.redfish_request(b"GET", uri, headers)
@@ -453,19 +458,25 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_headers = Mock()
         expected_headers.code = HTTPStatus.OK
         expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
         )
         mock_readBody = self.patch(redfish_module, "readBody")
         error = PartialDownloadError(
             response=json.dumps(SAMPLE_JSON_SYSTEMS).encode("utf-8"),
             code=HTTPStatus.NOT_FOUND,
         )
-        mock_readBody.return_value = fail(error)
+        mock_readBody.side_effect = lambda _: fail(error)
 
         with self.assertRaisesRegex(PartialDownloadError, "^404 Not Found$"):
             yield driver.redfish_request(b"GET", uri, headers)
-        mock_readBody.assert_called_once_with(expected_headers)
+        # Request is retried 6 times
+        mock_readBody.assert_has_calls([call(expected_headers)] * 6)
+
+        # Retries follow an exponential backoff strategy
+        redfish_module.pause.assert_has_calls(
+            [call(0.0), call(0.5), call(1.5), call(3.5), call(7.5), call(15.5)]
+        )
 
     @inlineCallbacks
     def test_redfish_request_raises_error_on_response_code_above_400(self):
@@ -479,8 +490,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_headers = Mock()
         expected_headers.code = HTTPStatus.BAD_REQUEST
         expected_headers.headers = "Testing Headers"
-        mock_agent.return_value.request.return_value = succeed(
-            expected_headers
+        mock_agent.return_value.request.side_effect = (
+            lambda *args, **kwargs: succeed(expected_headers)
         )
         mock_readBody = self.patch(redfish_module, "readBody")
 
