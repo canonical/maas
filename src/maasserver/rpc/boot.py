@@ -44,6 +44,22 @@ maaslog = get_maas_logger("rpc.boot")
 
 DEFAULT_ARCH = "i386"
 
+_GET_BOOT_CONFIG_KEYS = frozenset(
+    [
+        "commissioning_osystem",
+        "commissioning_distro_series",
+        "enable_third_party_drivers",
+        "default_min_hwe_kernel",
+        "default_osystem",
+        "default_distro_series",
+        "kernel_opts",
+        "use_rack_proxy",
+        "maas_internal_domain",
+        "remote_syslog",
+        "maas_syslog_port",
+    ]
+)
+
 
 def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
     """Get a Node object from a MAC address or hardware UUID string.
@@ -92,7 +108,13 @@ def event_log_pxe_request(machine, purpose):
     )
 
 
-def _get_files_map(osystem, oseries, arch, subarch, exclude=None):
+def _get_files_map(
+    osystem: str,
+    oseries: str,
+    arch: str,
+    subarch: str,
+    exclude: list[str] | None = None,
+) -> dict[str, str]:
     exclude = exclude or []
     try:
         boot_resource = BootResource.objects.get(
@@ -120,13 +142,13 @@ def _get_files_map(osystem, oseries, arch, subarch, exclude=None):
 
 
 def _xlate_generic_subarch(
-    arch,
-    subarch,
-    kernel_osystem,
-    kernel_release,
-    commissioning_osystem,
-    commissioning_distro_series,
-):
+    arch: str,
+    subarch: str,
+    kernel_osystem: str,
+    kernel_release: str,
+    commissioning_osystem: str | object,
+    commissioning_distro_series: str | object,
+) -> str:
     # MAAS doesn't store in the BootResource table what subarch is the
     # generic subarch so lookup what the generic subarch maps to.
     try:
@@ -147,13 +169,13 @@ def _xlate_generic_subarch(
 
 
 def get_boot_filenames(
-    arch,
-    subarch,
-    osystem,
-    series,
-    commissioning_osystem=undefined,
-    commissioning_distro_series=undefined,
-):
+    arch: str,
+    subarch: str,
+    osystem: str,
+    series: str,
+    commissioning_osystem: str | object = undefined,
+    commissioning_distro_series: str | object = undefined,
+) -> tuple[str | None, str | None, str | None, str | None]:
     """Return the filenames of the kernel, initrd, and boot_dtb for the boot
     resource."""
     if subarch == "generic":
@@ -231,7 +253,9 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     return final_params
 
 
-def get_boot_config_for_machine(machine, configs, purpose):
+def get_boot_config_for_machine(
+    machine: Node, configs: dict[str, str], purpose: str
+) -> tuple[str, str, str, str, str]:
     """Get the correct operating system and series based on the purpose
     of the booting machine.
     """
@@ -252,48 +276,51 @@ def get_boot_config_for_machine(machine, configs, purpose):
                 and machine.previous_status == NODE_STATUS.DEPLOYED
             )
         ):
-            osystem = machine.get_osystem(default=configs["default_osystem"])
-            series = machine.get_distro_series(
+            boot_osystem = machine.get_osystem(
+                default=configs["default_osystem"]
+            )
+            boot_series = machine.get_distro_series(
                 default=configs["default_distro_series"]
             )
         else:
-            osystem = configs["commissioning_osystem"]
-            series = configs["commissioning_distro_series"]
+            boot_osystem = configs["commissioning_osystem"]
+            boot_series = configs["commissioning_distro_series"]
             # LP:2013529, machine HWE kernel might not exist for
             # commissioning osystem/series
             use_machine_hwe_kernel = False
-        final_osystem, final_series = osystem, series
+        final_osystem, final_series = boot_osystem, boot_series
     else:
-        osystem = machine.get_osystem(default=configs["default_osystem"])
-        series = machine.get_distro_series(
+        boot_osystem = machine.get_osystem(default=configs["default_osystem"])
+        boot_series = machine.get_distro_series(
             default=configs["default_distro_series"]
         )
-        final_osystem, final_series = osystem, series
+        final_osystem, final_series = boot_osystem, boot_series
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and
         # drop of iscsi), precise is no longer deployable. To address a
         # squashfs image is made available allowing it to be deployed in
         # the commissioning ephemeral environment.
-        precise = series == "precise"
-        if purpose == "xinstall" and (osystem != "ubuntu" or precise):
+        precise = final_series == "precise"
+        if purpose == "xinstall" and (final_osystem != "ubuntu" or precise):
             install_image = None
 
-            if osystem == "custom":
+            if final_osystem == "custom":
                 # Note: `series` actually contains a name of the
                 # custom image in this context.
-                install_image = BootResource.objects.get(name=series)
-                osystem, series = install_image.split_base_image()
+                install_image = BootResource.objects.get(name=final_series)
+                boot_osystem, boot_series = install_image.split_base_image()
                 # LP:2013529, machine HWE kernel might not exist for
                 # given base image
                 use_machine_hwe_kernel = False
 
-            if install_image is None or osystem != "ubuntu":
+            if install_image is None or boot_osystem != "ubuntu":
                 # Use only the commissioning osystem and series, for operating
                 # systems other than Ubuntu. As Ubuntu supports HWE kernels,
                 # and needs to use that kernel to perform the installation.
-                # In case of ephemeral deployment of custom images we have to keep the original osystem/series.
+                # In case of ephemeral deployment of custom images we have to
+                # keep the original osystem/series.
                 if not machine.ephemeral_deploy:
-                    osystem = configs["commissioning_osystem"]
-                    series = configs["commissioning_distro_series"]
+                    boot_osystem = configs["commissioning_osystem"]
+                    boot_series = configs["commissioning_distro_series"]
                 # LP:2013529, machine HWE kernel might not exist for
                 # commissioning osystem/series
                 use_machine_hwe_kernel = False
@@ -335,14 +362,15 @@ def get_boot_config_for_machine(machine, configs, purpose):
         subarch = machine.hwe_kernel
 
     try:
-        # For custom ephemeral deployments return the image subarch as it is. Otherwise, retrieve the working kernel.
-        if not machine.ephemeral_deploy or osystem == "ubuntu":
+        # For custom ephemeral deployments return the image subarch as it is.
+        # Otherwise, retrieve the working kernel.
+        if not machine.ephemeral_deploy or boot_osystem == "ubuntu":
             subarch = get_working_kernel(
                 subarch,
                 machine.min_hwe_kernel,
                 machine.architecture,
-                osystem,
-                series,
+                boot_osystem,
+                boot_series,
             )
     except ValidationError:
         # In case the kernel for that particular subarch
@@ -354,15 +382,15 @@ def get_boot_config_for_machine(machine, configs, purpose):
                     None,
                     machine.min_hwe_kernel,
                     machine.architecture,
-                    osystem,
-                    series,
+                    boot_osystem,
+                    boot_series,
                 )
             except ValidationError:
                 subarch = "no-such-kernel"
         else:
             subarch = "no-such-kernel"
 
-    return osystem, series, subarch, final_osystem, final_series
+    return boot_osystem, boot_series, subarch, final_osystem, final_series
 
 
 def get_base_url_for_local_ip(
@@ -465,21 +493,7 @@ def get_config(
         raise BootConfigNoResponse()
 
     # Get all required configuration objects in a single query.
-    configs = Config.objects.get_configs(
-        [
-            "commissioning_osystem",
-            "commissioning_distro_series",
-            "enable_third_party_drivers",
-            "default_min_hwe_kernel",
-            "default_osystem",
-            "default_distro_series",
-            "kernel_opts",
-            "use_rack_proxy",
-            "maas_internal_domain",
-            "remote_syslog",
-            "maas_syslog_port",
-        ]
-    )
+    configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
 
     # Compute the syslog server.
     log_host, log_port = (
@@ -640,8 +654,8 @@ def get_config(
             event_log_pxe_request(machine, purpose)
 
         (
-            osystem,
-            series,
+            boot_osystem,
+            boot_series,
             subarch,
             final_osystem,
             final_series,
@@ -654,7 +668,7 @@ def get_config(
         # Add any extra options from a third party driver.
         use_driver = configs["enable_third_party_drivers"]
         if use_driver:
-            driver = get_third_party_driver(machine, series=series)
+            driver = get_third_party_driver(machine, series=boot_series)
             driver_kernel_opts = driver.get("kernel_opts", "")
 
             extra_kernel_opts += f" {driver_kernel_opts}"
@@ -689,8 +703,8 @@ def get_config(
             )
         hostname = "maas-enlist"
         domain = "local"
-        osystem = configs["commissioning_osystem"]
-        series = configs["commissioning_distro_series"]
+        boot_osystem = configs["commissioning_osystem"]
+        boot_series = configs["commissioning_distro_series"]
         min_hwe_kernel = configs["default_min_hwe_kernel"]
 
         # When no architecture is defined for the enlisting machine select
@@ -698,7 +712,7 @@ def get_config(
         # none exists fallback to the default architecture. LP #1181334
         if arch is None:
             resource = BootResource.objects.get_default_commissioning_resource(
-                osystem, series
+                boot_osystem, boot_series
             )
             if resource is None:
                 arch = DEFAULT_ARCH
@@ -710,15 +724,19 @@ def get_config(
         # selected.
         if subarch is None:
             min_hwe_kernel = get_working_kernel(
-                None, min_hwe_kernel, "%s/generic" % arch, osystem, series
+                None,
+                min_hwe_kernel,
+                "%s/generic" % arch,
+                boot_osystem,
+                boot_series,
             )
         else:
             min_hwe_kernel = get_working_kernel(
                 None,
                 min_hwe_kernel,
                 f"{arch}/{subarch}",
-                osystem,
-                series,
+                boot_osystem,
+                boot_series,
             )
         # If no hwe_kernel was found set the subarch to the default, 'generic.'
         if min_hwe_kernel is None:
@@ -731,13 +749,13 @@ def get_config(
 
     boot_purpose = get_final_boot_purpose(machine, arch, purpose)
 
-    kernel_osystem, kernel_release = osystem, series
+    kernel_osystem, kernel_release = boot_osystem, boot_series
 
     kernel, initrd, boot_dtb, rootfs = get_boot_filenames(
         arch,
         subarch,
-        osystem,
-        series,
+        boot_osystem,
+        boot_series,
         commissioning_osystem=configs["commissioning_osystem"],
         commissioning_distro_series=configs["commissioning_distro_series"],
     )
@@ -760,8 +778,8 @@ def get_config(
     params = {
         "arch": arch,
         "subarch": subarch,
-        "osystem": osystem,
-        "release": series,
+        "osystem": boot_osystem,
+        "release": boot_series,
         "kernel_osystem": kernel_osystem,
         "kernel_release": kernel_release,
         "kernel": kernel,

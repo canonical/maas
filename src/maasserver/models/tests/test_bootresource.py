@@ -760,7 +760,7 @@ class TestBootResource(MAASServerTestCase):
         subarch = factory.make_name("subarch")
         architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(architecture=architecture)
-        self.assertEqual([arch, subarch], resource.split_arch())
+        self.assertEqual((arch, subarch), resource.split_arch())
 
     def test_get_latest_set(self):
         resource = factory.make_BootResource()

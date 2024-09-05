@@ -30,6 +30,7 @@ from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.preseed import compose_enlistment_preseed_url
 from maasserver.rpc import boot as boot_module
 from maasserver.rpc.boot import (
+    _GET_BOOT_CONFIG_KEYS,
     event_log_pxe_request,
     get_boot_config_for_machine,
     get_boot_filenames,
@@ -1951,21 +1952,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
         factory.make_usable_boot_resource(
             name="ubuntu/focal", architecture=f"amd64/{subarch}"
         )
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
 
         osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
@@ -1992,21 +1979,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             osystem="custom",
             distro_series=boot_resource.name,
         )
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
 
         osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
@@ -2030,21 +2003,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             osystem="custom",
             distro_series=boot_resource.name,
         )
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
 
         osystem, series, config_arch, _, _ = get_boot_config_for_machine(
             machine, configs, "xinstall"
@@ -2090,21 +2049,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             hwe_kernel=machine_hwe_kernel,
         )
 
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
         legacy_subarch = f"ga-{configs['default_distro_series']}"
         factory.make_usable_boot_resource(
             name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
@@ -2149,21 +2094,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             hwe_kernel=machine_hwe_kernel,
         )
 
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
         legacy_subarch = f"ga-{configs['default_distro_series']}"
         factory.make_usable_boot_resource(
             name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
@@ -2194,21 +2125,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             ephemeral_deploy=True,
         )
 
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
         legacy_subarch = f"ga-{configs['default_distro_series']}"
         factory.make_usable_boot_resource(
             name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
@@ -2237,21 +2154,7 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             osystem="centos",
             distro_series="7",
         )
-        configs = Config.objects.get_configs(
-            [
-                "commissioning_osystem",
-                "commissioning_distro_series",
-                "enable_third_party_drivers",
-                "default_min_hwe_kernel",
-                "default_osystem",
-                "default_distro_series",
-                "kernel_opts",
-                "use_rack_proxy",
-                "maas_internal_domain",
-                "remote_syslog",
-                "maas_syslog_port",
-            ]
-        )
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
 
         (
             osystem,

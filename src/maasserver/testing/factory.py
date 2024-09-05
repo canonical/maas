@@ -2767,9 +2767,13 @@ class Factory(maastesting.factory.Factory):
             name="commissioning_distro_series"
         )
         default_name = f"{default_osystem}/{default_series}"
-        release = get_release_from_distro_info(default_series)
-        alias = release["version"].split()[0]
-        architecture = "{}/hwe-{}".format(arch, alias)
+        if "/" not in arch:
+            release = get_release_from_distro_info(default_series)
+            alias = release["version"].split()[0]
+            architecture = f"{arch}/hwe-{alias}"
+        else:
+            alias = arch.split("-")[1]
+            architecture = arch
         try:
             return BootResource.objects.get(
                 name=default_name,
