@@ -53,7 +53,9 @@ class TestZonesService:
         zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
-            db_connection, zones_repository=zones_repository
+            db_connection,
+            zones_repository=zones_repository,
+            nodes_service=Mock(NodesService),
         )
 
         await zones_service.delete(TEST_ZONE.id)
@@ -67,7 +69,9 @@ class TestZonesService:
         zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.side_effect = [TEST_ZONE, None]
         zones_service = ZonesService(
-            db_connection, zones_repository=zones_repository
+            db_connection,
+            zones_repository=zones_repository,
+            nodes_service=Mock(NodesService),
         )
 
         Zone.etag = Mock()
@@ -82,7 +86,9 @@ class TestZonesService:
         zones_repository.find_by_id = AsyncMock()
         zones_repository.find_by_id.return_value = TEST_ZONE
         zones_service = ZonesService(
-            db_connection, zones_repository=zones_repository
+            db_connection,
+            zones_repository=zones_repository,
+            nodes_service=Mock(NodesService),
         )
 
         Zone.etag = Mock()
@@ -102,7 +108,9 @@ class TestZonesService:
         zones_repository.get_default_zone = AsyncMock()
         zones_repository.get_default_zone.return_value = DEFAULT_ZONE
         zones_service = ZonesService(
-            db_connection, zones_repository=zones_repository
+            db_connection,
+            zones_repository=zones_repository,
+            nodes_service=Mock(NodesService),
         )
 
         with pytest.raises(BadRequestException) as excinfo:
@@ -157,6 +165,7 @@ class TestZonesService:
         resource_pools_service = ZonesService(
             connection=db_connection,
             zones_repository=zones_repository_mock,
+            nodes_service=Mock(NodesService),
         )
         query_mock = Mock(FilterQuery)
         resource_pools_list = await resource_pools_service.list(

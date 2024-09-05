@@ -64,7 +64,9 @@ class ServiceCollectionV3:
             secrets_service=services.secrets,
             users_service=services.users,
         )
-        services.nodes = NodesService(connection=connection)
+        services.nodes = NodesService(
+            connection=connection, secrets_service=services.secrets
+        )
         services.vmclusters = VmClustersService(connection=connection)
         services.zones = ZonesService(
             connection=connection,
@@ -72,7 +74,9 @@ class ServiceCollectionV3:
             vmcluster_service=services.vmclusters,
         )
         services.resource_pools = ResourcePoolsService(connection=connection)
-        services.machines = MachinesService(connection=connection)
+        services.machines = MachinesService(
+            connection=connection, secrets_service=services.secrets
+        )
         services.events = EventsService(connection=connection)
         services.interfaces = InterfacesService(connection=connection)
         services.fabrics = FabricsService(connection=connection)

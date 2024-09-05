@@ -10,6 +10,7 @@ from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.machines import MachinesService
+from maasservicelayer.services.secrets import SecretsService
 
 
 @pytest.mark.asyncio
@@ -22,6 +23,7 @@ class TestMachinesService:
         )
         machines_service = MachinesService(
             connection=db_connection,
+            secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
         machines_list = await machines_service.list(token=None, size=1)
@@ -39,6 +41,7 @@ class TestMachinesService:
         )
         machines_service = MachinesService(
             connection=db_connection,
+            secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
         usb_devices_list = await machines_service.list_machine_usb_devices(
@@ -59,6 +62,7 @@ class TestMachinesService:
         )
         machines_service = MachinesService(
             connection=db_connection,
+            secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
         pci_devices_list = await machines_service.list_machine_pci_devices(

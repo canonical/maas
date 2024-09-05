@@ -11,7 +11,9 @@ from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
+from tests.fixtures.factories.machines import create_test_machine
 from tests.fixtures.factories.node import create_test_machine_entry
+from tests.fixtures.factories.user import create_test_user
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -94,3 +96,17 @@ class TestNodesRepository:
         )
         assert updated_bmc_a["zone_id"] == default_zone.id
         assert updated_bmc_b["zone_id"] == default_zone.id
+
+    async def test_get_node_bmc(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machine = await create_test_machine(fixture, bmc=bmc, user=user)
+        nodes_repository = NodesRepository(db_connection)
+        node_bmc = await nodes_repository.get_node_bmc(machine.system_id)
+
+        assert node_bmc is not None
+        assert node_bmc.id == bmc.id
+        assert node_bmc.power_type == bmc.power_type
+        assert node_bmc.power_parameters == bmc.power_parameters

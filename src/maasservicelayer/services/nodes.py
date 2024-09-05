@@ -6,15 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.services._base import Service
+from maasservicelayer.services.secrets import SecretsService
 
 
 class NodesService(Service):
     def __init__(
         self,
         connection: AsyncConnection,
+        secrets_service: SecretsService,
         nodes_repository: NodesRepository | None = None,
     ):
         super().__init__(connection)
+        self.secrets_service = secrets_service
         self.nodes_repository = (
             nodes_repository
             if nodes_repository
@@ -40,4 +43,12 @@ class NodesService(Service):
         )
 
     async def get_bmc(self, system_id: str) -> Bmc | None:
-        return await self.nodes_repository.get_node_bmc(system_id)
+        bmc = await self.nodes_repository.get_node_bmc(system_id)
+        if bmc is not None:
+            secret_power_params = (
+                await self.secrets_service.get_composite_secret(
+                    f"bmc/{bmc.id}/power_parameters"
+                )
+            )
+            bmc.power_parameters.update(secret_power_params)
+        return bmc

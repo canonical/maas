@@ -28,18 +28,16 @@ class ZonesService(Service):
     def __init__(
         self,
         connection: AsyncConnection,
+        nodes_service: NodesService,
         zones_repository: ZonesRepository | None = None,
-        nodes_service: NodesService | None = None,
         vmcluster_service: VmClustersService | None = None,
     ):
         super().__init__(connection)
+        self.nodes_service = nodes_service
         self.zones_repository = (
             zones_repository
             if zones_repository
             else ZonesRepository(connection)
-        )
-        self.nodes_service = (
-            nodes_service if nodes_service else NodesService(connection)
         )
         self.vmcluster_service = (
             vmcluster_service

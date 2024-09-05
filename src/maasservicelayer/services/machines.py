@@ -7,15 +7,17 @@ from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services.nodes import NodesService
+from maasservicelayer.services.secrets import SecretsService
 
 
 class MachinesService(NodesService):
     def __init__(
         self,
         connection: AsyncConnection,
+        secrets_service: SecretsService,
         machines_repository: MachinesRepository | None = None,
     ):
-        super().__init__(connection)
+        super().__init__(connection, secrets_service)
         self.machines_repository = (
             machines_repository
             if machines_repository
