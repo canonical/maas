@@ -6,10 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
-from maasservicelayer.services._base import Service
+from maasservicelayer.services.nodes import NodesService
 
 
-class MachinesService(Service):
+class MachinesService(NodesService):
     def __init__(
         self,
         connection: AsyncConnection,

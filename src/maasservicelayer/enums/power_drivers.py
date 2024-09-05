@@ -1,0 +1,28 @@
+from enum import Enum
+
+
+class PowerDriversEnum(str, Enum):
+    AMT = "amt"
+    APC = "apc"
+    DLI = "dli"
+    EATON = "eaton"
+    HMC = "hmc"
+    HMCZ = "hmcz"
+    IPMI = "ipmi"
+    LXD = "lxd"
+    MANUAL = "manual"
+    MOONSHOT = "moonshot"
+    MSCM = "mscm"
+    MICROSOFT_OCS = "msftocs"
+    NOVA = "nova"
+    OPENBMC = "openbmc"
+    PROXMOX = "proxmox"
+    RARITAN = "raritan"
+    RECS = "recs_box"
+    REDFISH = "redfish"
+    SEAMICRO = "sm15k"
+    UCSM = "ucsm"
+    VIRSH = "virsh"
+    VMWARE = "vmware"
+    WEBHOOK = "webhook"
+    WEDGE = "wedge"

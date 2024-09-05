@@ -20,7 +20,6 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
 from maasservicelayer.services._base import Service
-from maasservicelayer.services.bmc import BmcService
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.vmcluster import VmClustersService
 
@@ -31,7 +30,6 @@ class ZonesService(Service):
         connection: AsyncConnection,
         zones_repository: ZonesRepository | None = None,
         nodes_service: NodesService | None = None,
-        bmc_service: BmcService | None = None,
         vmcluster_service: VmClustersService | None = None,
     ):
         super().__init__(connection)
@@ -42,9 +40,6 @@ class ZonesService(Service):
         )
         self.nodes_service = (
             nodes_service if nodes_service else NodesService(connection)
-        )
-        self.bmc_service = (
-            bmc_service if bmc_service else BmcService(connection)
         )
         self.vmcluster_service = (
             vmcluster_service
@@ -100,5 +95,5 @@ class ZonesService(Service):
 
         # Cascade deletion to the related models and move the resources from the deleted zone to the default zone
         await self.nodes_service.move_to_zone(zone_id, default_zone.id)
-        await self.bmc_service.move_to_zone(zone_id, default_zone.id)
+        await self.nodes_service.move_bmcs_to_zone(zone_id, default_zone.id)
         await self.vmcluster_service.move_to_zone(zone_id, default_zone.id)

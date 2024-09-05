@@ -4,7 +4,6 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.services.auth import AuthService
-from maasservicelayer.services.bmc import BmcService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.events import EventsService
 from maasservicelayer.services.external_auth import ExternalAuthService
@@ -30,7 +29,6 @@ class ServiceCollectionV3:
 
     nodes: NodesService
     vmclusters: VmClustersService
-    bmc: BmcService
     zones: ZonesService
     secrets: SecretsService
     configurations: ConfigurationsService
@@ -68,12 +66,10 @@ class ServiceCollectionV3:
         )
         services.nodes = NodesService(connection=connection)
         services.vmclusters = VmClustersService(connection=connection)
-        services.bmc = BmcService(connection=connection)
         services.zones = ZonesService(
             connection=connection,
             nodes_service=services.nodes,
             vmcluster_service=services.vmclusters,
-            bmc_service=services.bmc,
         )
         services.resource_pools = ResourcePoolsService(connection=connection)
         services.machines = MachinesService(connection=connection)

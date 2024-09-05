@@ -20,7 +20,6 @@ from maasservicelayer.exceptions.constants import (
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.zones import Zone
 from maasservicelayer.services import (
-    BmcService,
     NodesService,
     VmClustersService,
     ZonesService,
@@ -119,8 +118,7 @@ class TestZonesService:
         db_connection = Mock(AsyncConnection)
         nodes_service_mock = Mock(NodesService)
         nodes_service_mock.move_to_zone = AsyncMock()
-        bmc_service_mock = Mock(BmcService)
-        bmc_service_mock.move_to_zone = AsyncMock()
+        nodes_service_mock.move_bmcs_to_zone = AsyncMock()
         vmclusters_service_mock = Mock(VmClustersService)
         vmclusters_service_mock.move_to_zone = AsyncMock()
         zones_repository = Mock(ZonesRepository)
@@ -134,7 +132,6 @@ class TestZonesService:
         zones_service = ZonesService(
             db_connection,
             nodes_service=nodes_service_mock,
-            bmc_service=bmc_service_mock,
             vmcluster_service=vmclusters_service_mock,
             zones_repository=zones_repository,
         )
@@ -144,7 +141,7 @@ class TestZonesService:
         nodes_service_mock.move_to_zone.assert_called_once_with(
             TEST_ZONE.id, DEFAULT_ZONE.id
         )
-        bmc_service_mock.move_to_zone.assert_called_once_with(
+        nodes_service_mock.move_bmcs_to_zone.assert_called_once_with(
             TEST_ZONE.id, DEFAULT_ZONE.id
         )
         vmclusters_service_mock.move_to_zone.assert_called_once_with(

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.repositories.bmc import BmcRepository
+from maasservicelayer.db.repositories.vmcluster import VmClustersRepository
 from maasservicelayer.services import VmClustersService
 
 
@@ -14,7 +14,7 @@ from maasservicelayer.services import VmClustersService
 class TestVmClusterService:
     async def test_move_to_zone(self) -> None:
         db_connection = Mock(AsyncConnection)
-        vmcluster_repository_mock = Mock(BmcRepository)
+        vmcluster_repository_mock = Mock(VmClustersRepository)
         vmcluster_repository_mock.move_to_zone = AsyncMock()
         vmcluster_service = VmClustersService(
             db_connection, vmcluster_repository=vmcluster_repository_mock
