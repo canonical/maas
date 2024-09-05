@@ -52,7 +52,8 @@ var (
 	}
 
 	cacheRules = []*CacheRule{
-		NewCacheRule(regexp.MustCompile("boot-resources/([[:alnum:]]{64})/"), "$1"),
+		// Matches the partial sha256 we use to identify images.
+		NewCacheRule(regexp.MustCompile("boot-resources/([0-9a-fA-F]+)/"), "$1"),
 	}
 )
 

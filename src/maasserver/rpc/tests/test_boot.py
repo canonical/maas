@@ -1702,7 +1702,7 @@ class TestGetBootFilenames(MAASServerTestCase):
         osystem, series = bres.name.split("/", maxsplit=1)
         return "/".join(
             [
-                bfile.sha256,
+                bfile.filename_on_disk,
                 osystem,
                 arch,
                 subarch,

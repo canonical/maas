@@ -125,7 +125,7 @@ def _get_files_map(
         return {
             bfile.filetype: "/".join(
                 [
-                    bfile.sha256,
+                    bfile.filename_on_disk,
                     osystem,
                     arch,
                     subarch,

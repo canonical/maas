@@ -98,6 +98,9 @@ def make_boot_resource_file_with_content_largefile(
         filetype=filetype,
         size=largefile.size,
         sha256=largefile.sha256,
+        filename_on_disk=BootResourceFile.objects.calculate_filename_on_disk(
+            largefile.sha256
+        ),
         extra=extra,
         largefile=largefile,
         synced=[(r, -1) for r in regions] if regions else None,
@@ -142,15 +145,15 @@ class TestExportImagesFromDB:
         )
         export_images_from_db(controller, image_store_dir)
         assert list_files(image_store_dir) == {
-            sha256(content1).hexdigest(),
-            sha256(content2).hexdigest(),
+            sha256(content1).hexdigest()[:7],
+            sha256(content2).hexdigest()[:7],
         }
 
     def test_export_overwrite_changed(
         self, controller, image_store_dir, factory
     ):
         content = b"ubuntu-jammy"
-        image = image_store_dir / sha256(content).hexdigest()
+        image = image_store_dir / sha256(content).hexdigest()[:7]
         image.write_bytes(b"old")
 
         resource = factory.make_BootResource(
@@ -240,10 +243,11 @@ class TestExportImagesFromDB:
             largefile=None,
             filename="boot-initrd",
             sha256=sha256,
+            filename_on_disk=sha256[:7],
             size=100,
         )
 
-        resource_file = image_store_dir / sha256
+        resource_file = image_store_dir / sha256[:7]
         resource_file.touch()
         export_images_from_db(controller, image_store_dir)
         assert resource_file.exists()

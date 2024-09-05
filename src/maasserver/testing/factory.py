@@ -2432,8 +2432,12 @@ class Factory(maastesting.factory.Factory):
         sha256 = hashlib.sha256()
         sha256.update(content)
         filehash = sha256.hexdigest()
-
-        lf = LocalBootResourceFile(sha256=filehash, total_size=size)
+        filename_on_disk = BootResourceFile.objects.calculate_filename_on_disk(
+            filehash
+        )
+        lf = LocalBootResourceFile(
+            sha256=filehash, filename_on_disk=filename_on_disk, total_size=size
+        )
         with lf.store() as m:
             m.write(content)
         return lf
@@ -2536,6 +2540,7 @@ class Factory(maastesting.factory.Factory):
         filename: str | None = None,
         filetype: str | None = None,
         sha256: str | None = None,
+        filename_on_disk: str | None = None,
         extra: dict | None = None,
         size: int = 0,
         largefile: LargeFile | None = None,
@@ -2545,6 +2550,8 @@ class Factory(maastesting.factory.Factory):
             sha256 = (
                 largefile.sha256 if largefile else factory.make_hex_string(64)
             )
+        if filename_on_disk is None:
+            filename_on_disk = sha256[:7]
         if filename is None:
             filename = self.make_name("name")
         if filetype is None:
@@ -2560,6 +2567,7 @@ class Factory(maastesting.factory.Factory):
             filetype=filetype,
             extra=extra,
             sha256=sha256,
+            filename_on_disk=filename_on_disk,
             size=size,
             largefile=largefile,
         )
@@ -2589,6 +2597,7 @@ class Factory(maastesting.factory.Factory):
             filename=filename,
             filetype=filetype,
             sha256=lfile.sha256,
+            filename_on_disk=lfile.filename_on_disk,
             size=lfile.size,
             extra=extra,
             synced=synced,

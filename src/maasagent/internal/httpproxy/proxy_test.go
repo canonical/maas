@@ -106,6 +106,30 @@ func TestProxy(t *testing.T) {
 				},
 			},
 		},
+		"return cached data if sha matches": {
+			in: in{
+				uri: "http://example.com/boot-resources/3c025ab/ubuntu/amd64/ga-22.04/jammy/stable/boot-kernel",
+				upstream: httptest.NewServer(http.HandlerFunc(
+					func(w http.ResponseWriter, _ *http.Request) {
+					})),
+				cacher: NewCacher([]*CacheRule{
+					NewCacheRule(regexp.MustCompile("boot-resources/([0-9a-fA-F]+)/"), "$1"),
+				},
+					func() *cache.FakeFileCache {
+						cache := cache.NewFakeFileCache()
+						body := bytes.NewReader([]byte("hello world"))
+						cache.Set("3c025ab", body, int64(body.Len()))
+						return cache
+					}()),
+			},
+			out: []out{
+				{
+					code:    http.StatusOK,
+					headers: map[string]string{"x-cache": "HIT"},
+					body:    []byte("hello world"),
+				},
+			},
+		},
 		"cache upstream if HTTP 200 returned": {
 			in: in{
 				uri: "http://example.com/file",
