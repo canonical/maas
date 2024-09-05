@@ -412,6 +412,87 @@ class TestGetConfig(MAASServerTestCase):
         self.assertIn(f"/ubuntu/{arch}/hwe-", config["initrd"])
         self.assertIn(f"/centos/{arch}/generic/8", config["xinstall_path"])
 
+    def test_custom_deployment_base_image(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYING,
+            boot_cluster_ip=local_ip,
+            osystem="custom",
+            distro_series="rocky8",
+        )
+        arch = node.architecture.split("/")[0]
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        ubuntu = factory.make_default_ubuntu_release_bootable(arch=arch)
+        factory.make_usable_boot_resource(
+            name="rocky8",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            base_image="rhel/8",
+        )
+
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        ubuntu_rel = ubuntu.name.split("/")[1]
+        self.assertEqual(config["osystem"], "ubuntu")
+        self.assertEqual(config["release"], ubuntu_rel)
+        self.assertEqual(config["arch"], arch)
+        self.assertEqual(config["subarch"], ubuntu.split_arch()[1])
+        self.assertEqual(config["kernel_osystem"], "ubuntu")
+        self.assertEqual(config["kernel_release"], ubuntu_rel)
+        self.assertEqual(config["purpose"], "xinstall")
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["kernel"])
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["initrd"])
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["xinstall_path"])
+
+    def test_custom_ephemeral_deployment_base_image(self):
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        node = self.make_node_with_extra(
+            status=NODE_STATUS.DEPLOYED,
+            netboot=False,
+            ephemeral_deploy=True,
+            boot_cluster_ip=local_ip,
+            osystem="custom",
+            distro_series="rocky8",
+        )
+        arch = node.architecture.split("/")[0]
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        factory.make_default_ubuntu_release_bootable(arch=arch)
+        factory.make_usable_boot_resource(
+            name="rocky8",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            base_image="rhel/8",
+        )
+
+        config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        self.assertEqual(config["osystem"], "rhel")
+        self.assertEqual(config["release"], "8")
+        self.assertEqual(config["arch"], arch)
+        self.assertEqual(config["subarch"], "generic")
+        self.assertEqual(
+            config["kernel_osystem"],
+            Config.objects.get_config(name="commissioning_osystem"),
+        )
+        self.assertEqual(
+            config["kernel_release"],
+            Config.objects.get_config(name="commissioning_distro_series"),
+        )
+        self.assertEqual(config["purpose"], "xinstall")
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["kernel"])
+        self.assertIn(f"/ubuntu/{arch}/hwe-", config["initrd"])
+        self.assertIn(
+            f"/custom/{arch}/generic/rocky8", config["xinstall_path"]
+        )
+
     # See https://github.com/canonical/cloud-init/issues/4418 for more details
     def test_preseed_url_not_using_domain_names_for_custom_ephemeral_deployments(
         self,
@@ -1699,7 +1780,10 @@ class TestGetBootFilenames(MAASServerTestCase):
         bfile: BootResourceFile,
     ) -> str:
         arch, subarch = bres.architecture.split("/", maxsplit=1)
-        osystem, series = bres.name.split("/", maxsplit=1)
+        if "/" in bres.name:
+            osystem, series = bres.name.split("/", maxsplit=1)
+        else:
+            osystem, series = "custom", bres.name
         return "/".join(
             [
                 bfile.filename_on_disk,
@@ -1782,6 +1866,55 @@ class TestGetBootFilenames(MAASServerTestCase):
             "generic",
             "centos",
             "8",
+        )
+
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
+                ),
+            ),
+            kernel,
+        )
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
+                ),
+            ),
+            initrd,
+        )
+        self.assertEqual(
+            self.composeURL(
+                custom_res,
+                custom_rset,
+                custom_rset.files.get(
+                    filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
+                ),
+            ),
+            rootfs,
+        )
+
+    def test_custom_deployment_base_image(self):
+        architecture = make_usable_architecture(self)
+        arch = architecture.split("/")[0]
+        # ubuntu = factory.make_default_ubuntu_release_bootable(arch=arch)
+        custom_res = factory.make_usable_boot_resource(
+            name="rocky8",
+            architecture=f"{arch}/generic",
+            image_filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+            base_image="rhel/8",
+        )
+        custom_rset = custom_res.sets.first()
+        kernel, initrd, _, rootfs = get_boot_filenames(
+            arch,
+            "generic",
+            "custom",
+            "rocky8",
         )
 
         self.assertEqual(
@@ -2132,12 +2265,81 @@ class TestGetBootConfigForMachine(MAASServerTestCase):
             architecture=f"amd64/{legacy_subarch}",
         )
 
-        osystem, series, config_arch, _, _ = get_boot_config_for_machine(
-            machine, configs, "local"
+        osystem, series, config_arch, final_osystem, final_oseries = (
+            get_boot_config_for_machine(machine, configs, "local")
         )
         self.assertEqual("centos", osystem)
+        self.assertEqual("centos", final_osystem)
         self.assertEqual("8", series)
+        self.assertEqual("8", final_oseries)
         self.assertEqual("generic", config_arch)
+
+    def test_get_boot_config_for_custom_rocky_ephemeral_deployments(
+        self,
+    ):
+        subarch = "generic"
+
+        factory.make_usable_boot_resource(
+            name="custom/rocky8",
+            architecture=f"amd64/{subarch}",
+            base_image="rhel/8",
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series="rocky8",
+            ephemeral_deploy=True,
+        )
+
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
+        legacy_subarch = f"ga-{configs['default_distro_series']}"
+        factory.make_usable_boot_resource(
+            name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
+            architecture=f"amd64/{legacy_subarch}",
+        )
+
+        osystem, series, config_arch, final_osystem, final_oseries = (
+            get_boot_config_for_machine(machine, configs, "local")
+        )
+        self.assertEqual("custom", osystem)
+        self.assertEqual("custom", final_osystem)
+        self.assertEqual("rocky8", series)
+        self.assertEqual("rocky8", final_oseries)
+        self.assertEqual("generic", config_arch)
+
+    def test_get_boot_config_for_custom_rocky_deployments(
+        self,
+    ):
+        subarch = "generic"
+
+        factory.make_usable_boot_resource(
+            name="custom/rocky8",
+            architecture=f"amd64/{subarch}",
+            base_image="rhel/8",
+        )
+        machine = factory.make_Machine(
+            architecture="amd64/generic",
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series="rocky8",
+        )
+
+        configs = Config.objects.get_configs(_GET_BOOT_CONFIG_KEYS)
+        legacy_subarch = f"ga-{configs['default_distro_series']}"
+        factory.make_usable_boot_resource(
+            name=f"{configs['default_osystem']}/{configs['default_distro_series']}",
+            architecture=f"amd64/{legacy_subarch}",
+        )
+
+        osystem, series, config_arch, final_osystem, final_oseries = (
+            get_boot_config_for_machine(machine, configs, "local")
+        )
+        self.assertEqual("custom", osystem)
+        self.assertEqual("custom", final_osystem)
+        self.assertEqual("rocky8", series)
+        self.assertEqual("rocky8", final_oseries)
+        self.assertEqual(legacy_subarch, config_arch)
 
     def test_get_boot_config_for_machine_centos(self):
         subarch = "ga-22.04"

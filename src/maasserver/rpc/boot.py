@@ -117,9 +117,10 @@ def _get_files_map(
 ) -> dict[str, str]:
     exclude = exclude or []
     try:
+        name = f"{osystem}/{oseries}" if osystem != "custom" else oseries
         boot_resource = BootResource.objects.get(
             architecture=f"{arch}/{subarch}",
-            name=f"{osystem}/{oseries}",
+            name=name,
         )
         bset = boot_resource.get_latest_complete_set()
         return {
@@ -509,6 +510,7 @@ def get_config(
         if log_port is None:
             log_port = 514  # Fallback to default UDP syslog port.
 
+    is_ephemeral = False
     ephemeral_opts: str | None = None
     # XXX: Instead of updating the machine directly, we should store the
     # information and update the machine later. The current code doesn't
@@ -518,6 +520,7 @@ def get_config(
     # could grab it when processing the commissioning results.
     # See bug #1899486 for more information.
     if machine is not None:
+        is_ephemeral = machine.ephemeral_deploy
         # Update the last interface, last access cluster IP address, and
         # the last used BIOS boot method.
         if machine.boot_cluster_ip != local_ip:
@@ -580,9 +583,7 @@ def get_config(
         if configs["use_rack_proxy"]:
             # Due to https://github.com/canonical/cloud-init/issues/4418 we must not use domain names in the preseed_url in
             # case of an ephemeral deployment of a non-ubuntu image
-            use_domain_names = (
-                not machine.ephemeral_deploy or machine.osystem == "ubuntu"
-            )
+            use_domain_names = not is_ephemeral or machine.osystem == "ubuntu"
             preseed_url = compose_preseed_url(
                 machine,
                 base_url=get_base_url_for_local_ip(
@@ -604,7 +605,7 @@ def get_config(
         # Ephemeral deployments will have 'local' boot
         # purpose on power cycles.  Set purpose back to
         # 'xinstall' so that the system can be re-deployed.
-        if purpose == "local" and machine.ephemeral_deploy:
+        if purpose == "local" and is_ephemeral:
             purpose = "xinstall"
 
         # Early out if the machine is booting local.
@@ -703,8 +704,8 @@ def get_config(
             )
         hostname = "maas-enlist"
         domain = "local"
-        boot_osystem = configs["commissioning_osystem"]
-        boot_series = configs["commissioning_distro_series"]
+        final_osystem = boot_osystem = configs["commissioning_osystem"]
+        final_series = boot_series = configs["commissioning_distro_series"]
         min_hwe_kernel = configs["default_min_hwe_kernel"]
 
         # When no architecture is defined for the enlisting machine select
@@ -754,17 +755,21 @@ def get_config(
     kernel, initrd, boot_dtb, rootfs = get_boot_filenames(
         arch,
         subarch,
-        boot_osystem,
-        boot_series,
+        final_osystem if is_ephemeral else boot_osystem,
+        final_series if is_ephemeral else boot_series,
         commissioning_osystem=configs["commissioning_osystem"],
         commissioning_distro_series=configs["commissioning_distro_series"],
     )
+    if not all([kernel, initrd, rootfs]):
+        maaslog.warning(
+            (
+                f"failed to compute a bootable {arch}/{subarch} system "
+                f"for {final_osystem}/{final_series}"
+            )
+        )
+
     # For custom image ephemeral deployments we use the default (ubuntu) commissioning os/distro kernel
-    if (
-        machine is not None
-        and machine.ephemeral_deploy
-        and machine.osystem != "ubuntu"
-    ):
+    if is_ephemeral and kernel_osystem != "ubuntu":
         kernel_osystem, kernel_release = (
             configs["commissioning_osystem"],
             configs["commissioning_distro_series"],
