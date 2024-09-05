@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -146,7 +147,7 @@ func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
-				HostPort: fmt.Sprintf("%s:%d", endpoints[0], defaultTemporalPort),
+				HostPort: net.JoinHostPort(endpoints[0], strconv.Itoa(defaultTemporalPort)),
 				Identity: fmt.Sprintf("%s@agent:%d", systemID, os.Getpid()),
 				Logger:   wflog.NewZerologAdapter(log.Logger),
 				DataConverter: converter.NewCodecDataConverter(
