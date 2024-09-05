@@ -80,7 +80,13 @@ class ApplyConfigViaFileParam:
 
 @dataclass
 class ApplyConfigViaOmapiParam:
+    secret: str
     hosts: list[Host]
+
+
+@dataclass
+class OMAPIKeyResult:
+    key: str
 
 
 class DHCPConfigActivity(ActivityBase):
@@ -370,6 +376,11 @@ class DHCPConfigActivity(ActivityBase):
 
             return HostsForUpdateResult(hosts=hosts)
 
+    @activity.defn(name="get-omapi-key")
+    async def get_omapi_key(self) -> OMAPIKeyResult:
+        key = await self.get_simple_secret("omapi-key")
+        return OMAPIKeyResult(key=key)
+
 
 @workflow.defn(name="configure-dhcp-for-agent")
 class ConfigureDHCPForAgentWorkflow:
@@ -395,10 +406,13 @@ class ConfigureDHCPForAgentWorkflow:
                     reserved_ip_ids=param.reserved_ip_ids,
                 ),
             )
+            omapi_key = await workflow.execute_activity("get-omapi-key")
 
             await workflow.execute_activity(
                 "apply-dhcp-config-via-omapi",
-                ApplyConfigViaOmapiParam(hosts=hosts["hosts"]),
+                ApplyConfigViaOmapiParam(
+                    hosts=hosts["hosts"], secret=omapi_key
+                ),
             )
 
 

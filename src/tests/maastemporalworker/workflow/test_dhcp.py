@@ -16,6 +16,7 @@ from tests.fixtures.factories.node import (
     create_test_rack_controller_entry,
 )
 from tests.fixtures.factories.reserved_ips import create_test_reserved_ip_entry
+from tests.fixtures.factories.secret import create_test_secret
 from tests.fixtures.factories.staticipaddress import (
     create_test_staticipaddress_entry,
 )
@@ -283,3 +284,18 @@ class TestDHCPConfigActivity:
             )
         ]:
             assert host in result.hosts
+
+    async def test_get_omapi_key(
+        self, fixture: Fixture, db_connection: AsyncConnection, db: Database
+    ) -> None:
+        env = ActivityEnvironment()
+
+        key = await create_test_secret(
+            fixture, path="omapi-key", value={"secret": "abc"}
+        )
+
+        activities = DHCPConfigActivity(db, connection=db_connection)
+
+        result = await env.run(activities.get_omapi_key)
+
+        assert result.key == key.value["secret"]
