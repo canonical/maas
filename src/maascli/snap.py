@@ -505,6 +505,13 @@ def get_database_settings(options):
     return database_settings
 
 
+def clear_certificates_dir():
+    maas_root = os.getenv("MAAS_ROOT", "/var/lib/maas")
+    path = Path(maas_root) / "certificates"
+    for f in path.glob("*"):
+        f.unlink()
+
+
 def get_vault_settings(options) -> dict:
     """Get vault settings dict to use.
 
@@ -671,6 +678,9 @@ class cmd_init(SnapCommand):
 
         if current_mode != "none":
             perform_work("Stopping services", stop_pebble)
+
+        # Cleanup the certificates directory
+        clear_certificates_dir()
 
         # Configure the settings.
         settings = {"maas_url": maas_url}
