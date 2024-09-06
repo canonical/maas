@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 from httpx import AsyncClient
 import pytest
 
+from maasapiserver.common.api.models.responses.errors import ErrorBodyResponse
 from maasapiserver.v3.api.public.models.requests.query import (
     TokenPaginationParams,
 )
@@ -14,10 +15,13 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     MachinesListResponse,
     MachineStatusEnum,
     PciDevicesListResponse,
+    PowerDriverResponse,
     UsbDevicesListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.base import ListResult
+from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.services.machines import MachinesService
@@ -125,6 +129,17 @@ TEST_PCI_DEVICE_2 = PciDevice(
     pci_address="0000:00:00.2",
 )
 
+TEST_BMC = Bmc(
+    id=1,
+    created=utcnow(),
+    updated=utcnow(),
+    power_type=PowerTypeEnum.AMT,
+    power_parameters={
+        "power_address": "10.10.10.10",
+        "power_pass": "password",
+    },
+)
+
 
 class TestMachinesApi(ApiCommonTests):
     BASE_PATH = f"{V3_API_PREFIX}/machines"
@@ -134,11 +149,16 @@ class TestMachinesApi(ApiCommonTests):
         return [
             Endpoint(method="GET", path=self.BASE_PATH),
             Endpoint(method="GET", path=f"{self.BASE_PATH}/1/usb_devices"),
+            Endpoint(method="GET", path=f"{self.BASE_PATH}/1/pci_devices"),
         ]
 
     @pytest.fixture
     def admin_endpoints(self) -> list[Endpoint]:
-        return []
+        return [
+            Endpoint(
+                method="GET", path=f"{self.BASE_PATH}/abcdef/power_parameters"
+            ),
+        ]
 
     async def test_list_other_page(
         self,
@@ -176,6 +196,38 @@ class TestMachinesApi(ApiCommonTests):
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 2
         assert machines_response.next is None
+
+    async def test_get_machine_power_parameters(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.get_bmc = AsyncMock(return_value=TEST_BMC)
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/1/power_parameters"
+        )
+        assert response.status_code == 200
+        power_driver_response = PowerDriverResponse(**response.json())
+        assert power_driver_response.power_type == TEST_BMC.power_type
+        assert (
+            power_driver_response.power_parameters == TEST_BMC.power_parameters
+        )
+
+    async def test_get_machine_power_parameters_404(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.get_bmc = AsyncMock(return_value=None)
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}/1/power_parameters"
+        )
+        assert response.status_code == 404
+        error_response = ErrorBodyResponse(**response.json())
+        assert error_response.kind == "Error"
+        assert error_response.code == 404
 
 
 class TestUsbDevicesApi(ApiCommonTests):

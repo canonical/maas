@@ -9,12 +9,13 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     TokenPaginatedResponse,
 )
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
+from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import (
     HardwareDeviceTypeEnum,
     Machine,
     MachineStatusEnum,
     PciDevice,
-    PowerTypeEnum,
     UsbDevice,
 )
 
@@ -143,5 +144,23 @@ class PciDeviceResponse(HalResponse[BaseHal]):
         )
 
 
-class PciDevicesListResponse(TokenPaginatedResponse[UsbDeviceResponse]):
+class PciDevicesListResponse(TokenPaginatedResponse[PciDeviceResponse]):
     kind = "MachinePciDevicesList"
+
+
+class PowerDriverResponse(HalResponse[BaseHal]):
+    kind = "MachinePowerParameters"
+    power_type: PowerTypeEnum
+    power_parameters: dict
+
+    @classmethod
+    def from_model(
+        cls, bmc: Bmc, self_base_hyperlink: str
+    ) -> "PowerDriverResponse":
+        return cls(
+            power_type=bmc.power_type,
+            power_parameters=bmc.power_parameters,
+            hal_links=BaseHal(
+                self=BaseHref(href=f"{self_base_hyperlink.rstrip('/')}")
+            ),
+        )

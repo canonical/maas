@@ -1,6 +1,6 @@
 from typing import Any
 
-from maasapiserver.v3.api.public.models.responses.machines import PowerTypeEnum
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine
 from maasservicelayer.models.users import User
@@ -25,7 +25,7 @@ async def create_test_machine(
         **extra_details,
     )
     created_machine["owner"] = user.username
-    created_machine["power_type"] = PowerTypeEnum.virsh.name
+    created_machine["power_type"] = PowerTypeEnum.VIRSH
     created_machine["fqdn"] = f"{created_machine['hostname']}."
     return Machine(
         **created_machine,

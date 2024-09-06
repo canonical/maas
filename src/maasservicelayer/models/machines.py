@@ -8,11 +8,9 @@ from typing import Optional
 from pydantic import validator
 
 from maasserver.enum import NODE_STATUS_CHOICES
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 from metadataserver.enum import HARDWARE_TYPE_CHOICES
-from provisioningserver.drivers.pod.lxd import LXDPodDriver
-from provisioningserver.drivers.pod.virsh import VirshPodDriver
-from provisioningserver.drivers.power.registry import power_drivers
 
 # PCIE and USB vendor and product ids are represented as a 2 byte hex string
 DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
@@ -21,15 +19,6 @@ DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 MachineStatusEnum = Enum(
     "MachineStatus",
     dict({str(name).lower(): int(code) for code, name in NODE_STATUS_CHOICES}),
-)
-PowerTypeEnum = Enum(
-    "PowerType",
-    dict(
-        {
-            str(driver.name).lower(): str(driver.name).lower()
-            for driver in power_drivers + [LXDPodDriver(), VirshPodDriver()]
-        }
-    ),
 )
 
 HardwareDeviceTypeEnum = Enum(

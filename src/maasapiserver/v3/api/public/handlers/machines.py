@@ -5,6 +5,8 @@ from fastapi import Depends, Response
 
 from maasapiserver.common.api.base import Handler, handler
 from maasapiserver.common.api.models.responses.errors import (
+    NotFoundBodyResponse,
+    NotFoundResponse,
     ValidationErrorBodyResponse,
 )
 from maasapiserver.v3.api import services
@@ -14,7 +16,9 @@ from maasapiserver.v3.api.public.models.requests.query import (
 from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
     MachinesListResponse,
+    PciDeviceResponse,
     PciDevicesListResponse,
+    PowerDriverResponse,
     UsbDeviceResponse,
     UsbDevicesListResponse,
 )
@@ -142,8 +146,8 @@ class MachinesHandler(Handler):
         )
         return PciDevicesListResponse(
             items=[
-                UsbDeviceResponse.from_model(
-                    usb_device=device,
+                PciDeviceResponse.from_model(
+                    pci_device=device,
                     self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/pci_devices",
                 )
                 for device in pci_devices.items
@@ -154,4 +158,35 @@ class MachinesHandler(Handler):
                 if pci_devices.next_token
                 else None
             ),
+        )
+
+    @handler(
+        path="/machines/{system_id}/power_parameters",
+        methods=["GET"],
+        tags=TAGS,
+        responses={
+            200: {
+                "model": PowerDriverResponse,
+            },
+            404: {"model": NotFoundBodyResponse},
+            422: {"model": ValidationErrorBodyResponse},
+        },
+        response_model_exclude_none=True,
+        status_code=200,
+        dependencies=[
+            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+        ],
+    )
+    async def get_machine_power_parameters(
+        self,
+        system_id: str,
+        services: ServiceCollectionV3 = Depends(services),
+    ) -> Response:
+        bmc = await services.machines.get_bmc(system_id)
+        if bmc is None:
+            return NotFoundResponse()
+
+        return PowerDriverResponse.from_model(
+            bmc=bmc,
+            self_base_hyperlink=f"{V3_API_PREFIX}/machines/{system_id}/power_parameters",
         )

@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class PowerDriversEnum(str, Enum):
+class PowerTypeEnum(str, Enum):
     AMT = "amt"
     APC = "apc"
     DLI = "dli"

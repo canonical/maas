@@ -6,9 +6,12 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     MachineResponse,
     MachineStatusEnum,
     PciDeviceResponse,
+    PowerDriverResponse,
     UsbDeviceResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.enums.power_drivers import PowerTypeEnum
+from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
 from maasservicelayer.utils.date import utcnow
 
@@ -134,4 +137,26 @@ class TestPciDeviceResponse:
         assert (
             response.hal_links.self.href
             == f"{V3_API_PREFIX}/machines/y7nwea/pci_devices/{device.id}"
+        )
+
+
+class TestPowerDriverResponse:
+    def test_from_model(self) -> None:
+        now = utcnow()
+        bmc = Bmc(
+            id=1,
+            created=now,
+            updated=now,
+            power_type=PowerTypeEnum.IPMI,
+            power_parameters={},
+        )
+        response = PowerDriverResponse.from_model(
+            bmc=bmc,
+            self_base_hyperlink=f"{V3_API_PREFIX}/machines/y7nwea/power_parameters",
+        )
+        assert response.power_type == bmc.power_type
+        assert response.power_parameters == bmc.power_parameters
+        assert (
+            response.hal_links.self.href
+            == f"{V3_API_PREFIX}/machines/y7nwea/power_parameters"
         )
