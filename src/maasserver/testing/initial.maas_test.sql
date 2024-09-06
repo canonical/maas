@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.12 (Ubuntu 14.12-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.12 (Ubuntu 14.12-0ubuntu0.22.04.1)
+-- Dumped from database version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.13 (Ubuntu 14.13-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6614,7 +6614,8 @@ CREATE TABLE public.maasserver_bootresourcefile (
     largefile_id bigint,
     resource_set_id bigint NOT NULL,
     sha256 character varying(64) NOT NULL,
-    size bigint NOT NULL
+    size bigint NOT NULL,
+    filename_on_disk character varying(64) NOT NULL
 );
 
 
@@ -12050,6 +12051,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 383	maasserver	0327_foreign_key_readd	2024-05-28 12:00:16.543243+00
 384	maasserver	0328_merge_0327_and_0324	2024-05-28 19:46:08.641012+00
 385	maasserver	0329_add_reserved_ip_model	2024-06-15 03:30:52.566813+00
+386	maasserver	0330_bootresourcefile_filename_on_disk	2024-09-06 03:29:42.181597+00
+387	maasserver	0331_merge_322_330	2024-09-06 03:29:42.183811+00
 \.
 
 
@@ -12106,7 +12109,7 @@ COPY public.maasserver_bootresource (id, created, updated, rtype, name, architec
 -- Data for Name: maasserver_bootresourcefile; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bootresourcefile (id, created, updated, filename, filetype, extra, largefile_id, resource_set_id, sha256, size) FROM stdin;
+COPY public.maasserver_bootresourcefile (id, created, updated, filename, filetype, extra, largefile_id, resource_set_id, sha256, size, filename_on_disk) FROM stdin;
 \.
 
 
@@ -13191,7 +13194,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 119, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 385, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 387, true);
 
 
 --
