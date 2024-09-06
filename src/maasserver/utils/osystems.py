@@ -543,7 +543,9 @@ OLD_STYLE_HWE_WEIGHT = 1000
 FLAVOURED_WEIGHT = 10
 
 
-def get_release_version_from_string(kernel_string: str):
+def get_release_version_from_string(
+    kernel_string: str,
+) -> tuple[int, int, int]:
     """Convert an Ubuntu release, version, or kernel into a version tuple.
     Also calculates "weight" of each release that is used to give
     certain kernels a higher value when compared to other kernels.
@@ -640,7 +642,7 @@ def get_release_version_from_string(kernel_string: str):
     return tuple(version + [weight])
 
 
-def release_a_newer_than_b(a, b):
+def release_a_newer_than_b(a: str, b: str) -> bool:
     """Compare two Ubuntu releases and return true if a >= b.
 
     The release names can be the full release name(e.g Precise, Trusty),
@@ -653,14 +655,14 @@ def release_a_newer_than_b(a, b):
 
 
 def get_working_kernel(
-    requested_kernel,
-    min_compatibility_level,
-    architecture,
-    osystem,
-    distro_series,
-    commissioning_osystem=undefined,
-    commissioning_distro_series=undefined,
-):
+    requested_kernel: str | None,
+    min_compatibility_level: str | None,
+    architecture: str,
+    osystem: str,
+    distro_series: str,
+    commissioning_osystem: str | object = undefined,
+    commissioning_distro_series: str | object = undefined,
+) -> str:
     """Returns ID of kernel that works on the selected os/release/arch.
 
     Checks that the requested kernel is available for the selected
@@ -668,7 +670,7 @@ def get_working_kernel(
     min_hwe_kernel. If no hwe_kernel is selected one will be chosen.
     """
 
-    def validate_kernel_str(kstr):
+    def validate_kernel_str(kstr: str) -> bool:
         ksplit = kstr.split("-")
         return "hwe" in ksplit or "ga" in ksplit
 

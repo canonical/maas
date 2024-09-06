@@ -3072,7 +3072,7 @@ class Node(CleanSave, TimestampedModel):
             options.insert(0, default_kernel_opts)
         return " ".join(options)
 
-    def get_osystem(self, default=undefined):
+    def get_osystem(self, default: str | object = undefined) -> str:
         """Return the operating system to install that node."""
         use_default_osystem = self.osystem is None or self.osystem == ""
         if use_default_osystem:
@@ -3082,7 +3082,7 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.osystem
 
-    def get_distro_series(self, default=undefined):
+    def get_distro_series(self, default: str | object = undefined) -> str:
         """Return the distro series to install that node."""
         use_default_osystem = self.osystem is None or self.osystem == ""
         use_default_distro_series = (
@@ -3924,7 +3924,7 @@ class Node(CleanSave, TimestampedModel):
         self.netboot = on
         self.save()
 
-    def split_arch(self):
+    def split_arch(self) -> tuple[str, str]:
         """Return architecture and subarchitecture, as a tuple."""
         if not self.architecture:
             return ("", "")
