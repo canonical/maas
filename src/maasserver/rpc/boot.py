@@ -103,7 +103,7 @@ def _get_files_map(osystem, oseries, arch, subarch, exclude=None):
         return {
             bfile.filetype: "/".join(
                 [
-                    bfile.sha256,
+                    bfile.filename_on_disk,
                     osystem,
                     arch,
                     subarch,

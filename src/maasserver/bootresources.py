@@ -213,6 +213,7 @@ class BootResourceStore(ObjectStore):
                 source_list=[],
                 total_size=rfile.size,
                 sha256=rfile.sha256,
+                filename_on_disk=rfile.filename_on_disk,
                 extract_paths=[],
             ),
         )
@@ -404,6 +405,10 @@ class BootResourceStore(ObjectStore):
             maaslog.warning(msg)
 
         rfile.sha256 = sha256
+        rfile.filename_on_disk = (
+            BootResourceFile.objects.calculate_filename_on_disk(sha256)
+        )
+
         rfile.size = int(product["size"])
         rfile.save()
 

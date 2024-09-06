@@ -116,10 +116,8 @@ class Factory:
         )
         return prefix + "".join(islice(source, size))
 
-    def make_hex_string(self, size=4):
-        return "".join(
-            [random.choice(string.hexdigits) for _ in range(0, size)]
-        )
+    def make_hex_string(self, size=4, choices=string.hexdigits):
+        return "".join([random.choice(choices) for _ in range(0, size)])
 
     def make_unicode_string(self, size=10, spaces=False, prefix=""):
         """Return a `str` filled with random Unicode characters."""

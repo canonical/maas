@@ -70,6 +70,7 @@ __all__ = [
 from io import BytesIO
 from itertools import chain
 import json
+import os
 import re
 from typing import Optional
 
@@ -2660,19 +2661,32 @@ class BootResourceForm(MAASModelForm):
             content = BytesIO(data["content"])
         else:
             content = data["content"]
-        lfile = LocalBootResourceFile.create_from_content(content)
-        rfile = BootResourceFile.objects.create(
-            resource_set=resource_set,
-            filename=get_uploaded_filename(filetype),
-            filetype=filetype,
-            sha256=lfile.sha256,
-            size=lfile.total_size,
-        )
-        rfile.bootresourcefilesync_set.create(
-            region=RegionController.objects.get_running_controller(),
-            size=lfile.total_size,
-        )
-        return rfile
+        with LocalBootResourceFile.create_from_content(content) as (
+            tmpname,
+            size,
+            sha256,
+        ):
+            filename_on_disk = (
+                BootResourceFile.objects.calculate_filename_on_disk(sha256)
+            )
+            rfile = BootResourceFile.objects.create(
+                resource_set=resource_set,
+                filename=get_uploaded_filename(filetype),
+                filetype=filetype,
+                sha256=sha256,
+                filename_on_disk=filename_on_disk,
+                size=size,
+            )
+            rfile.bootresourcefilesync_set.create(
+                region=RegionController.objects.get_running_controller(),
+                size=size,
+            )
+            localfile = LocalBootResourceFile(sha256, filename_on_disk, size)
+
+            if not localfile.path.exists():
+                os.link(tmpname, localfile.path)
+
+            return rfile
 
     def validate_unique(self):
         """Override to allow the same `BootResource` to already exist.
@@ -2758,6 +2772,9 @@ class BootResourceNoContentForm(BootResourceForm):
             filename=get_uploaded_filename(filetype),
             filetype=filetype,
             sha256=sha256,
+            filename_on_disk=BootResourceFile.objects.calculate_filename_on_disk(
+                sha256
+            ),
             size=size,
         )
 

@@ -73,6 +73,7 @@ def boot_resource_file_to_dict(rfile: BootResourceFile):
         "filename": rfile.filename,
         "filetype": rfile.filetype,
         "sha256": rfile.sha256,
+        "filename_on_disk": rfile.filename_on_disk,
         "size": rfile.size,
         "complete": rfile.complete,
     }
@@ -140,6 +141,7 @@ def filestore_add_file(rfile: BootResourceFile):
                 rfile_ids=[rfile.id],
                 source_list=[],
                 sha256=rfile.sha256,
+                filename_on_disk=rfile.filename_on_disk,
                 total_size=rfile.size,
             )
         ],
@@ -423,6 +425,7 @@ class BootResourceFileUploadHandler(OperationsHandler):
         )
         lfile = LocalBootResourceFile(
             sha256=rfile.sha256,
+            filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
             size=sync_status.size,
         )

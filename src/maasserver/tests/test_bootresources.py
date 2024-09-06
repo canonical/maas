@@ -239,6 +239,7 @@ class TestBootResourceStore(MAASServerTestCase):
             rfile_ids=[rfile.id],
             source_list=[],
             sha256=rfile.sha256,
+            filename_on_disk=rfile.filename_on_disk,
             total_size=rfile.size,
         )
         store = BootResourceStore()
@@ -458,6 +459,7 @@ class TestBootResourceStore(MAASServerTestCase):
                 rfile_ids=[rfile_one.id, rfile_two.id],
                 source_list=[],
                 sha256=rfile_one.sha256,
+                filename_on_disk=rfile_one.filename_on_disk,
                 total_size=rfile_one.size,
             ),
         }

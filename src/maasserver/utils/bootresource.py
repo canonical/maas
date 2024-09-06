@@ -81,7 +81,13 @@ class MMapedLocalFile(mmap.mmap):
 
 
 class LocalBootResourceFile:
-    def __init__(self, sha256: str, total_size: int, size: int = 0) -> None:
+    def __init__(
+        self,
+        sha256: str,
+        filename_on_disk: str,
+        total_size: int,
+        size: int = 0,
+    ) -> None:
         """Local boot resource file
 
         Args:
@@ -90,13 +96,14 @@ class LocalBootResourceFile:
             size (int, optional): the current file size, in bytes. Defaults to 0.
         """
         self.sha256 = sha256
+        self.filename_on_disk = filename_on_disk
         self.total_size = total_size
         self._size = size
-        self._base_path = get_bootresource_store_path() / self.sha256
+        self._base_path = get_bootresource_store_path() / self.filename_on_disk
         self._lock_fd: int | None = None
 
     def __repr__(self):
-        return f"<LocalBootResourceFile {self.sha256} {self._size}/{self.total_size}>"
+        return f"<LocalBootResourceFile {self.sha256} {self.filename_on_disk} {self._size}/{self.total_size}>"
 
     @property
     def path(self) -> Path:
@@ -270,7 +277,9 @@ class LocalBootResourceFile:
 
     @property
     def lock_file(self) -> Path:
-        return get_maas_lock_path() / f"maas:bootres_{self.sha256}.lock"
+        return (
+            get_maas_lock_path() / f"maas:bootres_{self.filename_on_disk}.lock"
+        )
 
     def acquire_lock(self, try_lock: bool = False) -> bool:
         if self._lock_fd is None:
@@ -310,6 +319,7 @@ class LocalBootResourceFile:
             self.release_lock()
 
     @classmethod
+    @contextmanager
     def create_from_content(
         cls,
         content: BinaryIO,
@@ -333,10 +343,7 @@ class LocalBootResourceFile:
                 tmp.write(data)
             size = tmp.tell()
             hexdigest = sha256.hexdigest()
-            localfile = cls(hexdigest, size)
-            if not localfile.path.exists():
-                os.link(tmp.name, localfile.path)
-            return localfile
+            yield tmp.name, size, hexdigest
 
     def extract_file(self, extract_path: str):
         store = get_bootresource_store_path()

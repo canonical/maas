@@ -2058,7 +2058,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         installer_url = get_curtin_installer_url(node)
         self.assertEqual(
             (
-                f"http://{cluster_ip}:5248/images/{image.sha256}/"
+                f"http://{cluster_ip}:5248/images/{image.filename_on_disk}/"
                 f"{osystem}/{arch}/{subarch}/{series}/"
                 f"{image.resource_set.label}/{image.filename}"
             ),
@@ -2088,7 +2088,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         installer_url = get_curtin_installer_url(node)
         self.assertEqual(
             (
-                f"fsimage:http://{cluster_ip}:5248/images/{image.sha256}/"
+                f"fsimage:http://{cluster_ip}:5248/images/{image.filename_on_disk}/"
                 f"{osystem}/{arch}/generic/{series}/"
                 f"{image.resource_set.label}/{image.filename}"
             ),

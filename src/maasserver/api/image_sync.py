@@ -33,6 +33,7 @@ class ImagesSyncProgressHandler(OperationsHandler):
         return {
             file.id: {
                 "sha256": file.sha256,
+                "filename_on_disk": file.filename_on_disk,
                 "size": file.size,
                 "sources": file.bootresourcefilesync_set.all().values_list(
                     "region__system_id", flat=True

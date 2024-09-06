@@ -529,7 +529,7 @@ def get_curtin_installer_url(node):
         platform = "generic"
     dyn_uri = "/".join(
         [
-            image.sha256,
+            image.filename_on_disk,
             os_name,
             arch,
             platform,
