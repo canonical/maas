@@ -58,9 +58,9 @@ def msm_enrol(encoded: str, metainfo: str | None = None) -> str:
     except JWTClaimsError as ex:
         raise MSMException(f"invalid JWT: {str(ex)}")
 
-    url = claims.get("enrolment-url", None)
+    url = claims.get("service-url", None)
     if not url:
-        raise MSMException("missing 'enrolment-url' claim")
+        raise MSMException("missing 'service-url' claim")
 
     status = msm_status()
     if status:

@@ -10,7 +10,6 @@ import dataclasses
 from datetime import timedelta
 import ssl
 from typing import Any
-from urllib.parse import urlparse
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from sqlalchemy import select
@@ -129,8 +128,10 @@ class MSMConnectorActivity(ActivityBase):
             **(yaml.safe_load(input.metainfo) if input.metainfo else {}),
         }
 
+        enrolment_url = input.url + MSM_ENROL_EP
+
         async with self._session.post(
-            input.url, json=data, headers=headers
+            enrolment_url, json=data, headers=headers
         ) as response:
             match response.status:
                 case 404:
@@ -166,7 +167,10 @@ class MSMConnectorActivity(ActivityBase):
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
-        async with self._session.get(input.url, headers=headers) as response:
+        enrolment_url = input.url + MSM_ENROL_EP
+        async with self._session.get(
+            enrolment_url, headers=headers
+        ) as response:
             match response.status:
                 case 204:
                     raise ApplicationError("waiting for MSM enrolment")
@@ -199,9 +203,7 @@ class MSMConnectorActivity(ActivityBase):
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
-        verify_url = (
-            urlparse(input.sm_url)._replace(path=MSM_VERIFY_EP).geturl()
-        )
+        verify_url = input.sm_url + MSM_VERIFY_EP
 
         async with self._session.get(verify_url, headers=headers) as response:
             match response.status:
@@ -308,9 +310,7 @@ class MSMConnectorActivity(ActivityBase):
             "machines_by_status": dataclasses.asdict(input.status),
         }
 
-        heartbeat_url = (
-            urlparse(input.sm_url)._replace(path=MSM_DETAIL_EP).geturl()
-        )
+        heartbeat_url = input.sm_url + MSM_DETAIL_EP
 
         async with self._session.post(
             heartbeat_url, json=data, headers=headers
@@ -346,9 +346,7 @@ class MSMConnectorActivity(ActivityBase):
         headers = {
             "Authorization": f"bearer {input.jwt}",
         }
-        refresh_url = (
-            urlparse(input.sm_url)._replace(path=MSM_REFRESH_EP).geturl()
-        )
+        refresh_url = input.sm_url + MSM_REFRESH_EP
         async with self._session.get(refresh_url, headers=headers) as response:
             match response.status:
                 case 200:
@@ -383,6 +381,10 @@ class MSMEnrolSiteWorkflow:
         Args:
             input (MSMEnrolParam): Enrolment data
         """
+        # sanitize URL
+        if input.url.endswith("/"):
+            input.url = input.url[:-1]
+
         workflow.logger.info(f"enrolling to {input.url}")
         self._pending = True
         (sent, error) = await workflow.execute_activity(
@@ -425,8 +427,6 @@ class MSMEnrolSiteWorkflow:
             workflow.logger.error("enrolment cancelled by MSM")
             return
 
-        new_url = urlparse(input.url)._replace(path="").geturl()
-        param.url = new_url
         param.jwt = new_jwt
         param.rotation_interval_minutes = rotation_interval_minutes
 
@@ -439,7 +439,7 @@ class MSMEnrolSiteWorkflow:
         await workflow.execute_activity(
             "msm-verify-token",
             MSMTokenVerifyParam(
-                sm_url=new_url,
+                sm_url=param.url,
                 jwt=new_jwt,
             ),
             start_to_close_timeout=MSM_TIMEOUT,
@@ -448,7 +448,7 @@ class MSMEnrolSiteWorkflow:
         await workflow.start_child_workflow(
             "msm-heartbeat",
             MSMHeartbeatParam(
-                sm_url=new_url,
+                sm_url=param.url,
                 jwt=new_jwt,
                 site_name=input.site_name,
                 site_url=input.site_url,
@@ -461,7 +461,7 @@ class MSMEnrolSiteWorkflow:
         await workflow.start_child_workflow(
             "msm-token-refresh",
             MSMTokenRefreshParam(
-                sm_url=new_url,
+                sm_url=param.url,
                 jwt=new_jwt,
                 rotation_interval_minutes=rotation_interval_minutes,
             ),

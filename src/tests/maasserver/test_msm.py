@@ -36,13 +36,12 @@ def maas_site(factory):
 
 @pytest.fixture
 def msm_site(factory):
-    site = factory.make_simple_http_url()
+    site = factory.make_simple_http_url(path="/ingress")
     yield site
 
 
 @pytest.fixture
 def msm_enrol_payload(factory, msm_site):
-    enrol_url = urlparse(msm_site)._replace(path="/site/v1/enrol").geturl()
     issued = datetime.now(timezone.utc)
     expiration = issued + TOKEN_DURATION
     payload = {
@@ -53,7 +52,7 @@ def msm_enrol_payload(factory, msm_site):
         "aud": AUDIENCE,
         # private claims
         "purpose": ENROLMENT,
-        "enrolment-url": enrol_url,
+        "service-url": msm_site,
     }
     yield payload
 
@@ -100,7 +99,7 @@ class TestMSMEnrol:
         args = mocked_start_workflow.call_args.args
         assert args[0] == "msm-enrol-site"
         assert args[2].site_name == maas_site["maas_name"]
-        assert args[2].url == msm_enrol_payload["enrolment-url"]
+        assert args[2].url == msm_enrol_payload["service-url"]
 
     def test_bad_jwt(self, mocker, msm_enrol_payload, jwt_key):
         mocker.patch("maasserver.msm.start_workflow")
@@ -112,7 +111,7 @@ class TestMSMEnrol:
     def test_missing_url(self, mocker, msm_enrol_payload, jwt_key):
         mocker.patch("maasserver.msm.start_workflow")
         bad_payload = msm_enrol_payload.copy()
-        bad_payload.pop("enrolment-url")
+        bad_payload.pop("service-url")
         encoded = jwt.encode(bad_payload, jwt_key, algorithm=TOKEN_ALGORITHM)
         with pytest.raises(MSMException):
             msm_enrol(encoded)

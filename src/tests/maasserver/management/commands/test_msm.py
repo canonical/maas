@@ -30,7 +30,7 @@ SAMPLE_JWT_PAYLOAD = {
     "exp": 1713304383,
     "aud": ["site"],
     "purpose": "enrolment",
-    "enrolment-url": "https://msm/site/v1/enroll",
+    "service-url": "https://msm/ingress/",
 }
 
 YAML_CONFIG = """

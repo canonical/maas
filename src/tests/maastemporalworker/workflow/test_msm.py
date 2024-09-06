@@ -41,7 +41,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 _MAAS_SITE_NAME = "maas-site"
 _MAAS_URL = "http://maas.local/"
-_MSM_BASE_URL = "http://msm.local"
+_MSM_BASE_URL = "http://msm.local/ingress"
 _MSM_ENROL_URL = f"{_MSM_BASE_URL}{MSM_ENROL_EP}"
 _MSM_DETAIL_URL = f"{_MSM_BASE_URL}{MSM_DETAIL_EP}"
 _JWT_ENROL = "headers.claims.signature"
@@ -73,7 +73,7 @@ def enrol_param() -> MSMEnrolParam:
     return MSMEnrolParam(
         site_name=_MAAS_SITE_NAME,
         site_url=_MAAS_URL,
-        url=_MSM_ENROL_URL,
+        url=_MSM_BASE_URL,
         jwt=_JWT_ENROL,
         cluster_uuid=_CLUSTER_UUID,
     )

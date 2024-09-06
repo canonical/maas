@@ -109,21 +109,15 @@ class Command(BaseCommand):
                 raise CommandError(
                     f"Invalid config file: {e.problem}: line {e.problem_mark.line}, column: {e.problem_mark.column}"
                 )
-        # strip the path
-        enrolment_url = decoded["enrolment-url"]
-        parsed = urlparse(enrolment_url)
-        base_url = f"{parsed.scheme}://{parsed.hostname}"
+        base_url = decoded["service-url"]
+
         # check if we've previously been enroled
         status = msm_status()
         previous_url = ""
         if status and status["running"] == MSM_STATUS.NOT_CONNECTED:
             # if the URL is different, warn user
-            previous_base = (
-                urlparse(status["sm-url"])._replace(path="").geturl()
-            )
-            current_base = urlparse(enrolment_url)._replace(path="").geturl()
-            if previous_base != current_base:
-                previous_url = previous_base
+            if status["sm-url"] != base_url:
+                previous_url = status["sm-url"]
 
         msg = get_cert_verify_msg(base_url, previous_url=previous_url)
         if not prompt_yes_no(msg):
@@ -132,6 +126,7 @@ class Command(BaseCommand):
             name = msm_enrol(options["enrolment_token"], metainfo=config)
         except Exception as ex:
             raise CommandError(str(ex)) from None
+        parsed = urlparse(base_url)
         print(
             f"An enrolment request for {name} has been sent to "
             f"{parsed.hostname} successfully. Enrolment approval is pending "
