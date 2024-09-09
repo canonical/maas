@@ -181,3 +181,13 @@ class TestLeaseSocketService(MAASTestCase):
         protocol.UpdateLeases.assert_called_once_with(
             protocol, updates=[packet]
         )
+
+    @defer.inlineCallbacks
+    def test_processNotifications_region_not_being_called_with_no_updates(
+        self,
+    ):
+        service = LeaseSocketService(sentinel.service, reactor)
+        service.processNotification = MagicMock()
+
+        yield service.processNotifications(clock=reactor)
+        service.processNotification.assert_not_called()
