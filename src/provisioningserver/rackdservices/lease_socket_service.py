@@ -10,7 +10,7 @@ import os
 
 from twisted.application.service import Service
 from twisted.internet import reactor, task
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.internet.protocol import DatagramProtocol
 
 from provisioningserver.logger import get_maas_logger
@@ -102,6 +102,10 @@ class LeaseSocketService(Service, DatagramProtocol):
                 break
             ips_seem.add(ntfy["ip"])
             payload.append(self.notifications.popleft())
+
+        # There is nothing to send
+        if not payload:
+            return succeed(True)
 
         notification = {
             "updates": payload,
