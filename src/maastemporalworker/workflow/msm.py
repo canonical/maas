@@ -180,7 +180,7 @@ class MSMConnectorActivity(ActivityBase):
                         data["access_token"],
                         data["rotation_interval_minutes"],
                     )
-                case 404:
+                case 401 | 404:
                     activity.logger.error(
                         "Enrolment cancelled by MSM, aborting"
                     )
@@ -209,7 +209,7 @@ class MSMConnectorActivity(ActivityBase):
             match response.status:
                 case 200:
                     return True
-                case 401:
+                case 401 | 404:
                     activity.logger.error("Failed to verify token")
                     return False
                 case _:

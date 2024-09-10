@@ -211,6 +211,19 @@ class TestMSMActivities:
         assert token is None
         assert refresh_interval == -1
 
+    async def test_check_enroll_cancel_token(
+        self, mocker, msm_act, enrol_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 401, None)
+
+        env = ActivityEnvironment()
+        (token, refresh_interval) = await env.run(
+            msm_act.check_enrol, enrol_param
+        )
+        assert token is None
+        assert refresh_interval == -1
+
     async def test_check_enroll_complete(self, mocker, msm_act, enrol_param):
         mocked_session = msm_act._session
         body = {
@@ -374,6 +387,22 @@ class TestMSMActivities:
         assert ret
         assert args[0] == _MSM_VERIFY_URL
         assert _JWT_ACCESS in kwargs["headers"]["Authorization"]
+
+    async def test_verify_token_unauthorized(
+        self, mocker, msm_act, verify_param
+    ):
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 401, None)
+        env = ActivityEnvironment()
+        ret = await env.run(msm_act.verify_token, verify_param)
+        assert not ret
+
+    async def test_verify_token_not_found(self, mocker, msm_act, verify_param):
+        mocked_session = msm_act._session
+        self._mock_get(mocker, mocked_session, 404, None)
+        env = ActivityEnvironment()
+        ret = await env.run(msm_act.verify_token, verify_param)
+        assert not ret
 
 
 class TestMSMEnrolWorkflow:
