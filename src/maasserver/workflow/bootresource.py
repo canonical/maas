@@ -271,21 +271,6 @@ class BootResourcesActivity(MAASAPIClient):
             activity.logger.info(f"file {file} deleted")
         return True
 
-    @activity.defn(name="cleanup-bootresources")
-    async def cleanup_bootresources(self, param: ResourceCleanupParam) -> None:
-        """Remove unknown files from disk"""
-        store = get_bootresource_store_path()
-        bootloaders_dir = store / "bootloaders"
-        bootloaders_dir.mkdir(exist_ok=True)
-        expected = {store / f for f in param.expected_files}
-        expected |= {bootloaders_dir}
-
-        existing = set(store.iterdir())
-        for file in existing - expected:
-            activity.logger.info(f"removing unexpected file: {file}")
-            activity.heartbeat()
-            file.unlink()
-
 
 @workflow.defn(name="download-bootresource", sandboxed=False)
 class DownloadBootResourceWorkflow:
@@ -460,35 +445,4 @@ class DeleteBootResourceWorkflow:
                 start_to_close_timeout=DISK_TIMEOUT,
                 schedule_to_close_timeout=DISK_TIMEOUT,
                 retry_policy=RetryPolicy(maximum_attempts=3),
-            )
-
-
-@workflow.defn(name="cleanup-bootresource", sandboxed=False)
-class CleanupBootResourceWorkflow:
-    """Clean orphan BootResourceFiles from this cluster"""
-
-    @workflow.run
-    async def run(self) -> None:
-        # remove orphan files from cluster
-        sync_status = await workflow.execute_activity(
-            "get-bootresourcefile-sync-status",
-            False,
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-        expected_files = list(
-            set(f["filename_on_disk"] for _, f in sync_status)
-        )
-
-        endpoints = await workflow.execute_activity(
-            "get-bootresourcefile-endpoints",
-            start_to_close_timeout=timedelta(seconds=30),
-        )
-        regions = frozenset(endpoints.keys())
-        for r in regions:
-            await workflow.execute_activity(
-                "cleanup-bootresourcefile",
-                ResourceCleanupParam(expected_files),
-                task_queue=f"{r}:region",
-                start_to_close_timeout=DISK_TIMEOUT,
-                schedule_to_close_timeout=DISK_TIMEOUT,
             )

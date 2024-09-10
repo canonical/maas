@@ -26,7 +26,6 @@ from maasserver.worker_user import get_worker_user
 from maasserver.workflow.bootresource import (
     BootResourcesActivity,
     CheckBootResourcesStorageWorkflow,
-    CleanupBootResourceWorkflow,
     DeleteBootResourceWorkflow,
     DownloadBootResourceWorkflow,
     SyncBootResourcesWorkflow,
@@ -107,7 +106,6 @@ class TemporalWorkerService(Service):
                 ],
                 activities=[
                     # Boot resources activities
-                    boot_res_activity.cleanup_bootresources,
                     boot_res_activity.delete_bootresourcefile,
                     boot_res_activity.download_bootresourcefile,
                     boot_res_activity.check_disk_space,
@@ -117,7 +115,6 @@ class TemporalWorkerService(Service):
             Worker(
                 workflows=[
                     # Boot resources workflows
-                    CleanupBootResourceWorkflow,
                     CheckBootResourcesStorageWorkflow,
                     DeleteBootResourceWorkflow,
                     # DownloadBootResourceWorkflow is run by the region that executes SyncBootResourcesWorkflow to download
