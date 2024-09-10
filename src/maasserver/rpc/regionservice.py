@@ -26,7 +26,6 @@ from twisted.internet.endpoints import TCP6ServerEndpoint
 from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
 from zope.interface import implementer
 
 from maasserver import eventloop
@@ -184,22 +183,6 @@ class Region(SecuredRPCProtocol):
 
         d = defer.gatherResults(tasks)
         return d
-
-    @amp.StartTLS.responder
-    def get_tls_parameters(self):
-        """get_tls_parameters()
-
-        Implementation of
-        :py:class:`~twisted.protocols.amp.StartTLS`.
-        """
-        try:
-            from provisioningserver.rpc.testing import tls
-        except ImportError:
-            # This is not a development/test environment.
-            # XXX: Return production TLS parameters.
-            return {}
-        else:
-            return tls.get_tls_parameters_for_region()
 
     @region.GetBootConfig.responder
     def get_boot_config(

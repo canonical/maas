@@ -11,9 +11,7 @@ from random import randint
 import time
 from urllib.parse import urlparse
 
-from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks, succeed
-from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 from maasserver import eventloop
@@ -126,41 +124,6 @@ class TestRegionProtocol_Authenticate(MAASTransactionServerTestCase):
         expected_digest = HMAC(secret, message + salt, sha256).digest()
         self.assertEqual(expected_digest, digest)
         self.assertEqual(len(salt), 16)
-
-
-class TestRegionProtocol_StartTLS(MAASTestCase):
-    def test_StartTLS_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(amp.StartTLS.commandName)
-        self.assertIsNotNone(responder)
-
-    def test_get_tls_parameters_returns_parameters(self):
-        # get_tls_parameters() is the underlying responder function.
-        # However, locateResponder() returns a closure, so we have to
-        # side-step it.
-        protocol = Region()
-        cls, func = protocol._commandDispatch[amp.StartTLS.commandName]
-        result = func(protocol)
-        self.assertIsInstance(
-            result["tls_localCertificate"], ssl.PrivateCertificate
-        )
-        for certificate in result["tls_verifyAuthorities"]:
-            self.assertIsInstance(certificate, ssl.Certificate)
-
-    @wait_for_reactor
-    def test_StartTLS_returns_nothing(self):
-        # The StartTLS command does some funky things - see _TLSBox and
-        # _LocalArgument for an idea - so the parameters returned from
-        # get_tls_parameters() - the registered responder - don't end up
-        # travelling over the wire as part of an AMP message. However,
-        # the responder is not aware of this, and is called just like
-        # any other.
-        d = call_responder(Region(), amp.StartTLS, {})
-
-        def check(response):
-            self.assertEqual({}, response)
-
-        return d.addCallback(check)
 
 
 class TestRegionProtocol_UpdateLease(MAASTransactionServerTestCase):

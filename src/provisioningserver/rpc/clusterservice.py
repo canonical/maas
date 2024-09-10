@@ -24,7 +24,6 @@ from twisted.internet.defer import (
 )
 from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
 from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
 from twisted.python.reflect import fullyQualifiedName
 from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
@@ -469,22 +468,6 @@ class Cluster(SecuredRPCProtocol):
         )
         d.addCallback(lambda ret: {"errors": ret} if ret is not None else {})
         return d
-
-    @amp.StartTLS.responder
-    def get_tls_parameters(self):
-        """get_tls_parameters()
-
-        Implementation of
-        :py:class:`~twisted.protocols.amp.StartTLS`.
-        """
-        try:
-            from provisioningserver.rpc.testing import tls
-        except ImportError:
-            # This is not a development/test environment.
-            # XXX: Return production TLS parameters.
-            return {}
-        else:
-            return tls.get_tls_parameters_for_cluster()
 
     @cluster.AddChassis.responder
     def add_chassis(
@@ -1003,28 +986,6 @@ class ClusterClient(Cluster):
     def connectionLost(self, reason):
         self.service.remove_connection(self.eventloop, self)
         super().connectionLost(reason)
-
-    @inlineCallbacks
-    def secureConnection(self):
-        yield self.callRemote(amp.StartTLS, **self.get_tls_parameters())
-
-        # For some weird reason (it's mentioned in Twisted's source),
-        # TLS negotiation does not complete until we do something with
-        # the connection. Here we check that the remote event-loop is
-        # who we expected it to be.
-        response = yield self.callRemote(region.Identify)
-        remote_name = response.get("ident")
-        if remote_name != self.eventloop:
-            log.msg(
-                "The remote event-loop identifies itself as %s, but "
-                "%s was expected." % (remote_name, self.eventloop)
-            )
-            self.transport.loseConnection()
-            return
-
-        # We should now have a full set of parameters for the transport.
-        log.msg("Host certificate: %r" % self.hostCertificate)
-        log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
 class ClusterClientService(TimerService):

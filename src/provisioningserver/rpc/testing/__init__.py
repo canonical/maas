@@ -33,7 +33,6 @@ from provisioningserver.rpc.common import (
     ConnectionAuthStatus,
     SecuredRPCProtocol,
 )
-from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
 from provisioningserver.utils.env import MAAS_SECRET
 from provisioningserver.utils.twisted import asynchronous, callOut
 
@@ -198,8 +197,6 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
             commands = commands + (region.Authenticate,)
         if region.RegisterRackController not in commands:
             commands = commands + (region.RegisterRackController,)
-        if amp.StartTLS not in commands:
-            commands = commands + (amp.StartTLS,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         eventloop = self.getEventLoopName(protocol)
@@ -208,7 +205,6 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
         protocol.RegisterRackController.side_effect = always_succeed_with(
             {"system_id": ""}
         )
-        protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 
     @abstractmethod
