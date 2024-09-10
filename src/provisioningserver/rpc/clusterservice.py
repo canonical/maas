@@ -69,10 +69,7 @@ from provisioningserver.rpc.common import (
 from provisioningserver.rpc.connectionpool import ConnectionPool
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.rpc.interfaces import IConnectionToRegion
-from provisioningserver.rpc.power import (
-    get_power_state,
-    maybe_change_power_state,
-)
+from provisioningserver.rpc.power import get_power_state
 from provisioningserver.security import calculate_digest, fernet_decrypt_psk
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
@@ -298,41 +295,6 @@ class Cluster(SecuredRPCProtocol):
                 PowerDriverRegistry.get_schema(detect_missing_packages=False)
             )
         }
-
-    @cluster.PowerOn.responder
-    def power_on(self, system_id, hostname, power_type, context):
-        """Turn a node on."""
-        d = maybe_change_power_state(
-            system_id, hostname, power_type, power_change="on", context=context
-        )
-        d.addCallback(lambda _: {})
-        return d
-
-    @cluster.PowerOff.responder
-    def power_off(self, system_id, hostname, power_type, context):
-        """Turn a node off."""
-        d = maybe_change_power_state(
-            system_id,
-            hostname,
-            power_type,
-            power_change="off",
-            context=context,
-        )
-        d.addCallback(lambda _: {})
-        return d
-
-    @cluster.PowerCycle.responder
-    def power_cycle(self, system_id, hostname, power_type, context):
-        """Power cycle a node."""
-        d = maybe_change_power_state(
-            system_id,
-            hostname,
-            power_type,
-            power_change="cycle",
-            context=context,
-        )
-        d.addCallback(lambda _: {})
-        return d
 
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):

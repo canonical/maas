@@ -36,10 +36,7 @@ from maasserver.utils.orm import (
     make_serialization_failure,
 )
 from maastesting.utils import sample_binary_data
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionAlreadyInProgress,
-)
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
 
 
@@ -330,18 +327,6 @@ class TestRPCErrorsMiddleware(MAASServerTestCase):
         middleware = RPCErrorsMiddleware(get_response)
         return middleware(request)
 
-    def test_handles_PowerActionAlreadyInProgress(self):
-        request = factory.make_fake_request(factory.make_string(), "POST")
-        error_message = (
-            "Unable to execute power action: another action is "
-            "already in progress for node %s" % factory.make_name("node")
-        )
-        error = PowerActionAlreadyInProgress(error_message)
-        response = self.process_request(request, error)
-
-        # The response is a redirect.
-        self.assertEqual(request.path, extract_redirect(response))
-
     def test_handles_NoConnectionsAvailable(self):
         request = factory.make_fake_request(factory.make_string(), "POST")
         error_message = (
@@ -375,9 +360,7 @@ class TestRPCErrorsMiddleware(MAASServerTestCase):
 
     def test_ignores_error_on_API(self):
         non_api_request = factory.make_fake_request("/MAAS/api/2.0/ohai")
-        exception_class = random.choice(
-            (NoConnectionsAvailable, PowerActionAlreadyInProgress)
-        )
+        exception_class = NoConnectionsAvailable
         exception = exception_class(factory.make_string())
         self.assertRaises(
             exception_class, self.process_request, non_api_request, exception
@@ -411,9 +394,7 @@ class TestAPIRPCErrorsMiddleware(MAASServerTestCase):
         middleware = APIRPCErrorsMiddleware(lambda request: None)
         api_request = factory.make_fake_request("/MAAS/api/2.0/hello")
         error_message = factory.make_string()
-        exception_class = random.choice(
-            (NoConnectionsAvailable, PowerActionAlreadyInProgress)
-        )
+        exception_class = NoConnectionsAvailable
         exception = exception_class(error_message)
         response = self.process_request(api_request, exception)
         self.assertEqual(
@@ -428,9 +409,7 @@ class TestAPIRPCErrorsMiddleware(MAASServerTestCase):
         non_api_request = factory.make_fake_request(
             "/MAAS/middleware/api/hello"
         )
-        exception_class = random.choice(
-            (NoConnectionsAvailable, PowerActionAlreadyInProgress)
-        )
+        exception_class = NoConnectionsAvailable
         exception = exception_class(factory.make_string())
         self.assertRaises(
             exception_class, self.process_request, non_api_request, exception
@@ -468,25 +447,6 @@ class TestAPIRPCErrorsMiddleware(MAASServerTestCase):
                 "%s" % middleware_module.RETRY_AFTER_SERVICE_UNAVAILABLE,
             ),
             (response.status_code, response["Retry-after"]),
-        )
-
-    def test_power_action_already_in_progress_returned_as_503(self):
-        request = factory.make_fake_request(
-            "/MAAS/api/2.0/" + factory.make_string(), "POST"
-        )
-        error_message = (
-            "Unable to execute power action: another action is already in "
-            "progress for node %s" % factory.make_name("node")
-        )
-        error = PowerActionAlreadyInProgress(error_message)
-        response = self.process_request(request, error)
-
-        self.assertEqual(
-            (http.client.SERVICE_UNAVAILABLE, error_message),
-            (
-                response.status_code,
-                response.content.decode(settings.DEFAULT_CHARSET),
-            ),
         )
 
     def test_handles_TimeoutError(self):

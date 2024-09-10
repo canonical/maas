@@ -3,127 +3,22 @@
 
 """RPC helpers relating to nodes."""
 
-
-from functools import partial
-
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, succeed
 from twisted.protocols.amp import UnhandledCommand
 
-from maasserver.exceptions import PowerProblem
 from maasserver.rpc import getAllClients
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.cluster import (
-    PowerCycle,
     PowerDriverCheck,
-    PowerOff,
-    PowerOn,
     PowerQuery,
     SetBootOrder,
 )
-from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
 
 log = LegacyLogger()
 maaslog = get_maas_logger("power")
-
-
-@asynchronous(timeout=15)
-def power_node(command, client, system_id, hostname, power_info):
-    """Power-on/off the given nodes.
-
-    The power call will be directed to the provided `client`.
-
-    :param command: The `amp.Command` to call.
-    :param client: The `rpc.common.Client` of the rack controller to perform
-        the power action.
-    :param system_id: The Node's system_id
-    :param hostname: The Node's hostname
-    :param power-info: A dict containing the power information for the
-        node.
-    :return: A :py:class:`twisted.internet.defer.Deferred` that will
-        fire when the `command` call completes.
-
-    """
-    log.debug(
-        "{hostname}: Asking rack controller to power on/off node.",
-        hostname=hostname,
-    )
-    # We don't strictly care about the result _here_; the outcome of the
-    # deferred gets reported elsewhere. However, PowerOn can return
-    # UnknownPowerType and NotImplementedError which are worth knowing
-    # about and returning to the caller of this API method, so it's
-    # probably worth changing PowerOn (or adding another call) to return
-    # after initial validation but then continue with the powering-on
-    # process. For now we simply return the deferred to the caller so
-    # they can choose to chain onto it, or to "cap it off", so that
-    # result gets consumed (Twisted will complain if an error is not
-    # consumed).
-    d = client(
-        command,
-        system_id=system_id,
-        hostname=hostname,
-        power_type=power_info.power_type,
-        context=power_info.power_parameters,
-    )
-
-    def eb_service_unavailable(failure):
-        if failure.check(PowerActionAlreadyInProgress):
-            raise PowerProblem(str(failure.value))
-
-    d.addErrback(eb_service_unavailable)
-    return d
-
-
-power_off_node = partial(power_node, PowerOff)
-power_on_node = partial(power_node, PowerOn)
-
-
-@asynchronous(timeout=30)
-def power_cycle(client, system_id, hostname, power_info):
-    """Power cycle the node.
-
-    The power call will be directed to the provided `client`.
-
-    :param client: The `rpc.common.Client` of the rack controller to perform
-        the power action.
-    :param system_id: The Node's system_id
-    :param hostname: The Node's hostname
-    :param power_info: A dict containing the power information for the
-        node.
-    :return: A :py:class:`twisted.internet.defer.Deferred` that will
-        fire when the `PowerCycle` call completes.
-
-    """
-    log.debug(
-        "{hostname}: Asking rack controller(s) to power cycle node.",
-        hostname=hostname,
-    )
-    # We don't strictly care about the result _here_; the outcome of the
-    # deferred gets reported elsewhere. However, PowerCycle can return
-    # UnknownPowerType and NotImplementedError which are worth knowing
-    # about and returning to the caller of this API method, so it's
-    # probably worth changing PowerCycle (or adding another call) to return
-    # after initial validation but then continue with the power-cycle
-    # process. For now we simply return the deferred to the caller so
-    # they can choose to chain onto it, or to "cap it off", so that
-    # result gets consumed (Twisted will complain if an error is not
-    # consumed).
-    d = client(
-        PowerCycle,
-        system_id=system_id,
-        hostname=hostname,
-        power_type=power_info.power_type,
-        context=power_info.power_parameters,
-    )
-
-    def eb_service_unavailable(failure):
-        if failure.check(PowerActionAlreadyInProgress):
-            raise PowerProblem(str(failure.value))
-
-    d.addErrback(eb_service_unavailable)
-    return d
 
 
 @asynchronous(timeout=15)

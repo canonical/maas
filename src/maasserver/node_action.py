@@ -50,10 +50,7 @@ from maasserver.utils.osystems import (
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionAlreadyInProgress,
-)
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.shell import ExternalProcessError
 
@@ -65,7 +62,6 @@ ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
 # should be converted to NodeActionErrors.
 RPC_EXCEPTIONS = (
     NoConnectionsAvailable,
-    PowerActionAlreadyInProgress,
     TimeoutError,
 )
 

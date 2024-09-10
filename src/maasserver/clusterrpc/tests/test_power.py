@@ -11,15 +11,11 @@ from twisted.internet.task import deferLater
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power import (
     pick_best_power_state,
-    power_cycle,
     power_driver_check,
-    power_off_node,
-    power_on_node,
     power_query,
     power_query_all,
     set_boot_order,
 )
-from maasserver.exceptions import PowerProblem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -30,14 +26,10 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.enum import POWER_STATE
 from provisioningserver.rpc.cluster import (
-    PowerCycle,
     PowerDriverCheck,
-    PowerOff,
-    PowerOn,
     PowerQuery,
     SetBootOrder,
 )
-from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 wait_for_reactor = wait_for()
 
@@ -47,93 +39,6 @@ def make_node_with_power_info():
     node = factory.make_Node()
     power_info = node.get_effective_power_info()
     return node, power_info
-
-
-class TestPowerNode(MAASServerTestCase):
-    """Tests for `power_on_node` and `power_off_node`."""
-
-    scenarios = (
-        ("PowerOn", {"power_func": power_on_node, "command": PowerOn}),
-        ("PowerOff", {"power_func": power_off_node, "command": PowerOff}),
-    )
-
-    def test_powers_single_node(self):
-        node = factory.make_Node()
-        client = Mock()
-
-        wait_for_reactor(self.power_func)(
-            client,
-            node.system_id,
-            node.hostname,
-            node.get_effective_power_info(),
-        )
-
-        power_info = node.get_effective_power_info()
-        client.assert_called_once_with(
-            self.command,
-            system_id=node.system_id,
-            hostname=node.hostname,
-            power_type=power_info.power_type,
-            context=power_info.power_parameters,
-        )
-
-    def test_raises_power_problem(self):
-        node = factory.make_Node()
-        client = Mock()
-        client.return_value = fail(
-            PowerActionAlreadyInProgress("Houston, we have a problem.")
-        )
-
-        with self.assertRaisesRegex(
-            PowerProblem, "Houston, we have a problem."
-        ):
-            wait_for_reactor(self.power_func)(
-                client,
-                node.system_id,
-                node.hostname,
-                node.get_effective_power_info(),
-            )
-
-
-class TestPowerCycle(MAASServerTestCase):
-    """Tests for `power_cycle`."""
-
-    def test_power_cycles_single_node(self):
-        node = factory.make_Node()
-        client = Mock()
-
-        wait_for_reactor(power_cycle)(
-            client,
-            node.system_id,
-            node.hostname,
-            node.get_effective_power_info(),
-        )
-
-        power_info = node.get_effective_power_info()
-        client.assert_called_once_with(
-            PowerCycle,
-            system_id=node.system_id,
-            hostname=node.hostname,
-            power_type=power_info.power_type,
-            context=power_info.power_parameters,
-        )
-
-    def test_raises_power_problem(self):
-        node = factory.make_Node()
-        client = Mock()
-        client.return_value = fail(
-            PowerActionAlreadyInProgress("Houston, we have a problem.")
-        )
-
-        with self.assertRaisesRegex(
-            PowerProblem, "Houston, we have a problem."
-        ):
-            wait_for_reactor(power_cycle)(
-                client,
-                node.system_id,
-                node.hostname,
-                node.get_effective_power_info(),
-            )
 
 
 class TestPowerQuery(MAASServerTestCase):

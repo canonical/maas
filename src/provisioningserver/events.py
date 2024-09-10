@@ -35,9 +35,6 @@ AUDIT = 0
 
 class EVENT_TYPES:
     # Power-related events.
-    NODE_POWER_ON_STARTING = "NODE_POWER_ON_STARTING"
-    NODE_POWER_OFF_STARTING = "NODE_POWER_OFF_STARTING"
-    NODE_POWER_CYCLE_STARTING = "NODE_POWER_CYCLE_STARTING"
     NODE_POWERED_ON = "NODE_POWERED_ON"
     NODE_POWERED_OFF = "NODE_POWERED_OFF"
     NODE_POWER_ON_FAILED = "NODE_POWER_ON_FAILED"
@@ -178,16 +175,6 @@ EventDetail = namedtuple("EventDetail", ("description", "level"))
 
 
 EVENT_DETAILS = {
-    # Event type -> EventDetail mapping.
-    EVENT_TYPES.NODE_POWER_ON_STARTING: EventDetail(
-        description="Powering on", level=INFO
-    ),
-    EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
-        description="Powering off", level=INFO
-    ),
-    EVENT_TYPES.NODE_POWER_CYCLE_STARTING: EventDetail(
-        description="Power cycling", level=INFO
-    ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
         description="Node powered on", level=DEBUG
     ),

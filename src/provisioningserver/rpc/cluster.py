@@ -14,10 +14,7 @@ __all__ = [
     "ConfigureDHCPv6",
     "DescribePowerTypes",
     "Identify",
-    "PowerCycle",
     "PowerDriverCheck",
-    "PowerOff",
-    "PowerOn",
     "PowerQuery",
     "SetBootOrder",
     "ScanNetworks",
@@ -84,24 +81,7 @@ class _Power(amp.Command):
         exceptions.UnknownPowerType: b"UnknownPowerType",
         NotImplementedError: b"NotImplementedError",
         exceptions.PowerActionFail: b"PowerActionFail",
-        exceptions.PowerActionAlreadyInProgress: (
-            b"PowerActionAlreadyInProgress"
-        ),
     }
-
-
-class PowerOn(_Power):
-    """Turn a node's power on.
-
-    :since: 1.7
-    """
-
-
-class PowerOff(_Power):
-    """Turn a node's power off.
-
-    :since: 1.7
-    """
 
 
 class PowerQuery(_Power):
@@ -114,14 +94,6 @@ class PowerQuery(_Power):
         (b"state", amp.Unicode()),
         (b"error_msg", amp.Unicode(optional=True)),
     ]
-
-
-class PowerCycle(_Power):
-    """Turn a node's power off (if on), then turn a
-    node's power on.
-
-    :since: 2.0
-    """
 
 
 class SetBootOrder(_Power):

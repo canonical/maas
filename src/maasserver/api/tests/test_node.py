@@ -40,7 +40,6 @@ from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
 )
-from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 
 class TestNodeAnonAPI(MAASServerTestCase):
@@ -800,20 +799,6 @@ class TestPowerMixin(APITestCase.ForUser):
         )
         machine_stop.mock_called_once_with(
             self.user, stop_mode=stop_mode, comment=None
-        )
-
-    def test_POST_power_off_returns_503_when_power_already_in_progress(self):
-        machine = factory.make_Node(owner=self.user)
-        exc_text = factory.make_name("exc_text")
-        self.patch(node_module.Machine, "stop").side_effect = (
-            PowerActionAlreadyInProgress(exc_text)
-        )
-        response = self.client.post(
-            self.get_node_uri(machine), {"op": "power_off"}
-        )
-        self.assertEqual(response.status_code, http.client.SERVICE_UNAVAILABLE)
-        self.assertIn(
-            exc_text, response.content.decode(settings.DEFAULT_CHARSET)
         )
 
     def test_POST_power_on_checks_permission(self):

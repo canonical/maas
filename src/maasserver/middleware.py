@@ -33,10 +33,7 @@ from maasserver.exceptions import MAASAPIException
 from maasserver.rbac import rbac
 from maasserver.secrets import SecretManager
 from maasserver.utils.orm import is_retryable_failure
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    PowerActionAlreadyInProgress,
-)
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.shell import ExternalProcessError
 
 # 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
@@ -300,7 +297,6 @@ class RPCErrorsMiddleware:
 
     handled_exceptions = (
         NoConnectionsAvailable,
-        PowerActionAlreadyInProgress,
         TimeoutError,
     )
 
@@ -338,7 +334,6 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
 
     handled_exceptions = {
         NoConnectionsAvailable: int(http.client.SERVICE_UNAVAILABLE),
-        PowerActionAlreadyInProgress: int(http.client.SERVICE_UNAVAILABLE),
         TimeoutError: int(http.client.GATEWAY_TIMEOUT),
     }
 
