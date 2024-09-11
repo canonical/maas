@@ -13,202 +13,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package dhcpd
+package servicecontroller
 
 import (
 	"context"
 	"testing"
 
 	pebble "github.com/canonical/pebble/client"
-	"github.com/snapcore/snapd/systemd"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNewDhcpdController(t *testing.T) {
-	testcases := map[string]struct {
-		env map[string]string
-		in  DhcpdVersion
-		out DhcpdController
-	}{
-		"deb dhcpd": {
-			in: DhcpdVersion4,
-			out: &systemdController{
-				unit: "dhcpd.service",
-			},
-		},
-		"deb dhcpd6": {
-			in: DhcpdVersion6,
-			out: &systemdController{
-				unit: "dhcpd6.service",
-			},
-		},
-		"snap dhcpd": {
-			env: map[string]string{"SNAP": "1"},
-			in:  DhcpdVersion4,
-			out: &pebbleController{
-				service: "dhcpd",
-			},
-		},
-		"snap dhcpd6": {
-			env: map[string]string{"SNAP": "1"},
-			in:  DhcpdVersion6,
-			out: &pebbleController{
-				service: "dhcpd6",
-			},
-		},
-	}
-
-	for name, tc := range testcases {
-		t.Run(name, func(t *testing.T) {
-			var err error
-
-			for k, v := range tc.env {
-				t.Setenv(k, v)
-			}
-
-			controller, err := NewDhcpdController(tc.in)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if expected, ok := tc.out.(*systemdController); ok {
-				ctrlr, ok := controller.(*systemdController)
-
-				assert.True(t, ok)
-
-				assert.Equal(t, expected.unit, ctrlr.unit)
-			} else {
-				expected, ok := tc.out.(*pebbleController)
-				if !ok {
-					t.Fatal("invalid expected type")
-				}
-
-				ctrlr, ok := controller.(*pebbleController)
-
-				assert.True(t, ok)
-
-				assert.Equal(t, expected.service, ctrlr.service)
-			}
-		})
-	}
-}
-
-type mockSystemdClient struct {
-	systemd.Systemd
-	StartCalls    [][]string
-	StopCalls     [][]string
-	RestartCalls  [][]string
-	StatusCalls   [][]string
-	StatusReturns [][]*systemd.UnitStatus
-}
-
-func (m *mockSystemdClient) Start(args []string) error {
-	m.StartCalls = append(m.StartCalls, args)
-	return nil
-}
-
-func (m *mockSystemdClient) Stop(args []string) error {
-	m.StopCalls = append(m.StopCalls, args)
-	return nil
-}
-
-func (m *mockSystemdClient) Restart(args []string) error {
-	m.RestartCalls = append(m.RestartCalls, args)
-	return nil
-}
-
-func (m *mockSystemdClient) Status(args []string) ([]*systemd.UnitStatus, error) {
-	m.StatusCalls = append(m.StatusCalls, args)
-	result := m.StatusReturns[0]
-
-	if len(m.StatusReturns) > 1 {
-		m.StatusReturns = m.StatusReturns[1:]
-	} else {
-		m.StatusReturns = [][]*systemd.UnitStatus{}
-	}
-
-	return result, nil
-}
-
-func TestSystemdControllerStart(t *testing.T) {
-	client := &mockSystemdClient{}
-	systemdCtrlr := &systemdController{
-		unit:   "test-unit.service",
-		client: client,
-	}
-
-	err := systemdCtrlr.Start(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.StartCalls)
-}
-
-func TestSystemdControllerStop(t *testing.T) {
-	client := &mockSystemdClient{}
-	systemdCtrlr := &systemdController{
-		unit:   "test-unit.service",
-		client: client,
-	}
-
-	err := systemdCtrlr.Stop(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.StopCalls)
-}
-
-func TestSystemdControllerRestart(t *testing.T) {
-	client := &mockSystemdClient{}
-	systemdCtrlr := &systemdController{
-		unit:   "test-unit.service",
-		client: client,
-	}
-
-	err := systemdCtrlr.Restart(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.Equal(t, [][]string{{"test-unit.service"}}, client.RestartCalls)
-}
-
-func TestSystemdControllerStatus(t *testing.T) {
-	expectedout := []DhcpdStatus{DhcpdStatusRunning, DhcpdStatusStopped}
-	client := &mockSystemdClient{
-		StatusReturns: [][]*systemd.UnitStatus{
-			{
-				{
-					Active: true,
-				},
-			},
-			{
-				{
-					Active: false,
-				},
-			},
-		},
-	}
-	systemdCtrlr := &systemdController{
-		client: client,
-		unit:   "test-unit.service",
-	}
-
-	for _, expected := range expectedout {
-		result, err := systemdCtrlr.Status(context.TODO())
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		assert.Equal(t, expected, result)
-	}
-
-	assert.Equal(t, len(expectedout), len(client.StatusCalls))
-}
-
-func TestNewPebbleConfigFromEnv(t *testing.T) {
+func TestNewPebbleController(t *testing.T) {
 	testcases := map[string]struct {
 		env map[string]string
 		out *pebble.Config
@@ -238,9 +53,10 @@ func TestNewPebbleConfigFromEnv(t *testing.T) {
 				t.Setenv(k, v)
 			}
 
-			cfg := newPebbleConfigFromEnv()
+			pebbleCtrlr, err := NewPebbleController("test.service")
+			assert.NoError(t, err)
 
-			assert.Equal(t, tc.out.Socket, cfg.Socket)
+			assert.Equal(t, tc.out.Socket, pebbleCtrlr.config.Socket)
 		})
 	}
 }
@@ -334,7 +150,7 @@ func TestPebbleControllerStart(t *testing.T) {
 		StartReturns: []string{"a"},
 	}
 
-	pebbleCtrlr := &pebbleController{
+	pebbleCtrlr := &PebbleController{
 		client:  client,
 		service: "test",
 	}
@@ -356,7 +172,7 @@ func TestPebbleControllerStop(t *testing.T) {
 		StopReturns: []string{"a"},
 	}
 
-	pebbleCtrlr := &pebbleController{
+	pebbleCtrlr := &PebbleController{
 		client:  client,
 		service: "test",
 	}
@@ -378,7 +194,7 @@ func TestPebbleControllerRestart(t *testing.T) {
 		RestartReturns: []string{"a"},
 	}
 
-	pebbleCtrlr := &pebbleController{
+	pebbleCtrlr := &PebbleController{
 		client:  client,
 		service: "test",
 	}
@@ -396,11 +212,11 @@ func TestPebbleControllerRestart(t *testing.T) {
 }
 
 func TestPebbleControllerStatus(t *testing.T) {
-	expectedout := []DhcpdStatus{
-		DhcpdStatusRunning,
-		DhcpdStatusStopped,
-		DhcpdStatusError,
-		DhcpdStatusError,
+	expectedout := []ServiceStatus{
+		StatusRunning,
+		StatusStopped,
+		StatusError,
+		StatusError,
 	}
 
 	client := &mockPebbleClient{
@@ -428,7 +244,7 @@ func TestPebbleControllerStatus(t *testing.T) {
 		},
 	}
 
-	pebbleCtrlr := &pebbleController{
+	pebbleCtrlr := &PebbleController{
 		client:  client,
 		service: "test",
 	}
