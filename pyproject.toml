@@ -28,7 +28,9 @@ known_first_party = """
 apiclient
 maasapiserver
 maascli
+maascommon
 maasserver
+maasservicelayer
 maastesting
 metadataserver
 provisioningserver

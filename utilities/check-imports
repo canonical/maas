@@ -222,6 +222,11 @@ APIServerRule = Rule(
     Allow(StandardLibraries),
 )
 
+Common = files("src/maascommon/**/*.py")
+CommonRule = Rule(
+    Allow(StandardLibraries),
+)
+
 MAASCLI = files("src/maascli/**/*.py")
 
 
@@ -279,6 +284,7 @@ RackControllerRule = Rule(
     Allow("jsonschema|jsonschema.**"),
     Allow("lsb_release|lsb_release.*"),
     Allow("lxml|lxml.**"),
+    Allow("maascommon|maascommon.**"),
     # This is only allowed because of how `regiond` needs imports done
     # after the reactor has been installed. The code handles those imports
     # not being present when the machine is a rack controller only.
@@ -345,6 +351,7 @@ RegionControllerRule = Rule(
     Allow("maasapiserver|maasapiserver.**"),
     Allow("maascli.init.**"),
     Allow("maascli.utils.parse_docstring"),
+    Allow("maascommon|maascommon.**"),
     Allow("maasserver|maasserver.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.workflow.**"),
@@ -381,6 +388,7 @@ RegionControllerWorkerRule = Rule(
     Allow("aiohttp|aiohttp.**"),
     Allow("jose|jose.**"),
     Allow("lxml|lxml.**"),
+    Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
     Allow("maasserver.enum.**"),
@@ -406,6 +414,7 @@ ServiceLayerRule = Rule(
     ),
     Allow("jose|jose.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
+    Allow("maascommon|maascommon.**"),
     # TODO: Refactor the enums and move them to the service layer
     Allow("maasserver.config.RegionConfiguration"),
     Allow("maasserver.enum.**"),
@@ -497,6 +506,13 @@ checks = [
         APIServerRule,
     ),
     #
+    # Common
+    #
+    (
+        Common,
+        CommonRule,
+    ),
+    #
     # MAAS CLI
     #
     (
@@ -507,6 +523,7 @@ checks = [
             Allow("apiclient.**"),
             Allow("httplib2"),
             Allow("macaroonbakery|macaroonbakery.**"),
+            Allow("maascommon|maascommon.**"),
             Allow("netifaces|netifaces.*"),
             Allow("OpenSSL|OpenSSL.**"),
             Allow("psycopg2|psycopg2.**"),

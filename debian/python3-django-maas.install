@@ -1,2 +1,4 @@
+debian/tmp/usr/lib/python3*/dist-packages/maascommon
 debian/tmp/usr/lib/python3*/dist-packages/maasserver
 debian/tmp/usr/lib/python3*/dist-packages/metadataserver
+debian/tmp/usr/lib/python3*/dist-packages/maasservicelayer
