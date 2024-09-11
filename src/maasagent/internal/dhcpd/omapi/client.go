@@ -30,6 +30,13 @@ const (
 	headerSize uint32 = 24
 )
 
+type OMAPI interface {
+	Close() error
+	AddHost(net.IP, net.HardwareAddr) error
+	GetHost(map[string][]byte) (Host, error)
+	DeleteHost(net.HardwareAddr) error
+}
+
 type Client struct {
 	authenticator Authenticator
 	conn          net.Conn
@@ -40,7 +47,7 @@ type Client struct {
 // RECV: Startup
 // SEND: (unsigned authenticator payload)
 // RECV: (unsigned authenticator payload)
-func NewClient(conn net.Conn, authenticator Authenticator) (*Client, error) {
+func NewClient(conn net.Conn, authenticator Authenticator) (OMAPI, error) {
 	client := Client{
 		authenticator: authenticator,
 		conn:          conn,

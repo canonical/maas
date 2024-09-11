@@ -196,7 +196,6 @@ class ConfigureAgentWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=1),
         )
 
-        # TODO:fetch configuration before executing workflow
         await workflow.execute_child_workflow(
             "configure-dhcp-service",
             ConfigureDHCPServiceParam(enabled=True),

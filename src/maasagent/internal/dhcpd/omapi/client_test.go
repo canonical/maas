@@ -114,9 +114,13 @@ systemctl restart isc-dhcp-server
 	client, err := NewClient(conn, &authenticator)
 	assert.NoError(s.T(), err)
 
+	var ok bool
+
 	s.container = container
 	s.dummyIP = ip
-	s.client = client
+	s.client, ok = client.(*Client)
+
+	assert.True(s.T(), ok)
 }
 
 // TestClientAddHost verifies the OMAPI client's ability to add and retrieve a host entry.

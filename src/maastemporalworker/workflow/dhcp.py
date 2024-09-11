@@ -396,6 +396,7 @@ class ConfigureDHCPForAgentWorkflow:
             await workflow.execute_activity(
                 "apply-dhcp-config-via-file",
                 ApplyConfigViaFileParam(dhcpd=cfg.dhcpd, dhcpd6=cfg.dhcpd6),
+                task_queue=f"{param.system_id}@agent:main",
             )
         else:
             hosts = await workflow.execute_activity(
@@ -411,7 +412,9 @@ class ConfigureDHCPForAgentWorkflow:
             await workflow.execute_activity(
                 "apply-dhcp-config-via-omapi",
                 ApplyConfigViaOmapiParam(
-                    hosts=hosts["hosts"], secret=omapi_key
+                    hosts=hosts["hosts"],
+                    secret=omapi_key,
+                    task_queue=f"{param.system_id}@agent:main",
                 ),
             )
 
@@ -443,6 +446,7 @@ class ConfigureDHCPWorkflow:
                     static_ip_addr_ids=param.static_ip_addr_ids,
                     reserved_ip_ids=param.reserved_ip_ids,
                 ),
+                workflow_id=f"configure-dhcp:{system_id}",
             )
             children.append(cfg_child)
 
