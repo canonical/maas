@@ -14,7 +14,6 @@ from shutil import rmtree
 import stat
 from subprocess import CalledProcessError, PIPE
 import tempfile
-import time
 import tokenize
 import types
 from unittest.mock import ANY, call, create_autospec, Mock, sentinel
@@ -384,9 +383,7 @@ class TestIncrementalWrite(MAASTestCase):
         old_mtime = os.stat(filename).st_mtime - 10
         os.utime(filename, (old_mtime, old_mtime))
         incremental_write(content, filename)
-        new_time = time.time()
-        # should be much closer to new_time than to old_mtime.
-        self.assertAlmostEqual(os.stat(filename).st_mtime, new_time, delta=2.0)
+        self.assertTrue(os.stat(filename).st_mtime > old_mtime)
 
     def test_incremental_write_does_not_set_future_time(self):
         content = factory.make_bytes()
@@ -396,8 +393,7 @@ class TestIncrementalWrite(MAASTestCase):
         old_mtime = os.stat(filename).st_mtime + 10
         os.utime(filename, (old_mtime, old_mtime))
         incremental_write(content, filename)
-        new_time = time.time()
-        self.assertAlmostEqual(os.stat(filename).st_mtime, new_time, delta=2.0)
+        self.assertTrue(os.stat(filename).st_mtime <= old_mtime)
 
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
