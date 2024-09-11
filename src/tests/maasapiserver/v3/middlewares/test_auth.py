@@ -44,13 +44,13 @@ from maasservicelayer.auth.macaroons.models.exceptions import (
     MacaroonApiException,
 )
 from maasservicelayer.auth.macaroons.models.responses import (
-    AllowedForUserResponse,
     GetGroupsResponse,
     PermissionResourcesMapping,
     UserDetailsResponse,
 )
 from maasservicelayer.constants import NODE_INIT_USERNAME, WORKER_USERNAME
 from maasservicelayer.db import Database
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     DischargeRequiredException,
     ForbiddenException,
@@ -742,31 +742,23 @@ class TestValidateUserExternalAuthRbac:
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
         # not an admin, but has permission on pools
-        self.client.allowed_for_user.side_effect = [
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="admin", resources=[]
-                    )
-                ]
-            ),
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="view", resources=["1", "2"]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="view-all", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="deploy-machines", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="admin-machines", resources=[]
-                    ),
-                ]
-            ),
-        ]
+        self.client.is_user_admin = AsyncMock(return_value=False)
+        self.client.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW, resources=["1", "2"]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW_ALL, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
+                ),
+            ]
+        )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -780,31 +772,24 @@ class TestValidateUserExternalAuthRbac:
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
         # admin, but no permissions on pools
-        self.client.allowed_for_user.side_effect = [
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="admin", resources=[""]
-                    )
-                ]
-            ),
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="view", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="view-all", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="deploy-machines", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="admin-machines", resources=[]
-                    ),
-                ]
-            ),
-        ]
+        self.client.is_user_admin = AsyncMock(return_value=True)
+
+        self.client.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW_ALL, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
+                ),
+            ]
+        )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -817,31 +802,23 @@ class TestValidateUserExternalAuthRbac:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.allowed_for_user.side_effect = [
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="admin", resources=[]
-                    )
-                ]
-            ),
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="view", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="view-all", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="deploy-machines", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="admin-machines", resources=[]
-                    ),
-                ]
-            ),
-        ]
+        self.client.is_user_admin = AsyncMock(return_value=False)
+        self.client.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW_ALL, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
+                ),
+            ]
+        )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -872,31 +849,23 @@ class TestValidateUserExternalAuthRbac:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        self.client.allowed_for_user.side_effect = [
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="admin", resources=[]
-                    )
-                ]
-            ),
-            AllowedForUserResponse(
-                permissions=[
-                    PermissionResourcesMapping(
-                        permission="view", resources=["1", "2"]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="view-all", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="deploy-machines", resources=[]
-                    ),
-                    PermissionResourcesMapping(
-                        permission="admin-machines", resources=[]
-                    ),
-                ]
-            ),
-        ]
+        self.client.is_user_admin = AsyncMock(return_value=False)
+        self.client.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW, resources=["1", "2"]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW_ALL, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.DEPLOY_MACHINES, resources=[]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.ADMIN_MACHINES, resources=[]
+                ),
+            ]
+        )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
@@ -907,23 +876,19 @@ class TestValidateUserExternalAuthRbac:
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        # not an admin, but has permission on pools
-        self.client.allowed_for_user.side_effect = MacaroonApiException(
+        self.client.is_user_admin.side_effect = MacaroonApiException(
             500, "fail!"
         )
         validated_user = await self.provider.validate_user_external_auth(
             self.request, user
         )
         assert validated_user is None
-        self.client.allowed_for_user.assert_called_once_with(
-            "maas", user.username, "admin"
-        )
+        self.client.is_user_admin.assert_called_once_with(user.username)
 
     async def test_failed_user_details_check(self, fixture: Fixture):
         user = await create_test_user(fixture)
         extra_details = {"auth_last_check": self.default_last_check}
         await create_test_user_profile(fixture, user.id, **extra_details)
-        # not an admin, but has permission on pools
         self.client.get_user_details.side_effect = MacaroonApiException(
             500, "fail!"
         )

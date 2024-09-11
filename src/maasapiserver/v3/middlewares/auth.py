@@ -36,6 +36,7 @@ from maasservicelayer.db.repositories.users import (
     UserCreateOrUpdateResourceBuilder,
     UserProfileCreateOrUpdateResourceBuilder,
 )
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
     BaseExceptionDetail,
@@ -317,20 +318,18 @@ class MacaroonAuthenticationProvider:
         username: str,
     ) -> ValidateUserResponse:
         try:
-            admin_response = await client.allowed_for_user(
-                "maas", username, "admin"
-            )
-            superuser = admin_response.permissions[0].access_all
-            pools_response = await client.allowed_for_user(
-                "resource-pool",
+            superuser = await client.is_user_admin(username)
+            pools_response = await client.get_resource_pool_ids(
                 username,
-                ["view", "view-all", "deploy-machines", "admin-machines"],
+                {
+                    RbacPermission.VIEW,
+                    RbacPermission.VIEW_ALL,
+                    RbacPermission.DEPLOY_MACHINES,
+                    RbacPermission.ADMIN_MACHINES,
+                },
             )
             access_to_pools = any(
-                [
-                    r.resources or r.access_all
-                    for r in pools_response.permissions
-                ]
+                [r.resources or r.access_all for r in pools_response]
             )
             user_details = await client.get_user_details(username)
         except MacaroonApiException:

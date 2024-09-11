@@ -62,7 +62,3 @@ class PermissionResourcesMapping(BaseModel):
         if values["resources"] is None:
             values["access_all"] = True
         return values
-
-
-class AllowedForUserResponse(BaseModel):
-    permissions: Sequence[PermissionResourcesMapping]

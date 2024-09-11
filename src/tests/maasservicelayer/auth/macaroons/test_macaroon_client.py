@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from http import HTTPStatus
+from typing import AsyncIterator
 
 from macaroonbakery import bakery
 from macaroonbakery.httpbakery.agent import Agent, AuthInfo
@@ -20,7 +21,6 @@ from maasservicelayer.auth.macaroons.models.requests import (
     UpdateResourcesRequest,
 )
 from maasservicelayer.auth.macaroons.models.responses import (
-    AllowedForUserResponse,
     GetGroupsResponse,
     PermissionResourcesMapping,
     ResourceListResponse,
@@ -45,15 +45,19 @@ def auth_info() -> AuthInfo:
 
 
 @pytest.fixture
-async def candid_client(auth_info) -> CandidAsyncClient:
-    return CandidAsyncClient(auth_info=auth_info)
+async def candid_client(auth_info) -> AsyncIterator[CandidAsyncClient]:
+    client = CandidAsyncClient(auth_info=auth_info)
+    yield client
+    await client.close()
 
 
 @pytest.fixture
-async def rbac_client(auth_info) -> RbacAsyncClient:
-    return RbacAsyncClient(
+async def rbac_client(auth_info) -> AsyncIterator[RbacAsyncClient]:
+    client = RbacAsyncClient(
         rbac_url="https://rbac.example.com", auth_info=auth_info
     )
+    yield client
+    await client.close()
 
 
 RBAC_BASE_URL = "https://rbac.example.com/api/service/v1"
@@ -227,9 +231,9 @@ class TestRbacAsyncClient:
             for perm, res in expected_response.items()
         ]
 
-        assert resp == AllowedForUserResponse(permissions=perms)
-        assert resp.permissions[0].access_all is True
-        assert resp.permissions[0].resources is None
+        assert resp == perms
+        assert resp[0].access_all is True
+        assert resp[0].resources is None
         mock_aioresponse.assert_called_once_with(
             method="GET",
             url=f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user",
@@ -254,9 +258,9 @@ class TestRbacAsyncClient:
             for perm, res in expected_response.items()
         ]
 
-        assert resp == AllowedForUserResponse(permissions=perms)
-        assert resp.permissions[0].access_all is False
-        assert resp.permissions[0].resources == [1, 2, 3]
+        assert resp == perms
+        assert resp[0].access_all is False
+        assert resp[0].resources == [1, 2, 3]
         mock_aioresponse.assert_called_once_with(
             method="GET",
             url=f"{RBAC_BASE_URL}/resources/resource-pool/allowed-for-user",

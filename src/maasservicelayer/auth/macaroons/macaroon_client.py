@@ -2,7 +2,6 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import abc
-from collections.abc import Sequence
 from http import HTTPStatus
 from typing import Any
 from urllib.parse import quote
@@ -21,7 +20,6 @@ from maasservicelayer.auth.macaroons.models.requests import (
     UpdateResourcesRequest,
 )
 from maasservicelayer.auth.macaroons.models.responses import (
-    AllowedForUserResponse,
     GetGroupsResponse,
     PermissionResourcesMapping,
     Resource,
@@ -29,6 +27,7 @@ from maasservicelayer.auth.macaroons.models.responses import (
     UpdateResourcesResponse,
     UserDetailsResponse,
 )
+from maasservicelayer.enums.rbac import RbacPermission, RbacResourceType
 
 
 class MacaroonAsyncClient(abc.ABC):
@@ -132,8 +131,11 @@ class RbacAsyncClient(MacaroonAsyncClient):
         return UpdateResourcesResponse.parse_obj(result)
 
     async def allowed_for_user(
-        self, resource_type: str, user: str, permissions: Sequence[str]
-    ) -> AllowedForUserResponse:
+        self,
+        resource_type: RbacResourceType,
+        user: str,
+        permissions: set[RbacPermission],
+    ) -> list[PermissionResourcesMapping]:
         """Return the resource identifiers that `user` can access with
         `permissions`.
 
@@ -148,8 +150,26 @@ class RbacAsyncClient(MacaroonAsyncClient):
 
         result = await self._request(method="GET", url=url, params=params)
 
-        perms = [
+        return [
             PermissionResourcesMapping(permission=perm, resources=res)
             for perm, res in result.items()
         ]
-        return AllowedForUserResponse(permissions=perms)
+
+    async def is_user_admin(self, user: str) -> bool:
+        response = await self.allowed_for_user(
+            RbacResourceType.MAAS, user, {RbacPermission.MAAS_ADMIN}
+        )
+        return response[0].access_all
+
+    async def get_resource_pool_ids(
+        self, user: str, permissions: set[RbacPermission]
+    ) -> list[PermissionResourcesMapping]:
+        return await self.allowed_for_user(
+            RbacResourceType.RESOURCE_POOL, user, permissions
+        )
+
+    async def can_admin_resource_pools(self, user: str) -> bool:
+        response = await self.allowed_for_user(
+            RbacResourceType.RESOURCE_POOL, user, {RbacPermission.EDIT}
+        )
+        return response[0].access_all
