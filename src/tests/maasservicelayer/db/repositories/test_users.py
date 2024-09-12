@@ -2,6 +2,7 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 import datetime
+from typing import List
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -15,7 +16,9 @@ from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.user import (
     create_test_session,
     create_test_user,
+    create_test_user_consumer,
     create_test_user_profile,
+    create_test_user_token,
 )
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -124,3 +127,20 @@ class TestUsersRepository:
             user.id, builder.build()
         )
         assert updated_profile.auth_last_check == now
+
+    async def test_get_user_apikeys(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> List[str]:
+        user = await create_test_user(fixture)
+        user_consumer = await create_test_user_consumer(fixture, user.id)
+        user_token = await create_test_user_token(
+            fixture, user.id, user_consumer.id
+        )
+
+        apikey = ":".join(
+            [user_consumer.key, user_token.key, user_token.secret]
+        )
+
+        users_repository = UsersRepository(db_connection)
+        apikeys = await users_repository.get_user_apikeys(user.username)
+        assert apikeys[0] == apikey

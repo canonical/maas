@@ -3,6 +3,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.services.agents import AgentsService
 from maasservicelayer.services.auth import AuthService
 from maasservicelayer.services.configurations import ConfigurationsService
 from maasservicelayer.services.events import EventsService
@@ -43,6 +44,7 @@ class ServiceCollectionV3:
     vlans: VlansService
     users: UsersService
     subnets: SubnetsService
+    agents: AgentsService
 
     @classmethod
     async def produce(
@@ -83,4 +85,5 @@ class ServiceCollectionV3:
         services.spaces = SpacesService(connection=connection)
         services.vlans = VlansService(connection=connection)
         services.subnets = SubnetsService(connection=connection)
+        services.agents = AgentsService(connection=connection)
         return services

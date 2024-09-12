@@ -2,9 +2,10 @@
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+from typing import List
 
 from django.core import signing
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import and_, eq, gt
 
@@ -15,7 +16,9 @@ from maasservicelayer.db.repositories.base import (
     CreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import (
+    ConsumerTable,
     SessionTable,
+    TokenTable,
     UserProfileTable,
     UserTable,
 )
@@ -192,3 +195,33 @@ class UsersRepository(BaseRepository[User]):
 
     async def delete(self, id: int) -> None:
         raise NotImplementedError("Not implemented yet.")
+
+    async def get_user_apikeys(self, username: str) -> List[str]:
+        stmt = (
+            select(
+                func.concat(
+                    ConsumerTable.c.key,
+                    ":",
+                    TokenTable.c.key,
+                    ":",
+                    TokenTable.c.secret,
+                )
+            )
+            .select_from(TokenTable)
+            .join(UserTable, eq(TokenTable.c.user_id, UserTable.c.id))
+            .join(
+                ConsumerTable, eq(TokenTable.c.consumer_id, ConsumerTable.c.id)
+            )
+            .where(
+                eq(UserTable.c.username, username),
+                eq(TokenTable.c.token_type, 2),  # token.ACCESS
+                eq(TokenTable.c.is_approved, True),
+            )
+            .order_by(TokenTable.c.id)
+        )
+
+        result = (await self.connection.execute(stmt)).all()
+        if not result:
+            return None
+
+        return [str(row[0]) for row in result]

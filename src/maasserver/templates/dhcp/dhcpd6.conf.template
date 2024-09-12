@@ -1,0 +1,145 @@
+# WARNING: Do not edit /var/lib/maas/dhcpd6.conf yourself.  MAAS will
+# overwrite any changes made there.  Instead, you can modify dhcpd6.conf by
+# using DHCP snippets over the API or through the web interface.
+
+option dhcp6.user-class code 15 = string;
+option dhcp6.client-arch-type code 61 = array of unsigned integer 16; # RFC5970
+option dhcp6.vendor-class code 16 = {integer 32, integer 16, string};
+option path-prefix code 210 = text; #RFC5071
+
+#
+# Define lease time globally (can be overriden globally or per subnet
+# with a DHCP snippet)
+#
+default-lease-time 1800;
+max-lease-time 1800;
+
+#
+# IPXE Options
+#
+option space ipxe;
+option ipxe-encap-opts code 175 = encapsulate ipxe;
+option ipxe.http      code 19 = unsigned integer 8;
+option ipxe.bzimage   code 24 = unsigned integer 8;
+option ipxe.efi       code 36 = unsigned integer 8;
+
+#
+# Global DHCP snippets
+#
+{{if len(global_dhcp_snippets) == 0}}
+# No global DHCP snippets defined
+{{endif}}
+{{for global_dhcp_snippet in global_dhcp_snippets}}
+# Name: {{global_dhcp_snippet['name']}}
+{{if global_dhcp_snippet['description'] != ''}}
+# Description: {{global_dhcp_snippet['description'] | oneline}}
+{{endif}}
+{{global_dhcp_snippet['value']}}
+{{endfor}}
+
+#
+# Networks
+#
+{{for shared_network in shared_networks}}
+shared-network {{shared_network["name"]}} {
+    {{for dhcp_subnet in shared_network["subnets"]}}
+    subnet6 {{dhcp_subnet['subnet_cidr']}} {
+           # Bootloaders
+           {{if 'bootloader' in dhcp_subnet and dhcp_subnet['bootloader']}}
+           {{dhcp_subnet['bootloader']}}
+           {{endif}}
+           ignore-client-uids true;
+           {{if dhcp_subnet.get('dns_servers')}}
+           option dhcp6.name-servers {{dhcp_subnet['dns_servers'] | commalist}};
+           {{endif}}
+           option domain-name "{{dhcp_subnet['domain_name']}}";
+           {{if dhcp_subnet['search_list'] }}
+           option dhcp6.domain-search {{dhcp_subnet['search_list'] | quoted_commalist}};
+           {{endif}}
+
+           # DHCPv6 does not have a router option (although there has been a
+           # draft proposal for one).  Clients should get their routes from
+           # route advertisements, or use custom options configured into both
+           # the server and the client:
+           # http://www.isc.org/blogs/routing-configuration-over-dhcpv6-2/
+           #
+           #option routers {{dhcp_subnet['router_ip']}};
+
+           {{if dhcp_subnet['ntp_servers_ipv4']}}
+           option ntp-servers {{dhcp_subnet['ntp_servers_ipv4']}};
+           {{endif}}
+           {{if dhcp_subnet['ntp_servers_ipv6']}}
+           option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
+           {{endif}}
+
+           #
+           # Subnet DHCP snippets
+           #
+           {{if len(dhcp_subnet['dhcp_snippets']) == 0}}
+           # No DHCP snippets defined for subnet
+           {{endif}}
+           {{for dhcp_snippet in dhcp_subnet['dhcp_snippets']}}
+           # Name: {{dhcp_snippet['name']}}
+           {{if dhcp_snippet['description'] != ''}}
+           # Description: {{dhcp_snippet['description'] | oneline}}
+           {{endif}}
+           {{for line in dhcp_snippet['value'].splitlines()}}
+           {{line}}
+           {{endfor}}
+           {{endfor}}
+
+           {{for pool in dhcp_subnet['pools']}}
+           pool6 {
+              {{if len(pool['dhcp_snippets']) == 0}}
+              # No DHCP snippets for pool
+              {{endif}}
+              {{for dhcp_snippet in pool['dhcp_snippets']}}
+              {{if dhcp_snippet['description'] != ''}}
+              # Description: {{dhcp_snippet['description'] | oneline}}
+              {{endif}}
+              {{for line in dhcp_snippet['value'].splitlines()}}
+              {{line}}
+              {{endfor}}
+              {{endfor}}
+
+              range6 {{pool['ip_range_low']}} {{pool['ip_range_high']}};
+           }
+           {{endfor}}
+    }
+    {{endfor}}
+}
+{{endfor}}
+
+#
+# Hosts
+#
+{{for host in hosts}}
+# {{host['host']}}
+host {{host['mac'].replace(":", "-")}} {
+   #
+   # Node DHCP snippets
+   #
+   {{if len(host['dhcp_snippets']) == 0}}
+   # No DHCP snippets defined for host
+   {{endif}}
+   {{for dhcp_snippet in host['dhcp_snippets']}}
+   # Name: {{dhcp_snippet['name']}}
+   {{if dhcp_snippet['description'] != ''}}
+   # Description: {{dhcp_snippet['description'] | oneline}}
+   {{endif}}
+   {{for line in dhcp_snippet['value'].splitlines()}}
+   {{line}}
+   {{endfor}}
+   {{endfor}}
+
+   hardware ethernet {{host['mac']}};
+   fixed-address6 {{host['ip']}};
+}
+{{endfor}}
+
+omapi-port 7912;
+key omapi_key {
+    algorithm HMAC-MD5;
+    secret "{{omapi_key}}";
+};
+omapi-key omapi_key;

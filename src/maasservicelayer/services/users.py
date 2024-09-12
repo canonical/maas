@@ -31,6 +31,9 @@ class UsersService(Service):
     async def get_user_profile(self, username: str) -> UserProfile | None:
         return await self.users_repository.get_user_profile(username)
 
+    async def get_user_apikeys(self, username: str) -> list[str] | None:
+        return await self.users_repository.get_user_apikeys(username)
+
     async def update(
         self, user_id: int, resource: CreateOrUpdateResource
     ) -> User:

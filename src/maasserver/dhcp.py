@@ -3,7 +3,7 @@
 
 """DHCP management module."""
 
-
+import base64
 from collections import defaultdict, namedtuple
 from itertools import groupby
 from operator import itemgetter
@@ -41,6 +41,13 @@ from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.dhcp import (
+    DHCPv4_CONFIG_FILE,
+    DHCPv4_INTERFACES_FILE,
+    DHCPv6_CONFIG_FILE,
+    DHCPv6_INTERFACES_FILE,
+)
+from provisioningserver.dhcp.config import get_config_v4, get_config_v6
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
@@ -842,6 +849,49 @@ DHCPConfigurationForRack = namedtuple(
         "global_dhcp_snippets",
     ),
 )
+
+
+def generate_dhcp_configuration(rack_controller):
+    # Get configuration for both IPv4 and IPv6.
+    config = get_dhcp_configuration(rack_controller)
+
+    # Fix interfaces to go over the wire.
+    interfaces_v4 = " ".join(sorted(name for name in config.interfaces_v4))
+    interfaces_v6 = " ".join(sorted(name for name in config.interfaces_v6))
+
+    result = {}
+
+    result[DHCPv4_CONFIG_FILE] = base64.b64encode(
+        get_config_v4(
+            template_name="dhcpd.conf.template",
+            global_dhcp_snippets=config.global_dhcp_snippets,
+            failover_peers=config.failover_peers_v4,
+            shared_networks=config.shared_networks_v4,
+            hosts=config.hosts_v4,
+            omapi_key=config.omapi_key,
+        ).encode("utf-8")
+    ).decode("utf-8")
+
+    result[DHCPv4_INTERFACES_FILE] = base64.b64encode(
+        interfaces_v4.encode("utf-8")
+    ).decode("utf-8")
+
+    result[DHCPv6_CONFIG_FILE] = base64.b64encode(
+        get_config_v6(
+            template_name="dhcpd6.conf.template",
+            global_dhcp_snippets=config.global_dhcp_snippets,
+            failover_peers=config.failover_peers_v6,
+            shared_networks=config.shared_networks_v6,
+            hosts=config.hosts_v6,
+            omapi_key=config.omapi_key,
+        ).encode("utf-8")
+    ).decode("utf-8")
+
+    result[DHCPv6_INTERFACES_FILE] = base64.b64encode(
+        interfaces_v6.encode("utf-8")
+    ).decode("utf-8")
+
+    return result
 
 
 @asynchronous

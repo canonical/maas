@@ -91,6 +91,19 @@ ConfigTable = Table(
     Column("value", JSONB, nullable=True),
 )
 
+ConsumerTable = Table(
+    "piston3_consumer",
+    METADATA,
+    Column("id", BigInteger, primary_key=True, unique=True),
+    Column("name", String(255), nullable=False),
+    Column("description", String, nullable=False),
+    Column("key", String(18), nullable=False),
+    Column("secret", String(32), nullable=False),
+    Column("status", String(16), nullable=False),
+    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
+)
+
+
 DefaultResourceTable = Table(
     "maasserver_defaultresource",
     METADATA,
@@ -657,6 +670,27 @@ TagTable = Table(
     Column("definition", Text, nullable=False),
     Column("comment", Text, nullable=False),
     Column("kernel_opts", Text, nullable=False),
+)
+
+TokenTable = Table(
+    "piston3_token",
+    METADATA,
+    Column("id", BigInteger, primary_key=True),
+    Column("key", String(18), nullable=False),
+    Column("secret", String(32), nullable=False),
+    Column("verifier", String(10), nullable=False),
+    Column("token_type", Integer, nullable=False),
+    Column("timestamp", Integer, nullable=False),
+    Column("is_approved", Boolean, nullable=False),
+    Column("callback", String(255), nullable=True),
+    Column("callback_confirmed", Boolean, nullable=False),
+    Column(
+        "consumer_id",
+        BigInteger,
+        ForeignKey("piston3_cosumer.id"),
+        nullable=False,
+    ),
+    Column("user_id", Integer, ForeignKey("auth_user.id"), nullable=True),
 )
 
 UserProfileTable = Table(

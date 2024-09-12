@@ -1,5 +1,6 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
+import base64
 from datetime import datetime
 from operator import itemgetter
 import random
@@ -40,6 +41,10 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.twisted import always_fail_with, always_succeed_with
+from provisioningserver.dhcp import (
+    DHCPv4_INTERFACES_FILE,
+    DHCPv6_INTERFACES_FILE,
+)
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
@@ -2790,6 +2795,55 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             interfaces=interfaces_v6,
             global_dhcp_snippets=config.global_dhcp_snippets,
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_generate_dhcp_configuration_for_both_ipv4_and_ipv6(self):
+        # ... when DHCP_CONNECT is True.
+        self.patch(dhcp.settings, "DHCP_CONNECT", True)
+        rack_controller, dhcp_config = yield deferToDatabase(
+            self.create_rack_controller
+        )
+
+        interfaces_v4 = " ".join(
+            sorted(name for name in dhcp_config.interfaces_v4)
+        )
+        interfaces_v6 = " ".join(
+            sorted(name for name in dhcp_config.interfaces_v6)
+        )
+
+        get_config_v4_stub = self.patch(dhcp, "get_config_v4")
+        get_config_v6_stub = self.patch(dhcp, "get_config_v6")
+
+        get_config_v4_stub.return_value = ""
+        get_config_v6_stub.return_value = ""
+
+        result = yield deferToDatabase(
+            dhcp.generate_dhcp_configuration, rack_controller
+        )
+        get_config_v4_stub.assert_called_once_with(
+            template_name="dhcpd.conf.template",
+            global_dhcp_snippets=dhcp_config.global_dhcp_snippets,
+            failover_peers=dhcp_config.failover_peers_v4,
+            shared_networks=dhcp_config.shared_networks_v4,
+            hosts=dhcp_config.hosts_v4,
+            omapi_key=dhcp_config.omapi_key,
+        )
+        get_config_v6_stub.assert_called_once_with(
+            template_name="dhcpd6.conf.template",
+            global_dhcp_snippets=dhcp_config.global_dhcp_snippets,
+            failover_peers=dhcp_config.failover_peers_v6,
+            shared_networks=dhcp_config.shared_networks_v6,
+            hosts=dhcp_config.hosts_v6,
+            omapi_key=dhcp_config.omapi_key,
+        )
+
+        assert result[DHCPv4_INTERFACES_FILE] == base64.b64encode(
+            interfaces_v4.encode("utf-8")
+        ).decode("utf-8")
+        assert result[DHCPv6_INTERFACES_FILE] == base64.b64encode(
+            interfaces_v6.encode("utf-8")
+        ).decode("utf-8")
 
     @wait_for_reactor
     @inlineCallbacks

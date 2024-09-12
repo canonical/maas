@@ -1,0 +1,214 @@
+# WARNING: Do not edit /var/lib/maas/dhcpd.conf yourself.  MAAS will
+# overwrite any changes made there.  Instead, you can modify dhcpd.conf by
+# using DHCP snippets over the API or through the web interface.
+
+option arch code 93 = unsigned integer 16; # RFC4578
+option path-prefix code 210 = text; #RFC5071
+
+#
+# Shorter lease time for PXE booting
+#
+class "PXE" {
+   match if substring (option vendor-class-identifier, 0, 3) = "PXE";
+   default-lease-time 30;
+   max-lease-time 30;
+}
+
+#
+# Define lease time globally (can be overriden globally or per subnet
+# with a DHCP snippet)
+#
+default-lease-time 600;
+max-lease-time 600;
+
+#
+# IPXE Options
+#
+option space ipxe;
+option ipxe-encap-opts code 175 = encapsulate ipxe;
+option ipxe.http      code 19 = unsigned integer 8;
+option ipxe.bzimage   code 24 = unsigned integer 8;
+option ipxe.efi       code 36 = unsigned integer 8;
+
+#
+# Global DHCP snippets
+#
+{{if len(global_dhcp_snippets) == 0}}
+# No global DHCP snippets defined
+{{endif}}
+{{for global_dhcp_snippet in global_dhcp_snippets}}
+# Name: {{global_dhcp_snippet['name']}}
+{{if global_dhcp_snippet['description'] != ''}}
+# Description: {{global_dhcp_snippet['description'] | oneline}}
+{{endif}}
+{{global_dhcp_snippet['value']}}
+{{endfor}}
+
+#
+# Failover Peers
+#
+{{for failover_peer in failover_peers}}
+failover peer "{{failover_peer["name"]}}" {
+    {{failover_peer["mode"]}};
+    address {{failover_peer["address"]}};
+    peer address {{failover_peer["peer_address"]}};
+    max-response-delay 60;
+    max-unacked-updates 10;
+    load balance max seconds 3;
+    {{if failover_peer["mode"] == "primary"}}
+    mclt 3600;
+    split 255;
+    {{endif}}
+}
+{{endfor}}
+
+#
+# Networks
+#
+{{for shared_network in shared_networks}}
+shared-network {{shared_network["name"]}} {
+    {{for dhcp_subnet in shared_network["subnets"]}}
+    subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
+           ignore-client-uids true;
+           {{if dhcp_subnet.get('next_server')}}
+           next-server {{dhcp_subnet['next_server']}};
+           {{endif}}
+           option subnet-mask {{dhcp_subnet['subnet_mask']}};
+           option broadcast-address {{dhcp_subnet['broadcast_ip']}};
+           {{if dhcp_subnet.get('dns_servers')}}
+           option domain-name-servers {{dhcp_subnet['dns_servers'] | commalist}};
+           {{endif}}
+           option domain-name "{{dhcp_subnet['domain_name']}}";
+           {{if dhcp_subnet['search_list']}}
+           option domain-search {{dhcp_subnet['search_list'] | quoted_commalist}};
+           {{endif}}
+           {{if dhcp_subnet['router_ip']}}
+           option routers {{dhcp_subnet['router_ip']}};
+           {{endif}}
+
+           {{if dhcp_subnet['ntp_servers_ipv4']}}
+           option ntp-servers {{dhcp_subnet['ntp_servers_ipv4']}};
+           {{endif}}
+           {{if dhcp_subnet['ntp_servers_ipv6']}}
+           option dhcp6.sntp-servers {{dhcp_subnet['ntp_servers_ipv6']}};
+           {{endif}}
+           {{if shared_network['mtu'] and shared_network['mtu'] != 1500}}
+           option interface-mtu {{shared_network['mtu']}};
+           {{endif}}
+
+           {{if dhcp_subnet.get('bootloader')}}
+           #
+           # Bootloaders
+           #
+           {{dhcp_subnet['bootloader']}}
+           {{endif}}
+
+           #
+           # Subnet DHCP snippets
+           #
+           {{if len(dhcp_subnet['dhcp_snippets']) == 0}}
+           # No DHCP snippets defined for subnet
+           {{endif}}
+           {{for dhcp_snippet in dhcp_subnet['dhcp_snippets']}}
+           # Name: {{dhcp_snippet['name']}}
+           {{if dhcp_snippet['description'] != ''}}
+           # Description: {{dhcp_snippet['description'] | oneline}}
+           {{endif}}
+           {{for line in dhcp_snippet['value'].splitlines()}}
+           {{line}}
+           {{endfor}}
+           {{endfor}}
+
+           {{for pool in dhcp_subnet['pools']}}
+           pool {
+              {{if pool.get('failover_peer')}}
+              failover peer "{{pool['failover_peer']}}";
+              {{endif}}
+
+              {{if len(pool['dhcp_snippets']) == 0}}
+              # No DHCP snippets for pool
+              {{endif}}
+              {{for dhcp_snippet in pool['dhcp_snippets']}}
+              {{if dhcp_snippet['description'] != ''}}
+              # Description: {{dhcp_snippet['description'] | oneline}}
+              {{endif}}
+              {{for line in dhcp_snippet['value'].splitlines()}}
+              {{line}}
+              {{endfor}}
+              {{endfor}}
+
+              range {{pool['ip_range_low']}} {{pool['ip_range_high']}};
+           }
+           {{endfor}}
+    }
+    {{endfor}}
+}
+{{endfor}}
+
+#
+# Hosts
+#
+{{for host in hosts}}
+# {{host['host']}}
+host {{host['mac'].replace(":", "-")}} {
+   #
+   # Node DHCP snippets
+   #
+   {{if len(host['dhcp_snippets']) == 0}}
+   # No DHCP snippets defined for host
+   {{endif}}
+   {{for dhcp_snippet in host['dhcp_snippets']}}
+   # Name: {{dhcp_snippet['name']}}
+   {{if dhcp_snippet['description'] != ''}}
+   # Description: {{dhcp_snippet['description'] | oneline}}
+   {{endif}}
+   {{for line in dhcp_snippet['value'].splitlines()}}
+   {{line}}
+   {{endfor}}
+   {{endfor}}
+
+   hardware ethernet {{host['mac']}};
+   fixed-address {{host['ip']}};
+}
+{{endfor}}
+
+#
+# Notify MAAS
+#
+on commit {
+   set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+   set clip = binary-to-ascii(10, 8, ".", leased-address);
+   set cllt = binary-to-ascii(10, 32, "", encode-int(lease-time, 32));
+   set clht = pick-first-value(option host-name, "(none)");
+   execute(
+       "{{dhcp_helper}}", "notify",
+       "--action", "commit", "--mac", clhw,
+       "--ip-family", "ipv4", "--ip", clip,
+       "--lease-time", cllt, "--hostname", clht,
+       "--socket", "{{dhcp_socket}}");
+}
+on expiry {
+   set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+   set clip = binary-to-ascii(10, 8, ".", leased-address);
+   execute(
+       "{{dhcp_helper}}", "notify",
+       "--action", "expiry", "--mac", clhw,
+       "--ip-family", "ipv4", "--ip", clip,
+       "--socket", "{{dhcp_socket}}");
+}
+on release {
+   set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+   set clip = binary-to-ascii(10, 8, ".", leased-address);
+   execute(
+       "{{dhcp_helper}}", "notify",
+       "--action", "release", "--mac", clhw,
+       "--ip-family", "ipv4", "--ip", clip,
+       "--socket", "{{dhcp_socket}}");
+}
+
+omapi-port 7911;
+key omapi_key {
+    algorithm HMAC-MD5;
+    secret "{{omapi_key}}";
+};
+omapi-key omapi_key;

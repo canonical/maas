@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path"
@@ -43,6 +44,7 @@ import (
 	"go.temporal.io/sdk/converter"
 	"gopkg.in/yaml.v3"
 
+	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/cache"
 	"maas.io/core/src/maasagent/internal/dhcp"
 	"maas.io/core/src/maasagent/internal/httpproxy"
@@ -53,7 +55,8 @@ import (
 )
 
 const (
-	defaultTemporalPort = 5271
+	defaultTemporalPort        = 5271
+	defaultMAASInternalAPIPort = 5242
 )
 
 // config represents a necessary set of configuration options for MAAS Agent
@@ -268,6 +271,27 @@ func setupMetrics(meterProvider *metric.MeterProvider) error {
 	return server.Serve(listener)
 }
 
+func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
+	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      ca,
+		// NOTE: this should be configurable.
+		// Right now it is hardcoded because we use MAAS self-signed
+		// certificate for mTLS. But that needs to be refactored once
+		// we start supporting custom certificates for mTLS.
+		ServerName: "maas",
+	}
+
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	return http.Client{
+		Transport: transport,
+	}
+}
+
 func Run() int {
 	fatal := make(chan error)
 
@@ -306,6 +330,18 @@ func Run() int {
 		return 1
 	}
 
+	u := &url.URL{
+		Scheme: "https",
+		Host:   net.JoinHostPort(cfg.Controllers[0], strconv.Itoa(defaultMAASInternalAPIPort)),
+		Path:   "/MAAS/a/v3internal",
+	}
+
+	u.RawPath = u.EscapedPath()
+
+	httpClient := setupHTTPClient(cert, ca)
+
+	apiClient := apiclient.NewAPIClient(u, &httpClient)
+
 	var workerPool worker.WorkerPool
 
 	httpProxyCache, err := cache.NewFileCache(
@@ -320,7 +356,7 @@ func Run() int {
 
 	powerService := power.NewPowerService(cfg.SystemID, &workerPool)
 	httpProxyService := httpproxy.NewHTTPProxyService(runDir, httpProxyCache)
-	dhcpService := dhcp.NewDHCPService(cfg.SystemID)
+	dhcpService := dhcp.NewDHCPService(cfg.SystemID, dhcp.WithAPIClient(apiClient))
 
 	workerPool = *worker.NewWorkerPool(cfg.SystemID, temporalClient,
 		worker.WithMainWorkerTaskQueueSuffix("agent:main"),

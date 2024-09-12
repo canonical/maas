@@ -75,3 +75,14 @@ class TestUsersService:
         users_repository_mock.update_profile.assert_called_once_with(
             user_id=1, resource=builder.build()
         )
+
+    async def test_get_user_apikeys(self) -> None:
+        users_repository_mock = Mock(UsersRepository)
+        users_repository_mock.get_user_apikeys = AsyncMock()
+        users_service = UsersService(
+            Mock(AsyncConnection), users_repository=users_repository_mock
+        )
+        await users_service.get_user_apikeys(username="username")
+        users_repository_mock.get_user_apikeys.assert_called_once_with(
+            "username"
+        )

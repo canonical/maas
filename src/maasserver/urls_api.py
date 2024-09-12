@@ -9,6 +9,7 @@ import itertools
 from django.urls import re_path as django_re_path
 
 from maasserver.api.account import AccountHandler
+from maasserver.api.agent import AgentConfigHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.bcache import BcacheHandler, BcachesHandler
 from maasserver.api.bcache_cacheset import (
@@ -356,6 +357,9 @@ image_sync_progress_handler = OperationsResource(
 )
 images_sync_progress_handler = OperationsResource(
     ImagesSyncProgressHandler, authentication=api_auth
+)
+agent_config_handler = OperationsResource(
+    AgentConfigHandler, authentication=api_auth
 )
 
 
@@ -797,6 +801,11 @@ patterns += [
         r"^images-sync-progress/$",
         images_sync_progress_handler,
         name="images_sync_progress_handler",
+    ),
+    re_path(
+        r"^agents/(?P<system_id>[^/]+)/services/(?P<service_name>[^/]+)/config/$",
+        agent_config_handler,
+        name="agent_config_handler",
     ),
 ]
 

@@ -430,6 +430,8 @@ ServiceLayerRule = Rule(
     Allow("starlette.datastructures.Headers"),
     Allow("yarl|yarl.**"),
     Allow(StandardLibraries),
+    # TODO: Remove when we can do everything without Django ORM
+    Allow("oauthlib.oauth1"),
 )
 
 Tests = files(
