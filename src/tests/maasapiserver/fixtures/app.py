@@ -307,7 +307,7 @@ async def enable_rbac(fixture: Fixture, mock_aioresponse) -> None:
         "created": now,
         "updated": now,
         "value": {
-            "key": "mykey",
+            "key": "x0NeASLPFhOFfq3Q9M0joMveI4HjGwEuJ9dtX/HTSRY=",
             "url": "",
             "user": "admin@candid",
             "domain": "",

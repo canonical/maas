@@ -77,6 +77,18 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
     async def _created_instance(self, fixture: Fixture) -> ResourcePool:
         return await create_test_resource_pool(fixture)
 
+    @pytest.mark.parametrize("num_objects", [10])
+    async def list_ids(
+        self,
+        repository_instance: ResourcePoolRepository,
+        _setup_test_list: list[ResourcePool],
+    ) -> None:
+        resource_pools = _setup_test_list
+        ids = await repository_instance.list_ids()
+        for rp in resource_pools:
+            assert rp.id in ids
+        assert len(ids) == len(resource_pools)
+
 
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio

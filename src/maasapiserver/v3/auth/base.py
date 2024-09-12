@@ -1,4 +1,4 @@
-import typing
+from typing import Callable, Optional
 
 from fastapi import Depends
 from starlette.requests import Request
@@ -8,6 +8,7 @@ from maasapiserver.v3.api import services
 from maasapiserver.v3.auth.openapi import OpenapiOAuth2PasswordBearer
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     ForbiddenException,
@@ -36,12 +37,16 @@ def get_authenticated_user(request: Request) -> AuthenticatedUser | None:
     return request.state.authenticated_user
 
 
-def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
+def check_permissions(
+    required_roles: set[UserRole],
+    rbac_permissions: Optional[set[RbacPermission]] = None,
+) -> Callable:
     """
     Decorator to check if the authenticated user has the required roles to access an endpoint.
 
     Args:
         required_roles (Set[UserRole]): The set of roles required to access the endpoint.
+        rbac_parmissions: (set[RbacPermission], optional): The set of RBAC permissions to query for the request.
 
     Returns:
         Callable: Decorator function that checks permissions and raises exceptions if necessary.
@@ -72,10 +77,9 @@ def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
             UnauthorizedException: If the user is not authenticated.
             ForbiddenException: If the user lacks the required roles.
         """
+        external_auth_info = await services.external_auth.get_external_auth()
         if not authenticated_user:
-            if (
-                external_auth_info := await services.external_auth.get_external_auth()
-            ):
+            if external_auth_info:
                 await services.external_auth.raise_discharge_required_exception(
                     external_auth_info,
                     extract_absolute_uri(request),
@@ -100,6 +104,31 @@ def check_permissions(required_roles: set[UserRole]) -> typing.Callable:
                         )
                     ]
                 )
+        if external_auth_info and rbac_permissions:
+            rbac_client = await services.external_auth.get_rbac_client()
+            pool_responses = await rbac_client.get_resource_pool_ids(
+                user=authenticated_user.username, permissions=rbac_permissions
+            )
+            all_resource_pools = set()
+            # if any of the response has the access_all property, we have to fetch all the resource pools ids
+            # TODO: find a better way to do this to avoid querying the db every time
+            if any(r.access_all for r in pool_responses):
+                all_resource_pools = await services.resource_pools.list_ids()
+            for resp in pool_responses:
+                pools = (
+                    all_resource_pools if resp.access_all else resp.resources
+                )
+                match resp.permission:
+                    case RbacPermission.VIEW:
+                        authenticated_user.visible_pools = pools
+                    case RbacPermission.VIEW_ALL:
+                        authenticated_user.view_all_pools = pools
+                    case RbacPermission.DEPLOY_MACHINES:
+                        authenticated_user.deploy_pools = pools
+                    case RbacPermission.ADMIN_MACHINES:
+                        authenticated_user.admin_pools = pools
+                    case RbacPermission.EDIT:
+                        authenticated_user.edit_pools = pools
         return authenticated_user
 
     return wrapper

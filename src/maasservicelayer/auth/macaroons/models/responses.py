@@ -7,6 +7,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, root_validator, validator
 
 from maasservicelayer.auth.macaroons.models.base import Resource
+from maasservicelayer.enums.rbac import RbacPermission
 
 
 class UserDetailsResponse(BaseModel):
@@ -45,7 +46,7 @@ class PermissionResourcesMapping(BaseModel):
     as there are validators in place to assign it the correct value.
     """
 
-    permission: str
+    permission: RbacPermission
     resources: Optional[Sequence[int]]
     access_all: bool = False
 

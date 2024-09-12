@@ -27,6 +27,7 @@ from maasservicelayer.auth.macaroons.models.responses import (
     UpdateResourcesResponse,
     UserDetailsResponse,
 )
+from maasservicelayer.enums.rbac import RbacPermission, RbacResourceType
 
 
 @pytest.fixture
@@ -127,7 +128,7 @@ class TestRbacAsyncClient:
             payload=expected_response,
         )
 
-        resp = await rbac_client.get_resources("resource-pool")
+        resp = await rbac_client.get_resources(RbacResourceType.RESOURCE_POOL)
         resources = [Resource.parse_obj(res) for res in expected_response]
         assert resp == ResourceListResponse(resources=resources)
         mock_aioresponse.assert_called_once_with(
@@ -150,7 +151,9 @@ class TestRbacAsyncClient:
             payload=expected_response,
         )
 
-        resp = await rbac_client.update_resources("resource-pool", req)
+        resp = await rbac_client.update_resources(
+            RbacResourceType.RESOURCE_POOL, req
+        )
 
         assert resp == UpdateResourcesResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_once_with(
@@ -177,7 +180,9 @@ class TestRbacAsyncClient:
             payload=expected_response,
         )
 
-        resp = await rbac_client.update_resources("resource-pool", req)
+        resp = await rbac_client.update_resources(
+            RbacResourceType.RESOURCE_POOL, req
+        )
         assert resp == UpdateResourcesResponse.parse_obj(expected_response)
         mock_aioresponse.assert_called_once_with(
             method="POST",
@@ -204,7 +209,9 @@ class TestRbacAsyncClient:
         )
 
         with pytest.raises(SyncConflictException):
-            await rbac_client.update_resources("resource-pool", req)
+            await rbac_client.update_resources(
+                RbacResourceType.RESOURCE_POOL, req
+            )
 
         mock_aioresponse.assert_called_once_with(
             method="POST",
@@ -223,7 +230,7 @@ class TestRbacAsyncClient:
         )
 
         resp = await rbac_client.allowed_for_user(
-            "resource-pool", "user", ["admin"]
+            RbacResourceType.RESOURCE_POOL, "user", [RbacPermission.MAAS_ADMIN]
         )
 
         perms = [
@@ -251,7 +258,7 @@ class TestRbacAsyncClient:
         )
 
         resp = await rbac_client.allowed_for_user(
-            "resource-pool", "user", ["admin"]
+            RbacResourceType.RESOURCE_POOL, "user", [RbacPermission.MAAS_ADMIN]
         )
         perms = [
             PermissionResourcesMapping(permission=perm, resources=res)

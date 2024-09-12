@@ -119,5 +119,10 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
             )
         return ResourcePool(**new_resource_pool._asdict())
 
+    async def list_ids(self) -> set[int]:
+        stmt = select(ResourcePoolTable.c.id).select_from(ResourcePoolTable)
+        result = (await self.connection.execute(stmt)).all()
+        return {row.id for row in result}
+
     def _select_all_statement(self) -> Select[Any]:
         return select(*RESOURCE_POOLS_FIELDS).select_from(ResourcePoolTable)

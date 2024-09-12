@@ -42,3 +42,7 @@ class ResourcePoolsService(Service):
         self, id: int, resource: CreateOrUpdateResource
     ) -> ResourcePool:
         return await self.resource_pools_repository.update(id, resource)
+
+    async def list_ids(self) -> set[int]:
+        """Returns all the ids of the resource pools in the db."""
+        return await self.resource_pools_repository.list_ids()

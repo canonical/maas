@@ -87,7 +87,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
     def __init__(self, rbac_url: str, auth_info: AuthInfo):
         super().__init__(rbac_url, auth_info)
 
-    def _get_resource_type_url(self, resource_type: str) -> str:
+    def _get_resource_type_url(self, resource_type: RbacResourceType) -> str:
         """Return the URL for `resource_type`."""
         return self._url + quote(
             f"{self.API_BASE_URL}/resources/{resource_type}"
@@ -99,7 +99,9 @@ class RbacAsyncClient(MacaroonAsyncClient):
         details = await self._request(method="GET", url=url)
         return UserDetailsResponse.parse_obj(details)
 
-    async def get_resources(self, resource_type: str) -> ResourceListResponse:
+    async def get_resources(
+        self, resource_type: RbacResourceType
+    ) -> ResourceListResponse:
         """Return list of resources with `resource_type`."""
         result = await self._request(
             method="GET", url=self._get_resource_type_url(resource_type)
@@ -110,7 +112,7 @@ class RbacAsyncClient(MacaroonAsyncClient):
 
     async def update_resources(
         self,
-        resource_type: str,
+        resource_type: RbacResourceType,
         request: UpdateResourcesRequest,
     ) -> UpdateResourcesResponse:
         """Put all the resources for `resource_type`.

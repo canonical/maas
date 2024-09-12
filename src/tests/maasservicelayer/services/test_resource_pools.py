@@ -79,6 +79,20 @@ class TestResourcePoolsService:
         assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []
 
+    async def test_list_ids(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        resource_pool_repository_mock = Mock(ResourcePoolRepository)
+        resource_pool_repository_mock.list_ids = AsyncMock(
+            return_value={1, 2, 3}
+        )
+        resource_pools_service = ResourcePoolsService(
+            connection=db_connection,
+            resource_pools_repository=resource_pool_repository_mock,
+        )
+        ids_list = await resource_pools_service.list_ids()
+        resource_pool_repository_mock.list_ids.assert_called_once()
+        assert ids_list == {1, 2, 3}
+
     async def test_get_by_id(self) -> None:
         db_connection = Mock(AsyncConnection)
         now = datetime.utcnow()
