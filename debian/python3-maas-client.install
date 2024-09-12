@@ -1,4 +1,3 @@
 debian/tmp/usr/lib/python3*/dist-packages/apiclient
 debian/tmp/usr/lib/python3*/dist-packages/maascli
-debian/tmp/usr/lib/python3*/dist-packages/maascommon
 debian/tmp/usr/lib/python3*/dist-packages/maas-*.egg-info
