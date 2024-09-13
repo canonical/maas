@@ -7,7 +7,7 @@ from sqlalchemy import delete, desc, insert, select, Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.operators import eq, le
 
-from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -30,11 +30,10 @@ class ZoneCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
         return self
 
 
-class ZonesFilterQueryBuilder(FilterQueryBuilder):
-    def with_ids(self, ids: list[int] | None) -> FilterQueryBuilder:
-        if ids is not None:
-            self.query.add_clause(ZoneTable.c.id.in_(ids))
-        return self
+class ZonesClauseFactory(ClauseFactory):
+    @classmethod
+    def with_ids(cls, ids: list[int]) -> Clause:
+        return Clause(condition=ZoneTable.c.id.in_(ids))
 
 
 class ZonesRepository(BaseRepository[Zone]):
@@ -76,17 +75,16 @@ class ZonesRepository(BaseRepository[Zone]):
         return Zone(**zone._asdict())
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[Zone]:
-        # TODO: use the query for the filters
         stmt = (
             self._select_all_statement()
             .order_by(desc(ZoneTable.c.id))
             .limit(size + 1)  # Retrieve one more element to get the next token
         )
 
-        if query:
-            stmt = stmt.where(*query.get_clauses())
+        if query and query.where:
+            stmt = stmt.where(query.where.condition)
 
         if token is not None:
             stmt = stmt.where(le(ZoneTable.c.id, int(token)))

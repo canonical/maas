@@ -29,6 +29,7 @@ from maasapiserver.v3.api.public.models.responses.zones import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import (
     ZoneCreateOrUpdateResourceBuilder,
 )
@@ -66,7 +67,7 @@ class ZonesHandler(Handler):
         zones = await services.zones.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
-            query=filters.to_query(),
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if zones.next_token:

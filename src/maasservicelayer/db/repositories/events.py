@@ -1,13 +1,13 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
 
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import case, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le, ne, or_
 
-from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -17,18 +17,15 @@ from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import Event
 
 
-class EventsFilterQueryBuilder(FilterQueryBuilder):
-    def with_system_ids(
-        self, system_ids: Optional[list[str]]
-    ) -> FilterQueryBuilder:
-        if system_ids is not None:
-            self.query.add_clause(
-                or_(
-                    EventTable.c.node_system_id.in_(system_ids),
-                    NodeTable.c.system_id.in_(system_ids),
-                )
+class EventsClauseFactory(ClauseFactory):
+    @classmethod
+    def with_system_ids(cls, system_ids: list[str]) -> Clause:
+        return Clause(
+            condition=or_(
+                EventTable.c.node_system_id.in_(system_ids),
+                NodeTable.c.system_id.in_(system_ids),
             )
-        return self
+        )
 
 
 class EventsRepository(BaseRepository[Event]):
@@ -39,15 +36,15 @@ class EventsRepository(BaseRepository[Event]):
         raise NotImplementedError("Not implemented yet.")
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[Event]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(EventTable.c.id))
             .limit(size + 1)
         )
-        if query:
-            stmt = stmt.where(*query.get_clauses())
+        if query and query.where:
+            stmt = stmt.where(query.where.condition)
 
         if token is not None:
             stmt = stmt.where(le(EventTable.c.id, int(token)))

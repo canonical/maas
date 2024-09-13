@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
@@ -55,7 +55,7 @@ class ZonesService(Service):
         return await self.zones_repository.find_by_name(name)
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery
+        self, token: str | None, size: int, query: QuerySpec
     ) -> ListResult[Zone]:
         return await self.zones_repository.list(
             token=token, size=size, query=query

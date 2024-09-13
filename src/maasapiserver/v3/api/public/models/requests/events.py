@@ -7,7 +7,8 @@ from fastapi import Query
 from pydantic import BaseModel, Field
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import Clause
+from maasservicelayer.db.repositories.events import EventsClauseFactory
 
 
 class EventsFiltersParams(BaseModel):
@@ -16,15 +17,12 @@ class EventsFiltersParams(BaseModel):
         Query(default=None, title="Filter by system id", alias="system_id")
     )
 
-    def to_query(self) -> FilterQuery:
-        # TODO: When the db layer will have removed all the dependencies from the api move this import at module level
-        from maasservicelayer.db.repositories.events import (
-            EventsFilterQueryBuilder,
-        )
-
-        return (
-            EventsFilterQueryBuilder().with_system_ids(self.system_ids).build()
-        )
+    def to_clause(self) -> Optional[Clause]:
+        if self.system_ids:
+            return EventsClauseFactory.with_system_ids(
+                system_ids=self.system_ids
+            )
+        return None
 
     def to_href_format(self) -> str:
         if self.system_ids:

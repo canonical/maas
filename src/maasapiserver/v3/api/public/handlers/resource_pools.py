@@ -28,9 +28,10 @@ from maasapiserver.v3.auth.base import (
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolClauseFactory,
     ResourcePoolCreateOrUpdateResourceBuilder,
-    ResourcePoolFilterQueryBuilder,
 )
 from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.services import ServiceCollectionV3
@@ -74,15 +75,13 @@ class ResourcePoolHandler(Handler):
     ) -> Response:
         query = None
         if authenticated_user.rbac_permissions:
-            query = (
-                ResourcePoolFilterQueryBuilder()
-                .with_ids(
+            query = QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(
                     ids=(
                         authenticated_user.rbac_permissions.visible_pools
                         | authenticated_user.rbac_permissions.view_all_pools
                     )
                 )
-                .build()
             )
         resource_pools = await services.resource_pools.list(
             token=token_pagination_params.token,

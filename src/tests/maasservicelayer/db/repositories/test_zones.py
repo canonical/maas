@@ -4,13 +4,16 @@
 from datetime import datetime, timezone
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
+from maasservicelayer.db._debug import CompiledQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import (
     ZoneCreateOrUpdateResourceBuilder,
-    ZonesFilterQueryBuilder,
+    ZonesClauseFactory,
     ZonesRepository,
 )
 from maasservicelayer.db.tables import ZoneTable
@@ -20,6 +23,24 @@ from maasservicelayer.utils.date import utcnow
 from tests.fixtures.factories.zone import create_test_zone
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestZonesClauseFactory:
+    def test_factory(self):
+        clause = ZonesClauseFactory.with_ids([1, 2])
+
+        stmt = (
+            select(ZoneTable.c.id)
+            .select_from(ZoneTable)
+            .where(clause.condition)
+        )
+        assert (
+            str(CompiledQuery(stmt).sql)
+            == "SELECT maasserver_zone.id \nFROM maasserver_zone \nWHERE maasserver_zone.id IN (__[POSTCOMPILE_id_1])"
+        )
+        assert CompiledQuery(stmt).params == {
+            "id_1": [1, 2],
+        }
 
 
 class TestZoneCreateOrUpdateResourceBuilder:
@@ -95,13 +116,13 @@ class TestZonesRepository:
 
         zones_repository = ZonesRepository(db_connection)
 
-        query = ZonesFilterQueryBuilder().with_ids([1]).build()
+        query = QuerySpec(where=ZonesClauseFactory.with_ids([1]))
         zones = await zones_repository.list(None, 20, query)
         assert len(zones.items) == 1
         assert zones.items[0].id == 1
 
-        query = (
-            ZonesFilterQueryBuilder().with_ids([1, created_zone.id]).build()
+        query = QuerySpec(
+            where=ZonesClauseFactory.with_ids([1, created_zone.id])
         )
         zones = await zones_repository.list(None, 20, query)
         assert len(zones.items) == 2

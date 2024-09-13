@@ -21,6 +21,7 @@ from maasapiserver.v3.api.public.models.responses.events import (
 from maasapiserver.v3.auth.base import check_permissions
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -54,7 +55,7 @@ class EventsHandler(Handler):
         events = await services.events.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
-            query=filters.to_query(),
+            query=QuerySpec(where=filters.to_clause()),
         )
         next_link = None
         if events.next_token:

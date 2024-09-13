@@ -7,7 +7,7 @@ from typing import Any, Generic, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
@@ -63,7 +63,7 @@ class BaseRepository(ABC, Generic[T]):
 
     @abstractmethod
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[T]:
         pass
 

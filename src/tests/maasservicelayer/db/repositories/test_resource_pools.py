@@ -6,9 +6,10 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolClauseFactory,
     ResourcePoolCreateOrUpdateResourceBuilder,
-    ResourcePoolFilterQueryBuilder,
     ResourcePoolRepository,
 )
 from maasservicelayer.exceptions.catalog import (
@@ -45,24 +46,16 @@ class TestResourcePoolCreateOrUpdateResourceBuilder:
         }
 
 
-class TestResourcePoolFilterQueryBuilder:
+class TestResourcePoolClauseFactory:
     def test_builder(self) -> None:
-        filter_query = ResourcePoolFilterQueryBuilder().with_ids([]).build()
-        assert len(filter_query.get_clauses()) == 1
+        clause = ResourcePoolClauseFactory.with_ids([])
         assert str(
-            filter_query.get_clauses()[0].compile(
-                compile_kwargs={"literal_binds": True}
-            )
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_resourcepool.id IN (NULL) AND (1 != 1)")
 
-        filter_query = (
-            ResourcePoolFilterQueryBuilder().with_ids([1, 2, 3]).build()
-        )
-        assert len(filter_query.get_clauses()) == 1
+        clause = ResourcePoolClauseFactory.with_ids([1, 2, 3])
         assert str(
-            filter_query.get_clauses()[0].compile(
-                compile_kwargs={"literal_binds": True}
-            )
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
         ) == ("maasserver_resourcepool.id IN (1, 2, 3)")
 
 
@@ -124,9 +117,9 @@ class TestResourcePoolRepository:
         retrieved_resource_pools = await resource_pools_repository.list(
             token=None,
             size=20,
-            query=ResourcePoolFilterQueryBuilder()
-            .with_ids(selected_ids)
-            .build(),
+            query=QuerySpec(
+                where=ResourcePoolClauseFactory.with_ids(selected_ids)
+            ),
         )
         assert len(retrieved_resource_pools.items) == 2
         assert all(

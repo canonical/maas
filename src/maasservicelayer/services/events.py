@@ -3,7 +3,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.events import EventsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.events import Event
@@ -24,7 +24,7 @@ class EventsService(Service):
         )
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[Event]:
         return await self.events_repository.list(
             token=token, size=size, query=query

@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasservicelayer.db._debug import CompiledQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.events import (
-    EventsFilterQueryBuilder,
+    EventsClauseFactory,
     EventsRepository,
 )
 from maasservicelayer.db.tables import EventTable, NodeTable
@@ -24,11 +25,9 @@ from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
 
 
-class TestEventsFilterQueryBuilder:
-    def test_builder(self):
-        builder = EventsFilterQueryBuilder()
-        builder.with_system_ids(["1", "2", "3"])
-        query = builder.build()
+class TestEventsClauseFactory:
+    def test_factory(self):
+        clause = EventsClauseFactory.with_system_ids(["1", "2", "3"])
 
         stmt = (
             select(EventTable.c.id)
@@ -38,7 +37,7 @@ class TestEventsFilterQueryBuilder:
                 eq(NodeTable.c.id, EventTable.c.node_id),
                 isouter=True,
             )
-            .where(*query.get_clauses())
+            .where(clause.condition)
         )
         assert (
             str(CompiledQuery(stmt).sql)
@@ -48,7 +47,6 @@ class TestEventsFilterQueryBuilder:
             "node_system_id_1": ["1", "2", "3"],
             "system_id_1": ["1", "2", "3"],
         }
-        assert len(query.get_clauses()) == 1
 
 
 class TestEventsRepository(RepositoryCommonTests[Event]):
@@ -136,10 +134,10 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         assert events_result.next_token is None
         assert len(events_result.items) == 2
 
-        query = (
-            EventsFilterQueryBuilder()
-            .with_system_ids([created_machine.system_id])
-            .build()
+        query = QuerySpec(
+            where=EventsClauseFactory.with_system_ids(
+                [created_machine.system_id]
+            )
         )
         events_result = await repository_instance.list(
             token=None, size=10, query=query
@@ -148,8 +146,8 @@ class TestEventsRepository(RepositoryCommonTests[Event]):
         assert len(events_result.items) == 1
         assert events_result.items[0].id == event.id
 
-        query = (
-            EventsFilterQueryBuilder().with_system_ids(["NO MATCH"]).build()
+        query = QuerySpec(
+            where=EventsClauseFactory.with_system_ids(["NO MATCH"])
         )
         events_result = await repository_instance.list(
             token=None, size=10, query=query

@@ -7,7 +7,8 @@ from fastapi import Query
 from pydantic import BaseModel, Field, validator
 
 from maasapiserver.v3.api.public.models.requests.base import NamedBaseModel
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import Clause
+from maasservicelayer.db.repositories.zones import ZonesClauseFactory
 
 
 class ZonesFiltersParams(BaseModel):
@@ -16,13 +17,10 @@ class ZonesFiltersParams(BaseModel):
         Query(default=None, title="Filter by zone id", alias="id")
     )
 
-    def to_query(self) -> FilterQuery:
-        # TODO: When the db layer will have removed all the dependencies from the api move this import at module level
-        from maasservicelayer.db.repositories.zones import (
-            ZonesFilterQueryBuilder,
-        )
-
-        return ZonesFilterQueryBuilder().with_ids(self.ids).build()
+    def to_clause(self) -> Optional[Clause]:
+        if self.ids:
+            return ZonesClauseFactory.with_ids(self.ids)
+        return None
 
     def to_href_format(self) -> str:
         if self.ids:

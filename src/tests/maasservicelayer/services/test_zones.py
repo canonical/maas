@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.zones import ZonesRepository
 from maasservicelayer.exceptions.catalog import (
     BadRequestException,
@@ -167,7 +167,7 @@ class TestZonesService:
             zones_repository=zones_repository_mock,
             nodes_service=Mock(NodesService),
         )
-        query_mock = Mock(FilterQuery)
+        query_mock = Mock(QuerySpec)
         resource_pools_list = await resource_pools_service.list(
             token=None, size=1, query=query_mock
         )

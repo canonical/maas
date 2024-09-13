@@ -7,7 +7,7 @@ from sqlalchemy import desc, insert, select, Select, update
 from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.sql.operators import eq, le
 
-from maasservicelayer.db.filters import FilterQuery, FilterQueryBuilder
+from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -47,13 +47,10 @@ class ResourcePoolCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
         return self
 
 
-class ResourcePoolFilterQueryBuilder(FilterQueryBuilder):
-    def with_ids(
-        self, ids: Optional[list[int]]
-    ) -> "ResourcePoolFilterQueryBuilder":
-        if ids is not None:
-            self.query.add_clause(ResourcePoolTable.c.id.in_(ids))
-        return self
+class ResourcePoolClauseFactory(ClauseFactory):
+    @classmethod
+    def with_ids(cls, ids: Optional[list[int]]) -> Clause:
+        return Clause(condition=ResourcePoolTable.c.id.in_(ids))
 
 
 class ResourcePoolRepository(BaseRepository[ResourcePool]):
@@ -80,15 +77,15 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         return ResourcePool(**resource_pools._asdict())
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[ResourcePool]:
         stmt = (
             self._select_all_statement()
             .order_by(desc(ResourcePoolTable.c.id))
             .limit(size + 1)
         )
-        if query:
-            stmt = stmt.where(*query.get_clauses())
+        if query and query.where:
+            stmt = stmt.where(query.where.condition)
 
         if token is not None:
             stmt = stmt.where(le(ResourcePoolTable.c.id, int(token)))

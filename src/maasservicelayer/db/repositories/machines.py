@@ -8,7 +8,7 @@ from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
 from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
-from maasservicelayer.db.filters import FilterQuery
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
     CreateOrUpdateResource,
@@ -33,7 +33,7 @@ class MachinesRepository(BaseRepository[Machine]):
         raise NotImplementedError("Not implemented yet.")
 
     async def list(
-        self, token: str | None, size: int, query: FilterQuery | None = None
+        self, token: str | None, size: int, query: QuerySpec | None = None
     ) -> ListResult[Machine]:
         # TODO: use the query for the filters
         stmt = (

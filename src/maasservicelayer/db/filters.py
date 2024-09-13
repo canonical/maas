@@ -1,54 +1,42 @@
 #  Copyright 2024 Canonical Ltd.  This software is licensed under the
 #  GNU Affero General Public License version 3 (see the file LICENSE).
+from dataclasses import dataclass
 
-from abc import ABC
-
-from sqlalchemy.sql.operators import ColumnOperators
+from sqlalchemy import and_, ColumnElement, or_
 
 
-class FilterQuery:
-    """
-    Represents the filters for a query.
-    """
-
-    def __init__(self):
-        self.clauses = []
-
-    def add_clause(self, clause: ColumnOperators):
-        self.clauses.append(clause)
-
-    def get_clauses(self) -> list[ColumnOperators]:
-        return self.clauses
+@dataclass
+class Clause:
+    condition: ColumnElement
+    # This class will contain more info in the future. For example the joins required for a specific query.
 
     def __eq__(self, other):
         """Useful for tests"""
         if not isinstance(other, type(self)):
             return False
-
-        self_clauses = self.get_clauses()
-        other_clauses = other.get_clauses()
-
-        if len(self_clauses) != len(other_clauses):
-            return False
-
-        for self_clause, other_clause in zip(self_clauses, other_clauses):
-            if str(
-                self_clause.compile(compile_kwargs={"literal_binds": True})
-            ) != str(
-                other_clause.compile(compile_kwargs={"literal_binds": True})
-            ):
-                return False
-        return True
+        return self.condition.compare(other.condition)
 
 
-class FilterQueryBuilder(ABC):
+@dataclass
+class QuerySpec:
     """
-    In the repositories you might want to extend this builder so to keep a consistent approach across
-    all the repositories.
+    Contains the query specification to be executed.
     """
 
-    def __init__(self):
-        self.query = FilterQuery()
+    where: Clause | None = None
+    # In the future this is the right place where we will put additional query pieces
+    # order_by: Clause | None = None
 
-    def build(self) -> FilterQuery:
-        return self.query
+
+class ClauseFactory:
+    @classmethod
+    def or_clauses(cls, clauses: list[Clause]):
+        return Clause(
+            condition=or_(*[clause.condition for clause in clauses]),
+        )
+
+    @classmethod
+    def and_clauses(cls, clauses: list[Clause]):
+        return Clause(
+            condition=and_(*[clause.condition for clause in clauses]),
+        )
