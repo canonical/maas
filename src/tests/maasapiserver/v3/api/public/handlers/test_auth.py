@@ -74,7 +74,7 @@ class TestAuthApi:
     async def test_post_discharge_required_exception(
         self,
         services_mock: ServiceCollectionV3,
-        mocked_api_client_rbac: AsyncClient,
+        mocked_api_client_user_rbac: AsyncClient,
     ) -> None:
         services_mock.external_auth = Mock(ExternalAuthService)
         services_mock.external_auth.raise_discharge_required_exception = (
@@ -88,7 +88,7 @@ class TestAuthApi:
             return _dumps(*args, **(kwargs | {"default": lambda obj: "mock"}))
 
         with patch("json.dumps", custom_json_dumps):
-            response = await mocked_api_client_rbac.post(
+            response = await mocked_api_client_user_rbac.post(
                 f"{self.BASE_PATH}/login",
                 data={"username": "username", "password": "test"},
             )

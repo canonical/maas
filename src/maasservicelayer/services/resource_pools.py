@@ -5,6 +5,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.filters import FilterQuery
 from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolRepository,
@@ -32,10 +33,10 @@ class ResourcePoolsService(Service):
         return await self.resource_pools_repository.find_by_id(id)
 
     async def list(
-        self, token: str | None, size: int
+        self, token: str | None, size: int, query: FilterQuery | None = None
     ) -> ListResult[ResourcePool]:
         return await self.resource_pools_repository.list(
-            token=token, size=size
+            token=token, size=size, query=query
         )
 
     async def update(

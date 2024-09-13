@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
+    ResourcePoolFilterQueryBuilder,
     ResourcePoolRepository,
 )
 from maasservicelayer.exceptions.catalog import (
@@ -42,6 +43,27 @@ class TestResourcePoolCreateOrUpdateResourceBuilder:
             "created": now,
             "updated": now,
         }
+
+
+class TestResourcePoolFilterQueryBuilder:
+    def test_builder(self) -> None:
+        filter_query = ResourcePoolFilterQueryBuilder().with_ids([]).build()
+        assert len(filter_query.get_clauses()) == 1
+        assert str(
+            filter_query.get_clauses()[0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        ) == ("maasserver_resourcepool.id IN (NULL) AND (1 != 1)")
+
+        filter_query = (
+            ResourcePoolFilterQueryBuilder().with_ids([1, 2, 3]).build()
+        )
+        assert len(filter_query.get_clauses()) == 1
+        assert str(
+            filter_query.get_clauses()[0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        ) == ("maasserver_resourcepool.id IN (1, 2, 3)")
 
 
 class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
@@ -93,6 +115,25 @@ class TestResourcePoolRepo(RepositoryCommonTests[ResourcePool]):
 @pytest.mark.usefixtures("ensuremaasdb")
 @pytest.mark.asyncio
 class TestResourcePoolRepository:
+    async def test_list_with_query(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        resource_pools = await create_n_test_resource_pools(fixture, size=5)
+        resource_pools_repository = ResourcePoolRepository(db_connection)
+        selected_ids = [resource_pools[0].id, resource_pools[1].id]
+        retrieved_resource_pools = await resource_pools_repository.list(
+            token=None,
+            size=20,
+            query=ResourcePoolFilterQueryBuilder()
+            .with_ids(selected_ids)
+            .build(),
+        )
+        assert len(retrieved_resource_pools.items) == 2
+        assert all(
+            resource_pool.id in selected_ids
+            for resource_pool in retrieved_resource_pools.items
+        )
+
     async def test_create(self, db_connection: AsyncConnection) -> None:
         now = utcnow()
         resource_pools_repository = ResourcePoolRepository(db_connection)

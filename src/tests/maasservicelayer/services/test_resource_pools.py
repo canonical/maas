@@ -71,10 +71,10 @@ class TestResourcePoolsService:
             resource_pools_repository=resource_pool_repository_mock,
         )
         resource_pools_list = await resource_pools_service.list(
-            token=None, size=1
+            token=None, size=1, query=None
         )
         resource_pool_repository_mock.list.assert_called_once_with(
-            token=None, size=1
+            token=None, size=1, query=None
         )
         assert resource_pools_list.next_token is None
         assert resource_pools_list.items == []

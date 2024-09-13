@@ -5,6 +5,7 @@ from .fixtures.app import (
     app_with_mocked_services_admin,
     app_with_mocked_services_rbac,
     app_with_mocked_services_user,
+    app_with_mocked_services_user_rbac,
     authenticated_admin_api_client_v3,
     authenticated_api_client,
     authenticated_user,
@@ -17,6 +18,7 @@ from .fixtures.app import (
     mocked_api_client_rbac,
     mocked_api_client_session_id,
     mocked_api_client_user,
+    mocked_api_client_user_rbac,
     services_mock,
     user_session_id,
 )
@@ -48,10 +50,12 @@ __all__ = [
     "mocked_api_client_admin",
     "mocked_api_client_session_id",
     "mocked_api_client_rbac",
+    "mocked_api_client_user_rbac",
     "app_with_mocked_services",
     "app_with_mocked_services_user",
     "app_with_mocked_services_admin",
     "app_with_mocked_services_rbac",
+    "app_with_mocked_services_user_rbac",
     "transaction_middleware_class",
     "user_session_id",
 ]

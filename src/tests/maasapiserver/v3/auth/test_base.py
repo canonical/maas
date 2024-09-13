@@ -134,6 +134,23 @@ def auth_app(
     ) -> Optional[AuthenticatedUser]:
         return authenticated_user
 
+    @app.post(
+        f"{V3_API_PREFIX}/rbac_no_permissions",
+        dependencies=[
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                )
+            )
+        ],
+    )
+    async def rbac_no_permissions(
+        authenticated_user: Optional[AuthenticatedUser] = Depends(
+            get_authenticated_user
+        ),
+    ) -> Optional[AuthenticatedUser]:
+        return authenticated_user
+
     yield app
 
 
@@ -207,7 +224,7 @@ class TestPermissionsFunctions:
         def mock_allowed_for_user_endpoint(
             perms: list[RbacPermission], response_ids: list[list]
         ):
-            rbac_url = "http://rbac.example:5000/auth"
+            rbac_url = "http://rbac.example:5000"
             endpoint = (
                 rbac_url
                 + "/api/service/v1/resources/resource-pool/allowed-for-user"
@@ -225,6 +242,7 @@ class TestPermissionsFunctions:
         authenticated_user = AuthenticatedUser(**user_response.json())
         assert authenticated_user.username == "test"
         assert authenticated_user.roles == {UserRole.USER}
+        assert authenticated_user.rbac_permissions is None
 
         mock_allowed_for_user_endpoint(
             [
@@ -243,10 +261,11 @@ class TestPermissionsFunctions:
         authenticated_user = AuthenticatedUser(**user_response.json())
         # visible_pools is set to all resources (`[""]`), so they are fetched
         # from the db where only the default one with id=0 is present.
-        assert authenticated_user.visible_pools == {0}
-        assert authenticated_user.view_all_pools == {1, 2}
-        assert authenticated_user.deploy_pools == {3}
-        assert authenticated_user.admin_pools == {4}
+        assert authenticated_user.rbac_permissions.visible_pools == {0}
+        assert authenticated_user.rbac_permissions.view_all_pools == {1, 2}
+        assert authenticated_user.rbac_permissions.deploy_pools == {3}
+        assert authenticated_user.rbac_permissions.admin_pools == {4}
+        assert authenticated_user.rbac_permissions.edit_pools is None
 
         mock_allowed_for_user_endpoint([RbacPermission.EDIT], [[""]])
         user_response = await auth_client.post(
@@ -255,4 +274,21 @@ class TestPermissionsFunctions:
         )
         assert user_response.status_code == 200
         authenticated_user = AuthenticatedUser(**user_response.json())
-        assert authenticated_user.edit_pools == {0}
+        assert authenticated_user.rbac_permissions.visible_pools is None
+        assert authenticated_user.rbac_permissions.view_all_pools is None
+        assert authenticated_user.rbac_permissions.deploy_pools is None
+        assert authenticated_user.rbac_permissions.admin_pools is None
+        assert authenticated_user.rbac_permissions.edit_pools == {0}
+
+        user_response = await auth_client.post(
+            f"{V3_API_PREFIX}/rbac_no_permissions",
+            json=self._build_request("test", {UserRole.USER}),
+        )
+        assert user_response.status_code == 200
+        authenticated_user = AuthenticatedUser(**user_response.json())
+        assert authenticated_user.rbac_permissions is not None
+        assert authenticated_user.rbac_permissions.visible_pools is None
+        assert authenticated_user.rbac_permissions.view_all_pools is None
+        assert authenticated_user.rbac_permissions.deploy_pools is None
+        assert authenticated_user.rbac_permissions.admin_pools is None
+        assert authenticated_user.rbac_permissions.edit_pools is None

@@ -18,7 +18,10 @@ from maasservicelayer.exceptions.constants import (
     MISSING_PERMISSIONS_VIOLATION_TYPE,
     NOT_AUTHENTICATED_VIOLATION_TYPE,
 )
-from maasservicelayer.models.auth import AuthenticatedUser
+from maasservicelayer.models.auth import (
+    AuthenticatedUser,
+    RBACPermissionsPools,
+)
 from maasservicelayer.services import ServiceCollectionV3
 
 # This is used just to generate the openapi spec with the security annotations.
@@ -104,31 +107,50 @@ def check_permissions(
                         )
                     ]
                 )
-        if external_auth_info and rbac_permissions:
-            rbac_client = await services.external_auth.get_rbac_client()
-            pool_responses = await rbac_client.get_resource_pool_ids(
-                user=authenticated_user.username, permissions=rbac_permissions
-            )
-            all_resource_pools = set()
-            # if any of the response has the access_all property, we have to fetch all the resource pools ids
-            # TODO: find a better way to do this to avoid querying the db every time
-            if any(r.access_all for r in pool_responses):
-                all_resource_pools = await services.resource_pools.list_ids()
-            for resp in pool_responses:
-                pools = (
-                    all_resource_pools if resp.access_all else resp.resources
+        if external_auth_info:
+            # Initialize an empty object. The permissions will be populated if the handler has requested some.
+            authenticated_user.rbac_permissions = RBACPermissionsPools()
+            if rbac_permissions:
+                rbac_client = await services.external_auth.get_rbac_client()
+                pool_responses = await rbac_client.get_resource_pool_ids(
+                    user=authenticated_user.username,
+                    permissions=rbac_permissions,
                 )
-                match resp.permission:
-                    case RbacPermission.VIEW:
-                        authenticated_user.visible_pools = pools
-                    case RbacPermission.VIEW_ALL:
-                        authenticated_user.view_all_pools = pools
-                    case RbacPermission.DEPLOY_MACHINES:
-                        authenticated_user.deploy_pools = pools
-                    case RbacPermission.ADMIN_MACHINES:
-                        authenticated_user.admin_pools = pools
-                    case RbacPermission.EDIT:
-                        authenticated_user.edit_pools = pools
-        return authenticated_user
+                all_resource_pools = set()
+                # if any of the response has the access_all property, we have to fetch all the resource pools ids
+                # TODO: find a better way to do this to avoid querying the db every time
+                if any(r.access_all for r in pool_responses):
+                    all_resource_pools = (
+                        await services.resource_pools.list_ids()
+                    )
+
+                for resp in pool_responses:
+                    pools = (
+                        all_resource_pools
+                        if resp.access_all
+                        else set(resp.resources)
+                    )
+                    match resp.permission:
+                        case RbacPermission.VIEW:
+                            authenticated_user.rbac_permissions.visible_pools = (
+                                pools
+                            )
+                        case RbacPermission.VIEW_ALL:
+                            authenticated_user.rbac_permissions.view_all_pools = (
+                                pools
+                            )
+                        case RbacPermission.DEPLOY_MACHINES:
+                            authenticated_user.rbac_permissions.deploy_pools = (
+                                pools
+                            )
+                        case RbacPermission.ADMIN_MACHINES:
+                            authenticated_user.rbac_permissions.admin_pools = (
+                                pools
+                            )
+                        case RbacPermission.EDIT:
+                            authenticated_user.rbac_permissions.edit_pools = (
+                                pools
+                            )
+            return authenticated_user
 
     return wrapper

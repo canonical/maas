@@ -20,6 +20,26 @@ class FilterQuery:
     def get_clauses(self) -> list[ColumnOperators]:
         return self.clauses
 
+    def __eq__(self, other):
+        """Useful for tests"""
+        if not isinstance(other, type(self)):
+            return False
+
+        self_clauses = self.get_clauses()
+        other_clauses = other.get_clauses()
+
+        if len(self_clauses) != len(other_clauses):
+            return False
+
+        for self_clause, other_clause in zip(self_clauses, other_clauses):
+            if str(
+                self_clause.compile(compile_kwargs={"literal_binds": True})
+            ) != str(
+                other_clause.compile(compile_kwargs={"literal_binds": True})
+            ):
+                return False
+        return True
+
 
 class FilterQueryBuilder(ABC):
     """

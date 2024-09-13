@@ -22,6 +22,14 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maasservicelayer.auth.macaroons.macaroon_client import RbacAsyncClient
+from maasservicelayer.auth.macaroons.models.responses import (
+    PermissionResourcesMapping,
+)
+from maasservicelayer.db.repositories.resource_pools import (
+    ResourcePoolFilterQueryBuilder,
+)
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.exceptions.catalog import (
     BaseExceptionDetail,
     NotFoundException,
@@ -31,7 +39,7 @@ from maasservicelayer.exceptions.constants import (
 )
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
-from maasservicelayer.services import ServiceCollectionV3
+from maasservicelayer.services import ExternalAuthService, ServiceCollectionV3
 from maasservicelayer.services.resource_pools import ResourcePoolsService
 from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.v3.api.public.handlers.base import (
@@ -108,6 +116,59 @@ class TestResourcePoolApi(ApiCommonTests):
         assert (
             resource_pools_response.next
             == f"{self.BASE_PATH}?{TokenPaginationParams.to_href_format(token=str(TEST_RESOURCE_POOL.id), size='1')}"
+        )
+
+    async def test_list_with_rbac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW, resources=[1, 2]
+                ),
+                PermissionResourcesMapping(
+                    permission=RbacPermission.VIEW_ALL, resources=[1]
+                ),
+            ]
+        )
+        services_mock.external_auth.get_rbac_client = AsyncMock(
+            return_value=rbac_client_mock
+        )
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.list = AsyncMock(
+            return_value=ListResult[ResourcePool](
+                items=[TEST_RESOURCE_POOL, TEST_RESOURCE_POOL_2],
+                next_token=None,
+            )
+        )
+        response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}")
+        assert response.status_code == 200
+        resource_pools_response = ResourcePoolsListResponse(**response.json())
+        assert len(resource_pools_response.items) == 2
+
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.VIEW, RbacPermission.VIEW_ALL},
+        )
+        services_mock.resource_pools.list.assert_called_once()
+        assert (
+            services_mock.resource_pools.list.mock_calls[0].kwargs["token"]
+            is None
+        )
+        assert (
+            services_mock.resource_pools.list.mock_calls[0].kwargs["size"]
+            == 20
+        )
+        assert (
+            services_mock.resource_pools.list.mock_calls[0].kwargs["query"]
+            == ResourcePoolFilterQueryBuilder().with_ids([1, 2]).build()
         )
 
     async def test_get_200(

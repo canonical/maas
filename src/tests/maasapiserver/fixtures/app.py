@@ -128,6 +128,13 @@ def app_with_mocked_services_rbac(services_mock: ServiceCollectionV3):
 
 
 @pytest.fixture
+def app_with_mocked_services_user_rbac(services_mock: ServiceCollectionV3):
+    yield create_app_with_mocks(
+        services_mock, {UserRole.USER}, external_auth=True
+    )
+
+
+@pytest.fixture
 async def mocked_api_client(
     app_with_mocked_services: FastAPI,
 ) -> AsyncIterator[AsyncClient]:
@@ -174,6 +181,16 @@ async def mocked_api_client_rbac(
 ) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(
         app=app_with_mocked_services_rbac, base_url="http://test"
+    ) as client:
+        yield client
+
+
+@pytest.fixture
+async def mocked_api_client_user_rbac(
+    app_with_mocked_services_user_rbac: FastAPI,
+) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(
+        app=app_with_mocked_services_user_rbac, base_url="http://test"
     ) as client:
         yield client
 

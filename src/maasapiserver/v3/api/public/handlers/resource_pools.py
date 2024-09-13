@@ -22,12 +22,17 @@ from maasapiserver.v3.api.public.models.responses.resource_pools import (
     ResourcePoolResponse,
     ResourcePoolsListResponse,
 )
-from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.base import (
+    check_permissions,
+    get_authenticated_user,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
 from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
+    ResourcePoolFilterQueryBuilder,
 )
+from maasservicelayer.enums.rbac import RbacPermission
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -50,17 +55,39 @@ class ResourcePoolHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                    rbac_permissions={
+                        RbacPermission.VIEW,
+                        RbacPermission.VIEW_ALL,
+                    },
+                )
+            )
         ],
     )
     async def list_resource_pools(
         self,
         token_pagination_params: TokenPaginationParams = Depends(),
+        authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        query = None
+        if authenticated_user.rbac_permissions:
+            query = (
+                ResourcePoolFilterQueryBuilder()
+                .with_ids(
+                    ids=(
+                        authenticated_user.rbac_permissions.visible_pools
+                        | authenticated_user.rbac_permissions.view_all_pools
+                    )
+                )
+                .build()
+            )
         resource_pools = await services.resource_pools.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
+            query=query,
         )
         return ResourcePoolsListResponse(
             items=[

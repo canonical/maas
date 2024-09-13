@@ -300,4 +300,6 @@ class ExternalAuthService(Service, RootKeyStore):
     async def get_rbac_client(self) -> RbacAsyncClient:
         auth_info = await self.get_auth_info()
         auth_config = await self.get_external_auth()
-        return RbacAsyncClient(auth_config.url, auth_info)
+        # auth_config.url comes with a /auth suffix used for some macaroon internals.
+        # We don't want to diverge too much from the structure we have in maasserver, hence we simply remove the suffix here.
+        return RbacAsyncClient(auth_config.url.rstrip("/auth"), auth_info)
