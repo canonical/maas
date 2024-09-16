@@ -28,7 +28,7 @@ class TestMachinesService:
         )
         machines_list = await machines_service.list(token=None, size=1)
         machines_repository_mock.list.assert_called_once_with(
-            token=None, size=1
+            token=None, size=1, query=None
         )
         assert machines_list.next_token is None
         assert machines_list.items == []

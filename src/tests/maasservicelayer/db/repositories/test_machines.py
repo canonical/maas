@@ -4,7 +4,11 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasservicelayer.db.repositories.machines import MachinesRepository
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.machines import (
+    MachineClauseFactory,
+    MachinesRepository,
+)
 from maasservicelayer.models.machines import Machine
 from tests.fixtures.factories.bmc import create_test_bmc
 from tests.fixtures.factories.machines import create_test_machine
@@ -15,9 +19,31 @@ from tests.fixtures.factories.node_config import (
     create_test_pci_device,
     create_test_usb_device,
 )
+from tests.fixtures.factories.resource_pools import create_test_resource_pool
 from tests.fixtures.factories.user import create_test_user
 from tests.maasapiserver.fixtures.db import Fixture
 from tests.maasservicelayer.db.repositories.base import RepositoryCommonTests
+
+
+class TestMachineClauseFactory:
+    def test_builder(self) -> None:
+        clause = MachineClauseFactory.with_resource_pool_ids(None)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.pool_id IN (NULL) AND (1 != 1)")
+
+        clause = MachineClauseFactory.with_resource_pool_ids({1, 2, 3})
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("maasserver_node.pool_id IN (1, 2, 3)")
+        clause = MachineClauseFactory.with_owner(None)
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("auth_user.username IS NULL")
+        clause = MachineClauseFactory.with_owner("test")
+        assert str(
+            clause.condition.compile(compile_kwargs={"literal_binds": True})
+        ) == ("auth_user.username = 'test'")
 
 
 class TestMachinesRepository(RepositoryCommonTests[Machine]):
@@ -82,6 +108,57 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         machines_result = await machines_repository.list(token=None, size=10)
         assert machines_result.next_token is None
         assert len(machines_result.items) == 1
+
+    async def test_list_with_query(
+        self, repository_instance: MachinesRepository, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        rp1 = await create_test_resource_pool(fixture, name="pool1")
+        rp2 = await create_test_resource_pool(fixture, name="pool2")
+        user1 = await create_test_user(fixture, username="user1")
+        user2 = await create_test_user(fixture, username="user2")
+        for i in range(5):
+            await create_test_machine(
+                fixture,
+                description=str(i),
+                bmc=bmc,
+                user=user1,
+                pool_id=rp1.id,
+            )
+        for i in range(5):
+            await create_test_machine(
+                fixture,
+                description=str(i),
+                bmc=bmc,
+                user=user2,
+                pool_id=rp2.id,
+            )
+        machines_repository = repository_instance
+        retrieved_machines = await machines_repository.list(
+            token=None,
+            size=20,
+            query=QuerySpec(
+                where=MachineClauseFactory.with_resource_pool_ids({rp1.id})
+            ),
+        )
+        assert len(retrieved_machines.items) == 5
+        # Here we do the assert on the owner since we don't store info on pools yet.
+        assert all(
+            machine.owner == "user1" for machine in retrieved_machines.items
+        )
+
+        retrieved_machines = await machines_repository.list(
+            token=None,
+            size=20,
+            query=QuerySpec(
+                where=MachineClauseFactory.with_owner(user2.username)
+            ),
+        )
+
+        assert len(retrieved_machines.items) == 5
+        assert all(
+            machine.owner == "user2" for machine in retrieved_machines.items
+        )
 
     async def test_list_machine_usb_devices(
         self, repository_instance: MachinesRepository, fixture: Fixture

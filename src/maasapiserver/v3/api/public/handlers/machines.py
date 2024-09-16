@@ -22,9 +22,16 @@ from maasapiserver.v3.api.public.models.responses.machines import (
     UsbDeviceResponse,
     UsbDevicesListResponse,
 )
-from maasapiserver.v3.auth.base import check_permissions
+from maasapiserver.v3.auth.base import (
+    check_permissions,
+    get_authenticated_user,
+)
 from maasapiserver.v3.constants import V3_API_PREFIX
 from maasservicelayer.auth.jwt import UserRole
+from maasservicelayer.db.filters import QuerySpec
+from maasservicelayer.db.repositories.machines import MachineClauseFactory
+from maasservicelayer.enums.rbac import RbacPermission
+from maasservicelayer.models.auth import AuthenticatedUser
 from maasservicelayer.services import ServiceCollectionV3
 
 
@@ -46,17 +53,59 @@ class MachinesHandler(Handler):
         response_model_exclude_none=True,
         status_code=200,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                    rbac_permissions={
+                        RbacPermission.VIEW,
+                        RbacPermission.VIEW_ALL,
+                        RbacPermission.ADMIN_MACHINES,
+                    },
+                )
+            )
         ],
     )
     async def list_machines(
         self,
         token_pagination_params: TokenPaginationParams = Depends(),
         services: ServiceCollectionV3 = Depends(services),
+        authenticated_user: AuthenticatedUser = Depends(
+            get_authenticated_user
+        ),
     ) -> Response:
+        query = None
+        if authenticated_user.rbac_permissions:
+            where_clause = MachineClauseFactory.or_clauses(
+                [
+                    MachineClauseFactory.with_resource_pool_ids(
+                        authenticated_user.rbac_permissions.view_all_pools
+                    ),
+                    MachineClauseFactory.and_clauses(
+                        [
+                            MachineClauseFactory.or_clauses(
+                                [
+                                    MachineClauseFactory.with_owner(None),
+                                    MachineClauseFactory.with_owner(
+                                        authenticated_user.username
+                                    ),
+                                    MachineClauseFactory.with_resource_pool_ids(
+                                        authenticated_user.rbac_permissions.admin_pools
+                                    ),
+                                ]
+                            ),
+                            MachineClauseFactory.with_resource_pool_ids(
+                                authenticated_user.rbac_permissions.visible_pools
+                            ),
+                        ]
+                    ),
+                ]
+            )
+            query = QuerySpec(where=where_clause)
+        # TODO: add filters for local authentication
         machines = await services.machines.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,
+            query=query,
         )
         return MachinesListResponse(
             items=[

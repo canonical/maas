@@ -3,6 +3,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -24,8 +25,12 @@ class MachinesService(NodesService):
             else MachinesRepository(connection)
         )
 
-    async def list(self, token: str | None, size: int) -> ListResult[Machine]:
-        return await self.machines_repository.list(token=token, size=size)
+    async def list(
+        self, token: str | None, size: int, query: QuerySpec | None = None
+    ) -> ListResult[Machine]:
+        return await self.machines_repository.list(
+            token=token, size=size, query=query
+        )
 
     async def list_machine_usb_devices(
         self, system_id: str, token: str | None, size: int
