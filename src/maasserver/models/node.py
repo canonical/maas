@@ -1349,14 +1349,14 @@ class Node(CleanSave, TimestampedModel):
         return False
 
     @property
-    def is_rack_controller(self):
+    def is_rack_controller(self) -> bool:
         return self.node_type in [
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             NODE_TYPE.RACK_CONTROLLER,
         ]
 
     @property
-    def is_region_controller(self):
+    def is_region_controller(self) -> bool:
         return self.node_type in [
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             NODE_TYPE.REGION_CONTROLLER,
@@ -1371,11 +1371,11 @@ class Node(CleanSave, TimestampedModel):
         ]
 
     @property
-    def is_machine(self):
+    def is_machine(self) -> bool:
         return self.node_type == NODE_TYPE.MACHINE
 
     @property
-    def is_device(self):
+    def is_device(self) -> bool:
         return self.node_type == NODE_TYPE.DEVICE
 
     @property

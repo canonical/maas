@@ -266,7 +266,7 @@ def request_node_info_by_mac_address(mac_address):
 
 @synchronous
 @transactional
-def get_controller_type(system_id):
+def get_controller_type(system_id: str) -> dict[str, bool]:
     """Get the type of the node specified by its system identifier.
 
     :param system_id: system_id of node.
@@ -285,7 +285,7 @@ def get_controller_type(system_id):
 
 @synchronous
 @transactional
-def get_time_configuration(system_id):
+def get_time_configuration(system_id: str) -> dict[str, frozenset]:
     """Get settings to use for configuring NTP for the given node.
 
     :param system_id: system_id of node.

@@ -37,6 +37,7 @@ from provisioningserver.ntp.config import configure_rack
 from provisioningserver.path import get_maas_cache_path
 from provisioningserver.proxy import config as proxy_config
 from provisioningserver.rpc import exceptions
+from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.rpc.region import (
     GetControllerType,
     GetDNSConfiguration,
@@ -142,7 +143,7 @@ class RackNTP(RackOnlyExternalService):
 
     service_name = "ntp_rack"
 
-    def _tryUpdate(self, config):
+    def _tryUpdate(self, config: _Configuration):
         """Update the NTP server running on this host."""
         d = maybeDeferred(
             self._getConfiguration,
@@ -152,7 +153,9 @@ class RackNTP(RackOnlyExternalService):
         d.addCallback(self._maybeApplyConfiguration)
         return d
 
-    def _getConfiguration(self, controller_type, time_configuration):
+    def _getConfiguration(
+        self, controller_type, time_configuration
+    ) -> _NTPConfiguration:
         """Return NTP server configuration.
 
         The configuration object returned is comparable with previous and
@@ -184,7 +187,7 @@ class RackDNS(RackOnlyExternalService):
 
     service_name = "dns_rack"
 
-    def _tryUpdate(self, config):
+    def _tryUpdate(self, config: _Configuration):
         """Update the NTP server running on this host."""
         d = maybeDeferred(
             self._getConfiguration,
@@ -197,7 +200,7 @@ class RackDNS(RackOnlyExternalService):
 
     def _getConfiguration(
         self, controller_type, dns_configuration, connections
-    ):
+    ) -> _DNSConfiguration:
         """Return DNS server configuration.
 
         The configuration object returned is comparable with previous and
@@ -254,7 +257,7 @@ class RackProxy(RackOnlyExternalService):
 
     service_name = "proxy_rack"
 
-    def _tryUpdate(self, config):
+    def _tryUpdate(self, config: _Configuration):
         """Update the proxy server running on this host."""
         d = maybeDeferred(
             self._getConfiguration,
@@ -267,7 +270,7 @@ class RackProxy(RackOnlyExternalService):
 
     def _getConfiguration(
         self, controller_type, proxy_configuration, connections
-    ):
+    ) -> _ProxyConfiguration:
         """Return proxy server configuration.
 
         The configuration object returned is comparable with previous and
@@ -337,7 +340,7 @@ class RackSyslog(RackOnlyExternalService):
 
     service_name = "syslog_rack"
 
-    def _tryUpdate(self, config):
+    def _tryUpdate(self, config: _Configuration):
         """Update the syslog server running on this host."""
         d = maybeDeferred(
             self._getConfiguration,
@@ -350,7 +353,7 @@ class RackSyslog(RackOnlyExternalService):
 
     def _getConfiguration(
         self, controller_type, syslog_configuration, connections
-    ):
+    ) -> _SyslogConfiguration:
         """Return syslog server configuration.
 
         The configuration object returned is comparable with previous and
@@ -455,14 +458,19 @@ class RackExternalService(TimerService):
     INTERVAL_LOW = timedelta(seconds=5).total_seconds()
 
     # Once at least one region controller is set on the forwarders then
-    # the inverval is higher as at least one controller is handling the
+    # the interval is higher as at least one controller is handling the
     # DNS requests.
     INTERVAL_HIGH = timedelta(seconds=30).total_seconds()
 
     _rpc_service = None
     _services = None
 
-    def __init__(self, rpc_service, reactor, services=None):
+    def __init__(
+        self,
+        rpc_service: ClusterClientService,
+        reactor,
+        services: list[tuple[str, RackOnlyExternalService], ...] | None = None,
+    ):
         super().__init__(self.INTERVAL_LOW, self._tryUpdate)
         self._rpc_service = rpc_service
         self.clock = reactor
@@ -484,7 +492,7 @@ class RackExternalService(TimerService):
             self._loop.interval = self.step = self.INTERVAL_HIGH
 
     @inlineCallbacks
-    def _getConfiguration(self):
+    def _getConfiguration(self) -> _Configuration:
         client = yield self._rpc_service.getClientNow()
         controller_type = yield client(
             GetControllerType, system_id=client.localIdent
@@ -512,7 +520,7 @@ class RackExternalService(TimerService):
 
     @inlineCallbacks
     def _tryUpdate(self):
-        """Update the NTP server running on this host."""
+        """Update the services running on this host."""
         try:
             config = yield self._getConfiguration()
         except exceptions.NoSuchNode:

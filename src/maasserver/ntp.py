@@ -4,7 +4,7 @@
 """NTP related functionality."""
 
 
-from typing import FrozenSet, Iterable, Optional
+from typing import FrozenSet, Iterable
 
 from maasserver.models.config import Config
 from maasserver.models.node import Node, RackController, RegionController
@@ -15,7 +15,7 @@ from maasserver.routablepairs import (
 from provisioningserver.utils.text import split_string_list
 
 
-def get_servers_for(node: Optional[Node]) -> FrozenSet[str]:
+def get_servers_for(node: Node | None) -> FrozenSet[str]:
     """Return NTP servers to use for the given node."""
     if node is None or node.is_region_controller or _ntp_external_only():
         routable_addrs = _get_external_servers()
@@ -43,7 +43,7 @@ def get_servers_for(node: Optional[Node]) -> FrozenSet[str]:
     return frozenset(map(str, routable_addrs))
 
 
-def get_peers_for(node: Node) -> FrozenSet[str]:
+def get_peers_for(node: Node | None) -> FrozenSet[str]:
     """Return NTP peers to use for the given node.
 
     For all node types other than region or region+rack controllers, this
