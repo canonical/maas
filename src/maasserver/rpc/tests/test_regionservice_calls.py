@@ -19,7 +19,6 @@ from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.models import Config, Event, EventType, Node, PackageRepository
 from maasserver.models.interface import PhysicalInterface
-from maasserver.models.signals import bootsources
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc import events as events_module
 from maasserver.rpc import leases as leases_module
@@ -47,7 +46,6 @@ from provisioningserver.rpc.region import (
     GetBootConfig,
     GetControllerType,
     GetDNSConfiguration,
-    GetProxies,
     GetProxyConfiguration,
     GetSyslogConfiguration,
     GetTimeConfiguration,
@@ -320,44 +318,6 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
             },
             response,
         )
-
-
-class TestRegionProtocol_GetProxies(MAASTransactionServerTestCase):
-    def test_get_proxies_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(GetProxies.commandName)
-        self.assertIsNotNone(responder)
-
-    @transactional
-    def set_http_proxy(self, url):
-        Config.objects.set_config("http_proxy", url)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_get_proxies_with_http_proxy_not_set(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
-        yield deferToDatabase(self.set_http_proxy, None)
-
-        response = yield call_responder(Region(), GetProxies, {})
-
-        self.assertEqual({"http": None, "https": None}, response)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_get_proxies_with_http_proxy_set(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
-        url = factory.make_parsed_url()
-        yield deferToDatabase(self.set_http_proxy, url.geturl())
-
-        response = yield call_responder(Region(), GetProxies, {})
-
-        self.assertEqual({"http": url, "https": url}, response)
 
 
 class TestRegionProtocol_MarkNodeFailed(MAASTransactionServerTestCase):

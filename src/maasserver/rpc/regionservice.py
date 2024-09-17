@@ -35,7 +35,6 @@ from maasserver.models.node import RackController
 from maasserver.models.subnet import Subnet
 from maasserver.rpc import (
     boot,
-    configuration,
     events,
     leases,
     nodes,
@@ -221,16 +220,6 @@ class Region(SecuredRPCProtocol):
         :py:class:`~provisioningserver.rpc.region.GetArchiveMirrors`.
         """
         d = deferToDatabase(packagerepository.get_archive_mirrors)
-        return d
-
-    @region.GetProxies.responder
-    def get_proxies(self):
-        """get_proxies()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.GetProxies`.
-        """
-        d = deferToDatabase(configuration.get_proxies)
         return d
 
     @region.MarkNodeFailed.responder
