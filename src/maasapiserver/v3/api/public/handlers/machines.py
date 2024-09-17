@@ -73,7 +73,6 @@ class MachinesHandler(Handler):
             get_authenticated_user
         ),
     ) -> Response:
-        query = None
         if authenticated_user.rbac_permissions:
             where_clause = MachineClauseFactory.or_clauses(
                 [
@@ -100,8 +99,20 @@ class MachinesHandler(Handler):
                     ),
                 ]
             )
-            query = QuerySpec(where=where_clause)
-        # TODO: add filters for local authentication
+        else:
+            if UserRole.ADMIN in authenticated_user.roles:
+                where_clause = None
+            else:
+                where_clause = MachineClauseFactory.or_clauses(
+                    [
+                        MachineClauseFactory.with_owner(None),
+                        MachineClauseFactory.with_owner(
+                            authenticated_user.username
+                        ),
+                    ]
+                )
+        query = QuerySpec(where=where_clause)
+
         machines = await services.machines.list(
             token=token_pagination_params.token,
             size=token_pagination_params.size,

@@ -199,11 +199,62 @@ class TestMachinesApi(ApiCommonTests):
                 items=[TEST_MACHINE_2, TEST_MACHINE], next_token=None
             )
         )
-        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=1")
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
         assert response.status_code == 200
         machines_response = MachinesListResponse(**response.json())
         assert len(machines_response.items) == 2
         assert machines_response.next is None
+
+    async def test_list_user_perms(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.list = AsyncMock(
+            return_value=ListResult[Machine](
+                items=[TEST_MACHINE], next_token=None
+            )
+        )
+        response = await mocked_api_client_user.get(f"{self.BASE_PATH}?size=2")
+        assert response.status_code == 200
+        machines_response = MachinesListResponse(**response.json())
+        assert len(machines_response.items) == 1
+        assert machines_response.next is None
+        services_mock.machines.list.assert_called_once_with(
+            token=None,
+            size=2,
+            query=QuerySpec(
+                where=MachineClauseFactory.or_clauses(
+                    [
+                        MachineClauseFactory.with_owner(None),
+                        MachineClauseFactory.with_owner("username"),
+                    ]
+                )
+            ),
+        )
+
+    async def test_list_admin_perms(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin: AsyncClient,
+    ) -> None:
+        services_mock.machines = Mock(MachinesService)
+        services_mock.machines.list = AsyncMock(
+            return_value=ListResult[Machine](
+                items=[TEST_MACHINE_2], next_token=None
+            )
+        )
+        response = await mocked_api_client_admin.get(
+            f"{self.BASE_PATH}?size=2"
+        )
+        assert response.status_code == 200
+        machines_response = MachinesListResponse(**response.json())
+        assert len(machines_response.items) == 1
+        assert machines_response.next is None
+        services_mock.machines.list.assert_called_once_with(
+            token=None, size=2, query=QuerySpec(where=None)
+        )
 
     async def test_list_rbac(
         self,
