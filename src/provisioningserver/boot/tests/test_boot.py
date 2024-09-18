@@ -7,10 +7,9 @@
 import errno
 import os
 from unittest import mock
-from urllib.parse import urlparse
 
 import tempita
-from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.defer import inlineCallbacks
 from twisted.python import context
 
 from maastesting import get_testing_timeout
@@ -22,13 +21,9 @@ from provisioningserver.boot import (
     BootMethodRegistry,
     BytesReader,
     gen_template_filenames,
-    get_main_archive_url,
-    get_ports_archive_url,
     get_remote_mac,
 )
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.rpc import clusterservice, region
-from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 
@@ -252,45 +247,3 @@ class TestBootMethod(MAASTestCase):
                 for _, boot_method in BootMethodRegistry
             ],
         )
-
-
-class TestGetArchiveUrl(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def setUp(self):
-        super().setUp()
-        self.patch(
-            clusterservice, "get_all_interfaces_definition"
-        ).return_value = {}
-
-    def patch_rpc_methods(self, return_value=None):
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(region.GetArchiveMirrors)
-        protocol.GetArchiveMirrors.return_value = return_value
-        return protocol, connecting
-
-    @inlineCallbacks
-    def test_get_main_archive_url(self):
-        mirrors = {
-            "main": urlparse(factory.make_url("ports")),
-            "ports": urlparse(factory.make_url("ports")),
-        }
-        return_value = succeed(mirrors)
-        protocol, connecting = self.patch_rpc_methods(return_value)
-        self.addCleanup((yield connecting))
-        value = yield get_main_archive_url()
-        expected_url = mirrors["main"].geturl()
-        self.assertEqual(expected_url, value)
-
-    @inlineCallbacks
-    def test_get_ports_archive_url(self):
-        mirrors = {
-            "main": urlparse(factory.make_url("ports")),
-            "ports": urlparse(factory.make_url("ports")),
-        }
-        return_value = succeed(mirrors)
-        protocol, connecting = self.patch_rpc_methods(return_value)
-        self.addCleanup((yield connecting))
-        value = yield get_ports_archive_url()
-        expected_url = mirrors["ports"].geturl()
-        self.assertEqual(expected_url, value)

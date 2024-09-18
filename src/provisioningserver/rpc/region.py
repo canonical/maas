@@ -10,7 +10,6 @@ __all__ = [
     "Authenticate",
     "CommissionNode",
     "CreateNode",
-    "GetArchiveMirrors",
     "GetBootConfig",
     "GetControllerType",
     "GetDiscoveryState",

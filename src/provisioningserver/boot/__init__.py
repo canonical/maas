@@ -13,7 +13,6 @@ from typing import Dict
 
 import tempita
 from tftp.backend import IReader
-from twisted.internet.defer import inlineCallbacks, returnValue
 from zope.interface import implementer
 
 from provisioningserver.config import debug_enabled
@@ -23,39 +22,14 @@ from provisioningserver.kernel_opts import (
     KernelParameters,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils import locate_template, tftp
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
     find_mac_via_arp,
 )
 from provisioningserver.utils.registry import Registry
-from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("bootloaders")
-
-
-@asynchronous
-def get_archive_mirrors():
-    client = getRegionClient()
-    return client(GetArchiveMirrors)
-
-
-@asynchronous(timeout=10)
-@inlineCallbacks
-def get_main_archive_url():
-    mirrors = yield get_archive_mirrors()
-    main_url = mirrors["main"].geturl()
-    returnValue(main_url)
-
-
-@asynchronous(timeout=10)
-@inlineCallbacks
-def get_ports_archive_url():
-    mirrors = yield get_archive_mirrors()
-    ports_url = mirrors["ports"].geturl()
-    returnValue(ports_url)
 
 
 @implementer(IReader)

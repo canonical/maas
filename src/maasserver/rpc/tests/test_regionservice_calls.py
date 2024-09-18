@@ -9,7 +9,6 @@ from json import dumps
 import random
 from random import randint
 import time
-from urllib.parse import urlparse
 
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.python.failure import Failure
@@ -17,7 +16,7 @@ from twisted.python.failure import Failure
 from maasserver import eventloop
 from maasserver.dns.config import get_trusted_networks
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
-from maasserver.models import Config, Event, EventType, Node, PackageRepository
+from maasserver.models import Config, Event, EventType, Node
 from maasserver.models.interface import PhysicalInterface
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.rpc import events as events_module
@@ -42,7 +41,6 @@ from provisioningserver.rpc.region import (
     Authenticate,
     CommissionNode,
     CreateNode,
-    GetArchiveMirrors,
     GetBootConfig,
     GetControllerType,
     GetDNSConfiguration,
@@ -258,65 +256,6 @@ class TestRegionProtocol_GetBootConfig(MAASTransactionServerTestCase):
                 "extra_opts",
                 "ephemeral_opts",
             },
-        )
-
-
-class TestRegionProtocol_GetArchiveMirrors(MAASTransactionServerTestCase):
-    def test_get_archive_mirrors_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(GetArchiveMirrors.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_get_archive_mirrors_with_main_archive_port_archive_default(self):
-        response = yield call_responder(Region(), GetArchiveMirrors, {})
-        self.assertEqual(
-            {
-                "main": urlparse("http://archive.ubuntu.com/ubuntu"),
-                "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports"),
-            },
-            response,
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_get_archive_mirrors_with_main_archive_set(self):
-        main_archive = yield deferToDatabase(
-            lambda: PackageRepository.get_main_archive()
-        )
-        url = factory.make_parsed_url(scheme="http")
-        main_archive.url = url.geturl()
-        yield deferToDatabase(transactional(main_archive.save))
-
-        response = yield call_responder(Region(), GetArchiveMirrors, {})
-
-        self.assertEqual(
-            {
-                "main": url,
-                "ports": urlparse("http://ports.ubuntu.com/ubuntu-ports"),
-            },
-            response,
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_get_archive_mirrors_with_ports_archive_set(self):
-        ports_archive = yield deferToDatabase(
-            lambda: PackageRepository.get_ports_archive()
-        )
-        url = factory.make_parsed_url(scheme="http")
-        ports_archive.url = url.geturl()
-        yield deferToDatabase(transactional(ports_archive.save))
-
-        response = yield call_responder(Region(), GetArchiveMirrors, {})
-
-        self.assertEqual(
-            {
-                "main": urlparse("http://archive.ubuntu.com/ubuntu"),
-                "ports": url,
-            },
-            response,
         )
 
 
