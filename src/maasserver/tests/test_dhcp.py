@@ -41,10 +41,6 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.twisted import always_fail_with, always_succeed_with
-from provisioningserver.dhcp import (
-    DHCPv4_INTERFACES_FILE,
-    DHCPv6_INTERFACES_FILE,
-)
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
@@ -2838,10 +2834,10 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             omapi_key=dhcp_config.omapi_key,
         )
 
-        assert result[DHCPv4_INTERFACES_FILE] == base64.b64encode(
+        assert result["dhcpd_interfaces"] == base64.b64encode(
             interfaces_v4.encode("utf-8")
         ).decode("utf-8")
-        assert result[DHCPv6_INTERFACES_FILE] == base64.b64encode(
+        assert result["dhcpd6_interfaces"] == base64.b64encode(
             interfaces_v6.encode("utf-8")
         ).decode("utf-8")
 

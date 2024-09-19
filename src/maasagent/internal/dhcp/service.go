@@ -17,16 +17,22 @@ package dhcp
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"sync/atomic"
 	"time"
 
 	"go.temporal.io/sdk/activity"
 	tworkflow "go.temporal.io/sdk/workflow"
 	"maas.io/core/src/maasagent/internal/apiclient"
+	"maas.io/core/src/maasagent/internal/atomicfile"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
+	"maas.io/core/src/maasagent/internal/pathutil"
 )
 
 const (
@@ -45,6 +51,7 @@ type DHCPService struct {
 	client             *apiclient.APIClient
 	omapiConnFactory   omapiConnFactory
 	omapiClientFactory omapiClientFactory
+	dataPathFactory    dataPathFactory
 	runningV4          *atomic.Bool
 	runningV6          *atomic.Bool
 	running            *atomic.Bool
@@ -55,6 +62,8 @@ type omapiConnFactory func(string, string) (net.Conn, error)
 
 type omapiClientFactory func(net.Conn, omapi.Authenticator) (omapi.OMAPI, error)
 
+type dataPathFactory func(string) string
+
 type DHCPServiceOption func(*DHCPService)
 
 func NewDHCPService(systemID string, options ...DHCPServiceOption) *DHCPService {
@@ -62,6 +71,7 @@ func NewDHCPService(systemID string, options ...DHCPServiceOption) *DHCPService 
 		systemID:           systemID,
 		omapiConnFactory:   net.Dial,
 		omapiClientFactory: omapi.NewClient,
+		dataPathFactory:    pathutil.GetDataPath,
 		runningV4:          &atomic.Bool{},
 		runningV6:          &atomic.Bool{},
 		running:            &atomic.Bool{},
@@ -91,6 +101,13 @@ func WithOMAPIConnFactory(factory omapiConnFactory) DHCPServiceOption {
 func WithOMAPIClientFactory(factory omapiClientFactory) DHCPServiceOption {
 	return func(s *DHCPService) {
 		s.omapiClientFactory = factory
+	}
+}
+
+// WithDataPathFactory used for testing.
+func WithDataPathFactory(factory dataPathFactory) DHCPServiceOption {
+	return func(s *DHCPService) {
+		s.dataPathFactory = factory
 	}
 }
 
@@ -260,14 +277,74 @@ func (s *DHCPService) configureViaOMAPI(ctx context.Context, param ApplyConfigVi
 	return nil
 }
 
-type ConfigureViaFileParam struct {
-	Dhcpd  string `json:"dhcpd"`
-	Dhcpd6 string `json:"dhcpd6"`
+// dhcpConfig represents the DHCP configuration returned by the Region Controller.
+// This configuration is required for isc-dhcp, and each field contains data encoded
+// in base64 format. The structure includes configuration and interface details
+// for both DHCPv4 and DHCPv6.
+type dhcpConfig struct {
+	DHCPv4Config     string `json:"dhcpd"`
+	DHCPv4Interfaces string `json:"dhcpd_interfaces"`
+	DHCPv6Interfaces string `json:"dhcpd6_interfaces"`
+	DHCPv6Config     string `json:"dhcpd6"`
 }
 
-func (s *DHCPService) configureViaFile(ctx context.Context, param ConfigureViaFileParam) error {
-	// TODO write configuration to file
+// configureViaFile registered as a Temporal Activity that is invoked during the
+// DHCP configuration workflow. This activity is used when the configuration must
+// be applied via a file, which requires restarting the dhcpd daemon.
+func (s *DHCPService) configureViaFile(ctx context.Context) error {
+	config, err := s.getConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	files := map[string]string{
+		"dhcpd.conf":        config.DHCPv4Config,
+		"dhcpd-interfaces":  config.DHCPv4Interfaces,
+		"dhcpd6.conf":       config.DHCPv6Config,
+		"dhcpd6-interfaces": config.DHCPv6Interfaces,
+	}
+
+	for file, config := range files {
+		data, err := base64.StdEncoding.DecodeString(config)
+		if err != nil {
+			return err
+		}
+
+		if err := s.writeConfigFile(file, data); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// getConfig retrieves the DHCP configuration from the Region Controller by
+// sending a GET request to the relevant endpoint based on the systemID.
+func (s *DHCPService) getConfig(ctx context.Context) (*dhcpConfig, error) {
+	var config dhcpConfig
+
+	path := fmt.Sprintf("/agents/%s/services/dhcp/config", s.systemID)
+
+	resp, err := s.client.Request(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	//nolint:errcheck // should be safe to ignore an error from Close()
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, json.Unmarshal(body, &config)
+}
+
+func (s *DHCPService) writeConfigFile(path string, data []byte) error {
+	path = s.dataPathFactory(path)
+
+	return atomicfile.WriteFile(path, data, 0o640)
 }
 
 func (s *DHCPService) Error() error {

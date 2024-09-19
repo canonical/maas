@@ -41,12 +41,6 @@ from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from provisioningserver.dhcp import (
-    DHCPv4_CONFIG_FILE,
-    DHCPv4_INTERFACES_FILE,
-    DHCPv6_CONFIG_FILE,
-    DHCPv6_INTERFACES_FILE,
-)
 from provisioningserver.dhcp.config import get_config_v4, get_config_v6
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
@@ -861,7 +855,7 @@ def generate_dhcp_configuration(rack_controller):
 
     result = {}
 
-    result[DHCPv4_CONFIG_FILE] = base64.b64encode(
+    result["dhcpd"] = base64.b64encode(
         get_config_v4(
             template_name="dhcpd.conf.template",
             global_dhcp_snippets=config.global_dhcp_snippets,
@@ -872,11 +866,11 @@ def generate_dhcp_configuration(rack_controller):
         ).encode("utf-8")
     ).decode("utf-8")
 
-    result[DHCPv4_INTERFACES_FILE] = base64.b64encode(
+    result["dhcpd_interfaces"] = base64.b64encode(
         interfaces_v4.encode("utf-8")
     ).decode("utf-8")
 
-    result[DHCPv6_CONFIG_FILE] = base64.b64encode(
+    result["dhcpd6"] = base64.b64encode(
         get_config_v6(
             template_name="dhcpd6.conf.template",
             global_dhcp_snippets=config.global_dhcp_snippets,
@@ -887,7 +881,7 @@ def generate_dhcp_configuration(rack_controller):
         ).encode("utf-8")
     ).decode("utf-8")
 
-    result[DHCPv6_INTERFACES_FILE] = base64.b64encode(
+    result["dhcpd6_interfaces"] = base64.b64encode(
         interfaces_v6.encode("utf-8")
     ).decode("utf-8")
 

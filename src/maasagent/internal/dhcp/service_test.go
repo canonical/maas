@@ -18,14 +18,22 @@ package dhcp
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
 	tworkflow "go.temporal.io/sdk/workflow"
+	"maas.io/core/src/maasagent/internal/apiclient"
 	"maas.io/core/src/maasagent/internal/dhcpd/omapi"
 	"maas.io/core/src/maasagent/internal/workflow/log"
 )
@@ -49,11 +57,14 @@ func (m *mockOMAPIClient) AddHost(ip net.IP, mac net.HardwareAddr) error {
 
 type DHCPServiceTestSuite struct {
 	suite.Suite
-	env                    *testsuite.TestWorkflowEnvironment
-	activity               *testsuite.TestActivityEnvironment
+	workflowEnv            *testsuite.TestWorkflowEnvironment
+	activityEnv            *testsuite.TestActivityEnvironment
 	svc                    *DHCPService
 	configureViaOMAPICalls [][]any
+	configureViaFileCalls  [][]any
 	omapiPipe              net.Conn
+	configHTTPServer       *httptest.Server
+	configAPIResponse      []byte
 	testsuite.WorkflowTestSuite
 }
 
@@ -61,14 +72,31 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 	logger := log.NewZerologAdapter(zerolog.Nop())
 	s.SetLogger(logger)
 
-	s.env = s.NewTestWorkflowEnvironment()
-	s.activity = s.NewTestActivityEnvironment()
+	s.workflowEnv = s.NewTestWorkflowEnvironment()
+	s.activityEnv = s.NewTestActivityEnvironment()
 
 	client, server := net.Pipe()
 
 	s.omapiPipe = server
 
 	s.configureViaOMAPICalls = [][]any{}
+	s.configureViaFileCalls = [][]any{}
+
+	s.configHTTPServer = httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter,
+		req *http.Request) {
+		reqURL := fmt.Sprintf("/agents/%s/services/dhcp/config", s.T().Name())
+		assert.Equal(s.T(), reqURL, req.URL.String())
+		assert.Equal(s.T(), http.MethodGet, req.Method)
+		rw.Write(s.configAPIResponse)
+	}))
+
+	configBaseURL, err := url.Parse(s.configHTTPServer.URL)
+	if err != nil {
+		s.T().Fatal(err)
+	}
+
+	apiClient := apiclient.NewAPIClient(configBaseURL, s.configHTTPServer.Client())
+	dataPath := s.T().TempDir()
 
 	s.svc = NewDHCPService(
 		s.T().Name(),
@@ -83,17 +111,30 @@ func (s *DHCPServiceTestSuite) SetupTest() {
 				},
 			}, nil
 		}),
+		WithAPIClient(apiClient),
+		WithDataPathFactory(func(path string) string {
+			return filepath.Join(dataPath, path)
+		}),
 	)
 
-	s.env.RegisterWorkflowWithOptions(MockConfigureDHCPForAgent,
+	s.workflowEnv.RegisterWorkflowWithOptions(MockConfigureDHCPForAgent,
 		tworkflow.RegisterOptions{
 			Name: "configure-dhcp-for-agent",
 		})
 
-	s.activity.RegisterActivityWithOptions(s.svc.configureViaOMAPI,
+	s.activityEnv.RegisterActivityWithOptions(s.svc.configureViaOMAPI,
 		activity.RegisterOptions{
 			Name: "configure-dhcp-via-omapi",
 		})
+
+	s.activityEnv.RegisterActivityWithOptions(s.svc.configureViaFile,
+		activity.RegisterOptions{
+			Name: "configure-dhcp-via-file",
+		})
+}
+
+func (s *DHCPServiceTestSuite) TearDownTest() {
+	s.configHTTPServer.Close()
 }
 
 func TestDHCPServiceTestSuite(t *testing.T) {
@@ -101,20 +142,20 @@ func TestDHCPServiceTestSuite(t *testing.T) {
 }
 
 func (s *DHCPServiceTestSuite) TestConfigurationWorkflowEnabled() {
-	s.env.ExecuteWorkflow(s.svc.configure,
+	s.workflowEnv.ExecuteWorkflow(s.svc.configure,
 		DHCPServiceConfigParam{Enabled: true})
 
-	s.True(s.env.IsWorkflowCompleted())
-	s.NoError(s.env.GetWorkflowError())
+	s.True(s.workflowEnv.IsWorkflowCompleted())
+	s.NoError(s.workflowEnv.GetWorkflowError())
 	s.True(s.svc.running.Load())
 }
 
 func (s *DHCPServiceTestSuite) TestConfigurationWorkflowDisabled() {
-	s.env.ExecuteWorkflow(s.svc.configure,
+	s.workflowEnv.ExecuteWorkflow(s.svc.configure,
 		DHCPServiceConfigParam{Enabled: false})
 
-	s.True(s.env.IsWorkflowCompleted())
-	s.NoError(s.env.GetWorkflowError())
+	s.True(s.workflowEnv.IsWorkflowCompleted())
+	s.NoError(s.workflowEnv.GetWorkflowError())
 	s.False(s.svc.running.Load())
 }
 
@@ -134,7 +175,7 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV4() {
 
 	s.svc.runningV4.Store(true)
 
-	_, err := s.activity.ExecuteActivity(
+	_, err := s.activityEnv.ExecuteActivity(
 		"configure-dhcp-via-omapi",
 		ApplyConfigViaOMAPIParam{
 			Secret: secret,
@@ -174,7 +215,7 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPIV6() {
 
 	s.svc.runningV6.Store(true)
 
-	_, err := s.activity.ExecuteActivity(
+	_, err := s.activityEnv.ExecuteActivity(
 		"configure-dhcp-via-omapi",
 		ApplyConfigViaOMAPIParam{
 			Secret: secret,
@@ -212,7 +253,7 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV4() {
 		},
 	}
 
-	_, err := s.activity.ExecuteActivity(
+	_, err := s.activityEnv.ExecuteActivity(
 		"configure-dhcp-via-omapi",
 		ApplyConfigViaOMAPIParam{
 			Secret: secret,
@@ -237,7 +278,7 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV6() {
 		},
 	}
 
-	_, err := s.activity.ExecuteActivity(
+	_, err := s.activityEnv.ExecuteActivity(
 		"configure-dhcp-via-omapi",
 		ApplyConfigViaOMAPIParam{
 			Secret: secret,
@@ -246,4 +287,38 @@ func (s *DHCPServiceTestSuite) TestConfigureViaOMAPINotRunningV6() {
 	)
 
 	s.Equal(errors.Unwrap(err).Error(), ErrV6NotActive.Error())
+}
+
+// TestConfigureViaFile ensures that provided JSON decoded and written
+// properly into corresponding files.
+func (s *DHCPServiceTestSuite) TestConfigureViaFile() {
+	config := `{
+    "dhcpd": "Y29uZmlndXJhdGlvbl92NA==",
+    "dhcpd_interfaces": "aW50ZXJmYWNlc192NA==",
+    "dhcpd6": "Y29uZmlndXJhdGlvbl92Ng==",
+    "dhcpd6_interfaces": "aW50ZXJmYWNlc192Ng=="
+  }`
+
+	s.configAPIResponse = []byte(config)
+	_, err := s.activityEnv.ExecuteActivity(
+		"configure-dhcp-via-file",
+	)
+
+	assert.NoError(s.T(), err)
+
+	results := map[string]string{
+		"dhcpd.conf":        "configuration_v4",
+		"dhcpd-interfaces":  "interfaces_v4",
+		"dhcpd6.conf":       "configuration_v6",
+		"dhcpd6-interfaces": "interfaces_v6",
+	}
+
+	for k, v := range results {
+		data, err := os.ReadFile(s.svc.dataPathFactory(k))
+		if err != nil {
+			s.T().Error(err)
+		}
+
+		assert.Equal(s.T(), []byte(v), data)
+	}
 }
