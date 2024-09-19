@@ -5,7 +5,7 @@ from typing import Any
 from netaddr import IPAddress, IPNetwork
 from sqlalchemy import select
 
-from maasserver.enum import IPADDRESS_TYPE
+from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.tables import StaticIPAddressTable
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -21,7 +21,7 @@ async def create_test_staticipaddress_entry(
     staticipaddress = {
         "created": created_at,
         "updated": updated_at,
-        "alloc_type": IPADDRESS_TYPE.AUTO,
+        "alloc_type": IpAddressType.AUTO,
         "lease_time": 600,
     }
     staticipaddress.update(extra_details)
@@ -53,7 +53,7 @@ async def create_test_staticipaddress_entry(
             ip = ip + 1
         staticipaddress["ip"] = str(ip)
 
-        if staticipaddress["alloc_type"] == IPADDRESS_TYPE.DHCP:
+        if staticipaddress["alloc_type"] == IpAddressType.DHCP:
             # create a new discovered ip if one does not exist on the subnet
             stmt = (
                 select(StaticIPAddressTable)
@@ -61,14 +61,14 @@ async def create_test_staticipaddress_entry(
                     StaticIPAddressTable.c.subnet_id
                     == staticipaddress["subnet_id"],
                     StaticIPAddressTable.c.alloc_type
-                    == IPADDRESS_TYPE.DISCOVERED,
+                    == IpAddressType.DISCOVERED,
                 )
                 .distinct(StaticIPAddressTable.c.subnet_id)
             )
             if not (await fixture.conn.execute(stmt)).first():
                 [discovered_ip] = await create_test_staticipaddress_entry(
                     fixture,
-                    alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                    alloc_type=IpAddressType.DISCOVERED,
                     ip=staticipaddress["ip"],
                     subnet_id=staticipaddress["subnet_id"],
                 )

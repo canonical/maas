@@ -4,12 +4,12 @@
 from maasapiserver.v3.api.public.models.responses.machines import (
     HardwareDeviceTypeEnum,
     MachineResponse,
-    MachineStatusEnum,
     PciDeviceResponse,
     PowerDriverResponse,
     UsbDeviceResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
@@ -34,7 +34,7 @@ class TestMachineResponse:
             hwe_kernel=None,
             locked=False,
             cpu_count=8,
-            status=MachineStatusEnum.new,
+            status=NodeStatus.NEW,
             power_type=None,
             fqdn="maas.local",
             hostname="hostname",

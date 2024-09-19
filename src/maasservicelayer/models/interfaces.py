@@ -1,27 +1,13 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field, IPvAnyAddress
 
-from maasserver.enum import (
-    INTERFACE_LINK_TYPE,
-    INTERFACE_LINK_TYPE_CHOICES,
-    INTERFACE_TYPE_CHOICES,
-    IPADDRESS_TYPE,
-)
+from maascommon.enums.interface import InterfaceLinkType, InterfaceType
+from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.models.base import MaasTimestampedBaseModel
-
-InterfaceTypeEnum = Enum(
-    "InterfaceType",
-    dict({str(name).lower(): str(name) for name, _ in INTERFACE_TYPE_CHOICES}),
-)
-LinkModeEnum = Enum(
-    "IpMode",
-    dict({str(name): str(name) for name, _ in INTERFACE_LINK_TYPE_CHOICES}),
-)
 
 
 class Link(BaseModel):
@@ -32,23 +18,23 @@ class Link(BaseModel):
 
     # derived from StaticIPAddress.get_interface_link_type
     @property
-    def mode(self) -> LinkModeEnum:
+    def mode(self) -> InterfaceLinkType:
         match self.ip_type:
-            case IPADDRESS_TYPE.AUTO:
-                mode = INTERFACE_LINK_TYPE.AUTO
-            case IPADDRESS_TYPE.STICKY:
+            case IpAddressType.AUTO:
+                mode = InterfaceLinkType.AUTO
+            case IpAddressType.STICKY:
                 mode = (
-                    INTERFACE_LINK_TYPE.STATIC
+                    InterfaceLinkType.STATIC
                     if self.ip_address is None
-                    else INTERFACE_LINK_TYPE.LINK_UP
+                    else InterfaceLinkType.LINK_UP
                 )
-            case IPADDRESS_TYPE.USER_RESERVED:
-                mode = INTERFACE_LINK_TYPE.STATIC
-            case IPADDRESS_TYPE.DHCP:
-                mode = INTERFACE_LINK_TYPE.DHCP
-            case IPADDRESS_TYPE.DISCOVERED:
-                mode = INTERFACE_LINK_TYPE.DHCP
-        return LinkModeEnum(mode)
+            case IpAddressType.USER_RESERVED:
+                mode = InterfaceLinkType.STATIC
+            case IpAddressType.DHCP:
+                mode = InterfaceLinkType.DHCP
+            case IpAddressType.DISCOVERED:
+                mode = InterfaceLinkType.DHCP
+        return mode
 
     class Config:
         arbitrary_types_allowed = True
@@ -56,7 +42,7 @@ class Link(BaseModel):
 
 class Interface(MaasTimestampedBaseModel):
     name: str
-    type: InterfaceTypeEnum
+    type: InterfaceType
     mac_address: Optional[str]
     # TODO
     # effective_mtu: int = 0

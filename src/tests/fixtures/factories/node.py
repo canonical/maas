@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasserver.enum import NODE_STATUS, NODE_TYPE
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.db.tables import NodeTable
 from maastesting.factory import factory
 from provisioningserver.enum import POWER_STATE
@@ -35,7 +35,7 @@ async def generate_node_system_id(db_connection: AsyncConnection):
 
 async def _create_test_node_entry(
     fixture: Fixture,
-    node_type: NODE_TYPE,
+    node_type: NodeTypeEnum,
     **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
@@ -46,7 +46,7 @@ async def _create_test_node_entry(
         "updated": updated_at,
         "system_id": system_id,
         "hostname": factory.make_name(),
-        "status": NODE_STATUS.READY,
+        "status": NodeStatus.READY,
         "osystem": "",
         "distro_series": "",
         "cpu_count": 1,
@@ -60,7 +60,7 @@ async def _create_test_node_entry(
         "zone_id": 1,
         "url": "",
         "error_description": "",
-        "previous_status": NODE_STATUS.NEW,
+        "previous_status": NodeStatus.NEW,
         "default_user": "",
         "cpu_speed": 0,
         "install_rackd": False,
@@ -90,7 +90,7 @@ async def create_test_machine_entry(
     **extra_details: Any,
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
-        fixture, NODE_TYPE.MACHINE, **extra_details
+        fixture, NodeTypeEnum.MACHINE, **extra_details
     )
 
 
@@ -99,7 +99,7 @@ async def create_test_device_entry(
     **extra_details: Any,
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
-        fixture, NODE_TYPE.DEVICE, **extra_details
+        fixture, NodeTypeEnum.DEVICE, **extra_details
     )
 
 
@@ -108,7 +108,7 @@ async def create_test_rack_controller_entry(
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
-        fixture, NODE_TYPE.RACK_CONTROLLER, **extra_details
+        fixture, NodeTypeEnum.RACK_CONTROLLER, **extra_details
     )
 
 
@@ -117,7 +117,7 @@ async def create_test_region_controller_entry(
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
-        fixture, NODE_TYPE.REGION_CONTROLLER, **extra_details
+        fixture, NodeTypeEnum.REGION_CONTROLLER, **extra_details
     )
 
 
@@ -126,5 +126,5 @@ async def create_test_rack_and_region_controller_entry(
     **extra_details: dict[str, Any],
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
-        fixture, NODE_TYPE.REGION_AND_RACK_CONTROLLER, **extra_details
+        fixture, NodeTypeEnum.REGION_AND_RACK_CONTROLLER, **extra_details
     )

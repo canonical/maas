@@ -10,7 +10,7 @@ from sqlalchemy import or_, select
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
 
-from maasserver.enum import NODE_TYPE
+from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.tables import (
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -93,9 +93,9 @@ class ConfigureAgentActivity(ActivityBase):
                 .filter(
                     NodeTable.c.system_id == input.system_id,
                     or_(
-                        NodeTable.c.node_type == NODE_TYPE.RACK_CONTROLLER,
+                        NodeTable.c.node_type == NodeTypeEnum.RACK_CONTROLLER,
                         NodeTable.c.node_type
-                        == NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                        == NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                     ),
                 )
             )
@@ -139,9 +139,10 @@ class ConfigureAgentActivity(ActivityBase):
                 )
                 .filter(
                     or_(
-                        NodeTable.c.node_type == NODE_TYPE.REGION_CONTROLLER,
                         NodeTable.c.node_type
-                        == NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                        == NodeTypeEnum.REGION_CONTROLLER,
+                        NodeTable.c.node_type
+                        == NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                     ),
                 )
             )

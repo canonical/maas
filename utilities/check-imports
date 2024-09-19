@@ -193,6 +193,7 @@ APIServerRule = Rule(
     Allow("fastapi|fastapi.**"),
     Allow("jose|jose.**"),
     Allow("maasapiserver|maasapiserver.**"),
+    Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasserver.config.**"),
     Allow("maasserver.enum.**"),
@@ -391,7 +392,6 @@ RegionControllerWorkerRule = Rule(
     Allow("maascommon|maascommon.**"),
     # TODO: Remove when we finally move everything to the maasservicelayer
     Allow("maasapiserver.**"),
-    Allow("maasserver.enum.**"),
     Allow("maasserver.workflow.**"),
     Allow("maasservicelayer|maasservicelayer.**"),
     Allow("maastemporalworker.**"),
@@ -415,9 +415,8 @@ ServiceLayerRule = Rule(
     Allow("jose|jose.**"),
     Allow("macaroonbakery|macaroonbakery.**"),
     Allow("maascommon|maascommon.**"),
-    # TODO: Refactor the enums and move them to the service layer
+    # TODO: move remaining utils to maascommon
     Allow("maasserver.config.RegionConfiguration"),
-    Allow("maasserver.enum.**"),
     Allow("maasserver.macaroons._get_macaroon_caveats_ops"),
     Allow("maasserver.macaroons._IDClient"),
     Allow("maasservicelayer|maasservicelayer.**"),

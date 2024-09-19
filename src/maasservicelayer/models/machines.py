@@ -7,7 +7,7 @@ from typing import Optional
 
 from pydantic import validator
 
-from maasserver.enum import NODE_STATUS_CHOICES
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.base import MaasTimestampedBaseModel
 from metadataserver.enum import HARDWARE_TYPE_CHOICES
@@ -15,11 +15,6 @@ from metadataserver.enum import HARDWARE_TYPE_CHOICES
 # PCIE and USB vendor and product ids are represented as a 2 byte hex string
 DEVICE_ID_REGEX = re.compile(r"^[\da-f]{4}$", re.I)
 
-
-MachineStatusEnum = Enum(
-    "MachineStatus",
-    dict({str(name).lower(): int(code) for code, name in NODE_STATUS_CHOICES}),
-)
 
 HardwareDeviceTypeEnum = Enum(
     "HardwareDeviceType",
@@ -41,7 +36,7 @@ class Machine(MaasTimestampedBaseModel):
     hwe_kernel: Optional[str]
     locked: bool
     cpu_count: int
-    status: MachineStatusEnum
+    status: NodeStatus
     power_type: Optional[PowerTypeEnum]
     fqdn: str
     hostname: str

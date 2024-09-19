@@ -12,10 +12,10 @@ from maasapiserver.v3.api.public.models.requests.query import (
 )
 from maasapiserver.v3.api.public.models.responses.interfaces import (
     InterfaceListResponse,
-    InterfaceTypeEnum,
+    InterfaceType,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasserver.enum import IPADDRESS_TYPE
+from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.interfaces import Interface, Link
 from maasservicelayer.services import ServiceCollectionV3
@@ -28,7 +28,7 @@ from tests.maasapiserver.v3.api.public.handlers.base import (
 
 LINK = Link(
     id=1,
-    ip_type=IPADDRESS_TYPE.AUTO,
+    ip_type=IpAddressType.AUTO,
     ip_address=IPAddress(addr="10.10.10.10"),
     ip_subnet=0,
 )
@@ -38,7 +38,7 @@ TEST_INTERFACE = Interface(
     created=utcnow(),
     updated=utcnow(),
     name="test_interface",
-    type=InterfaceTypeEnum.physical,
+    type=InterfaceType.PHYSICAL,
     mac_address="",
     link_connected=True,
     interface_speed=0,
@@ -52,7 +52,7 @@ TEST_INTERFACE_2 = Interface(
     created=utcnow(),
     updated=utcnow(),
     name="test_interface_2",
-    type=InterfaceTypeEnum.physical,
+    type=InterfaceType.PHYSICAL,
     mac_address="",
     link_connected=True,
     interface_speed=0,

@@ -9,12 +9,12 @@ from maasapiserver.v3.api.public.models.responses.base import (
     HalResponse,
     TokenPaginatedResponse,
 )
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.enums.power_drivers import PowerTypeEnum
 from maasservicelayer.models.bmc import Bmc
 from maasservicelayer.models.machines import (
     HardwareDeviceTypeEnum,
     Machine,
-    MachineStatusEnum,
     PciDevice,
     UsbDevice,
 )
@@ -34,7 +34,8 @@ class MachineResponse(HalResponse[BaseHal]):
     hwe_kernel: Optional[str]
     locked: bool
     cpu_count: int
-    status: MachineStatusEnum
+    # TODO: we don't want to return integers here. To be replaced with proper literal representation of the status
+    status: NodeStatus
     power_type: Optional[PowerTypeEnum]
     fqdn: str
 

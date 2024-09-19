@@ -16,7 +16,7 @@ from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 import yaml
 
-from maasserver.enum import NODE_STATUS
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.db import Database
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
@@ -274,17 +274,17 @@ class TestMSMActivities:
 
     async def test_get_heartbeat_data(self, msm_act, fixture: Fixture):
         for st in [
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.DEPLOYED,
-            NODE_STATUS.READY,
-            NODE_STATUS.TESTING,
-            NODE_STATUS.FAILED_COMMISSIONING,
-            NODE_STATUS.FAILED_DEPLOYMENT,
-            NODE_STATUS.FAILED_DISK_ERASING,
-            NODE_STATUS.FAILED_ENTERING_RESCUE_MODE,
-            NODE_STATUS.FAILED_EXITING_RESCUE_MODE,
-            NODE_STATUS.FAILED_RELEASING,
-            NODE_STATUS.FAILED_TESTING,
+            NodeStatus.ALLOCATED,
+            NodeStatus.DEPLOYED,
+            NodeStatus.READY,
+            NodeStatus.TESTING,
+            NodeStatus.FAILED_COMMISSIONING,
+            NodeStatus.FAILED_DEPLOYMENT,
+            NodeStatus.FAILED_DISK_ERASING,
+            NodeStatus.FAILED_ENTERING_RESCUE_MODE,
+            NodeStatus.FAILED_EXITING_RESCUE_MODE,
+            NodeStatus.FAILED_RELEASING,
+            NodeStatus.FAILED_TESTING,
         ]:
             await create_test_machine_entry(fixture, status=st)
         env = ActivityEnvironment()

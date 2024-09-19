@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
-from maasserver.enum import IPADDRESS_TYPE
+from maascommon.enums.ipaddress import IpAddressType
 from maasservicelayer.db.tables import (  # TODO; VlanTable,
     InterfaceIPAddressTable,
     InterfaceTable,
@@ -69,7 +69,7 @@ class InterfaceRepository:
         self, interfaces, node_id
     ) -> None:
         if any(
-            link.ip_type == IPADDRESS_TYPE.DHCP
+            link.ip_type == IpAddressType.DHCP
             for iface in interfaces
             for link in iface["links"]
         ):
@@ -85,7 +85,7 @@ class InterfaceRepository:
             ]
             for iface in interfaces:
                 for link in iface["links"]:
-                    if link.ip_type == IPADDRESS_TYPE.DHCP:
+                    if link.ip_type == IpAddressType.DHCP:
                         if ip := next(
                             filter(
                                 lambda ip: ip["ip_subnet"] == link.ip_subnet,
@@ -105,7 +105,7 @@ class InterfaceRepository:
             .where(
                 eq(
                     StaticIPAddressTable.c.alloc_type,
-                    IPADDRESS_TYPE.DISCOVERED,
+                    IpAddressType.DISCOVERED,
                 )
             )
             .join(
@@ -150,7 +150,7 @@ class InterfaceRepository:
                     InterfaceIPAddressTable.c.staticipaddress_id,
                     StaticIPAddressTable.c.id,
                 ),
-                StaticIPAddressTable.c.alloc_type != IPADDRESS_TYPE.DISCOVERED,
+                StaticIPAddressTable.c.alloc_type != IpAddressType.DISCOVERED,
             )
             .order_by(desc(StaticIPAddressTable.c.id))
             .alias("ip_subquery")

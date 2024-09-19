@@ -7,7 +7,7 @@ from sqlalchemy import and_, desc, select, Select
 from sqlalchemy.sql.expression import func
 from sqlalchemy.sql.operators import eq, le
 
-from maasserver.enum import NODE_DEVICE_BUS, NODE_TYPE
+from maascommon.enums.node import NodeDeviceBus, NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
@@ -81,7 +81,7 @@ class MachinesRepository(BaseRepository[Machine]):
         stmt = (
             self._list_devices_statement(system_id)
             .order_by(desc(NodeDeviceTable.c.id))
-            .where(eq(NodeDeviceTable.c.bus, NODE_DEVICE_BUS.USB))
+            .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.USB))
             .limit(size + 1)
         )
         if token is not None:
@@ -103,7 +103,7 @@ class MachinesRepository(BaseRepository[Machine]):
         stmt = (
             self._list_devices_statement(system_id)
             .order_by(desc(NodeDeviceTable.c.id))
-            .where(eq(NodeDeviceTable.c.bus, NODE_DEVICE_BUS.PCIE))
+            .where(eq(NodeDeviceTable.c.bus, NodeDeviceBus.PCIE))
             .limit(size + 1)
         )
         if token is not None:
@@ -192,5 +192,5 @@ class MachinesRepository(BaseRepository[Machine]):
             .join(
                 BMCTable, eq(BMCTable.c.id, NodeTable.c.bmc_id), isouter=True
             )
-            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
+            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
         )

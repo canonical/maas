@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from maasserver.enum import BMC_TYPE
+from maascommon.enums.bmc import BmcType
 from maasservicelayer.models.bmc import Bmc
 from tests.maasapiserver.fixtures.db import Fixture
 
@@ -16,7 +16,7 @@ async def create_test_bmc_entry(
         "created": created_at,
         "updated": updated_at,
         "power_type": "virsh",
-        "bmc_type": BMC_TYPE.BMC,
+        "bmc_type": BmcType.BMC,
         "cores": 1,
         "cpu_speed": 100,
         "local_storage": 1024,

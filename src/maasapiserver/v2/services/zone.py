@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 
 from maasapiserver.v2.models.entities.zone import Zone
-from maasserver.enum import NODE_TYPE
+from maascommon.enums.node import NodeTypeEnum
 from maasservicelayer.db.tables import NodeTable, ZoneTable
 from maasservicelayer.services._base import Service
 
@@ -16,18 +16,18 @@ class ZoneService(Service):
                 ZoneTable.c.name,
                 ZoneTable.c.description,
                 func.count()
-                .filter(NodeTable.c.node_type == NODE_TYPE.DEVICE)
+                .filter(NodeTable.c.node_type == NodeTypeEnum.DEVICE)
                 .label("devices_count"),
                 func.count()
-                .filter(NodeTable.c.node_type == NODE_TYPE.MACHINE)
+                .filter(NodeTable.c.node_type == NodeTypeEnum.MACHINE)
                 .label("machines_count"),
                 func.count()
                 .filter(
                     NodeTable.c.node_type.in_(
                         [
-                            NODE_TYPE.RACK_CONTROLLER,
-                            NODE_TYPE.REGION_CONTROLLER,
-                            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                            NodeTypeEnum.RACK_CONTROLLER,
+                            NodeTypeEnum.REGION_CONTROLLER,
+                            NodeTypeEnum.REGION_AND_RACK_CONTROLLER,
                         ]
                     )
                 )

@@ -16,13 +16,12 @@ from maasapiserver.v2.models.responses.machine import (
     MachineListGroupResponse,
     MachineListResponse,
 )
+from maascommon.enums.bmc import BmcType
+from maascommon.enums.interface import InterfaceType
+from maascommon.enums.ipaddress import IpAddressType
+from maascommon.enums.node import SimplifiedNodeStatusEnum
 from maasserver.enum import (
-    BMC_TYPE,
-    INTERFACE_TYPE,
-    IPADDRESS_TYPE,
     NODE_STATUS_CHOICES_DICT,
-    NODE_TYPE,
-    SIMPLIFIED_NODE_STATUS,
     SIMPLIFIED_NODE_STATUSES_MAP_REVERSED,
 )
 from maasservicelayer.db.tables import (
@@ -51,16 +50,6 @@ from maasservicelayer.db.tables import (
 )
 from maasservicelayer.services._base import Service
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE, SCRIPT_STATUS
-
-# TODO: can't import it from maasserver due to django runtime
-# maasserver/websockets/handlers/node.py:103
-NODE_TYPE_TO_LINK_TYPE = {
-    NODE_TYPE.DEVICE: "device",
-    NODE_TYPE.MACHINE: "machine",
-    NODE_TYPE.RACK_CONTROLLER: "controller",
-    NODE_TYPE.REGION_CONTROLLER: "controller",
-    NODE_TYPE.REGION_AND_RACK_CONTROLLER: "controller",
-}
 
 
 class MachineService(Service):
@@ -162,7 +151,8 @@ class MachineService(Service):
             permissions=[],
             fqdn=record["fqdn"],
             actions=[],
-            link_type=NODE_TYPE_TO_LINK_TYPE[NODE_TYPE.MACHINE],
+            # maasserver/websockets/handlers/node.py:103
+            link_type="machine",
             tags=record["tags"],
             physical_disk_count=record["physical_disk_count"],
             storage=record["storage"],
@@ -179,7 +169,7 @@ class MachineService(Service):
             status=NODE_STATUS_CHOICES_DICT[record["status_code"]],
             status_code=record["status_code"],
             simple_status=SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
-                record["status_code"], SIMPLIFIED_NODE_STATUS.OTHER
+                record["status_code"], SimplifiedNodeStatusEnum.OTHER.value
             ),
             ephemeral_deploy=record["ephemeral_deploy"],
             fabrics=record["fabrics"],
@@ -387,7 +377,7 @@ class MachineService(Service):
             .where(
                 InterfaceTable.c.id
                 != boot_interface_ip_cte.c.boot_interface_id,
-                InterfaceTable.c.type == INTERFACE_TYPE.PHYSICAL,
+                InterfaceTable.c.type == InterfaceType.PHYSICAL,
             )
             .group_by(NodeTable.c.id)
         ).cte("extra_macs")
@@ -430,7 +420,7 @@ class MachineService(Service):
                 == StaticIPAddressTable.c.id,
             )
             .where(
-                StaticIPAddressTable.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
+                StaticIPAddressTable.c.alloc_type == IpAddressType.DISCOVERED,
                 StaticIPAddressTable.c.ip.is_not(None),
             )
         ).cte("discovered_addresses")
@@ -462,8 +452,8 @@ class MachineService(Service):
                 == InterfaceIPAddressTable.c.staticipaddress_id,
             )
             .where(
-                StaticIPAddressTable.c.alloc_type == IPADDRESS_TYPE.DHCP,
-                DiscoveredAddress.c.alloc_type == IPADDRESS_TYPE.DISCOVERED,
+                StaticIPAddressTable.c.alloc_type == IpAddressType.DHCP,
+                DiscoveredAddress.c.alloc_type == IpAddressType.DISCOVERED,
                 DiscoveredAddress.c.ip.is_not(None),
             )
             .order_by(StaticIPAddressTable.c.id, DiscoveredAddress.c.id.desc())
@@ -476,7 +466,7 @@ class MachineService(Service):
                 case(
                     (
                         StaticIPAddressTable.c.alloc_type
-                        == IPADDRESS_TYPE.DHCP,
+                        == IpAddressType.DHCP,
                         dhcp_address_cte.c.ip,
                     ),
                     else_=StaticIPAddressTable.c.ip,
@@ -501,10 +491,10 @@ class MachineService(Service):
                 StaticIPAddressTable.c.ip.is_not(None),
                 StaticIPAddressTable.c.alloc_type.in_(
                     (
-                        IPADDRESS_TYPE.DHCP,
-                        IPADDRESS_TYPE.AUTO,
-                        IPADDRESS_TYPE.STICKY,
-                        IPADDRESS_TYPE.USER_RESERVED,
+                        IpAddressType.DHCP,
+                        IpAddressType.AUTO,
+                        IpAddressType.STICKY,
+                        IpAddressType.USER_RESERVED,
                     )
                 ),
             )
@@ -1406,14 +1396,14 @@ class MachineService(Service):
                 BMCTable.c.power_type,
                 case(
                     (
-                        BMCTable.c.bmc_type == BMC_TYPE.POD,
+                        BMCTable.c.bmc_type == BmcType.POD,
                         BMCTable.c.id,
                     ),
                     else_=None,
                 ).label("pod_id"),
                 case(
                     (
-                        BMCTable.c.bmc_type == BMC_TYPE.POD,
+                        BMCTable.c.bmc_type == BmcType.POD,
                         BMCTable.c.name,
                     ),
                     else_=None,

@@ -22,7 +22,7 @@ from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
-from maasserver.enum import NODE_STATUS, NODE_TYPE
+from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
 from maastemporalworker.workflow.activity import ActivityBase
@@ -263,27 +263,27 @@ class MSMConnectorActivity(ActivityBase):
         stmt = (
             select(NodeTable.c.status, count(NodeTable.c.id).label("total"))
             .select_from(NodeTable)
-            .where(eq(NodeTable.c.node_type, NODE_TYPE.MACHINE))
+            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
             .group_by(NodeTable.c.status)
         )
         async with self.start_transaction() as tx:
             result = await tx.execute(stmt)
             for row in result.all():
                 match row.status:
-                    case NODE_STATUS.ALLOCATED:
+                    case NodeStatus.ALLOCATED:
                         ret.allocated += row.total
-                    case NODE_STATUS.DEPLOYED:
+                    case NodeStatus.DEPLOYED:
                         ret.deployed += row.total
-                    case NODE_STATUS.READY:
+                    case NodeStatus.READY:
                         ret.ready += row.total
                     case (
-                        NODE_STATUS.FAILED_COMMISSIONING
-                        | NODE_STATUS.FAILED_DEPLOYMENT
-                        | NODE_STATUS.FAILED_DISK_ERASING
-                        | NODE_STATUS.FAILED_ENTERING_RESCUE_MODE
-                        | NODE_STATUS.FAILED_EXITING_RESCUE_MODE
-                        | NODE_STATUS.FAILED_RELEASING
-                        | NODE_STATUS.FAILED_TESTING
+                        NodeStatus.FAILED_COMMISSIONING
+                        | NodeStatus.FAILED_DEPLOYMENT
+                        | NodeStatus.FAILED_DISK_ERASING
+                        | NodeStatus.FAILED_ENTERING_RESCUE_MODE
+                        | NodeStatus.FAILED_EXITING_RESCUE_MODE
+                        | NodeStatus.FAILED_RELEASING
+                        | NodeStatus.FAILED_TESTING
                     ):
                         ret.error += row.total
                     case _:

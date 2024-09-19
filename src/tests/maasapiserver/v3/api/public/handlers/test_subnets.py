@@ -15,7 +15,7 @@ from maasapiserver.v3.api.public.models.responses.subnets import (
     SubnetsListResponse,
 )
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasserver.enum import RDNS_MODE
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
 from maasservicelayer.services import ServiceCollectionV3
@@ -33,7 +33,7 @@ TEST_SUBNET = Subnet(
     name="test_name",
     description="test_description",
     cidr="10.10.10.10",
-    rdns_mode=RDNS_MODE.DEFAULT,
+    rdns_mode=RdnsMode.DEFAULT,
     gateway_ip=None,
     dns_servers=None,
     allow_dns=False,
@@ -50,7 +50,7 @@ TEST_SUBNET_2 = Subnet(
     name="test_name_2",
     description="test_description_2",
     cidr="12.12.12.12",
-    rdns_mode=RDNS_MODE.DEFAULT,
+    rdns_mode=RdnsMode.DEFAULT,
     gateway_ip=None,
     dns_servers=None,
     allow_dns=False,

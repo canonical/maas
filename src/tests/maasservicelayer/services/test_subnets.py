@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from maasserver.enum import RDNS_MODE
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.db.repositories.subnets import SubnetsRepository
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.subnets import Subnet
@@ -42,7 +42,7 @@ class TestSubnetsService:
             name="my subnet",
             description="subnet description",
             cidr=IPv4Network("10.0.0.0/24"),
-            rdns_mode=RDNS_MODE.DEFAULT,
+            rdns_mode=RdnsMode.DEFAULT,
             gateway_ip=IPv4Address("10.0.0.1"),
             dns_servers=[],
             allow_dns=True,

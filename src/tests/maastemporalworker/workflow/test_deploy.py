@@ -13,7 +13,7 @@ from temporalio.service import RPCError
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import Worker
 
-from maasserver.enum import NODE_STATUS
+from maascommon.enums.node import NodeStatus
 from maasserver.workflow.power import (
     PowerCycleParam,
     PowerCycleResult,
@@ -73,14 +73,14 @@ class TestDeployActivity:
     async def test_set_node_status(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
     ):
-        node = await create_test_machine_entry(fixture, status=NODE_STATUS.NEW)
+        node = await create_test_machine_entry(fixture, status=NodeStatus.NEW)
         env = ActivityEnvironment()
         activities = DeployActivity(db, connection=db_connection)
         await env.run(
             activities.set_node_status,
             SetNodeStatusParam(
                 system_id=node["system_id"],
-                status=NODE_STATUS.READY,
+                status=NodeStatus.READY,
             ),
         )
         node_status_stmt = (
@@ -89,7 +89,7 @@ class TestDeployActivity:
             .filter(NodeTable.c.system_id == node["system_id"])
         )
         [status] = (await db_connection.execute(node_status_stmt)).one()
-        assert status == NODE_STATUS.READY
+        assert status == NodeStatus.READY
 
     async def test_get_boot_order_with_netboot(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database
@@ -287,7 +287,7 @@ class TestDeployNWorkflow:
                 await wf.result()
 
                 assert len(calls["set_node_status"]) == 1
-                assert calls["set_node_status"][0] == NODE_STATUS.DEPLOYED
+                assert calls["set_node_status"][0] == NodeStatus.DEPLOYED
                 assert len(calls["get_boot_order"]) == 0
                 assert len(calls["power_query"]) == 1
                 assert len(calls["power_on"]) == 1
@@ -544,7 +544,7 @@ class TestDeployNWorkflow:
 
                 assert len(calls["set_node_status"]) == 3
                 assert calls["set_node_status"] == [
-                    NODE_STATUS.DEPLOYED for _ in range(3)
+                    NodeStatus.DEPLOYED for _ in range(3)
                 ]
                 assert len(calls["get_boot_order"]) == 0
                 assert len(calls["power_query"]) == 3

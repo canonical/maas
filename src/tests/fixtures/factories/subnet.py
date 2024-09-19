@@ -3,7 +3,7 @@ from typing import Any
 
 from sqlalchemy.dialects.postgresql import array
 
-from maasserver.enum import RDNS_MODE
+from maascommon.enums.subnet import RdnsMode
 from maastesting.factory import factory
 from tests.fixtures.factories.vlan import create_test_vlan_entry
 from tests.maasapiserver.fixtures.db import Fixture
@@ -18,7 +18,7 @@ async def create_test_subnet_entry(
         "created": created_at,
         "updated": updated_at,
         "cidr": str(factory.make_ip4_or_6_network()),
-        "rdns_mode": RDNS_MODE.DEFAULT,
+        "rdns_mode": RdnsMode.DEFAULT,
         "allow_proxy": True,
         "description": "",
         "active_discovery": False,

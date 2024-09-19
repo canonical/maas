@@ -6,7 +6,7 @@ from ipaddress import IPv4Address, IPv4Network
 
 from maasapiserver.v3.api.public.models.responses.subnets import SubnetResponse
 from maasapiserver.v3.constants import V3_API_PREFIX
-from maasserver.enum import RDNS_MODE
+from maascommon.enums.subnet import RdnsMode
 from maasservicelayer.models.subnets import Subnet
 
 
@@ -18,7 +18,7 @@ class TestSubnetResponse:
             name="my subnet",
             description="subnet description",
             cidr=IPv4Network("10.0.0.0/24"),
-            rdns_mode=RDNS_MODE.DEFAULT,
+            rdns_mode=RdnsMode.DEFAULT,
             gateway_ip=IPv4Address("10.0.0.1"),
             dns_servers=[],
             allow_dns=True,
