@@ -18,6 +18,11 @@ from maastemporalworker.workflow.deploy import (
     DeployNWorkflow,
     DeployWorkflow,
 )
+from maastemporalworker.workflow.dhcp import (
+    ConfigureDHCPForAgentWorkflow,
+    ConfigureDHCPWorkflow,
+    DHCPConfigActivity,
+)
 from maastemporalworker.workflow.msm import (
     MSMConnectorActivity,
     MSMEnrolSiteWorkflow,
@@ -59,6 +64,7 @@ async def main() -> None:
     msm_activity = MSMConnectorActivity(db)
     tag_evaluation_activity = TagEvaluationActivity(db)
     deploy_activity = DeployActivity(db)
+    dhcp_activity = DHCPConfigActivity(db)
 
     temporal_workers = [
         # All regions listen to a shared task queue. The first to pick up a task will execute it.
@@ -67,6 +73,8 @@ async def main() -> None:
             workflows=[
                 # Configuration workflows
                 ConfigureAgentWorkflow,
+                ConfigureDHCPWorkflow,
+                ConfigureDHCPForAgentWorkflow,
                 # Lifecycle workflows
                 DeployNWorkflow,
                 DeployWorkflow,
@@ -86,7 +94,11 @@ async def main() -> None:
                 # Deploy activities
                 deploy_activity.set_node_status,
                 deploy_activity.get_boot_order,
-                # MSM connector activities
+                # DHCP activities
+                dhcp_activity.find_agents_for_updates,
+                dhcp_activity.fetch_hosts_for_update,
+                dhcp_activity.get_omapi_key,
+                # MSM connector activities,
                 msm_activity.check_enrol,
                 msm_activity.get_enrol,
                 msm_activity.get_heartbeat_data,

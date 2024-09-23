@@ -140,6 +140,9 @@ func run(ctx tworkflow.Context, fn any, args ...any) error {
 
 type ConfigureDHCPForAgentParam struct {
 	SystemID        string `json:"system_id"`
+	VlanIDs         []int  `json:"vlan_ids"`           // for parity with python definition, agent should never assign this
+	SubnetIDs       []int  `json:"subnet_ids"`         // for parity with python definition, agent should never assign this
+	IPRangeIDs      []int  `json:"ip_ranges_ids"`      // for parity with python definition, agent should never assign this
 	StaticIPAddrIDs []int  `json:"static_ip_addr_ids"` // for parity with python definition, agent should never assign this
 	ReservedIPIDs   []int  `json:"reserved_ip_ids"`    // for parity with python definition, agent should never assign this
 	FullReload      bool   `json:"full_reload"`

@@ -259,13 +259,6 @@ class DHCPConfigActivity(ActivityBase):
 
             return AgentsForUpdateResult(agent_system_ids=list(system_ids))
 
-    # TODO to be implemented when config endpoint is available
-    @activity.defn(name="fetch-dhcpd-config")
-    async def fetch_dhcpd_config(
-        self, param: FetchDHCPDConfigParam
-    ) -> DHCPDConfigResult:
-        pass
-
     async def _get_hosts_for_static_ip_addresses(
         self,
         tx: AsyncConnection,
@@ -382,7 +375,7 @@ class DHCPConfigActivity(ActivityBase):
         return OMAPIKeyResult(key=key)
 
 
-@workflow.defn(name="configure-dhcp-for-agent")
+@workflow.defn(name="configure-dhcp-for-agent", sandboxed=False)
 class ConfigureDHCPForAgentWorkflow:
 
     @workflow.run
@@ -419,7 +412,7 @@ class ConfigureDHCPForAgentWorkflow:
             )
 
 
-@workflow.defn(name="configure-dhcp")
+@workflow.defn(name="configure-dhcp", sandboxed=False)
 class ConfigureDHCPWorkflow:
 
     @workflow.run
