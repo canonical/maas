@@ -9,9 +9,7 @@ from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-async def create_rootkey(
-    fixture: Fixture, **extra_details: dict[str, Any]
-) -> RootKey:
+async def create_rootkey(fixture: Fixture, **extra_details: Any) -> RootKey:
     created_at = utcnow()
     updated_at = utcnow()
 

@@ -13,7 +13,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_staticipaddress_entry(
     fixture: Fixture,
     subnet: dict[str, Any] | None = None,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> list[dict[str, Any]]:
     """We return a list, as DHCP ips need to create discovered ips also."""
     created_at = datetime.utcnow().astimezone()

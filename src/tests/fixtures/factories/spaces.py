@@ -11,7 +11,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_space_entry(
-    fixture: Fixture, **extra_details: dict[str, Any]
+    fixture: Fixture, **extra_details: Any
 ) -> Space:
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc)

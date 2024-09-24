@@ -10,7 +10,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_subnet_entry(
-    fixture: Fixture, **extra_details: dict[str, Any]
+    fixture: Fixture, **extra_details: Any
 ) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()

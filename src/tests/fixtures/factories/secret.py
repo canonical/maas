@@ -5,9 +5,7 @@ from maasservicelayer.models.secrets import Secret
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-async def create_test_secret(
-    fixture: Fixture, **extra_details: dict[str, Any]
-) -> Secret:
+async def create_test_secret(fixture: Fixture, **extra_details: Any) -> Secret:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
     secret = {

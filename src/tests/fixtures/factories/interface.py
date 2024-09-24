@@ -33,7 +33,7 @@ async def create_test_interface(
     fixture: Fixture,
     node: dict[str | Any] | None = None,
     ip_count: int = 4,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> Interface:
     vlan = await create_test_vlan_entry(fixture)
     subnet = await create_test_subnet_entry(fixture, vlan_id=vlan["id"])
@@ -56,7 +56,7 @@ async def create_test_interface_dict(
     ips: list[dict[str, Any]] | None = None,
     vlan: dict[str, Any] | None = None,
     boot_iface: bool | None = None,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
@@ -115,7 +115,7 @@ async def create_test_interface_entry(
     node: dict[str, Any] | None = None,
     ips: list[dict[str, Any]] | None = None,
     vlan: dict[str, Any] | None = None,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> Interface:
     created_interface = await create_test_interface_dict(
         fixture, node, ips, vlan, **extra_details

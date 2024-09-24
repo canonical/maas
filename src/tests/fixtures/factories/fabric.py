@@ -6,7 +6,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_fabric_entry(
-    fixture: Fixture, **extra_details: dict[str, Any]
+    fixture: Fixture, **extra_details: Any
 ) -> Fabric:
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc)

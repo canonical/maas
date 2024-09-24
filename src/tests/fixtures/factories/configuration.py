@@ -5,7 +5,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 
 
 async def create_test_configuration(
-    fixture: Fixture, **extra_details: dict[str, Any]
+    fixture: Fixture, **extra_details: Any
 ) -> Configuration:
     configuration = {
         "name": "test",

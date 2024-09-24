@@ -15,7 +15,7 @@ async def create_test_event_entry(
     fixture: Fixture,
     event_type: EventType | None = None,
     machine: Machine = None,
-    **extra_details: dict[str, Any]
+    **extra_details: Any
 ) -> Event:
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc)
@@ -68,7 +68,7 @@ async def create_test_event_entry(
 
 
 async def create_test_event_type_entry(
-    fixture: Fixture, **extra_details: dict[str, Any]
+    fixture: Fixture, **extra_details: Any
 ) -> EventType:
     created_at = datetime.now(timezone.utc)
     updated_at = datetime.now(timezone.utc)

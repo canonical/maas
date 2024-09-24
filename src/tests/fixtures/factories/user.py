@@ -8,9 +8,7 @@ from maasservicelayer.utils.date import utcnow
 from tests.maasapiserver.fixtures.db import Fixture
 
 
-async def create_test_user(
-    fixture: Fixture, **extra_details: dict[str, Any]
-) -> User:
+async def create_test_user(fixture: Fixture, **extra_details: Any) -> User:
     date_joined = utcnow()
 
     user = {
@@ -60,7 +58,7 @@ async def create_test_session(
 
 
 async def create_test_user_profile(
-    fixture: Fixture, user_id: int, **extra_details: dict[str, Any]
+    fixture: Fixture, user_id: int, **extra_details: Any
 ) -> UserProfile:
     user_profile = {
         "completed_intro": True,
@@ -77,7 +75,7 @@ async def create_test_user_profile(
 
 
 async def create_test_user_consumer(
-    fixture: Fixture, user_id: int, **extra_details: dict[str, Any]
+    fixture: Fixture, user_id: int, **extra_details: Any
 ) -> Consumer:
     consumer = {
         "name": "myconsumername",
@@ -94,10 +92,7 @@ async def create_test_user_consumer(
 
 
 async def create_test_user_token(
-    fixture: Fixture,
-    user_id: int,
-    consumer_id: int,
-    **extra_details: dict[str, Any]
+    fixture: Fixture, user_id: int, consumer_id: int, **extra_details: Any
 ) -> Token:
     token = {
         "key": "CtE9Cmy4asnRBtJvxQ",

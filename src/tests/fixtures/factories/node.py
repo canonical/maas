@@ -105,7 +105,7 @@ async def create_test_device_entry(
 
 async def create_test_rack_controller_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
         fixture, NodeTypeEnum.RACK_CONTROLLER, **extra_details
@@ -114,7 +114,7 @@ async def create_test_rack_controller_entry(
 
 async def create_test_region_controller_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
         fixture, NodeTypeEnum.REGION_CONTROLLER, **extra_details
@@ -123,7 +123,7 @@ async def create_test_region_controller_entry(
 
 async def create_test_rack_and_region_controller_entry(
     fixture: Fixture,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
     return await _create_test_node_entry(
         fixture, NodeTypeEnum.REGION_AND_RACK_CONTROLLER, **extra_details

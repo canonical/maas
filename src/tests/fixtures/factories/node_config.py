@@ -15,7 +15,7 @@ from tests.maasapiserver.fixtures.db import Fixture
 async def create_test_node_config_entry(
     fixture: Fixture,
     node: dict[str, Any] | None = None,
-    **extra_details: dict[str, Any],
+    **extra_details: Any,
 ) -> dict[str, Any]:
     created_at = datetime.utcnow().astimezone()
     updated_at = datetime.utcnow().astimezone()
