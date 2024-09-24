@@ -964,6 +964,17 @@ class ThreadPoolLimiter:
 
         def locked(lock, pool=self.pool):
             try:
+                # The threadpool has a queue of "waiters" and "working" threads.
+                # - The "waiters" are threads that are available to pick up tasks
+                # - The "working" are threads that are currently handling tasks.
+                #
+                # This is one of the places where a thread is picked from the waiters queue to execute a task.
+                # Since this class is mainly used to control the threads for the websocket and the django application,
+                # this is exactly where we pick a thread to handle the requests.
+                #
+                # IMPORTANT: only when the callback has returned the thread is put back into the waiters queue. If you have
+                # post_commits in your func and you are using deferToDatabase, then you are under the risk of a deadlock!
+                #
                 # If this fails we have serious problems. On the other hand,
                 # if this succeeds we have handed off all responsibility.
                 pool.callInThreadWithCallback(callback, func, *args, **kwargs)
