@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"os/signal"
@@ -74,6 +75,9 @@ type config struct {
 	Metrics     struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"metrics"`
+	Profiling struct {
+		Enabled bool `yaml:"enabled"`
+	} `yaml:"profiling"`
 }
 
 // setupLogger sets the global logger with the provided logLevel.
@@ -233,17 +237,30 @@ func getCertificatesDir() string {
 	return "/var/lib/maas/certificates"
 }
 
-func setupMetrics(meterProvider *metric.MeterProvider) error {
+func setupMetrics(meterProvider *metric.MeterProvider, mux *http.ServeMux) error {
 	exporter, err := prometheus.New()
 	if err != nil {
 		return err
 	}
 
-	socketPath := path.Join(getRunDir(), "agent-metrics.sock")
-
 	*meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
 
-	//nolint:govet // false positive
+	mux.Handle("/metrics", promhttp.Handler())
+
+	return nil
+}
+
+func setupProfiling(mux *http.ServeMux) {
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+}
+
+func setupHTTP(mux *http.ServeMux) error {
+	socketPath := path.Join(getRunDir(), "agent-http.sock")
+
 	if err := syscall.Unlink(socketPath); err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -259,9 +276,6 @@ func setupMetrics(meterProvider *metric.MeterProvider) error {
 	if err := os.Chmod(socketPath, 0660); err != nil {
 		return err
 	}
-
-	mux := http.NewServeMux()
-	mux.Handle("/metrics", promhttp.Handler())
 
 	server := &http.Server{
 		Handler:           mux,
@@ -311,9 +325,20 @@ func Run() int {
 
 	var meterProvider metric.MeterProvider
 
-	// TODO: make this configurable?
-	// if cfg.Metrics.Enabled {
-	go func() { fatal <- setupMetrics(&meterProvider) }()
+	mux := http.NewServeMux()
+
+	// TODO: make this configurable based on the config parameters
+	//nolint:govet // false positive
+	if err := setupMetrics(&meterProvider, mux); err != nil {
+		log.Error().Err(err).Msg("Cannot fetch cluster certificate")
+		return 1
+	}
+
+	if cfg.Profiling.Enabled {
+		setupProfiling(mux)
+	}
+
+	go func() { fatal <- setupHTTP(mux) }()
 
 	cert, ca, err := getClusterCert()
 	if err != nil {

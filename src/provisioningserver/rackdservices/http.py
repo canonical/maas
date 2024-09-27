@@ -175,7 +175,7 @@ class RackHTTPService(TimerService):
             "MAAS_AGENT_HTTPPROXY_SOCKET_PATH",
             str(get_maas_run_path() / "httpproxy.sock"),
         )
-        metrics_socket_path = str(get_maas_run_path() / "agent-metrics.sock")
+        agent_http_socket_path = str(get_maas_run_path() / "agent-http.sock")
 
         try:
             rendered = template.substitute(
@@ -184,7 +184,7 @@ class RackHTTPService(TimerService):
                     "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
                     "maas_agent_httpproxy_socket_path": httpproxy_socket_path,
-                    "maas_agent_metrics_socket_path": metrics_socket_path,
+                    "maas_agent_http_socket_path": agent_http_socket_path,
                     "boot_resources_dir": get_maas_data_path("image-storage"),
                 }
             )

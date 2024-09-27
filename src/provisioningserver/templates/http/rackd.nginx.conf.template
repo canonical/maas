@@ -10,8 +10,8 @@ upstream maas-agent-httpproxy {
     server unix:{{maas_agent_httpproxy_socket_path}};
 }
 
-upstream maas-agent-metrics {
-  server unix:{{maas_agent_metrics_socket_path}};
+upstream maas-agent-http {
+  server unix:{{maas_agent_http_socket_path}};
 }
 
 server {
@@ -57,7 +57,11 @@ server {
     }
 
     location /metrics/agent {
-        proxy_pass http://maas-agent-metrics/metrics;
+        proxy_pass http://maas-agent-http/metrics;
+    }
+
+    location ~ ^/profiling/agent/(.*) {
+        proxy_pass http://maas-agent-http/$1;
     }
 
     location = /log {
