@@ -861,6 +861,7 @@ class MachineForm(NodeForm):
         return Machine.objects.validate_enable_kernel_crash_dump(
             machine=self.instance,
             enable_kernel_crash_dump=enable_kernel_crash_dump,
+            emit_notification_if_fail=False,
         )
 
     def clean(self):

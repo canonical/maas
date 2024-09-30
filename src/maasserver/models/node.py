@@ -118,6 +118,7 @@ from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface, InterfaceRelationship
 from maasserver.models.licensekey import LicenseKey
+from maasserver.models.notification import Notification
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partitiontable import PartitionTable
@@ -639,7 +640,10 @@ class MachineManager(BaseNodeManager):
         return available_machines.filter(status=NODE_STATUS.READY)
 
     def validate_enable_kernel_crash_dump(
-        self, machine, enable_kernel_crash_dump=None
+        self,
+        machine,
+        enable_kernel_crash_dump: bool | None = None,
+        emit_notification_if_fail: bool = False,
     ):
         """
         If the machine does not satisfy the minimum requirements to enable the kernel crash dump, return False.
@@ -656,8 +660,13 @@ class MachineManager(BaseNodeManager):
                 or machine.memory < 6 * 1024
                 or machine.memory > 2 * 1024 * 1024
             ):
+                if emit_notification_if_fail:
+                    Notification.objects.create_warning_for_users(
+                        ident=f"kernel_crash_{machine.system_id}",
+                        message=f"Kernel crash dump was not enabled for {machine.fqdn} because it did not meet the minimum requirements.",
+                    )
                 maaslog.warning(
-                    f"The machine {machine.system_id} does not satisfy the minimum requirements to enable kernel crash dumps."
+                    f"Kernel crash dump was not enabled for {machine.fqdn} because it did not meet the minimum requirements."
                 )
                 enable_kernel_crash_dump = False
         return enable_kernel_crash_dump

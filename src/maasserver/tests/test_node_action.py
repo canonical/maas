@@ -24,7 +24,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeActionError
 from maasserver.models import Config, Event
 from maasserver.models import node as node_module
-from maasserver.models import ScriptSet, signals, StaticIPAddress
+from maasserver.models import Notification, ScriptSet, signals, StaticIPAddress
 from maasserver.models.signals.testing import SignalsDisabled
 import maasserver.node_action as node_action_module
 from maasserver.node_action import (
@@ -1143,6 +1143,9 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute(**extra)
         assert node.osystem == os_name
         assert node.enable_kernel_crash_dump is False
+        assert Notification.objects.filter(
+            ident=f"kernel_crash_{node.system_id}"
+        ).exists()
 
 
 class TestDeployActionTransactional(MAASTransactionServerTestCase):

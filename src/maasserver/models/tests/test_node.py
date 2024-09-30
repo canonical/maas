@@ -75,6 +75,7 @@ from maasserver.models import (
 from maasserver.models import (
     NodeDevice,
     NodeUserData,
+    Notification,
     OwnerData,
     PhysicalInterface,
     RackController,
@@ -529,6 +530,30 @@ class TestMachineManager(MAASServerTestCase):
             Machine.objects.validate_enable_kernel_crash_dump(
                 machine, enable_kernel_crash_dump=True
             )
+        )
+        # Notification not emitted by default
+        self.assertFalse(
+            Notification.objects.filter(
+                ident=f"kernel_crash_dumps_warning_{machine.fqdn}"
+            ).exists()
+        )
+
+    def test_validate_enable_kernel_notification_emitted(
+        self,
+    ):
+        machine = self.make_machine(cpu_count=4, memory=(2 * 1024 * 1024 + 1))
+        machine.save()
+        self.assertFalse(
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine,
+                enable_kernel_crash_dump=True,
+                emit_notification_if_fail=True,
+            )
+        )
+        self.assertTrue(
+            Notification.objects.filter(
+                ident=f"kernel_crash_{machine.system_id}"
+            ).exists()
         )
 
 

@@ -532,6 +532,7 @@ class Deploy(NodeAction):
             Machine.objects.validate_enable_kernel_crash_dump(
                 machine=self.node,
                 enable_kernel_crash_dump=enable_kernel_crash_dump,
+                emit_notification_if_fail=True,
             )
         )
 
