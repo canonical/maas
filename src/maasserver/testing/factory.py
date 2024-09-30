@@ -404,6 +404,7 @@ class Factory(maastesting.factory.Factory):
         bmc=None,
         ephemeral_deploy=False,
         enable_hw_sync=False,
+        enable_kernel_crash_dump=False,
         parent=None,
         **kwargs,
     ):
@@ -455,6 +456,7 @@ class Factory(maastesting.factory.Factory):
             hardware_uuid=hardware_uuid,
             ephemeral_deploy=ephemeral_deploy,
             enable_hw_sync=enable_hw_sync,
+            enable_kernel_crash_dump=enable_kernel_crash_dump,
             cpu_speed=random.randint(1000, 5000),
             parent=parent,
             **kwargs,

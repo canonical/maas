@@ -578,6 +578,15 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "enable_kernel_crash_dump": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "required": False,
+            "label": "Enable the kernel crash dump feature in deployed machines.",
+            "help_text": "Enable the collection of kernel crash dump when a machine is deployed.",
+        },
+    },
     "default_storage_layout": {
         "default": "lvm",
         "form": forms.ChoiceField,

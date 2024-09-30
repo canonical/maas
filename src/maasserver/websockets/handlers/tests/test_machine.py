@@ -355,6 +355,7 @@ class TestMachineHandlerUtils:
             "workload_annotations": OwnerData.objects.get_owner_data(node),
             "last_applied_storage_layout": node.last_applied_storage_layout,
             "ephemeral_deploy": node.ephemeral_deploy,
+            "enable_kernel_crash_dump": node.enable_kernel_crash_dump,
         }
         if "module" in driver and "comment" in driver:
             data["third_party_driver"] = {
@@ -2122,6 +2123,15 @@ class TestMachineHandler(MAASServerTestCase):
         )
         result = handler.get({"system_id": node.system_id})
         assert result["ephemeral_deploy"] is True
+
+    def test_get_enable_kernel_crash_dump(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, enable_kernel_crash_dump=True
+        )
+        result = handler.get({"system_id": node.system_id})
+        assert result["enable_kernel_crash_dump"] is True
 
     def test_get_includes_not_acquired_special_filesystems(self):
         owner = factory.make_User()

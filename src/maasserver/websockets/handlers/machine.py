@@ -386,6 +386,7 @@ class MachineHandler(NodeHandler):
             data["status_message"] = obj.status_message()
 
         if obj.is_machine or not for_list:
+            data["enable_kernel_crash_dump"] = obj.enable_kernel_crash_dump
             data["pxe_mac"] = ""
             data["vlan"] = None
             data["ip_addresses"] = None

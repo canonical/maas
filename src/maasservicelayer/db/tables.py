@@ -400,6 +400,7 @@ NodeTable = Table(
     Column("enable_hw_sync", Boolean, nullable=False),
     Column("last_sync", DateTime(timezone=True), nullable=True),
     Column("sync_interval", Integer, nullable=True),
+    Column("enable_kernel_crash_dump", Boolean, nullable=False),
 )
 
 NodeTagTable = Table(

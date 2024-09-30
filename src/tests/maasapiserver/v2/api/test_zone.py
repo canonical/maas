@@ -119,6 +119,7 @@ def node_details(**extra_details: Any) -> dict[str, Any]:
         "enable_hw_sync": False,
         "last_sync": None,
         "sync_interval": None,
+        "enable_kernel_crash_dump": False,
     }
 
     details.update(extra_details)

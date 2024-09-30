@@ -150,6 +150,7 @@ class DeviceHandler(NodeHandler):
             "hardware_uuid",
             "current_config",
             "enable_hw_sync",
+            "enable_kernel_crash_dump",
         ]
         list_fields = [
             "id",

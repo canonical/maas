@@ -638,6 +638,30 @@ class MachineManager(BaseNodeManager):
         available_machines = self.get_nodes(for_user, NodePermission.edit)
         return available_machines.filter(status=NODE_STATUS.READY)
 
+    def validate_enable_kernel_crash_dump(
+        self, machine, enable_kernel_crash_dump=None
+    ):
+        """
+        If the machine does not satisfy the minimum requirements to enable the kernel crash dump, return False.
+        This is a UX requirement, because we don't want to fail a deployment under such circumstance.
+        """
+        if enable_kernel_crash_dump is None:
+            enable_kernel_crash_dump = Config.objects.get_config(
+                "enable_kernel_crash_dump"
+            )
+        if enable_kernel_crash_dump:
+            # At least 4 CPU threads, at least 6GB of RAM and at most 2TB of RAM
+            if (
+                machine.cpu_count < 4
+                or machine.memory < 6 * 1024
+                or machine.memory > 2 * 1024 * 1024
+            ):
+                maaslog.warning(
+                    f"The machine {machine.system_id} does not satisfy the minimum requirements to enable kernel crash dumps."
+                )
+                enable_kernel_crash_dump = False
+        return enable_kernel_crash_dump
+
 
 class DeviceManager(BaseNodeManager):
     """Devices are all the non-deployable nodes."""
@@ -1119,6 +1143,8 @@ class Node(CleanSave, TimestampedModel):
     netboot = BooleanField(default=True)
 
     ephemeral_deploy = BooleanField(default=False)
+
+    enable_kernel_crash_dump = BooleanField(default=False)
 
     license_key = CharField(max_length=30, null=True, blank=True)
 

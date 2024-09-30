@@ -33,6 +33,7 @@ from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.preseed import (
     compose_curtin_archive_config,
     compose_curtin_cloud_config,
+    compose_curtin_kernel_crash_dump_config,
     compose_curtin_kernel_preseed,
     compose_curtin_maas_reporter,
     compose_curtin_swap_preseed,
@@ -1156,6 +1157,22 @@ class TestComposeCurtinVerbose(MAASServerTestCase):
         preseed = compose_curtin_verbose_preseed()
         self.assertEqual(
             {"verbosity": 3, "showtrace": True}, yaml.safe_load(preseed[0])
+        )
+
+
+class TestComposeCurtinKernelCrashDump(MAASServerTestCase):
+    def test_is_enabled(self):
+        node = factory.make_Node(enable_kernel_crash_dump=True)
+        self.assertEqual(
+            {"kernel-crash-dumps": {"enabled": True}},
+            yaml.safe_load(compose_curtin_kernel_crash_dump_config(node)[0]),
+        )
+
+    def test_is_disabled(self):
+        node = factory.make_Node(enable_kernel_crash_dump=False)
+        self.assertEqual(
+            {"kernel-crash-dumps": {"enabled": False}},
+            yaml.safe_load(compose_curtin_kernel_crash_dump_config(node)[0]),
         )
 
 

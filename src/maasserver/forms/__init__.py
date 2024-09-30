@@ -850,6 +850,19 @@ class MachineForm(NodeForm):
             )
         return validate_min_hwe_kernel(min_hwe_kernel)
 
+    def clean_enable_kernel_crash_dump(self):
+        """
+        If the machine does not satisfy the minimum requirements to enable the kernel crash dump, we silently set it to False.
+        This is a UX requirement, because we don't want to fail a deployment under such circumstance.
+        """
+        enable_kernel_crash_dump = self.cleaned_data.get(
+            "enable_kernel_crash_dump"
+        )
+        return Machine.objects.validate_enable_kernel_crash_dump(
+            machine=self.instance,
+            enable_kernel_crash_dump=enable_kernel_crash_dump,
+        )
+
     def clean(self):
         cleaned_data = super().clean()
 
@@ -986,6 +999,10 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data["enable_hw_sync"] = enable_hw_sync
 
+    def set_enable_kernel_crash_dump(self, enable_kernel_crash_dump=False):
+        self.is_bound = True
+        self.data["enable_kernel_crash_dump"] = enable_kernel_crash_dump
+
     def save(self, *args, **kwargs):
         from maasserver.models import ScriptSet
 
@@ -1028,6 +1045,7 @@ class MachineForm(NodeForm):
             "hwe_kernel",
             "install_rackd",
             "ephemeral_deploy",
+            "enable_kernel_crash_dump",
             "enable_hw_sync",
             "commission",
         )

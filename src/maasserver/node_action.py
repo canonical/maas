@@ -10,8 +10,6 @@ To define a new node action, derive a class for it from :class:`NodeAction`,
 provide the missing pieces documented in the class, and add it to
 `ACTION_CLASSES`.
 """
-
-
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import OrderedDict
 import json
@@ -37,7 +35,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.forms.clone import CloneForm
-from maasserver.models import Config, ResourcePool, Zone
+from maasserver.models import Config, Machine, ResourcePool, Zone
 from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.models.scriptresult import ScriptResult
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
@@ -511,6 +509,7 @@ class Deploy(NodeAction):
         user_data=None,
         enable_hw_sync=False,
         ephemeral_deploy=False,
+        enable_kernel_crash_dump=None,
     ):
         """See `NodeAction.execute`."""
         if install_kvm or register_vmhost:
@@ -528,6 +527,14 @@ class Deploy(NodeAction):
                 "Can’t deploy to disk in a diskless machine. Deploy to memory must be used instead."
             )
         self.node.ephemeral_deploy = ephemeral_deploy
+
+        self.node.enable_kernel_crash_dump = (
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine=self.node,
+                enable_kernel_crash_dump=enable_kernel_crash_dump,
+            )
+        )
+
         if self.node.owner is None:
             with locks.node_acquire:
                 try:

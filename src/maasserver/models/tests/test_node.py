@@ -476,6 +476,61 @@ class TestMachineManager(MAASServerTestCase):
             list(Machine.objects.get_available_machines_for_acquisition(user)),
         )
 
+    def test_validate_enable_kernel_crash_dump_default(self):
+        machine = self.make_machine(cpu_count=4, memory=6 * 1024)
+        machine.save()
+        self.assertFalse(
+            Machine.objects.validate_enable_kernel_crash_dump(machine)
+        )
+
+    def test_validate_enable_kernel_crash_dump_default_true(self):
+        Config.objects.set_config("enable_kernel_crash_dump", True)
+        machine = self.make_machine(cpu_count=4, memory=6 * 1024)
+        machine.save()
+        self.assertTrue(
+            Machine.objects.validate_enable_kernel_crash_dump(machine)
+        )
+
+    def test_validate_enable_kernel_crash_dump_override_default(self):
+        machine = self.make_machine(cpu_count=4, memory=(6 * 1024))
+        machine.save()
+        self.assertTrue(
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine, enable_kernel_crash_dump=True
+            )
+        )
+
+    def test_validate_enable_kernel_crash_dump_not_enough_cpu(self):
+        machine = self.make_machine(cpu_count=3, memory=6 * 1024)
+        machine.save()
+        self.assertFalse(
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine, enable_kernel_crash_dump=True
+            )
+        )
+
+    def test_validate_enable_kernel_crash_dump_not_enough_memory(
+        self,
+    ):
+        machine = self.make_machine(cpu_count=4, memory=(6 * 1024 - 1))
+        machine.save()
+        self.assertFalse(
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine, enable_kernel_crash_dump=True
+            )
+        )
+
+    def test_validate_enable_kernel_crash_too_much_memory(
+        self,
+    ):
+        machine = self.make_machine(cpu_count=4, memory=(2 * 1024 * 1024 + 1))
+        machine.save()
+        self.assertFalse(
+            Machine.objects.validate_enable_kernel_crash_dump(
+                machine, enable_kernel_crash_dump=True
+            )
+        )
+
 
 class TestControllerManager(MAASServerTestCase):
     def test_controller_lists_node_type_rack_and_region(self):

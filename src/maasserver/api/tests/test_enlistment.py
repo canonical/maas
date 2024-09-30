@@ -744,6 +744,7 @@ class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
                 "enable_hw_sync",
                 "ephemeral_deploy",
                 "error_description",
+                "enable_kernel_crash_dump",
             },
             parsed_result.keys(),
         )
@@ -967,6 +968,7 @@ class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
                 "enable_hw_sync",
                 "ephemeral_deploy",
                 "error_description",
+                "enable_kernel_crash_dump",
             },
             parsed_result.keys(),
         )

@@ -197,6 +197,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "sync_interval",
     "next_sync",
     "enable_hw_sync",
+    "enable_kernel_crash_dump",
 )
 
 # Limited set of machine fields exposed on the anonymous API.
@@ -775,6 +776,9 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @param (boolean) "ephemeral_deploy" [required=false] If true, machine
         will be deployed ephemerally even if it has disks.
 
+        @param (boolean) "enable_kernel_crash_dump" [required=false] If true, machine
+        will be deployed with the kernel crash dump feature enabled and configured automatically.
+
         @param (boolean) "vcenter_registration" [required=false] If false, do
         not send globally defined VMware vCenter credentials to the machine.
 
@@ -804,6 +808,9 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         series = request.POST.get("distro_series", None)
         license_key = request.POST.get("license_key", None)
         hwe_kernel = request.POST.get("hwe_kernel", None)
+        enable_kernel_crash_dump = request.POST.get(
+            "enable_kernel_crash_dump", None
+        )
         # Acquiring a node requires EDIT permissions.
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
@@ -864,6 +871,14 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             form.set_license_key(license_key=license_key)
         if hwe_kernel is not None:
             form.set_hwe_kernel(hwe_kernel=hwe_kernel)
+
+        form.set_enable_kernel_crash_dump(
+            enable_kernel_crash_dump=(
+                Config.objects.get_config("enable_kernel_crash_dump")
+                if enable_kernel_crash_dump is None
+                else enable_kernel_crash_dump
+            )
+        )
         form.set_install_rackd(install_rackd=options.install_rackd)
         form.set_ephemeral_deploy(ephemeral_deploy=ephemeral_deploy)
         form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)

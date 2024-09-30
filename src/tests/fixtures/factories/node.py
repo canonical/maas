@@ -76,6 +76,7 @@ async def _create_test_node_entry(
         "node_type": node_type,
         "architecture": "",
         "hwe_kernel": "",
+        "enable_kernel_crash_dump": False,
     }
     node.update(extra_details)
     [created_node] = await fixture.create(

@@ -428,6 +428,16 @@ class TestMachineAPI(APITestCase.ForUser):
             parsed_result["parent"]["resource_uri"],
         )
 
+    def test_GET_returns_enable_kernel_crash_dump(self):
+        machine = factory.make_Node(
+            status=NODE_STATUS.READY, enable_kernel_crash_dump=True
+        )
+        response = self.client.get(self.get_machine_uri(machine))
+
+        assert http.client.OK == response.status_code
+        parsed_result = json_load_bytes(response.content)
+        assert parsed_result["enable_kernel_crash_dump"] is True
+
     def test_POST_deploy_sets_osystem_and_distro_series(self):
         self.patch(node_module.Node, "_start")
         self.patch(machines_module, "get_curtin_merged_config")
@@ -1532,6 +1542,139 @@ class TestMachineAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         response_info = json_load_bytes(response.content)
         self.assertEqual(response_info["distro_series"], default_distro_series)
+
+    def test_POST_deploy_default_enable_kernel_crash_dumps(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        Config.objects.set_config(name="enable_kernel_crash_dump", value=True)
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            with_boot_disk=False,
+            enable_kernel_crash_dump=False,
+            cpu_count=4,
+            memory=6 * 1024,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine), {"op": "deploy"}
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["enable_kernel_crash_dump"] is True
+        machine.refresh_from_db()
+        self.assertTrue(machine.enable_kernel_crash_dump)
+
+    def test_POST_deploy_sets_enable_kernel_crash_dumps(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            with_boot_disk=False,
+            enable_kernel_crash_dump=False,
+            cpu_count=4,
+            memory=6 * 1024,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "enable_kernel_crash_dump": True},
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["enable_kernel_crash_dump"] is True
+        machine.refresh_from_db()
+        self.assertTrue(machine.enable_kernel_crash_dump)
+
+    def test_POST_deploy_sets_enable_kernel_crash_dumps_overrides_default(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        Config.objects.set_config("enable_kernel_crash_dump", True)
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            with_boot_disk=False,
+            enable_kernel_crash_dump=False,
+            cpu_count=4,
+            memory=6 * 1024,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "enable_kernel_crash_dump": False},
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["enable_kernel_crash_dump"] is False
+        machine.refresh_from_db()
+        self.assertFalse(machine.enable_kernel_crash_dump)
+
+    def test_POST_deploy_sets_enable_kernel_crash_dumps_requirements_not_satisfied(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            with_boot_disk=False,
+            enable_kernel_crash_dump=False,
+            cpu_count=3,  # not enough cpu
+            memory=6 * 1024,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "enable_kernel_crash_dump": True},
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["enable_kernel_crash_dump"] is False
+        machine.refresh_from_db()
+        self.assertFalse(machine.enable_kernel_crash_dump)
 
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, "_stop")

@@ -343,6 +343,14 @@ def compose_curtin_storage_preseed(node, osystem):
     return storage_config
 
 
+def compose_curtin_kernel_crash_dump_config(node):
+    return [
+        yaml.safe_dump(
+            {"kernel-crash-dumps": {"enabled": node.enable_kernel_crash_dump}}
+        )
+    ]
+
+
 def get_curtin_yaml_config(request, node):
     """Return the curtin configration for the node."""
     osystem, series = get_base_osystem_series(node)
@@ -360,6 +368,7 @@ def get_curtin_yaml_config(request, node):
         source_routing=network_yaml_settings.source_routing,
     )
     storage_config = compose_curtin_storage_preseed(node, osystem)
+    crash_dumps_config = compose_curtin_kernel_crash_dump_config(node)
 
     if osystem not in ["ubuntu", "ubuntu-core", "centos", "rhel", "windows"]:
         maaslog.warning(
@@ -378,6 +387,7 @@ def get_curtin_yaml_config(request, node):
         + kernel_config
         + verbose_config
         + cloud_config
+        + crash_dumps_config
         + [main_config]
     )
 
