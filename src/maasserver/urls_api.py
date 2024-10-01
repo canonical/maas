@@ -104,7 +104,6 @@ from maasserver.api.support import (
     OperationsResource,
     RestrictedResource,
 )
-from maasserver.api.switch_boot_order import SwitchBootOrderHandler
 from maasserver.api.tags import TagHandler, TagsHandler
 from maasserver.api.users import UserHandler, UsersHandler
 from maasserver.api.version import VersionHandler
@@ -348,10 +347,6 @@ license_keys_handler = AdminRestrictedResource(
 
 
 # Internal Handlers
-switch_boot_order_handler = OperationsResource(
-    SwitchBootOrderHandler, authentication=api_auth
-)
-
 image_sync_progress_handler = OperationsResource(
     ImageSyncProgressHandler, authentication=api_auth
 )
@@ -787,11 +782,6 @@ patterns += [
 
 # API URLs for internal endpoints
 patterns += [
-    re_path(
-        r"^switch-boot-order/(?P<system_id>[^/]+)/$",
-        switch_boot_order_handler,
-        name="switch_boot_order_handler",
-    ),
     re_path(
         r"^images-sync-progress/(?P<file_id>[^/]+)/(?P<system_id>[^/]+)/$",
         image_sync_progress_handler,
