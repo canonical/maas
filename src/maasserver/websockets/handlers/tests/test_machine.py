@@ -2128,7 +2128,9 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(
-            status=NODE_STATUS.READY, enable_kernel_crash_dump=True
+            status=NODE_STATUS.READY,
+            enable_kernel_crash_dump=True,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
         )
         result = handler.get({"system_id": node.system_id})
         assert result["enable_kernel_crash_dump"] is True

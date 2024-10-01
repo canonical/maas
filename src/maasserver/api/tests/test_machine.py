@@ -430,7 +430,9 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_GET_returns_enable_kernel_crash_dump(self):
         machine = factory.make_Node(
-            status=NODE_STATUS.READY, enable_kernel_crash_dump=True
+            status=NODE_STATUS.READY,
+            enable_kernel_crash_dump=True,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
         )
         response = self.client.get(self.get_machine_uri(machine))
 
@@ -1561,7 +1563,7 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             distro_series=distro_series,
             osystem=osystem,
-            architecture=make_usable_architecture(self),
+            architecture=make_usable_architecture(self, arch_name="amd64"),
             with_boot_disk=False,
             enable_kernel_crash_dump=False,
             cpu_count=4,
@@ -1593,7 +1595,7 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             distro_series=distro_series,
             osystem=osystem,
-            architecture=make_usable_architecture(self),
+            architecture=make_usable_architecture(self, arch_name="amd64"),
             with_boot_disk=False,
             enable_kernel_crash_dump=False,
             cpu_count=4,
@@ -1627,7 +1629,7 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             distro_series=distro_series,
             osystem=osystem,
-            architecture=make_usable_architecture(self),
+            architecture=make_usable_architecture(self, arch_name="amd64"),
             with_boot_disk=False,
             enable_kernel_crash_dump=False,
             cpu_count=4,
@@ -1660,10 +1662,43 @@ class TestMachineAPI(APITestCase.ForUser):
             power_type="manual",
             distro_series=distro_series,
             osystem=osystem,
-            architecture=make_usable_architecture(self),
+            architecture=make_usable_architecture(self, arch_name="amd64"),
             with_boot_disk=False,
             enable_kernel_crash_dump=False,
             cpu_count=3,  # not enough cpu
+            memory=6 * 1024,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "enable_kernel_crash_dump": True},
+        )
+        response_info = json_load_bytes(response.content)
+        assert http.client.OK == response.status_code
+        assert response_info["enable_kernel_crash_dump"] is False
+        machine.refresh_from_db()
+        self.assertFalse(machine.enable_kernel_crash_dump)
+
+    def test_POST_deploy_sets_enable_kernel_crash_dumps_arch_invalid(
+        self,
+    ):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self, arch_name="armhf"),
+            with_boot_disk=False,
+            enable_kernel_crash_dump=False,
+            cpu_count=4,
             memory=6 * 1024,
         )
         response = self.client.post(

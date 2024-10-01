@@ -60,6 +60,7 @@ from maasserver.node_status import (
     NON_MONITORED_STATUSES,
 )
 from maasserver.permissions import NodePermission
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import (
@@ -1053,6 +1054,7 @@ class TestDeployAction(MAASServerTestCase):
             owner=user,
             cpu_count=4,
             memory=6 * 1024,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
@@ -1080,6 +1082,7 @@ class TestDeployAction(MAASServerTestCase):
             owner=user,
             cpu_count=4,
             memory=6 * 1024,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
@@ -1105,6 +1108,7 @@ class TestDeployAction(MAASServerTestCase):
             owner=user,
             cpu_count=4,
             memory=6 * 1024,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")
@@ -1131,6 +1135,37 @@ class TestDeployAction(MAASServerTestCase):
             owner=user,
             cpu_count=3,  # not enough cpu
             memory=6 * 1024,
+            architecture=make_usable_architecture(self, arch_name="amd64"),
+        )
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
+
+        osystem, releases = make_usable_osystem(
+            self, osystem_name="ubuntu", releases=["jammy"]
+        )
+        os_name = osystem
+        extra = {"osystem": os_name, "enable_kernel_crash_dump": True}
+        Deploy(node, user, request).execute(**extra)
+        assert node.osystem == os_name
+        assert node.enable_kernel_crash_dump is False
+        assert Notification.objects.filter(
+            ident=f"kernel_crash_{node.system_id}"
+        ).exists()
+
+    def test_Deploy_set_enable_kernel_crash_dump_arch_invalid(
+        self,
+    ):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=user,
+            cpu_count=4,
+            memory=6 * 1024,
+            architecture="armhf/generic",
         )
         self.patch(node_action_module, "get_curtin_config")
         self.patch(node, "start")

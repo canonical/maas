@@ -669,6 +669,17 @@ class MachineManager(BaseNodeManager):
                     f"Kernel crash dump was not enabled for {machine.fqdn} because it did not meet the minimum requirements."
                 )
                 enable_kernel_crash_dump = False
+        if machine.split_arch()[0] not in ["amd64", "arm64", "s390x"]:
+            if emit_notification_if_fail:
+                Notification.objects.create_warning_for_users(
+                    ident=f"kernel_crash_{machine.system_id}",
+                    message=f"Kernel crash dump was not enabled for {machine.fqdn} because it does not have a supported architecture.",
+                )
+            maaslog.warning(
+                f"Kernel crash dump was not enabled for {machine.fqdn} because it does not have a supported architecture."
+            )
+            enable_kernel_crash_dump = False
+
         return enable_kernel_crash_dump
 
 
