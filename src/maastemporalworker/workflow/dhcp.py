@@ -1,5 +1,9 @@
+# Copyright 2024 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
 import asyncio
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Optional
 
 from sqlalchemy import and_, or_, select, true
@@ -17,6 +21,12 @@ from maasservicelayer.db.tables import (
     VlanTable,
 )
 from maastemporalworker.workflow.activity import ActivityBase
+
+FIND_AGENTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
+APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT = timedelta(minutes=5)
+FETCH_HOSTS_FOR_UPDATE_TIMEOUT = timedelta(minutes=5)
+GET_OMAPI_KEY_TIMEOUT = timedelta(minutes=5)
+APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT = timedelta(minutes=5)
 
 
 @dataclass
@@ -43,11 +53,6 @@ class ConfigureDHCPForAgentParam:
 
 
 @dataclass
-class FetchDHCPDConfigParam:
-    system_id: str
-
-
-@dataclass
 class DHCPDConfigResult:
     dhcpd: str
     dhcpd6: str
@@ -70,12 +75,6 @@ class Host:
 @dataclass
 class HostsForUpdateResult:
     hosts: list[Host]
-
-
-@dataclass
-class ApplyConfigViaFileParam:
-    dhcpd: str
-    dhcpd6: str
 
 
 @dataclass
@@ -231,8 +230,10 @@ class DHCPConfigActivity(ActivityBase):
         self, param: ConfigureDHCPParam
     ) -> AgentsForUpdateResult:
         async with self.start_transaction() as tx:
-            system_ids = set(param.system_ids)
-            vlan_ids = set(param.vlan_ids)
+            system_ids = set(
+                [] if param.system_ids is None else param.system_ids
+            )
+            vlan_ids = set([] if param.vlan_ids is None else param.vlan_ids)
 
             if param.reserved_ip_ids:
                 vlan_ids |= await self._get_vlans_for_reserved_ips(
@@ -371,7 +372,7 @@ class DHCPConfigActivity(ActivityBase):
 
     @activity.defn(name="get-omapi-key")
     async def get_omapi_key(self) -> OMAPIKeyResult:
-        key = await self.get_simple_secret("omapi-key")
+        key = await self.get_simple_secret("global/omapi-key")
         return OMAPIKeyResult(key=key)
 
 
@@ -381,15 +382,10 @@ class ConfigureDHCPForAgentWorkflow:
     @workflow.run
     async def run(self, param: ConfigureDHCPForAgentParam) -> None:
         if param.full_reload:
-            cfg = await workflow.execute_activity(
-                "fetch-dhcpd-config",
-                FetchDHCPDConfigParam(system_id=param.system_id),
-            )
-
             await workflow.execute_activity(
                 "apply-dhcp-config-via-file",
-                ApplyConfigViaFileParam(dhcpd=cfg.dhcpd, dhcpd6=cfg.dhcpd6),
                 task_queue=f"{param.system_id}@agent:main",
+                start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_FILE_TIMEOUT,
             )
         else:
             hosts = await workflow.execute_activity(
@@ -399,16 +395,22 @@ class ConfigureDHCPForAgentWorkflow:
                     static_ip_addr_ids=param.static_ip_addr_ids,
                     reserved_ip_ids=param.reserved_ip_ids,
                 ),
+                start_to_close_timeout=FETCH_HOSTS_FOR_UPDATE_TIMEOUT,
             )
-            omapi_key = await workflow.execute_activity("get-omapi-key")
+
+            omapi_key = await workflow.execute_activity(
+                "get-omapi-key",
+                start_to_close_timeout=GET_OMAPI_KEY_TIMEOUT,
+            )
 
             await workflow.execute_activity(
                 "apply-dhcp-config-via-omapi",
                 ApplyConfigViaOmapiParam(
                     hosts=hosts["hosts"],
-                    secret=omapi_key,
-                    task_queue=f"{param.system_id}@agent:main",
+                    secret=omapi_key["key"],
                 ),
+                task_queue=f"{param.system_id}@agent:main",
+                start_to_close_timeout=APPLY_DHCP_CONFIG_VIA_OMAPI_TIMEOUT,
             )
 
 
@@ -418,7 +420,9 @@ class ConfigureDHCPWorkflow:
     @workflow.run
     async def run(self, param: ConfigureDHCPParam) -> None:
         agent_system_ids_for_update = await workflow.execute_activity(
-            "find-agents-for-update", param
+            "find-agents-for-update",
+            param,
+            start_to_close_timeout=FIND_AGENTS_FOR_UPDATE_TIMEOUT,
         )
 
         full_reload = bool(
@@ -430,7 +434,7 @@ class ConfigureDHCPWorkflow:
 
         children = []
 
-        for system_id in agent_system_ids_for_update:
+        for system_id in agent_system_ids_for_update["agent_system_ids"]:
             cfg_child = await workflow.start_child_workflow(
                 "configure-dhcp-for-agent",
                 ConfigureDHCPForAgentParam(
@@ -439,7 +443,7 @@ class ConfigureDHCPWorkflow:
                     static_ip_addr_ids=param.static_ip_addr_ids,
                     reserved_ip_ids=param.reserved_ip_ids,
                 ),
-                workflow_id=f"configure-dhcp:{system_id}",
+                id=f"configure-dhcp:{system_id}",
             )
             children.append(cfg_child)
 

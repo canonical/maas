@@ -291,7 +291,7 @@ class TestDHCPConfigActivity:
         env = ActivityEnvironment()
 
         key = await create_test_secret(
-            fixture, path="omapi-key", value={"secret": "abc"}
+            fixture, path="global/omapi-key", value={"secret": "abc"}
         )
 
         activities = DHCPConfigActivity(db, connection=db_connection)

@@ -164,8 +164,13 @@ func (s *DHCPService) configure(ctx tworkflow.Context, config DHCPServiceConfigP
 	})
 
 	return tworkflow.ExecuteChildWorkflow(childCtx, "configure-dhcp-for-agent", ConfigureDHCPForAgentParam{
-		SystemID:   s.systemID,
-		FullReload: true,
+		SystemID:        s.systemID,
+		FullReload:      true,
+		VlanIDs:         []int{},
+		SubnetIDs:       []int{},
+		IPRangeIDs:      []int{},
+		StaticIPAddrIDs: []int{},
+		ReservedIPIDs:   []int{},
 	}).Get(ctx, nil)
 }
 
