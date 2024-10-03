@@ -343,13 +343,12 @@ class MAASAuthorizationBackend(ModelBackend):
     def _perm_resource_pool(self, user, perm, rbac, visible_pools, obj=None):
         # `create` permissions is called without an `obj`.
         rbac_enabled = rbac.is_enabled()
-        if perm == ResourcePoolPermission.create:
+        if (
+            perm == ResourcePoolPermission.create
+            or perm == ResourcePoolPermission.delete
+        ):
             if rbac_enabled:
-                return rbac.can_create_resource_pool(user.username)
-            return user.is_superuser
-        if perm == ResourcePoolPermission.delete:
-            if rbac_enabled:
-                return rbac.can_delete_resource_pool(user.username)
+                return rbac.can_admin_resource_pool(user.username)
             return user.is_superuser
 
         # From this point forward the `obj` must be a `ResourcePool`.

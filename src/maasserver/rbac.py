@@ -327,21 +327,10 @@ class RBACWrapper:
                 results[permission] = [int(idnt) for idnt in result]
         return results
 
-    def can_create_resource_pool(self, user: str) -> bool:
-        """Return True if the `user` can create a resource pool.
+    def can_admin_resource_pool(self, user: str) -> bool:
+        """Return True if the `user` can create or delete a resource pool.
 
-        A user can create a resource pool if they have edit on all resource
-        pools.
-
-        @param user: The user name of the user.
-        """
-        pool_identifiers = self._get_resource_pool_identifiers(user, "edit")
-        return pool_identifiers["edit"] is ALL_RESOURCES
-
-    def can_delete_resource_pool(self, user: str) -> bool:
-        """Return True if the `user` can delete a resource pool.
-
-        A user can delete a resource pool if they have edit on all resource
+        A user can create or delete a resource pool if they have edit on all resource
         pools.
 
         @param user: The user name of the user.

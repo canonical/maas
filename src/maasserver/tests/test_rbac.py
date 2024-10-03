@@ -354,25 +354,15 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.assertEqual([self.default_pool.id, new_pool.id], pools_two)
         self.assertEqual([self.default_pool.id, new_pool.id], pools_three)
 
-    def test_can_create_resource_pool_returns_True(self):
+    def test_can_admin_resource_pool_returns_True(self):
         self.store.allow("user", ALL_RESOURCES, "edit")
-        self.assertTrue(self.rbac.can_create_resource_pool("user"))
+        self.assertTrue(self.rbac.can_admin_resource_pool("user"))
 
-    def test_can_create_resource_pool_returns_False(self):
+    def test_can_admin_resource_pool_returns_False(self):
         pool = factory.make_ResourcePool()
         self.store.add_pool(pool)
         self.store.allow("user", pool, "edit")
-        self.assertFalse(self.rbac.can_create_resource_pool("user"))
-
-    def test_can_delete_resource_pool_returns_True(self):
-        self.store.allow("user", ALL_RESOURCES, "edit")
-        self.assertTrue(self.rbac.can_delete_resource_pool("user"))
-
-    def test_can_delete_resource_pool_returns_False(self):
-        pool = factory.make_ResourcePool()
-        self.store.add_pool(pool)
-        self.store.allow("user", pool, "edit")
-        self.assertFalse(self.rbac.can_delete_resource_pool("user"))
+        self.assertFalse(self.rbac.can_admin_resource_pool("user"))
 
 
 class TestRBACWrapperClient(MAASServerTestCase):
