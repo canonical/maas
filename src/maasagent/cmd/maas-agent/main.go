@@ -36,13 +36,22 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/exporters/prometheus"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/propagation"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/client"
 	temporalotel "go.temporal.io/sdk/contrib/opentelemetry"
 	"go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/interceptor"
 	"gopkg.in/yaml.v3"
 
 	"maas.io/core/src/maasagent/internal/apiclient"
@@ -72,7 +81,11 @@ type config struct {
 		CacheSize int64  `yaml:"cache_size"`
 	} `yaml:"httpproxy"`
 	Controllers []string `yaml:"controllers,flow"`
-	Metrics     struct {
+	Tracing     struct {
+		OTLPHTTPEndpoint string `yaml:"otlp_http_endpoint"`
+		Enabled          bool   `yaml:"enabled"`
+	} `yaml:"tracing"`
+	Metrics struct {
 		Enabled bool `yaml:"enabled"`
 	} `yaml:"metrics"`
 	Profiling struct {
@@ -140,7 +153,7 @@ func getClusterCert() (tls.Certificate, *x509.CertPool, error) {
 // cert, ca are used to setup mTLS
 func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 	ca *x509.CertPool, endpoints []string,
-	metrics temporalotel.MetricsHandler) (client.Client, error) {
+	metrics temporalotel.MetricsHandler, tracer trace.Tracer) (client.Client, error) {
 	// Encryption Codec required for Temporal Workflow's payload encoding
 	codec, err := codec.NewEncryptionCodec([]byte(secret))
 	if err != nil {
@@ -150,13 +163,22 @@ func getTemporalClient(systemID string, secret []byte, cert tls.Certificate,
 	retry := backoff.NewExponentialBackOff()
 	retry.MaxElapsedTime = 60 * time.Second
 
+	tracingInterceptor, err := temporalotel.NewTracingInterceptor(temporalotel.TracerOptions{
+		Tracer: tracer,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed setting up tracing interceptor: %w", err)
+	}
+
 	return backoff.RetryWithData(
 		func() (client.Client, error) {
 			return client.Dial(client.Options{
 				// TODO: fallback retry if Controllers[0] is unavailable
-				HostPort: net.JoinHostPort(endpoints[0], strconv.Itoa(defaultTemporalPort)),
-				Identity: fmt.Sprintf("%s@agent:%d", systemID, os.Getpid()),
-				Logger:   wflog.NewZerologAdapter(log.Logger),
+				HostPort:     net.JoinHostPort(endpoints[0], strconv.Itoa(defaultTemporalPort)),
+				Identity:     fmt.Sprintf("%s@agent:%d", systemID, os.Getpid()),
+				Logger:       wflog.NewZerologAdapter(log.Logger),
+				Interceptors: []interceptor.ClientInterceptor{tracingInterceptor},
 				DataConverter: converter.NewCodecDataConverter(
 					converter.GetDefaultDataConverter(),
 					codec,
@@ -243,7 +265,21 @@ func setupMetrics(meterProvider *metric.MeterProvider, mux *http.ServeMux) error
 		return err
 	}
 
-	*meterProvider = sdkmetric.NewMeterProvider(sdkmetric.WithReader(exporter))
+	r, err := resource.Merge(resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName("maas.agent"),
+			// TODO: version
+			// semconv.ServiceVersion("0.1.0"),
+		),
+	)
+	if err != nil {
+		return err
+	}
+
+	*meterProvider = sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(r),
+		sdkmetric.WithReader(exporter),
+	)
 
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -306,6 +342,40 @@ func setupHTTPClient(cert tls.Certificate, ca *x509.CertPool) http.Client {
 	}
 }
 
+func setupTracer(tracerProvider *trace.TracerProvider, endpoint string) error {
+	ctx := context.TODO()
+
+	traceExporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(endpoint), otlptracehttp.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("failed to create trace exporter: %w", err)
+	}
+
+	bsp := sdktrace.NewBatchSpanProcessor(traceExporter)
+
+	r, err := resource.Merge(resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL,
+			semconv.ServiceName("maas.agent"),
+			// TODO: version
+			// semconv.ServiceVersion("0.1.0"),
+		),
+	)
+	if err != nil {
+		return err
+	}
+
+	*tracerProvider = sdktrace.NewTracerProvider(
+		sdktrace.WithResource(r),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSpanProcessor(bsp),
+	)
+
+	// Set global propagator to tracecontext (the default is no-op).
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+
+	return nil
+}
+
 func Run() int {
 	fatal := make(chan error)
 
@@ -325,6 +395,8 @@ func Run() int {
 
 	var meterProvider metric.MeterProvider
 
+	var tracerProvider trace.TracerProvider
+
 	mux := http.NewServeMux()
 
 	// TODO: make this configurable based on the config parameters
@@ -340,6 +412,16 @@ func Run() int {
 
 	go func() { fatal <- setupHTTP(mux) }()
 
+	if cfg.Tracing.Enabled {
+		//nolint:govet // false positive
+		if err := setupTracer(&tracerProvider, cfg.Tracing.OTLPHTTPEndpoint); err != nil {
+			log.Error().Err(err).Msg("Failed to setup tracing")
+			return 1
+		}
+	} else {
+		tracerProvider = tracenoop.NewTracerProvider()
+	}
+
 	cert, ca, err := getClusterCert()
 	if err != nil {
 		log.Error().Err(err).Msg("Cannot fetch cluster certificate")
@@ -347,9 +429,13 @@ func Run() int {
 	}
 
 	temporalClient, err := getTemporalClient(cfg.SystemID, []byte(cfg.Secret),
-		cert, ca, cfg.Controllers, temporalotel.NewMetricsHandler(
+		cert, ca, cfg.Controllers,
+		temporalotel.NewMetricsHandler(
 			temporalotel.MetricsHandlerOptions{
-				Meter: meterProvider.Meter("maas.agent.temporal")}))
+				Meter: meterProvider.Meter("temporal")},
+		),
+		tracerProvider.Tracer("temporal"),
+	)
 	if err != nil {
 		log.Error().Err(err).Msg("Temporal client error")
 		return 1
@@ -372,7 +458,7 @@ func Run() int {
 	httpProxyCache, err := cache.NewFileCache(
 		cfg.HTTPProxy.CacheSize,
 		cfg.HTTPProxy.CacheDir,
-		cache.WithMetricMeter(meterProvider.Meter("maas.agent.httpproxy")),
+		cache.WithMetricMeter(meterProvider.Meter("httpproxy")),
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("HTTP Proxy cache initialisation error")
