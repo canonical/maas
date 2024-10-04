@@ -13,7 +13,6 @@ from collections import namedtuple
 from operator import itemgetter
 import os
 import re
-from tempfile import NamedTemporaryFile
 
 from netaddr import AddrConversionError, IPAddress
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
@@ -35,7 +34,7 @@ from provisioningserver.utils.service_monitor import (
     SERVICE_STATE,
     ServiceActionError,
 )
-from provisioningserver.utils.shell import call_and_check, ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import asynchronous, synchronous
 
 maaslog = get_maas_logger("dhcp")
@@ -486,53 +485,3 @@ def _parse_dhcpd_errors(error_str):
         errors.append(error)
 
     return errors
-
-
-def validate(
-    server,
-    failover_peers,
-    shared_networks,
-    hosts,
-    interfaces,
-    global_dhcp_snippets=None,
-):
-    """Validate the DHCPv6/DHCPv4 configuration.
-
-    :param server: A `DHCPServer` instance.
-    :param failover_peers: List of dicts with failover parameters for each
-        subnet where HA is enabled.
-    :param shared_networks: List of dicts with shared network parameters that
-        contain a list of subnets when the DHCP should server shared.
-        If no shared network are defined, the DHCP server will be stopped.
-    :param hosts: List of dicts with host parameters that
-        contain a list of hosts the DHCP should statically.
-    :param interfaces: List of interfaces that DHCP should use.
-    :param global_dhcp_snippets: List of all global DHCP snippets
-    """
-    if global_dhcp_snippets is None:
-        global_dhcp_snippets = []
-    state = DHCPState(
-        server.omapi_key,
-        failover_peers,
-        shared_networks,
-        hosts,
-        interfaces,
-        global_dhcp_snippets,
-    )
-    dhcpd_config, _ = state.get_config(server)
-    with NamedTemporaryFile(prefix="maas-dhcpd-") as tmp_dhcpd:
-        tmp_dhcpd.file.write(dhcpd_config.encode("utf-8"))
-        tmp_dhcpd.file.flush()
-        try:
-            call_and_check(
-                [
-                    "dhcpd",
-                    "-t",
-                    "-cf",
-                    "-6" if server.ipv6 else "-4",
-                    tmp_dhcpd.name,
-                ]
-            )
-        except ExternalProcessError as e:
-            return _parse_dhcpd_errors(e.output_as_unicode)
-    return None

@@ -4,12 +4,9 @@
 """Tests for DHCP snippets forms."""
 
 
-import random
-
 from django.http import HttpRequest
 
 from maasserver.enum import ENDPOINT_CHOICES
-from maasserver.forms import dhcpsnippet
 from maasserver.forms.dhcpsnippet import DHCPSnippetForm
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
@@ -21,7 +18,6 @@ from provisioningserver.events import AUDIT
 class TestDHCPSnippetForm(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        self.patch(dhcpsnippet, "validate_dhcp_config").return_value = {}
 
     def test_create_dhcp_snippet_requies_name(self):
         form = DHCPSnippetForm(data={"value": factory.make_string()})
@@ -399,26 +395,3 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         request.user = factory.make_User()
         dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.subnet)
-
-    def test_is_not_valid_when_validate_dhcp_config_fails(self):
-        dhcpd_error = {
-            "error": factory.make_name("error"),
-            "line_num": random.randint(0, 1000),
-            "line": factory.make_name("line"),
-            "position": factory.make_name("position"),
-        }
-        self.patch(dhcpsnippet, "validate_dhcp_config").return_value = [
-            dhcpd_error
-        ]
-        form = DHCPSnippetForm(
-            data={
-                "name": factory.make_name("name"),
-                "value": factory.make_string(),
-                "description": factory.make_string(),
-                "enabled": True,
-            }
-        )
-        self.assertFalse(form.is_valid())
-        self.assertEqual({"value": [dhcpd_error["error"]]}, form.errors)
-        self.assertCountEqual([], VersionedTextFile.objects.all())
-        self.assertCountEqual([], DHCPSnippet.objects.all())

@@ -42,7 +42,6 @@ from provisioningserver.certificates import (
     get_maas_cluster_cert_paths,
 )
 from provisioningserver.dhcp.testing.config import (
-    DHCPConfigNameResolutionDisabled,
     fix_shared_networks_failover,
     make_failover_peer_config,
     make_host,
@@ -2179,126 +2178,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                     "interfaces": [],
                 },
             )
-
-
-class TestClusterProtocol_ValidateDHCP(MAASTestCase):
-    scenarios = (
-        (
-            "DHCPv4",
-            {
-                "dhcp_server": (dhcp, "DHCPv4Server"),
-                "command": cluster.ValidateDHCPv4Config,
-                "make_network": factory.make_ipv4_network,
-                "make_shared_network": make_shared_network,
-            },
-        ),
-        (
-            "DHCPv6",
-            {
-                "dhcp_server": (dhcp, "DHCPv6Server"),
-                "command": cluster.ValidateDHCPv6Config,
-                "make_network": factory.make_ipv6_network,
-                "make_shared_network": make_shared_network,
-            },
-        ),
-    )
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
-
-    def setUp(self):
-        super().setUp()
-        # Temporarily prevent hostname resolution when generating DHCP
-        # configuration. This is tested elsewhere.
-        self.useFixture(DHCPConfigNameResolutionDisabled())
-
-    def test_is_registered(self):
-        self.assertIsNotNone(
-            Cluster().locateResponder(self.command.commandName)
-        )
-
-    @inlineCallbacks
-    def test_validates_good_dhcp_config(self):
-        self.patch(dhcp, "call_and_check").return_value = None
-
-        omapi_key = factory.make_name("key")
-        failover_peers = [make_failover_peer_config()]
-        shared_networks = [self.make_shared_network()]
-        shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers
-        )
-        hosts = [make_host()]
-        interfaces = [make_interface()]
-
-        response = yield call_responder(
-            Cluster(),
-            self.command,
-            {
-                "omapi_key": omapi_key,
-                "failover_peers": failover_peers,
-                "shared_networks": shared_networks,
-                "hosts": hosts,
-                "interfaces": interfaces,
-            },
-        )
-        self.assertIsNone(response["errors"])
-
-    @inlineCallbacks
-    def test_validates_bad_dhcp_config(self):
-        dhcpd_error = (
-            "Internet Systems Consortium DHCP Server 4.3.3\n"
-            "Copyright 2004-2015 Internet Systems Consortium.\n"
-            "All rights reserved.\n"
-            "For info, please visit https://www.isc.org/software/dhcp/\n"
-            "/tmp/maas-dhcpd-z5c7hfzt line 14: semicolon expected.\n"
-            "ignore \n"
-            "^\n"
-            "Configuration file errors encountered -- exiting\n"
-            "\n"
-            "If you think you have received this message due to a bug rather\n"
-            "than a configuration issue please read the section on submitting"
-            "\n"
-            "bugs on either our web page at www.isc.org or in the README file"
-            "\n"
-            "before submitting a bug.  These pages explain the proper\n"
-            "process and the information we find helpful for debugging..\n"
-            "\n"
-            "exiting."
-        )
-        self.patch(dhcp, "call_and_check").side_effect = ExternalProcessError(
-            returncode=1, cmd=("dhcpd",), output=dhcpd_error
-        )
-
-        omapi_key = factory.make_name("key")
-        failover_peers = [make_failover_peer_config()]
-        shared_networks = [self.make_shared_network()]
-        shared_networks = fix_shared_networks_failover(
-            shared_networks, failover_peers
-        )
-        hosts = [make_host()]
-        interfaces = [make_interface()]
-
-        response = yield call_responder(
-            Cluster(),
-            self.command,
-            {
-                "omapi_key": omapi_key,
-                "failover_peers": failover_peers,
-                "shared_networks": shared_networks,
-                "hosts": hosts,
-                "interfaces": interfaces,
-            },
-        )
-        self.assertEqual(
-            [
-                {
-                    "error": "semicolon expected.",
-                    "line_num": 14,
-                    "line": "ignore ",
-                    "position": "^",
-                }
-            ],
-            response["errors"],
-        )
 
 
 class MAASTestCaseThatWaitsForDeferredThreads(MAASTestCase):

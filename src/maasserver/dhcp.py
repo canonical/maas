@@ -10,7 +10,6 @@ from operator import itemgetter
 from typing import Iterable, Optional, Union
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db.models import Q
 from netaddr import IPAddress, IPNetwork
 from twisted.internet.defer import inlineCallbacks
@@ -37,21 +36,15 @@ from maasserver.models import (
     VLAN,
 )
 from maasserver.models.subnet import get_boot_rackcontroller_ips
-from maasserver.rpc import getAllClients, getClientFor, getRandomClient
+from maasserver.rpc import getClientFor
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.dhcp.config import get_config_v4, get_config_v6
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.rpc.cluster import (
-    ConfigureDHCPv4,
-    ConfigureDHCPv6,
-    ValidateDHCPv4Config,
-    ValidateDHCPv6Config,
-)
+from provisioningserver.rpc.cluster import ConfigureDHCPv4, ConfigureDHCPv6
 from provisioningserver.rpc.clusterservice import DHCP_TIMEOUT
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import asynchronous, synchronous
@@ -1032,108 +1025,3 @@ def _get_dhcp_rackcontrollers(dhcp_snippet):
         return get_racks_by_subnet(dhcp_snippet.subnet)
     elif dhcp_snippet.node is not None:
         return dhcp_snippet.node.get_boot_rack_controllers()
-
-
-def validate_dhcp_config(test_dhcp_snippet=None):
-    """Validate a DHCPD config with uncommitted values.
-
-    Gathers the DHCPD config from what is committed in the database, as well as
-    DHCPD config which needs to be validated, and asks a rack controller to
-    validate. Testing is done with dhcpd's builtin validation flag.
-
-    :param test_dhcp_snippet: A DHCPSnippet which has not yet been committed to
-        the database and needs to be validated.
-    """
-
-    def find_connected_rack(racks):
-        connected_racks = [client.ident for client in getAllClients()]
-        for rack in racks:
-            if rack.system_id in connected_racks:
-                return rack
-        # The dhcpd.conf config rendered on a rack controller only contains
-        # subnets and interfaces which can connect to that rack controller.
-        # If no rack controller was found picking a random rack controller
-        # which is connected will result in testing a config which does
-        # not contain the values we are trying to test.
-        raise ValidationError(
-            "Unable to validate DHCP config, "
-            "no available rack controller connected."
-        )
-
-    # XXX ltrager 2016-03-28 - This only tests the existing config with new
-    # DHCPSnippets but could be expanded to test changes to the config(e.g
-    # subnets, omapi_key, interfaces, etc) before they are commited.
-    # Test on the rack controller where the DHCPSnippet will be used
-    rack_controller = None
-    if test_dhcp_snippet is not None and not test_dhcp_snippet.is_global:
-        rack_controller = find_connected_rack(
-            _get_dhcp_rackcontrollers(test_dhcp_snippet)
-        )
-    # If no rack controller is linked to the DHCPSnippet its a global DHCP
-    # snippet which we can test anywhere.
-    if rack_controller is None:
-        log.msg(
-            "Could not find a rack controller for the snippet. Trying "
-            "random client"
-        )
-        try:
-            client = getRandomClient()
-        except NoConnectionsAvailable:
-            raise ValidationError(
-                "Unable to validate DHCP config, "
-                "no available rack controller connected."
-            )
-        rack_controller = RackController.objects.get(system_id=client.ident)
-    else:
-        try:
-            client = getClientFor(rack_controller.system_id)
-        except NoConnectionsAvailable:
-            raise ValidationError(
-                "Unable to validate DHCP config, "
-                "no available rack controller connected."
-            )
-        rack_controller = RackController.objects.get(system_id=client.ident)
-
-    # Get configuration for both IPv4 and IPv6.
-    config = get_dhcp_configuration(rack_controller, test_dhcp_snippet)
-
-    # Fix interfaces to go over the wire.
-    interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
-    interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
-
-    # Validate both IPv4 and IPv6.
-    # XXX: These remote calls can hold transactions open for a prolonged
-    # period. This is bad for concurrency and scaling.
-    v4_response = client(
-        ValidateDHCPv4Config,
-        _timeout=DHCP_TIMEOUT + 5,
-        omapi_key=config.omapi_key,
-        failover_peers=config.failover_peers_v4,
-        hosts=config.hosts_v4,
-        interfaces=interfaces_v4,
-        global_dhcp_snippets=config.global_dhcp_snippets,
-        shared_networks=config.shared_networks_v4,
-    ).wait(30)
-    v6_response = client(
-        ValidateDHCPv6Config,
-        _timeout=DHCP_TIMEOUT + 5,
-        omapi_key=config.omapi_key,
-        failover_peers=config.failover_peers_v6,
-        hosts=config.hosts_v6,
-        interfaces=interfaces_v6,
-        global_dhcp_snippets=config.global_dhcp_snippets,
-        shared_networks=config.shared_networks_v6,
-    ).wait(30)
-
-    # Deduplicate errors between IPv4 and IPv6
-    known_errors = []
-    unique_errors = []
-    for errors in (v4_response["errors"], v6_response["errors"]):
-        if errors is None:
-            continue
-        for error in errors:
-            hash = "{} - {}".format(error["line"], error["error"])
-            if hash not in known_errors:
-                known_errors.append(hash)
-                unique_errors.append(error)
-    return unique_errors

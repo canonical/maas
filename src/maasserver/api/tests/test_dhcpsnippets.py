@@ -11,7 +11,6 @@ from unittest.mock import ANY
 
 from django.urls import reverse
 
-from maasserver.forms import dhcpsnippet
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -118,7 +117,6 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
         )
 
     def test_update(self):
-        self.patch(dhcpsnippet, "validate_dhcp_config").return_value = {}
         self.become_admin()
         dhcp_snippet = factory.make_DHCPSnippet()
         new_value = factory.make_string()
@@ -305,7 +303,6 @@ class TestDHCPSnippetsAPI(APITestCase.ForUser):
         self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
-        self.patch(dhcpsnippet, "validate_dhcp_config").return_value = {}
         self.become_admin()
         name = factory.make_name("name")
         value = factory.make_string()

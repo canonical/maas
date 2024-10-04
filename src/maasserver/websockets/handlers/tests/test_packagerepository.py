@@ -4,7 +4,6 @@
 """Tests for `maasserver.websockets.handlers.packagerepository`"""
 
 
-import maasserver.forms.packagerepository as forms_packagerepository_module
 from maasserver.models import Event, PackageRepository
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -22,9 +21,6 @@ from provisioningserver.events import AUDIT
 class TestPackageRepositoryHandler(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        self.patch(
-            forms_packagerepository_module, "validate_dhcp_config"
-        ).return_value = []
 
     def dehydrate(self, package_repository):
         return {

@@ -7,7 +7,6 @@
 from email.utils import format_datetime
 import random
 
-import maasserver.forms.dhcpsnippet as forms_dhcpsnippet_module
 from maasserver.models import DHCPSnippet, Event, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -24,9 +23,6 @@ from provisioningserver.events import AUDIT
 class TestDHCPSnippetHandler(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        self.patch(
-            forms_dhcpsnippet_module, "validate_dhcp_config"
-        ).return_value = []
 
     def dehydrate_dhcp_snippet(self, dhcp_snippet):
         node_system_id = None

@@ -7,7 +7,6 @@
 from django import forms
 
 from maasserver.audit import create_audit_event
-from maasserver.dhcp import validate_dhcp_config
 from maasserver.fields import (
     NodeChoiceField,
     SpecifierOrModelChoiceField,
@@ -15,7 +14,6 @@ from maasserver.fields import (
 )
 from maasserver.forms import MAASModelForm
 from maasserver.models import DHCPSnippet, IPRange, Node, Subnet
-from maasserver.utils.forms import set_form_error
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -125,20 +123,6 @@ class DHCPSnippetForm(MAASModelForm):
 
     def is_valid(self):
         valid = super().is_valid()
-        if valid:
-            # Often the first error can cause cascading errors. Showing all of
-            # these errors can be confusing so only show the first if there is
-            # one.
-            first_error = None
-            for error in validate_dhcp_config(self.instance):
-                valid = False
-                if first_error is None:
-                    first_error = error
-                else:
-                    if error["line_num"] < first_error["line_num"]:
-                        first_error = error
-            if first_error is not None:
-                set_form_error(self, "value", first_error["error"])
 
         # If the DHCPSnippet isn't valid cleanup the value
         if not valid and self.initial.get("value") != self.instance.value_id:
