@@ -151,6 +151,11 @@ def check_permissions(
                             authenticated_user.rbac_permissions.edit_pools = (
                                 pools
                             )
+                            if resp.access_all:
+                                # The user can edit resource pools only if access_all is set
+                                authenticated_user.rbac_permissions.can_edit_all_resource_pools = (
+                                    True
+                                )
             return authenticated_user
 
     return wrapper

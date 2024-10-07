@@ -223,6 +223,47 @@ class TestResourcePoolApi(ApiCommonTests):
         assert error_response.kind == "Error"
         assert error_response.code == 422
 
+    async def test_get_with_rbac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_user_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    # can access only
+                    permission=RbacPermission.VIEW,
+                    resources=[1],
+                ),
+            ]
+        )
+        services_mock.external_auth.get_rbac_client = AsyncMock(
+            return_value=rbac_client_mock
+        )
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.get_by_id = AsyncMock(
+            return_value=TEST_RESOURCE_POOL
+        )
+        response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}/1")
+        assert response.status_code == 200
+        resource_pool_response = ResourcePoolResponse(**response.json())
+        assert resource_pool_response.id == 1
+
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.VIEW},
+        )
+        services_mock.resource_pools.get_by_id.assert_called_once_with(1)
+
+        # The user can't access the resource pool 2
+        response = await mocked_api_client_user_rbac.get(f"{self.BASE_PATH}/2")
+        assert response.status_code == 403
+
     async def test_post_201(
         self,
         services_mock: ServiceCollectionV3,
@@ -281,6 +322,86 @@ class TestResourcePoolApi(ApiCommonTests):
         error_response = ErrorBodyResponse(**response.json())
         assert error_response.kind == "Error"
         assert error_response.code == 422
+
+    async def test_post_with_rbac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.EDIT, resources=[""]
+                ),
+            ]
+        )
+        services_mock.external_auth.get_rbac_client = AsyncMock(
+            return_value=rbac_client_mock
+        )
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.create = AsyncMock(
+            return_value=TEST_RESOURCE_POOL
+        )
+
+        resource_pool_request = ResourcePoolRequest(
+            name=TEST_RESOURCE_POOL.name,
+            description=TEST_RESOURCE_POOL.description,
+        )
+        response = await mocked_api_client_admin_rbac.post(
+            self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
+        )
+        assert response.status_code == 201
+
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.EDIT},
+        )
+
+    async def test_post_with_rbac_forbidden(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    # The user can create resources only if [""] (alias ALL resources) is set
+                    permission=RbacPermission.EDIT,
+                    resources=[1],
+                ),
+            ]
+        )
+        services_mock.external_auth.get_rbac_client = AsyncMock(
+            return_value=rbac_client_mock
+        )
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+        services_mock.resource_pools.create = AsyncMock(
+            return_value=TEST_RESOURCE_POOL
+        )
+
+        resource_pool_request = ResourcePoolRequest(
+            name=TEST_RESOURCE_POOL.name,
+            description=TEST_RESOURCE_POOL.description,
+        )
+        response = await mocked_api_client_admin_rbac.post(
+            self.BASE_PATH, json=jsonable_encoder(resource_pool_request)
+        )
+        assert response.status_code == 403
+
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.EDIT},
+        )
 
     async def test_put_200(
         self,
@@ -370,3 +491,54 @@ class TestResourcePoolApi(ApiCommonTests):
             f"{self.BASE_PATH}/1", json=resource_pool_request
         )
         assert response.status_code == 422
+
+    async def test_put_with_rbac(
+        self,
+        services_mock: ServiceCollectionV3,
+        mocked_api_client_admin_rbac: AsyncClient,
+    ) -> None:
+        services_mock.external_auth = Mock(ExternalAuthService)
+
+        rbac_client_mock = Mock(RbacAsyncClient)
+
+        rbac_client_mock.get_resource_pool_ids = AsyncMock(
+            return_value=[
+                PermissionResourcesMapping(
+                    permission=RbacPermission.EDIT, resources=[1]
+                ),
+            ]
+        )
+        services_mock.external_auth.get_rbac_client = AsyncMock(
+            return_value=rbac_client_mock
+        )
+
+        updated_rp = TEST_RESOURCE_POOL
+        updated_rp.name = "newname"
+        updated_rp.description = "new description"
+
+        services_mock.resource_pools = Mock(ResourcePoolsService)
+
+        services_mock.resource_pools.update = AsyncMock(
+            return_value=updated_rp
+        )
+        update_resource_pool_request = ResourcePoolUpdateRequest(
+            name="newname", description="new description"
+        )
+        response = await mocked_api_client_admin_rbac.put(
+            f"{self.BASE_PATH}/{str(TEST_RESOURCE_POOL.id)}",
+            json=jsonable_encoder(update_resource_pool_request),
+        )
+
+        assert response.status_code == 200
+
+        rbac_client_mock.get_resource_pool_ids.assert_called_once_with(
+            user="username",
+            permissions={RbacPermission.EDIT},
+        )
+
+        # The user can't access the resource pool 2
+        response = await mocked_api_client_admin_rbac.put(
+            f"{self.BASE_PATH}/2",
+            json=jsonable_encoder(update_resource_pool_request),
+        )
+        assert response.status_code == 403

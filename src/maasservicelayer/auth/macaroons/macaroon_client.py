@@ -169,9 +169,3 @@ class RbacAsyncClient(MacaroonAsyncClient):
         return await self.allowed_for_user(
             RbacResourceType.RESOURCE_POOL, user, permissions
         )
-
-    async def can_admin_resource_pools(self, user: str) -> bool:
-        response = await self.allowed_for_user(
-            RbacResourceType.RESOURCE_POOL, user, {RbacPermission.EDIT}
-        )
-        return response[0].access_all

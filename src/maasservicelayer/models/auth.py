@@ -31,6 +31,7 @@ class RBACPermissionsPools(BaseModel):
     deploy_pools: Optional[set[int]] = Field(default=None)
     admin_pools: Optional[set[int]] = Field(default=None)
     edit_pools: Optional[set[int]] = Field(default=None)
+    can_edit_all_resource_pools: Optional[bool] = Field(default=None)
 
 
 class AuthenticatedUser(BaseModel):

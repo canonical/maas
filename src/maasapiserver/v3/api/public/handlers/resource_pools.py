@@ -34,6 +34,13 @@ from maasservicelayer.db.repositories.resource_pools import (
     ResourcePoolCreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.enums.rbac import RbacPermission
+from maasservicelayer.exceptions.catalog import (
+    BaseExceptionDetail,
+    ForbiddenException,
+)
+from maasservicelayer.exceptions.constants import (
+    MISSING_PERMISSIONS_VIOLATION_TYPE,
+)
 from maasservicelayer.services import ServiceCollectionV3
 from maasservicelayer.utils.date import utcnow
 
@@ -121,15 +128,35 @@ class ResourcePoolHandler(Handler):
         status_code=201,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.ADMIN},
+                    rbac_permissions={
+                        RbacPermission.EDIT,
+                    },
+                )
+            )
         ],
     )
     async def create_resource_pool(
         self,
         response: Response,
         resource_pool_request: ResourcePoolRequest,
+        authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        if (
+            authenticated_user.rbac_permissions
+            and not authenticated_user.rbac_permissions.can_edit_all_resource_pools
+        ):
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message="The user does not have the permissions to access this endpoint.",
+                    )
+                ]
+            )
         now = utcnow()
         resource = (
             ResourcePoolCreateOrUpdateResourceBuilder()
@@ -163,15 +190,36 @@ class ResourcePoolHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.USER}))
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.USER},
+                    rbac_permissions={
+                        RbacPermission.VIEW,
+                    },
+                )
+            )
         ],
     )
     async def get_resource_pool(
         self,
         resource_pool_id: int,
         response: Response,
+        authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        if (
+            authenticated_user.rbac_permissions
+            and resource_pool_id
+            not in authenticated_user.rbac_permissions.visible_pools
+        ):
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message="The user does not have the permissions to view this resource pool.",
+                    )
+                ]
+            )
         if resource_pool := await services.resource_pools.get_by_id(
             resource_pool_id
         ):
@@ -199,7 +247,14 @@ class ResourcePoolHandler(Handler):
         status_code=200,
         response_model_exclude_none=True,
         dependencies=[
-            Depends(check_permissions(required_roles={UserRole.ADMIN}))
+            Depends(
+                check_permissions(
+                    required_roles={UserRole.ADMIN},
+                    rbac_permissions={
+                        RbacPermission.EDIT,
+                    },
+                )
+            )
         ],
     )
     async def update_resource_pool(
@@ -207,8 +262,22 @@ class ResourcePoolHandler(Handler):
         resource_pool_id: int,
         response: Response,
         resource_pool_request: ResourcePoolUpdateRequest,
+        authenticated_user=Depends(get_authenticated_user),
         services: ServiceCollectionV3 = Depends(services),
     ) -> Response:
+        if (
+            authenticated_user.rbac_permissions
+            and resource_pool_id
+            not in authenticated_user.rbac_permissions.edit_pools
+        ):
+            raise ForbiddenException(
+                details=[
+                    BaseExceptionDetail(
+                        type=MISSING_PERMISSIONS_VIOLATION_TYPE,
+                        message="The user does not have the permissions to edit this resource pool.",
+                    )
+                ]
+            )
         resource = (
             ResourcePoolCreateOrUpdateResourceBuilder()
             .with_name(resource_pool_request.name)

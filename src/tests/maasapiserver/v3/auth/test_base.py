@@ -266,6 +266,10 @@ class TestPermissionsFunctions:
         assert authenticated_user.rbac_permissions.deploy_pools == {3}
         assert authenticated_user.rbac_permissions.admin_pools == {4}
         assert authenticated_user.rbac_permissions.edit_pools is None
+        assert (
+            authenticated_user.rbac_permissions.can_edit_all_resource_pools
+            is None
+        )
 
         mock_allowed_for_user_endpoint([RbacPermission.EDIT], [[""]])
         user_response = await auth_client.post(
@@ -279,6 +283,10 @@ class TestPermissionsFunctions:
         assert authenticated_user.rbac_permissions.deploy_pools is None
         assert authenticated_user.rbac_permissions.admin_pools is None
         assert authenticated_user.rbac_permissions.edit_pools == {0}
+        assert (
+            authenticated_user.rbac_permissions.can_edit_all_resource_pools
+            is True
+        )
 
         user_response = await auth_client.post(
             f"{V3_API_PREFIX}/rbac_no_permissions",
@@ -292,3 +300,7 @@ class TestPermissionsFunctions:
         assert authenticated_user.rbac_permissions.deploy_pools is None
         assert authenticated_user.rbac_permissions.admin_pools is None
         assert authenticated_user.rbac_permissions.edit_pools is None
+        assert (
+            authenticated_user.rbac_permissions.can_edit_all_resource_pools
+            is None
+        )
