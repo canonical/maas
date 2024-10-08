@@ -2,16 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db import Database
-from maasservicelayer.services.configurations import ConfigurationsService
-from maasservicelayer.services.secrets import (
-    SecretsService,
-    SecretsServiceFactory,
-)
+from maasservicelayer.services import ServiceCollectionV3
 
 UNSET = object()
 
@@ -27,7 +23,10 @@ class ActivityBase:
         self._conn = connection
 
     @asynccontextmanager
-    async def start_transaction(self) -> AsyncIterator[AsyncConnection]:
+    async def _start_transaction(self) -> AsyncIterator[AsyncConnection]:
+        """
+        Private method. You should always interact with the services provided with the public method start_transaction.
+        """
         if self._conn:
             yield self._conn
         else:
@@ -35,19 +34,7 @@ class ActivityBase:
                 async with conn.begin():
                     yield conn
 
-    async def _get_secret_service(
-        self, conn: AsyncConnection
-    ) -> SecretsService:
-        config = ConfigurationsService(conn)
-        return await SecretsServiceFactory.produce(conn, config)
-
-    async def get_simple_secret(
-        self, secret: str, default: Any = UNSET
-    ) -> Any:
-        if self._conn:
-            secrets = await self._get_secret_service(self._conn)
-            return await secrets.get_simple_secret(secret, default=default)
-
-        async with self.start_transaction() as conn:
-            secrets = await self._get_secret_service(conn)
-            return await secrets.get_simple_secret(secret, default=default)
+    @asynccontextmanager
+    async def start_transaction(self) -> AsyncIterator[ServiceCollectionV3]:
+        async with self._start_transaction() as conn:
+            yield await ServiceCollectionV3.produce(conn)

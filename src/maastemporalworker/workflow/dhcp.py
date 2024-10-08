@@ -229,7 +229,7 @@ class DHCPConfigActivity(ActivityBase):
     async def find_agents_for_updates(
         self, param: ConfigureDHCPParam
     ) -> AgentsForUpdateResult:
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             system_ids = set(
                 [] if param.system_ids is None else param.system_ids
             )
@@ -356,7 +356,7 @@ class DHCPConfigActivity(ActivityBase):
     async def fetch_hosts_for_update(
         self, param: FetchHostsForUpdateParam
     ) -> HostsForUpdateResult:
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             hosts = []
             if param.static_ip_addr_ids:
                 hosts += await self._get_hosts_for_static_ip_addresses(
@@ -372,8 +372,9 @@ class DHCPConfigActivity(ActivityBase):
 
     @activity.defn(name="get-omapi-key")
     async def get_omapi_key(self) -> OMAPIKeyResult:
-        key = await self.get_simple_secret("global/omapi-key")
-        return OMAPIKeyResult(key=key)
+        async with self.start_transaction() as services:
+            key = await services.secrets.get_simple_secret("global/omapi-key")
+            return OMAPIKeyResult(key=key)
 
 
 @workflow.defn(name="configure-dhcp-for-agent", sandboxed=False)

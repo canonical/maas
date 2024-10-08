@@ -91,7 +91,7 @@ class DeployActivity(ActivityBase):
             .where(NodeTable.c.system_id == params.system_id)
             .values(status=params.status)
         )
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             await tx.execute(stmt)
 
     def _single_result_to_dict(self, result: Result) -> dict[str, Any]:
@@ -206,7 +206,7 @@ class DeployActivity(ActivityBase):
     async def get_boot_order(
         self, params: GetBootOrderParam
     ) -> GetBootOrderResult:
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             boot_iface = await self._get_boot_iface(tx, params.system_id)
             boot_disk = await self._get_boot_disk(tx, params.system_id)
 

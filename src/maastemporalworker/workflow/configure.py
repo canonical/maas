@@ -51,7 +51,7 @@ class ConfigureAgentActivity(ActivityBase):
     async def get_rack_controller_vlans(
         self, input: GetRackControllerVLANsInput
     ):
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             stmt = (
                 select(
                     VlanTable.c.id,
@@ -108,7 +108,7 @@ class ConfigureAgentActivity(ActivityBase):
 
     @activity.defn(name="get-region-controller-endpoints")
     async def get_region_controller_endpoints(self) -> dict[str, Any]:
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             stmt = (
                 select(
                     SubnetTable.c.cidr,

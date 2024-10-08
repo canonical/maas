@@ -224,12 +224,9 @@ class MSMConnectorActivity(ActivityBase):
         Args:
             input (MSMConnectorParam): MSM connection data
         """
-        from maasservicelayer.db.repositories.secrets import SecretsRepository
 
-        async with self.start_transaction() as tx:
-            # TODO add Vault support
-            repo = SecretsRepository(tx)
-            await repo.create_or_update(
+        async with self.start_transaction() as services:
+            await services.secrets.set_composite_secret(
                 f"global/{MSM_SECRET}",
                 {
                     "url": input.url,
@@ -245,12 +242,10 @@ class MSMConnectorActivity(ActivityBase):
         Args:
             input (MSMConnectorParam): MSM connection data
         """
-        from maasservicelayer.db.repositories.secrets import SecretsRepository
-
-        async with self.start_transaction() as tx:
-            repo = SecretsRepository(tx)
-            secret = await repo.get(f"global/{MSM_SECRET}")
-        return secret.value
+        async with self.start_transaction() as services:
+            return await services.secrets.get_composite_secret(
+                f"global/{MSM_SECRET}"
+            )
 
     @activity.defn(name="msm-get-heartbeat-data")
     async def get_heartbeat_data(self) -> MachineStatsByStatus:
@@ -266,7 +261,7 @@ class MSMConnectorActivity(ActivityBase):
             .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
             .group_by(NodeTable.c.status)
         )
-        async with self.start_transaction() as tx:
+        async with self._start_transaction() as tx:
             result = await tx.execute(stmt)
             for row in result.all():
                 match row.status:
