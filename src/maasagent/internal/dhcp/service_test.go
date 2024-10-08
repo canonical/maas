@@ -17,6 +17,7 @@ package dhcp
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -321,4 +322,38 @@ func (s *DHCPServiceTestSuite) TestConfigureViaFile() {
 
 		assert.Equal(s.T(), []byte(v), data)
 	}
+}
+
+func TestHostMarshalJSON(t *testing.T) {
+	h := Host{
+		Hostname: "localhost",
+		IP:       net.IPv4(127, 0, 0, 1),
+		MAC:      net.HardwareAddr{0xCA, 0xFE, 0xBA, 0xBE, 0x00, 0x00},
+	}
+
+	marshaled, err := json.Marshal(h)
+	if err != nil {
+		assert.NoError(t, err)
+	}
+
+	assert.Equal(t,
+		`{"hostname":"localhost","ip":"127.0.0.1","mac":"ca:fe:ba:be:00:00"}`,
+		string(marshaled),
+	)
+}
+
+func TestHostUnmarshalJSON(t *testing.T) {
+	input := `{"hostname":"localhost","ip":"127.0.0.1","mac":"CA:FE:BA:BE:00:00"}`
+	expected := Host{
+		Hostname: "localhost",
+		IP:       net.IPv4(127, 0, 0, 1),
+		MAC:      net.HardwareAddr{0xCA, 0xFE, 0xBA, 0xBE, 0x00, 0x00},
+	}
+
+	var h Host
+
+	err := json.Unmarshal([]byte(input), &h)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, h)
 }

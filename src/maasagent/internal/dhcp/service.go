@@ -193,6 +193,44 @@ type Host struct {
 	MAC      net.HardwareAddr `json:"mac"`
 }
 
+func (h Host) MarshalJSON() ([]byte, error) {
+	tmp := struct {
+		Hostname string `json:"hostname"`
+		IP       string `json:"ip"`
+		MAC      string `json:"mac"`
+	}{
+		Hostname: h.Hostname,
+		IP:       h.IP.String(),
+		MAC:      h.MAC.String(),
+	}
+
+	return json.Marshal(tmp)
+}
+
+func (h *Host) UnmarshalJSON(data []byte) error {
+	var tmp struct {
+		Hostname string `json:"hostname"`
+		MAC      string `json:"mac"`
+		IP       net.IP `json:"ip"`
+	}
+
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	h.Hostname = tmp.Hostname
+	h.IP = tmp.IP
+
+	var err error
+
+	h.MAC, err = net.ParseMAC(tmp.MAC)
+	if err != nil {
+		return fmt.Errorf("error converting net.HardwareAddr: %v", err)
+	}
+
+	return nil
+}
+
 type ApplyConfigViaOMAPIParam struct {
 	Secret string `json:"secret"`
 	Hosts  []Host `json:"hosts"`
