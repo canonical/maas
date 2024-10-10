@@ -6654,7 +6654,9 @@ class Machine(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(node_type=NODE_TYPE.MACHINE, *args, **kwargs)
+        if not args:
+            kwargs["node_type"] = NODE_TYPE.MACHINE
+        super().__init__(*args, **kwargs)
 
     def delete(self, force=False):
         """Deletes this Machine.
@@ -6675,9 +6677,6 @@ class Controller(Node):
 
     class Meta:
         proxy = True
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def report_neighbours(self, neighbours):
         """Update the neighbour table for this controller.
@@ -6816,7 +6815,9 @@ class RackController(Controller):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
+        if not args:
+            kwargs["node_type"] = NODE_TYPE.RACK_CONTROLLER
+        super().__init__(*args, **kwargs)
 
     def add_chassis(
         self,
@@ -7075,9 +7076,9 @@ class RegionController(Controller):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
-            node_type=NODE_TYPE.REGION_CONTROLLER, *args, **kwargs
-        )
+        if not args:
+            kwargs["node_type"] = NODE_TYPE.REGION_CONTROLLER
+        super().__init__(*args, **kwargs)
 
     def delete(self, force=False):
         """Delete this region controller."""
@@ -7115,7 +7116,9 @@ class Device(Node):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(node_type=NODE_TYPE.DEVICE, *args, **kwargs)
+        if not args:
+            kwargs["node_type"] = NODE_TYPE.DEVICE
+        super().__init__(*args, **kwargs)
 
 
 class NodeGroupToRackController(CleanSave, Model):

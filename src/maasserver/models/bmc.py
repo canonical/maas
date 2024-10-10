@@ -769,9 +769,13 @@ class Pod(BMC):
             return super().__str__()
 
     def __init__(self, *args, **kwargs):
-        if "pool" not in kwargs:
-            kwargs["pool"] = ResourcePool.objects.get_default_resource_pool()
-        super().__init__(bmc_type=BMC_TYPE.POD, *args, **kwargs)
+        if not args:
+            kwargs["bmc_type"] = BMC_TYPE.POD
+            if "pool" not in kwargs:
+                kwargs["pool"] = (
+                    ResourcePool.objects.get_default_resource_pool()
+                )
+        super().__init__(*args, **kwargs)
 
     def clean(self):
         super().clean()

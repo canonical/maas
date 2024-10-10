@@ -864,9 +864,9 @@ class VolumeGroup(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, *args, **kwargs
-        )
+        if not args:
+            kwargs["group_type"] = FILESYSTEM_GROUP_TYPE.LVM_VG
+        super().__init__(*args, **kwargs)
 
     def update_block_devices_and_partitions(self, block_devices, partitions):
         """Update the block devices and partitions that are in this
@@ -1057,9 +1057,9 @@ class Bcache(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.BCACHE, *args, **kwargs
-        )
+        if not args:
+            kwargs["group_type"] = FILESYSTEM_GROUP_TYPE.BCACHE
+        super().__init__(*args, **kwargs)
 
 
 class VMFS(FilesystemGroup):
@@ -1071,6 +1071,6 @@ class VMFS(FilesystemGroup):
         proxy = True
 
     def __init__(self, *args, **kwargs):
-        super().__init__(
-            group_type=FILESYSTEM_GROUP_TYPE.VMFS6, *args, **kwargs
-        )
+        if not args:
+            kwargs["group_type"] = FILESYSTEM_GROUP_TYPE.VMFS6
+        super().__init__(*args, **kwargs)

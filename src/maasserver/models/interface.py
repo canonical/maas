@@ -650,8 +650,8 @@ class Interface(CleanSave, TimestampedModel):
     sriov_max_vf = PositiveIntegerField(default=0)
 
     def __init__(self, *args, **kwargs):
-        type = kwargs.get("type", self.get_type())
-        kwargs["type"] = type
+        if not args and not kwargs.get("type"):
+            kwargs["type"] = self.get_type()
         # Derive the concrete class from the interface's type.
         super().__init__(*args, **kwargs)
         klass = INTERFACE_TYPE_MAPPING.get(self.type)
