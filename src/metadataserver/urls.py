@@ -4,7 +4,7 @@
 """Metadata API URLs."""
 
 
-from django.conf.urls import re_path
+from django.urls import re_path
 
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
