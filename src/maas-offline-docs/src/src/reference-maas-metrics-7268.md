@@ -4,6 +4,8 @@ This page provides a MAAS metrics reference, categorised into two sections: "Clu
 
 ## Cluster metrics
 
+The following cluster metrics are available for MAAS.
+
 ### maas_machines
 
 The number of machines known by MAAS, by status
@@ -370,6 +372,8 @@ Total number of virtual machines in KVM clusters
    [/details]
 
 ## Performance metrics
+
+The following performance metrics are available for MAAS.
 
 ### maas_http_request_latency
 

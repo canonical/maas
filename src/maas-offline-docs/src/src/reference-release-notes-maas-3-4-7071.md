@@ -1,6 +1,9 @@
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/what-is-new-with-maas-3-4" target = "_blank">Let us know.</a>*
 
 ## Release history
+
+This section recaps the release history of MAAS version 3.4.
+
 ### MAAS 3.4.2 has been released
 
 We are happy to announce that MAAS 3.4.2 has been released, with the following bug fixes:

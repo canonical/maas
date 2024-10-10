@@ -4,6 +4,8 @@ These are the release notes for MAAS 3.3.
 
 ## Release history
 
+This section recaps the version history of MAAS version 3.3.
+
 ### MAAS 3.3.7 has been released
 
 We are happy to announce  that MAAS 3.3.7 has been released.

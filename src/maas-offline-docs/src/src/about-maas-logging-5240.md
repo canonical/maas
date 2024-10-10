@@ -1,5 +1,5 @@
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/delving-into-maas-logging-practices" target = "_blank">Let us know.</a>*
-
+	
 This page describes basic MAAS logging operations. For more details, refer to these reference pages:
 
 - [Commissioning logs](/t/how-to-read-commissioning-logs/5248)
@@ -114,8 +114,6 @@ HTTP logs to its own files (`/var/snap/maas/common/log/http/(access|error).log`)
 2023-06-23T13:54:46.391Z [http] nginx: [alert] could not open error log file
 ```
 
-#### Commands to access the log
-
 ##### Own logs
 
 ```nohighlight
@@ -138,8 +136,6 @@ The squid proxy logs to its own files (`/var/snap/maas/common/log/proxy/(access|
 ```nohighlight
 2023-06-23T13:54:41.114Z [proxy] 2023/06/23 13:54:41| Starting Squid Cache version 5.2
 ```
-
-#### Commands to access the log
 
 ##### Own logs
 
@@ -170,8 +166,6 @@ At first glance, `chrony` seems to have a separate directory for log files (`/va
 ```nohighlight
 2023-06-26T12:48:01Z chronyd version 4.2 starting
 ```
-
-#### Commands to access the log
 
 ##### `stdout` redirected by Pebble:
 
@@ -219,8 +213,6 @@ Syslog logs machines enlistment and boot syslogs to `/var/snap/maas/common/log/r
 <some message>
 ```
 
-#### Commands to access the log
-
 ##### Own logs
 
 ```nohighlight
@@ -253,8 +245,6 @@ journalctl -et dhcpd -u snap.maas.pebble.service SYSLOG_PID=25799
 ```nohighlight
 <plain old DHCP message>
 ```
-
-#### Commands to access the log
 
 ##### Own logs
 

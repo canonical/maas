@@ -1,19 +1,21 @@
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/how-to-guides" target = "_blank">Let us know.</a>*
 
-This section describes how to use MAAS:
+Welcome to the comprehensive guide for configuring and managing your MAAS (Metal as a Service) environment. 
 
-- [Set up and configure MAAS](/t/how-to-set-up-maas/6202)
-- [Manage MAAS networks](/t/how-to-manage-maas-networks/6742)
-- [Select and customise images](/t/how-to-manage-maas-images/6192)
-- [Build custom images](/t/how-to-customise-images/5104)
-- [Configure controllers](/t/how-to-manage-controllers/6498)
-- [Manage machines and devices](/t/how-to-use-machines/6193)
-- [Manage machine storage](/t/how-to-manage-storage/7846)
-- [Deploy virtual machines](/t/how-to-use-virtual-machines/6500)
-- [Label devices](/t/how-to-label-machines/6200)
-- [Log events and audit users](/t/how-to-use-logging/6956)
-- [Keep MAAS secure](/t/how-to-secure-maas/6503)
-- [Operate and maintain MAAS](/t/how-to-operate-maas/6799)
-- [Join the MAAS community](/t/how-to-join-the-community/5428)
+## Why this sequence?
 
-You will also find [tutorials](/t/tutorials/6140), detailed [explanations](/t/explanation/6141), and plenty of [reference material](/t/reference/6143).
+These guides are designed to take you through every essential step, from initial setup to advanced customization, ensuring you can leverage the full power of MAAS efficiently and effectively.  The stream of instructions flows from basic to very advanced, allowing you to jump in wherever you feel comfortable, and continue from there.
+
+We begin with the **[Core configuration](https://maas.io/docs/core-configuration)**, the essential foundation upon which your MAAS environment is built. This initial stage is crucial for setting up the fundamental aspects of MAAS, ensuring that you have a solid, functional environment to work with. These steps are designed to provide you with a comprehensive understanding of the core elements necessary to get your MAAS environment operational.
+
+Once the core setup is complete, we move on to **[Special-case configuration](https://maas.io/docs/special-case-configuration)**, which enhances and customizes your MAAS environment for specific needs and advanced functionalities. This stage builds on the core foundation, allowing you to tailor your setup. These configurations allow you to address specific operational requirements and enhance the overall functionality of your MAAS environment.
+
+Next, we delve into **[Custom images, kernels, and tags](https://maas.io/docs/custom-images-kernels-and-tags)**, where you learn to personalize your MAAS environment by building and using custom images, deploying specialized kernels, and applying tags. This customization ensures that your infrastructure meets your specific operational demands.
+
+The **Scripting MAAS** section equips you with the knowledge to automate and interact with MAAS programmatically. This is essential for efficient and scalable management.
+
+Maintaining and validating your MAAS setup is crucial for long-term success. The **[Maintenance and validation](https://maas.io/docs/maintenance-and-validation)** section covers essential practices to keep your environment running smoothly and securely.
+
+Lastly, we encourage you to **Join the community**. Engaging with the MAAS community offers support, collaboration, and opportunities to contribute.
+
+This structured approach ensures you can build a robust, scalable, and secure MAAS environment tailored to your needs. Each section builds on the previous one, providing a logical progression from basic setup to advanced customization and maintenance. By following this guide, you'll be well-equipped to manage your MAAS infrastructure effectively.

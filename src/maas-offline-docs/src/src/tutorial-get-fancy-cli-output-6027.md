@@ -4,8 +4,6 @@ The MAAS CLI emits JSON data, which while information-rich, can become cumbersom
 
 In this tutorial, we'll journey through essential `jq` functionalities—key selection, array manipulation, and interplay with other CLI tools to transform raw MAAS JSON into neat, analysable tabular output.
 
-## JSON key fields
-
 ## Single key selection
 
 To focus on the `hostname` field for each machine, run the following command:
@@ -35,8 +33,6 @@ This will produce output resembling:
 ]
 ```
 
-## Tabular output
-
 ## Basic tables
 
 Utilise the `@tsv` filter to transform JSON arrays into tab-separated values:
@@ -60,8 +56,6 @@ vm-1       Deployed
 vm-2       Ready
 ```
 
-## Column headers
-
 ## Basic headers
 
 Prepend a literal array to `jq` to introduce column headings:
@@ -77,8 +71,6 @@ Create a separating line between headers and data:
 ```nohighlight
 maas machines read | jq -r '["HOSTNAME", "STATUS"] | (.[], map(length*"-")), (.[] | [.hostname, .status_name]) | @tsv' | column -t
 ```
-
-## Sort and filter
 
 ## Sorting rows
 

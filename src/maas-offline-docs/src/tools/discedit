@@ -39,7 +39,7 @@ def main():
     elif args.d:
         print(f"markdown source dir (markdown_dir): {markdown_dir}")
 
-    # what are the html directories? 
+    # what are the html directories?
     deb_dir = f"{git_root}/production-html-deb"
     snap_dir = f"{git_root}/production-html-snap"
 
@@ -48,10 +48,22 @@ def main():
 
     # did they ask to autogenerate the complete doc set?
     if args.a:
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{deb_dir}/ui/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{deb_dir}/cli/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{snap_dir}/ui/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{snap_dir}/cli/css/stylesheet.css")        
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{deb_dir}/ui/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{deb_dir}/cli/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{snap_dir}/ui/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{snap_dir}/cli/css/stylesheet.css",
+        )
         mdfiles = glob.glob(os.path.join(markdown_dir, "*.md"))
         for x in mdfiles:
             markdown_file = x
@@ -60,73 +72,85 @@ def main():
             topic_number = re.search(r"\d{4}", markdown_file).group()
             if args.d:
                 print(f"extracted topic number: {topic_number}")
-            html_filename = re.sub(r'-\d+', '', markdown_file.split('/')[-1]).replace('.md', '.html')
+            html_filename = re.sub(
+                r"-\d+", "", markdown_file.split("/")[-1]
+            ).replace(".md", ".html")
             if args.d:
                 print(f"html filename (html_filename): {html_filename}")
             with open(markdown_file, "r") as f:
                 markdown_content = f.read()
             api.update_topic_content(topic_number, markdown_content)
             print(f"discourse topic {topic_number} updated.")
-            new_content = re.sub(r'/t/([\w-]+)(?:/[\d]+)', r'\1.html', markdown_content)
-            temp_markdown_file = "/tmp/"+html_filename + '.tmp.md'
-            with open(temp_markdown_file, 'w') as file:
+            new_content = re.sub(
+                r"/t/([\w-]+)(?:/[\d]+)", r"\1.html", markdown_content
+            )
+            temp_markdown_file = "/tmp/" + html_filename + ".tmp.md"
+            with open(temp_markdown_file, "w") as file:
                 file.write(new_content)
             topic_title = api.get_title(topic_number)
-            subprocess.run([
-                "pandoc",
-                "-s", 
-                temp_markdown_file,
-                "-o",
-                f"{deb_dir}/ui/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={deb_dir}/images",
-                "-M",
-                "ui"
-            ])
-            subprocess.run([
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{deb_dir}/cli/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={deb_dir}/images",
-                "-M",
-                "ui"
-            ])
-            subprocess.run([
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{snap_dir}/ui/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={snap_dir}/images",
-                "-M",
-                "ui"
-            ])
-            subprocess.run([
-                "pandoc",
-                "-s",
-                temp_markdown_file,
-                "-o",
-                f"{snap_dir}/cli/{html_filename}",
-                "--css=css/stylesheet.css",
-                f"--template={git_root}/html-support/template.html",
-                f"--metadata=title:{topic_title}",
-                f"--extract-media={snap_dir}/images",
-                "-M",
-                "ui"
-            ])
+            subprocess.run(
+                [
+                    "pandoc",
+                    "-s",
+                    temp_markdown_file,
+                    "-o",
+                    f"{deb_dir}/ui/{html_filename}",
+                    "--css=css/stylesheet.css",
+                    f"--template={git_root}/html-support/template.html",
+                    f"--metadata=title:{topic_title}",
+                    f"--extract-media={deb_dir}/images",
+                    "-M",
+                    "ui",
+                ]
+            )
+            subprocess.run(
+                [
+                    "pandoc",
+                    "-s",
+                    temp_markdown_file,
+                    "-o",
+                    f"{deb_dir}/cli/{html_filename}",
+                    "--css=css/stylesheet.css",
+                    f"--template={git_root}/html-support/template.html",
+                    f"--metadata=title:{topic_title}",
+                    f"--extract-media={deb_dir}/images",
+                    "-M",
+                    "ui",
+                ]
+            )
+            subprocess.run(
+                [
+                    "pandoc",
+                    "-s",
+                    temp_markdown_file,
+                    "-o",
+                    f"{snap_dir}/ui/{html_filename}",
+                    "--css=css/stylesheet.css",
+                    f"--template={git_root}/html-support/template.html",
+                    f"--metadata=title:{topic_title}",
+                    f"--extract-media={snap_dir}/images",
+                    "-M",
+                    "ui",
+                ]
+            )
+            subprocess.run(
+                [
+                    "pandoc",
+                    "-s",
+                    temp_markdown_file,
+                    "-o",
+                    f"{snap_dir}/cli/{html_filename}",
+                    "--css=css/stylesheet.css",
+                    f"--template={git_root}/html-support/template.html",
+                    f"--metadata=title:{topic_title}",
+                    f"--extract-media={snap_dir}/images",
+                    "-M",
+                    "ui",
+                ]
+            )
             print(f"{html_filename} processed")
         sys.exit(0)
-        
+
     # is the entered topic number a valid markdown file?
     mdfile = glob.glob(os.path.join(markdown_dir, f"*{args.topic_number}*.md"))
     if not mdfile:
@@ -182,7 +206,9 @@ def main():
     except IOError as e:
         sys.exit("I/O error creating temp working directory")
     if args.d:
-        print(f"wkg copy of discourse vsn (discourse_md_copy): {discourse_md_copy}")
+        print(
+            f"wkg copy of discourse vsn (discourse_md_copy): {discourse_md_copy}"
+        )
 
     # can we edit the file with emacs? (todo: make this generic)
     emacs_command = [
@@ -197,7 +223,27 @@ def main():
     if ask_yes_no_question("commit changes to launchpad?"):
         shutil.copy(repo_md_copy, markdown_file)
         os.chdir(git_root)
-        commit_message = input("Enter commit message: ")
+        scoping_levels = {
+            "s": "structural",
+            "c": "content",
+            "l": "linting",
+            "u": "urls",
+        }
+        while True:
+            scoping_level = (
+                input(
+                    "Scoping level: (s)tructural, (c)ontent, (l)inting, (u)rls: "
+                )
+                .strip()
+                .lower()
+            )
+            if scoping_level in scoping_levels:
+                scoping = scoping_levels[scoping_level]
+                break
+            else:
+                print("Invalid input. Please try again.")
+        commit_description = input(f"docs({scoping}): ")
+        commit_message = f"docs({scoping}): {commit_description}"
         subprocess.run(["git", "add", "."])
         subprocess.run(["git", "commit", "-m", commit_message])
         subprocess.run(["git", "push"])
@@ -213,74 +259,98 @@ def main():
         print("no changes published to discourse")
 
     if ask_yes_no_question("publish changes to html?"):
-#       html_filename = re.sub(r'-\d+', '', markdown_file.split('/')[-1]).replace('.md', '.html')
-        html_filename = re.sub(r'-(\d+)\.md$', '.html', markdown_file.split('/')[-1])
+        #       html_filename = re.sub(r'-\d+', '', markdown_file.split('/')[-1]).replace('.md', '.html')
+        html_filename = re.sub(
+            r"-(\d+)\.md$", ".html", markdown_file.split("/")[-1]
+        )
         if args.d:
             print(f"markdown filename (markdown_file): {markdown_file}")
             print(f"html filename (html_filename): {html_filename}")
         with open(markdown_file, "r") as f:
             markdown_content = f.read()
-        new_content = re.sub(r'/t/([\w-]+)(?:/[\d]+)', r'\1.html', markdown_content)
-        temp_markdown_file = twd+"/"+html_filename + '.tmp.md'
-        with open(temp_markdown_file, 'w') as file:
+        new_content = re.sub(
+            r"/t/([\w-]+)(?:/[\d]+)", r"\1.html", markdown_content
+        )
+        temp_markdown_file = twd + "/" + html_filename + ".tmp.md"
+        with open(temp_markdown_file, "w") as file:
             file.write(new_content)
         topic_title = api.get_title(args.topic_number)
-        subprocess.run([
-            "pandoc",
-            "-s",
-            temp_markdown_file,
-            "-o",
-            f"{deb_dir}/ui/{html_filename}",
-            "--css=css/stylesheet.css",
-            f"--template={git_root}/html-support/template.html",
-            f"--metadata=title:{topic_title}",
-            f"--extract-media={deb_dir}/images",
-            "-M",
-            "ui"
-        ])
-        subprocess.run([
-            "pandoc",
-            "-s",
-            temp_markdown_file,
-            "-o",
-            f"{deb_dir}/cli/{html_filename}",
-            "--css=css/stylesheet.css",
-            f"--template={git_root}/html-support/template.html",
-            f"--metadata=title:{topic_title}",
-            f"--extract-media={deb_dir}/images",
-            "-M",
-            "ui"
-        ])
-        subprocess.run([
-            "pandoc",
-            "-s",
-            temp_markdown_file,
-            "-o",
-            f"{snap_dir}/ui/{html_filename}",
-            "--css=css/stylesheet.css",
-            f"--template={git_root}/html-support/template.html",
-            f"--metadata=title:{topic_title}",
-            f"--extract-media={snap_dir}/images",
-            "-M",
-            "ui"
-        ])
-        subprocess.run([
-            "pandoc",
-            "-s",
-            temp_markdown_file,
-            "-o",
-            f"{snap_dir}/cli/{html_filename}",
-            "--css=css/stylesheet.css",
-            f"--template={git_root}/html-support/template.html",
-            f"--metadata=title:{topic_title}",
-            f"--extract-media={snap_dir}/images",
-            "-M",
-            "ui"
-        ])
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{deb_dir}/ui/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{deb_dir}/cli/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{snap_dir}/ui/css/stylesheet.css")
-        shutil.copy(f"{git_root}/html-support/stylesheet.css", f"{snap_dir}/cli/css/stylesheet.css")        
+        subprocess.run(
+            [
+                "pandoc",
+                "-s",
+                temp_markdown_file,
+                "-o",
+                f"{deb_dir}/ui/{html_filename}",
+                "--css=css/stylesheet.css",
+                f"--template={git_root}/html-support/template.html",
+                f"--metadata=title:{topic_title}",
+                f"--extract-media={deb_dir}/images",
+                "-M",
+                "ui",
+            ]
+        )
+        subprocess.run(
+            [
+                "pandoc",
+                "-s",
+                temp_markdown_file,
+                "-o",
+                f"{deb_dir}/cli/{html_filename}",
+                "--css=css/stylesheet.css",
+                f"--template={git_root}/html-support/template.html",
+                f"--metadata=title:{topic_title}",
+                f"--extract-media={deb_dir}/images",
+                "-M",
+                "ui",
+            ]
+        )
+        subprocess.run(
+            [
+                "pandoc",
+                "-s",
+                temp_markdown_file,
+                "-o",
+                f"{snap_dir}/ui/{html_filename}",
+                "--css=css/stylesheet.css",
+                f"--template={git_root}/html-support/template.html",
+                f"--metadata=title:{topic_title}",
+                f"--extract-media={snap_dir}/images",
+                "-M",
+                "ui",
+            ]
+        )
+        subprocess.run(
+            [
+                "pandoc",
+                "-s",
+                temp_markdown_file,
+                "-o",
+                f"{snap_dir}/cli/{html_filename}",
+                "--css=css/stylesheet.css",
+                f"--template={git_root}/html-support/template.html",
+                f"--metadata=title:{topic_title}",
+                f"--extract-media={snap_dir}/images",
+                "-M",
+                "ui",
+            ]
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{deb_dir}/ui/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{deb_dir}/cli/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{snap_dir}/ui/css/stylesheet.css",
+        )
+        shutil.copy(
+            f"{git_root}/html-support/stylesheet.css",
+            f"{snap_dir}/cli/css/stylesheet.css",
+        )
     else:
         print("html docs not updated")
 
@@ -301,9 +371,15 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="discedit discourse editing and version sync tool"
     )
-    parser.add_argument("topic_number", type=int, nargs="?", help='topic number to edit')
-    parser.add_argument("-d", action="store_true", help='print debug output')
-    parser.add_argument("-a", action="store_true", help='autogenerate complete discourse and html doc sets from source markdown')
+    parser.add_argument(
+        "topic_number", type=int, nargs="?", help="topic number to edit"
+    )
+    parser.add_argument("-d", action="store_true", help="print debug output")
+    parser.add_argument(
+        "-a",
+        action="store_true",
+        help="autogenerate complete discourse and html doc sets from source markdown",
+    )
     return parser, parser.parse_args()
 
 

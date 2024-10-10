@@ -18,8 +18,6 @@ To create and deploy a VMware image, you'll need:
 - Tested with Packer 1.3.4 64-bit Linux binaries
 - [Packer template for MAAS](https://github.com/canonical/packer-maas) custom image
 
-## Features and limits
-
 ## Cloning VMware images
 
 As previously mentioned, VMware [does not support cloning boot devices](https://kb.vmware.com/s/article/84280). This limitation may cause data corruption issues on VMFS data stores.

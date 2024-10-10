@@ -28,8 +28,6 @@ The forum is organised into several public categories:
 
 New users might not have immediate posting permissions. While waiting, you can read posts or message [admins](https://discourse.maas.io/about) for elevated permissions. Check our [FAQ](https://discourse.maas.io/faq) and [Terms of Service](https://ubuntu.com/legal).
 
-## How to contribute
-
 ## Creating a new post
 
 Creating a new Discourse post is simple. Just navigate to [our Discourse forum](https://discourse.maas.io/). Once there, choose a category from the *all categories* drop-down and click *+New topic*. Add your post content and select *Create topic*.

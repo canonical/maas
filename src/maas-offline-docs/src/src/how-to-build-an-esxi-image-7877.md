@@ -94,7 +94,6 @@ The appropriate packer template can be found in the subdirectory `vmware-esxi` i
 The deployment image may be customized by modifying `packer-maas/vmware-esxi/KS.CFG`.
 
 ## Build the image
-## Build ESXi
 
 You can easily build the image using the Makefile:
 

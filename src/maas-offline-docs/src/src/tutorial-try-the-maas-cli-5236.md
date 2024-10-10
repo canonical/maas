@@ -57,7 +57,7 @@ This tutorial will walk you through the basics of the MAAS CLI.
     maas $MAAS_USER machines allocate system_id=<id>
 ```
 
-5. **Deploy a node**: Execute the deployment:
+5. **Deploy a node**: Get the machine running:
 
 ```nohighlight
     maas $MAAS_USER machine deploy <id>

@@ -415,7 +415,7 @@ Like before, a public GPG key will be needed. Also get this from the PPA's Launc
 
 To add this PPA, then, hit the 'Add repository' button and fill in the fields. Before saving, the form should look something like this:
 
-![image](https://assets.ubuntu.com/v1/a0962e17-manage-repositories__2.4_add-ppa.png)
+![image](upload://mUC9A0CfBrvMbV5lBBwhbLkot40.png)
 
 Click 'Add repository' to save the configuration.
 
@@ -538,7 +538,7 @@ An Ubuntu package repository is a repository that makes available Ubuntu package
 
 MAAS comes equipped with the official Ubuntu repository `archive.ubuntu.com` as well as the equivalent for architectures other than i386 and amd64: `ports.ubuntu.com` as is evident in the default configuration below:
 
-![image](https://assets.ubuntu.com/v1/77b93794-manage-repositories__2.4_default-repo-config.png)
+![image](upload://h57DYCwR238lYt1RVCF4xPTvO5k.png)
 
 Adding a third-party repository is elementary. Begin by basing the configuration on a line you would typically place in a system's `/etc/apt/sources.list` file. For instance, for the Google Chrome repository, the line would look like:
 
@@ -556,7 +556,7 @@ To add this repository, then, hit the 'Add repository' button and fill in the fi
 
 Before saving, the form should look very similar to this:
 
-![image](https://assets.ubuntu.com/v1/1aa1c512-manage-repositories__2.4_add-repo.png)
+![image](upload://3NB0hcj1diCB8RTRkSVOkopAU3E.png)
 
 Click 'Add repository' to save the configuration.
 

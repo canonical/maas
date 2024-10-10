@@ -135,7 +135,6 @@ git clone https://github.com/canonical/packer-maas.git
 Make sure to pay attention to where the repository is cloned.  The Packer template in this cloned repository creates a Ubuntu AMD64 image for use with MAAS.
 
 ## Create images
-## Packer raw images
 
 To build a packer image, you must change to the template repository directory, then to the subdirectory for the image you want to build.  From that subdirectory, you can easily build a raw image with LVM, using the Makefile:
 

@@ -77,9 +77,8 @@ To delete an LXD cluster, simply delete any VM host within the cluster:
 ![image](https://discourse.maas.io/uploads/default/original/2X/e/ea7cd2476ae8cafe6d8e78f2b029d0cd41afa592.png)
 
 ### Enlist deployed machines
-#### Ten words or fewer
 
-Users can enlist deployed machines, a top feature poll request.
+MAAS version 3.1 allows you to enlist deployed machines into MAAS, without disturbing their workload.
 
 #### About this feature
 
@@ -145,8 +144,6 @@ Machine-readable output follows:
 
 ### Static Ubuntu image upload
 
-#### Ten words or fewer
-
 Users can upload, deploy and reuse a bootable ubuntu image
 
 #### About this feature
@@ -207,8 +204,6 @@ When uploading a custom image, there is a new required field: `base_image`. This
 
 ### Machine configuration cloning UI
 
-#### Ten words or fewer
-
 Extend machine cloning to UI, moving toward machine profile templates.
 
 #### About this feature 
@@ -267,8 +262,6 @@ Under "2. Select what to clone", choose "Network", "Storage", or both (here, we'
 Click "Clone to machine". MAAS will report the status of the attempt.
 
 ### LXD authentication UX improvements
-
-#### Ten words or fewer
 
 Easier MAAS to LXD connection that uses certificates for authentication.
 
@@ -375,8 +368,6 @@ Paste or upload your certificate and private key, then click "Next" to validate 
 ![image](https://discourse.maas.io/uploads/default/original/2X/2/286e648de20c9db3bb6c56c5855647c23a5d9e2e.png)
 
 ### Improved image sync performance
-
-#### Ten words or fewer
 
 After downloading images, the rack controller syncs them much faster.
 

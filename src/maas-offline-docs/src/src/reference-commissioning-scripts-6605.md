@@ -2,8 +2,6 @@
 
 This page documents the metadata fields associated with MAAS commissioning scripts.
 
-## Metadata fields
-
 ## General information
 
 | Field         | Description |

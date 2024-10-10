@@ -1,6 +1,6 @@
 > *Errors or typos? Topics missing? Hard to read? <a href="https://docs.google.com/forms/d/e/1FAIpQLScIt3ffetkaKW3gDv6FDk7CfUTNYP_HGmqQotSTtj2htKkVBw/viewform?usp=pp_url&entry.1739714854=https://maas.io/docs/understanding-audit-events" target = "_blank">Let us know.</a>*
 
-MAAS audit logs provide detailed records of changes in machines, users, and settings. The `AUDIT` level logs are particularly useful for tracing historical changes in a MAAS instance. They are crucial for system integrity, troubleshooting, compliance, and governance.
+MAAS audit logs provide not only detailed records of changes in machines, but also users, and settings. The `AUDIT` level logs are particularly useful for tracing historical changes in a MAAS instance. They are crucial for system integrity, troubleshooting, compliance, and governance.
 
 ## Fetch audit events
 

@@ -2,6 +2,8 @@ MAAS logs considerable runtime information to standard log files, useful when th
 
 ## MAAS 3.5 log commands
 
+The following commands apply to MAAS version 3.5.
+
 ### Pebble (snap-only)
 
 ```nohighlight
@@ -196,6 +198,8 @@ journalctl -u maas-dhcpd
 ```
 
 ## Pre-3.5 log commands
+
+The following commands apply to all MAAS versions before version 3.5.
 
 ### Supervisor (snap-only)
 

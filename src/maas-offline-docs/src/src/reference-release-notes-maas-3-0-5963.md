@@ -38,6 +38,8 @@ Note that new features are categorised by the level of release at which they bec
 
 ## MAAS 3.0 RC1
 
+New features for MAAS 3.0 release candidate 1.
+
 ### Consolidation of logs and events
 
 The logs and events tabs have combined and now live under "Logs". In addition to a number of small improvements, navigating and displaying events has been made easier.
@@ -69,6 +71,8 @@ maas $PROFILE subnet update $SUBNET disabled_boot_architectures="0x00 uefi_amd64
 - GRUB debug may now be enabled by enabling [rackd debug logging](https://discourse.maas.io/t/running-installed-maas-in-debug-logging-mode/168)**^**.
 
 ## MAAS 3.0 Beta 4
+
+New features for MAAS 3.0 Beta 4.
 
 ### Improvements to MAAS CLI help UX
 
@@ -156,11 +160,15 @@ We can see at each stage `help` which gives us clues as to what the next step is
 
 ## MAAS 3.0 Beta 2
 
+New features for MAAS 3.0 Beta 2.
+
 ### Registering a machine as a VM host during deployment
 
 When deploying a machine through the API, it’s now possible to specify `register_vmhost=True` to have LXD configured on the machine and registered as a VM host in MAAS (similar to what happens with virsh if `install_kvm=True` is provided).
 
 ## MAAS 3.0 Beta 1
+
+New features for MAAS 3.0 Beta 1
 
 ### PCI and USB devices are now modelled in MAAS
 
@@ -257,6 +265,7 @@ Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC2:
 |[#1929086](https://bugs.launchpad.net/bugs/1929086)**^**|LXD VM hosts can't be refreshed if VLANs interfaces aren't named $parent.$vid  |High| 
 |[#1929643](https://bugs.launchpad.net/bugs/1929643)**^**|MAAS often fails and and returns a Pickled object if request header is set to Accept: */*  |Medium|  
 |[#1924820](https://bugs.launchpad.net/bugs/1924820)**^**|Trying to edit a disconnected NIC, then cancelling the edit and connecting the NIC via its drop-down menu, many drop-down menu options then disappear|Undecided| 
+
 ### MAAS 3.0 RC1 bug fixes
 
 Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC1:
@@ -284,6 +293,7 @@ Here are the bugs that have been 'Fix Released' in MAAS 3.0 RC1:
 [#1928226](https://bugs.launchpad.net/bugs/1928226)**^**|Information "not available" indicates that it''s an error of some sort|Undecided|
 [#1928235](https://bugs.launchpad.net/bugs/1928235)**^**|notes field won't update properly: MAAS 3.0 RC]()**^**|Undecided|
 [#1928324](https://bugs.launchpad.net/bugs/1928324)**^**|updating a machine zone or resource pool doesn't refresh details|Undecided|
+
 ### MAAS 3.0 Beta 5 bug fixes
 
 Here are the bugs that have been `Fix Released` in MAAS 3.0 Beta 5:
