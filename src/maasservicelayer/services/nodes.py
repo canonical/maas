@@ -3,8 +3,10 @@
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.nodes import NodesRepository
 from maasservicelayer.models.bmc import Bmc
+from maasservicelayer.models.nodes import Node
 from maasservicelayer.services._base import Service
 from maasservicelayer.services.secrets import SecretsService
 
@@ -22,6 +24,13 @@ class NodesService(Service):
             nodes_repository
             if nodes_repository
             else NodesRepository(connection)
+        )
+
+    async def update_by_system_id(
+        self, system_id: str, resource: CreateOrUpdateResource
+    ) -> Node:
+        return await self.nodes_repository.update_by_system_id(
+            system_id=system_id, resource=resource
         )
 
     async def move_to_zone(self, old_zone_id: int, new_zone_id: int) -> None:

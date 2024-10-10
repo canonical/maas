@@ -6,13 +6,37 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maasservicelayer.db.repositories.base import CreateOrUpdateResource
 from maasservicelayer.db.repositories.nodes import NodesRepository
+from maasservicelayer.models.nodes import Node
 from maasservicelayer.services import NodesService
 from maasservicelayer.services.secrets import SecretsService
 
 
 @pytest.mark.asyncio
 class TestNodesService:
+    async def test_update_by_system_id(self) -> None:
+        db_connection = Mock(AsyncConnection)
+        secrets_service_mock = Mock(SecretsService)
+        nodes_repository_mock = Mock(NodesRepository)
+        updated_node = Mock(Node)
+        nodes_repository_mock.update_by_system_id = AsyncMock(
+            return_value=updated_node
+        )
+        nodes_service = NodesService(
+            db_connection,
+            secrets_service=secrets_service_mock,
+            nodes_repository=nodes_repository_mock,
+        )
+        resource = Mock(CreateOrUpdateResource)
+        result = await nodes_service.update_by_system_id(
+            system_id="xyzio", resource=resource
+        )
+        assert result == updated_node
+        nodes_repository_mock.update_by_system_id.assert_called_once_with(
+            system_id="xyzio", resource=resource
+        )
+
     async def test_move_to_zone(self) -> None:
         db_connection = Mock(AsyncConnection)
         secrets_service_mock = Mock(SecretsService)

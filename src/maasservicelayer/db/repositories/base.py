@@ -11,8 +11,10 @@ from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.exceptions.catalog import (
     AlreadyExistsException,
     BaseExceptionDetail,
+    NotFoundException,
 )
 from maasservicelayer.exceptions.constants import (
+    UNEXISTING_RESOURCE_VIOLATION_TYPE,
     UNIQUE_CONSTRAINT_VIOLATION_TYPE,
 )
 from maasservicelayer.models.base import ListResult
@@ -84,6 +86,16 @@ class BaseRepository(ABC, Generic[T]):
                 BaseExceptionDetail(
                     type=UNIQUE_CONSTRAINT_VIOLATION_TYPE,
                     message="A resource with such identifiers already exist.",
+                )
+            ]
+        )
+
+    def _raise_not_found_exception(self):
+        raise NotFoundException(
+            details=[
+                BaseExceptionDetail(
+                    type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
+                    message="Resource with such identifiers does not exist.",
                 )
             ]
         )

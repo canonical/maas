@@ -6,8 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.operators import eq
 
 from maasapiserver.v3.constants import DEFAULT_ZONE_NAME
-from maasservicelayer.db.repositories.nodes import NodesRepository
+from maascommon.enums.node import NodeStatus
+from maasservicelayer.db.repositories.nodes import (
+    NodeCreateOrUpdateResourceBuilder,
+    NodesRepository,
+)
 from maasservicelayer.db.tables import BMCTable, NodeTable, ZoneTable
+from maasservicelayer.exceptions.catalog import NotFoundException
 from maasservicelayer.models.nodes import Node
 from maasservicelayer.models.zones import Zone
 from tests.fixtures.factories.bmc import create_test_bmc
@@ -110,3 +115,54 @@ class TestNodesRepository:
         assert node_bmc.id == bmc.id
         assert node_bmc.power_type == bmc.power_type
         assert node_bmc.power_parameters == bmc.power_parameters
+
+    async def test_update(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        machine = await create_test_machine(
+            fixture, bmc=bmc, user=user, status=NodeStatus.NEW
+        )
+
+        nodes_repository = NodesRepository(db_connection)
+        resource = (
+            NodeCreateOrUpdateResourceBuilder()
+            .with_status(status=NodeStatus.DEPLOYED)
+            .build()
+        )
+        await nodes_repository.update_by_system_id(
+            system_id=machine.system_id, resource=resource
+        )
+        [updated_node] = await fixture.get_typed(
+            NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
+        )
+        assert updated_node.status == NodeStatus.DEPLOYED
+
+        resource = (
+            NodeCreateOrUpdateResourceBuilder()
+            .with_status(status=NodeStatus.FAILED_DEPLOYMENT)
+            .build()
+        )
+        await nodes_repository.update(id=machine.id, resource=resource)
+        [updated_node] = await fixture.get_typed(
+            NodeTable.name, Node, eq(NodeTable.c.id, machine.id)
+        )
+        assert updated_node.status == NodeStatus.FAILED_DEPLOYMENT
+
+    async def test_update_failures(
+        self, db_connection: AsyncConnection, fixture: Fixture
+    ) -> None:
+        nodes_repository = NodesRepository(db_connection)
+        resource = (
+            NodeCreateOrUpdateResourceBuilder()
+            .with_status(status=NodeStatus.DEPLOYED)
+            .build()
+        )
+        with pytest.raises(NotFoundException):
+            await nodes_repository.update_by_system_id(
+                system_id="mario", resource=resource
+            )
+
+        with pytest.raises(NotFoundException):
+            await nodes_repository.update(id=-1, resource=resource)

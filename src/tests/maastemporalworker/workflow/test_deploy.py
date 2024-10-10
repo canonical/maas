@@ -5,8 +5,9 @@ import uuid
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.sql.operators import eq
 from temporalio import activity
 from temporalio.client import WorkflowExecutionStatus
 from temporalio.service import RPCError
@@ -27,6 +28,7 @@ from maasserver.workflow.power import (
 )
 from maasservicelayer.db import Database
 from maasservicelayer.db.tables import NodeTable
+from maasservicelayer.models.nodes import Node
 from maastemporalworker.workflow.deploy import (
     DeployActivity,
     DeployNParam,
@@ -83,13 +85,10 @@ class TestDeployActivity:
                 status=NodeStatus.READY,
             ),
         )
-        node_status_stmt = (
-            select(NodeTable.c.status)
-            .select_from(NodeTable)
-            .filter(NodeTable.c.system_id == node["system_id"])
+        [retrieved_node] = await fixture.get_typed(
+            NodeTable.name, Node, eq(NodeTable.c.system_id, node["system_id"])
         )
-        [status] = (await db_connection.execute(node_status_stmt)).one()
-        assert status == NodeStatus.READY
+        assert retrieved_node.status == NodeStatus.READY
 
     async def test_get_boot_order_with_netboot(
         self, fixture: Fixture, db_connection: AsyncConnection, db: Database

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import Result, select, update
+from sqlalchemy import Result, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy
@@ -18,6 +18,9 @@ from maasserver.workflow.power import (
     PowerOnParam,
     PowerParam,
     PowerQueryParam,
+)
+from maasservicelayer.db.repositories.nodes import (
+    NodeCreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import (
     BlockDeviceTable,
@@ -55,7 +58,7 @@ class DeployNParam:
 @dataclass
 class SetNodeStatusParam:
     system_id: str
-    status: int
+    status: NodeStatus
 
 
 @dataclass
@@ -86,13 +89,15 @@ class DeployResult:
 class DeployActivity(ActivityBase):
     @activity.defn(name="set-node-status")
     async def set_node_status(self, params: SetNodeStatusParam) -> None:
-        stmt = (
-            update(NodeTable)
-            .where(NodeTable.c.system_id == params.system_id)
-            .values(status=params.status)
-        )
-        async with self._start_transaction() as tx:
-            await tx.execute(stmt)
+        async with self.start_transaction() as services:
+            resource = (
+                NodeCreateOrUpdateResourceBuilder()
+                .with_status(status=params.status)
+                .build()
+            )
+            await services.nodes.update_by_system_id(
+                system_id=params.system_id, resource=resource
+            )
 
     def _single_result_to_dict(self, result: Result) -> dict[str, Any]:
         obj = {}

@@ -14,23 +14,8 @@ from maasservicelayer.db.repositories.base import (
     CreateOrUpdateResourceBuilder,
 )
 from maasservicelayer.db.tables import ResourcePoolTable
-from maasservicelayer.exceptions.catalog import (
-    BaseExceptionDetail,
-    NotFoundException,
-)
-from maasservicelayer.exceptions.constants import (
-    UNEXISTING_RESOURCE_VIOLATION_TYPE,
-)
 from maasservicelayer.models.base import ListResult
 from maasservicelayer.models.resource_pools import ResourcePool
-
-RESOURCE_POOLS_FIELDS = (
-    ResourcePoolTable.c.id,
-    ResourcePoolTable.c.name,
-    ResourcePoolTable.c.description,
-    ResourcePoolTable.c.created,
-    ResourcePoolTable.c.updated,
-)
 
 
 class ResourcePoolCreateOrUpdateResourceBuilder(CreateOrUpdateResourceBuilder):
@@ -66,7 +51,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
     async def create(self, resource: CreateOrUpdateResource) -> ResourcePool:
         stmt = (
             insert(ResourcePoolTable)
-            .returning(*RESOURCE_POOLS_FIELDS)
+            .returning(ResourcePoolTable)
             .values(**resource.get_values())
         )
         try:
@@ -108,7 +93,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         stmt = (
             update(ResourcePoolTable)
             .where(eq(ResourcePoolTable.c.id, id))
-            .returning(*RESOURCE_POOLS_FIELDS)
+            .returning(ResourcePoolTable)
             .values(**resource.get_values())
         )
         try:
@@ -116,14 +101,7 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         except IntegrityError:
             self._raise_already_existing_exception()
         except NoResultFound:
-            raise NotFoundException(
-                details=[
-                    BaseExceptionDetail(
-                        type=UNEXISTING_RESOURCE_VIOLATION_TYPE,
-                        message=f"Resource pool with id '{id}' does not exist.",
-                    )
-                ]
-            )
+            self._raise_not_found_exception()
         return ResourcePool(**new_resource_pool._asdict())
 
     async def list_ids(self) -> set[int]:
@@ -132,4 +110,4 @@ class ResourcePoolRepository(BaseRepository[ResourcePool]):
         return {row.id for row in result}
 
     def _select_all_statement(self) -> Select[Any]:
-        return select(*RESOURCE_POOLS_FIELDS).select_from(ResourcePoolTable)
+        return select(ResourcePoolTable).select_from(ResourcePoolTable)
