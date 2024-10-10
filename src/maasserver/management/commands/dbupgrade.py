@@ -140,18 +140,21 @@ class Command(BaseCommand):
 
             # if port is empty, force set to 5432, otherwise Temporal sets it to 3306
             port = conn_params.get("port", "5432")
+            dbname = conn_params.get("dbname")
+            if dbname is None:
+                dbname = conn_params.get("database")  # Django 3.x
 
             cmd = (
                 [
                     get_path("/usr/bin/temporal-sql-tool"),
                     "--plugin",
-                    "postgres",
+                    "postgres12",
                     "--endpoint",
                     endpoint,
                     "--port",
                     port,
                     "--database",
-                    conn_params["database"],
+                    dbname,
                     "--ca",
                     "&".join(attributes),
                 ]
