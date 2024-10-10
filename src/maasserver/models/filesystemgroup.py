@@ -477,6 +477,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
         Note: Should only be called when the `group_type` is LVM_VG.
         """
+        if self.pk is None:
+            return 0
         filesystems = list(self.filesystems.all())
         if len(filesystems) == 0:
             return 0
@@ -490,6 +492,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     def get_smallest_filesystem_size(self):
         """Return the smallest filesystem size."""
+        if self.pk is None:
+            return 0
         filesystems = list(self.filesystems.all())
         if len(filesystems) == 0:
             return 0
@@ -498,6 +502,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     def get_total_size(self):
         """Return the size of all filesystems combined."""
+        if self.pk is None:
+            return 0
+
         return sum(fs.get_size() for fs in self.filesystems.all())
 
     def get_raid_size(self):
@@ -539,6 +546,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     def get_bcache_backing_filesystem(self):
         """Return the filesystem that is the backing device for the Bcache."""
+        if self.pk is None:
+            return None
         for filesystem in self.filesystems.all():
             if filesystem.fstype == FILESYSTEM_TYPE.BCACHE_BACKING:
                 return filesystem
@@ -578,6 +587,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         Calculated from the total size of all virtual block devices in this
         group.
         """
+        if self.pk is None:
+            return 0
         return sum(
             logical_volume.size
             for logical_volume in self.virtual_devices.all()
@@ -645,6 +656,8 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         """Return list of all filesystem types attached."""
         # Grab all filesystems so that if the filesystems have been
         # precached it will be used. This prevents extra database queries.
+        if self.pk is None:
+            return []
         if filesystems is None:
             filesystems = list(self.filesystems.all())
         return [filesystem.fstype for filesystem in filesystems]

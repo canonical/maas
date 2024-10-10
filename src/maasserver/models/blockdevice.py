@@ -197,6 +197,8 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     def get_partitiontable(self):
         """Returns this device's partition table (or None, if none exists."""
+        if self.pk is None:
+            return None
         try:
             return list(self.partitiontable_set.all())[0]
         except IndexError:

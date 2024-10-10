@@ -105,7 +105,8 @@ def pre_save_prevent_conflicts(sender, instance, **kwargs):
         # The IP address wasn't modified, nothing to do.
         return
 
-    instance.__bmcs_to_update = set(instance.bmc_set.all())
+    if instance.pk is not None:
+        instance.__bmcs_to_update = set(instance.bmc_set.all())
     ips_to_delete = []
 
     # If any sip is using this address, delete it. Record in our instance any

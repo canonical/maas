@@ -93,6 +93,8 @@ class PartitionTable(CleanSave, TimestampedModel):
 
     def get_used_size(self, ignore_partitions=[]):
         """Return the used size of partitions on the table."""
+        if self.pk is None:
+            return self.get_overhead_size()
         ignore_ids = [
             partition.id
             for partition in ignore_partitions
@@ -140,12 +142,13 @@ class PartitionTable(CleanSave, TimestampedModel):
             )
         index = partition.index
         partition.delete()
-        # renumber partitions
-        for partition in self.partitions.filter(index__gt=index).order_by(
-            "index"
-        ):
-            partition.index -= 1
-            partition.save()
+        if self.pk is not None:
+            # renumber partitions
+            for partition in self.partitions.filter(index__gt=index).order_by(
+                "index"
+            ):
+                partition.index -= 1
+                partition.save()
 
     def __str__(self):
         return f"Partition table for {self.block_device}"
