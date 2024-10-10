@@ -4,6 +4,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from maascommon.enums.node import NodeStatus
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import (
     MachineClauseFactory,
@@ -239,3 +240,41 @@ class TestMachinesRepository(RepositoryCommonTests[Machine]):
         assert devices_result.next_token is None
         assert len(devices_result.items) == 1
         assert devices_result.items[0] == devices.pop()
+
+    async def test_count_machines_by_statuses_no_machines(
+        self, repository_instance: MachinesRepository
+    ):
+        result = await repository_instance.count_machines_by_statuses()
+        assert all(value == 0 for value in result.__dict__.values())
+
+    async def test_count_machines_by_statuses(
+        self, repository_instance: MachinesRepository, fixture: Fixture
+    ):
+        machines_to_be_created_with_status = {
+            NodeStatus.ALLOCATED: 1,
+            NodeStatus.DEPLOYED: 2,
+            NodeStatus.READY: 3,
+            NodeStatus.FAILED_DEPLOYMENT: 1,
+            NodeStatus.FAILED_DISK_ERASING: 1,
+            NodeStatus.FAILED_ENTERING_RESCUE_MODE: 1,
+            NodeStatus.FAILED_EXITING_RESCUE_MODE: 1,
+            NodeStatus.FAILED_RELEASING: 2,
+            NodeStatus.FAILED_TESTING: 2,
+            NodeStatus.NEW: 1,
+            NodeStatus.TESTING: 1,
+            NodeStatus.DEPLOYING: 1,
+        }
+        bmc = await create_test_bmc(fixture)
+        user = await create_test_user(fixture)
+        for status, count in machines_to_be_created_with_status.items():
+            for i in range(count):
+                await create_test_machine(
+                    fixture, bmc=bmc, user=user, status=status
+                )
+
+        result = await repository_instance.count_machines_by_statuses()
+        assert result.allocated == 1
+        assert result.deployed == 2
+        assert result.ready == 3
+        assert result.error == 8
+        assert result.other == 3

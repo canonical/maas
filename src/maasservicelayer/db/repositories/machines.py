@@ -5,9 +5,10 @@ from typing import Any
 
 from sqlalchemy import and_, desc, select, Select
 from sqlalchemy.sql.expression import func
+from sqlalchemy.sql.functions import count
 from sqlalchemy.sql.operators import eq, le
 
-from maascommon.enums.node import NodeDeviceBus, NodeTypeEnum
+from maascommon.enums.node import NodeDeviceBus, NodeStatus, NodeTypeEnum
 from maasservicelayer.db.filters import Clause, ClauseFactory, QuerySpec
 from maasservicelayer.db.repositories.base import (
     BaseRepository,
@@ -22,7 +23,12 @@ from maasservicelayer.db.tables import (
     UserTable,
 )
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.models.machines import (
+    Machine,
+    MachinesCountByStatus,
+    PciDevice,
+    UsbDevice,
+)
 
 
 class MachineClauseFactory(ClauseFactory):
@@ -118,6 +124,37 @@ class MachinesRepository(BaseRepository[Machine]):
             items=[PciDevice(**row._asdict()) for row in result],
             next_token=next_token,
         )
+
+    async def count_machines_by_statuses(self) -> MachinesCountByStatus:
+        stmt = (
+            select(NodeTable.c.status, count(NodeTable.c.id).label("total"))
+            .select_from(NodeTable)
+            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
+            .group_by(NodeTable.c.status)
+        )
+        result = (await self.connection.execute(stmt)).all()
+        machines_count = MachinesCountByStatus()
+        for row in result:
+            match row.status:
+                case NodeStatus.ALLOCATED:
+                    machines_count.allocated += row.total
+                case NodeStatus.DEPLOYED:
+                    machines_count.deployed += row.total
+                case NodeStatus.READY:
+                    machines_count.ready += row.total
+                case (
+                    NodeStatus.FAILED_COMMISSIONING
+                    | NodeStatus.FAILED_DEPLOYMENT
+                    | NodeStatus.FAILED_DISK_ERASING
+                    | NodeStatus.FAILED_ENTERING_RESCUE_MODE
+                    | NodeStatus.FAILED_EXITING_RESCUE_MODE
+                    | NodeStatus.FAILED_RELEASING
+                    | NodeStatus.FAILED_TESTING
+                ):
+                    machines_count.error += row.total
+                case _:
+                    machines_count.other += row.total
+        return machines_count
 
     def _list_devices_statement(self, system_id: str) -> Select[Any]:
         return (

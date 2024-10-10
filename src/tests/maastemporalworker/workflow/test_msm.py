@@ -20,7 +20,7 @@ from maascommon.enums.node import NodeStatus
 from maasservicelayer.db import Database
 from maasservicelayer.services.secrets import LocalSecretsStorageService
 from maastemporalworker.workflow.msm import (
-    MachineStatsByStatus,
+    MachinesCountByStatus,
     MSM_DETAIL_EP,
     MSM_ENROL_EP,
     MSM_REFRESH_EP,
@@ -87,7 +87,7 @@ def hb_param() -> MSMHeartbeatParam:
         sm_url=_MSM_BASE_URL,
         jwt=_JWT_ACCESS,
         rotation_interval_minutes=_JWT_ROTATION_INTERVAL,
-        status=MachineStatsByStatus(
+        status=MachinesCountByStatus(
             allocated=1,
             deployed=2,
         ),
@@ -540,9 +540,9 @@ class TestMSMHeartbeatWorkflow:
         calls = defaultdict(list)
 
         @activity.defn(name="msm-get-heartbeat-data")
-        async def get_heartbeat_data() -> MachineStatsByStatus:
+        async def get_heartbeat_data() -> MachinesCountByStatus:
             calls["msm-get-heartbeat-data"].append(True)
-            return MachineStatsByStatus(allocated=1, deployed=1)
+            return MachinesCountByStatus(allocated=1, deployed=1)
 
         @activity.defn(name="msm-send-heartbeat")
         async def send_heartbeat(input: MSMHeartbeatParam) -> int:

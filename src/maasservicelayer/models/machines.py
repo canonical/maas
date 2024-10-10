@@ -1,6 +1,6 @@
 # Copyright 2024 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
+from dataclasses import dataclass
 from enum import Enum
 import re
 from typing import Optional
@@ -70,3 +70,14 @@ class UsbDevice(HardwareDevice):
 
 class PciDevice(HardwareDevice):
     pci_address: str
+
+
+@dataclass
+class MachinesCountByStatus:
+    """Machine counts by status."""
+
+    allocated: int = 0
+    deployed: int = 0
+    ready: int = 0
+    error: int = 0
+    other: int = 0

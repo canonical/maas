@@ -12,19 +12,15 @@ import ssl
 from typing import Any
 
 from aiohttp import ClientSession, ClientTimeout, TCPConnector
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy.sql.functions import count
-from sqlalchemy.sql.operators import eq
 from temporalio import activity, workflow
 from temporalio.common import RetryPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import ApplicationError
 from temporalio.workflow import ParentClosePolicy
 import yaml
 
-from maascommon.enums.node import NodeStatus, NodeTypeEnum
 from maasservicelayer.db import Database
-from maasservicelayer.db.tables import NodeTable
+from maasservicelayer.models.machines import MachinesCountByStatus
 from maastemporalworker.workflow.activity import ActivityBase
 
 HEARTBEAT_TIMEOUT = timedelta(seconds=10)
@@ -57,24 +53,13 @@ class MSMConnectorParam:
 
 
 @dataclasses.dataclass
-class MachineStatsByStatus:
-    """Machine counts by status."""
-
-    allocated: int = 0
-    deployed: int = 0
-    ready: int = 0
-    error: int = 0
-    other: int = 0
-
-
-@dataclasses.dataclass
 class MSMHeartbeatParam:
     sm_url: str
     jwt: str
     site_name: str
     site_url: str
     rotation_interval_minutes: int
-    status: MachineStatsByStatus | None = None
+    status: MachinesCountByStatus | None = None
 
 
 @dataclasses.dataclass
@@ -248,43 +233,14 @@ class MSMConnectorActivity(ActivityBase):
             )
 
     @activity.defn(name="msm-get-heartbeat-data")
-    async def get_heartbeat_data(self) -> MachineStatsByStatus:
+    async def get_heartbeat_data(self) -> MachinesCountByStatus:
         """Get heartbeat data from MAAS DB
 
         Returns:
-            MachineStatsByStatus: machine counters
+            MachinesCountByStatus: machine counters
         """
-        ret = MachineStatsByStatus()
-        stmt = (
-            select(NodeTable.c.status, count(NodeTable.c.id).label("total"))
-            .select_from(NodeTable)
-            .where(eq(NodeTable.c.node_type, NodeTypeEnum.MACHINE))
-            .group_by(NodeTable.c.status)
-        )
-        async with self._start_transaction() as tx:
-            result = await tx.execute(stmt)
-            for row in result.all():
-                match row.status:
-                    case NodeStatus.ALLOCATED:
-                        ret.allocated += row.total
-                    case NodeStatus.DEPLOYED:
-                        ret.deployed += row.total
-                    case NodeStatus.READY:
-                        ret.ready += row.total
-                    case (
-                        NodeStatus.FAILED_COMMISSIONING
-                        | NodeStatus.FAILED_DEPLOYMENT
-                        | NodeStatus.FAILED_DISK_ERASING
-                        | NodeStatus.FAILED_ENTERING_RESCUE_MODE
-                        | NodeStatus.FAILED_EXITING_RESCUE_MODE
-                        | NodeStatus.FAILED_RELEASING
-                        | NodeStatus.FAILED_TESTING
-                    ):
-                        ret.error += row.total
-                    case _:
-                        ret.other += row.total
-
-        return ret
+        async with self.start_transaction() as services:
+            return await services.machines.count_machines_by_statuses()
 
     @activity.defn(name="msm-send-heartbeat")
     async def send_heartbeat(self, input: MSMHeartbeatParam) -> int:

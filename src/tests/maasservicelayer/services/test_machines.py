@@ -8,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.models.machines import (
+    Machine,
+    MachinesCountByStatus,
+    PciDevice,
+    UsbDevice,
+)
 from maasservicelayer.services.machines import MachinesService
 from maasservicelayer.services.secrets import SecretsService
 
@@ -16,13 +21,12 @@ from maasservicelayer.services.secrets import SecretsService
 @pytest.mark.asyncio
 class TestMachinesService:
     async def test_list(self) -> None:
-        db_connection = Mock(AsyncConnection)
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list = AsyncMock(
             return_value=ListResult[Machine](items=[], next_token=None)
         )
         machines_service = MachinesService(
-            connection=db_connection,
+            connection=Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -34,13 +38,12 @@ class TestMachinesService:
         assert machines_list.items == []
 
     async def test_list_machine_usb_devices(self) -> None:
-        db_connection = Mock(AsyncConnection)
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_usb_devices = AsyncMock(
             return_value=ListResult[UsbDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
-            connection=db_connection,
+            connection=Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -53,15 +56,13 @@ class TestMachinesService:
         assert usb_devices_list.next_token is None
         assert usb_devices_list.items == []
 
-    async def test_list_machine_pci_devices(
-        self, db_connection: AsyncConnection
-    ) -> None:
+    async def test_list_machine_pci_devices(self) -> None:
         machines_repository_mock = Mock(MachinesRepository)
         machines_repository_mock.list_machine_pci_devices = AsyncMock(
             return_value=ListResult[PciDevice](items=[], next_token=None)
         )
         machines_service = MachinesService(
-            connection=db_connection,
+            connection=Mock(AsyncConnection),
             secrets_service=Mock(SecretsService),
             machines_repository=machines_repository_mock,
         )
@@ -73,3 +74,18 @@ class TestMachinesService:
         )
         assert pci_devices_list.next_token is None
         assert pci_devices_list.items == []
+
+    async def test_count_machines_by_statuses(self) -> None:
+        machines_repository_mock = Mock(MachinesRepository)
+        return_value = Mock(MachinesCountByStatus)
+        machines_repository_mock.count_machines_by_statuses = AsyncMock(
+            return_value=return_value
+        )
+        machines_service = MachinesService(
+            connection=Mock(AsyncConnection),
+            secrets_service=Mock(SecretsService),
+            machines_repository=machines_repository_mock,
+        )
+        result = await machines_service.count_machines_by_statuses()
+        assert result is return_value
+        machines_repository_mock.count_machines_by_statuses.assert_called_once()

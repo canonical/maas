@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from maasservicelayer.db.filters import QuerySpec
 from maasservicelayer.db.repositories.machines import MachinesRepository
 from maasservicelayer.models.base import ListResult
-from maasservicelayer.models.machines import Machine, PciDevice, UsbDevice
+from maasservicelayer.models.machines import (
+    Machine,
+    MachinesCountByStatus,
+    PciDevice,
+    UsbDevice,
+)
 from maasservicelayer.services.nodes import NodesService
 from maasservicelayer.services.secrets import SecretsService
 
@@ -45,3 +50,6 @@ class MachinesService(NodesService):
         return await self.machines_repository.list_machine_pci_devices(
             system_id=system_id, token=token, size=size
         )
+
+    async def count_machines_by_statuses(self) -> MachinesCountByStatus:
+        return await self.machines_repository.count_machines_by_statuses()
