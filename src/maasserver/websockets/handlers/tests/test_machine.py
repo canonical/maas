@@ -5750,6 +5750,13 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "for_grouping": True,
                 },
                 {
+                    "key": "system_id",
+                    "label": "System ID",
+                    "dynamic": True,
+                    "type": "list[str]",
+                    "for_grouping": False,
+                },
+                {
                     "key": "tags",
                     "label": "Tags",
                     "dynamic": True,
