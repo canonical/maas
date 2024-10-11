@@ -4,7 +4,7 @@
 """Utilities for executing external commands."""
 
 import os
-from pipes import quote
+from shlex import quote
 import shutil
 from string import printable
 from subprocess import CalledProcessError, PIPE, Popen

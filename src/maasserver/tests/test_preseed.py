@@ -8,8 +8,8 @@ import http.client
 from ipaddress import ip_address
 import json
 import os
-from pipes import quote
 import random
+from shlex import quote
 from textwrap import dedent
 from unittest.mock import ANY, sentinel
 from urllib.parse import urlparse

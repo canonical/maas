@@ -6,9 +6,9 @@
 
 from base64 import b64encode
 from itertools import count
-import pipes
 import random
 import re
+import shlex
 import socket
 import subprocess
 import tempfile
@@ -190,7 +190,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
             stderr=subprocess.STDOUT,
             env=get_env_with_locale(),
         )
-        command = " ".join(map(pipes.quote, process.args))
+        command = " ".join(map(shlex.quote, process.args))
         output, _ = process.communicate()
         # Record the output from `dhcpd -t` as a detail.
         test.addDetail(

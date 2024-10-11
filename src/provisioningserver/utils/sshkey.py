@@ -7,7 +7,7 @@
 from itertools import chain
 import os
 from pathlib import Path
-import pipes
+import shlex
 from subprocess import CalledProcessError, check_output, PIPE
 from tempfile import TemporaryDirectory
 
@@ -101,14 +101,14 @@ def normalise_openssh_public_key(keytext):
         raise OpenSSHKeyError(
             "Key should contain 2 or more space separated parts (key type, "
             "base64-encoded key, optional comments), not %d: %s"
-            % (len(parts), " ".join(map(pipes.quote, parts)))
+            % (len(parts), " ".join(map(shlex.quote, parts)))
         )
 
     if keytype not in OPENSSH_PROTOCOL2_KEY_TYPES:
         raise OpenSSHKeyError(
             "Key type %s not recognised; it should be one of: %s"
             % (
-                pipes.quote(keytype),
+                shlex.quote(keytype),
                 " ".join(sorted(OPENSSH_PROTOCOL2_KEY_TYPES)),
             )
         )

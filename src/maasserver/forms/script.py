@@ -7,8 +7,8 @@
 from datetime import timedelta
 import json
 from json import JSONDecodeError
-import pipes
 import re
+import shlex
 
 from django.core.exceptions import ValidationError
 from django.forms import (
@@ -492,7 +492,7 @@ class ScriptForm(ModelForm):
             set_form_error(self, "name", "Cannot be a number.")
             valid = False
 
-        if name is not None and pipes.quote(name) != name:
+        if name is not None and shlex.quote(name) != name:
             set_form_error(
                 self,
                 "name",

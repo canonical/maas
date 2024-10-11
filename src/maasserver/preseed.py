@@ -6,7 +6,7 @@
 from collections import namedtuple
 import json
 import os.path
-from pipes import quote
+from shlex import quote
 from urllib.parse import urlencode, urlparse
 
 from curtin.config import merge_config
