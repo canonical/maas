@@ -21,7 +21,7 @@ import threading
 
 from django.db import connection, transaction
 from django.db.models import F
-from pkg_resources import parse_version
+from packaging.version import Version
 from simplestreams import util as sutil
 from simplestreams.log import LOG, WARNING
 from simplestreams.mirrors import BasicMirrorWriter, UrlMirrorReader
@@ -765,8 +765,8 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         # If the item requires a specific version of MAAS check the running
         # version meets or exceeds that requirement.
         if maas_supported is not None:
-            supported_version = parse_version(maas_supported)
-            if supported_version > DISTRIBUTION.parsed_version:
+            supported_version = Version(maas_supported)
+            if supported_version > Version(DISTRIBUTION.version):
                 maaslog.warning(
                     f"Ignoring {product_name}, requires a newer "
                     f"version of MAAS({supported_version})"

@@ -155,7 +155,6 @@ python_standard_libs = [
     "pdb",
     "pickle",
     "pickletools",
-    "pipes",
     "pkgutil",
     "platform",
     "plistlib",
