@@ -148,7 +148,10 @@ class Rule:
 
 # Common module patterns.
 StandardLibraries = Pattern(
-    map("{0}|{0}.**".format, python_standard_libs + ["pkg_resources"])
+    map(
+        "{0}|{0}.**".format,
+        python_standard_libs + ["packaging|packaging.version.*"],
+    )
 )
 TestingLibraries = Pattern(
     "distro_info.UbuntuDistroInfo",

@@ -5,15 +5,15 @@
 
 import dataclasses
 from functools import lru_cache, total_ordering
+from importlib.metadata import distribution
 import re
 from typing import Optional
 
-import pkg_resources
+from packaging.version import Version
 
 from provisioningserver.utils import deb, shell, snap
 
-# the first requirement is always the required package itself
-DISTRIBUTION = pkg_resources.require("maas")[0]
+DISTRIBUTION = distribution("maas")
 
 
 @total_ordering
@@ -153,11 +153,10 @@ def get_versions_info():
 
 def _get_version_from_python_package():
     """Return a string with the version from the python package."""
-    parsed_version = DISTRIBUTION.parsed_version
+    parsed_version = Version(DISTRIBUTION.version)
     str_version = parsed_version.base_version
     # pre is a tuple with qualifier and version, or None
-    pre = parsed_version._version.pre
-    if pre:
+    if pre := parsed_version.pre:
         qualifier, qual_version = pre
         qualifiers = {"a": "alpha", "b": "beta"}
         if qualifier in qualifiers:
