@@ -10,7 +10,7 @@ import threading
 import traceback
 import types
 
-from testtools import deferredruntest, runtest
+from testtools import runtest, twistedsupport
 from twisted.internet import defer, interfaces, reactor
 from twisted.internet.base import DelayedCall
 from twisted.internet.defer import (
@@ -345,7 +345,7 @@ class MAASCrochetRunTest(MAASRunTest):
         ]
 
 
-class MAASTwistedRunTest(deferredruntest.AsynchronousDeferredRunTest):
+class MAASTwistedRunTest(twistedsupport.AsynchronousDeferredRunTest):
     """A specialisation of testtools' `AsynchronousDeferredRunTest`.
 
     It catches a common problem when writing tests for Twisted: forgetting to
