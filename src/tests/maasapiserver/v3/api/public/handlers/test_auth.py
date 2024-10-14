@@ -170,7 +170,7 @@ class TestAuthApi:
         )
 
     @pytest.mark.skip
-    async def test_get_access_token_with_macaroon():
+    async def test_get_access_token_with_macaroon(self):
         pass
 
     async def test_get_access_token_not_logged_in(
